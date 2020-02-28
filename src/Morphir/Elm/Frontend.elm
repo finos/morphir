@@ -1,4 +1,4 @@
-module Morphir.Elm.Frontend exposing (initFromSource)
+module Morphir.Elm.Frontend exposing (Error(..), initFromSource)
 
 import Dict exposing (Dict)
 import Elm.Parser
