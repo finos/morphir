@@ -1,0 +1,73 @@
+module Morphir.Rule exposing
+    ( Rule
+    , andThen, defaultToOriginal
+    )
+
+{-| Rules are partial functions (or `Pattern`s) that return the same type of value as what
+they match on.
+
+@docs Rule
+
+
+# Working with rules
+
+You can create a rule from a pattern simply by making sure that the return type is the same
+as the type that is being matched (`Pattern a a`). If your pattern maps to a different type
+you can map it back using `Pattern.map`:
+
+@docs andThen, defaultToOriginal
+
+-}
+
+import Morphir.Pattern as Pattern exposing (Pattern)
+
+
+{-| Type that represents a rewrite rule which is apattern that maps back to the same type.
+-}
+type alias Rule a =
+    Pattern a a
+
+
+{-| Chains two rules together.
+
+    rule1 =
+        Pattern.matchValue 1
+
+    rule2 =
+        Pattern.matchAny ->
+            |> Pattern.map (\a -> a + 1)
+
+    rule =
+        rule1
+            |> Rule.andThen rule2
+
+    rule 1 == Just 2 -- rule1 matches and returns 1, rule2 matches and returns 1 + 1
+
+    rule 2 == Nothing -- rule1 does not match
+
+-}
+andThen : (a -> Rule a) -> Rule a -> Rule a
+andThen f rule a =
+    rule a
+        |> Maybe.andThen (f a)
+
+
+{-| Turns a rule into a function that will return the original value when the rule doesn't match.
+
+    rule =
+        Pattern.matchValue 1
+            |> Pattern.map (-)
+
+    fun =
+        rule
+            |> Rule.defaultToOriginal
+
+    fun 1 == -1 -- rule matches, mapped value returned
+
+    fun 13 == 13 -- rule doesn't match, original value returned
+
+-}
+defaultToOriginal : Rule a -> a -> a
+defaultToOriginal rule a =
+    rule a
+        |> Maybe.withDefault a
