@@ -7,6 +7,8 @@ module Morphir.IR.Advanced.Module exposing
 
 @docs Declaration, Definition
 
+@docs encodeDeclaration, encodeDefinition
+
 -}
 
 import Dict exposing (Dict)
@@ -66,6 +68,7 @@ type alias Definition extra =
 --     }
 
 
+{-| -}
 encodeDeclaration : (extra -> Encode.Value) -> Declaration extra -> Encode.Value
 encodeDeclaration encodeExtra decl =
     Encode.object
@@ -94,6 +97,7 @@ encodeDeclaration encodeExtra decl =
         ]
 
 
+{-| -}
 encodeDefinition : (extra -> Encode.Value) -> Definition extra -> Encode.Value
 encodeDefinition encodeExtra def =
     Encode.object

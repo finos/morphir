@@ -181,12 +181,12 @@ matchVariable matchName matchExtra typeToMatch =
 
 {-| Creates a fully-qualified reference to a type.
 
-    toIR (List Int) ==
-        reference SDK.List.listType [ intType ]
+    toIR (List Int)
+        == reference SDK.List.listType [ intType ]
 
-    toIR Foo.Bar ==
-        reference
-            ( [["my"],["lib"]], [["foo"]], ["bar"] )
+    toIR Foo.Bar
+        == reference
+            ( [ [ "my" ], [ "lib" ] ], [ [ "foo" ] ], [ "bar" ] )
             []
 
 -}
@@ -211,8 +211,8 @@ matchReference matchTypeName matchTypeParameters matchExtra typeToMatch =
 
 {-| Creates a tuple type.
 
-    toIR ( Int, Bool ) ==
-        tuple [ basic intType, basic boolType ]
+    toIR ( Int, Bool )
+        == tuple [ basic intType, basic boolType ]
 
 -}
 tuple : List (Type extra) -> extra -> Type extra
@@ -248,15 +248,15 @@ matchTuple matchElementTypes matchExtra typeToMatch =
 
     toIR {} == record []
 
-    toIR { foo : Int } ==
-        record
-            [ field ["foo"] SDK.Basics.intType
+    toIR { foo = Int }
+        == record
+            [ field [ "foo" ] SDK.Basics.intType
             ]
 
-    toIR { foo : Int, bar : Bool } ==
-        record
-            [ field ["foo"] SDK.Basics.intType
-            , field ["bar"] SDK.Basics.boolType
+    toIR { foo = Int, bar = Bool }
+        == record
+            [ field [ "foo" ] SDK.Basics.intType
+            , field [ "bar" ] SDK.Basics.boolType
             ]
 
 -}
@@ -301,15 +301,15 @@ matchRecord matchFieldTypes matchExtra typeToMatch =
 
 {-| Creates an extensible record type.
 
-    toIR { e | foo : Int } ==
-        extensibleRecord (variable ["e"])
-            [ field ["foo"] intType
+    toIR { e | foo = Int }
+        == extensibleRecord (variable [ "e" ])
+            [ field [ "foo" ] intType
             ]
 
-    toIR { f | foo : Int, bar : Bool } ==
-        extensibleRecord (variable ["f"])
-            [ field ["foo"] intType
-            , field ["bar"] boolType
+    toIR { f | foo = Int, bar = Bool }
+        == extensibleRecord (variable [ "f" ])
+            [ field [ "foo" ] intType
+            , field [ "bar" ] boolType
             ]
 
 -}
@@ -399,31 +399,37 @@ matchUnit matchExtra typeToMatch =
             Nothing
 
 
+{-| -}
 typeAliasDefinition : List Name -> Type extra -> Definition extra
 typeAliasDefinition typeParams typeExp =
     TypeAliasDefinition typeParams typeExp
 
 
+{-| -}
 customTypeDefinition : List Name -> AccessControlled (Constructors extra) -> Definition extra
 customTypeDefinition typeParams ctors =
     CustomTypeDefinition typeParams ctors
 
 
+{-| -}
 typeAliasDeclaration : List Name -> Type extra -> Declaration extra
 typeAliasDeclaration typeParams typeExp =
     TypeAliasDeclaration typeParams typeExp
 
 
+{-| -}
 opaqueTypeDeclaration : List Name -> Declaration extra
 opaqueTypeDeclaration typeParams =
     OpaqueTypeDeclaration typeParams
 
 
+{-| -}
 customTypeDeclaration : List Name -> Constructors extra -> Declaration extra
 customTypeDeclaration typeParams ctors =
     CustomTypeDeclaration typeParams ctors
 
 
+{-| -}
 matchCustomTypeDeclaration : Pattern (List Name) a -> Pattern (Constructors extra) b -> Pattern (Declaration extra) ( a, b )
 matchCustomTypeDeclaration matchTypeParams matchCtors declToMatch =
     case declToMatch of
@@ -460,8 +466,8 @@ rewriteType rewriteBranch rewriteLeaf typeToRewrite =
 
 {-| Creates a field.
 
-    toIR { foo : Int } ==
-        record [ field ["foo"] SDK.Basics.intType ]
+    toIR { foo = Int }
+        == record [ field [ "foo" ] SDK.Basics.intType ]
 
 -}
 field : Name -> Type extra -> Field extra
@@ -473,13 +479,13 @@ field fieldName fieldType =
 
     let
         field =
-            field ["foo"] SDK.Basics.intType
+            field [ "foo" ] SDK.Basics.intType
 
         pattern =
             matchField matchAny matchAny
     in
-    pattern field ==
-        Just ( ["foo"], SDK.Basics.intType )
+    pattern field
+        == Just ( [ "foo" ], SDK.Basics.intType )
 
 -}
 matchField : Pattern Name a -> Pattern (Type extra) b -> Pattern (Field extra) ( a, b )
@@ -714,6 +720,7 @@ decodeField decodeExtra =
         (Decode.index 1 (decodeType decodeExtra))
 
 
+{-| -}
 encodeDeclaration : (extra -> Encode.Value) -> Declaration extra -> Encode.Value
 encodeDeclaration encodeExtra decl =
     case decl of
@@ -738,6 +745,7 @@ encodeDeclaration encodeExtra decl =
                 ]
 
 
+{-| -}
 encodeDefinition : (extra -> Encode.Value) -> Definition extra -> Encode.Value
 encodeDefinition encodeExtra def =
     case def of
