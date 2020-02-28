@@ -19,10 +19,10 @@ you can map it back using `Pattern.map`:
 
 -}
 
-import Morphir.Pattern as Pattern exposing (Pattern)
+import Morphir.Pattern exposing (Pattern)
 
 
-{-| Type that represents a rewrite rule which is apattern that maps back to the same type.
+{-| Type that represents a rewrite rule which is a pattern that maps back to the same type.
 -}
 type alias Rule a =
     Pattern a a
