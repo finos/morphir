@@ -132,7 +132,28 @@ initFromSource packageInfo sourceFiles =
             else
                 Err [ CyclicModules cycles ]
     in
-    Err []
+    parseSources sourceFiles
+        |> Result.andThen
+            (\parsedFiles ->
+                let
+                    parsedFilesByModuleName =
+                        parsedFiles |> Dict.fromList
+                in
+                sortModules parsedFiles
+                    |> Result.andThen (mapParsedFiles parsedFilesByModuleName)
+            )
+        |> Result.map
+            (\moduleDefs ->
+                { dependencies = Dict.empty
+                , modules =
+                    moduleDefs
+                        |> Dict.map
+                            (\_ m ->
+                                public m
+                             -- TODO: only expose specific modules
+                            )
+                }
+            )
 
 
 mapParsedFiles : Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation))
