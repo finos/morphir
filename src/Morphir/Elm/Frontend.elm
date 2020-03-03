@@ -137,7 +137,8 @@ initFromSource packageInfo sourceFiles =
             (\parsedFiles ->
                 let
                     parsedFilesByModuleName =
-                        parsedFiles |> Dict.fromList
+                        parsedFiles
+                            |> Dict.fromList
                 in
                 sortModules parsedFiles
                     |> Result.andThen (mapParsedFiles parsedFilesByModuleName)
