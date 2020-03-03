@@ -89,8 +89,8 @@ type alias Import =
     }
 
 
-initFromSource : PackageInfo -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
-initFromSource packageInfo sourceFiles =
+initFromSource : List SourceFile -> Result Errors (Package.Definition SourceLocation)
+initFromSource sourceFiles =
     let
         parseSources : List SourceFile -> Result Errors (List ( ModuleName, ParsedFile ))
         parseSources sources =
