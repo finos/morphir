@@ -1,4 +1,4 @@
-module Morphir.Elm.Frontend exposing (Error(..), initFromSource)
+module Morphir.Elm.Frontend exposing (Error(..), SourceLocation, initFromSource)
 
 import Dict exposing (Dict)
 import Elm.Parser
@@ -198,7 +198,7 @@ mapProcessedFile processedFile modulesSoFar =
                 |> ElmModule.exposingList
 
         moduleResolver =
-            Debug.todo "implement"
+            Resolve.emptyModuleResolver
 
         typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
         typesResult =
@@ -207,7 +207,7 @@ mapProcessedFile processedFile modulesSoFar =
 
         valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation)))
         valuesResult =
-            Debug.todo "implement"
+            Ok Dict.empty
     in
     Result.map2
         (\types values ->

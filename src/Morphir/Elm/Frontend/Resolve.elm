@@ -1,4 +1,4 @@
-module Morphir.Elm.Frontend.Resolve exposing (Error, ModuleResolver, PackageResolver, createModuleResolver)
+module Morphir.Elm.Frontend.Resolve exposing (Error, ModuleResolver, PackageResolver, createModuleResolver, emptyModuleResolver)
 
 import Dict exposing (Dict)
 import Elm.Syntax.Exposing exposing (Exposing(..), TopLevelExpose(..))
@@ -36,6 +36,13 @@ type Error
 type alias ModuleResolver =
     { resolveType : ModuleName -> LocalName -> Result Error FQName
     , resolveValue : ModuleName -> LocalName -> Result Error FQName
+    }
+
+
+emptyModuleResolver : ModuleResolver
+emptyModuleResolver =
+    { resolveType = \moduleName localName -> Err (ModuleDoesNotExpose moduleName localName)
+    , resolveValue = \moduleName localName -> Err (ModuleDoesNotExpose moduleName localName)
     }
 
 
