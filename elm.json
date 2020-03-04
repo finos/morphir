@@ -8,7 +8,7 @@
         "Morphir.Pattern",
         "Morphir.Rule",
         "Morphir.Rewrite",
-        "Morphir.IR.AccessControl",
+        "Morphir.IR.AccessControlled",
         "Morphir.IR.Package",
         "Morphir.IR.Advanced.Package",
         "Morphir.IR.Module",

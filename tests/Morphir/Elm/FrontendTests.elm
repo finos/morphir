@@ -22,7 +22,7 @@ frontendTest =
                 unindent """
 module A exposing (..)
 
-type Foo = Foo
+type Foo = Foo Int
 
 type alias Bar = Foo
                 """
@@ -38,7 +38,22 @@ type alias Bar = Foo
                             { types =
                                 Dict.fromList
                                     [ ( [ "bar" ]
-                                      , public (Type.typeAliasDefinition [] (Type.reference (fQName [] [] [ "foo" ]) [] ()))
+                                      , public
+                                            (Type.typeAliasDefinition []
+                                                (Type.reference (fQName [] [] [ "foo" ]) [] ())
+                                            )
+                                      )
+                                    , ( [ "foo" ]
+                                      , public
+                                            (Type.customTypeDefinition []
+                                                (public
+                                                    [ ( [ "foo" ]
+                                                      , [ ( [ "arg", "1" ], Type.reference (fQName [] [] [ "int" ]) [] () )
+                                                        ]
+                                                      )
+                                                    ]
+                                                )
+                                            )
                                       )
                                     ]
                             , values = Dict.empty

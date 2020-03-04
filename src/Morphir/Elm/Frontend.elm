@@ -270,6 +270,101 @@ mapDeclarationsToType sourceFile expose decls =
                                 )
                             |> Just
 
+                    CustomTypeDeclaration customType ->
+                        let
+                            ( isTypeExposed, isCtorExposed ) =
+                                case expose of
+                                    Exposing.All _ ->
+                                        ( True, True )
+
+                                    Exposing.Explicit exposeList ->
+                                        exposeList
+                                            |> List.map Node.value
+                                            |> List.filterMap
+                                                (\topLevelExpose ->
+                                                    case topLevelExpose of
+                                                        Exposing.TypeOrAliasExpose exposedName ->
+                                                            if exposedName == Node.value customType.name then
+                                                                Just False
+
+                                                            else
+                                                                Nothing
+
+                                                        Exposing.TypeExpose exposedType ->
+                                                            if exposedType.name == Node.value customType.name then
+                                                                case exposedType.open of
+                                                                    Just _ ->
+                                                                        Just True
+
+                                                                    Nothing ->
+                                                                        Just False
+
+                                                            else
+                                                                Nothing
+
+                                                        _ ->
+                                                            Nothing
+                                                )
+                                            |> List.head
+                                            |> Maybe.map (\isOpen -> ( True, isOpen ))
+                                            |> Maybe.withDefault ( False, False )
+
+                            name =
+                                customType.name
+                                    |> Node.value
+                                    |> Name.fromString
+
+                            typeParams =
+                                customType.generics
+                                    |> List.map (Node.value >> Name.fromString)
+
+                            ctorsResult : Result Errors (Type.Constructors SourceLocation)
+                            ctorsResult =
+                                customType.constructors
+                                    |> List.map
+                                        (\ctorNode ->
+                                            let
+                                                ctor =
+                                                    ctorNode
+                                                        |> Node.value
+
+                                                ctorName =
+                                                    ctor.name
+                                                        |> Node.value
+                                                        |> Name.fromString
+
+                                                ctorArgsResult : Result Errors (List ( Name, Type SourceLocation ))
+                                                ctorArgsResult =
+                                                    ctor.arguments
+                                                        |> List.indexedMap
+                                                            (\index arg ->
+                                                                mapTypeAnnotation sourceFile arg
+                                                                    |> Result.map
+                                                                        (\argType ->
+                                                                            ( [ "arg", String.fromInt (index + 1) ]
+                                                                            , argType
+                                                                            )
+                                                                        )
+                                                            )
+                                                        |> ResultList.toResult
+                                                        |> Result.mapError List.concat
+                                            in
+                                            ctorArgsResult
+                                                |> Result.map
+                                                    (\ctorArgs ->
+                                                        ( ctorName, ctorArgs )
+                                                    )
+                                        )
+                                    |> ResultList.toResult
+                                    |> Result.mapError List.concat
+                        in
+                        ctorsResult
+                            |> Result.map
+                                (\ctors ->
+                                    ( name, withAccessControl isTypeExposed (Type.customTypeDefinition typeParams (withAccessControl isCtorExposed ctors)) )
+                                )
+                            |> Just
+
                     _ ->
                         Nothing
             )
