@@ -113,7 +113,12 @@ type Definition extra
 
 {-| -}
 type alias Constructors extra =
-    List ( Name, List ( Name, Type extra ) )
+    List (Constructor extra)
+
+
+{-| -}
+type alias Constructor extra =
+    ( Name, List ( Name, Type extra ) )
 
 
 definitionToDeclaration : Definition extra -> Declaration extra
@@ -131,29 +136,29 @@ definitionToDeclaration def =
                     OpaqueTypeDeclaration params
 
 
-mapType : (Type a -> b) -> Type a -> Type b
+mapType : (Type a -> a -> b) -> Type a -> Type b
 mapType f tpe =
     case tpe of
         Variable name extra ->
-            Variable name (f tpe)
+            Variable name (f tpe extra)
 
         Reference fQName argTypes extra ->
-            Reference fQName (argTypes |> List.map (mapType f)) (f tpe)
+            Reference fQName (argTypes |> List.map (mapType f)) (f tpe extra)
 
         Tuple elemTypes extra ->
-            Tuple (elemTypes |> List.map (mapType f)) (f tpe)
+            Tuple (elemTypes |> List.map (mapType f)) (f tpe extra)
 
         Record fields extra ->
-            Record (fields |> List.map (mapFieldType (mapType f))) (f tpe)
+            Record (fields |> List.map (mapFieldType (mapType f))) (f tpe extra)
 
         ExtensibleRecord name fields extra ->
-            ExtensibleRecord name (fields |> List.map (mapFieldType (mapType f))) (f tpe)
+            ExtensibleRecord name (fields |> List.map (mapFieldType (mapType f))) (f tpe extra)
 
         Function argType returnType extra ->
-            Function (argType |> mapType f) (returnType |> mapType f) (f tpe)
+            Function (argType |> mapType f) (returnType |> mapType f) (f tpe extra)
 
         Unit extra ->
-            Unit (f tpe)
+            Unit (f tpe extra)
 
 
 typeExtra : Type a -> a
