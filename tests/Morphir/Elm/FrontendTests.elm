@@ -7,6 +7,8 @@ import Morphir.Elm.Frontend as Frontend exposing (SourceLocation)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Advanced.Module as Module
 import Morphir.IR.Advanced.Package as Package
+import Morphir.IR.Advanced.Type as Type
+import Morphir.IR.FQName exposing (fQName)
 import Set
 import Test exposing (..)
 
@@ -33,7 +35,12 @@ type alias Bar = Foo
                 Dict.fromList
                     [ ( [ [ "a" ] ]
                       , public
-                            { types = Dict.empty
+                            { types =
+                                Dict.fromList
+                                    [ ( [ "bar" ]
+                                      , public (Type.typeAliasDefinition [] (Type.reference (fQName [] [] [ "foo" ]) [] ()))
+                                      )
+                                    ]
                             , values = Dict.empty
                             }
                       )
