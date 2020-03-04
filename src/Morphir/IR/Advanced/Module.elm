@@ -1,6 +1,7 @@
 module Morphir.IR.Advanced.Module exposing
     ( Declaration, Definition
     , encodeDeclaration, encodeDefinition
+    , definitionToDeclaration
     )
 
 {-| Modules are groups of types and values that belong together.
@@ -28,7 +29,7 @@ type alias Declaration extra =
     }
 
 
-{-| Type that represents a module defintion. It includes types and values.
+{-| Type that represents a module definition. It includes types and values.
 -}
 type alias Definition extra =
     { types : Dict Name (AccessControlled (Type.Definition extra))
@@ -36,36 +37,37 @@ type alias Definition extra =
     }
 
 
+definitionToDeclaration : Definition extra -> Declaration extra
+definitionToDeclaration def =
+    { types =
+        def.types
+            |> Dict.toList
+            |> List.filterMap
+                (\( path, accessControlledType ) ->
+                    accessControlledType
+                        |> withPublicAccess
+                        |> Maybe.map
+                            (\typeDef ->
+                                ( path, Type.definitionToDeclaration typeDef )
+                            )
+                )
+            |> Dict.fromList
+    , values = Dict.empty
 
--- definitionToDeclaration : Definition extra -> Declaration extra
--- definitionToDeclaration def =
---     { types =
---         def.types
---             |> Dict.toList
---             |> List.filterMap
---                 (\( path, accessControlledType ) ->
---                     accessControlledType
---                         |> withPublicAccess
---                         |> Maybe.map
---                             (\typeDef ->
---                                 ( path, Type.definitionToDeclaration typeDef )
---                             )
---                 )
---             |> Dict.fromList
---     , values =
---         def.values
---             |> Dict.toList
---             |> List.filterMap
---                 (\( path, accessControlledValue ) ->
---                     accessControlledValue
---                         |> withPublicAccess
---                         |> Maybe.map
---                             (\valueDef ->
---                                 ( path, Value.definitionToDeclaration valueDef )
---                             )
---                 )
---             |> Dict.fromList
---     }
+    -- TODO: implement for values
+    --         def.values
+    --             |> Dict.toList
+    --             |> List.filterMap
+    --                 (\( path, accessControlledValue ) ->
+    --                     accessControlledValue
+    --                         |> withPublicAccess
+    --                         |> Maybe.map
+    --                             (\valueDef ->
+    --                                 ( path, Value.definitionToDeclaration valueDef )
+    --                             )
+    --                 )
+    --             |> Dict.fromList
+    }
 
 
 {-| -}

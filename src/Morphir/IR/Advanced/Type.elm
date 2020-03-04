@@ -8,6 +8,7 @@ module Morphir.IR.Advanced.Type exposing
     , Constructors
     , fuzzType
     , encodeType, decodeType, encodeDeclaration, encodeDefinition
+    , definitionToDeclaration
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -115,43 +116,69 @@ type alias Constructors extra =
     List ( Name, List ( Name, Type extra ) )
 
 
+definitionToDeclaration : Definition extra -> Declaration extra
+definitionToDeclaration def =
+    case def of
+        TypeAliasDefinition params exp ->
+            TypeAliasDeclaration params exp
 
--- definitionToDeclaration : Definition extra -> Declaration extra
--- definitionToDeclaration def =
---     case def of
---         TypeAliasDefinition params exp ->
---             TypeAliasDeclaration params exp
---         CustomTypeDefinition params accessControlledCtors ->
---             case accessControlledCtors |> withPublicAccess of
---                 Just ctors ->
---                     CustomTypeDeclaration params ctors
---                 Nothing ->
---                     OpaqueTypeDeclaration params
+        CustomTypeDefinition params accessControlledCtors ->
+            case accessControlledCtors |> withPublicAccess of
+                Just ctors ->
+                    CustomTypeDeclaration params ctors
+
+                Nothing ->
+                    OpaqueTypeDeclaration params
 
 
-mapTypeExtra : (a -> b) -> Type a -> Type b
-mapTypeExtra f tpe =
+mapType : (Type a -> b) -> Type a -> Type b
+mapType f tpe =
     case tpe of
         Variable name extra ->
-            Variable name (f extra)
+            Variable name (f tpe)
 
         Reference fQName argTypes extra ->
-            Reference fQName (argTypes |> List.map (mapTypeExtra f)) (f extra)
+            Reference fQName (argTypes |> List.map (mapType f)) (f tpe)
 
         Tuple elemTypes extra ->
-            Tuple (elemTypes |> List.map (mapTypeExtra f)) (f extra)
+            Tuple (elemTypes |> List.map (mapType f)) (f tpe)
 
         Record fields extra ->
-            Record (fields |> List.map (mapFieldType (mapTypeExtra f))) (f extra)
+            Record (fields |> List.map (mapFieldType (mapType f))) (f tpe)
 
         ExtensibleRecord name fields extra ->
-            ExtensibleRecord name (fields |> List.map (mapFieldType (mapTypeExtra f))) (f extra)
+            ExtensibleRecord name (fields |> List.map (mapFieldType (mapType f))) (f tpe)
 
         Function argType returnType extra ->
-            Function (argType |> mapTypeExtra f) (returnType |> mapTypeExtra f) (f extra)
+            Function (argType |> mapType f) (returnType |> mapType f) (f tpe)
 
         Unit extra ->
-            Unit (f extra)
+            Unit (f tpe)
+
+
+typeExtra : Type a -> a
+typeExtra tpe =
+    case tpe of
+        Variable name extra ->
+            extra
+
+        Reference fQName argTypes extra ->
+            extra
+
+        Tuple elemTypes extra ->
+            extra
+
+        Record fields extra ->
+            extra
+
+        ExtensibleRecord name fields extra ->
+            extra
+
+        Function argType returnType extra ->
+            extra
+
+        Unit extra ->
+            extra
 
 
 {-| Creates a type variable.

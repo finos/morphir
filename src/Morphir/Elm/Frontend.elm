@@ -18,7 +18,7 @@ import Morphir.IR.Advanced.Module as Module
 import Morphir.IR.Advanced.Package as Package
 import Morphir.IR.Advanced.Type as Type exposing (Type)
 import Morphir.IR.Advanced.Value as Value exposing (Value)
-import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.FQName exposing (fQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.ResultList as ResultList
@@ -89,8 +89,8 @@ type alias Import =
     }
 
 
-initFromSource : List SourceFile -> Result Errors (Package.Definition SourceLocation)
-initFromSource sourceFiles =
+initFromSource : Path -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
+initFromSource currentPackagePath sourceFiles =
     let
         parseSources : List SourceFile -> Result Errors (List ( ModuleName, ParsedFile ))
         parseSources sources =
@@ -141,7 +141,7 @@ initFromSource sourceFiles =
                             |> Dict.fromList
                 in
                 sortModules parsedFiles
-                    |> Result.andThen (mapParsedFiles parsedFilesByModuleName)
+                    |> Result.andThen (mapParsedFiles currentPackagePath parsedFilesByModuleName)
             )
         |> Result.map
             (\moduleDefs ->
@@ -157,8 +157,8 @@ initFromSource sourceFiles =
             )
 
 
-mapParsedFiles : Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation))
-mapParsedFiles parsedModules sortedModuleNames =
+mapParsedFiles : Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation))
+mapParsedFiles currentPackagePath parsedModules sortedModuleNames =
     sortedModuleNames
         |> List.filterMap
             (\moduleName ->
@@ -176,14 +176,14 @@ mapParsedFiles parsedModules sortedModuleNames =
                 moduleResultsSoFar
                     |> Result.andThen
                         (\modulesSoFar ->
-                            mapProcessedFile processedFile modulesSoFar
+                            mapProcessedFile currentPackagePath processedFile modulesSoFar
                         )
             )
             (Ok Dict.empty)
 
 
-mapProcessedFile : ProcessedFile -> Dict Path (Module.Definition SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation))
-mapProcessedFile processedFile modulesSoFar =
+mapProcessedFile : Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation))
+mapProcessedFile currentPackagePath processedFile modulesSoFar =
     let
         modulePath =
             processedFile.file.moduleDefinition
@@ -197,15 +197,22 @@ mapProcessedFile processedFile modulesSoFar =
                 |> Node.value
                 |> ElmModule.exposingList
 
+        moduleDeclsSoFar =
+            modulesSoFar
+                |> Dict.map
+                    (\path def ->
+                        Module.definitionToDeclaration def
+                    )
+
         moduleResolver : ModuleResolver
         moduleResolver =
             Resolve.createModuleResolver
-                packageResolver
+                (Resolve.createPackageResolver Dict.empty currentPackagePath moduleDeclsSoFar)
                 (processedFile.file.imports |> List.map Node.value)
 
         typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
         typesResult =
-            mapDeclarationsToType moduleResolver processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
+            mapDeclarationsToType processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
                 |> Result.map Dict.fromList
 
         valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation)))
@@ -221,14 +228,14 @@ mapProcessedFile processedFile modulesSoFar =
         valuesResult
 
 
-mapDeclarationsToType : ModuleResolver -> SourceFile -> Exposing -> List Declaration -> Result Errors (List ( Name, AccessControlled (Type.Definition SourceLocation) ))
-mapDeclarationsToType moduleResolver sourceFile expose decls =
+mapDeclarationsToType : SourceFile -> Exposing -> List Declaration -> Result Errors (List ( Name, AccessControlled (Type.Definition SourceLocation) ))
+mapDeclarationsToType sourceFile expose decls =
     decls
         |> List.filterMap
             (\decl ->
                 case decl of
                     AliasDeclaration typeAlias ->
-                        mapTypeAnnotation moduleResolver sourceFile typeAlias.typeAnnotation
+                        mapTypeAnnotation sourceFile typeAlias.typeAnnotation
                             |> Result.map
                                 (\typeExp ->
                                     let
@@ -270,8 +277,8 @@ mapDeclarationsToType moduleResolver sourceFile expose decls =
         |> Result.mapError List.concat
 
 
-mapTypeAnnotation : ModuleResolver -> SourceFile -> Node TypeAnnotation -> Result Errors (Type SourceLocation)
-mapTypeAnnotation moduleResolver sourceFile (Node range typeAnnotation) =
+mapTypeAnnotation : SourceFile -> Node TypeAnnotation -> Result Errors (Type SourceLocation)
+mapTypeAnnotation sourceFile (Node range typeAnnotation) =
     let
         sourceLocation =
             range |> SourceLocation sourceFile
@@ -281,15 +288,12 @@ mapTypeAnnotation moduleResolver sourceFile (Node range typeAnnotation) =
             Ok (Type.variable (varName |> Name.fromString) sourceLocation)
 
         Typed (Node _ ( moduleName, localName )) argNodes ->
-            Result.map2
-                (\resolvedName args ->
-                    Type.reference resolvedName args sourceLocation
-                )
-                (moduleResolver.resolveType moduleName localName
-                    |> Result.mapError (ResolveError >> List.singleton)
+            Result.map
+                (\args ->
+                    Type.reference (fQName [] (moduleName |> List.map Name.fromString) (Name.fromString localName)) args sourceLocation
                 )
                 (argNodes
-                    |> List.map (mapTypeAnnotation moduleResolver sourceFile)
+                    |> List.map (mapTypeAnnotation sourceFile)
                     |> ResultList.toResult
                     |> Result.mapError List.concat
                 )
@@ -299,7 +303,7 @@ mapTypeAnnotation moduleResolver sourceFile (Node range typeAnnotation) =
 
         Tupled elemNodes ->
             elemNodes
-                |> List.map (mapTypeAnnotation moduleResolver sourceFile)
+                |> List.map (mapTypeAnnotation sourceFile)
                 |> ResultList.toResult
                 |> Result.map (\elemTypes -> Type.tuple elemTypes sourceLocation)
                 |> Result.mapError List.concat
@@ -309,7 +313,7 @@ mapTypeAnnotation moduleResolver sourceFile (Node range typeAnnotation) =
                 |> List.map Node.value
                 |> List.map
                     (\( Node _ fieldName, fieldTypeNode ) ->
-                        mapTypeAnnotation moduleResolver sourceFile fieldTypeNode
+                        mapTypeAnnotation sourceFile fieldTypeNode
                             |> Result.map (Type.field (fieldName |> Name.fromString))
                     )
                 |> ResultList.toResult
@@ -324,7 +328,7 @@ mapTypeAnnotation moduleResolver sourceFile (Node range typeAnnotation) =
                 |> List.map Node.value
                 |> List.map
                     (\( Node _ fieldName, fieldTypeNode ) ->
-                        mapTypeAnnotation moduleResolver sourceFile fieldTypeNode
+                        mapTypeAnnotation sourceFile fieldTypeNode
                             |> Result.map (Type.field (fieldName |> Name.fromString))
                     )
                 |> ResultList.toResult
@@ -339,8 +343,8 @@ mapTypeAnnotation moduleResolver sourceFile (Node range typeAnnotation) =
                 (\argType returnType ->
                     Type.function argType returnType sourceLocation
                 )
-                (mapTypeAnnotation moduleResolver sourceFile argTypeNode)
-                (mapTypeAnnotation moduleResolver sourceFile returnTypeNode)
+                (mapTypeAnnotation sourceFile argTypeNode)
+                (mapTypeAnnotation sourceFile returnTypeNode)
 
 
 withAccessControl : Bool -> a -> AccessControlled a

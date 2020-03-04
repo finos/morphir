@@ -42,7 +42,7 @@ type alias Bar = Foo
     in
     test "first" <|
         \_ ->
-            Frontend.initFromSource [ source ]
+            Frontend.initFromSource [ [ "my" ], [ "package" ] ] [ source ]
                 |> Expect.equal (Ok expected)
 
 

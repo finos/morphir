@@ -1,4 +1,4 @@
-module Morphir.Elm.Frontend.Resolve exposing (Error, ModuleResolver, PackageResolver, createModuleResolver, emptyModuleResolver)
+module Morphir.Elm.Frontend.Resolve exposing (Error, ModuleResolver, PackageResolver, createModuleResolver, createPackageResolver)
 
 import Dict exposing (Dict)
 import Elm.Syntax.Exposing exposing (Exposing(..), TopLevelExpose(..))

@@ -1,6 +1,7 @@
 module Morphir.IR.Advanced.Package exposing
     ( Declaration
     , Definition, emptyDefinition
+    , definitionToDeclaration
     )
 
 {-| Tools to work with packages.
@@ -46,23 +47,22 @@ emptyDefinition =
     }
 
 
-
--- definitionToDeclaration : Definition extra -> Declaration extra
--- definitionToDeclaration def =
---     { modules =
---         def.modules
---             |> Dict.toList
---             |> List.filterMap
---                 (\( path, accessControlledModule ) ->
---                     accessControlledModule
---                         |> withPublicAccess
---                         |> Maybe.map
---                             (\moduleDef ->
---                                 ( path, Module.definitionToDeclaration moduleDef )
---                             )
---                 )
---             |> Dict.fromList
---     }
+definitionToDeclaration : Definition extra -> Declaration extra
+definitionToDeclaration def =
+    { modules =
+        def.modules
+            |> Dict.toList
+            |> List.filterMap
+                (\( path, accessControlledModule ) ->
+                    accessControlledModule
+                        |> withPublicAccess
+                        |> Maybe.map
+                            (\moduleDef ->
+                                ( path, Module.definitionToDeclaration moduleDef )
+                            )
+                )
+            |> Dict.fromList
+    }
 
 
 encodeDeclaration : (extra -> Encode.Value) -> Declaration extra -> Encode.Value
