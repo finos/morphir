@@ -20,7 +20,9 @@ frontendTest =
                 unindent """
 module A exposing (..)
 
-type alias Foo = Bool
+type Foo = Foo
+
+type alias Bar = Foo
                 """
             }
 
