@@ -197,8 +197,11 @@ mapProcessedFile processedFile modulesSoFar =
                 |> Node.value
                 |> ElmModule.exposingList
 
+        moduleResolver : ModuleResolver
         moduleResolver =
-            Resolve.emptyModuleResolver
+            Resolve.createModuleResolver
+                packageResolver
+                (processedFile.file.imports |> List.map Node.value)
 
         typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
         typesResult =

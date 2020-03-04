@@ -39,13 +39,6 @@ type alias ModuleResolver =
     }
 
 
-emptyModuleResolver : ModuleResolver
-emptyModuleResolver =
-    { resolveType = \moduleName localName -> Err (ModuleDoesNotExpose moduleName localName)
-    , resolveValue = \moduleName localName -> Err (ModuleDoesNotExpose moduleName localName)
-    }
-
-
 type alias PackageResolver =
     { ctorNames : ModuleName -> LocalName -> Result Error (List String)
     , exposesType : ModuleName -> LocalName -> Result Error Bool
