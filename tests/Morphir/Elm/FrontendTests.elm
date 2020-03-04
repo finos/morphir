@@ -4,7 +4,7 @@ import Dict
 import Expect
 import Morphir.DAG as DAG
 import Morphir.Elm.Frontend as Frontend exposing (SourceLocation)
-import Morphir.IR.AccessControl exposing (AccessControlled, private, public)
+import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Advanced.Module as Module
 import Morphir.IR.Advanced.Package as Package
 import Set

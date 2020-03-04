@@ -13,7 +13,7 @@ import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation(..))
 import Morphir.DAG as DAG exposing (DAG)
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, PackageResolver)
-import Morphir.IR.AccessControl exposing (AccessControlled, private, public)
+import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Advanced.Module as Module
 import Morphir.IR.Advanced.Package as Package
 import Morphir.IR.Advanced.Type as Type exposing (Type)

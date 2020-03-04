@@ -15,10 +15,10 @@ module Morphir.IR.Advanced.Package exposing
 import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.AccessControl exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
 import Morphir.IR.Advanced.Module as Module
-import Morphir.IR.Advanced.Type as Type
-import Morphir.IR.Advanced.Value as Value
+import Morphir.IR.Advanced.Type as Type exposing (Type)
+import Morphir.IR.Advanced.Value as Value exposing (Value)
 import Morphir.IR.Path exposing (Path, encodePath)
 import Morphir.IR.QName exposing (QName, encodeQName)
 
@@ -62,6 +62,25 @@ definitionToDeclaration def =
                             )
                 )
             |> Dict.fromList
+    }
+
+
+mapDeclarationExtra : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
+mapDeclarationExtra mapType mapValue decl =
+    { modules =
+        decl.modules
+            |> Dict.map (\_ moduleDecl -> Module.mapDeclarationExtra mapType mapValue moduleDecl)
+    }
+
+
+mapDefinitionExtra : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
+mapDefinitionExtra mapType mapValue def =
+    { dependencies =
+        def.dependencies
+            |> Dict.map (\_ packageDecl -> mapDeclarationExtra mapType mapValue packageDecl)
+    , modules =
+        def.modules
+            |> Dict.map (\_ ac -> ac |> AccessControlled.map (Module.mapDefinitionExtra mapType mapValue))
     }
 
 

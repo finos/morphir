@@ -1,7 +1,7 @@
 module Morphir.IR.Advanced.Module exposing
     ( Declaration, Definition
     , encodeDeclaration, encodeDefinition
-    , definitionToDeclaration
+    , definitionToDeclaration, mapDeclarationExtra, mapDefinitionExtra
     )
 
 {-| Modules are groups of types and values that belong together.
@@ -15,9 +15,9 @@ module Morphir.IR.Advanced.Module exposing
 import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.AccessControl exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
-import Morphir.IR.Advanced.Type as Type
-import Morphir.IR.Advanced.Value as Value
+import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
+import Morphir.IR.Advanced.Type as Type exposing (Type)
+import Morphir.IR.Advanced.Value as Value exposing (Value)
 import Morphir.IR.Name exposing (Name, encodeName)
 
 
@@ -97,6 +97,33 @@ encodeDeclaration encodeExtra decl =
                     )
           )
         ]
+
+
+mapDeclarationExtra : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
+mapDeclarationExtra mapType mapValue decl =
+    { types =
+        decl.types
+            |> Dict.map (\_ typeDecl -> Type.mapDeclarationExtra mapType typeDecl)
+    , values =
+        decl.values
+            |> Dict.map (\_ valueDecl -> Value.mapDeclarationExtra mapType mapValue valueDecl)
+    }
+
+
+mapDefinitionExtra : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
+mapDefinitionExtra mapType mapValue def =
+    { types =
+        def.types
+            |> Dict.map
+                (\_ ac ->
+                    ac
+                        |> AccessControlled.map
+                            (Type.mapDefinitionExtra mapType)
+                )
+    , values =
+        def.values
+            |> Dict.map (\_ ac -> ac |> AccessControlled.map (Value.mapDefinitionExtra mapType mapValue))
+    }
 
 
 {-| -}

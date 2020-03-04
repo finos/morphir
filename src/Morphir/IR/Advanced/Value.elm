@@ -6,6 +6,7 @@ module Morphir.IR.Advanced.Value exposing
     , Declaration
     , Definition(..), typedDefinition, untypedDefinition
     , encodeValue, encodeDeclaration, encodeDefinition
+    , mapDeclarationExtra, mapDefinitionExtra
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -147,6 +148,29 @@ type Definition extra
 --                             ( [], returnType )
 --                         ( nextArgName :: restOfArgNames,  ->
 --             in
+
+
+mapDeclarationExtra : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
+mapDeclarationExtra mapType mapValue decl =
+    { inputs =
+        decl.inputs
+            |> List.map
+                (\( name, tpe ) ->
+                    ( name, mapType tpe )
+                )
+    , output =
+        mapType decl.output
+    }
+
+
+mapDefinitionExtra : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
+mapDefinitionExtra mapType mapValue def =
+    case def of
+        TypedDefinition tpe args body ->
+            TypedDefinition (mapType tpe) args (mapValue body)
+
+        UntypedDefinition args body ->
+            UntypedDefinition args (mapValue body)
 
 
 {-| A [literal][lit] represents a fixed value in the IR. We only allow values of basic types: bool, char, string, int, float.
@@ -604,8 +628,11 @@ arguments. The examples below try to visualize the process.
         body
 
     -- the above is logically translated to the below
-
-    myFun : Int -> Int -> { foo : Int } -> Int -- the value type does not change in the process
+    myFun :
+        Int
+        -> Int
+        -> { foo : Int }
+        -> Int -- the value type does not change in the process
     myFun a b =
         \{ foo } ->
             body
@@ -629,7 +656,6 @@ arguments. The examples below try to visualize the process.
         body
 
     -- the above is logically translated to the below
-
     myFun a b =
         \{ foo } ->
             body

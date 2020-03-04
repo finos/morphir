@@ -41,7 +41,7 @@ module Morphir.IR.Type exposing
 
 -}
 
-import Morphir.IR.AccessControl exposing (AccessControlled)
+import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Advanced.Type as Advanced
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
@@ -107,12 +107,12 @@ matchVariable matchName =
 
 {-| Creates a fully-qualified reference to a type.
 
-    toIR (List Int) ==
-        reference SDK.List.listType [ intType ]
+    toIR (List Int)
+        == reference SDK.List.listType [ intType ]
 
-    toIR Foo.Bar ==
-        reference
-            ( [["my"],["lib"]], [["foo"]], ["bar"] )
+    toIR Foo.Bar
+        == reference
+            ( [ [ "my" ], [ "lib" ] ], [ [ "foo" ] ], [ "bar" ] )
             []
 
 -}
@@ -130,8 +130,8 @@ matchReference matchTypeName matchTypeParameters =
 
 {-| Creates a tuple type.
 
-    toIR ( Int, Bool ) ==
-        tuple [ basic intType, basic boolType ]
+    toIR ( Int, Bool )
+        == tuple [ basic intType, basic boolType ]
 
 -}
 tuple : List Type -> Type
@@ -154,15 +154,15 @@ matchTuple matchElementTypes =
 
     toIR {} == record []
 
-    toIR { foo : Int } ==
-        record
-            [ field ["foo"] SDK.Basics.intType
+    toIR { foo = Int }
+        == record
+            [ field [ "foo" ] SDK.Basics.intType
             ]
 
-    toIR { foo : Int, bar : Bool } ==
-        record
-            [ field ["foo"] SDK.Basics.intType
-            , field ["bar"] SDK.Basics.boolType
+    toIR { foo = Int, bar = Bool }
+        == record
+            [ field [ "foo" ] SDK.Basics.intType
+            , field [ "bar" ] SDK.Basics.boolType
             ]
 
 -}
@@ -203,15 +203,15 @@ matchRecord matchFieldTypes =
 
 {-| Creates an extensible record type.
 
-    toIR { e | foo : Int } ==
-        extensibleRecord (variable ["e"])
-            [ field ["foo"] intType
+    toIR { e | foo = Int }
+        == extensibleRecord (variable [ "e" ])
+            [ field [ "foo" ] intType
             ]
 
-    toIR { f | foo : Int, bar : Bool } ==
-        extensibleRecord (variable ["f"])
-            [ field ["foo"] intType
-            , field ["bar"] boolType
+    toIR { f | foo = Int, bar = Bool }
+        == extensibleRecord (variable [ "f" ])
+            [ field [ "foo" ] intType
+            , field [ "bar" ] boolType
             ]
 
 -}
@@ -284,8 +284,8 @@ matchUnit =
 
 {-| Creates a field.
 
-    toIR { foo : Int } ==
-        record [ field ["foo"] SDK.Basics.intType ]
+    toIR { foo = Int }
+        == record [ field [ "foo" ] SDK.Basics.intType ]
 
 -}
 field : Name -> Type -> Field
@@ -297,13 +297,13 @@ field fieldName fieldType =
 
     let
         field =
-            field ["foo"] SDK.Basics.intType
+            field [ "foo" ] SDK.Basics.intType
 
         pattern =
             matchField matchAny matchAny
     in
-    pattern field ==
-        Just ( ["foo"], SDK.Basics.intType )
+    pattern field
+        == Just ( [ "foo" ], SDK.Basics.intType )
 
 -}
 matchField : (Name -> Maybe a) -> (Type -> Maybe b) -> Pattern Field ( a, b )

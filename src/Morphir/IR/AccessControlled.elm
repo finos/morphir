@@ -1,8 +1,9 @@
-module Morphir.IR.AccessControl exposing
+module Morphir.IR.AccessControlled exposing
     ( AccessControlled
     , public, private
     , withPublicAccess, withPrivateAccess
     , decodeAccessControlled, encodeAccessControlled
+    , map
     )
 
 {-| Module to manage access to a node in the IR. This is only used to declare access levels
@@ -86,6 +87,16 @@ withPrivateAccess ac =
 
         Private a ->
             a
+
+
+map : (a -> b) -> AccessControlled a -> AccessControlled b
+map f ac =
+    case ac of
+        Public a ->
+            Public (f a)
+
+        Private a ->
+            Private (f a)
 
 
 {-| Encode AccessControlled to JSON.

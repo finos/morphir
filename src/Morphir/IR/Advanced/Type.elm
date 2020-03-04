@@ -8,7 +8,7 @@ module Morphir.IR.Advanced.Type exposing
     , Constructors
     , fuzzType
     , encodeType, decodeType, encodeDeclaration, encodeDefinition
-    , definitionToDeclaration
+    , definitionToDeclaration, mapDeclarationExtra, mapDefinitionExtra
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -63,7 +63,7 @@ module Morphir.IR.Advanced.Type exposing
 import Fuzz exposing (Fuzzer)
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.AccessControl exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
 import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName, fuzzFQName)
 import Morphir.IR.Name exposing (Name, decodeName, encodeName, fuzzName)
 import Morphir.Pattern exposing (Pattern)
@@ -134,6 +134,57 @@ definitionToDeclaration def =
 
                 Nothing ->
                     OpaqueTypeDeclaration params
+
+
+mapDeclarationExtra : (Type a -> Type b) -> Declaration a -> Declaration b
+mapDeclarationExtra f decl =
+    case decl of
+        TypeAliasDeclaration params tpe ->
+            TypeAliasDeclaration params (f tpe)
+
+        OpaqueTypeDeclaration params ->
+            OpaqueTypeDeclaration params
+
+        CustomTypeDeclaration params ctors ->
+            CustomTypeDeclaration params
+                (ctors
+                    |> List.map
+                        (\( name, args ) ->
+                            ( name
+                            , args
+                                |> List.map
+                                    (\( argName, argType ) ->
+                                        ( argName, f argType )
+                                    )
+                            )
+                        )
+                )
+
+
+mapDefinitionExtra : (Type a -> Type b) -> Definition a -> Definition b
+mapDefinitionExtra f def =
+    case def of
+        TypeAliasDefinition params tpe ->
+            TypeAliasDefinition params (f tpe)
+
+        CustomTypeDefinition params ac ->
+            CustomTypeDefinition params
+                (ac
+                    |> AccessControlled.map
+                        (\ctors ->
+                            ctors
+                                |> List.map
+                                    (\( name, args ) ->
+                                        ( name
+                                        , args
+                                            |> List.map
+                                                (\( argName, argType ) ->
+                                                    ( argName, f argType )
+                                                )
+                                        )
+                                    )
+                        )
+                )
 
 
 mapType : (Type a -> a -> b) -> Type a -> Type b
