@@ -25,6 +25,11 @@ module A exposing (..)
 type Foo = Foo Int
 
 type alias Bar = Foo
+
+type alias Rec =
+    { field1 : Foo
+    , field2 : Bar
+    }
                 """
             }
 
@@ -52,6 +57,19 @@ type alias Bar = Foo
                                                         ]
                                                       )
                                                     ]
+                                                )
+                                            )
+                                      )
+                                    , ( [ "rec" ]
+                                      , public
+                                            (Type.typeAliasDefinition []
+                                                (Type.record
+                                                    [ Type.field [ "field", "1" ]
+                                                        (Type.reference (fQName [] [] [ "foo" ]) [] ())
+                                                    , Type.field [ "field", "2" ]
+                                                        (Type.reference (fQName [] [] [ "bar" ]) [] ())
+                                                    ]
+                                                    ()
                                                 )
                                             )
                                       )
