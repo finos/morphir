@@ -1,2 +1,2 @@
 # morphir
-Welcome to **Morphir**.  Take development up a level.
+Welcome to **Morphir**.  Taking development up a level.
