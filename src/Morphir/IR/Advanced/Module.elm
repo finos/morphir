@@ -1,7 +1,7 @@
 module Morphir.IR.Advanced.Module exposing
     ( Declaration, Definition
     , encodeDeclaration, encodeDefinition
-    , definitionToDeclaration, mapDeclarationExtra, mapDefinitionExtra
+    , definitionToDeclaration, mapDeclaration, mapDefinition
     )
 
 {-| Modules are groups of types and values that belong together.
@@ -99,30 +99,30 @@ encodeDeclaration encodeExtra decl =
         ]
 
 
-mapDeclarationExtra : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
-mapDeclarationExtra mapType mapValue decl =
+mapDeclaration : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
+mapDeclaration mapType mapValue decl =
     { types =
         decl.types
-            |> Dict.map (\_ typeDecl -> Type.mapDeclarationExtra mapType typeDecl)
+            |> Dict.map (\_ typeDecl -> Type.mapDeclaration mapType typeDecl)
     , values =
         decl.values
-            |> Dict.map (\_ valueDecl -> Value.mapDeclarationExtra mapType mapValue valueDecl)
+            |> Dict.map (\_ valueDecl -> Value.mapDeclaration mapType mapValue valueDecl)
     }
 
 
-mapDefinitionExtra : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
-mapDefinitionExtra mapType mapValue def =
+mapDefinition : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
+mapDefinition mapType mapValue def =
     { types =
         def.types
             |> Dict.map
                 (\_ ac ->
                     ac
                         |> AccessControlled.map
-                            (Type.mapDefinitionExtra mapType)
+                            (Type.mapDefinition mapType)
                 )
     , values =
         def.values
-            |> Dict.map (\_ ac -> ac |> AccessControlled.map (Value.mapDefinitionExtra mapType mapValue))
+            |> Dict.map (\_ ac -> ac |> AccessControlled.map (Value.mapDefinition mapType mapValue))
     }
 
 

@@ -1,7 +1,7 @@
 module Morphir.IR.Advanced.Package exposing
     ( Declaration
     , Definition, emptyDefinition
-    , definitionToDeclaration
+    , definitionToDeclaration, eraseDeclarationExtra, eraseDefinitionExtra
     )
 
 {-| Tools to work with packages.
@@ -65,23 +65,37 @@ definitionToDeclaration def =
     }
 
 
-mapDeclarationExtra : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
-mapDeclarationExtra mapType mapValue decl =
+mapDeclaration : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
+mapDeclaration mapType mapValue decl =
     { modules =
         decl.modules
-            |> Dict.map (\_ moduleDecl -> Module.mapDeclarationExtra mapType mapValue moduleDecl)
+            |> Dict.map (\_ moduleDecl -> Module.mapDeclaration mapType mapValue moduleDecl)
     }
 
 
-mapDefinitionExtra : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
-mapDefinitionExtra mapType mapValue def =
+eraseDeclarationExtra : Declaration a -> Declaration ()
+eraseDeclarationExtra =
+    mapDeclaration
+        (Type.mapTypeExtra (\_ -> ()))
+        (Value.mapValueExtra (\_ -> ()))
+
+
+mapDefinition : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
+mapDefinition mapType mapValue def =
     { dependencies =
         def.dependencies
-            |> Dict.map (\_ packageDecl -> mapDeclarationExtra mapType mapValue packageDecl)
+            |> Dict.map (\_ packageDecl -> mapDeclaration mapType mapValue packageDecl)
     , modules =
         def.modules
-            |> Dict.map (\_ ac -> ac |> AccessControlled.map (Module.mapDefinitionExtra mapType mapValue))
+            |> Dict.map (\_ ac -> ac |> AccessControlled.map (Module.mapDefinition mapType mapValue))
     }
+
+
+eraseDefinitionExtra : Definition a -> Definition ()
+eraseDefinitionExtra =
+    mapDefinition
+        (Type.mapTypeExtra (\_ -> ()))
+        (Value.mapValueExtra (\_ -> ()))
 
 
 encodeDeclaration : (extra -> Encode.Value) -> Declaration extra -> Encode.Value

@@ -6,7 +6,7 @@ module Morphir.IR.Advanced.Value exposing
     , Declaration
     , Definition(..), typedDefinition, untypedDefinition
     , encodeValue, encodeDeclaration, encodeDefinition
-    , mapDeclarationExtra, mapDefinitionExtra
+    , mapDeclaration, mapDefinition, mapValueExtra
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -67,7 +67,7 @@ which is just the specification of those. Value definitions can be typed or unty
 import Fuzz exposing (Fuzzer)
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.Advanced.Type exposing (Type, decodeType, encodeType)
+import Morphir.IR.Advanced.Type as Type exposing (Type, decodeType, encodeType)
 import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName)
 import Morphir.IR.Name exposing (Name, decodeName, encodeName)
 import String
@@ -150,8 +150,8 @@ type Definition extra
 --             in
 
 
-mapDeclarationExtra : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
-mapDeclarationExtra mapType mapValue decl =
+mapDeclaration : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
+mapDeclaration mapType mapValue decl =
     { inputs =
         decl.inputs
             |> List.map
@@ -163,14 +163,139 @@ mapDeclarationExtra mapType mapValue decl =
     }
 
 
-mapDefinitionExtra : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
-mapDefinitionExtra mapType mapValue def =
+mapDefinition : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
+mapDefinition mapType mapValue def =
     case def of
         TypedDefinition tpe args body ->
             TypedDefinition (mapType tpe) args (mapValue body)
 
         UntypedDefinition args body ->
             UntypedDefinition args (mapValue body)
+
+
+mapValueExtra : (a -> b) -> Value a -> Value b
+mapValueExtra f v =
+    case v of
+        Literal value extra ->
+            Literal value (f extra)
+
+        Constructor fullyQualifiedName extra ->
+            Constructor fullyQualifiedName (f extra)
+
+        Tuple elements extra ->
+            Tuple (elements |> List.map (mapValueExtra f)) (f extra)
+
+        List items extra ->
+            List (items |> List.map (mapValueExtra f)) (f extra)
+
+        Record fields extra ->
+            Record
+                (fields
+                    |> List.map
+                        (\( fieldName, fieldValue ) ->
+                            ( fieldName, mapValueExtra f fieldValue )
+                        )
+                )
+                (f extra)
+
+        Variable name extra ->
+            Variable name (f extra)
+
+        Reference fullyQualifiedName extra ->
+            Reference fullyQualifiedName (f extra)
+
+        Field subjectValue fieldName extra ->
+            Field (mapValueExtra f subjectValue) fieldName (f extra)
+
+        FieldFunction fieldName extra ->
+            FieldFunction fieldName (f extra)
+
+        Apply function argument extra ->
+            Apply (mapValueExtra f function) (mapValueExtra f argument) (f extra)
+
+        Lambda argumentPattern body extra ->
+            Lambda (mapPatternExtra f argumentPattern) (mapValueExtra f body) (f extra)
+
+        LetDef valueName valueDefinition inValue extra ->
+            LetDef valueName (mapDefinitionExtra f valueDefinition) (mapValueExtra f inValue) (f extra)
+
+        LetRec valueDefinitions inValue extra ->
+            LetRec
+                (valueDefinitions
+                    |> List.map
+                        (\( name, def ) ->
+                            ( name, mapDefinitionExtra f def )
+                        )
+                )
+                (mapValueExtra f inValue)
+                (f extra)
+
+        LetDestruct pattern valueToDestruct inValue extra ->
+            LetDestruct (mapPatternExtra f pattern) (mapValueExtra f valueToDestruct) (mapValueExtra f inValue) (f extra)
+
+        IfThenElse condition thenBranch elseBranch extra ->
+            IfThenElse (mapValueExtra f condition) (mapValueExtra f thenBranch) (mapValueExtra f elseBranch) (f extra)
+
+        PatternMatch branchOutOn cases extra ->
+            PatternMatch (mapValueExtra f branchOutOn)
+                (cases
+                    |> List.map
+                        (\( pattern, body ) ->
+                            ( mapPatternExtra f pattern, mapValueExtra f body )
+                        )
+                )
+                (f extra)
+
+        Update valueToUpdate fieldsToUpdate extra ->
+            Update (mapValueExtra f valueToUpdate)
+                (fieldsToUpdate
+                    |> List.map
+                        (\( fieldName, fieldValue ) ->
+                            ( fieldName, mapValueExtra f fieldValue )
+                        )
+                )
+                (f extra)
+
+        Unit extra ->
+            Unit (f extra)
+
+
+mapPatternExtra : (a -> b) -> Pattern a -> Pattern b
+mapPatternExtra f p =
+    case p of
+        WildcardPattern extra ->
+            WildcardPattern (f extra)
+
+        AsPattern p2 name extra ->
+            AsPattern (mapPatternExtra f p2) name (f extra)
+
+        TuplePattern elementPatterns extra ->
+            TuplePattern (elementPatterns |> List.map (mapPatternExtra f)) (f extra)
+
+        RecordPattern fieldNames extra ->
+            RecordPattern fieldNames (f extra)
+
+        ConstructorPattern constructorName argumentPatterns extra ->
+            ConstructorPattern constructorName (argumentPatterns |> List.map (mapPatternExtra f)) (f extra)
+
+        EmptyListPattern extra ->
+            EmptyListPattern (f extra)
+
+        HeadTailPattern headPattern tailPattern extra ->
+            HeadTailPattern (mapPatternExtra f headPattern) (mapPatternExtra f tailPattern) (f extra)
+
+        LiteralPattern value extra ->
+            LiteralPattern value (f extra)
+
+
+mapDefinitionExtra : (a -> b) -> Definition a -> Definition b
+mapDefinitionExtra f d =
+    case d of
+        TypedDefinition tpe args body ->
+            TypedDefinition (Type.mapTypeExtra f tpe) args (mapValueExtra f body)
+
+        UntypedDefinition args body ->
+            UntypedDefinition args (mapValueExtra f body)
 
 
 {-| A [literal][lit] represents a fixed value in the IR. We only allow values of basic types: bool, char, string, int, float.

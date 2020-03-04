@@ -8,7 +8,7 @@ module Morphir.IR.Advanced.Type exposing
     , Constructors
     , fuzzType
     , encodeType, decodeType, encodeDeclaration, encodeDefinition
-    , definitionToDeclaration, mapDeclarationExtra, mapDefinitionExtra
+    , definitionToDeclaration, mapDeclaration, mapDefinition, mapTypeExtra
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -136,8 +136,8 @@ definitionToDeclaration def =
                     OpaqueTypeDeclaration params
 
 
-mapDeclarationExtra : (Type a -> Type b) -> Declaration a -> Declaration b
-mapDeclarationExtra f decl =
+mapDeclaration : (Type a -> Type b) -> Declaration a -> Declaration b
+mapDeclaration f decl =
     case decl of
         TypeAliasDeclaration params tpe ->
             TypeAliasDeclaration params (f tpe)
@@ -161,8 +161,8 @@ mapDeclarationExtra f decl =
                 )
 
 
-mapDefinitionExtra : (Type a -> Type b) -> Definition a -> Definition b
-mapDefinitionExtra f def =
+mapDefinition : (Type a -> Type b) -> Definition a -> Definition b
+mapDefinition f def =
     case def of
         TypeAliasDefinition params tpe ->
             TypeAliasDefinition params (f tpe)
@@ -187,29 +187,29 @@ mapDefinitionExtra f def =
                 )
 
 
-mapType : (Type a -> a -> b) -> Type a -> Type b
-mapType f tpe =
+mapTypeExtra : (a -> b) -> Type a -> Type b
+mapTypeExtra f tpe =
     case tpe of
         Variable name extra ->
-            Variable name (f tpe extra)
+            Variable name (f extra)
 
         Reference fQName argTypes extra ->
-            Reference fQName (argTypes |> List.map (mapType f)) (f tpe extra)
+            Reference fQName (argTypes |> List.map (mapTypeExtra f)) (f extra)
 
         Tuple elemTypes extra ->
-            Tuple (elemTypes |> List.map (mapType f)) (f tpe extra)
+            Tuple (elemTypes |> List.map (mapTypeExtra f)) (f extra)
 
         Record fields extra ->
-            Record (fields |> List.map (mapFieldType (mapType f))) (f tpe extra)
+            Record (fields |> List.map (mapFieldType (mapTypeExtra f))) (f extra)
 
         ExtensibleRecord name fields extra ->
-            ExtensibleRecord name (fields |> List.map (mapFieldType (mapType f))) (f tpe extra)
+            ExtensibleRecord name (fields |> List.map (mapFieldType (mapTypeExtra f))) (f extra)
 
         Function argType returnType extra ->
-            Function (argType |> mapType f) (returnType |> mapType f) (f tpe extra)
+            Function (argType |> mapTypeExtra f) (returnType |> mapTypeExtra f) (f extra)
 
         Unit extra ->
-            Unit (f tpe extra)
+            Unit (f extra)
 
 
 typeExtra : Type a -> a

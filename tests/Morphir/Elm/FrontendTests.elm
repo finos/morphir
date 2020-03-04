@@ -26,7 +26,7 @@ type alias Bar = Foo
                 """
             }
 
-        expected : Package.Definition SourceLocation
+        expected : Package.Definition ()
         expected =
             { dependencies = Dict.empty
             , modules =
@@ -43,6 +43,7 @@ type alias Bar = Foo
     test "first" <|
         \_ ->
             Frontend.initFromSource [ [ "my" ], [ "package" ] ] [ source ]
+                |> Result.map Package.eraseDefinitionExtra
                 |> Expect.equal (Ok expected)
 
 
