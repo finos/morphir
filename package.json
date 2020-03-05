@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Elm bindings for Morphir",
   "scripts": {
-    "test": "elm-test"
+    "test": "elm-test",
+    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize"
   },
   "repository": {
     "type": "git",
