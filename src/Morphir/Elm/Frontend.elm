@@ -1,4 +1,4 @@
-module Morphir.Elm.Frontend exposing (Error(..), SourceLocation, initFromSource)
+module Morphir.Elm.Frontend exposing (Error(..), SourceLocation, packageDefinitionFromSource)
 
 import Dict exposing (Dict)
 import Elm.Parser
@@ -89,8 +89,8 @@ type alias Import =
     }
 
 
-initFromSource : Path -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
-initFromSource currentPackagePath sourceFiles =
+packageDefinitionFromSource : Path -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
+packageDefinitionFromSource currentPackagePath sourceFiles =
     let
         parseSources : List SourceFile -> Result Errors (List ( ModuleName, ParsedFile ))
         parseSources sources =

@@ -82,7 +82,7 @@ type alias Rec =
     in
     test "first" <|
         \_ ->
-            Frontend.initFromSource [ [ "my" ], [ "package" ] ] [ source ]
+            Frontend.packageDefinitionFromSource [ [ "my" ], [ "package" ] ] [ source ]
                 |> Result.map Package.eraseDefinitionExtra
                 |> Expect.equal (Ok expected)
 
