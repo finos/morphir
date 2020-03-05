@@ -10,33 +10,20 @@ port input : (Decode.Value -> msg) -> Sub msg
 port output : Encode.Value -> Cmd msg
 
 
-type alias Flags =
-    {}
-
-
-type alias Model =
-    {}
-
-
 type Msg
     = Input Decode.Value
 
 
-main : Platform.Program Flags Model Msg
+main : Platform.Program () () Msg
 main =
     Platform.worker
-        { init = init
+        { init = \_ -> ( (), Cmd.none )
         , update = update
         , subscriptions = \_ -> input Input
         }
 
 
-init : Flags -> ( Model, Cmd Msg )
-init flags =
-    ( {}, Cmd.none )
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> () -> ( (), Cmd Msg )
 update msg model =
     case msg of
         Input jsonValue ->
