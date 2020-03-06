@@ -1,5 +1,8 @@
 'use strict'
-
+const util = require('util')
+const path = require('path')
+const fs = require('fs')
+const readdir = util.promisify(fs.readdir)
 const worker = require('./Morphir.Elm.CLI').Elm.Morphir.Elm.CLI.init()
 
 
@@ -13,9 +16,12 @@ worker.ports.packageDefinitionFromSourceResult.subscribe(res => {
 
 
 const packageInfo = {
-    name: "morphir/sdk",
+    name: "morphir",
     exposedModules: ["A"]
 }
+
+
+const sourceDir = "../src"
 
 const sourceFiles = [
     { path: "A.elm"
@@ -24,3 +30,20 @@ const sourceFiles = [
 ]
 
 worker.ports.packageDefinitionFromSource.send([packageInfo, sourceFiles])
+
+
+async function readSourceFiles(rootDir) {
+    const entries = await readdir(rootDir, {withFileTypes: true})
+    const sourceFiles = 
+        entries
+            .filter(dirent => dirent.isFile() && dirent.name.endsWith('.elm'))
+            .map(dirent => {
+                path: path.resolve(rootDir, dirent.name)
+            })
+    const childSourceFiles = await Promise.all(
+        entries
+            .filter(dirent => dirent.isDirectory())
+            .map(dirent => readSourceFiles(path.resolve(rootDir, dirent.name)))
+    )    
+    childSourceFiles.reduce((a, b) => a.concat(b))
+}
