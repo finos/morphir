@@ -1,4 +1,4 @@
-module Morphir.Elm.Frontend exposing (Error(..), SourceLocation, packageDefinitionFromSource)
+module Morphir.Elm.Frontend exposing (Error(..), PackageInfo, SourceFile, SourceLocation, decodePackageInfo, encodeError, packageDefinitionFromSource)
 
 import Dict exposing (Dict)
 import Elm.Parser
@@ -10,7 +10,9 @@ import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node(..))
-import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation(..))
+import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
+import Json.Decode as Decode
+import Json.Encode as Encode
 import Morphir.DAG as DAG exposing (DAG)
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, PackageResolver)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
@@ -30,6 +32,21 @@ type alias PackageInfo =
     { name : Path
     , exposedModules : Set Path
     }
+
+
+decodePackageInfo : Decode.Decoder PackageInfo
+decodePackageInfo =
+    Decode.map2 PackageInfo
+        (Decode.field "name"
+            (Decode.string
+                |> Decode.map Path.fromString
+            )
+        )
+        (Decode.field "exposedModules"
+            (Decode.list (Decode.string |> Decode.map Path.fromString)
+                |> Decode.map Set.fromList
+            )
+        )
 
 
 type alias SourceFile =
@@ -76,6 +93,25 @@ type Error
     = ParseError String (List Parser.DeadEnd)
     | CyclicModules (DAG (List String))
     | ResolveError Resolve.Error
+
+
+encodeError : Error -> Encode.Value
+encodeError error =
+    case error of
+        ParseError _ _ ->
+            Encode.object
+                [ ( "$type", Encode.string "ParseError" )
+                ]
+
+        CyclicModules _ ->
+            Encode.object
+                [ ( "$type", Encode.string "CyclicModules" )
+                ]
+
+        ResolveError _ ->
+            Encode.object
+                [ ( "$type", Encode.string "ResolveError" )
+                ]
 
 
 type alias Imports =

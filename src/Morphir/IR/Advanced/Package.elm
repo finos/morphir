@@ -1,7 +1,7 @@
 module Morphir.IR.Advanced.Package exposing
     ( Declaration
     , Definition, emptyDefinition
-    , definitionToDeclaration, eraseDeclarationExtra, eraseDefinitionExtra
+    , definitionToDeclaration, encodeDefinition, eraseDeclarationExtra, eraseDefinitionExtra
     )
 
 {-| Tools to work with packages.
