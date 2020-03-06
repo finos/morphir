@@ -23,11 +23,13 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.ResultList as ResultList
 import Parser
-import Set
+import Set exposing (Set)
 
 
 type alias PackageInfo =
-    {}
+    { name : Path
+    , exposedModules : Set Path
+    }
 
 
 type alias SourceFile =
@@ -89,8 +91,8 @@ type alias Import =
     }
 
 
-packageDefinitionFromSource : Path -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
-packageDefinitionFromSource currentPackagePath sourceFiles =
+packageDefinitionFromSource : PackageInfo -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
+packageDefinitionFromSource packageInfo sourceFiles =
     let
         parseSources : List SourceFile -> Result Errors (List ( ModuleName, ParsedFile ))
         parseSources sources =
@@ -141,7 +143,7 @@ packageDefinitionFromSource currentPackagePath sourceFiles =
                             |> Dict.fromList
                 in
                 sortModules parsedFiles
-                    |> Result.andThen (mapParsedFiles currentPackagePath parsedFilesByModuleName)
+                    |> Result.andThen (mapParsedFiles packageInfo.name parsedFilesByModuleName)
             )
         |> Result.map
             (\moduleDefs ->
@@ -149,9 +151,12 @@ packageDefinitionFromSource currentPackagePath sourceFiles =
                 , modules =
                     moduleDefs
                         |> Dict.map
-                            (\_ m ->
-                                public m
-                             -- TODO: only expose specific modules
+                            (\modulePath m ->
+                                if packageInfo.exposedModules |> Set.member modulePath then
+                                    public m
+
+                                else
+                                    private m
                             )
                 }
             )

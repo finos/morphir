@@ -2,13 +2,12 @@ module Morphir.Elm.FrontendTests exposing (..)
 
 import Dict
 import Expect
-import Morphir.DAG as DAG
 import Morphir.Elm.Frontend as Frontend exposing (SourceLocation)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
-import Morphir.IR.Advanced.Module as Module
 import Morphir.IR.Advanced.Package as Package
 import Morphir.IR.Advanced.Type as Type
 import Morphir.IR.FQName exposing (fQName)
+import Morphir.IR.Path as Path
 import Set
 import Test exposing (..)
 
@@ -16,7 +15,7 @@ import Test exposing (..)
 frontendTest : Test
 frontendTest =
     let
-        source =
+        sourceA =
             { path = "A.elm"
             , content =
                 unindent """
@@ -30,6 +29,14 @@ type alias Rec =
     { field1 : Foo
     , field2 : Bar
     }
+                """
+            }
+
+        sourceB =
+            { path = "B.elm"
+            , content =
+                unindent """
+module B exposing (..)
                 """
             }
 
@@ -74,15 +81,33 @@ type alias Rec =
                                             )
                                       )
                                     ]
-                            , values = Dict.empty
+                            , values =
+                                Dict.empty
                             }
                       )
+                    , ( [ [ "b" ] ]
+                      , private
+                            { types =
+                                Dict.empty
+                            , values =
+                                Dict.empty
+                            }
+                      )
+                    ]
+            }
+
+        packageInfo =
+            { name =
+                Path.fromString "my/package"
+            , exposedModules =
+                Set.fromList
+                    [ Path.fromString "A"
                     ]
             }
     in
     test "first" <|
         \_ ->
-            Frontend.packageDefinitionFromSource [ [ "my" ], [ "package" ] ] [ source ]
+            Frontend.packageDefinitionFromSource packageInfo [ sourceA, sourceB ]
                 |> Result.map Package.eraseDefinitionExtra
                 |> Expect.equal (Ok expected)
 
