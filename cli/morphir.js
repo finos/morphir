@@ -4,15 +4,20 @@ const util = require('util')
 const fs = require('fs')
 const readdir = util.promisify(fs.readdir)
 const readFile = util.promisify(fs.readFile)
-const worker = require('./Morphir.Elm.CLI').Elm.Morphir.Elm.CLI.init()
+const packageDefWorker = require('./Morphir.Elm.CLI').Elm.Morphir.Elm.CLI.init()
+const elmEncoderWorker = require('./Morphir.Elm.EncodersCLI').Elm.Morphir.Elm.EncodersCLI.init()
 
 
-worker.ports.decodeError.subscribe(res => {
+packageDefWorker.ports.decodeError.subscribe(res => {
     console.error(res)
 })
 
-worker.ports.packageDefinitionFromSourceResult.subscribe(res => {
+packageDefWorker.ports.packageDefinitionFromSourceResult.subscribe(res => {
     console.log(JSON.stringify(res))
+})
+
+elmEncoderWorker.ports.elmEncoderBackend.subscribe(res => {
+    console.log(res)
 })
 
 
@@ -23,16 +28,28 @@ const packageInfo = {
 
 
 const sourceDir = "../src"
+const testDir = "../tests/Morphir/Codec/Tests"
 
 readElmSources(sourceDir)
 .then((sourceFiles) => {
-    worker.ports.packageDefinitionFromSource.send([packageInfo, sourceFiles])
+    packageDefWorker.ports.packageDefinitionFromSource.send([packageInfo, sourceFiles])
     sourceFiles.forEach(element => {
         console.log(element.path)
     });
 })
 .catch((err) => {
     console.error(err)
+})
+
+readElmSources(testDir)
+.then((sourceFiles) => {
+    console.log ("Generating elm encoders for following:")
+    sourceFiles.forEach(element => {
+        console.log(element.path)
+    });
+    console.log ("")
+    elmEncoderWorker.ports.elmFrontEnd.send([packageInfo, sourceFiles])
+    console.log ("")
 })
 
 

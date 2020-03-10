@@ -4,7 +4,7 @@
   "description": "Elm bindings for Morphir",
   "scripts": {
     "test": "elm-test",
-    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize"
+    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize && elm make src/Morphir/Elm/EncodersCLI.elm --output Morphir.Elm.EncodersCLI.js --optimize"
   },
   "repository": {
     "type": "git",
