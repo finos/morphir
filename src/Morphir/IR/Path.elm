@@ -114,16 +114,16 @@ toList names =
 
 {-| Checks if a path is a prefix of another.
 
-    isPrefixOf [ ["foo"], ["bar"] ] [ ["foo"] ] == True
+    isPrefixOf [ [ "foo" ], [ "bar" ] ] [ [ "foo" ] ] == True
 
-    isPrefixOf [ ["foo"] ] [ ["foo"], ["bar"] ] == False
+    isPrefixOf [ [ "foo" ] ] [ [ "foo" ], [ "bar" ] ] == False
 
-    isPrefixOf [ ["foo"], ["bar"] ] [ ["foo"], ["bar"] ] == True
+    isPrefixOf [ [ "foo" ], [ "bar" ] ] [ [ "foo" ], [ "bar" ] ] == True
 
 -}
 isPrefixOf : Path -> Path -> Bool
-isPrefixOf path prefix =
-    case ( prefix, path ) of
+isPrefixOf prefix path =
+    case ( path, prefix ) of
         -- empty path is a prefix of any other path
         ( [], _ ) ->
             True
@@ -133,7 +133,7 @@ isPrefixOf path prefix =
             False
 
         -- for any other case compare the head and recurse
-        ( prefixHead :: prefixTail, pathHead :: pathTail ) ->
+        ( pathHead :: pathTail, prefixHead :: prefixTail ) ->
             if prefixHead == pathHead then
                 isPrefixOf prefixTail pathTail
 

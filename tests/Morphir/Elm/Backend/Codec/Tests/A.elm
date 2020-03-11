@@ -1,4 +1,4 @@
-module A exposing (..)
+module Morphir.Elm.Backend.Codec.Tests.A exposing (..)
 
 
 type alias Name =
