@@ -32,7 +32,7 @@ typeDefToEncoder e typeName typeDef =
 
         functionName : String
         functionName =
-            toCamelCase <| [ "encode" ] ++ typeName
+            [ "encode" ] ++ typeName |> toCamelCase
 
         args : List (Node Pattern)
         args =
