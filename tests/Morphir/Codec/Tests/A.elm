@@ -29,3 +29,7 @@ type Color
 
 type alias Player =
     { name : String, age : Age, team : Color, position : Point }
+
+
+type alias User =
+    { name : String, id : Maybe Int }

@@ -69,7 +69,7 @@ typeDefToEncoder e typeName typeDef =
                         ctor :: [] ->
                             ctor
                                 |> constructorToRecord e
-                                |> typeToEncoder [ Tuple.first ctor ]
+                                |> typeToEncoder False [ Tuple.first ctor ]
 
                         ctors ->
                             let
@@ -94,7 +94,7 @@ typeDefToEncoder e typeName typeDef =
                                                 expr =
                                                     ctor
                                                         |> constructorToRecord e
-                                                        |> typeToEncoder [ Tuple.first ctor ]
+                                                        |> typeToEncoder True [ Tuple.first ctor ]
                                                         |> customTypeTopExpr
                                             in
                                             ( emptyRangeNode pattern, emptyRangeNode expr )
@@ -104,7 +104,7 @@ typeDefToEncoder e typeName typeDef =
                             CaseExpression { expression = caseValExpr, cases = cases }
 
                 Public (TypeAliasDefinition _ tpe) ->
-                    typeToEncoder [ typeName ] tpe
+                    typeToEncoder True [ typeName ] tpe
 
                 _ ->
                     Literal "Private types are not supported"
@@ -112,8 +112,8 @@ typeDefToEncoder e typeName typeDef =
     FunctionDeclaration function
 
 
-typeToEncoder : List Name -> Type extra -> Expression
-typeToEncoder varName tpe =
+typeToEncoder : Bool -> List Name -> Type extra -> Expression
+typeToEncoder fwdNames varName tpe =
     case tpe of
         Reference fqName typeArgs _ ->
             case fqName of
@@ -144,7 +144,7 @@ typeToEncoder varName tpe =
 
                                 justExpression : Expression
                                 justExpression =
-                                    typeToEncoder [ fromString "a" ] typeArg
+                                    typeToEncoder True [ fromString "a" ] typeArg
 
                                 nothingPattern : Pattern
                                 nothingPattern =
@@ -179,11 +179,18 @@ typeToEncoder varName tpe =
 
         Record fields _ ->
             let
+                namesToFwd name =
+                    if fwdNames then
+                        varName ++ [ name ]
+
+                    else
+                        [ name ]
+
                 fieldEncoder : Field extra -> Expression
                 fieldEncoder (Field name fieldType) =
                     TupledExpression
                         [ name |> toCamelCase |> Literal |> emptyRangeNode
-                        , typeToEncoder (varName ++ [ name ]) fieldType |> emptyRangeNode
+                        , typeToEncoder fwdNames (namesToFwd name) fieldType |> emptyRangeNode
                         ]
             in
             elmJsonEncoderApplication
