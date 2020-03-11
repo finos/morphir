@@ -138,7 +138,8 @@ typeToEncoder fwdNames varName tpe =
                             let
                                 caseValExpr : Node Expression
                                 caseValExpr =
-                                    FunctionOrValue [] "arg"
+                                    varName
+                                        |> varPathToExpr
                                         |> emptyRangeNode
 
                                 justPattern : Pattern
@@ -200,14 +201,17 @@ typeToEncoder fwdNames varName tpe =
             in
             elmJsonEncoderApplication
                 (elmJsonEncoderFunction "object")
-                (TupledExpression
-                    [ emptyRangeNode <| Literal <| Path.toString Name.toCamelCase "." varName
-                    , emptyRangeNode <|
-                        elmJsonEncoderApplication
+                (ListExpr <|
+                    [ TupledExpression
+                        [ Path.toString Name.toCamelCase "." varName |> Literal |> emptyRangeNode
+                        , elmJsonEncoderApplication
                             (elmJsonEncoderFunction "object")
                             (ListExpr
                                 (fields |> List.map fieldEncoder |> List.map emptyRangeNode)
                             )
+                            |> emptyRangeNode
+                        ]
+                        |> emptyRangeNode
                     ]
                 )
 
@@ -219,7 +223,7 @@ typeToEncoder fwdNames varName tpe =
 
 varPathToExpr : List Name -> Expression
 varPathToExpr names =
-    FunctionOrValue [] <| Path.toString Name.toCamelCase "." names
+    Path.toString Name.toCamelCase "." names |> FunctionOrValue []
 
 
 elmJsonEncoderApplication : Expression -> Expression -> Expression
@@ -274,10 +278,10 @@ customTypeTopExpr expr =
     elmJsonEncoderApplication
         (elmJsonEncoderFunction "object")
         (ListExpr
-            [ emptyRangeNode <|
-                TupledExpression
-                    [ Literal "$type" |> emptyRangeNode
-                    , expr |> emptyRangeNode
-                    ]
+            [ TupledExpression
+                [ Literal "$type" |> emptyRangeNode
+                , expr |> emptyRangeNode
+                ]
+                |> emptyRangeNode
             ]
         )
