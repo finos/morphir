@@ -127,7 +127,7 @@ typeToEncoder fwdNames varName tpe =
                         (elmJsonEncoderFunction "string")
                         (varPathToExpr varName)
 
-                FQName _ _ [ "Maybe" ] ->
+                FQName _ _ [ "maybe" ] ->
                     case typeArgs of
                         typeArg :: [] ->
                             let
