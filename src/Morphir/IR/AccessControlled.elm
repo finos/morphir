@@ -1,5 +1,5 @@
 module Morphir.IR.AccessControlled exposing
-    ( AccessControlled
+    ( AccessControlled(..)
     , public, private
     , withPublicAccess, withPrivateAccess
     , decodeAccessControlled, encodeAccessControlled

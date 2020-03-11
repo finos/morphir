@@ -1,5 +1,5 @@
 module Morphir.IR.FQName exposing
-    ( FQName, fQName, getPackagePath, getModulePath, getLocalName
+    ( FQName(..), fQName, getPackagePath, getModulePath, getLocalName
     , fuzzFQName
     , encodeFQName, decodeFQName
     )

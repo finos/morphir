@@ -1,14 +1,14 @@
 module Morphir.IR.Advanced.Type exposing
-    ( Type
+    ( Type(..)
     , variable, reference, tuple, record, extensibleRecord, function, unit
     , matchVariable, matchReference, matchTuple, matchRecord, matchExtensibleRecord, matchFunction, matchUnit
-    , Field, field, matchField, mapFieldName, mapFieldType
+    , Field(..), field, matchField, mapFieldName, mapFieldType
     , Declaration, typeAliasDeclaration, opaqueTypeDeclaration, customTypeDeclaration, matchCustomTypeDeclaration
-    , Definition, typeAliasDefinition, customTypeDefinition
+    , Definition(..), typeAliasDefinition, customTypeDefinition
     , Constructors
     , fuzzType
     , encodeType, decodeType, encodeDeclaration, encodeDefinition
-    , definitionToDeclaration, mapDeclaration, mapDefinition, mapTypeExtra
+    , Constructor, definitionToDeclaration, mapDeclaration, mapDefinition, mapTypeExtra
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -105,7 +105,15 @@ type Declaration extra
     | CustomTypeDeclaration (List Name) (Constructors extra)
 
 
-{-| -}
+{-| This syntax represents a type definition. For example:
+
+  - `type alias Foo a = {bar : Maybe a, qux : Int}`
+  - `type MyList a = End | Cons a (MyList a)`
+
+In the definition, the `List Name` refers to type parameters on the LHS
+and `Type extra` refers to the RHS
+
+-}
 type Definition extra
     = TypeAliasDefinition (List Name) (Type extra)
     | CustomTypeDefinition (List Name) (AccessControlled (Constructors extra))
