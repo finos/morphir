@@ -9,7 +9,7 @@ import Elm.Syntax.Range exposing (emptyRange)
 import Morphir.IR.AccessControlled exposing (AccessControlled(..))
 import Morphir.IR.Advanced.Type exposing (Constructor, Definition(..), Field(..), Type(..), field, record)
 import Morphir.IR.FQName exposing (FQName(..))
-import Morphir.IR.Name exposing (Name, fromString, toCamelCase, toTitleCase)
+import Morphir.IR.Name as Name exposing (Name, fromString, toCamelCase, toTitleCase)
 import Morphir.IR.Path as Path exposing (toString)
 
 
@@ -32,7 +32,7 @@ typeDefToEncoder e typeName typeDef =
 
         functionName : String
         functionName =
-            [ "encode" ] ++ typeName |> toCamelCase
+            [ "encode" ] ++ typeName |> Name.toCamelCase
 
         args : List (Node Pattern)
         args =
@@ -50,10 +50,10 @@ typeDefToEncoder e typeName typeDef =
                             ]
 
                         _ ->
-                            [ typeName |> toCamelCase |> VarPattern |> emptyRangeNode ]
+                            [ typeName |> Name.toCamelCase |> VarPattern |> emptyRangeNode ]
 
                 Public (TypeAliasDefinition _ _) ->
-                    [ typeName |> toCamelCase |> VarPattern |> emptyRangeNode ]
+                    [ typeName |> Name.toCamelCase |> VarPattern |> emptyRangeNode ]
 
                 _ ->
                     []
@@ -76,7 +76,7 @@ typeDefToEncoder e typeName typeDef =
                                 caseValExpr : Node Expression
                                 caseValExpr =
                                     typeName
-                                        |> toCamelCase
+                                        |> Name.toCamelCase
                                         |> FunctionOrValue []
                                         |> emptyRangeNode
 
@@ -112,6 +112,11 @@ typeDefToEncoder e typeName typeDef =
     FunctionDeclaration function
 
 
+{-|
+
+    TODO: Capture Elm's primitive types in the SDK
+
+-}
 typeToEncoder : Bool -> List Name -> Type extra -> Expression
 typeToEncoder fwdNames varName tpe =
     case tpe of
@@ -144,7 +149,7 @@ typeToEncoder fwdNames varName tpe =
 
                                 justExpression : Expression
                                 justExpression =
-                                    typeToEncoder True [ fromString "a" ] typeArg
+                                    typeToEncoder True [ Name.fromString "a" ] typeArg
 
                                 nothingPattern : Pattern
                                 nothingPattern =
@@ -174,7 +179,7 @@ typeToEncoder fwdNames varName tpe =
 
                 FQName _ _ names ->
                     elmJsonEncoderApplication
-                        ([ "encode" ] ++ names |> toCamelCase |> FunctionOrValue [])
+                        ([ "encode" ] ++ names |> Name.toCamelCase |> FunctionOrValue [])
                         (varPathToExpr varName)
 
         Record fields _ ->
@@ -189,14 +194,14 @@ typeToEncoder fwdNames varName tpe =
                 fieldEncoder : Field extra -> Expression
                 fieldEncoder (Field name fieldType) =
                     TupledExpression
-                        [ name |> toCamelCase |> Literal |> emptyRangeNode
+                        [ name |> Name.toCamelCase |> Literal |> emptyRangeNode
                         , typeToEncoder fwdNames (namesToFwd name) fieldType |> emptyRangeNode
                         ]
             in
             elmJsonEncoderApplication
                 (elmJsonEncoderFunction "object")
                 (TupledExpression
-                    [ emptyRangeNode <| Literal <| Path.toString toCamelCase "." varName
+                    [ emptyRangeNode <| Literal <| Path.toString Name.toCamelCase "." varName
                     , emptyRangeNode <|
                         elmJsonEncoderApplication
                             (elmJsonEncoderFunction "object")
@@ -214,7 +219,7 @@ typeToEncoder fwdNames varName tpe =
 
 varPathToExpr : List Name -> Expression
 varPathToExpr names =
-    FunctionOrValue [] <| Path.toString toCamelCase "." names
+    FunctionOrValue [] <| Path.toString Name.toCamelCase "." names
 
 
 elmJsonEncoderApplication : Expression -> Expression -> Expression
@@ -244,12 +249,12 @@ deconsPattern ctorName fields =
         consVars =
             fields
                 |> List.map Tuple.first
-                |> List.map toCamelCase
+                |> List.map Name.toCamelCase
                 |> List.map VarPattern
                 |> List.map emptyRangeNode
     in
     NamedPattern
-        { moduleName = [], name = toTitleCase ctorName }
+        { moduleName = [], name = Name.toTitleCase ctorName }
         consVars
 
 
