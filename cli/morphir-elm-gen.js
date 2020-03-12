@@ -10,7 +10,7 @@ const readFile = util.promisify(fs.readFile)
 const commander = require('commander')
 
 // Elm imports
-const worker = require('./Morphir.Elm.EncodersCLI').Elm.Morphir.Elm.EncodersCLI.init()
+const worker = require('./Morphir.Elm.CodecsCLI').Elm.Morphir.Elm.CodecsCLI.init()
 
 // Set up Commander
 const program = new commander.Command()
@@ -35,7 +35,7 @@ const testDir = "tests/Morphir/Elm/Backend/Codec/Tests"
 
 readElmSources(testDir)
     .then((sourceFiles) => {
-        console.log("Generating elm encoders for following:")
+        console.log("Generating elm codecs for following:")
         sourceFiles.forEach(element => {
             console.log(element.path)
         });

@@ -56,6 +56,7 @@ port elmFrontEnd : (( Decode.Value, List SourceFile ) -> msg) -> Sub msg
 genCodecsFile : List SourceFile -> String
 genCodecsFile sources =
     let
+        file : File
         file =
             { moduleDefinition =
                 Utils.emptyRangeNode <|
@@ -66,13 +67,8 @@ genCodecsFile sources =
             , imports = []
             , declarations =
                 case codecDeclarations sources of
-                    Ok maybList ->
-                        case maybList of
-                            Just list ->
-                                list
-
-                            Nothing ->
-                                []
+                    Ok decls ->
+                        decls
 
                     Err _ ->
                         []
@@ -82,12 +78,13 @@ genCodecsFile sources =
     writeFile file |> write
 
 
-codecDeclarations : List SourceFile -> Result Errors (Maybe (List (Node S.Declaration)))
+codecDeclarations : List SourceFile -> Result Errors (List (Node S.Declaration))
 codecDeclarations sourceFiles =
     packageDefinitionFromSource emptyPackageInfo sourceFiles
         |> Result.map .modules
-        |> Result.map (Dict.get [ [ "a" ] ])
-        |> Result.map (Maybe.map getCodecsFromModuleDef)
+        |> Result.map Dict.values
+        |> Result.map (List.map getCodecsFromModuleDef)
+        |> Result.map List.concat
 
 
 getCodecsFromModuleDef : AccessControlled (Advanced.Definition SourceLocation) -> List (Node S.Declaration)
@@ -134,5 +131,5 @@ emptySourceLocation =
 emptyPackageInfo : PackageInfo
 emptyPackageInfo =
     { name = []
-    , exposedModules = Set.fromList [ [ fromString "a" ] ]
+    , exposedModules = Set.fromList [ [ [ "a" ] ] ]
     }
