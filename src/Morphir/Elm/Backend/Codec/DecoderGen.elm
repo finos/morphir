@@ -215,7 +215,22 @@ mapDecoderMapFunc n =
                 3 ->
                     "map3"
 
-                _ ->
+                4 ->
                     "map4"
+
+                5 ->
+                    "map5"
+
+                6 ->
+                    "map6"
+
+                7 ->
+                    "map7"
+
+                8 ->
+                    "map8"
+
+                _ ->
+                    "more than 8 fields cannot be mapped"
     in
     FunctionOrValue decoderModuleName mapFuncName
