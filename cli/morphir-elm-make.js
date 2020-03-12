@@ -25,7 +25,9 @@ program
 
 make(program.projectDir, program.output)
     .then((packageDef) => {
-        console.log('Done.')
+        if (program.output) {
+            console.log('Done.')
+        }
     })
     .catch((err) => {
         console.error(err)
