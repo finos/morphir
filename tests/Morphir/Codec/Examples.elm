@@ -136,15 +136,17 @@ type Point
     Simple custom types json
 
     {
-        "$type" : "red"
+        "$type" :
+            {
+                "red" : {}
+            }
     }
 
     {
-        "red" : {}
-    }
-
-    {
-        "green" : {}
+        "$type" :
+            {
+                "green" : {}
+            }
     }
 
     {
@@ -172,9 +174,9 @@ encodeColor color =
 decoderColor : Decoder Color
 decoderColor =
     D.oneOf
-        [ field "red" (succeed Red)
-        , field "green" (succeed Green)
-        , field "blue" (succeed Blue)
+        [ at [ "$types", "red" ] (succeed Red)
+        , at [ "$types", "green" ] (succeed Green)
+        , at [ "$types", "blue" ] (succeed Blue)
         ]
 
 

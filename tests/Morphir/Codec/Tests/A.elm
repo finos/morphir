@@ -31,5 +31,15 @@ type alias Player =
     { name : String, age : Age, team : Color, position : Point }
 
 
-type alias User =
+type User
+    = Regular String Int
+    | Visitor String
+
+
+type alias TempEmployee =
     { name : String, id : Maybe Int }
+
+
+type Employee
+    = Perm String Int
+    | Temp TempEmployee

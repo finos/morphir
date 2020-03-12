@@ -1,4 +1,4 @@
-port module Morphir.Elm.EncodersCLI exposing (..)
+port module Morphir.Elm.CodecsCLI exposing (..)
 
 import Dict as Dict exposing (..)
 import Elm.Syntax.Declaration as S exposing (..)
@@ -6,10 +6,12 @@ import Elm.Syntax.Exposing exposing (..)
 import Elm.Syntax.File exposing (..)
 import Elm.Syntax.Module exposing (..)
 import Elm.Syntax.Node exposing (..)
-import Elm.Syntax.Range exposing (..)
+import Elm.Syntax.Range as Range exposing (..)
 import Elm.Writer exposing (..)
 import Json.Decode as Decode exposing (..)
-import Morphir.Elm.Backend.Codec.Gen exposing (..)
+import Morphir.Elm.Backend.Codec.DecoderGen exposing (..)
+import Morphir.Elm.Backend.Codec.EncoderGen exposing (..)
+import Morphir.Elm.Backend.Codec.Utils as Utils exposing (..)
 import Morphir.Elm.Frontend exposing (..)
 import Morphir.IR.AccessControlled exposing (..)
 import Morphir.IR.Advanced.Module as Advanced exposing (..)
@@ -37,7 +39,7 @@ init _ =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update (PackageDefinitionFromSource ( _, sourceFiles )) model =
-    ( model, genEncodersFile sourceFiles |> elmEncoderBackend )
+    ( model, genCodecsFile sourceFiles |> elmEncoderBackend )
 
 
 subscriptions : Model -> Sub Msg
@@ -51,19 +53,19 @@ port elmEncoderBackend : String -> Cmd msg
 port elmFrontEnd : (( Decode.Value, List SourceFile ) -> msg) -> Sub msg
 
 
-genEncodersFile : List SourceFile -> String
-genEncodersFile sources =
+genCodecsFile : List SourceFile -> String
+genCodecsFile sources =
     let
         file =
             { moduleDefinition =
-                emptyRangeNode <|
+                Utils.emptyRangeNode <|
                     NormalModule
-                        { moduleName = emptyRangeNode [ "AEncoders" ]
-                        , exposingList = emptyRangeNode (All emptyRange)
+                        { moduleName = Utils.emptyRangeNode [ "AEncoders" ]
+                        , exposingList = Utils.emptyRangeNode (All emptyRange)
                         }
             , imports = []
             , declarations =
-                case encoderDeclarations sources of
+                case codecDeclarations sources of
                     Ok maybList ->
                         case maybList of
                             Just list ->
@@ -80,26 +82,31 @@ genEncodersFile sources =
     writeFile file |> write
 
 
-encoderDeclarations : List SourceFile -> Result Errors (Maybe (List (Node S.Declaration)))
-encoderDeclarations sourceFiles =
+codecDeclarations : List SourceFile -> Result Errors (Maybe (List (Node S.Declaration)))
+codecDeclarations sourceFiles =
     packageDefinitionFromSource emptyPackageInfo sourceFiles
         |> Result.map .modules
         |> Result.map (Dict.get [ [ "a" ] ])
-        |> Result.map (Maybe.map getEncodersFromModuleDef)
+        |> Result.map (Maybe.map getCodecsFromModuleDef)
 
 
-getEncodersFromModuleDef : AccessControlled (Advanced.Definition SourceLocation) -> List (Node S.Declaration)
-getEncodersFromModuleDef accessCtrlModuleDef =
+getCodecsFromModuleDef : AccessControlled (Advanced.Definition SourceLocation) -> List (Node S.Declaration)
+getCodecsFromModuleDef accessCtrlModuleDef =
     case accessCtrlModuleDef of
         Public { types, values } ->
-            Dict.toList types
-                |> List.map
-                    (\typeNameAndDef ->
-                        typeDefToEncoder emptySourceLocation
-                            (Tuple.first typeNameAndDef)
-                            (Tuple.second typeNameAndDef)
-                    )
-                |> List.map (Node emptyRange)
+            let
+                typesToDecl f tpes =
+                    tpes
+                        |> List.map
+                            (\typeNameAndDef ->
+                                f emptySourceLocation
+                                    (Tuple.first typeNameAndDef)
+                                    (Tuple.second typeNameAndDef)
+                            )
+                        |> List.map (Node Range.emptyRange)
+            in
+            (Dict.toList types |> typesToDecl typeDefToEncoder)
+                ++ (Dict.toList types |> typesToDecl typeDefToDecoder)
 
         _ ->
             []
