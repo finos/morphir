@@ -14,9 +14,11 @@
     "morphir-elm": "./cli/morphir-elm.js"
   },
   "files": [
-    "./cli/morphir-elm.js",
-    "./cli/Morphir.Elm.CLI.js",
-    "./cli/Morphir.Elm.EncodersCLI.js"
+    "cli/morphir-elm.js",
+    "cli/morphir-elm-make.js",
+    "cli/morphir-elm-gen.js",
+    "cli/Morphir.Elm.CLI.js",
+    "cli/Morphir.Elm.EncodersCLI.js"
   ],
   "keywords": [
     "morphir",
