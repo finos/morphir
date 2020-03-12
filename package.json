@@ -10,6 +10,9 @@
     "type": "git",
     "url": "git+https://github.com/Morgan-Stanley/morphir-elm.git"
   },
+  "bin": {
+    "morphir-elm": "./cli/morphir-elm.js"
+  },
   "files": [
     "./cli/morphir-elm.js",
     "./cli/Morphir.Elm.CLI.js",
