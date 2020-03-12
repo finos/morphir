@@ -25,7 +25,9 @@ program
 
 make(program.projectDir, program.output)
     .then((packageDef) => {
-        console.log('Done.')
+        if (program.output) {
+            console.log('Done.')
+        }
     })
     .catch((err) => {
         console.error(err)
@@ -40,7 +42,7 @@ async function make(projectDir, output) {
         console.log(`Writing file ${output}.`)
         await writeFile(output, JSON.stringify(packageDef, null, 4))
     } else {
-        console.log(JSON.stringify(packageDef, null, 4))
+        console.log(JSON.stringify(packageDef))
     }
     return packageDef
 }
