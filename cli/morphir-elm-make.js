@@ -6,6 +6,7 @@ const path = require('path')
 const util = require('util')
 const fs = require('fs')
 const readdir = util.promisify(fs.readdir)
+const lstat = util.promisify(fs.lstat)
 const readFile = util.promisify(fs.readFile)
 const writeFile = util.promisify(fs.writeFile)
 const commander = require('commander')
@@ -30,11 +31,17 @@ make(program.projectDir, program.output)
         }
     })
     .catch((err) => {
-        console.error(err)
+        if (err.code == 'ENOENT') {
+            console.error(`Could not find file at '${err.path}'`)
+        } else {
+            console.error(err)
+        }
+        process.exit(1)
     })
 
 async function make(projectDir, output) {
-    const morphirJsonContent = await readFile(path.join(projectDir, 'morphir.json'))
+    const morphirJsonPath = path.join(projectDir, 'morphir.json')
+    const morphirJsonContent = await readFile(morphirJsonPath)
     const morphirJson = JSON.parse(morphirJsonContent.toString())
     const sourceFiles = await readElmSources(morphirJson.sourceDirectory)
     const packageDef = await packageDefinitionFromSource(morphirJson, sourceFiles)
