@@ -87,11 +87,11 @@ toHumanWordsTests =
         , assert [ "value", "in", "u", "s", "d" ] [ "value", "in", "USD" ]
         ]
 
-encodeTests : Test
-encodeTests =
+encodeNameTests : Test
+encodeNameTests =
     let
         assert inList expectedText =
-            test ("encode " ++ (expectedText ++ " ")) <|
+            test ("encodeName " ++ (expectedText ++ " ")) <|
                 \_ ->
                     Name.fromList inList
                         |> Name.encodeName
