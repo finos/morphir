@@ -1,10 +1,10 @@
 {
   "name": "morphir-elm",
-  "version": "0.1.0",
+  "version": "0.3.2",
   "description": "Elm bindings for Morphir",
   "scripts": {
     "test": "elm-test",
-    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize && elm make src/Morphir/Elm/CodecsCLI.elm --output Morphir.Elm.CodecsCLI.js --optimize"
+    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize && elm make src/Morphir/Elm/EncodersCLI.elm --output Morphir.Elm.EncodersCLI.js --optimize"
   },
   "repository": {
     "type": "git",
@@ -14,9 +14,11 @@
     "morphir-elm": "./cli/morphir-elm.js"
   },
   "files": [
-    "./cli/morphir-elm.js",
-    "./cli/Morphir.Elm.CLI.js",
-    "./cli/Morphir.Elm.CodecsCLI.js"
+    "cli/morphir-elm.js",
+    "cli/morphir-elm-make.js",
+    "cli/morphir-elm-gen.js",
+    "cli/Morphir.Elm.CLI.js",
+    "cli/Morphir.Elm.CodecsCLI.js"
   ],
   "keywords": [
     "morphir",
