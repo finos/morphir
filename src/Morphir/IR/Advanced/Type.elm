@@ -8,7 +8,7 @@ module Morphir.IR.Advanced.Type exposing
     , Constructors
     , fuzzType
     , encodeType, decodeType, encodeDeclaration, encodeDefinition
-    , Constructor, definitionToDeclaration, mapDeclaration, mapDefinition, mapTypeExtra
+    , Constructor, definitionToDeclaration, mapDeclaration, mapDefinition, mapTypeExtra, rewriteType
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.

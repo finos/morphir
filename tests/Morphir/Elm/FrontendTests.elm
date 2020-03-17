@@ -40,6 +40,21 @@ module B exposing (..)
                 """
             }
 
+        packageName =
+            Path.fromString "my/package"
+
+        moduleA =
+            Path.fromString "A"
+
+        packageInfo =
+            { name =
+                packageName
+            , exposedModules =
+                Set.fromList
+                    [ moduleA
+                    ]
+            }
+
         expected : Package.Definition ()
         expected =
             { dependencies = Dict.empty
@@ -52,7 +67,7 @@ module B exposing (..)
                                     [ ( [ "bar" ]
                                       , public
                                             (Type.typeAliasDefinition []
-                                                (Type.reference (fQName [] [] [ "foo" ]) [] ())
+                                                (Type.reference (fQName packageName moduleA [ "foo" ]) [] ())
                                             )
                                       )
                                     , ( [ "foo" ]
@@ -72,9 +87,9 @@ module B exposing (..)
                                             (Type.typeAliasDefinition []
                                                 (Type.record
                                                     [ Type.field [ "field", "1" ]
-                                                        (Type.reference (fQName [] [] [ "foo" ]) [] ())
+                                                        (Type.reference (fQName packageName moduleA [ "foo" ]) [] ())
                                                     , Type.field [ "field", "2" ]
-                                                        (Type.reference (fQName [] [] [ "bar" ]) [] ())
+                                                        (Type.reference (fQName packageName moduleA [ "bar" ]) [] ())
                                                     ]
                                                     ()
                                                 )
@@ -93,15 +108,6 @@ module B exposing (..)
                                 Dict.empty
                             }
                       )
-                    ]
-            }
-
-        packageInfo =
-            { name =
-                Path.fromString "my/package"
-            , exposedModules =
-                Set.fromList
-                    [ Path.fromString "A"
                     ]
             }
     in

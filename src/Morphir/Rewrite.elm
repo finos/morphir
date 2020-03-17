@@ -40,7 +40,13 @@ the entire tree regardless of rule matches but only changes the tree if
 a rule matches.
 -}
 bottomUp : Rewrite a -> Rule a -> a -> a
-bottomUp rewrite rewriteRule =
-    rewrite
-        (bottomUp rewrite rewriteRule)
-        (Rule.defaultToOriginal rewriteRule)
+bottomUp rewrite rewriteRule typeToRewrite =
+    let
+        top =
+            rewrite
+                (\a -> bottomUp rewrite rewriteRule a)
+                (Rule.defaultToOriginal rewriteRule)
+                typeToRewrite
+    in
+    rewriteRule top
+        |> Maybe.withDefault top
