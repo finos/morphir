@@ -24,13 +24,13 @@ not match the rewrite continues downward. When a rule matches it's
 applied and the rewrite process stops traversing downward in the subtree.
 -}
 topDown : Rewrite a -> Rule a -> a -> a
-topDown rewrite rewriteRule typeToRewrite =
-    rewriteRule typeToRewrite
+topDown rewrite rewriteRule nodeToRewrite =
+    rewriteRule nodeToRewrite
         |> Maybe.withDefault
             (rewrite
                 (topDown rewrite rewriteRule)
                 identity
-                typeToRewrite
+                nodeToRewrite
             )
 
 
@@ -40,13 +40,13 @@ the entire tree regardless of rule matches but only changes the tree if
 a rule matches.
 -}
 bottomUp : Rewrite a -> Rule a -> a -> a
-bottomUp rewrite rewriteRule typeToRewrite =
+bottomUp rewrite rewriteRule nodeToRewrite =
     let
         top =
             rewrite
                 (\a -> bottomUp rewrite rewriteRule a)
                 (Rule.defaultToOriginal rewriteRule)
-                typeToRewrite
+                nodeToRewrite
     in
     rewriteRule top
         |> Maybe.withDefault top
