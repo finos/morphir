@@ -15,15 +15,16 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.DAG as DAG exposing (DAG)
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, PackageResolver)
-import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
+import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Advanced.Module as Module
 import Morphir.IR.Advanced.Package as Package
 import Morphir.IR.Advanced.Type as Type exposing (Type)
 import Morphir.IR.Advanced.Value as Value exposing (Value)
-import Morphir.IR.FQName exposing (fQName)
+import Morphir.IR.FQName as FQName exposing (fQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.ResultList as ResultList
+import Morphir.Rewrite as Rewrite
 import Parser
 import Set exposing (Set)
 
@@ -238,19 +239,6 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 |> Node.value
                 |> ElmModule.exposingList
 
-        moduleDeclsSoFar =
-            modulesSoFar
-                |> Dict.map
-                    (\path def ->
-                        Module.definitionToDeclaration def
-                    )
-
-        moduleResolver : ModuleResolver
-        moduleResolver =
-            Resolve.createModuleResolver
-                (Resolve.createPackageResolver Dict.empty currentPackagePath moduleDeclsSoFar)
-                (processedFile.file.imports |> List.map Node.value)
-
         typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
         typesResult =
             mapDeclarationsToType processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
@@ -259,14 +247,20 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
         valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation)))
         valuesResult =
             Ok Dict.empty
+
+        moduleResult : Result Errors (Module.Definition SourceLocation)
+        moduleResult =
+            Result.map2 Module.Definition
+                typesResult
+                valuesResult
     in
-    Result.map2
-        (\types values ->
-            modulesSoFar
-                |> Dict.insert modulePath (Module.Definition types values)
-        )
-        typesResult
-        valuesResult
+    moduleResult
+        |> Result.andThen (resolveLocalTypes currentPackagePath modulePath)
+        |> Result.map
+            (\m ->
+                modulesSoFar
+                    |> Dict.insert modulePath m
+            )
 
 
 mapDeclarationsToType : SourceFile -> Exposing -> List Declaration -> Result Errors (List ( Name, AccessControlled (Type.Definition SourceLocation) ))
@@ -481,6 +475,38 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 )
                 (mapTypeAnnotation sourceFile argTypeNode)
                 (mapTypeAnnotation sourceFile returnTypeNode)
+
+
+resolveLocalTypes : Path -> Path -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
+resolveLocalTypes packagePath modulePath moduleDef =
+    let
+        rewriteTypes =
+            Rewrite.bottomUp Type.rewriteType
+                (\tpe ->
+                    case tpe of
+                        Type.Reference fullName args sourceLocation ->
+                            let
+                                localName =
+                                    fullName
+                                        |> FQName.getLocalName
+                            in
+                            moduleDef.types
+                                |> Dict.get localName
+                                |> Maybe.map
+                                    (\_ ->
+                                        Type.Reference (fQName packagePath modulePath localName) args sourceLocation
+                                    )
+
+                        _ ->
+                            Nothing
+                )
+
+        rewriteValues =
+            identity
+    in
+    moduleDef
+        |> Module.mapDefinition rewriteTypes rewriteValues
+        |> Ok
 
 
 withAccessControl : Bool -> a -> AccessControlled a
