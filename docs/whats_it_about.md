@@ -1,0 +1,11 @@
+# An application
+I have an application.  It tracks product inventories and decides how much to grant an order request based on the product's availability.  It is deployed as a set of microservices.  Orders are made via REST.  Inventory levels are tracked in real-time with stream processing.  Streams come from a variaty of sources.  Some with nuances about how to interpret their contents into trustworthy inventory numbers.  There are also rules for how to distribute inventory across requests to try to get a good balance of happy customers.  We currently use Kafka for that.  The REST is exposed via OpenAPI.  We use a standard SQL database for transaction processing.  We're thinking about moving the microservices to serverless.
+
+# What's important?
+As you're reading this, what do you consider to be the most important information in my description?  Is it the Kafka stream processing?  The standard microservices architecture?  Or the fact that we're thinking of moving that to serverless?  While the answer might be subjective, I can tell you that for the users of this application, the most important parts are:
+1. The application processes orders for products.
+1. It allocates to those orders based on availability and distribution rules.
+1. It aggregates inventory from multiple suppliers.
+
+# Morphir
+You probably know this as the application's business logic, and it's easy to see why users think this is most important: It's whole reason the application exists at all.  All of the rest are temporary details about how it's implemented.  Chances are that these details will change a few times over the application's lifetime.  It would be ashame to risk breaking the most important parts of the application just because we want to change from microservices to serverless.  Yet that's exactly what happens with a huge portion of applications.  This is because most applications comingle the business concepts with the technology choices of the moment. Given the importance of the business concepts, it seems like it would make sense to protect them from transient technical decisions as much as possible.  We want something that allows the business and technology to evolve independently.  This is what Morphir does.  It's all about the business concepts.
