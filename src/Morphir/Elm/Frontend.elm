@@ -20,7 +20,7 @@ import Morphir.IR.Advanced.Module as Module
 import Morphir.IR.Advanced.Package as Package
 import Morphir.IR.Advanced.Type as Type exposing (Type)
 import Morphir.IR.Advanced.Value as Value exposing (Value)
-import Morphir.IR.FQName as FQName exposing (fQName)
+import Morphir.IR.FQName as FQName exposing (FQName, fQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.ResultList as ResultList
@@ -239,6 +239,19 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 |> Node.value
                 |> ElmModule.exposingList
 
+        moduleDeclsSoFar =
+            modulesSoFar
+                |> Dict.map
+                    (\path def ->
+                        Module.definitionToDeclaration def
+                    )
+
+        moduleResolver : ModuleResolver
+        moduleResolver =
+            Resolve.createModuleResolver
+                (Resolve.createPackageResolver Dict.empty currentPackagePath moduleDeclsSoFar)
+                (processedFile.file.imports |> List.map Node.value)
+
         typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
         typesResult =
             mapDeclarationsToType processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
@@ -255,7 +268,7 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 valuesResult
     in
     moduleResult
-        |> Result.andThen (resolveLocalTypes currentPackagePath modulePath)
+        |> Result.andThen (resolveLocalTypes currentPackagePath modulePath moduleResolver)
         |> Result.map
             (\m ->
                 modulesSoFar
@@ -444,7 +457,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 |> List.map
                     (\( Node _ fieldName, fieldTypeNode ) ->
                         mapTypeAnnotation sourceFile fieldTypeNode
-                            |> Result.map (Type.field (fieldName |> Name.fromString))
+                            |> Result.map (Type.Field (fieldName |> Name.fromString))
                     )
                 |> ResultList.toResult
                 |> Result.map
@@ -459,7 +472,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 |> List.map
                     (\( Node _ fieldName, fieldTypeNode ) ->
                         mapTypeAnnotation sourceFile fieldTypeNode
-                            |> Result.map (Type.field (fieldName |> Name.fromString))
+                            |> Result.map (Type.Field (fieldName |> Name.fromString))
                     )
                 |> ResultList.toResult
                 |> Result.map
@@ -477,25 +490,46 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 (mapTypeAnnotation sourceFile returnTypeNode)
 
 
-resolveLocalTypes : Path -> Path -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
-resolveLocalTypes packagePath modulePath moduleDef =
+resolveLocalTypes : Path -> Path -> ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
+resolveLocalTypes packagePath modulePath moduleResolver moduleDef =
     let
+        rewriteTypes : Type SourceLocation -> Result Error (Type SourceLocation)
         rewriteTypes =
             Rewrite.bottomUp Type.rewriteType
                 (\tpe ->
                     case tpe of
-                        Type.Reference fullName args sourceLocation ->
+                        Type.Reference refFullName args sourceLocation ->
                             let
-                                localName =
-                                    fullName
+                                refModulePath : Path
+                                refModulePath =
+                                    refFullName
+                                        |> FQName.getModulePath
+
+                                refLocalName : Name
+                                refLocalName =
+                                    refFullName
                                         |> FQName.getLocalName
+
+                                resolvedFullNameResult : Result Resolve.Error FQName
+                                resolvedFullNameResult =
+                                    case moduleDef.types |> Dict.get refLocalName of
+                                        Just _ ->
+                                            if Path.isPrefixOf modulePath packagePath then
+                                                Ok (fQName packagePath (modulePath |> List.drop (List.length packagePath)) refLocalName)
+
+                                            else
+                                                Err (Resolve.PackageNotPrefixOfModule packagePath modulePath)
+
+                                        Nothing ->
+                                            moduleResolver.resolveType (refModulePath |> List.map Name.toTitleCase) (refLocalName |> Name.toTitleCase)
                             in
-                            moduleDef.types
-                                |> Dict.get localName
-                                |> Maybe.map
-                                    (\_ ->
-                                        Type.Reference (fQName packagePath modulePath localName) args sourceLocation
+                            resolvedFullNameResult
+                                |> Result.map
+                                    (\resolvedFullName ->
+                                        Type.Reference resolvedFullName args sourceLocation
                                     )
+                                |> Result.mapError ResolveError
+                                |> Just
 
                         _ ->
                             Nothing
@@ -504,9 +538,7 @@ resolveLocalTypes packagePath modulePath moduleDef =
         rewriteValues =
             identity
     in
-    moduleDef
-        |> Module.mapDefinition rewriteTypes rewriteValues
-        |> Ok
+    Module.mapDefinition rewriteTypes rewriteValues moduleDef
 
 
 withAccessControl : Bool -> a -> AccessControlled a

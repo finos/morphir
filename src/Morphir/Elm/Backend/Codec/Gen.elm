@@ -6,8 +6,8 @@ import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node exposing (Node(..))
 import Elm.Syntax.Pattern exposing (Pattern(..), QualifiedNameRef)
 import Elm.Syntax.Range exposing (emptyRange)
-import Morphir.IR.AccessControlled exposing (AccessControlled(..))
-import Morphir.IR.Advanced.Type exposing (Constructor, Definition(..), Field(..), Type(..), field, record)
+import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.Advanced.Type exposing (Constructor, Definition(..), Field, Type(..), record)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name, fromString, toCamelCase, toTitleCase)
 import Morphir.IR.Path as Path exposing (toString)
@@ -36,77 +36,91 @@ typeDefToEncoder e typeName typeDef =
 
         args : List (Node Pattern)
         args =
-            case typeDef of
-                Public (CustomTypeDefinition _ (Public constructors)) ->
-                    case constructors of
-                        [] ->
-                            []
+            case typeDef.access of
+                Public ->
+                    case typeDef.value of
+                        CustomTypeDefinition _ constructors ->
+                            case constructors.access of
+                                Public ->
+                                    case constructors.value of
+                                        [] ->
+                                            []
 
-                        ( ctorName, fields ) :: [] ->
-                            [ deconsPattern ctorName fields
-                                |> emptyRangeNode
-                                |> ParenthesizedPattern
-                                |> emptyRangeNode
-                            ]
+                                        ( ctorName, fields ) :: [] ->
+                                            [ deconsPattern ctorName fields
+                                                |> emptyRangeNode
+                                                |> ParenthesizedPattern
+                                                |> emptyRangeNode
+                                            ]
 
-                        _ ->
+                                        _ ->
+                                            [ typeName |> Name.toCamelCase |> VarPattern |> emptyRangeNode ]
+
+                                Private ->
+                                    []
+
+                        TypeAliasDefinition _ _ ->
                             [ typeName |> Name.toCamelCase |> VarPattern |> emptyRangeNode ]
 
-                Public (TypeAliasDefinition _ _) ->
-                    [ typeName |> Name.toCamelCase |> VarPattern |> emptyRangeNode ]
-
-                _ ->
+                Private ->
                     []
 
         funcExpr : Expression
         funcExpr =
-            case typeDef of
-                Public (CustomTypeDefinition _ (Public constructors)) ->
-                    case constructors of
-                        [] ->
-                            Literal "Types without constructors are not supported"
+            case typeDef.access of
+                Public ->
+                    case typeDef.value of
+                        CustomTypeDefinition _ constructors ->
+                            case constructors.access of
+                                Public ->
+                                    case constructors.value of
+                                        [] ->
+                                            Literal "Types without constructors are not supported"
 
-                        ctor :: [] ->
-                            ctor
-                                |> constructorToRecord e
-                                |> typeToEncoder False [ Tuple.first ctor ]
+                                        ctor :: [] ->
+                                            ctor
+                                                |> constructorToRecord e
+                                                |> typeToEncoder False [ Tuple.first ctor ]
 
-                        ctors ->
-                            let
-                                caseValExpr : Node Expression
-                                caseValExpr =
-                                    typeName
-                                        |> Name.toCamelCase
-                                        |> FunctionOrValue []
-                                        |> emptyRangeNode
-
-                                cases : List ( Node Pattern, Node Expression )
-                                cases =
-                                    let
-                                        ctorToPatternExpr : Constructor extra -> ( Node Pattern, Node Expression )
-                                        ctorToPatternExpr ctor =
+                                        ctors ->
                                             let
-                                                pattern : Pattern
-                                                pattern =
-                                                    deconsPattern (Tuple.first ctor) (Tuple.second ctor)
+                                                caseValExpr : Node Expression
+                                                caseValExpr =
+                                                    typeName
+                                                        |> Name.toCamelCase
+                                                        |> FunctionOrValue []
+                                                        |> emptyRangeNode
 
-                                                expr : Expression
-                                                expr =
-                                                    ctor
-                                                        |> constructorToRecord e
-                                                        |> typeToEncoder True [ Tuple.first ctor ]
-                                                        |> customTypeTopExpr
+                                                cases : List ( Node Pattern, Node Expression )
+                                                cases =
+                                                    let
+                                                        ctorToPatternExpr : Constructor extra -> ( Node Pattern, Node Expression )
+                                                        ctorToPatternExpr ctor =
+                                                            let
+                                                                pattern : Pattern
+                                                                pattern =
+                                                                    deconsPattern (Tuple.first ctor) (Tuple.second ctor)
+
+                                                                expr : Expression
+                                                                expr =
+                                                                    ctor
+                                                                        |> constructorToRecord e
+                                                                        |> typeToEncoder True [ Tuple.first ctor ]
+                                                                        |> customTypeTopExpr
+                                                            in
+                                                            ( emptyRangeNode pattern, emptyRangeNode expr )
+                                                    in
+                                                    ctors |> List.map ctorToPatternExpr
                                             in
-                                            ( emptyRangeNode pattern, emptyRangeNode expr )
-                                    in
-                                    ctors |> List.map ctorToPatternExpr
-                            in
-                            CaseExpression { expression = caseValExpr, cases = cases }
+                                            CaseExpression { expression = caseValExpr, cases = cases }
 
-                Public (TypeAliasDefinition _ tpe) ->
-                    typeToEncoder True [ typeName ] tpe
+                                Private ->
+                                    Literal "Private constructors are not supported"
 
-                _ ->
+                        TypeAliasDefinition _ tpe ->
+                            typeToEncoder True [ typeName ] tpe
+
+                Private ->
                     Literal "Private types are not supported"
     in
     FunctionDeclaration function
@@ -193,10 +207,10 @@ typeToEncoder fwdNames varName tpe =
                         [ name ]
 
                 fieldEncoder : Field extra -> Expression
-                fieldEncoder (Field name fieldType) =
+                fieldEncoder field =
                     TupledExpression
-                        [ name |> Name.toCamelCase |> Literal |> emptyRangeNode
-                        , typeToEncoder fwdNames (namesToFwd name) fieldType |> emptyRangeNode
+                        [ field.name |> Name.toCamelCase |> Literal |> emptyRangeNode
+                        , typeToEncoder fwdNames (namesToFwd field.name) field.tpe |> emptyRangeNode
                         ]
             in
             elmJsonEncoderApplication
@@ -268,7 +282,7 @@ constructorToRecord e ( _, types ) =
         fields : List (Morphir.IR.Advanced.Type.Field extra)
         fields =
             types
-                |> List.map (\t -> field (Tuple.first t) (Tuple.second t))
+                |> List.map (\t -> Field (Tuple.first t) (Tuple.second t))
     in
     record fields e
 

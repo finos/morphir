@@ -1,9 +1,9 @@
 module Morphir.IR.AccessControlled exposing
-    ( AccessControlled(..)
+    ( AccessControlled
     , public, private
     , withPublicAccess, withPrivateAccess
     , decodeAccessControlled, encodeAccessControlled
-    , map
+    , Access(..), map
     )
 
 {-| Module to manage access to a node in the IR. This is only used to declare access levels
@@ -36,23 +36,29 @@ import Json.Encode as Encode
 
 {-| Type that represents different access levels.
 -}
-type AccessControlled a
-    = Public a
-    | Private a
+type alias AccessControlled a =
+    { access : Access
+    , value : a
+    }
+
+
+type Access
+    = Public
+    | Private
 
 
 {-| Mark a node as public access. Actors with both public and private access are allowed to see.
 -}
 public : a -> AccessControlled a
 public value =
-    Public value
+    AccessControlled Public value
 
 
 {-| Mark a node as private access. Only actors with private access level can see.
 -}
 private : a -> AccessControlled a
 private value =
-    Private value
+    AccessControlled Private value
 
 
 {-| Get the value with public access level. Will return `Nothing` if the value is private.
@@ -64,11 +70,11 @@ private value =
 -}
 withPublicAccess : AccessControlled a -> Maybe a
 withPublicAccess ac =
-    case ac of
-        Public a ->
-            Just a
+    case ac.access of
+        Public ->
+            Just ac.value
 
-        Private a ->
+        Private ->
             Nothing
 
 
@@ -81,39 +87,34 @@ withPublicAccess ac =
 -}
 withPrivateAccess : AccessControlled a -> a
 withPrivateAccess ac =
-    case ac of
-        Public a ->
-            a
+    case ac.access of
+        Public ->
+            ac.value
 
-        Private a ->
-            a
+        Private ->
+            ac.value
 
 
 map : (a -> b) -> AccessControlled a -> AccessControlled b
 map f ac =
-    case ac of
-        Public a ->
-            Public (f a)
-
-        Private a ->
-            Private (f a)
+    AccessControlled ac.access (f ac.value)
 
 
 {-| Encode AccessControlled to JSON.
 -}
 encodeAccessControlled : (a -> Encode.Value) -> AccessControlled a -> Encode.Value
 encodeAccessControlled encodeValue ac =
-    case ac of
-        Public value ->
+    case ac.access of
+        Public ->
             Encode.object
                 [ ( "$type", Encode.string "public" )
-                , ( "value", encodeValue value )
+                , ( "value", encodeValue ac.value )
                 ]
 
-        Private value ->
+        Private ->
             Encode.object
                 [ ( "$type", Encode.string "private" )
-                , ( "value", encodeValue value )
+                , ( "value", encodeValue ac.value )
                 ]
 
 
@@ -126,11 +127,11 @@ decodeAccessControlled decodeValue =
             (\tag ->
                 case tag of
                     "public" ->
-                        Decode.map Public
+                        Decode.map (AccessControlled Public)
                             (Decode.field "value" decodeValue)
 
                     "private" ->
-                        Decode.map Private
+                        Decode.map (AccessControlled Private)
                             (Decode.field "value" decodeValue)
 
                     other ->
