@@ -41,7 +41,7 @@ processSupplies suppliers =
     total = 
       suppliers
         |> List.map .quantity
-       |> List.sum
+        |> List.sum
 
     max =
       suppliers
