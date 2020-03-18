@@ -1,6 +1,6 @@
 # Why Functional Programming?
 
-The core of Morphir is the idea of preserving your business concepts (data and logic) in an independent structure.  In order to capture business concepts you first have to be able to express them in a concise and unambiguous way.  What we really want to understand from your application is what its intent is.  In particular, we want to know *what* it should do and *why* without any indication of *how*.  If you know *what* and *why*, it's easier to adjust *how* to different execution contexts.  The flip side of this is that once code starts to specify how it should work, it becomes much more difficult to figure out what the real intent is.  
+The core of Morphir is the idea your business concepts (data and logic) are valuable assets that deserve to be stored independently.  Morphir needs to understand the intent of your application, which is not easy to do when the business code is intertwined with the execution code.  To make this easier, Morphir prefers using a concise and unambiguous way to specify business concepts.  In particular, Morphir wants to know *what* the application should do and *why* without any indication of *how*.  If you know *what* and *why*, it's easier to adjust *how* to different execution contexts.  The flip side of this is that once code starts to specify how it should work, it becomes much more difficult to figure out what the real intent is.  
 
 If you've looked at the topic of programming languages you'll recognize all of this as part of the comparison between various programming styles and functional and imperative languages in particular.  To our great advantage, functional programming has evolved around specifying intent without implementation.  Even better, it's been honing this for decades so it's actually *really* great for modeling business concepts.
 
@@ -33,22 +33,20 @@ public Map<String,Object> processSupplies(Supplier[] suppliers) {
 }
 ```
 
-It's even harder to project that intent into a variety of execution contexts.
-
-On the other hand, this code is easy to interprit:
+It's even harder to project that intent into a variety of execution contexts.  On the other hand, this code is easy to interprit:
 
 ```elm
 processSupplies suppliers =
   let
-  total = 
-    suppliers
-      |> List.map .quantity
-      |> List.sum
+    total = 
+      suppliers
+        |> List.map .quantity
+       |> List.sum
 
-  max =
-    suppliers
-      |> List.maximumBy .quantity
-      |> List.map .supplierId
+    max =
+      suppliers
+        |> List.maximumBy .quantity
+        |> List.map .supplierId
 
   in
     (total, max)
