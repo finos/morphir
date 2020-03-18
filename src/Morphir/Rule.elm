@@ -24,8 +24,8 @@ import Morphir.Pattern exposing (Pattern)
 
 {-| Type that represents a rewrite rule which is a pattern that maps back to the same type.
 -}
-type alias Rule a =
-    Pattern a a
+type alias Rule e a =
+    Pattern a (Result e a)
 
 
 {-| Chains two rules together.
@@ -46,10 +46,14 @@ type alias Rule a =
     rule 2 == Nothing -- rule1 does not match
 
 -}
-andThen : (a -> Rule a) -> Rule a -> Rule a
+andThen : (a -> Rule e a) -> Rule e a -> Rule e a
 andThen f rule a =
-    rule a
-        |> Maybe.andThen (f a)
+    case rule a of
+        Just (Ok firstRuleOut) ->
+            f firstRuleOut a
+
+        other ->
+            other
 
 
 {-| Turns a rule into a function that will return the original value when the rule doesn't match.
@@ -67,7 +71,11 @@ andThen f rule a =
     fun 13 == 13 -- rule doesn't match, original value returned
 
 -}
-defaultToOriginal : Rule a -> a -> a
+defaultToOriginal : Rule e a -> a -> Result e a
 defaultToOriginal rule a =
-    rule a
-        |> Maybe.withDefault a
+    case rule a of
+        Nothing ->
+            Ok a
+
+        Just result ->
+            result

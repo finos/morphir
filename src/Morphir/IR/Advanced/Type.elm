@@ -2,7 +2,7 @@ module Morphir.IR.Advanced.Type exposing
     ( Type(..)
     , variable, reference, tuple, record, extensibleRecord, function, unit
     , matchVariable, matchReference, matchTuple, matchRecord, matchExtensibleRecord, matchFunction, matchUnit
-    , Field(..), field, matchField, mapFieldName, mapFieldType
+    , Field, matchField, mapFieldName, mapFieldType
     , Declaration, typeAliasDeclaration, opaqueTypeDeclaration, customTypeDeclaration, matchCustomTypeDeclaration
     , Definition(..), typeAliasDefinition, customTypeDefinition
     , Constructors
@@ -31,7 +31,7 @@ module Morphir.IR.Advanced.Type exposing
 
 # Record Field
 
-@docs Field, field, matchField, mapFieldName, mapFieldType
+@docs Field, matchField, mapFieldName, mapFieldType
 
 
 # Declaration
@@ -67,6 +67,7 @@ import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlle
 import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName, fuzzFQName)
 import Morphir.IR.Name exposing (Name, decodeName, encodeName, fuzzName)
 import Morphir.Pattern exposing (Pattern)
+import Morphir.ResultList as ResultList
 import Morphir.Rewrite exposing (Rewrite)
 
 
@@ -94,8 +95,10 @@ type Type extra
 
 {-| An opaque representation of a field. It's made up of a name and a type.
 -}
-type Field extra
-    = Field Name (Type extra)
+type alias Field extra =
+    { name : Name
+    , tpe : Type extra
+    }
 
 
 {-| -}
@@ -144,55 +147,71 @@ definitionToDeclaration def =
                     OpaqueTypeDeclaration params
 
 
-mapDeclaration : (Type a -> Type b) -> Declaration a -> Declaration b
+mapDeclaration : (Type a -> Result e (Type b)) -> Declaration a -> Result (List e) (Declaration b)
 mapDeclaration f decl =
     case decl of
         TypeAliasDeclaration params tpe ->
-            TypeAliasDeclaration params (f tpe)
+            f tpe
+                |> Result.map (TypeAliasDeclaration params)
+                |> Result.mapError List.singleton
 
         OpaqueTypeDeclaration params ->
             OpaqueTypeDeclaration params
+                |> Ok
 
-        CustomTypeDeclaration params ctors ->
-            CustomTypeDeclaration params
-                (ctors
-                    |> List.map
-                        (\( name, args ) ->
-                            ( name
-                            , args
-                                |> List.map
-                                    (\( argName, argType ) ->
-                                        ( argName, f argType )
-                                    )
+        CustomTypeDeclaration params constructors ->
+            let
+                ctorsResult : Result (List e) (Constructors b)
+                ctorsResult =
+                    constructors
+                        |> List.map
+                            (\( ctorName, ctorArgs ) ->
+                                ctorArgs
+                                    |> List.map
+                                        (\( argName, argType ) ->
+                                            f argType
+                                                |> Result.map (Tuple.pair argName)
+                                        )
+                                    |> ResultList.toResult
+                                    |> Result.map (Tuple.pair ctorName)
                             )
-                        )
-                )
+                        |> ResultList.toResult
+                        |> Result.mapError List.concat
+            in
+            ctorsResult
+                |> Result.map (CustomTypeDeclaration params)
 
 
-mapDefinition : (Type a -> Type b) -> Definition a -> Definition b
+mapDefinition : (Type a -> Result e (Type b)) -> Definition a -> Result (List e) (Definition b)
 mapDefinition f def =
     case def of
         TypeAliasDefinition params tpe ->
-            TypeAliasDefinition params (f tpe)
+            f tpe
+                |> Result.map (TypeAliasDefinition params)
+                |> Result.mapError List.singleton
 
-        CustomTypeDefinition params ac ->
-            CustomTypeDefinition params
-                (ac
-                    |> AccessControlled.map
-                        (\ctors ->
-                            ctors
-                                |> List.map
-                                    (\( name, args ) ->
-                                        ( name
-                                        , args
-                                            |> List.map
-                                                (\( argName, argType ) ->
-                                                    ( argName, f argType )
-                                                )
+        CustomTypeDefinition params constructors ->
+            let
+                ctorsResult : Result (List e) (AccessControlled (Constructors b))
+                ctorsResult =
+                    constructors.value
+                        |> List.map
+                            (\( ctorName, ctorArgs ) ->
+                                ctorArgs
+                                    |> List.map
+                                        (\( argName, argType ) ->
+                                            f argType
+                                                |> Result.map (Tuple.pair argName)
                                         )
-                                    )
-                        )
-                )
+                                    |> ResultList.toResult
+                                    |> Result.map (Tuple.pair ctorName)
+                            )
+                        |> ResultList.toResult
+                        |> Result.map (AccessControlled constructors.access)
+                        |> Result.mapError List.concat
+            in
+            ctorsResult
+                |> Result.map (CustomTypeDefinition params)
 
 
 mapTypeExtra : (a -> b) -> Type a -> Type b
@@ -533,37 +552,76 @@ matchCustomTypeDeclaration matchTypeParams matchCtors declToMatch =
             Nothing
 
 
-rewriteType : Rewrite (Type extra)
+rewriteType : Rewrite e (Type extra)
 rewriteType rewriteBranch rewriteLeaf typeToRewrite =
     case typeToRewrite of
         Reference fQName argTypes extra ->
-            Reference fQName (argTypes |> List.map rewriteBranch) extra
+            argTypes
+                |> List.foldr
+                    (\nextArg resultSoFar ->
+                        Result.map2 (::)
+                            (rewriteBranch nextArg)
+                            resultSoFar
+                    )
+                    (Ok [])
+                |> Result.map
+                    (\args ->
+                        Reference fQName args extra
+                    )
 
         Tuple elemTypes extra ->
-            Tuple (elemTypes |> List.map rewriteBranch) extra
+            elemTypes
+                |> List.foldr
+                    (\nextArg resultSoFar ->
+                        Result.map2 (::)
+                            (rewriteBranch nextArg)
+                            resultSoFar
+                    )
+                    (Ok [])
+                |> Result.map
+                    (\elems ->
+                        Tuple elems extra
+                    )
 
-        Record fields extra ->
-            Record (fields |> List.map (mapFieldType rewriteBranch)) extra
+        Record fieldTypes extra ->
+            fieldTypes
+                |> List.foldr
+                    (\field resultSoFar ->
+                        Result.map2 (::)
+                            (rewriteBranch field.tpe
+                                |> Result.map (Field field.name)
+                            )
+                            resultSoFar
+                    )
+                    (Ok [])
+                |> Result.map
+                    (\fields ->
+                        Record fields extra
+                    )
 
-        ExtensibleRecord varName fields extra ->
-            ExtensibleRecord varName (fields |> List.map (mapFieldType rewriteBranch)) extra
+        ExtensibleRecord varName fieldTypes extra ->
+            fieldTypes
+                |> List.foldr
+                    (\field resultSoFar ->
+                        Result.map2 (::)
+                            (rewriteBranch field.tpe
+                                |> Result.map (Field field.name)
+                            )
+                            resultSoFar
+                    )
+                    (Ok [])
+                |> Result.map
+                    (\fields ->
+                        ExtensibleRecord varName fields extra
+                    )
 
         Function argType returnType extra ->
-            Function (argType |> rewriteBranch) (returnType |> rewriteBranch) extra
+            Result.map2 (\arg return -> Function arg return extra)
+                (rewriteBranch argType)
+                (rewriteBranch returnType)
 
         _ ->
             rewriteLeaf typeToRewrite
-
-
-{-| Creates a field.
-
-    toIR { foo = Int }
-        == record [ field [ "foo" ] SDK.Basics.intType ]
-
--}
-field : Name -> Type extra -> Field extra
-field fieldName fieldType =
-    Field fieldName fieldType
 
 
 {-| Matches a field.
@@ -580,24 +638,24 @@ field fieldName fieldType =
 
 -}
 matchField : Pattern Name a -> Pattern (Type extra) b -> Pattern (Field extra) ( a, b )
-matchField matchFieldName matchFieldType (Field fieldName fieldType) =
+matchField matchFieldName matchFieldType field =
     Maybe.map2 Tuple.pair
-        (matchFieldName fieldName)
-        (matchFieldType fieldType)
+        (matchFieldName field.name)
+        (matchFieldType field.tpe)
 
 
 {-| Map the name of the field to get a new field.
 -}
 mapFieldName : (Name -> Name) -> Field extra -> Field extra
-mapFieldName f (Field name tpe) =
-    Field (f name) tpe
+mapFieldName f field =
+    Field (f field.name) field.tpe
 
 
 {-| Map the type of the field to get a new field.
 -}
 mapFieldType : (Type a -> Type b) -> Field a -> Field b
-mapFieldType f (Field name tpe) =
-    Field name (f tpe)
+mapFieldType f field =
+    Field field.name (f field.tpe)
 
 
 {-| Generate random types.
@@ -797,10 +855,10 @@ decodeType decodeExtra =
 
 
 encodeField : (extra -> Encode.Value) -> Field extra -> Encode.Value
-encodeField encodeExtra (Field fieldName fieldType) =
+encodeField encodeExtra field =
     Encode.list identity
-        [ encodeName fieldName
-        , encodeType encodeExtra fieldType
+        [ encodeName field.name
+        , encodeType encodeExtra field.tpe
         ]
 
 

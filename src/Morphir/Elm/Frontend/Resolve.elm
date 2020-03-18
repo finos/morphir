@@ -1,4 +1,4 @@
-module Morphir.Elm.Frontend.Resolve exposing (Error, ModuleResolver, PackageResolver, createModuleResolver, createPackageResolver)
+module Morphir.Elm.Frontend.Resolve exposing (Error(..), ModuleResolver, PackageResolver, createModuleResolver, createPackageResolver)
 
 import Dict exposing (Dict)
 import Elm.Syntax.Exposing exposing (Exposing(..), TopLevelExpose(..))
@@ -31,6 +31,7 @@ type Error
     | CouldNotFindPackage Path
     | ModuleNotImported ModuleName
     | AliasNotFound String
+    | PackageNotPrefixOfModule Path Path
 
 
 type alias ModuleResolver =

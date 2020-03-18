@@ -19,6 +19,7 @@ import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlle
 import Morphir.IR.Advanced.Type as Type exposing (Type)
 import Morphir.IR.Advanced.Value as Value exposing (Value)
 import Morphir.IR.Name exposing (Name, encodeName)
+import Morphir.ResultList as ResultList
 
 
 {-| Type that represents a module declaration.
@@ -99,31 +100,78 @@ encodeDeclaration encodeExtra decl =
         ]
 
 
-mapDeclaration : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
+mapDeclaration : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Declaration a -> Result (List e) (Declaration b)
 mapDeclaration mapType mapValue decl =
-    { types =
-        decl.types
-            |> Dict.map (\_ typeDecl -> Type.mapDeclaration mapType typeDecl)
-    , values =
-        decl.values
-            |> Dict.map (\_ valueDecl -> Value.mapDeclaration mapType mapValue valueDecl)
-    }
+    let
+        typesResult : Result (List e) (Dict Name (Type.Declaration b))
+        typesResult =
+            decl.types
+                |> Dict.toList
+                |> List.map
+                    (\( typeName, typeDecl ) ->
+                        typeDecl
+                            |> Type.mapDeclaration mapType
+                            |> Result.map (Tuple.pair typeName)
+                    )
+                |> ResultList.toResult
+                |> Result.map Dict.fromList
+                |> Result.mapError List.concat
+
+        valuesResult : Result (List e) (Dict Name (Value.Declaration b))
+        valuesResult =
+            decl.values
+                |> Dict.toList
+                |> List.map
+                    (\( valueName, valueDecl ) ->
+                        valueDecl
+                            |> Value.mapDeclaration mapType mapValue
+                            |> Result.map (Tuple.pair valueName)
+                    )
+                |> ResultList.toResult
+                |> Result.map Dict.fromList
+                |> Result.mapError List.concat
+    in
+    Result.map2 Declaration
+        typesResult
+        valuesResult
 
 
-mapDefinition : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
+mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Definition a -> Result (List e) (Definition b)
 mapDefinition mapType mapValue def =
-    { types =
-        def.types
-            |> Dict.map
-                (\_ ac ->
-                    ac
-                        |> AccessControlled.map
-                            (Type.mapDefinition mapType)
-                )
-    , values =
-        def.values
-            |> Dict.map (\_ ac -> ac |> AccessControlled.map (Value.mapDefinition mapType mapValue))
-    }
+    let
+        typesResult : Result (List e) (Dict Name (AccessControlled (Type.Definition b)))
+        typesResult =
+            def.types
+                |> Dict.toList
+                |> List.map
+                    (\( typeName, typeDef ) ->
+                        typeDef.value
+                            |> Type.mapDefinition mapType
+                            |> Result.map (AccessControlled typeDef.access)
+                            |> Result.map (Tuple.pair typeName)
+                    )
+                |> ResultList.toResult
+                |> Result.map Dict.fromList
+                |> Result.mapError List.concat
+
+        valuesResult : Result (List e) (Dict Name (AccessControlled (Value.Definition b)))
+        valuesResult =
+            def.values
+                |> Dict.toList
+                |> List.map
+                    (\( valueName, valueDef ) ->
+                        valueDef.value
+                            |> Value.mapDefinition mapType mapValue
+                            |> Result.map (AccessControlled valueDef.access)
+                            |> Result.map (Tuple.pair valueName)
+                    )
+                |> ResultList.toResult
+                |> Result.map Dict.fromList
+                |> Result.mapError List.concat
+    in
+    Result.map2 Definition
+        typesResult
+        valuesResult
 
 
 {-| -}

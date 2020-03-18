@@ -14,8 +14,8 @@ import Morphir.Rule as Rule exposing (Rule)
 tree node. It takes two functions as input: a mapping that's applied to
 the children of branch nodes and one that is applied to leaf nodes.
 -}
-type alias Rewrite a =
-    (a -> a) -> (a -> a) -> a -> a
+type alias Rewrite e a =
+    (a -> Result e a) -> (a -> Result e a) -> a -> Result e a
 
 
 {-| Executes a rewrite using a top-down approach where the rules are
@@ -23,15 +23,17 @@ applied to nodes from the root towards the leaf nodes. When a rule does
 not match the rewrite continues downward. When a rule matches it's
 applied and the rewrite process stops traversing downward in the subtree.
 -}
-topDown : Rewrite a -> Rule a -> a -> a
-topDown rewrite rewriteRule typeToRewrite =
-    rewriteRule typeToRewrite
-        |> Maybe.withDefault
-            (rewrite
+topDown : Rewrite e a -> Rule e a -> a -> Result e a
+topDown rewrite rewriteRule nodeToRewrite =
+    case rewriteRule nodeToRewrite of
+        Nothing ->
+            rewrite
                 (topDown rewrite rewriteRule)
-                identity
-                typeToRewrite
-            )
+                (\a -> Ok a)
+                nodeToRewrite
+
+        Just result ->
+            result
 
 
 {-| Executes a rewrite using a bottom-up approach where the rules are
@@ -39,14 +41,22 @@ applied to nodes from the leaf nodes towards the root. Always traverses
 the entire tree regardless of rule matches but only changes the tree if
 a rule matches.
 -}
-bottomUp : Rewrite a -> Rule a -> a -> a
-bottomUp rewrite rewriteRule typeToRewrite =
+bottomUp : Rewrite e a -> Rule e a -> a -> Result e a
+bottomUp rewrite rewriteRule nodeToRewrite =
     let
+        top : Result e a
         top =
             rewrite
                 (\a -> bottomUp rewrite rewriteRule a)
                 (Rule.defaultToOriginal rewriteRule)
-                typeToRewrite
+                nodeToRewrite
     in
-    rewriteRule top
-        |> Maybe.withDefault top
+    case top |> Result.map rewriteRule of
+        Ok Nothing ->
+            top
+
+        Ok (Just result) ->
+            result
+
+        Err error ->
+            Err error

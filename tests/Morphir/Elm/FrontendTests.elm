@@ -16,12 +16,14 @@ frontendTest : Test
 frontendTest =
     let
         sourceA =
-            { path = "A.elm"
+            { path = "My/Package/A.elm"
             , content =
                 unindent """
-module A exposing (..)
+module My.Package.A exposing (..)
 
-type Foo = Foo Int
+import My.Package.B exposing (Bee)
+
+type Foo = Foo Bee
 
 type alias Bar = Foo
 
@@ -33,10 +35,12 @@ type alias Rec =
             }
 
         sourceB =
-            { path = "B.elm"
+            { path = "My/Package/B.elm"
             , content =
                 unindent """
-module B exposing (..)
+module My.Package.B exposing (..)
+
+type Bee = Bee
                 """
             }
 
@@ -44,7 +48,10 @@ module B exposing (..)
             Path.fromString "my/package"
 
         moduleA =
-            Path.fromString "A"
+            Path.fromString "My.Package.A"
+
+        moduleB =
+            Path.fromString "My.Package.B"
 
         packageInfo =
             { name =
@@ -60,14 +67,14 @@ module B exposing (..)
             { dependencies = Dict.empty
             , modules =
                 Dict.fromList
-                    [ ( [ [ "a" ] ]
+                    [ ( moduleA
                       , public
                             { types =
                                 Dict.fromList
                                     [ ( [ "bar" ]
                                       , public
                                             (Type.typeAliasDefinition []
-                                                (Type.reference (fQName packageName moduleA [ "foo" ]) [] ())
+                                                (Type.reference (fQName packageName [ [ "a" ] ] [ "foo" ]) [] ())
                                             )
                                       )
                                     , ( [ "foo" ]
@@ -75,7 +82,7 @@ module B exposing (..)
                                             (Type.customTypeDefinition []
                                                 (public
                                                     [ ( [ "foo" ]
-                                                      , [ ( [ "arg", "1" ], Type.reference (fQName [] [] [ "int" ]) [] () )
+                                                      , [ ( [ "arg", "1" ], Type.reference (fQName packageName [ [ "b" ] ] [ "bee" ]) [] () )
                                                         ]
                                                       )
                                                     ]
@@ -86,10 +93,10 @@ module B exposing (..)
                                       , public
                                             (Type.typeAliasDefinition []
                                                 (Type.record
-                                                    [ Type.field [ "field", "1" ]
-                                                        (Type.reference (fQName packageName moduleA [ "foo" ]) [] ())
-                                                    , Type.field [ "field", "2" ]
-                                                        (Type.reference (fQName packageName moduleA [ "bar" ]) [] ())
+                                                    [ Type.Field [ "field", "1" ]
+                                                        (Type.reference (fQName packageName [ [ "a" ] ] [ "foo" ]) [] ())
+                                                    , Type.Field [ "field", "2" ]
+                                                        (Type.reference (fQName packageName [ [ "a" ] ] [ "bar" ]) [] ())
                                                     ]
                                                     ()
                                                 )
@@ -100,10 +107,17 @@ module B exposing (..)
                                 Dict.empty
                             }
                       )
-                    , ( [ [ "b" ] ]
+                    , ( moduleB
                       , private
                             { types =
-                                Dict.empty
+                                Dict.fromList
+                                    [ ( [ "bee" ]
+                                      , public
+                                            (Type.customTypeDefinition []
+                                                (public [ ( [ "bee" ], [] ) ])
+                                            )
+                                      )
+                                    ]
                             , values =
                                 Dict.empty
                             }
