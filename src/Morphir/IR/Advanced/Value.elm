@@ -70,6 +70,7 @@ import Json.Encode as Encode
 import Morphir.IR.Advanced.Type as Type exposing (Type, decodeType, encodeType)
 import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName)
 import Morphir.IR.Name exposing (Name, decodeName, encodeName)
+import Morphir.ResultList as ResultList
 import String
 
 
@@ -150,27 +151,41 @@ type Definition extra
 --             in
 
 
-mapDeclaration : (Type a -> Type b) -> (Value a -> Value b) -> Declaration a -> Declaration b
+mapDeclaration : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Declaration a -> Result (List e) (Declaration b)
 mapDeclaration mapType mapValue decl =
-    { inputs =
-        decl.inputs
-            |> List.map
-                (\( name, tpe ) ->
-                    ( name, mapType tpe )
-                )
-    , output =
-        mapType decl.output
-    }
+    let
+        inputsResult =
+            decl.inputs
+                |> List.map
+                    (\( name, tpe ) ->
+                        mapType tpe
+                            |> Result.map (Tuple.pair name)
+                    )
+                |> ResultList.toResult
+
+        outputResult =
+            mapType decl.output
+                |> Result.mapError List.singleton
+    in
+    Result.map2 Declaration
+        inputsResult
+        outputResult
 
 
-mapDefinition : (Type a -> Type b) -> (Value a -> Value b) -> Definition a -> Definition b
+mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Definition a -> Result (List e) (Definition b)
 mapDefinition mapType mapValue def =
     case def of
         TypedDefinition tpe args body ->
-            TypedDefinition (mapType tpe) args (mapValue body)
+            mapType tpe
+                |> Result.map
+                    (\t ->
+                        TypedDefinition t args (mapValue body)
+                    )
+                |> Result.mapError List.singleton
 
         UntypedDefinition args body ->
             UntypedDefinition args (mapValue body)
+                |> Ok
 
 
 mapValueExtra : (a -> b) -> Value a -> Value b
