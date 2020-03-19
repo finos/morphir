@@ -239,6 +239,19 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 |> Node.value
                 |> ElmModule.exposingList
 
+        moduleDeclsSoFar =
+            modulesSoFar
+                |> Dict.map
+                    (\path def ->
+                        Module.definitionToDeclaration def
+                    )
+
+        moduleResolver : ModuleResolver
+        moduleResolver =
+            Resolve.createModuleResolver
+                (Resolve.createPackageResolver Dict.empty currentPackagePath moduleDeclsSoFar)
+                (processedFile.file.imports |> List.map Node.value)
+
         typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
         typesResult =
             mapDeclarationsToType processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
