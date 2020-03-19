@@ -5,7 +5,7 @@ import Elm.Syntax.Expression exposing (Case, Expression(..), Function, FunctionI
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node exposing (Node(..))
 import Elm.Syntax.Pattern exposing (Pattern(..), QualifiedNameRef)
-import Morphir.Elm.Backend.Codec.Utils as Utils exposing (emptyRangeNode)
+import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
 import Morphir.IR.AccessControlled exposing (AccessControlled(..))
 import Morphir.IR.Advanced.Type exposing (Constructor, Definition(..), Field(..), Type(..), field, record)
 import Morphir.IR.FQName exposing (FQName(..))

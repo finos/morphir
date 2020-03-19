@@ -1,0 +1,7 @@
+{
+    "name": "morphir",
+    "sourceDirectory": "tests",
+    "exposedModules": [
+        "Morphir.Elm.Backend.Codec.Tests.DaprExample"
+    ]
+}

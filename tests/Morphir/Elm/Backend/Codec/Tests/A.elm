@@ -1,7 +1,4 @@
--- TODO: Fix module path name
-
-
-module A exposing (..)
+module Morphir.Elm.Backend.Codec.Tests.A exposing (..)
 
 
 type alias Name =
