@@ -1,6 +1,8 @@
 [Home](/index) | [Posts](posts) | [Examples](../morphir-examples/)
 -----|------|------
-### Protecting Your Application Intellectual Property
+ | | 
+
+### **Morphir** - Protecting Your Application Intellectual Property
 
 Use Morphir | to...  
 -----|-----
