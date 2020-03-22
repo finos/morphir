@@ -6,7 +6,7 @@ measures it is difficult to agree whether a change in the domain model makes it 
 worse which stands in the way of continuous improvement. In this post we'll dive into how 
 we can measure and improve the quality of our domain models.
 
-(Making illegal state unrepresentable)[https://fsharpforfunandprofit.com/posts/designing-with-types-making-illegal-states-unrepresentable/] 
+[Making illegal state unrepresentable](https://fsharpforfunandprofit.com/posts/designing-with-types-making-illegal-states-unrepresentable/) 
 is a well-known principle in the functional-programming community which refers to avoiding 
 ambiguity that leaves the model open to more than one interpretation. A simple example of this 
 is when a model uses strings instead of enums. Strings are ambiguous because they leave the 
