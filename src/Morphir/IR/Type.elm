@@ -290,7 +290,7 @@ matchUnit =
 -}
 field : Name -> Type -> Field
 field fieldName fieldType =
-    Advanced.field fieldName fieldType
+    Advanced.Field fieldName fieldType
 
 
 {-| Matches a field.
