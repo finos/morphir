@@ -43,7 +43,7 @@ async function make(projectDir, output) {
     const morphirJsonPath = path.join(projectDir, 'morphir.json')
     const morphirJsonContent = await readFile(morphirJsonPath)
     const morphirJson = JSON.parse(morphirJsonContent.toString())
-    const sourceFiles = await readElmSources(morphirJson.sourceDirectory)
+    const sourceFiles = await readElmSources(path.join(projectDir, morphirJson.sourceDirectory))
     const packageDef = await packageDefinitionFromSource(morphirJson, sourceFiles)
     if (output) {
         console.log(`Writing file ${output}.`)
