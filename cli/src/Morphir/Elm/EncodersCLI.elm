@@ -90,8 +90,8 @@ encoderDeclarations sourceFiles =
 
 getEncodersFromModuleDef : AccessControlled (Advanced.Definition SourceLocation) -> List (Node S.Declaration)
 getEncodersFromModuleDef accessCtrlModuleDef =
-    case accessCtrlModuleDef of
-        Public { types, values } ->
+    case ( accessCtrlModuleDef.access, accessCtrlModuleDef.value ) of
+        ( Public, { types, values } ) ->
             Dict.toList types
                 |> List.map
                     (\typeNameAndDef ->
