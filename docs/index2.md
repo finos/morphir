@@ -1,4 +1,3 @@
-# Morphir
 ## Where business meets technology
 
 Morphir turns a programming language inside out to provide ... 
