@@ -4,7 +4,7 @@ import Morphir.SDK.StatefulApp exposing (..)
 
 
 type alias App =
-    StatefulApp Int Int Int
+    StatefulApp Int Int Int Int
 
 
 app : App
@@ -12,11 +12,11 @@ app =
     StatefulApp logic
 
 
-logic : Maybe Int -> Int -> ( Maybe Int, Int )
-logic state event =
+logic : Int -> Maybe Int -> Int -> ( Int, Maybe Int, Int )
+logic key state event =
     case state of
         Just s ->
-            ( Just (s + event), s + event )
+            ( key, Just (s + event), s + event )
 
         Nothing ->
-            ( Just event, event )
+            ( key, Just event, event )
