@@ -1,4 +1,4 @@
-module Morphir.Elm.Backend.Dapr.Stateful exposing (..)
+module Morphir.Elm.Backend.Dapr.Stateful.ElmGen exposing (..)
 
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing exposing (Exposing(..))
@@ -16,7 +16,7 @@ import Morphir.Elm.Backend.Codec.DecoderGen as DecoderGen exposing (typeDefToDec
 import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen exposing (typeDefToEncoder)
 import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
 import Morphir.Elm.Frontend as Frontend exposing (ContentLocation, ContentRange, SourceFile, SourceLocation, mapDeclarationsToType)
-import Morphir.IR.Advanced.Type exposing (Field(..), Type(..))
+import Morphir.IR.Advanced.Type exposing (Field, Type(..))
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name, toCamelCase)
 import Morphir.IR.Path exposing (Path)
@@ -25,7 +25,7 @@ import Morphir.IR.Path exposing (Path)
 gen : Path -> Name -> Type extra -> Maybe File
 gen modPath appName appType =
     case appType of
-        Reference (FQName [] [] [ "StatefulApp" ]) (cmdType :: stateType :: eventType :: []) _ ->
+        Reference (FQName [] [] [ "StatefulApp" ]) (keyType :: cmdType :: stateType :: eventType :: []) _ ->
             let
                 moduleDef : Module
                 moduleDef =
@@ -46,11 +46,11 @@ gen modPath appName appType =
                     [ incomingPortDecl
                     , outgoingPortDecl
                     , mainDecl
-                    , incomingMsgTypeAliasDecl stateType cmdType
-                    , outgoingMsgTypeAliasDecl stateType eventType
-                    , msgDecoderDecl stateType cmdType
+                    , incomingMsgTypeAliasDecl keyType stateType cmdType
+                    , outgoingMsgTypeAliasDecl keyType stateType eventType
+                    , msgDecoderDecl keyType stateType cmdType
                     , decodeMsgDecl
-                    , encodeStateEventDecl stateType eventType
+                    , encodeStateEventDecl keyType stateType eventType
                     , initDecl
                     , updateDecl appName
                     , subscriptions
@@ -144,8 +144,8 @@ mainDecl =
         )
 
 
-incomingMsgTypeAliasDecl : Type extra -> Type extra -> Declaration
-incomingMsgTypeAliasDecl stateType cmdType =
+incomingMsgTypeAliasDecl : Type extra -> Type extra -> Type extra -> Declaration
+incomingMsgTypeAliasDecl keyType stateType cmdType =
     let
         msgField : String -> Type extra -> RecordField
         msgField fieldName tpe =
@@ -161,6 +161,7 @@ incomingMsgTypeAliasDecl stateType cmdType =
             Elm.Syntax.TypeAnnotation.Record
                 [ msgField "state" stateType |> Utils.emptyRangeNode
                 , msgField "command" cmdType |> Utils.emptyRangeNode
+                , msgField "key" keyType |> Utils.emptyRangeNode
                 ]
     in
     AliasDeclaration
@@ -171,13 +172,17 @@ incomingMsgTypeAliasDecl stateType cmdType =
         }
 
 
-outgoingMsgTypeAliasDecl : Type extra -> Type extra -> Declaration
-outgoingMsgTypeAliasDecl stateType eventType =
+outgoingMsgTypeAliasDecl : Type extra -> Type extra -> Type extra -> Declaration
+outgoingMsgTypeAliasDecl keyType stateType eventType =
     let
         typeAnn : TypeAnnotation
         typeAnn =
             Elm.Syntax.TypeAnnotation.Record
-                [ ( "state" |> Utils.emptyRangeNode
+                [ ( "key" |> Utils.emptyRangeNode
+                  , morphirToElmTypeDef keyType |> Utils.emptyRangeNode
+                  )
+                    |> Utils.emptyRangeNode
+                , ( "state" |> Utils.emptyRangeNode
                   , Typed
                         (( [], "Maybe" ) |> Utils.emptyRangeNode)
                         [ morphirToElmTypeDef stateType |> Utils.emptyRangeNode ]
@@ -202,14 +207,14 @@ outgoingMsgTypeAliasDecl stateType eventType =
 --msgDecoderDecl : Type extra -> Type extra -> Maybe Declaration
 
 
-msgDecoderDecl : Type extra -> Type extra -> Declaration
-msgDecoderDecl stateType cmdType =
+msgDecoderDecl : Type extra -> Type extra -> Type extra -> Declaration
+msgDecoderDecl keyType stateType cmdType =
     let
         morphirTypeDef =
             Frontend.mapDeclarationsToType
                 emptySourceFile
                 (All Range.emptyRange)
-                [ incomingMsgTypeAliasDecl stateType cmdType ]
+                [ incomingMsgTypeAliasDecl keyType stateType cmdType ]
     in
     case morphirTypeDef of
         Ok (( typeName, typeDef ) :: []) ->
@@ -266,6 +271,10 @@ decodeMsgDecl =
                   , FunctionOrValue [] "Nothing" |> Utils.emptyRangeNode
                   )
                     |> Utils.emptyRangeNode
+                , ( "key" |> Utils.emptyRangeNode
+                  , FunctionOrValue [] "Nothing" |> Utils.emptyRangeNode
+                  )
+                    |> Utils.emptyRangeNode
                 ]
                 |> Utils.emptyRangeNode
             )
@@ -290,14 +299,14 @@ decodeMsgDecl =
     FunctionDeclaration func
 
 
-encodeStateEventDecl : Type extra -> Type extra -> Declaration
-encodeStateEventDecl stateType eventType =
+encodeStateEventDecl : Type extra -> Type extra -> Type extra -> Declaration
+encodeStateEventDecl keyType stateType eventType =
     let
         morphirTypeDef =
             Frontend.mapDeclarationsToType
                 emptySourceFile
                 (All Range.emptyRange)
-                [ outgoingMsgTypeAliasDecl stateType eventType ]
+                [ outgoingMsgTypeAliasDecl keyType stateType eventType ]
     in
     case morphirTypeDef of
         Ok (( typeName, typeDef ) :: []) ->
@@ -355,9 +364,16 @@ updateDecl appName =
         caseBlock : CaseBlock
         caseBlock =
             { expression =
-                RecordAccess
-                    (FunctionOrValue [] "msg" |> Utils.emptyRangeNode)
-                    ("command" |> Utils.emptyRangeNode)
+                TupledExpression
+                    [ RecordAccess
+                        (FunctionOrValue [] "msg" |> Utils.emptyRangeNode)
+                        ("command" |> Utils.emptyRangeNode)
+                        |> Utils.emptyRangeNode
+                    , RecordAccess
+                        (FunctionOrValue [] "msg" |> Utils.emptyRangeNode)
+                        ("key" |> Utils.emptyRangeNode)
+                        |> Utils.emptyRangeNode
+                    ]
                     |> Utils.emptyRangeNode
             , cases = cases
             }
@@ -368,11 +384,20 @@ updateDecl appName =
 
         justCase : ( Node Pattern, Node Expression )
         justCase =
-            ( NamedPattern
-                { moduleName = []
-                , name = "Just"
-                }
-                [ VarPattern "cmd" |> Utils.emptyRangeNode ]
+            ( TuplePattern
+                [ NamedPattern
+                    { moduleName = []
+                    , name = "Just"
+                    }
+                    [ VarPattern "cmd" |> Utils.emptyRangeNode ]
+                    |> Utils.emptyRangeNode
+                , NamedPattern
+                    { moduleName = []
+                    , name = "Just"
+                    }
+                    [ VarPattern "key" |> Utils.emptyRangeNode ]
+                    |> Utils.emptyRangeNode
+                ]
                 |> Utils.emptyRangeNode
             , justCaseExpr |> Utils.emptyRangeNode
             )
@@ -383,7 +408,8 @@ updateDecl appName =
                 { declarations =
                     [ LetDestructuring
                         (TuplePattern
-                            [ VarPattern "nextState" |> Utils.emptyRangeNode
+                            [ VarPattern "nextKey" |> Utils.emptyRangeNode
+                            , VarPattern "nextState" |> Utils.emptyRangeNode
                             , VarPattern "event" |> Utils.emptyRangeNode
                             ]
                             |> Utils.emptyRangeNode
@@ -399,6 +425,7 @@ updateDecl appName =
             [ RecordAccess
                 (FunctionOrValue [] (appName |> Name.toCamelCase) |> Utils.emptyRangeNode)
                 ("businessLogic" |> Utils.emptyRangeNode)
+            , FunctionOrValue [] "key"
             , RecordAccess
                 (FunctionOrValue [] "msg" |> Utils.emptyRangeNode)
                 ("state" |> Utils.emptyRangeNode)
@@ -416,7 +443,11 @@ updateDecl appName =
                     , Application
                         [ FunctionOrValue [] "encodeStateEvent" |> Utils.emptyRangeNode
                         , RecordExpr
-                            [ ( "state" |> Utils.emptyRangeNode
+                            [ ( "key" |> Utils.emptyRangeNode
+                              , FunctionOrValue [] "nextKey" |> Utils.emptyRangeNode
+                              )
+                                |> Utils.emptyRangeNode
+                            , ( "state" |> Utils.emptyRangeNode
                               , FunctionOrValue [] "nextState" |> Utils.emptyRangeNode
                               )
                                 |> Utils.emptyRangeNode
@@ -501,9 +532,9 @@ morphirToElmTypeDef tpe =
         Morphir.IR.Advanced.Type.Record fields _ ->
             let
                 morphirToElmField : Field extra -> ( Node String, Node TypeAnnotation )
-                morphirToElmField (Field fName fType) =
-                    ( Name.toCamelCase fName |> Utils.emptyRangeNode
-                    , fType |> morphirToElmTypeDef |> Utils.emptyRangeNode
+                morphirToElmField field =
+                    ( Name.toCamelCase field.name |> Utils.emptyRangeNode
+                    , field.tpe |> morphirToElmTypeDef |> Utils.emptyRangeNode
                     )
 
                 recordDef : RecordDefinition
@@ -577,6 +608,10 @@ test =
     Reference
         (FQName [] [] [ "StatefulApp" ])
         [ Reference
+            (FQName [] [] [ "Int" ])
+            []
+            ()
+        , Reference
             (FQName [] [] [ "Int" ])
             []
             ()

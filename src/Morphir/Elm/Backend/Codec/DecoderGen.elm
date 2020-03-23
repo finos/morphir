@@ -5,8 +5,8 @@ import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Pattern exposing (Pattern(..))
 import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
-import Morphir.IR.AccessControlled exposing (AccessControlled(..))
-import Morphir.IR.Advanced.Type as Type exposing (Constructor, Definition(..), Field(..), Type(..))
+import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.Advanced.Type as Type exposing (Constructor, Definition(..), Field, Type(..))
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 
@@ -21,35 +21,42 @@ typeDefToDecoder e typeName accessCtrlTypeDef =
 
         decoderExpr : Expression
         decoderExpr =
-            case accessCtrlTypeDef of
-                Public (CustomTypeDefinition _ (Public constructors)) ->
-                    case constructors of
-                        [] ->
-                            Literal "Opaque types are not supported"
+            case accessCtrlTypeDef.access of
+                Public ->
+                    case accessCtrlTypeDef.value of
+                        CustomTypeDefinition _ acsCtrlCtors ->
+                            case acsCtrlCtors.access of
+                                Public ->
+                                    case acsCtrlCtors.value of
+                                        [] ->
+                                            Literal "Opaque types are not supported"
 
-                        ctor :: [] ->
-                            constructorDecoder e True ctor
+                                        ctor :: [] ->
+                                            constructorDecoder e True ctor
 
-                        ctors ->
-                            let
-                                oneOfFunc : Expression
-                                oneOfFunc =
-                                    FunctionOrValue decoderModuleName "oneOf"
+                                        ctors ->
+                                            let
+                                                oneOfFunc : Expression
+                                                oneOfFunc =
+                                                    FunctionOrValue decoderModuleName "oneOf"
 
-                                listOfPossibleDecoders : Expression
-                                listOfPossibleDecoders =
-                                    ctors
-                                        |> List.map (constructorDecoder e False)
-                                        |> List.map Utils.emptyRangeNode
-                                        |> ListExpr
-                            in
-                            Application
-                                [ oneOfFunc |> Utils.emptyRangeNode
-                                , listOfPossibleDecoders |> Utils.emptyRangeNode
-                                ]
+                                                listOfPossibleDecoders : Expression
+                                                listOfPossibleDecoders =
+                                                    ctors
+                                                        |> List.map (constructorDecoder e False)
+                                                        |> List.map Utils.emptyRangeNode
+                                                        |> ListExpr
+                                            in
+                                            Application
+                                                [ oneOfFunc |> Utils.emptyRangeNode
+                                                , listOfPossibleDecoders |> Utils.emptyRangeNode
+                                                ]
 
-                Public (TypeAliasDefinition _ tpe) ->
-                    tpe |> typeToDecoder typeName []
+                                _ ->
+                                    Literal "Private constructors are not supported"
+
+                        TypeAliasDefinition _ tpe ->
+                            tpe |> typeToDecoder typeName []
 
                 _ ->
                     Literal "Private types are not supported"
@@ -161,7 +168,7 @@ typeToDecoder typeName topLevelFieldNames tpe =
                         |> FunctionOrValue []
 
                 fieldDecoder : Name -> Field extra -> Expression
-                fieldDecoder _ (Field fieldName fieldType) =
+                fieldDecoder _ field =
                     Application <|
                         [ FunctionOrValue decoderModuleName "at" |> Utils.emptyRangeNode
                         , ListExpr
@@ -170,11 +177,11 @@ typeToDecoder typeName topLevelFieldNames tpe =
                                 |> List.map Utils.emptyRangeNode
                              )
                                 ++ [ typeName |> Name.toCamelCase |> Literal |> Utils.emptyRangeNode
-                                   , fieldName |> Name.toCamelCase |> Literal |> Utils.emptyRangeNode
+                                   , field.name |> Name.toCamelCase |> Literal |> Utils.emptyRangeNode
                                    ]
                             )
                             |> Utils.emptyRangeNode
-                        , fieldType
+                        , field.tpe
                             |> typeToDecoder (Name.fromString "") []
                             |> Utils.emptyRangeNode
                         ]

@@ -13,15 +13,13 @@ import Json.Encode as Encode
 import Maybe.Extra as MaybeExtra exposing (..)
 import Morphir.Elm.Backend.Codec.DecoderGen as DecoderGen exposing (typeDefToDecoder)
 import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen exposing (typeDefToEncoder)
-import Morphir.Elm.Backend.Dapr.Stateful as Stateful exposing (gen)
+import Morphir.Elm.Backend.Dapr.Stateful.ElmGen as Stateful exposing (gen)
 import Morphir.Elm.Backend.Utils as Utils exposing (..)
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, decodePackageInfo, encodeError)
 import Morphir.IR.AccessControlled exposing (..)
 import Morphir.IR.Advanced.Module as Module exposing (..)
 import Morphir.IR.Advanced.Package as Package
-import Morphir.IR.Advanced.Type as Type exposing (Type)
-import Morphir.IR.Advanced.Value as Value exposing (Definition(..))
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.Advanced.Type as Type exposing (Definition(..), Type)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
 
@@ -91,20 +89,25 @@ daprSource packageDef =
 
         modVals : Path -> AccessControlled (Module.Definition extra) -> List ( Path, Name, Type extra )
         modVals path acsCtrlModDef =
-            case acsCtrlModDef of
-                Public modDef ->
-                    modDef.types
+            case acsCtrlModDef.access of
+                Public ->
+                    acsCtrlModDef.value.types
                         |> Dict.toList
                         |> List.filterMap (\( name, valDef ) -> typedValues path name valDef)
 
                 _ ->
                     []
 
-        typedValues : Path -> Name -> AccessControlled (Value.Definition extra) -> Maybe ( Path, Name, Type extra )
+        typedValues : Path -> Name -> AccessControlled (Type.Definition extra) -> Maybe ( Path, Name, Type extra )
         typedValues path name acsCtrlValDef =
-            case acsCtrlValDef of
-                Public (TypedDefinition tpe _ _) ->
-                    Just ( path, name, tpe )
+            case acsCtrlValDef.access of
+                Public ->
+                    case acsCtrlValDef.value of
+                        TypeAliasDefinition _ tpe ->
+                            Just ( path, name, tpe )
+
+                        _ ->
+                            Nothing
 
                 _ ->
                     Nothing
@@ -160,9 +163,9 @@ codecs typeName acsCtrlTypeDef =
 
 mapPublic : (a -> b) -> AccessControlled a -> Maybe b
 mapPublic f acsCtrl =
-    case acsCtrl of
-        Public a ->
-            Just <| f a
+    case acsCtrl.access of
+        Public ->
+            Just <| f acsCtrl.value
 
         _ ->
             Nothing

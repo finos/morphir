@@ -1,5 +1,5 @@
 module Morphir.SDK.StatefulApp exposing (..)
 
 
-type alias StatefulApp c s e =
-    { businessLogic : Maybe s -> c -> ( Maybe s, e ) }
+type alias StatefulApp k c s e =
+    { businessLogic : k -> Maybe s -> c -> ( k, Maybe s, e ) }
