@@ -6,7 +6,7 @@ module Morphir.IR.Advanced.Value exposing
     , Declaration
     , Definition(..), typedDefinition, untypedDefinition
     , encodeValue, encodeDeclaration, encodeDefinition
-    , mapDeclaration, mapDefinition, mapValueExtra
+    , getDefinitionBody, mapDeclaration, mapDefinition, mapValueExtra
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -135,6 +135,16 @@ which is just the specification of those. Value definitions can be typed or unty
 type Definition extra
     = TypedDefinition (Type extra) (List Name) (Value extra)
     | UntypedDefinition (List Name) (Value extra)
+
+
+getDefinitionBody : Definition extra -> Value extra
+getDefinitionBody def =
+    case def of
+        TypedDefinition _ _ body ->
+            body
+
+        UntypedDefinition _ body ->
+            body
 
 
 

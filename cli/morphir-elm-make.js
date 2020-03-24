@@ -34,7 +34,7 @@ make(program.projectDir, program.output)
         if (err.code == 'ENOENT') {
             console.error(`Could not find file at '${err.path}'`)
         } else {
-            console.error(err)
+            console.error(JSON.stringify(err))
         }
         process.exit(1)
     })

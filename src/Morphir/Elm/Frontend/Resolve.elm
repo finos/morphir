@@ -1,15 +1,17 @@
-module Morphir.Elm.Frontend.Resolve exposing (Error(..), ModuleResolver, PackageResolver, createModuleResolver, createPackageResolver)
+module Morphir.Elm.Frontend.Resolve exposing (Error(..), ModuleResolver, PackageResolver, createModuleResolver, createPackageResolver, encodeError)
 
 import Dict exposing (Dict)
 import Elm.Syntax.Exposing exposing (Exposing(..), TopLevelExpose(..))
 import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Node as Node exposing (Node(..))
+import Json.Encode as Encode
 import Morphir.IR.Advanced.Module as Module
 import Morphir.IR.Advanced.Package as Package
 import Morphir.IR.Advanced.Type as Type
 import Morphir.IR.FQName exposing (FQName, fQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.JsonExtra as JsonExtra
 import Morphir.Pattern exposing (matchAny)
 import Set exposing (Set)
 
@@ -23,8 +25,7 @@ type alias LocalName =
 
 
 type Error
-    = ModuleDoesNotExpose ModuleName LocalName
-    | CouldNotDecompose ModuleName
+    = CouldNotDecompose ModuleName
     | CouldNotFindLocalName LocalName
     | CouldNotFindName Path Path Name
     | CouldNotFindModule Path Path
@@ -32,6 +33,49 @@ type Error
     | ModuleNotImported ModuleName
     | AliasNotFound String
     | PackageNotPrefixOfModule Path Path
+
+
+encodeError : Error -> Encode.Value
+encodeError error =
+    case error of
+        CouldNotDecompose moduleName ->
+            JsonExtra.encodeConstructor "CouldNotDecompose"
+                [ Encode.string (String.join "." moduleName) ]
+
+        CouldNotFindLocalName localName ->
+            JsonExtra.encodeConstructor "CouldNotFindLocalName"
+                [ Encode.string localName ]
+
+        CouldNotFindName packagePath modulePath localName ->
+            JsonExtra.encodeConstructor "CouldNotFindName"
+                [ packagePath |> Path.toString Name.toTitleCase "." |> Encode.string
+                , modulePath |> Path.toString Name.toTitleCase "." |> Encode.string
+                , localName |> Name.toTitleCase |> Encode.string
+                ]
+
+        CouldNotFindModule packagePath modulePath ->
+            JsonExtra.encodeConstructor "CouldNotFindModule"
+                [ packagePath |> Path.toString Name.toTitleCase "." |> Encode.string
+                , modulePath |> Path.toString Name.toTitleCase "." |> Encode.string
+                ]
+
+        CouldNotFindPackage packagePath ->
+            JsonExtra.encodeConstructor "CouldNotFindPackage"
+                [ packagePath |> Path.toString Name.toTitleCase "." |> Encode.string ]
+
+        ModuleNotImported moduleName ->
+            JsonExtra.encodeConstructor "ModuleNotImported"
+                [ Encode.string (String.join "." moduleName) ]
+
+        AliasNotFound alias ->
+            JsonExtra.encodeConstructor "AliasNotFound"
+                [ Encode.string alias ]
+
+        PackageNotPrefixOfModule packagePath modulePath ->
+            JsonExtra.encodeConstructor "PackageNotPrefixOfModule"
+                [ packagePath |> Path.toString Name.toTitleCase "." |> Encode.string
+                , modulePath |> Path.toString Name.toTitleCase "." |> Encode.string
+                ]
 
 
 type alias ModuleResolver =

@@ -3,6 +3,7 @@ module Morphir.IR.NameTests exposing (..)
 import Expect
 import Morphir.IR.Name as Name
 import Test exposing (..)
+import Json.Encode exposing(encode)
 
 
 fromStringTests : Test
@@ -84,4 +85,20 @@ toHumanWordsTests =
     describe "toHumanWords"
         [ assert [ "foo", "bar", "baz", "123" ] [ "foo", "bar", "baz", "123" ]
         , assert [ "value", "in", "u", "s", "d" ] [ "value", "in", "USD" ]
+        ]
+
+encodeNameTests : Test
+encodeNameTests =
+    let
+        assert inList expectedText =
+            test ("encodeName " ++ (expectedText ++ " ")) <|
+                \_ ->
+                    Name.fromList inList
+                        |> Name.encodeName
+                        |> encode 0
+                        |> Expect.equal expectedText
+    in
+    describe "encodeName"
+        [ assert ["delta", "sigma", "theta"] """["delta","sigma","theta"]"""
+        , assert ["sigma","gamma","ro"] """["sigma","gamma","ro"]"""
         ]
