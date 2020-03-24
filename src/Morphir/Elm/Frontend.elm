@@ -23,6 +23,7 @@ import Morphir.IR.Advanced.Value as Value exposing (Value)
 import Morphir.IR.FQName as FQName exposing (FQName, fQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.JsonExtra as JsonExtra
 import Morphir.ResultList as ResultList
 import Morphir.Rewrite as Rewrite
 import Parser
@@ -56,6 +57,12 @@ type alias SourceFile =
     }
 
 
+encodeSourceFile : SourceFile -> Encode.Value
+encodeSourceFile sourceFile =
+    Encode.object
+        [ ( "path", Encode.string sourceFile.path ) ]
+
+
 type alias ParsedFile =
     { sourceFile : SourceFile
     , rawFile : RawFile
@@ -74,16 +81,40 @@ type alias SourceLocation =
     }
 
 
+encodeSourceLocation : SourceLocation -> Encode.Value
+encodeSourceLocation sourceLocation =
+    Encode.object
+        [ ( "source", encodeSourceFile sourceLocation.source )
+        , ( "range", encodeContentRange sourceLocation.range )
+        ]
+
+
 type alias ContentRange =
     { start : ContentLocation
     , end : ContentLocation
     }
 
 
+encodeContentRange : ContentRange -> Encode.Value
+encodeContentRange contentRange =
+    Encode.object
+        [ ( "start", encodeContentLocation contentRange.start )
+        , ( "end", encodeContentLocation contentRange.end )
+        ]
+
+
 type alias ContentLocation =
     { row : Int
     , column : Int
     }
+
+
+encodeContentLocation : ContentLocation -> Encode.Value
+encodeContentLocation contentLocation =
+    Encode.object
+        [ ( "row", Encode.int contentLocation.row )
+        , ( "column", Encode.int contentLocation.column )
+        ]
 
 
 type alias Errors =
@@ -93,7 +124,7 @@ type alias Errors =
 type Error
     = ParseError String (List Parser.DeadEnd)
     | CyclicModules (DAG (List String))
-    | ResolveError Resolve.Error
+    | ResolveError SourceLocation Resolve.Error
 
 
 encodeError : Error -> Encode.Value
@@ -109,9 +140,10 @@ encodeError error =
                 [ ( "$type", Encode.string "CyclicModules" )
                 ]
 
-        ResolveError _ ->
-            Encode.object
-                [ ( "$type", Encode.string "ResolveError" )
+        ResolveError sourceLocation resolveError ->
+            JsonExtra.encodeConstructor "ResolveError"
+                [ encodeSourceLocation sourceLocation
+                , Resolve.encodeError resolveError
                 ]
 
 
@@ -259,7 +291,8 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
 
         valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation)))
         valuesResult =
-            Ok Dict.empty
+            mapDeclarationsToValue processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
+                |> Result.map Dict.fromList
 
         moduleResult : Result Errors (Module.Definition SourceLocation)
         moduleResult =
@@ -420,6 +453,19 @@ mapDeclarationsToType sourceFile expose decls =
         |> Result.mapError List.concat
 
 
+mapDeclarationsToValue : SourceFile -> Exposing -> List Declaration -> Result Errors (List ( Name, AccessControlled (Value.Definition SourceLocation) ))
+mapDeclarationsToValue sourceFile expose decls =
+    decls
+        |> List.filterMap
+            (\decl ->
+                case decl of
+                    _ ->
+                        Nothing
+            )
+        |> ResultList.toResult
+        |> Result.mapError List.concat
+
+
 mapTypeAnnotation : SourceFile -> Node TypeAnnotation -> Result Errors (Type SourceLocation)
 mapTypeAnnotation sourceFile (Node range typeAnnotation) =
     let
@@ -528,7 +574,7 @@ resolveLocalTypes packagePath modulePath moduleResolver moduleDef =
                                     (\resolvedFullName ->
                                         Type.Reference resolvedFullName args sourceLocation
                                     )
-                                |> Result.mapError ResolveError
+                                |> Result.mapError (ResolveError sourceLocation)
                                 |> Just
 
                         _ ->
