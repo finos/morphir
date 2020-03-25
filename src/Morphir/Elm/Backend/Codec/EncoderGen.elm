@@ -1,4 +1,4 @@
-module Morphir.Elm.Backend.Codec.Gen exposing (..)
+module Morphir.Elm.Backend.Codec.EncoderGen exposing (..)
 
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Expression exposing (Case, Expression(..), Function, FunctionImplementation)
@@ -6,6 +6,7 @@ import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node exposing (Node(..))
 import Elm.Syntax.Pattern exposing (Pattern(..), QualifiedNameRef)
 import Elm.Syntax.Range exposing (emptyRange)
+import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Advanced.Type exposing (Constructor, Definition(..), Field, Type(..), record)
 import Morphir.IR.FQName exposing (FQName(..))
@@ -20,14 +21,14 @@ typeDefToEncoder e typeName typeDef =
         function =
             { documentation = Nothing
             , signature = Nothing
-            , declaration = emptyRangeNode functionImpl
+            , declaration = Utils.emptyRangeNode functionImpl
             }
 
         functionImpl : FunctionImplementation
         functionImpl =
-            { name = emptyRangeNode functionName
+            { name = Utils.emptyRangeNode functionName
             , arguments = args
-            , expression = emptyRangeNode funcExpr
+            , expression = Utils.emptyRangeNode funcExpr
             }
 
         functionName : String
@@ -48,19 +49,19 @@ typeDefToEncoder e typeName typeDef =
 
                                         ( ctorName, fields ) :: [] ->
                                             [ deconsPattern ctorName fields
-                                                |> emptyRangeNode
+                                                |> Utils.emptyRangeNode
                                                 |> ParenthesizedPattern
-                                                |> emptyRangeNode
+                                                |> Utils.emptyRangeNode
                                             ]
 
                                         _ ->
-                                            [ typeName |> Name.toCamelCase |> VarPattern |> emptyRangeNode ]
+                                            [ typeName |> Name.toCamelCase |> VarPattern |> Utils.emptyRangeNode ]
 
                                 Private ->
                                     []
 
                         TypeAliasDefinition _ _ ->
-                            [ typeName |> Name.toCamelCase |> VarPattern |> emptyRangeNode ]
+                            [ typeName |> Name.toCamelCase |> VarPattern |> Utils.emptyRangeNode ]
 
                 Private ->
                     []
@@ -89,7 +90,7 @@ typeDefToEncoder e typeName typeDef =
                                                     typeName
                                                         |> Name.toCamelCase
                                                         |> FunctionOrValue []
-                                                        |> emptyRangeNode
+                                                        |> Utils.emptyRangeNode
 
                                                 cases : List ( Node Pattern, Node Expression )
                                                 cases =
@@ -108,7 +109,7 @@ typeDefToEncoder e typeName typeDef =
                                                                         |> typeToEncoder True [ Tuple.first ctor ]
                                                                         |> customTypeTopExpr
                                                             in
-                                                            ( emptyRangeNode pattern, emptyRangeNode expr )
+                                                            ( Utils.emptyRangeNode pattern, Utils.emptyRangeNode expr )
                                                     in
                                                     ctors |> List.map ctorToPatternExpr
                                             in
@@ -154,13 +155,13 @@ typeToEncoder fwdNames varName tpe =
                                 caseValExpr =
                                     varName
                                         |> varPathToExpr
-                                        |> emptyRangeNode
+                                        |> Utils.emptyRangeNode
 
                                 justPattern : Pattern
                                 justPattern =
                                     NamedPattern
                                         (QualifiedNameRef [] "Just")
-                                        [ "a" |> VarPattern |> emptyRangeNode ]
+                                        [ "a" |> VarPattern |> Utils.emptyRangeNode ]
 
                                 justExpression : Expression
                                 justExpression =
@@ -178,11 +179,11 @@ typeToEncoder fwdNames varName tpe =
 
                                 cases : List ( Node Pattern, Node Expression )
                                 cases =
-                                    [ ( justPattern |> emptyRangeNode
-                                      , justExpression |> emptyRangeNode
+                                    [ ( justPattern |> Utils.emptyRangeNode
+                                      , justExpression |> Utils.emptyRangeNode
                                       )
-                                    , ( nothingPattern |> emptyRangeNode
-                                      , nothingExpression |> emptyRangeNode
+                                    , ( nothingPattern |> Utils.emptyRangeNode
+                                      , nothingExpression |> Utils.emptyRangeNode
                                       )
                                     ]
                             in
@@ -209,23 +210,23 @@ typeToEncoder fwdNames varName tpe =
                 fieldEncoder : Field extra -> Expression
                 fieldEncoder field =
                     TupledExpression
-                        [ field.name |> Name.toCamelCase |> Literal |> emptyRangeNode
-                        , typeToEncoder fwdNames (namesToFwd field.name) field.tpe |> emptyRangeNode
+                        [ field.name |> Name.toCamelCase |> Literal |> Utils.emptyRangeNode
+                        , typeToEncoder fwdNames (namesToFwd field.name) field.tpe |> Utils.emptyRangeNode
                         ]
             in
             elmJsonEncoderApplication
                 (elmJsonEncoderFunction "object")
                 (ListExpr <|
                     [ TupledExpression
-                        [ Path.toString Name.toCamelCase "." varName |> Literal |> emptyRangeNode
+                        [ Path.toString Name.toCamelCase "." varName |> Literal |> Utils.emptyRangeNode
                         , elmJsonEncoderApplication
                             (elmJsonEncoderFunction "object")
                             (ListExpr
-                                (fields |> List.map fieldEncoder |> List.map emptyRangeNode)
+                                (fields |> List.map fieldEncoder |> List.map Utils.emptyRangeNode)
                             )
-                            |> emptyRangeNode
+                            |> Utils.emptyRangeNode
                         ]
-                        |> emptyRangeNode
+                        |> Utils.emptyRangeNode
                     ]
                 )
 
@@ -242,7 +243,7 @@ varPathToExpr names =
 
 elmJsonEncoderApplication : Expression -> Expression -> Expression
 elmJsonEncoderApplication func arg =
-    Application [ emptyRangeNode func, emptyRangeNode arg ]
+    Application [ Utils.emptyRangeNode func, Utils.emptyRangeNode arg ]
 
 
 elmJsonEncoderFunction : String -> Expression
@@ -255,11 +256,6 @@ elmJsonEncoderModuleName =
     [ "E" ]
 
 
-emptyRangeNode : a -> Node a
-emptyRangeNode a =
-    Node emptyRange a
-
-
 deconsPattern : Name -> List ( Name, Type extra ) -> Pattern
 deconsPattern ctorName fields =
     let
@@ -269,7 +265,7 @@ deconsPattern ctorName fields =
                 |> List.map Tuple.first
                 |> List.map Name.toCamelCase
                 |> List.map VarPattern
-                |> List.map emptyRangeNode
+                |> List.map Utils.emptyRangeNode
     in
     NamedPattern
         { moduleName = [], name = Name.toTitleCase ctorName }
@@ -293,9 +289,9 @@ customTypeTopExpr expr =
         (elmJsonEncoderFunction "object")
         (ListExpr
             [ TupledExpression
-                [ Literal "$type" |> emptyRangeNode
-                , expr |> emptyRangeNode
+                [ Literal "$type" |> Utils.emptyRangeNode
+                , expr |> Utils.emptyRangeNode
                 ]
-                |> emptyRangeNode
+                |> Utils.emptyRangeNode
             ]
         )

@@ -1,4 +1,4 @@
-module Morphir.Elm.Frontend exposing (Error(..), Errors, PackageInfo, SourceFile, SourceLocation, decodePackageInfo, encodeError, packageDefinitionFromSource)
+module Morphir.Elm.Frontend exposing (ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation, decodePackageInfo, encodeError, mapDeclarationsToType, packageDefinitionFromSource)
 
 import Dict exposing (Dict)
 import Elm.Parser
