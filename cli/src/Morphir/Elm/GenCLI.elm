@@ -20,7 +20,7 @@ import Morphir.IR.AccessControlled exposing (..)
 import Morphir.IR.Advanced.Module as Module exposing (..)
 import Morphir.IR.Advanced.Package as Package
 import Morphir.IR.Advanced.Type as Type exposing (Definition(..), Type)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Name as Name exposing (Name, toCamelCase)
 import Morphir.IR.Path exposing (Path)
 
 
@@ -81,36 +81,43 @@ daprSource packageDef =
         appFiles =
             packageDef.modules
                 |> Dict.toList
-                |> List.map (\( path, modDef ) -> modVals path modDef)
+                |> List.map (\( path, modDef ) -> moduleTypes path modDef)
                 |> List.concat
                 |> List.map (\( path, name, tpe ) -> Stateful.gen path name tpe)
                 |> List.map MaybeExtra.toList
                 |> List.concat
 
-        modVals : Path -> AccessControlled (Module.Definition extra) -> List ( Path, Name, Type extra )
-        modVals path acsCtrlModDef =
+        moduleTypes : Path -> AccessControlled (Module.Definition extra) -> List ( Path, Name, Type extra )
+        moduleTypes path acsCtrlModDef =
             case acsCtrlModDef.access of
                 Public ->
                     acsCtrlModDef.value.types
                         |> Dict.toList
-                        |> List.filterMap (\( name, valDef ) -> typedValues path name valDef)
+                        |> List.filterMap (\( name, typeDef ) -> appTypeDef path name typeDef)
 
                 _ ->
                     []
 
-        typedValues : Path -> Name -> AccessControlled (Type.Definition extra) -> Maybe ( Path, Name, Type extra )
-        typedValues path name acsCtrlValDef =
+        appTypeDef : Path -> Name -> AccessControlled (Type.Definition extra) -> Maybe ( Path, Name, Type extra )
+        appTypeDef path name acsCtrlValDef =
             case acsCtrlValDef.access of
                 Public ->
                     case acsCtrlValDef.value of
                         TypeAliasDefinition _ tpe ->
-                            Just ( path, name, tpe )
+                            case Name.toCamelCase name of
+                                "app" ->
+                                    Just ( path, name, tpe )
+
+                                _ ->
+                                    Nothing
 
                         _ ->
                             Nothing
 
                 _ ->
                     Nothing
+
+        --}
     in
     appFiles
         |> List.map Writer.writeFile

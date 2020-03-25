@@ -25,7 +25,7 @@ import Morphir.IR.Path exposing (Path)
 gen : Path -> Name -> Type extra -> Maybe File
 gen modPath appName appType =
     case appType of
-        Reference (FQName [] [] [ "StatefulApp" ]) (keyType :: cmdType :: stateType :: eventType :: []) _ ->
+        Reference (FQName [] [] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) _ ->
             let
                 moduleDef : Module
                 moduleDef =
@@ -606,7 +606,7 @@ emptyFuncImpl =
 test : Type ()
 test =
     Reference
-        (FQName [] [] [ "StatefulApp" ])
+        (FQName [] [] [ "stateful", "app" ])
         [ Reference
             (FQName [] [] [ "Int" ])
             []

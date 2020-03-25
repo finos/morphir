@@ -1,6 +1,10 @@
-module Morphir.Elm.Backend.Codec.Tests.DaprExample exposing (..)
+module Example exposing (..)
 
-import Morphir.SDK.StatefulApp exposing (..)
+import Int exposing (Int)
+
+
+type alias StatefulApp k c s e =
+    { businessLogic : k -> Maybe s -> c -> ( k, Maybe s, e ) }
 
 
 type alias App =
