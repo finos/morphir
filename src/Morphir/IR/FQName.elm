@@ -1,12 +1,12 @@
 module Morphir.IR.FQName exposing
-    ( FQName(..), fQName, getPackagePath, getModulePath, getLocalName
+    ( FQName(..), fQName, fromQName, getPackagePath, getModulePath, getLocalName
     , fuzzFQName
     , encodeFQName, decodeFQName
     )
 
 {-| Module to work with fully-qualified names. A qualified name is a combination of a package path, a module path and a local name.
 
-@docs FQName, fQName, getPackagePath, getModulePath, getLocalName
+@docs FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName
 
 
 # Property Testing
@@ -25,6 +25,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.Name exposing (Name, decodeName, encodeName, fuzzName)
 import Morphir.IR.Path exposing (Path, decodePath, encodePath, fuzzPath)
+import Morphir.IR.QName as QName exposing (QName)
 
 
 {-| Type that represents a fully-qualified name.
@@ -38,6 +39,13 @@ type FQName
 fQName : Path -> Path -> Name -> FQName
 fQName packagePath modulePath localName =
     FQName packagePath modulePath localName
+
+
+{-| Create a fully-qualified from a qualified name.
+-}
+fromQName : Path -> QName -> FQName
+fromQName packagePath qName =
+    FQName packagePath (qName |> QName.getModulePath) (qName |> QName.getLocalName)
 
 
 {-| Get the package path part of a fully-qualified name.
