@@ -6,45 +6,71 @@ const path = require('path')
 const util = require('util')
 const fs = require('fs')
 const readdir = util.promisify(fs.readdir)
+const lstat = util.promisify(fs.lstat)
 const readFile = util.promisify(fs.readFile)
+const writeFile = util.promisify(fs.writeFile)
 const commander = require('commander')
 
 // Elm imports
-const worker = require('./Morphir.Elm.EncodersCLI').Elm.Morphir.Elm.EncodersCLI.init()
+const worker = require('./Morphir.Elm.GenCLI').Elm.Morphir.Elm.GenCLI.init()
 
 // Set up Commander
 const program = new commander.Command()
 program
     .name('morphir-elm gen')
-    .description('Generate code from Morphir IR')
+    .description('Translate Elm sources to a Dapr sources')
+    .option('-p, --project-dir <path>', 'Root directory of the project where morphir.json is located.', '.')
+    .option('-o, --output <path>', 'Target location where the Dapr sources will be sent. Defaults to STDOUT.')
     .parse(process.argv)
 
 
-worker.ports.elmEncoderBackend.subscribe(res => {
-    console.log(res)
-})
-
-
-const packageInfo = {
-    name: "morphir",
-    exposedModules: ["A"]
-}
-
-
-const testDir = "tests/Morphir/Elm/Backend/Codec/Tests"
-
-readElmSources(testDir)
-    .then((sourceFiles) => {
-        console.log("Generating elm encoders for following:")
-        sourceFiles.forEach(element => {
-            console.log(element.path)
-        });
-        console.log("")
-        worker.ports.elmFrontEnd.send([packageInfo, sourceFiles])
-        console.log("")
+gen(program.projectDir, program.output)
+    .then(result => {
+        if (program.output) {
+            console.log('Done.')
+        }
+    })
+    .catch((err) => {
+        if (err.code == 'ENOENT') {
+            console.error(`Could not find file at '${err.path}'`)
+        } else {
+            console.error(err)
+        }
+        process.exit(1)
     })
 
+async function gen(projectDir, output) {
+    const morphirJsonPath = path.join(projectDir, 'morphir-tests.json')
+    const morphirJsonContent = await readFile(morphirJsonPath)
+    const morphirJson = JSON.parse(morphirJsonContent.toString())
+    const sourceFiles = await readElmSources(morphirJson.sourceDirectory)
+    const result = await packageDefAndDaprCodeFromSrc(morphirJson, sourceFiles)
+    if (output) {
+        console.log(`Writing file ${output}.`)
+        await writeFile(output, JSON.stringify(result, null, 4))
+    } else {
+        console.log(JSON.stringify(result))
+    }
+    return result
+}
 
+async function packageDefAndDaprCodeFromSrc(morphirJson, sourceFiles) {
+    return new Promise((resolve, reject) => {
+        worker.ports.decodeError.subscribe(err => {
+            reject(err)
+        })
+
+        worker.ports.packageDefAndDaprCodeFromSrcResult.subscribe(([err, ok]) => {
+            if (err) {
+                reject(err)
+            } else {
+                resolve(ok)
+            }
+        })
+
+        worker.ports.packageDefinitionFromSource.send([morphirJson, sourceFiles])
+    })
+}
 
 async function readElmSources(dir) {
     const readElmSource = async function (filePath) {
