@@ -157,50 +157,51 @@ type Bee = Bee
                 |> Expect.equal (Ok expected)
 
 
-valueTests : Test
-valueTests =
-    let
-        packageInfo =
-            { name = []
-            , exposedModules = Set.empty
-            }
 
-        moduleSource : String -> SourceFile
-        moduleSource sourceValue =
-            { path = "Test.elm"
-            , content =
-                String.join "\n"
-                    [ "module Test exposing (..)"
-                    , ""
-                    , "testValue = " ++ sourceValue
-                    ]
-            }
-
-        checkIR : String -> Value () -> Test
-        checkIR valueSource expectedValueIR =
-            test valueSource <|
-                \_ ->
-                    Frontend.packageDefinitionFromSource packageInfo [ moduleSource valueSource ]
-                        |> Result.map Package.eraseDefinitionExtra
-                        |> Result.toMaybe
-                        |> Maybe.andThen
-                            (\packageDef ->
-                                packageDef.modules
-                                    |> Dict.get [ [ "test" ] ]
-                                    |> Maybe.andThen
-                                        (\moduleDef ->
-                                            moduleDef.value.values
-                                                |> Dict.get [ "test", "value" ]
-                                                |> Maybe.map (.value >> Value.getDefinitionBody)
-                                        )
-                            )
-                        |> Maybe.map (Expect.equal expectedValueIR)
-                        |> Maybe.withDefault (Expect.fail "Could not find the value in the IR")
-    in
-    skip <|
-        describe "Values are mapped correctly"
-            [ checkIR "1" <| Literal (IntLiteral 1) ()
-            ]
+--valueTests : Test
+--valueTests =
+--    let
+--        packageInfo =
+--            { name = []
+--            , exposedModules = Set.empty
+--            }
+--
+--        moduleSource : String -> SourceFile
+--        moduleSource sourceValue =
+--            { path = "Test.elm"
+--            , content =
+--                String.join "\n"
+--                    [ "module Test exposing (..)"
+--                    , ""
+--                    , "testValue = " ++ sourceValue
+--                    ]
+--            }
+--
+--        checkIR : String -> Value () -> Test
+--        checkIR valueSource expectedValueIR =
+--            test valueSource <|
+--                \_ ->
+--                    Frontend.packageDefinitionFromSource packageInfo [ moduleSource valueSource ]
+--                        |> Result.map Package.eraseDefinitionExtra
+--                        |> Result.toMaybe
+--                        |> Maybe.andThen
+--                            (\packageDef ->
+--                                packageDef.modules
+--                                    |> Dict.get [ [ "test" ] ]
+--                                    |> Maybe.andThen
+--                                        (\moduleDef ->
+--                                            moduleDef.value.values
+--                                                |> Dict.get [ "test", "value" ]
+--                                                |> Maybe.map (.value >> Value.getDefinitionBody)
+--                                        )
+--                            )
+--                        |> Maybe.map (Expect.equal expectedValueIR)
+--                        |> Maybe.withDefault (Expect.fail "Could not find the value in the IR")
+--    in
+--    describe "Values are mapped correctly"
+--        [ checkIR "1" <| Literal (IntLiteral 1) ()
+--        ]
+--
 
 
 unindent : String -> String
