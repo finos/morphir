@@ -1,7 +1,7 @@
 module Morphir.IR.Advanced.Module exposing
     ( Declaration, Definition
     , encodeDeclaration, encodeDefinition
-    , definitionToDeclaration, mapDeclaration, mapDefinition
+    , definitionToDeclaration, eraseDeclarationExtra, mapDeclaration, mapDefinition
     )
 
 {-| Modules are groups of types and values that belong together.
@@ -27,6 +27,13 @@ import Morphir.ResultList as ResultList
 type alias Declaration extra =
     { types : Dict Name (Type.Declaration extra)
     , values : Dict Name (Value.Declaration extra)
+    }
+
+
+emptyDeclaration : Declaration extra
+emptyDeclaration =
+    { types = Dict.empty
+    , values = Dict.empty
     }
 
 
@@ -69,6 +76,15 @@ definitionToDeclaration def =
     --                 )
     --             |> Dict.fromList
     }
+
+
+eraseDeclarationExtra : Declaration a -> Declaration ()
+eraseDeclarationExtra decl =
+    decl
+        |> mapDeclaration
+            (Type.mapTypeExtra (\_ -> ()) >> Ok)
+            (Value.mapValueExtra (\_ -> ()))
+        |> Result.withDefault emptyDeclaration
 
 
 {-| -}

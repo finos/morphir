@@ -3,7 +3,7 @@ module Morphir.IR.Advanced.Type exposing
     , variable, reference, tuple, record, extensibleRecord, function, unit
     , matchVariable, matchReference, matchTuple, matchRecord, matchExtensibleRecord, matchFunction, matchUnit
     , Field, matchField, mapFieldName, mapFieldType
-    , Declaration, typeAliasDeclaration, opaqueTypeDeclaration, customTypeDeclaration, matchCustomTypeDeclaration
+    , Declaration(..), typeAliasDeclaration, opaqueTypeDeclaration, customTypeDeclaration, matchCustomTypeDeclaration
     , Definition(..), typeAliasDefinition, customTypeDefinition
     , Constructors
     , fuzzType

@@ -5,7 +5,7 @@ import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.QName as QName
-import Morphir.IR.SDK.Package exposing (packageName)
+import Morphir.IR.SDK.Common exposing (packageName)
 
 
 moduleName : Path

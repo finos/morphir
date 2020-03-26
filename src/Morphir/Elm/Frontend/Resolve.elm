@@ -4,6 +4,7 @@ import Dict exposing (Dict)
 import Elm.Syntax.Exposing exposing (Exposing(..), TopLevelExpose(..))
 import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Node as Node exposing (Node(..))
+import Elm.Syntax.Range exposing (emptyRange)
 import Json.Encode as Encode
 import Morphir.IR.Advanced.Module as Module
 import Morphir.IR.Advanced.Package as Package
@@ -90,6 +91,32 @@ type alias PackageResolver =
     , exposesValue : ModuleName -> LocalName -> Result Error Bool
     , decomposeModuleName : ModuleName -> Result Error ( Path, Path )
     }
+
+
+defaultImports : List Import
+defaultImports =
+    let
+        importExplicit : ModuleName -> Maybe ModuleName -> List TopLevelExpose -> Import
+        importExplicit moduleName maybeAlias exposingList =
+            Import
+                (Node emptyRange moduleName)
+                (maybeAlias
+                    |> Maybe.map (Node emptyRange)
+                )
+                (exposingList
+                    |> List.map (Node emptyRange)
+                    |> Explicit
+                    |> Node emptyRange
+                    |> Just
+                )
+    in
+    [ importExplicit [ "Morphir", "SDK", "Bool" ] Nothing [ TypeOrAliasExpose "Bool" ]
+    , importExplicit [ "Morphir", "SDK", "Int" ] Nothing [ TypeOrAliasExpose "Int" ]
+    , importExplicit [ "Morphir", "SDK", "Float" ] Nothing [ TypeOrAliasExpose "Float" ]
+    , importExplicit [ "Morphir", "SDK", "String" ] Nothing [ TypeOrAliasExpose "String" ]
+    , importExplicit [ "Morphir", "SDK", "Maybe" ] Nothing [ TypeOrAliasExpose "Maybe" ]
+    , importExplicit [ "Morphir", "SDK", "List" ] Nothing [ TypeOrAliasExpose "List" ]
+    ]
 
 
 createPackageResolver : Dict Path (Package.Declaration a) -> Path -> Dict Path (Module.Declaration a) -> PackageResolver
@@ -215,8 +242,12 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
 
 
 createModuleResolver : PackageResolver -> List Import -> ModuleResolver
-createModuleResolver packageResolver imports =
+createModuleResolver packageResolver explicitImports =
     let
+        imports : List Import
+        imports =
+            defaultImports ++ explicitImports
+
         explicitNames : (ModuleName -> TopLevelExpose -> List LocalName) -> Dict LocalName ModuleName
         explicitNames matchExpose =
             imports
