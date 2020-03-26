@@ -1,7 +1,0 @@
-{
-    "name": "morphir",
-    "sourceDirectories": ["dapr-test", "src/Morphir/IR", "src/Morphir/IR"],
-    "exposedModules": [
-        "Example"
-    ]
-}

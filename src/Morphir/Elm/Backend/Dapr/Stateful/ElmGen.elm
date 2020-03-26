@@ -25,7 +25,7 @@ import Morphir.IR.Path exposing (Path)
 gen : Path -> Name -> Type extra -> Maybe File
 gen modPath appName appType =
     case appType of
-        Reference (FQName [] [] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) _ ->
+        Reference (FQName [ [ "morphir" ] ] [ [ "s", "d", "k" ], [ "stateful", "app" ] ] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) _ ->
             let
                 moduleDef : Module
                 moduleDef =
@@ -509,6 +509,18 @@ morphirToElmTypeDef tpe =
         Variable name _ ->
             name |> Name.toCamelCase |> GenericType
 
+        Reference (FQName _ _ [ "bool" ]) [] _ ->
+            Typed (( [], "Bool" ) |> Utils.emptyRangeNode) []
+
+        Reference (FQName _ _ [ "int" ]) [] _ ->
+            Typed (( [], "Int" ) |> Utils.emptyRangeNode) []
+
+        Reference (FQName _ _ [ "float" ]) [] _ ->
+            Typed (( [], "Float" ) |> Utils.emptyRangeNode) []
+
+        Reference (FQName _ _ [ "string" ]) [] _ ->
+            Typed (( [], "String" ) |> Utils.emptyRangeNode) []
+
         Reference (FQName _ modPath tpeName) types _ ->
             let
                 moduleName : ModuleName
@@ -606,21 +618,21 @@ emptyFuncImpl =
 test : Type ()
 test =
     Reference
-        (FQName [] [] [ "stateful", "app" ])
+        (FQName [ [ "morphir" ] ] [ [ "s", "d", "k" ], [ "stateful", "app" ] ] [ "stateful", "app" ])
         [ Reference
-            (FQName [] [] [ "Int" ])
+            (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
             []
             ()
         , Reference
-            (FQName [] [] [ "Int" ])
+            (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
             []
             ()
         , Reference
-            (FQName [] [] [ "Int" ])
+            (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
             []
             ()
         , Reference
-            (FQName [] [] [ "Int" ])
+            (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
             []
             ()
         ]

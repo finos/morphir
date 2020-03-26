@@ -49,7 +49,7 @@ async function gen(projectDir, output) {
         console.log(`Writing file ${output}.`)
         await writeFile(output, JSON.stringify(result, null, 4))
     } else {
-        console.log(JSON.stringify(result))
+        console.log(JSON.stringify(result.elmBackendResult))
     }
     return result
 }
@@ -68,9 +68,6 @@ async function packageDefAndDaprCodeFromSrc(morphirJson, sourceFiles) {
             }
         })
 
-        console.log(`morphir-dapr.json contents : \n ${JSON.stringify(morphirJson)}`)
-        console.log(`source files picked: \n ${JSON.stringify(sourceFiles)}`)
-
         worker.ports.packageDefinitionFromSource.send([morphirJson, sourceFiles])
 
     })
@@ -79,8 +76,6 @@ async function packageDefAndDaprCodeFromSrc(morphirJson, sourceFiles) {
 async function readElmSources(dirs) {
     const readElmSource = async function (filePath) {
         const content = await readFile(filePath)
-        // console.log(filePath + ":")
-        // console.log(content.toString())
         return {
             path: filePath,
             content: content.toString()
@@ -103,6 +98,13 @@ async function readElmSources(dirs) {
                 }, Promise.resolve([]))
         return elmSources.concat(await subDirSources)
     }
-    const sources = await Promise.all(dirs.map(async (dir) => Promise.all(await readDir(dir))))
+    const sources =
+        await Promise.all(
+            dirs.map(async (dir) =>
+                Promise.all(
+                    await readDir(dir)
+                )
+            )
+        )
     return sources.flat()
 }

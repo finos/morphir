@@ -1,10 +1,6 @@
-module Example exposing (..)
+module Morphir.Dapr.Example exposing (..)
 
-import Int exposing (Int)
-
-
-type alias StatefulApp k c s e =
-    { businessLogic : k -> Maybe s -> c -> ( k, Maybe s, e ) }
+import Morphir.SDK.StatefulApp exposing (StatefulApp)
 
 
 type alias App =

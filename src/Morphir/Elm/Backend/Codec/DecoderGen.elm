@@ -109,19 +109,19 @@ typeToDecoder typeName topLevelFieldNames tpe =
     case tpe of
         Reference fqName typeParams _ ->
             case fqName of
-                FQName [] [] [ "string" ] ->
+                FQName _ _ [ "string" ] ->
                     FunctionOrValue decoderModuleName "string"
 
-                FQName [] [] [ "bool" ] ->
+                FQName _ _ [ "bool" ] ->
                     FunctionOrValue decoderModuleName "bool"
 
-                FQName [] [] [ "int" ] ->
+                FQName _ _ [ "int" ] ->
                     FunctionOrValue decoderModuleName "int"
 
-                FQName [] [] [ "float" ] ->
+                FQName _ _ [ "float" ] ->
                     FunctionOrValue decoderModuleName "float"
 
-                FQName [] [] [ "maybe" ] ->
+                FQName _ _ [ "maybe" ] ->
                     let
                         typeParamEncoder =
                             case typeParams of
