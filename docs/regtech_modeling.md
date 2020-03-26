@@ -1,6 +1,6 @@
 # Automating RegTech
 
-There are a number of highly regulated industries that must adhere to complex regulations from various regulatory bodies.  These often come in the form of lengthy documents that can be arcane, ambiguous, and expensive to interpret into computer code.  It's even more expensive to adapt these regulations a firm's internal systems.  There is no competitive advantage for firms in mastering these regulations separately, so it would be mutually beneficial to have a single shared model. The shared model could contain verification and comprehensive testing to ensure compliance.  
+There are a number of highly regulated industries that must adhere to complex regulations from various regulatory bodies.  These often come in the form of lengthy documents that can be arcane, ambiguous, and expensive to interpret into computer code.  It's even more expensive to adapt these regulations to a firm's internal systems.  There is no competitive advantage for firms in mastering these regulations separately, so it would be mutually beneficial to have a single shared model. The shared model could contain verification and comprehensive testing to ensure compliance.  
 
 There have been attempts to do so by providing libraries.  The challenge with this approach is that these libraries don't work with firms' existing systems.  So in order to use them they would need to invest significantly in building new systems.
 
