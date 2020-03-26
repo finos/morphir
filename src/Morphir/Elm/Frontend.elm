@@ -23,6 +23,7 @@ import Morphir.IR.Advanced.Value as Value exposing (Value)
 import Morphir.IR.FQName as FQName exposing (FQName, fQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.SDK as SDK
 import Morphir.JsonExtra as JsonExtra
 import Morphir.ResultList as ResultList
 import Morphir.Rewrite as Rewrite
@@ -276,12 +277,18 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 |> Dict.map
                     (\path def ->
                         Module.definitionToDeclaration def
+                            |> Module.eraseDeclarationExtra
                     )
+
+        dependencies =
+            Dict.fromList
+                [ ( [ [ "morphir" ], [ "s", "d", "k" ] ], SDK.packageDeclaration )
+                ]
 
         moduleResolver : ModuleResolver
         moduleResolver =
             Resolve.createModuleResolver
-                (Resolve.createPackageResolver Dict.empty currentPackagePath moduleDeclsSoFar)
+                (Resolve.createPackageResolver dependencies currentPackagePath moduleDeclsSoFar)
                 (processedFile.file.imports |> List.map Node.value)
 
         typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))

@@ -1,8 +1,9 @@
 module Morphir.IR.QName exposing
-    ( QName, fromTuple, toTuple, qName, getModulePath, getLocalName
+    ( QName, fromTuple, toTuple, getModulePath, getLocalName
     , toString
     , fuzzQName
     , encodeQName, decodeQName
+    , fromName
     )
 
 {-| Module to work with qualified names. A qualified name is a combination of a module path and a local name.
@@ -55,8 +56,8 @@ fromTuple ( m, l ) =
 
 {-| Creates a qualified name.
 -}
-qName : Path -> Name -> QName
-qName modulePath localName =
+fromName : Path -> Name -> QName
+fromName modulePath localName =
     QName modulePath localName
 
 
