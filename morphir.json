@@ -1,8 +1,8 @@
 {
-    "name": "morphir",
+    "name": "Morphir",
     "sourceDirectory": "src",
     "exposedModules": [
-        "Morphir.IR.Name",
-        "Morphir.IR.Path"
+        "IR.Advanced.Type",
+        "IR.Advanced.Value"
     ]
 }

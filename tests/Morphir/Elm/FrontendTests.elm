@@ -57,14 +57,24 @@ type Bee = Bee
                 """
             }
 
+        sourceC =
+            { path = "My/Package/C.elm"
+            , content =
+                unindent """
+module My.Package.C exposing (..)
+
+type Cee = Cee
+                """
+            }
+
         packageName =
-            Path.fromString "my/package"
+            Path.fromString "My.Package"
 
         moduleA =
-            Path.fromString "My.Package.A"
+            Path.fromString "A"
 
         moduleB =
-            Path.fromString "My.Package.B"
+            Path.fromString "B"
 
         packageInfo =
             { name =
@@ -152,7 +162,7 @@ type Bee = Bee
     in
     test "first" <|
         \_ ->
-            Frontend.packageDefinitionFromSource packageInfo [ sourceA, sourceB ]
+            Frontend.packageDefinitionFromSource packageInfo [ sourceA, sourceB, sourceC ]
                 |> Result.map Package.eraseDefinitionExtra
                 |> Expect.equal (Ok expected)
 

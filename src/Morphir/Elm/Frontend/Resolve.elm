@@ -111,10 +111,12 @@ defaultImports =
                 )
     in
     [ importExplicit [ "Morphir", "SDK", "Bool" ] Nothing [ TypeOrAliasExpose "Bool" ]
+    , importExplicit [ "Morphir", "SDK", "Char" ] Nothing [ TypeOrAliasExpose "Char" ]
     , importExplicit [ "Morphir", "SDK", "Int" ] Nothing [ TypeOrAliasExpose "Int" ]
     , importExplicit [ "Morphir", "SDK", "Float" ] Nothing [ TypeOrAliasExpose "Float" ]
     , importExplicit [ "Morphir", "SDK", "String" ] Nothing [ TypeOrAliasExpose "String" ]
     , importExplicit [ "Morphir", "SDK", "Maybe" ] Nothing [ TypeOrAliasExpose "Maybe" ]
+    , importExplicit [ "Morphir", "SDK", "Result" ] Nothing [ TypeOrAliasExpose "Result" ]
     , importExplicit [ "Morphir", "SDK", "List" ] Nothing [ TypeOrAliasExpose "List" ]
     ]
 
