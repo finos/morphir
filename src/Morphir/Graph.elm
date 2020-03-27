@@ -1,25 +1,38 @@
-module Morphir.DAG exposing (DAG, fromDict, isEmpty, topologicalSort)
+module Morphir.Graph exposing (Graph, empty, fromDict, fromList, isEmpty, reachableNodes, topologicalSort)
 
 import Dict exposing (Dict)
 import Set exposing (Set)
 
 
-type DAG comparable
-    = DAG (Dict comparable (Set comparable))
+type Graph comparable
+    = Graph (Dict comparable (Set comparable))
 
 
-fromDict : Dict comparable (Set comparable) -> DAG comparable
+fromDict : Dict comparable (Set comparable) -> Graph comparable
 fromDict =
-    DAG
+    Graph
 
 
-isEmpty : DAG comparable -> Bool
-isEmpty (DAG edges) =
+fromList : List ( comparable, List comparable ) -> Graph comparable
+fromList list =
+    list
+        |> List.map (\( from, tos ) -> ( from, Set.fromList tos ))
+        |> Dict.fromList
+        |> Graph
+
+
+empty : Graph comparable
+empty =
+    Graph Dict.empty
+
+
+isEmpty : Graph comparable -> Bool
+isEmpty (Graph edges) =
     Dict.isEmpty edges
 
 
-topologicalSort : DAG comparable -> ( List comparable, DAG comparable )
-topologicalSort (DAG edges) =
+topologicalSort : Graph comparable -> ( List comparable, Graph comparable )
+topologicalSort (Graph edges) =
     let
         normalize graphEdges =
             let
@@ -74,6 +87,42 @@ topologicalSort (DAG edges) =
                     step newGraphEdges (startNode :: sorting)
 
                 Nothing ->
-                    ( List.reverse sorting, DAG graphEdges )
+                    ( List.reverse sorting, Graph graphEdges )
     in
     step (normalize edges) []
+
+
+reachableNodes : Set comparable -> Graph comparable -> Set comparable
+reachableNodes startNodes (Graph edges) =
+    let
+        directlyReachable : Set comparable -> Set comparable
+        directlyReachable fromNodes =
+            edges
+                |> Dict.toList
+                |> List.filterMap
+                    (\( fromNode, toNodes ) ->
+                        if fromNodes |> Set.member fromNode then
+                            Just toNodes
+
+                        else
+                            Nothing
+                    )
+                |> List.foldl Set.union Set.empty
+
+        transitivelyReachable : Set comparable -> Set comparable
+        transitivelyReachable fromNodes =
+            if Set.isEmpty fromNodes then
+                Set.empty
+
+            else
+                let
+                    reachables =
+                        Set.union (directlyReachable fromNodes) fromNodes
+                in
+                if reachables == fromNodes then
+                    fromNodes
+
+                else
+                    Set.union fromNodes (transitivelyReachable reachables)
+    in
+    transitivelyReachable startNodes
