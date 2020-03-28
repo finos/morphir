@@ -121,10 +121,10 @@ defaultImports =
     ]
 
 
-createPackageResolver : Dict Path (Package.Declaration a) -> Path -> Dict Path (Module.Declaration a) -> PackageResolver
+createPackageResolver : Dict Path (Package.Specification a) -> Path -> Dict Path (Module.Specification a) -> PackageResolver
 createPackageResolver dependencies currentPackagePath currentPackageModules =
     let
-        lookupModule : Path -> Path -> Result Error (Module.Declaration a)
+        lookupModule : Path -> Path -> Result Error (Module.Specification a)
         lookupModule packagePath modulePath =
             let
                 modulesResult =
@@ -165,7 +165,7 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                             |> Result.map
                                 (\typeDecl ->
                                     typeDecl
-                                        |> Type.matchCustomTypeDeclaration matchAny matchAny
+                                        |> Type.matchCustomTypeSpecification matchAny matchAny
                                         |> Maybe.map
                                             (\( _, ctors ) ->
                                                 ctors

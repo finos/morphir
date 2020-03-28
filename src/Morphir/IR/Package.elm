@@ -1,11 +1,11 @@
 module Morphir.IR.Package exposing
-    ( Declaration
+    ( Specification
     , Definition
     )
 
 {-| Tools to work with packages.
 
-@docs Declaration
+@docs Specification
 
 @docs Definition
 
@@ -14,10 +14,10 @@ module Morphir.IR.Package exposing
 import Morphir.IR.Advanced.Package as Advanced
 
 
-{-| Type that represents a package declaration.
+{-| Type that represents a package specification.
 -}
-type alias Declaration =
-    Advanced.Declaration ()
+type alias Specification =
+    Advanced.Specification ()
 
 
 {-| Type that represents a package definition.

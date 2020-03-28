@@ -1,14 +1,14 @@
 module Morphir.IR.Advanced.Module exposing
-    ( Declaration, Definition
-    , encodeDeclaration, encodeDefinition
-    , definitionToDeclaration, eraseDeclarationExtra, mapDeclaration, mapDefinition
+    ( Specification, Definition
+    , encodeSpecification, encodeDefinition
+    , definitionToSpecification, eraseSpecificationExtra, mapDefinition, mapSpecification
     )
 
 {-| Modules are groups of types and values that belong together.
 
-@docs Declaration, Definition
+@docs Specification, Definition
 
-@docs encodeDeclaration, encodeDefinition
+@docs encodeSpecification, encodeDefinition
 
 -}
 
@@ -22,16 +22,16 @@ import Morphir.IR.Name exposing (Name, encodeName)
 import Morphir.ResultList as ResultList
 
 
-{-| Type that represents a module declaration.
+{-| Type that represents a module specification.
 -}
-type alias Declaration extra =
-    { types : Dict Name (Type.Declaration extra)
-    , values : Dict Name (Value.Declaration extra)
+type alias Specification extra =
+    { types : Dict Name (Type.Specification extra)
+    , values : Dict Name (Value.Specification extra)
     }
 
 
-emptyDeclaration : Declaration extra
-emptyDeclaration =
+emptySpecification : Specification extra
+emptySpecification =
     { types = Dict.empty
     , values = Dict.empty
     }
@@ -45,8 +45,8 @@ type alias Definition extra =
     }
 
 
-definitionToDeclaration : Definition extra -> Declaration extra
-definitionToDeclaration def =
+definitionToSpecification : Definition extra -> Specification extra
+definitionToSpecification def =
     { types =
         def.types
             |> Dict.toList
@@ -56,7 +56,7 @@ definitionToDeclaration def =
                         |> withPublicAccess
                         |> Maybe.map
                             (\typeDef ->
-                                ( path, Type.definitionToDeclaration typeDef )
+                                ( path, Type.definitionToSpecification typeDef )
                             )
                 )
             |> Dict.fromList
@@ -71,83 +71,83 @@ definitionToDeclaration def =
     --                         |> withPublicAccess
     --                         |> Maybe.map
     --                             (\valueDef ->
-    --                                 ( path, Value.definitionToDeclaration valueDef )
+    --                                 ( path, Value.definitionToSpecification valueDef )
     --                             )
     --                 )
     --             |> Dict.fromList
     }
 
 
-eraseDeclarationExtra : Declaration a -> Declaration ()
-eraseDeclarationExtra decl =
-    decl
-        |> mapDeclaration
+eraseSpecificationExtra : Specification a -> Specification ()
+eraseSpecificationExtra spec =
+    spec
+        |> mapSpecification
             (Type.mapTypeExtra (\_ -> ()) >> Ok)
             (Value.mapValueExtra (\_ -> ()))
-        |> Result.withDefault emptyDeclaration
+        |> Result.withDefault emptySpecification
 
 
 {-| -}
-encodeDeclaration : (extra -> Encode.Value) -> Declaration extra -> Encode.Value
-encodeDeclaration encodeExtra decl =
+encodeSpecification : (extra -> Encode.Value) -> Specification extra -> Encode.Value
+encodeSpecification encodeExtra spec =
     Encode.object
         [ ( "types"
-          , decl.types
+          , spec.types
                 |> Dict.toList
                 |> Encode.list
-                    (\( name, typeDecl ) ->
+                    (\( name, typeSpec ) ->
                         Encode.object
                             [ ( "name", encodeName name )
-                            , ( "decl", Type.encodeDeclaration encodeExtra typeDecl )
+                            , ( "spec", Type.encodeSpecification encodeExtra typeSpec )
                             ]
                     )
           )
         , ( "values"
-          , decl.values
+          , spec.values
                 |> Dict.toList
                 |> Encode.list
-                    (\( name, valueDecl ) ->
+                    (\( name, valueSpec ) ->
                         Encode.object
                             [ ( "name", encodeName name )
-                            , ( "decl", Value.encodeDeclaration encodeExtra valueDecl )
+                            , ( "spec", Value.encodeSpecification encodeExtra valueSpec )
                             ]
                     )
           )
         ]
 
 
-mapDeclaration : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Declaration a -> Result (List e) (Declaration b)
-mapDeclaration mapType mapValue decl =
+mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Specification a -> Result (List e) (Specification b)
+mapSpecification mapType mapValue spec =
     let
-        typesResult : Result (List e) (Dict Name (Type.Declaration b))
+        typesResult : Result (List e) (Dict Name (Type.Specification b))
         typesResult =
-            decl.types
+            spec.types
                 |> Dict.toList
                 |> List.map
-                    (\( typeName, typeDecl ) ->
-                        typeDecl
-                            |> Type.mapDeclaration mapType
+                    (\( typeName, typeSpec ) ->
+                        typeSpec
+                            |> Type.mapSpecification mapType
                             |> Result.map (Tuple.pair typeName)
                     )
                 |> ResultList.toResult
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
-        valuesResult : Result (List e) (Dict Name (Value.Declaration b))
+        valuesResult : Result (List e) (Dict Name (Value.Specification b))
         valuesResult =
-            decl.values
+            spec.values
                 |> Dict.toList
                 |> List.map
-                    (\( valueName, valueDecl ) ->
-                        valueDecl
-                            |> Value.mapDeclaration mapType mapValue
+                    (\( valueName, valueSpec ) ->
+                        valueSpec
+                            |> Value.mapSpecification mapType mapValue
                             |> Result.map (Tuple.pair valueName)
                     )
                 |> ResultList.toResult
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in
-    Result.map2 Declaration
+    Result.map2 Specification
         typesResult
         valuesResult
 

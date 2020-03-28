@@ -3,7 +3,7 @@ module Morphir.IR.Value exposing
     , tuple, variable, ifThenElse, patternMatch, update, unit
     , Literal, boolLiteral, charLiteral, stringLiteral, intLiteral, floatLiteral
     , Pattern, wildcardPattern, asPattern, tuplePattern, recordPattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
-    , Declaration
+    , Specification
     , Definition, typedDefinition, untypedDefinition
     )
 
@@ -40,17 +40,17 @@ destructuring and pattern-matching. Pattern-matching is a combination of destruc
 @docs Pattern, wildcardPattern, asPattern, tuplePattern, recordPattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
 
 
-# Declaration
+# Specification
 
-A declaration is the specification of what the value or function
+The specification of what the value or function
 is without the actual data or logic behind it.
 
-@docs Declaration
+@docs Specification
 
 
 # Definition
 
-A definition is the actual data or logic as opposed to a declaration
+A definition is the actual data or logic as opposed to a specification
 which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.
 
 @docs Definition, typedDefinition, untypedDefinition
@@ -81,14 +81,14 @@ type alias Pattern =
     Advanced.Pattern ()
 
 
-{-| Type that represents a value or function declaration. A declaration is the specification of what the value or function
+{-| Type that represents a value or function specification. The specification of what the value or function
 is without the actual data or logic behind it.
 -}
-type alias Declaration =
-    Advanced.Declaration ()
+type alias Specification =
+    Advanced.Specification ()
 
 
-{-| Type that represents a value or function definition. A definition is the actual data or logic as opposed to a declaration
+{-| Type that represents a value or function definition. A definition is the actual data or logic as opposed to a specification
 which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.
 -}
 type alias Definition =
@@ -550,8 +550,11 @@ arguments. The examples below try to visualize the process.
         body
 
     -- the above is logically translated to the below
-
-    myFun : Int -> Int -> { foo : Int } -> Int -- the value type does not change in the process
+    myFun :
+        Int
+        -> Int
+        -> { foo : Int }
+        -> Int -- the value type does not change in the process
     myFun a b =
         \{ foo } ->
             body
@@ -575,7 +578,6 @@ arguments. The examples below try to visualize the process.
         body
 
     -- the above is logically translated to the below
-
     myFun a b =
         \{ foo } ->
             body

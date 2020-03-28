@@ -2,7 +2,7 @@ module Morphir.IR.SDK.Maybe exposing (..)
 
 import Dict
 import Morphir.IR.Advanced.Module as Module
-import Morphir.IR.Advanced.Type as Type exposing (Declaration(..), Type(..))
+import Morphir.IR.Advanced.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path exposing (Path)
@@ -15,12 +15,12 @@ moduleName =
     [ [ "maybe" ] ]
 
 
-moduleDeclaration : Module.Declaration ()
-moduleDeclaration =
+moduleSpec : Module.Specification ()
+moduleSpec =
     { types =
         Dict.fromList
             [ ( [ "maybe" ]
-              , CustomTypeDeclaration [ [ "a" ] ]
+              , CustomTypeSpecification [ [ "a" ] ]
                     [ ( [ "just" ], [ ( [ "value" ], Type.Variable [ "a" ] () ) ] )
                     , ( [ "nothing" ], [] )
                     ]

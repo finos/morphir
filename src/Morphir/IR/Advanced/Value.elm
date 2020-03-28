@@ -3,10 +3,10 @@ module Morphir.IR.Advanced.Value exposing
     , tuple, variable, ifThenElse, patternMatch, update, unit
     , Literal(..), boolLiteral, charLiteral, stringLiteral, intLiteral, floatLiteral
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, recordPattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
-    , Declaration
+    , Specification
     , Definition(..), typedDefinition, untypedDefinition
-    , encodeValue, encodeDeclaration, encodeDefinition
-    , getDefinitionBody, mapDeclaration, mapDefinition, mapValueExtra
+    , encodeValue, encodeSpecification, encodeDefinition
+    , getDefinitionBody, mapDefinition, mapSpecification, mapValueExtra
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -42,17 +42,17 @@ destructuring and pattern-matching. Pattern-matching is a combination of destruc
 @docs Pattern, wildcardPattern, asPattern, tuplePattern, recordPattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
 
 
-# Declaration
+# Specification
 
-A declaration is the specification of what the value or function
+The specification of what the value or function
 is without the actual data or logic behind it.
 
-@docs Declaration
+@docs Specification
 
 
 # Definition
 
-A definition is the actual data or logic as opposed to a declaration
+A definition is the actual data or logic as opposed to a specification
 which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.
 
 @docs Definition, typedDefinition, untypedDefinition
@@ -60,7 +60,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 # Serialization
 
-@docs encodeValue, encodeDeclaration, encodeDefinition
+@docs encodeValue, encodeSpecification, encodeDefinition
 
 -}
 
@@ -88,12 +88,12 @@ type Value extra
     | FieldFunction Name extra
     | Apply (Value extra) (Value extra) extra
     | Lambda (Pattern extra) (Value extra) extra
-    | LetDef Name (Definition extra) (Value extra) extra
-    | LetRec (List ( Name, Definition extra )) (Value extra) extra
-    | LetDestruct (Pattern extra) (Value extra) (Value extra) extra
+    | LetDefinition Name (Definition extra) (Value extra) extra
+    | LetRecursion (List ( Name, Definition extra )) (Value extra) extra
+    | Destructure (Pattern extra) (Value extra) (Value extra) extra
     | IfThenElse (Value extra) (Value extra) (Value extra) extra
     | PatternMatch (Value extra) (List ( Pattern extra, Value extra )) extra
-    | Update (Value extra) (List ( Name, Value extra )) extra
+    | UpdateRecord (Value extra) (List ( Name, Value extra )) extra
     | Unit extra
 
 
@@ -120,16 +120,16 @@ type Pattern extra
     | LiteralPattern Literal extra
 
 
-{-| Type that represents a value or function declaration. A declaration is the specification of what the value or function
+{-| Type that represents a value or function specification. The specification of what the value or function
 is without the actual data or logic behind it.
 -}
-type alias Declaration extra =
+type alias Specification extra =
     { inputs : List ( Name, Type extra )
     , output : Type extra
     }
 
 
-{-| Type that represents a value or function definition. A definition is the actual data or logic as opposed to a declaration
+{-| Type that represents a value or function definition. A definition is the actual data or logic as opposed to a specification
 which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.
 -}
 type Definition extra
@@ -148,8 +148,8 @@ getDefinitionBody def =
 
 
 
--- definitionToDeclaration : Definition extra -> Maybe (Declaration extra)
--- definitionToDeclaration def =
+-- definitionToSpecification : Definition extra -> Maybe (Specification extra)
+-- definitionToSpecification def =
 --     case def of
 --         TypedDefinition valueType argNames _ ->
 --             let
@@ -161,11 +161,11 @@ getDefinitionBody def =
 --             in
 
 
-mapDeclaration : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Declaration a -> Result (List e) (Declaration b)
-mapDeclaration mapType mapValue decl =
+mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Specification a -> Result (List e) (Specification b)
+mapSpecification mapType mapValue spec =
     let
         inputsResult =
-            decl.inputs
+            spec.inputs
                 |> List.map
                     (\( name, tpe ) ->
                         mapType tpe
@@ -174,10 +174,10 @@ mapDeclaration mapType mapValue decl =
                 |> ResultList.toResult
 
         outputResult =
-            mapType decl.output
+            mapType spec.output
                 |> Result.mapError List.singleton
     in
-    Result.map2 Declaration
+    Result.map2 Specification
         inputsResult
         outputResult
 
@@ -241,11 +241,11 @@ mapValueExtra f v =
         Lambda argumentPattern body extra ->
             Lambda (mapPatternExtra f argumentPattern) (mapValueExtra f body) (f extra)
 
-        LetDef valueName valueDefinition inValue extra ->
-            LetDef valueName (mapDefinitionExtra f valueDefinition) (mapValueExtra f inValue) (f extra)
+        LetDefinition valueName valueDefinition inValue extra ->
+            LetDefinition valueName (mapDefinitionExtra f valueDefinition) (mapValueExtra f inValue) (f extra)
 
-        LetRec valueDefinitions inValue extra ->
-            LetRec
+        LetRecursion valueDefinitions inValue extra ->
+            LetRecursion
                 (valueDefinitions
                     |> List.map
                         (\( name, def ) ->
@@ -255,8 +255,8 @@ mapValueExtra f v =
                 (mapValueExtra f inValue)
                 (f extra)
 
-        LetDestruct pattern valueToDestruct inValue extra ->
-            LetDestruct (mapPatternExtra f pattern) (mapValueExtra f valueToDestruct) (mapValueExtra f inValue) (f extra)
+        Destructure pattern valueToDestruct inValue extra ->
+            Destructure (mapPatternExtra f pattern) (mapValueExtra f valueToDestruct) (mapValueExtra f inValue) (f extra)
 
         IfThenElse condition thenBranch elseBranch extra ->
             IfThenElse (mapValueExtra f condition) (mapValueExtra f thenBranch) (mapValueExtra f elseBranch) (f extra)
@@ -271,8 +271,8 @@ mapValueExtra f v =
                 )
                 (f extra)
 
-        Update valueToUpdate fieldsToUpdate extra ->
-            Update (mapValueExtra f valueToUpdate)
+        UpdateRecord valueToUpdate fieldsToUpdate extra ->
+            UpdateRecord (mapValueExtra f valueToUpdate)
                 (fieldsToUpdate
                     |> List.map
                         (\( fieldName, fieldValue ) ->
@@ -512,7 +512,7 @@ lambda argumentPattern body extra =
 -}
 letDef : Name -> Definition extra -> Value extra -> extra -> Value extra
 letDef valueName valueDefinition inValue extra =
-    LetDef valueName valueDefinition inValue extra
+    LetDefinition valueName valueDefinition inValue extra
 
 
 {-| Represents a let expression with one or many recursive definitions.
@@ -534,7 +534,7 @@ letDef valueName valueDefinition inValue extra =
 -}
 letRec : List ( Name, Definition extra ) -> Value extra -> extra -> Value extra
 letRec valueDefinitions inValue extra =
-    LetRec valueDefinitions inValue extra
+    LetRecursion valueDefinitions inValue extra
 
 
 {-| Represents a let expression that extracts values using a pattern.
@@ -551,7 +551,7 @@ letRec valueDefinitions inValue extra =
 -}
 letDestruct : Pattern extra -> Value extra -> Value extra -> extra -> Value extra
 letDestruct pattern valueToDestruct inValue extra =
-    LetDestruct pattern valueToDestruct inValue extra
+    Destructure pattern valueToDestruct inValue extra
 
 
 {-| Represents and if/then/else expression.
@@ -596,7 +596,7 @@ patternMatch branchOutOn cases extra =
 -}
 update : Value extra -> List ( Name, Value extra ) -> extra -> Value extra
 update valueToUpdate fieldsToUpdate extra =
-    Update valueToUpdate fieldsToUpdate extra
+    UpdateRecord valueToUpdate fieldsToUpdate extra
 
 
 {-| Represents the unit value.
@@ -912,7 +912,7 @@ encodeValue encodeExtra v =
                 , ( "extra", encodeExtra extra )
                 ]
 
-        LetDef valueName valueDefinition inValue extra ->
+        LetDefinition valueName valueDefinition inValue extra ->
             Encode.object
                 [ typeTag "letDef"
                 , ( "valueName", encodeName valueName )
@@ -921,7 +921,7 @@ encodeValue encodeExtra v =
                 , ( "extra", encodeExtra extra )
                 ]
 
-        LetRec valueDefinitions inValue extra ->
+        LetRecursion valueDefinitions inValue extra ->
             Encode.object
                 [ typeTag "letRec"
                 , ( "valueDefintions"
@@ -938,7 +938,7 @@ encodeValue encodeExtra v =
                 , ( "extra", encodeExtra extra )
                 ]
 
-        LetDestruct pattern valueToDestruct inValue extra ->
+        Destructure pattern valueToDestruct inValue extra ->
             Encode.object
                 [ typeTag "letDestruct"
                 , ( "pattern", encodePattern encodeExtra pattern )
@@ -973,7 +973,7 @@ encodeValue encodeExtra v =
                 , ( "extra", encodeExtra extra )
                 ]
 
-        Update valueToUpdate fieldsToUpdate extra ->
+        UpdateRecord valueToUpdate fieldsToUpdate extra ->
             Encode.object
                 [ typeTag "update"
                 , ( "valueToUpdate", encodeValue encodeExtra valueToUpdate )
@@ -1075,14 +1075,14 @@ decodeValue decodeExtra =
                             (Decode.field "extra" decodeExtra)
 
                     "letDef" ->
-                        Decode.map4 LetDef
+                        Decode.map4 LetDefinition
                             (Decode.field "valueName" decodeName)
                             (Decode.field "valueDefintion" <| decodeDefinition decodeExtra)
                             (Decode.field "inValue" <| decodeValue decodeExtra)
                             (Decode.field "extra" decodeExtra)
 
                     "letRec" ->
-                        Decode.map3 LetRec
+                        Decode.map3 LetRecursion
                             (Decode.field "valueDefintions"
                                 (Decode.list
                                     (Decode.map2 Tuple.pair
@@ -1095,7 +1095,7 @@ decodeValue decodeExtra =
                             (Decode.field "extra" decodeExtra)
 
                     "letDestruct" ->
-                        Decode.map4 LetDestruct
+                        Decode.map4 Destructure
                             (Decode.field "pattern" <| decodePattern decodeExtra)
                             (Decode.field "valueToDestruct" <| decodeValue decodeExtra)
                             (Decode.field "inValue" <| decodeValue decodeExtra)
@@ -1121,7 +1121,7 @@ decodeValue decodeExtra =
                             (Decode.field "extra" decodeExtra)
 
                     "update" ->
-                        Decode.map3 Update
+                        Decode.map3 UpdateRecord
                             (Decode.field "valueToUpdate" <| decodeValue decodeExtra)
                             (Decode.field "fieldsToUpdate" <|
                                 Decode.list <|
@@ -1337,11 +1337,11 @@ decodeLiteral =
             )
 
 
-encodeDeclaration : (extra -> Encode.Value) -> Declaration extra -> Encode.Value
-encodeDeclaration encodeExtra decl =
+encodeSpecification : (extra -> Encode.Value) -> Specification extra -> Encode.Value
+encodeSpecification encodeExtra spec =
     Encode.object
         [ ( "inputs"
-          , decl.inputs
+          , spec.inputs
                 |> Encode.list
                     (\( argName, argType ) ->
                         Encode.object
@@ -1350,7 +1350,7 @@ encodeDeclaration encodeExtra decl =
                             ]
                     )
           )
-        , ( "output", encodeType encodeExtra decl.output )
+        , ( "output", encodeType encodeExtra spec.output )
         ]
 
 
