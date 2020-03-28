@@ -6,12 +6,12 @@ import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Range exposing (emptyRange)
 import Json.Encode as Encode
-import Morphir.IR.Advanced.Module as Module
-import Morphir.IR.Advanced.Package as Package
-import Morphir.IR.Advanced.Type as Type
 import Morphir.IR.FQName exposing (FQName, fQName)
+import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.Type as Type
 import Morphir.JsonExtra as JsonExtra
 import Morphir.Pattern exposing (matchAny)
 import Set exposing (Set)

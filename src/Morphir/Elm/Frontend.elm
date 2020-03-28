@@ -16,14 +16,14 @@ import Json.Encode as Encode
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, PackageResolver)
 import Morphir.Graph as Graph exposing (Graph)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
-import Morphir.IR.Advanced.Module as Module
-import Morphir.IR.Advanced.Package as Package
-import Morphir.IR.Advanced.Type as Type exposing (Type)
-import Morphir.IR.Advanced.Value as Value exposing (Value)
 import Morphir.IR.FQName as FQName exposing (FQName, fQName)
+import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK as SDK
+import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Value as Value exposing (Value)
 import Morphir.JsonExtra as JsonExtra
 import Morphir.ResultList as ResultList
 import Morphir.Rewrite as Rewrite

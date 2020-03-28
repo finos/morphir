@@ -16,10 +16,10 @@ import Morphir.Elm.Backend.Codec.DecoderGen as DecoderGen exposing (typeDefToDec
 import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen exposing (typeDefToEncoder)
 import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
 import Morphir.Elm.Frontend as Frontend exposing (ContentLocation, ContentRange, SourceFile, SourceLocation, mapDeclarationsToType)
-import Morphir.IR.Advanced.Type exposing (Field, Type(..))
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name, toCamelCase)
 import Morphir.IR.Path exposing (Path)
+import Morphir.IR.Type exposing (Field, Type(..))
 
 
 gen : Path -> Name -> Type extra -> Maybe File
@@ -529,7 +529,7 @@ morphirToElmTypeDef tpe =
                 (( moduleName, typeName ) |> Utils.emptyRangeNode)
                 innerTypes
 
-        Morphir.IR.Advanced.Type.Record fields _ ->
+        Morphir.IR.Type.Record fields _ ->
             let
                 morphirToElmField : Field extra -> ( Node String, Node TypeAnnotation )
                 morphirToElmField field =

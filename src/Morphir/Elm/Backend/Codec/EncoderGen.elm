@@ -8,10 +8,10 @@ import Elm.Syntax.Pattern exposing (Pattern(..), QualifiedNameRef)
 import Elm.Syntax.Range exposing (emptyRange)
 import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
-import Morphir.IR.Advanced.Type exposing (Constructor, Definition(..), Field, Type(..), record)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name, fromString, toCamelCase, toTitleCase)
 import Morphir.IR.Path as Path exposing (toString)
+import Morphir.IR.Type exposing (Constructor, Definition(..), Field, Type(..), record)
 
 
 typeDefToEncoder : extra -> Name -> AccessControlled (Definition extra) -> Declaration
@@ -275,7 +275,7 @@ deconsPattern ctorName fields =
 constructorToRecord : extra -> Constructor extra -> Type extra
 constructorToRecord e ( _, types ) =
     let
-        fields : List (Morphir.IR.Advanced.Type.Field extra)
+        fields : List (Morphir.IR.Type.Field extra)
         fields =
             types
                 |> List.map (\t -> Field (Tuple.first t) (Tuple.second t))
