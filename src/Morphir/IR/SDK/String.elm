@@ -1,13 +1,13 @@
 module Morphir.IR.SDK.String exposing (..)
 
 import Dict
-import Morphir.IR.Advanced.Module as Module
-import Morphir.IR.Advanced.Type exposing (Specification(..), Type(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.QName as QName
 import Morphir.IR.SDK.Common exposing (packageName)
+import Morphir.IR.Type exposing (Specification(..), Type(..))
 
 
 moduleName : Path

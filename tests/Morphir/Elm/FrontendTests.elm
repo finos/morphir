@@ -4,10 +4,8 @@ import Dict
 import Expect
 import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
-import Morphir.IR.Advanced.Package as Package
-import Morphir.IR.Advanced.Type as Type
-import Morphir.IR.Advanced.Value as Value exposing (Definition(..), Literal(..), Value(..))
 import Morphir.IR.FQName exposing (fQName)
+import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Bool as Bool
 import Morphir.IR.SDK.Float as Float
@@ -15,6 +13,7 @@ import Morphir.IR.SDK.Int as Int
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.String as String
+import Morphir.IR.Type as Type
 import Set
 import Test exposing (..)
 
