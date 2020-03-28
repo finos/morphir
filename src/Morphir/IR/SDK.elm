@@ -12,17 +12,17 @@ import Morphir.IR.SDK.Result as Result
 import Morphir.IR.SDK.String as String
 
 
-packageDeclaration : Package.Declaration ()
-packageDeclaration =
+packageSpec : Package.Specification ()
+packageSpec =
     { modules =
         Dict.fromList
-            [ ( [ [ "bool" ] ], Bool.moduleDeclaration )
-            , ( [ [ "char" ] ], Char.moduleDeclaration )
-            , ( [ [ "int" ] ], Int.moduleDeclaration )
-            , ( [ [ "float" ] ], Float.moduleDeclaration )
-            , ( [ [ "string" ] ], String.moduleDeclaration )
-            , ( [ [ "maybe" ] ], Maybe.moduleDeclaration )
-            , ( [ [ "result" ] ], Result.moduleDeclaration )
-            , ( [ [ "list" ] ], List.moduleDeclaration )
+            [ ( [ [ "bool" ] ], Bool.moduleSpec )
+            , ( [ [ "char" ] ], Char.moduleSpec )
+            , ( [ [ "int" ] ], Int.moduleSpec )
+            , ( [ [ "float" ] ], Float.moduleSpec )
+            , ( [ [ "string" ] ], String.moduleSpec )
+            , ( [ [ "maybe" ] ], Maybe.moduleSpec )
+            , ( [ [ "result" ] ], Result.moduleSpec )
+            , ( [ [ "list" ] ], List.moduleSpec )
             ]
     }

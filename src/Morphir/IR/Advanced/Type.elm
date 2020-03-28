@@ -3,12 +3,12 @@ module Morphir.IR.Advanced.Type exposing
     , variable, reference, tuple, record, extensibleRecord, function, unit
     , matchVariable, matchReference, matchTuple, matchRecord, matchExtensibleRecord, matchFunction, matchUnit
     , Field, matchField, mapFieldName, mapFieldType
-    , Declaration(..), typeAliasDeclaration, opaqueTypeDeclaration, customTypeDeclaration, matchCustomTypeDeclaration
+    , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification, matchCustomTypeSpecification
     , Definition(..), typeAliasDefinition, customTypeDefinition
     , Constructors
     , fuzzType
-    , encodeType, decodeType, encodeDeclaration, encodeDefinition
-    , Constructor, definitionToDeclaration, mapDeclaration, mapDefinition, mapTypeExtra, rewriteType
+    , encodeType, decodeType, encodeSpecification, encodeDefinition
+    , Constructor, definitionToSpecification, mapDefinition, mapSpecification, mapTypeExtra, rewriteType
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -34,9 +34,9 @@ module Morphir.IR.Advanced.Type exposing
 @docs Field, matchField, mapFieldName, mapFieldType
 
 
-# Declaration
+# Specification
 
-@docs Declaration, typeAliasDeclaration, opaqueTypeDeclaration, customTypeDeclaration, matchCustomTypeDeclaration
+@docs Specification, typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification, matchCustomTypeSpecification
 
 
 # Definition
@@ -56,7 +56,7 @@ module Morphir.IR.Advanced.Type exposing
 
 # Serialization
 
-@docs encodeType, decodeType, encodeDeclaration, encodeDefinition
+@docs encodeType, decodeType, encodeSpecification, encodeDefinition
 
 -}
 
@@ -102,10 +102,10 @@ type alias Field extra =
 
 
 {-| -}
-type Declaration extra
-    = TypeAliasDeclaration (List Name) (Type extra)
-    | OpaqueTypeDeclaration (List Name)
-    | CustomTypeDeclaration (List Name) (Constructors extra)
+type Specification extra
+    = TypeAliasSpecification (List Name) (Type extra)
+    | OpaqueTypeSpecification (List Name)
+    | CustomTypeSpecification (List Name) (Constructors extra)
 
 
 {-| This syntax represents a type definition. For example:
@@ -132,34 +132,34 @@ type alias Constructor extra =
     ( Name, List ( Name, Type extra ) )
 
 
-definitionToDeclaration : Definition extra -> Declaration extra
-definitionToDeclaration def =
+definitionToSpecification : Definition extra -> Specification extra
+definitionToSpecification def =
     case def of
         TypeAliasDefinition params exp ->
-            TypeAliasDeclaration params exp
+            TypeAliasSpecification params exp
 
         CustomTypeDefinition params accessControlledCtors ->
             case accessControlledCtors |> withPublicAccess of
                 Just ctors ->
-                    CustomTypeDeclaration params ctors
+                    CustomTypeSpecification params ctors
 
                 Nothing ->
-                    OpaqueTypeDeclaration params
+                    OpaqueTypeSpecification params
 
 
-mapDeclaration : (Type a -> Result e (Type b)) -> Declaration a -> Result (List e) (Declaration b)
-mapDeclaration f decl =
-    case decl of
-        TypeAliasDeclaration params tpe ->
+mapSpecification : (Type a -> Result e (Type b)) -> Specification a -> Result (List e) (Specification b)
+mapSpecification f spec =
+    case spec of
+        TypeAliasSpecification params tpe ->
             f tpe
-                |> Result.map (TypeAliasDeclaration params)
+                |> Result.map (TypeAliasSpecification params)
                 |> Result.mapError List.singleton
 
-        OpaqueTypeDeclaration params ->
-            OpaqueTypeDeclaration params
+        OpaqueTypeSpecification params ->
+            OpaqueTypeSpecification params
                 |> Ok
 
-        CustomTypeDeclaration params constructors ->
+        CustomTypeSpecification params constructors ->
             let
                 ctorsResult : Result (List e) (Constructors b)
                 ctorsResult =
@@ -179,7 +179,7 @@ mapDeclaration f decl =
                         |> Result.mapError List.concat
             in
             ctorsResult
-                |> Result.map (CustomTypeDeclaration params)
+                |> Result.map (CustomTypeSpecification params)
 
 
 mapDefinition : (Type a -> Result e (Type b)) -> Definition a -> Result (List e) (Definition b)
@@ -522,28 +522,28 @@ customTypeDefinition typeParams ctors =
 
 
 {-| -}
-typeAliasDeclaration : List Name -> Type extra -> Declaration extra
-typeAliasDeclaration typeParams typeExp =
-    TypeAliasDeclaration typeParams typeExp
+typeAliasSpecification : List Name -> Type extra -> Specification extra
+typeAliasSpecification typeParams typeExp =
+    TypeAliasSpecification typeParams typeExp
 
 
 {-| -}
-opaqueTypeDeclaration : List Name -> Declaration extra
-opaqueTypeDeclaration typeParams =
-    OpaqueTypeDeclaration typeParams
+opaqueTypeSpecification : List Name -> Specification extra
+opaqueTypeSpecification typeParams =
+    OpaqueTypeSpecification typeParams
 
 
 {-| -}
-customTypeDeclaration : List Name -> Constructors extra -> Declaration extra
-customTypeDeclaration typeParams ctors =
-    CustomTypeDeclaration typeParams ctors
+customTypeSpecification : List Name -> Constructors extra -> Specification extra
+customTypeSpecification typeParams ctors =
+    CustomTypeSpecification typeParams ctors
 
 
 {-| -}
-matchCustomTypeDeclaration : Pattern (List Name) a -> Pattern (Constructors extra) b -> Pattern (Declaration extra) ( a, b )
-matchCustomTypeDeclaration matchTypeParams matchCtors declToMatch =
-    case declToMatch of
-        CustomTypeDeclaration typeParams ctors ->
+matchCustomTypeSpecification : Pattern (List Name) a -> Pattern (Constructors extra) b -> Pattern (Specification extra) ( a, b )
+matchCustomTypeSpecification matchTypeParams matchCtors specToMatch =
+    case specToMatch of
+        CustomTypeSpecification typeParams ctors ->
             Maybe.map2 Tuple.pair
                 (matchTypeParams typeParams)
                 (matchCtors ctors)
@@ -870,23 +870,23 @@ decodeField decodeExtra =
 
 
 {-| -}
-encodeDeclaration : (extra -> Encode.Value) -> Declaration extra -> Encode.Value
-encodeDeclaration encodeExtra decl =
-    case decl of
-        TypeAliasDeclaration params exp ->
+encodeSpecification : (extra -> Encode.Value) -> Specification extra -> Encode.Value
+encodeSpecification encodeExtra spec =
+    case spec of
+        TypeAliasSpecification params exp ->
             Encode.object
                 [ ( "$type", Encode.string "typeAlias" )
                 , ( "params", Encode.list encodeName params )
                 , ( "exp", encodeType encodeExtra exp )
                 ]
 
-        OpaqueTypeDeclaration params ->
+        OpaqueTypeSpecification params ->
             Encode.object
                 [ ( "$type", Encode.string "opaqueType" )
                 , ( "params", Encode.list encodeName params )
                 ]
 
-        CustomTypeDeclaration params ctors ->
+        CustomTypeSpecification params ctors ->
             Encode.object
                 [ ( "$type", Encode.string "customType" )
                 , ( "params", Encode.list encodeName params )

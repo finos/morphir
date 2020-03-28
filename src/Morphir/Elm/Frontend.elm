@@ -322,13 +322,13 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
             modulesSoFar
                 |> Dict.map
                     (\path def ->
-                        Module.definitionToDeclaration def
-                            |> Module.eraseDeclarationExtra
+                        Module.definitionToSpecification def
+                            |> Module.eraseSpecificationExtra
                     )
 
         dependencies =
             Dict.fromList
-                [ ( [ [ "morphir" ], [ "s", "d", "k" ] ], SDK.packageDeclaration )
+                [ ( [ [ "morphir" ], [ "s", "d", "k" ] ], SDK.packageSpec )
                 ]
 
         moduleResolver : ModuleResolver

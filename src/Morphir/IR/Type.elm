@@ -3,7 +3,7 @@ module Morphir.IR.Type exposing
     , variable, reference, tuple, record, extensibleRecord, function, unit
     , matchVariable, matchReference, matchTuple, matchRecord, matchExtensibleRecord, matchFunction, matchUnit
     , Field, field, matchField
-    , Declaration
+    , Specification
     , Definition
     )
 
@@ -30,9 +30,9 @@ module Morphir.IR.Type exposing
 @docs Field, field, matchField
 
 
-# Declaration
+# Specification
 
-@docs Declaration
+@docs Specification
 
 
 # Definition
@@ -72,8 +72,8 @@ type alias Field =
 
 
 {-| -}
-type alias Declaration =
-    Advanced.Declaration ()
+type alias Specification =
+    Advanced.Specification ()
 
 
 {-| -}

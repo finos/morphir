@@ -1,12 +1,12 @@
 module Morphir.IR.Advanced.Package exposing
-    ( Declaration
+    ( Specification
     , Definition, emptyDefinition
-    , definitionToDeclaration, encodeDefinition, eraseDeclarationExtra, eraseDefinitionExtra
+    , definitionToSpecification, encodeDefinition, eraseDefinitionExtra, eraseSpecificationExtra
     )
 
 {-| Tools to work with packages.
 
-@docs Declaration
+@docs Specification
 
 @docs Definition, emptyDefinition
 
@@ -24,15 +24,15 @@ import Morphir.IR.QName exposing (QName, encodeQName)
 import Morphir.ResultList as ResultList
 
 
-{-| Type that represents a package declaration.
+{-| Type that represents a package specification.
 -}
-type alias Declaration extra =
-    { modules : Dict Path (Module.Declaration extra)
+type alias Specification extra =
+    { modules : Dict Path (Module.Specification extra)
     }
 
 
-emptyDeclaration : Declaration extra
-emptyDeclaration =
+emptySpecification : Specification extra
+emptySpecification =
     { modules = Dict.empty
     }
 
@@ -40,7 +40,7 @@ emptyDeclaration =
 {-| Type that represents a package definition.
 -}
 type alias Definition extra =
-    { dependencies : Dict Path (Declaration extra)
+    { dependencies : Dict Path (Specification extra)
     , modules : Dict Path (AccessControlled (Module.Definition extra))
     }
 
@@ -54,8 +54,8 @@ emptyDefinition =
     }
 
 
-definitionToDeclaration : Definition extra -> Declaration extra
-definitionToDeclaration def =
+definitionToSpecification : Definition extra -> Specification extra
+definitionToSpecification def =
     { modules =
         def.modules
             |> Dict.toList
@@ -65,53 +65,53 @@ definitionToDeclaration def =
                         |> withPublicAccess
                         |> Maybe.map
                             (\moduleDef ->
-                                ( path, Module.definitionToDeclaration moduleDef )
+                                ( path, Module.definitionToSpecification moduleDef )
                             )
                 )
             |> Dict.fromList
     }
 
 
-mapDeclaration : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Declaration a -> Result (List e) (Declaration b)
-mapDeclaration mapType mapValue decl =
+mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Specification a -> Result (List e) (Specification b)
+mapSpecification mapType mapValue spec =
     let
-        modulesResult : Result (List e) (Dict Path (Module.Declaration b))
+        modulesResult : Result (List e) (Dict Path (Module.Specification b))
         modulesResult =
-            decl.modules
+            spec.modules
                 |> Dict.toList
                 |> List.map
-                    (\( modulePath, moduleDecl ) ->
-                        moduleDecl
-                            |> Module.mapDeclaration mapType mapValue
+                    (\( modulePath, moduleSpec ) ->
+                        moduleSpec
+                            |> Module.mapSpecification mapType mapValue
                             |> Result.map (Tuple.pair modulePath)
                     )
                 |> ResultList.toResult
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in
-    Result.map Declaration modulesResult
+    Result.map Specification modulesResult
 
 
-eraseDeclarationExtra : Declaration a -> Declaration ()
-eraseDeclarationExtra decl =
-    decl
-        |> mapDeclaration
+eraseSpecificationExtra : Specification a -> Specification ()
+eraseSpecificationExtra spec =
+    spec
+        |> mapSpecification
             (Type.mapTypeExtra (\_ -> ()) >> Ok)
             (Value.mapValueExtra (\_ -> ()))
-        |> Result.withDefault emptyDeclaration
+        |> Result.withDefault emptySpecification
 
 
 mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Definition a -> Result (List e) (Definition b)
 mapDefinition mapType mapValue def =
     let
-        dependenciesResult : Result (List e) (Dict Path (Declaration b))
+        dependenciesResult : Result (List e) (Dict Path (Specification b))
         dependenciesResult =
             def.dependencies
                 |> Dict.toList
                 |> List.map
-                    (\( packagePath, packageDecl ) ->
-                        packageDecl
-                            |> mapDeclaration mapType mapValue
+                    (\( packagePath, packageSpec ) ->
+                        packageSpec
+                            |> mapSpecification mapType mapValue
                             |> Result.map (Tuple.pair packagePath)
                     )
                 |> ResultList.toResult
@@ -147,17 +147,17 @@ eraseDefinitionExtra def =
         |> Result.withDefault emptyDefinition
 
 
-encodeDeclaration : (extra -> Encode.Value) -> Declaration extra -> Encode.Value
-encodeDeclaration encodeExtra decl =
+encodeSpecification : (extra -> Encode.Value) -> Specification extra -> Encode.Value
+encodeSpecification encodeExtra spec =
     Encode.object
         [ ( "modules"
-          , decl.modules
+          , spec.modules
                 |> Dict.toList
                 |> Encode.list
-                    (\( moduleName, moduleDecl ) ->
+                    (\( moduleName, moduleSpec ) ->
                         Encode.object
                             [ ( "name", encodePath moduleName )
-                            , ( "decl", Module.encodeDeclaration encodeExtra moduleDecl )
+                            , ( "spec", Module.encodeSpecification encodeExtra moduleSpec )
                             ]
                     )
           )
@@ -171,10 +171,10 @@ encodeDefinition encodeExtra def =
           , def.dependencies
                 |> Dict.toList
                 |> Encode.list
-                    (\( packageName, packageDecl ) ->
+                    (\( packageName, packageSpec ) ->
                         Encode.object
                             [ ( "name", encodePath packageName )
-                            , ( "decl", encodeDeclaration encodeExtra packageDecl )
+                            , ( "spec", encodeSpecification encodeExtra packageSpec )
                             ]
                     )
           )

@@ -2,7 +2,7 @@ module Morphir.IR.SDK.Char exposing (..)
 
 import Dict
 import Morphir.IR.Advanced.Module as Module
-import Morphir.IR.Advanced.Type exposing (Declaration(..), Type(..))
+import Morphir.IR.Advanced.Type exposing (Specification(..), Type(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path exposing (Path)
@@ -15,11 +15,11 @@ moduleName =
     [ [ "char" ] ]
 
 
-moduleDeclaration : Module.Declaration ()
-moduleDeclaration =
+moduleSpec : Module.Specification ()
+moduleSpec =
     { types =
         Dict.fromList
-            [ ( [ "char" ], OpaqueTypeDeclaration [] )
+            [ ( [ "char" ], OpaqueTypeSpecification [] )
             ]
     , values =
         Dict.empty
