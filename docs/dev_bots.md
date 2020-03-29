@@ -1,0 +1,8 @@
+# Dev Bots
+The premis of Dev Bots is that we can and should automate a significant portion of the code that we currently write by hand. 
+
+Consider the portion of an application's code that is of no direct business value.  This includes things like persistence and ORM, interprocess communication, platform-specific code, object wiring, and more.  We need this code to make our applications run, but it is of no direct business value. A large portion of this non-business code comes in the form of recipes to follow or "best practices" templates.  In fact, most of it is very templated.  The fact that it takes up the majority of our applications often reduces us to human code robots.  We often refer to this code as boilerplate, and it is highly amenable to automation.
+
+We can also look into automating certain aspects of business code. Much of that code follows templates and best practices.  This is so much so there are an abundance of tools that process code for quality and conformance to rules.  These tools ensure that the code that developers write fit into a small window of variability. Again, developers are reduced to human code robots. You have to wonder: *If we have such sofisticated tools that automatically ensure that all of our code conforms to a limited set of templates after the code is written, why don't we have tools that automatically write the code to those specifications in the first place?*  The answer is that we can.
+
+This is what Morphir Dev Bots do.  They automate the production of all of the boilerplate and templated code and let developers focus on what they do best: Provide the bridge the business and computer worlds.

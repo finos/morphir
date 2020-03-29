@@ -1,10 +1,10 @@
 # Automating RegTech
 
-There are a number of highly regulated industries that must adhere to complex regulations from various regulatory bodies.  These often come in the form of lengthy documents that can be arcane, ambiguous, and expensive to interpret into computer code.  It's even more expensive to adapt these regulations to a firm's internal systems.  There is no competitive advantage for firms in mastering these regulations separately, so it would be mutually beneficial to have a single shared model. The shared model could contain verification and comprehensive testing to ensure compliance.  
+There are a number of highly regulated industries that must adhere to complex regulations from various regulatory bodies.  These often come in the form of lengthy documents that can be arcane, ambiguous, and expensive to interpret into computer code.  It's even more expensive to adapt these regulations to a firm's internal systems.  There is no competitive advantage for firms in processing these regulations separately, so it would be mutually beneficial to codify and test the rules once across all firms.
 
-There have been attempts to do so by providing libraries.  The challenge with this approach is that these libraries don't work with firms' existing systems.  So in order to use them they would need to invest significantly in building new systems.
+There have been attempts to do so using shared libraries.  The challenge with this approach is that these libraries don't work natively across the complexities of each firm's existing systems.  In  order to use them they would need to invest significantly to build new systems that use the shared libraries.  Another issue is that technology advances quickly and an optimal solution at any point in time is not likely to be the best solution in a short time.
 
-There is an alternative.  If regulations were codified in a declarative model that could be processed, like with Morphir, then that would enable firms to create processors to adapt the models into their own systems. In that way they get the advantage of a codified, unambiguous, and verifiable model while still retaining their existing systems.
+There is an alternative.  If regulations were codified in a declarative model that could be cross-compiled to run in different exeuction contexts, then that would enable firms to create their own processors to translate the model to work in their systems. In that way they get the advantage of a codified, unambiguous, and verifiable model while still retaining their existing systems.  Morphir provides exaclty this capability by providing tools to project a unified model into various execution contexts.
 
 # Use case: US LCR
 The [US Liquidity Coverage Ratio](https://en.wikipedia.org/wiki/Basel_III#US_version_of_the_Basel_Liquidity_Coverage_Ratio_requirements) is a required report for certain banks and systemically important financial institutions.  It's definition can be found at [https://www.govinfo.gov/content/pkg/FR-2014-10-10/pdf/2014-22520.pdf](https://www.govinfo.gov/content/pkg/FR-2014-10-10/pdf/2014-22520.pdf).  It's complex enough that the there are accompanying documents and samples that attempt to clarify it.  Ultimately it's a set of calculations that can be defined concisely and unambiguously in a concise and unambiguous programming language.
@@ -73,24 +73,7 @@ level2aLiquidAssetsThatAreEligibleHQLA =
         |> List.sum
 ```
 
-It's pretty easy to see that this takes a collection, filters it, then sums the "amount" of the remaining.  The important point to note here is that we're letting the model know of a collection while also leaving the implementation entirely undefined.  This allows us to process this model into a variety of execution contexts.  For example the above model could be translated to:
-
-**SQL**
-```sql
-select sum amount
-from t0_flows tf
-where tf.assetType = 'Level 2a Assets' and tf.isHQLA = 'T'
-```
-
-**Spark Scala**
-```scala
-t0Flows
-    .filter {flow => flow.assetType == Level2aAssets && isHQLA(product, flow)}
-    .map (_.amount)
-    .sum
-```
-
-You can see in the examples that the generated code makes some assumptions about the physical environment.  These are the things that are likely to be very different across firms.  The value of modeling is that each firm can customize the code generation to match their own environments.
+It's pretty easy to see that this takes a collection, filters it, then sums the "amount" of the remaining.  The important point to note here is that we're letting the model know of a collection while also leaving the implementation entirely undefined.  This allows us to process this model into a variety of execution contexts. 
 
 ## Modeling structures
 The previous example contained a collection name t0Flows.  We can see from the example that it has  assetType and amount fields.  In fact, this is defined in the spec as a cash flow, which contains a few other fields.  At this point in our modeling, we have a couple of options.  We can either use a single common structure throughout the model, even when large portions of the app don't require all of those fields or we can create multiple structures that are more aligned with the usage.  Since the LCR actually defines a cash flow, we'll go with the first option since it matches the language of the business.  The cash flow is defined as:
@@ -128,4 +111,32 @@ It's worth noting that there are languages that provide even more guarantees, li
 
 [TODO] show examples of catching errors
 
+The OCC helpfully provided some test examples that we can also use to verify our models.  We've done so in the form of unit tests on our Elm code.
+
+[TODO] show unit test sample...
+
 # Using automation to adapt the model to your systems
+Now that we've ensured that our model of the LCR is correct, we want to turn it into code that can execute in our systems.  For this purpose, we'll assume that the regulatory reporting data is currently housed in a SQL data warehouse.  Let's take a look at how the sample above translates to SQL.
+
+```sql
+select sum amount
+from t0_flows tf
+where tf.assetType = 'Level 2a Assets' and tf.isHQLA = 'T'
+```
+You can see in the examples that the generated code makes some assumptions about the physical environment.  These are the things that are likely to be very different across firms.  The value of modeling is that each firm can customize the code generation to match their own environments.
+
+Of course, it's naive to think that the full LCR calculation would be able to execute entirely in a data warehouse.  In fact, many firms are migrating these calculations to new technologies like Spark. Doing a large scale migration of a report like the LCR to a new technology is usually a significant and risky effort. On the other hand, if you're running from a model, it's just a matter of switching to a new backend generator. While that's not trivial, it sure is a good deal easier, cheaper, and less risky that rewriting the entire calcultion from scratch.  Let's take a look at the Spark version of our sample:
+
+**Spark Scala**
+```scala
+t0Flows
+    .filter {flow => flow.assetType == Level2aAssets && isHQLA(product, flow)}
+    .map (_.amount)
+    .sum
+```
+
+## Summing up
+We've seen how using an industry standard RegTech can save an industry valuable time, effort, and risk.  We've also seen that doing so with a shared model allows firms to adopt RegTech without the costly exercise of rewriting their systems.  Finally, we've seen how capturing regulations in a technology-agnostic model can ease migration to new technologies.  
+
+To view the entire LCR example, take a look at [the Morphir Examples project](../../morphir-examples/src/Morphir/LCR).  For generating SQL and Spark from Morphir models, be sure to keep an eye out for the upcoming **morphir-sql** and **morphir-spark** projects.
+
