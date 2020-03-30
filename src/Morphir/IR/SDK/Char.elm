@@ -1,4 +1,4 @@
-module Morphir.IR.SDK.Int exposing (..)
+module Morphir.IR.SDK.Char exposing (..)
 
 import Dict
 import Morphir.IR.FQName as FQName exposing (FQName)
@@ -12,14 +12,14 @@ import Morphir.IR.Type exposing (Specification(..), Type(..))
 
 moduleName : Path
 moduleName =
-    [ [ "int" ] ]
+    [ [ "char" ] ]
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( [ "int" ], OpaqueTypeSpecification [] )
+            [ ( [ "char" ], OpaqueTypeSpecification [] )
             ]
     , values =
         Dict.empty
@@ -34,6 +34,6 @@ fromLocalName name =
         |> FQName.fromQName packageName
 
 
-intType : extra -> Type extra
-intType extra =
-    Reference (fromLocalName "int") [] extra
+charType : extra -> Type extra
+charType extra =
+    Reference (fromLocalName "char") [] extra

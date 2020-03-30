@@ -6,12 +6,12 @@ import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Range exposing (emptyRange)
 import Json.Encode as Encode
-import Morphir.IR.Advanced.Module as Module
-import Morphir.IR.Advanced.Package as Package
-import Morphir.IR.Advanced.Type as Type
 import Morphir.IR.FQName exposing (FQName, fQName)
+import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.Type as Type
 import Morphir.JsonExtra as JsonExtra
 import Morphir.Pattern exposing (matchAny)
 import Set exposing (Set)
@@ -111,18 +111,20 @@ defaultImports =
                 )
     in
     [ importExplicit [ "Morphir", "SDK", "Bool" ] Nothing [ TypeOrAliasExpose "Bool" ]
+    , importExplicit [ "Morphir", "SDK", "Char" ] Nothing [ TypeOrAliasExpose "Char" ]
     , importExplicit [ "Morphir", "SDK", "Int" ] Nothing [ TypeOrAliasExpose "Int" ]
     , importExplicit [ "Morphir", "SDK", "Float" ] Nothing [ TypeOrAliasExpose "Float" ]
     , importExplicit [ "Morphir", "SDK", "String" ] Nothing [ TypeOrAliasExpose "String" ]
     , importExplicit [ "Morphir", "SDK", "Maybe" ] Nothing [ TypeOrAliasExpose "Maybe" ]
+    , importExplicit [ "Morphir", "SDK", "Result" ] Nothing [ TypeOrAliasExpose "Result" ]
     , importExplicit [ "Morphir", "SDK", "List" ] Nothing [ TypeOrAliasExpose "List" ]
     ]
 
 
-createPackageResolver : Dict Path (Package.Declaration a) -> Path -> Dict Path (Module.Declaration a) -> PackageResolver
+createPackageResolver : Dict Path (Package.Specification a) -> Path -> Dict Path (Module.Specification a) -> PackageResolver
 createPackageResolver dependencies currentPackagePath currentPackageModules =
     let
-        lookupModule : Path -> Path -> Result Error (Module.Declaration a)
+        lookupModule : Path -> Path -> Result Error (Module.Specification a)
         lookupModule packagePath modulePath =
             let
                 modulesResult =
@@ -163,7 +165,7 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                             |> Result.map
                                 (\typeDecl ->
                                     typeDecl
-                                        |> Type.matchCustomTypeDeclaration matchAny matchAny
+                                        |> Type.matchCustomTypeSpecification matchAny matchAny
                                         |> Maybe.map
                                             (\( _, ctors ) ->
                                                 ctors

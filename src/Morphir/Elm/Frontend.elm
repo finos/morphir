@@ -13,17 +13,17 @@ import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.DAG as DAG exposing (DAG)
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, PackageResolver)
-import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, private, public)
-import Morphir.IR.Advanced.Module as Module
-import Morphir.IR.Advanced.Package as Package
-import Morphir.IR.Advanced.Type as Type exposing (Type)
-import Morphir.IR.Advanced.Value as Value exposing (Value)
+import Morphir.Graph as Graph exposing (Graph)
+import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.FQName as FQName exposing (FQName, fQName)
+import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK as SDK
+import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Value as Value exposing (Value)
 import Morphir.JsonExtra as JsonExtra
 import Morphir.ResultList as ResultList
 import Morphir.Rewrite as Rewrite
@@ -124,7 +124,7 @@ type alias Errors =
 
 type Error
     = ParseError String (List Parser.DeadEnd)
-    | CyclicModules (DAG (List String))
+    | CyclicModules (Graph (List String))
     | ResolveError SourceLocation Resolve.Error
 
 
@@ -180,6 +180,41 @@ packageDefinitionFromSource packageInfo sourceFiles =
                     )
                 |> ResultList.toResult
 
+        exposedModuleNames : Set ModuleName
+        exposedModuleNames =
+            packageInfo.exposedModules
+                |> Set.map
+                    (\modulePath ->
+                        (packageInfo.name |> Path.toList)
+                            ++ (modulePath |> Path.toList)
+                            |> List.map Name.toTitleCase
+                    )
+
+        treeShakeModules : List ( ModuleName, ParsedFile ) -> List ( ModuleName, ParsedFile )
+        treeShakeModules allModules =
+            let
+                allUsedModules : Set ModuleName
+                allUsedModules =
+                    allModules
+                        |> List.map
+                            (\( moduleName, parsedFile ) ->
+                                ( moduleName
+                                , parsedFile.rawFile
+                                    |> RawFile.imports
+                                    |> List.map (.moduleName >> Node.value)
+                                    |> Set.fromList
+                                )
+                            )
+                        |> Dict.fromList
+                        |> Graph.fromDict
+                        |> Graph.reachableNodes exposedModuleNames
+            in
+            allModules
+                |> List.filter
+                    (\( moduleName, _ ) ->
+                        allUsedModules |> Set.member moduleName
+                    )
+
         sortModules : List ( ModuleName, ParsedFile ) -> Result Errors (List ModuleName)
         sortModules modules =
             let
@@ -195,10 +230,10 @@ packageDefinitionFromSource packageInfo sourceFiles =
                                 )
                             )
                         |> Dict.fromList
-                        |> DAG.fromDict
-                        |> DAG.topologicalSort
+                        |> Graph.fromDict
+                        |> Graph.topologicalSort
             in
-            if DAG.isEmpty cycles then
+            if Graph.isEmpty cycles then
                 Ok sortedModules
 
             else
@@ -212,7 +247,9 @@ packageDefinitionFromSource packageInfo sourceFiles =
                         parsedFiles
                             |> Dict.fromList
                 in
-                sortModules parsedFiles
+                parsedFiles
+                    |> treeShakeModules
+                    |> sortModules
                     |> Result.andThen (mapParsedFiles packageInfo.name parsedFilesByModuleName)
             )
         |> Result.map
@@ -220,14 +257,23 @@ packageDefinitionFromSource packageInfo sourceFiles =
                 { dependencies = Dict.empty
                 , modules =
                     moduleDefs
-                        |> Dict.map
-                            (\modulePath m ->
-                                if packageInfo.exposedModules |> Set.member modulePath then
-                                    public m
+                        |> Dict.toList
+                        |> List.map
+                            (\( modulePath, m ) ->
+                                let
+                                    packageLessModulePath =
+                                        modulePath
+                                            |> Path.toList
+                                            |> List.drop (packageInfo.name |> Path.toList |> List.length)
+                                            |> Path.fromList
+                                in
+                                if packageInfo.exposedModules |> Set.member packageLessModulePath then
+                                    ( packageLessModulePath, public m )
 
                                 else
-                                    private m
+                                    ( packageLessModulePath, private m )
                             )
+                        |> Dict.fromList
                 }
             )
 
@@ -276,13 +322,13 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
             modulesSoFar
                 |> Dict.map
                     (\path def ->
-                        Module.definitionToDeclaration def
-                            |> Module.eraseDeclarationExtra
+                        Module.definitionToSpecification def
+                            |> Module.eraseSpecificationExtra
                     )
 
         dependencies =
             Dict.fromList
-                [ ( [ [ "morphir" ], [ "s", "d", "k" ] ], SDK.packageDeclaration )
+                [ ( [ [ "morphir" ], [ "s", "d", "k" ] ], SDK.packageSpec )
                 ]
 
         moduleResolver : ModuleResolver
