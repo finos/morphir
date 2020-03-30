@@ -66,7 +66,7 @@ const saveState =
     async function (keyJson, stateJson, stateStoreUrl) {
         nextState =
             [{
-                key: JSON.stringify(keyJson),
+                key: keyJson,
                 value: stateJson
             }]
         const resp =

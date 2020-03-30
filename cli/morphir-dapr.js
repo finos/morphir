@@ -12,13 +12,13 @@ const writeFile = util.promisify(fs.writeFile)
 const commander = require('commander')
 
 // Elm imports
-const worker = require('./Morphir.Elm.GenCLI').Elm.Morphir.Elm.GenCLI.init()
+const worker = require('./Morphir.Elm.DaprCLI').Elm.Morphir.Elm.DaprCLI.init()
 
 // Set up Commander
 const program = new commander.Command()
 program
-    .name('morphir-elm gen')
-    .description('Translate Elm sources to a Dapr sources')
+    .name('morphir-dapr ')
+    .description('Generate Dapr Application from Morphir Model')
     .option('-p, --project-dir <path>', 'Root directory of the project where morphir-dapr.json is located.', '.')
     .option('-o, --output <path>', 'Target location where the Dapr sources will be sent. Defaults to STDOUT.')
     .parse(process.argv)
@@ -47,7 +47,7 @@ async function gen(projectDir, output) {
     const result = await packageDefAndDaprCodeFromSrc(morphirJson, sourceFiles)
     if (output) {
         console.log(`Writing file ${output}.`)
-        await writeFile(output, JSON.stringify(result, null, 4))
+        await writeFile(output, result.elmBackendResult)
     } else {
         console.log(JSON.stringify(result.elmBackendResult))
     }

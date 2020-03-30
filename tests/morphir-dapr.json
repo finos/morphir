@@ -2,6 +2,6 @@
     "name": "morphir",
     "sourceDirectories": ["tests/Morphir/Dapr", "src/Morphir/SDK"],
     "exposedModules": [
-        "Morphir.Dapr.Example"
+        "Morphir.Dapr.Input.Example"
     ]
 }

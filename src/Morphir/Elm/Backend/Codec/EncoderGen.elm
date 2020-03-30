@@ -5,7 +5,6 @@ import Elm.Syntax.Expression exposing (Case, Expression(..), Function, FunctionI
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node exposing (Node(..))
 import Elm.Syntax.Pattern exposing (Pattern(..), QualifiedNameRef)
-import Elm.Syntax.Range exposing (emptyRange)
 import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Advanced.Type exposing (Constructor, Definition(..), Field, Type(..), record)
@@ -14,8 +13,8 @@ import Morphir.IR.Name as Name exposing (Name, fromString, toCamelCase, toTitleC
 import Morphir.IR.Path as Path exposing (toString)
 
 
-typeDefToEncoder : extra -> Name -> AccessControlled (Definition extra) -> Declaration
-typeDefToEncoder e typeName typeDef =
+typeDefToEncoder : Name -> AccessControlled (Definition ()) -> Declaration
+typeDefToEncoder typeName typeDef =
     let
         function : Function
         function =
@@ -80,7 +79,7 @@ typeDefToEncoder e typeName typeDef =
 
                                         ctor :: [] ->
                                             ctor
-                                                |> constructorToRecord e
+                                                |> constructorToRecord
                                                 |> typeToEncoder False [ Tuple.first ctor ]
 
                                         ctors ->
@@ -95,7 +94,7 @@ typeDefToEncoder e typeName typeDef =
                                                 cases : List ( Node Pattern, Node Expression )
                                                 cases =
                                                     let
-                                                        ctorToPatternExpr : Constructor extra -> ( Node Pattern, Node Expression )
+                                                        ctorToPatternExpr : Constructor () -> ( Node Pattern, Node Expression )
                                                         ctorToPatternExpr ctor =
                                                             let
                                                                 pattern : Pattern
@@ -105,8 +104,8 @@ typeDefToEncoder e typeName typeDef =
                                                                 expr : Expression
                                                                 expr =
                                                                     ctor
-                                                                        |> constructorToRecord e
-                                                                        |> typeToEncoder True [ Tuple.first ctor ]
+                                                                        |> constructorToRecord
+                                                                        |> typeToEncoder False [ Tuple.first ctor ]
                                                                         |> customTypeTopExpr
                                                             in
                                                             ( Utils.emptyRangeNode pattern, Utils.emptyRangeNode expr )
@@ -132,7 +131,7 @@ typeDefToEncoder e typeName typeDef =
     TODO: Capture Elm's primitive types in the SDK
 
 -}
-typeToEncoder : Bool -> List Name -> Type extra -> Expression
+typeToEncoder : Bool -> List Name -> Type () -> Expression
 typeToEncoder fwdNames varName tpe =
     case tpe of
         Reference fqName typeArgs _ ->
@@ -140,6 +139,11 @@ typeToEncoder fwdNames varName tpe =
                 FQName _ _ [ "int" ] ->
                     elmJsonEncoderApplication
                         (elmJsonEncoderFunction "int")
+                        (varPathToExpr varName)
+
+                FQName _ _ [ "float" ] ->
+                    elmJsonEncoderApplication
+                        (elmJsonEncoderFunction "float")
                         (varPathToExpr varName)
 
                 FQName _ _ [ "string" ] ->
@@ -207,7 +211,7 @@ typeToEncoder fwdNames varName tpe =
                     else
                         [ name ]
 
-                fieldEncoder : Field extra -> Expression
+                fieldEncoder : Field () -> Expression
                 fieldEncoder field =
                     TupledExpression
                         [ field.name |> Name.toCamelCase |> Literal |> Utils.emptyRangeNode
@@ -256,7 +260,7 @@ elmJsonEncoderModuleName =
     [ "E" ]
 
 
-deconsPattern : Name -> List ( Name, Type extra ) -> Pattern
+deconsPattern : Name -> List ( Name, Type () ) -> Pattern
 deconsPattern ctorName fields =
     let
         consVars : List (Node Pattern)
@@ -272,15 +276,15 @@ deconsPattern ctorName fields =
         consVars
 
 
-constructorToRecord : extra -> Constructor extra -> Type extra
-constructorToRecord e ( _, types ) =
+constructorToRecord : Constructor () -> Type ()
+constructorToRecord ( _, types ) =
     let
-        fields : List (Morphir.IR.Advanced.Type.Field extra)
+        fields : List (Morphir.IR.Advanced.Type.Field ())
         fields =
             types
                 |> List.map (\t -> Field (Tuple.first t) (Tuple.second t))
     in
-    record fields e
+    record fields ()
 
 
 customTypeTopExpr : Expression -> Expression

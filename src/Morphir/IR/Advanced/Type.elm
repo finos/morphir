@@ -8,7 +8,7 @@ module Morphir.IR.Advanced.Type exposing
     , Constructors
     , fuzzType
     , encodeType, decodeType, encodeDeclaration, encodeDefinition
-    , Constructor, definitionToDeclaration, mapDeclaration, mapDefinition, mapTypeExtra, rewriteType
+    , Constructor, definitionToDeclaration, eraseExtra, mapDeclaration, mapDefinition, mapTypeExtra, rewriteType
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -262,6 +262,33 @@ typeExtra tpe =
 
         Unit extra ->
             extra
+
+
+eraseExtra : Definition extra -> Definition ()
+eraseExtra typeDef =
+    case typeDef of
+        TypeAliasDefinition typeVars tpe ->
+            TypeAliasDefinition typeVars (mapTypeExtra (\_ -> ()) tpe)
+
+        CustomTypeDefinition typeVars acsCtrlConstructors ->
+            let
+                eraseExtraCtor : Constructor extra -> Constructor ()
+                eraseExtraCtor ( name, types ) =
+                    let
+                        extraErasedTypes : List ( Name, Type () )
+                        extraErasedTypes =
+                            types
+                                |> List.map (\( n, t ) -> ( n, mapTypeExtra (\_ -> ()) t ))
+                    in
+                    ( name, extraErasedTypes )
+
+                emptyExtraCtors : AccessControlled (Constructors extra) -> AccessControlled (Constructors ())
+                emptyExtraCtors acsCtrlCtors =
+                    AccessControlled.map
+                        (\ctors -> ctors |> List.map eraseExtraCtor)
+                        acsCtrlCtors
+            in
+            CustomTypeDefinition typeVars (emptyExtraCtors acsCtrlConstructors)
 
 
 {-| Creates a type variable.

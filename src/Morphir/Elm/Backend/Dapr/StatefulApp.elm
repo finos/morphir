@@ -1,4 +1,4 @@
-module Morphir.Elm.Backend.Dapr.Stateful.ElmGen exposing (..)
+module Morphir.Elm.Backend.Dapr.StatefulApp exposing (..)
 
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing exposing (Exposing(..))
@@ -10,27 +10,29 @@ import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node exposing (Node)
 import Elm.Syntax.Pattern exposing (Pattern(..))
 import Elm.Syntax.Range as Range exposing (emptyRange)
+import Elm.Syntax.Signature exposing (Signature)
 import Elm.Syntax.TypeAnnotation exposing (RecordDefinition, RecordField, TypeAnnotation(..))
 import Elm.Writer
 import Morphir.Elm.Backend.Codec.DecoderGen as DecoderGen exposing (typeDefToDecoder)
 import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen exposing (typeDefToEncoder)
 import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
 import Morphir.Elm.Frontend as Frontend exposing (ContentLocation, ContentRange, SourceFile, SourceLocation, mapDeclarationsToType)
-import Morphir.IR.Advanced.Type exposing (Field, Type(..))
+import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, map)
+import Morphir.IR.Advanced.Type as Type exposing (Definition(..), Field, Type(..), eraseExtra)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name, toCamelCase)
 import Morphir.IR.Path exposing (Path)
 
 
-gen : Path -> Name -> Type extra -> Maybe File
-gen modPath appName appType =
+gen : Path -> Name -> Type () -> List ( Name, AccessControlled (Type.Definition ()) ) -> Maybe File
+gen modPath appName appType otherTypeDefs =
     case appType of
         Reference (FQName [ [ "morphir" ] ] [ [ "s", "d", "k" ], [ "stateful", "app" ] ] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) _ ->
             let
                 moduleDef : Module
                 moduleDef =
                     PortModule
-                        { moduleName = [ "Test" ] |> Utils.emptyRangeNode
+                        { moduleName = [ "Main" ] |> Utils.emptyRangeNode
                         , exposingList = All Range.emptyRange |> Utils.emptyRangeNode
                         }
 
@@ -41,23 +43,41 @@ gen modPath appName appType =
                     , makeSimpleImport (modPath |> List.map Name.toTitleCase) Nothing |> Utils.emptyRangeNode
                     ]
 
+                innerDecoders : List Declaration
+                innerDecoders =
+                    otherTypeDefs
+                        |> List.map (\( tName, tDef ) -> DecoderGen.typeDefToDecoder tName tDef)
+
+                innerEncoders : List Declaration
+                innerEncoders =
+                    otherTypeDefs
+                        |> List.map (\( tName, tDef ) -> EncoderGen.typeDefToEncoder tName tDef)
+
                 decls : List (Node Declaration)
                 decls =
-                    [ incomingPortDecl
-                    , outgoingPortDecl
-                    , mainDecl
-                    , incomingMsgTypeAliasDecl keyType stateType cmdType
-                    , outgoingMsgTypeAliasDecl keyType stateType eventType
-                    , msgDecoderDecl keyType stateType cmdType
-                    , decodeMsgDecl
-                    , encodeStateEventDecl keyType stateType eventType
-                    , initDecl
-                    , updateDecl appName
-                    , subscriptions
-                    ]
+                    ([ incomingPortDecl
+                     , outgoingPortDecl
+                     , mainDecl
+                     , incomingMsgTypeAliasDecl keyType stateType cmdType
+                     , outgoingMsgTypeAliasDecl keyType stateType eventType
+                     , msgDecoderDecl keyType stateType cmdType
+                     , decodeMsgDecl
+                     , encodeStateEventDecl keyType stateType eventType
+                     , initDecl
+                     , updateDecl appName
+                     , subscriptions
+                     ]
+                        ++ innerDecoders
+                        ++ innerEncoders
+                    )
                         |> List.map Utils.emptyRangeNode
             in
-            File (moduleDef |> Utils.emptyRangeNode) imports decls [] |> Just
+            File
+                (moduleDef |> Utils.emptyRangeNode)
+                imports
+                decls
+                []
+                |> Just
 
         _ ->
             Nothing
@@ -84,7 +104,7 @@ incomingPortDecl =
                         |> Utils.emptyRangeNode
                     )
                     (Typed
-                        (( [], "Msg" ) |> Utils.emptyRangeNode)
+                        (( [], "msg" ) |> Utils.emptyRangeNode)
                         []
                         |> Utils.emptyRangeNode
                     )
@@ -144,10 +164,10 @@ mainDecl =
         )
 
 
-incomingMsgTypeAliasDecl : Type extra -> Type extra -> Type extra -> Declaration
+incomingMsgTypeAliasDecl : Type () -> Type () -> Type () -> Declaration
 incomingMsgTypeAliasDecl keyType stateType cmdType =
     let
-        msgField : String -> Type extra -> RecordField
+        msgField : String -> Type () -> RecordField
         msgField fieldName tpe =
             ( fieldName |> Utils.emptyRangeNode
             , Typed
@@ -172,7 +192,7 @@ incomingMsgTypeAliasDecl keyType stateType cmdType =
         }
 
 
-outgoingMsgTypeAliasDecl : Type extra -> Type extra -> Type extra -> Declaration
+outgoingMsgTypeAliasDecl : Type () -> Type () -> Type () -> Declaration
 outgoingMsgTypeAliasDecl keyType stateType eventType =
     let
         typeAnn : TypeAnnotation
@@ -203,13 +223,10 @@ outgoingMsgTypeAliasDecl keyType stateType eventType =
         }
 
 
-
---msgDecoderDecl : Type extra -> Type extra -> Maybe Declaration
-
-
-msgDecoderDecl : Type extra -> Type extra -> Type extra -> Declaration
+msgDecoderDecl : Type () -> Type () -> Type () -> Declaration
 msgDecoderDecl keyType stateType cmdType =
     let
+        morphirTypeDef : Result Frontend.Errors (List ( Name, AccessControlled (Definition SourceLocation) ))
         morphirTypeDef =
             Frontend.mapDeclarationsToType
                 emptySourceFile
@@ -218,7 +235,9 @@ msgDecoderDecl keyType stateType cmdType =
     in
     case morphirTypeDef of
         Ok (( typeName, typeDef ) :: []) ->
-            DecoderGen.typeDefToDecoder emptySourceLocation typeName typeDef
+            DecoderGen.typeDefToDecoder
+                typeName
+                (typeDef |> AccessControlled.map eraseExtra)
 
         _ ->
             emptyDecl
@@ -299,7 +318,7 @@ decodeMsgDecl =
     FunctionDeclaration func
 
 
-encodeStateEventDecl : Type extra -> Type extra -> Type extra -> Declaration
+encodeStateEventDecl : Type () -> Type () -> Type () -> Declaration
 encodeStateEventDecl keyType stateType eventType =
     let
         morphirTypeDef =
@@ -310,7 +329,7 @@ encodeStateEventDecl keyType stateType eventType =
     in
     case morphirTypeDef of
         Ok (( typeName, typeDef ) :: []) ->
-            EncoderGen.typeDefToEncoder emptySourceLocation typeName typeDef
+            EncoderGen.typeDefToEncoder typeName (typeDef |> AccessControlled.map eraseExtra)
 
         _ ->
             emptyDecl
@@ -322,13 +341,41 @@ initDecl =
         func : Function
         func =
             { documentation = Nothing
-            , signature = Nothing
+            , signature = funcSignature |> Utils.emptyRangeNode |> Just
             , declaration = funcImpl |> Utils.emptyRangeNode
+            }
+
+        funcName : String
+        funcName =
+            "init"
+
+        funcSignature : Signature
+        funcSignature =
+            { name = funcName |> Utils.emptyRangeNode
+            , typeAnnotation =
+                FunctionTypeAnnotation
+                    (Elm.Syntax.TypeAnnotation.Unit |> Utils.emptyRangeNode)
+                    (Elm.Syntax.TypeAnnotation.Tupled
+                        ([ Elm.Syntax.TypeAnnotation.Unit
+                         , Elm.Syntax.TypeAnnotation.Typed
+                            (( [], "Cmd" ) |> Utils.emptyRangeNode)
+                            ([ Elm.Syntax.TypeAnnotation.Typed
+                                (( [], "Msg" ) |> Utils.emptyRangeNode)
+                                []
+                             ]
+                                |> List.map Utils.emptyRangeNode
+                            )
+                         ]
+                            |> List.map Utils.emptyRangeNode
+                        )
+                        |> Utils.emptyRangeNode
+                    )
+                    |> Utils.emptyRangeNode
             }
 
         funcImpl : FunctionImplementation
         funcImpl =
-            { name = "init" |> Utils.emptyRangeNode
+            { name = funcName |> Utils.emptyRangeNode
             , arguments = [ AllPattern |> Utils.emptyRangeNode ]
             , expression =
                 TupledExpression
@@ -503,7 +550,7 @@ subscriptions =
     FunctionDeclaration func
 
 
-morphirToElmTypeDef : Type extra -> TypeAnnotation
+morphirToElmTypeDef : Type () -> TypeAnnotation
 morphirToElmTypeDef tpe =
     case tpe of
         Variable name _ ->
@@ -521,11 +568,11 @@ morphirToElmTypeDef tpe =
         Reference (FQName _ _ [ "string" ]) [] _ ->
             Typed (( [], "String" ) |> Utils.emptyRangeNode) []
 
-        Reference (FQName _ modPath tpeName) types _ ->
+        Reference (FQName pkgPath modPath tpeName) types _ ->
             let
                 moduleName : ModuleName
                 moduleName =
-                    modPath |> List.map Name.toTitleCase
+                    pkgPath ++ modPath |> List.map Name.toTitleCase
 
                 typeName : String
                 typeName =
@@ -541,9 +588,9 @@ morphirToElmTypeDef tpe =
                 (( moduleName, typeName ) |> Utils.emptyRangeNode)
                 innerTypes
 
-        Morphir.IR.Advanced.Type.Record fields _ ->
+        Type.Record fields _ ->
             let
-                morphirToElmField : Field extra -> ( Node String, Node TypeAnnotation )
+                morphirToElmField : Field () -> ( Node String, Node TypeAnnotation )
                 morphirToElmField field =
                     ( Name.toCamelCase field.name |> Utils.emptyRangeNode
                     , field.tpe |> morphirToElmTypeDef |> Utils.emptyRangeNode
@@ -641,6 +688,6 @@ test =
 
 testRun : Maybe String
 testRun =
-    gen [ [ "morphir" ], [ "elm" ], [ "backend" ], [ "codec" ], [ "dapr", "example" ] ] (Name.fromString "app") test
+    gen [ [ "morphir" ], [ "elm" ], [ "backend" ], [ "codec" ], [ "dapr", "example" ] ] (Name.fromString "app") test []
         |> Maybe.map Elm.Writer.writeFile
         |> Maybe.map Elm.Writer.write
