@@ -2,6 +2,7 @@ module Morphir.IR.SDK exposing (..)
 
 import Dict
 import Morphir.IR.Package as Package
+import Morphir.IR.Path exposing (Path)
 import Morphir.IR.SDK.Bool as Bool
 import Morphir.IR.SDK.Char as Char
 import Morphir.IR.SDK.Float as Float
@@ -10,6 +11,11 @@ import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Result as Result
 import Morphir.IR.SDK.String as String
+
+
+packageName : Path
+packageName =
+    [ [ "morphir" ], [ "s", "d", "k" ] ]
 
 
 packageSpec : Package.Specification ()

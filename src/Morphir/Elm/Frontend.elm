@@ -328,7 +328,7 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
 
         dependencies =
             Dict.fromList
-                [ ( [ [ "morphir" ], [ "s", "d", "k" ] ], SDK.packageSpec )
+                [ ( SDK.packageName, SDK.packageSpec )
                 ]
 
         moduleResolver : ModuleResolver
