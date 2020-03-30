@@ -24,46 +24,46 @@ frontendTest =
         sourceA =
             { path = "My/Package/A.elm"
             , content =
-                unindent """
-module My.Package.A exposing (..)
-
-import My.Package.B exposing (Bee)
-
-type Foo = Foo Bee
-
-type alias Bar = Foo
-
-type alias Rec =
-    { field1 : Foo
-    , field2 : Bar
-    , field3 : Bool
-    , field4 : Int
-    , field5 : Float
-    , field6 : String
-    , field7 : Maybe Int
-    , field8 : List Float
-    }
-                """
+                String.join "\n"
+                    [ "module My.Package.A exposing (..)"
+                    , ""
+                    , "import My.Package.B exposing (Bee)"
+                    , ""
+                    , "type Foo = Foo Bee"
+                    , ""
+                    , "type alias Bar = Foo"
+                    , ""
+                    , "type alias Rec ="
+                    , "    { field1 : Foo"
+                    , "    , field2 : Bar"
+                    , "    , field3 : Bool"
+                    , "    , field4 : Int"
+                    , "    , field5 : Float"
+                    , "    , field6 : String"
+                    , "    , field7 : Maybe Int"
+                    , "    , field8 : List Float"
+                    , "    }"
+                    ]
             }
 
         sourceB =
             { path = "My/Package/B.elm"
             , content =
-                unindent """
-module My.Package.B exposing (..)
-
-type Bee = Bee
-                """
+                String.join "\n"
+                    [ "module My.Package.B exposing (..)"
+                    , ""
+                    , "type Bee = Bee"
+                    ]
             }
 
         sourceC =
             { path = "My/Package/C.elm"
             , content =
-                unindent """
-module My.Package.C exposing (..)
-
-type Cee = Cee
-                """
+                String.join "\n"
+                    [ "module My.Package.C exposing (..)"
+                    , ""
+                    , "type Cee = Cee"
+                    ]
             }
 
         packageName =
@@ -210,9 +210,3 @@ type Cee = Cee
 --    describe "Values are mapped correctly"
 --        [ checkIR "1" <| Literal (IntLiteral 1) ()
 --        ]
---
-
-
-unindent : String -> String
-unindent text =
-    text
