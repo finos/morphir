@@ -1,6 +1,6 @@
 {
     "name": "Morphir/Dapr/Input",
-    "sourceDirectories": ["tests/Morphir/Dapr", "src/Morphir/SDK"],
+    "sourceDirectories": ["examples/Morphir/Dapr", "src/Morphir/SDK"],
     "exposedModules": [
         "Example"
     ]
