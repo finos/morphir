@@ -1,4 +1,4 @@
-port module Morphir.Elm.GenCLI exposing (main)
+port module Morphir.Elm.DaprCLI exposing (main)
 
 import Dict as Dict exposing (..)
 import Elm.Syntax.Declaration as ElmSyn exposing (Declaration)
@@ -13,15 +13,15 @@ import Json.Encode as Encode
 import Maybe.Extra as MaybeExtra exposing (..)
 import Morphir.Elm.Backend.Codec.DecoderGen as DecoderGen exposing (typeDefToDecoder)
 import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen exposing (typeDefToEncoder)
-import Morphir.Elm.Backend.Dapr.Stateful.ElmGen as Stateful exposing (gen)
+import Morphir.Elm.Backend.Dapr.StatefulApp as StatefulApp exposing (gen)
 import Morphir.Elm.Backend.Utils as Utils exposing (..)
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, decodePackageInfo, encodeError)
-import Morphir.IR.AccessControlled exposing (..)
-import Morphir.IR.Advanced.Module as Module exposing (..)
-import Morphir.IR.Advanced.Package as Package
-import Morphir.IR.Advanced.Type as Type exposing (Definition(..), Type)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.AccessControlled as AccessControlled exposing (..)
+import Morphir.IR.Module as Module exposing (..)
+import Morphir.IR.Name as Name exposing (Name, toCamelCase)
+import Morphir.IR.Package as Package
 import Morphir.IR.Path exposing (Path)
+import Morphir.IR.Type as Type exposing (Definition(..), Type)
 
 
 port packageDefinitionFromSource : (( Decode.Value, List SourceFile ) -> msg) -> Sub msg
@@ -57,16 +57,16 @@ update msg model =
     case msg of
         PackageDefinitionFromSource ( packageInfoJson, sourceFiles ) ->
             case Decode.decodeValue decodePackageInfo packageInfoJson of
-                Ok packageInfo ->
+                Ok pkgInfo ->
                     let
                         packageDefResult : Result Frontend.Errors (Package.Definition ())
                         packageDefResult =
-                            Frontend.packageDefinitionFromSource packageInfo sourceFiles
+                            Frontend.packageDefinitionFromSource pkgInfo sourceFiles
                                 |> Result.map Package.eraseDefinitionExtra
 
                         result =
                             packageDefResult
-                                |> Result.map (\pd -> IrAndElmBackendResult pd (daprSource pd))
+                                |> Result.map (\pkgDef -> IrAndElmBackendResult pkgDef (daprSource pkgInfo.name pkgDef))
                     in
                     ( model, result |> encodeResult (Encode.list encodeError) (Package.encodeDefinition (\_ -> Encode.null)) |> packageDefAndDaprCodeFromSrcResult )
 
@@ -74,43 +74,80 @@ update msg model =
                     ( model, errorMessage |> Decode.errorToString |> decodeError )
 
 
-daprSource : Package.Definition () -> String
-daprSource packageDef =
+type alias AppArgs extra =
+    { appPath : Path
+    , appType : Type extra
+    }
+
+
+type alias StatefulAppArgs extra =
+    { app : AppArgs extra
+    , innerTypes : List ( Name, AccessControlled (Type.Definition ()) )
+    }
+
+
+daprSource : Path -> Package.Definition () -> String
+daprSource pkgPath pkgDef =
     let
         appFiles : List File
         appFiles =
-            packageDef.modules
+            pkgDef.modules
                 |> Dict.toList
-                |> List.map (\( path, modDef ) -> modVals path modDef)
+                |> List.map (\( modPath, modDef ) -> createStatefulAppArgs modPath modDef)
                 |> List.concat
-                |> List.map (\( path, name, tpe ) -> Stateful.gen path name tpe)
+                |> List.map (\statefulAppArgs -> StatefulApp.gen statefulAppArgs.app.appPath (Name.fromString "app") statefulAppArgs.app.appType statefulAppArgs.innerTypes)
                 |> List.map MaybeExtra.toList
                 |> List.concat
 
-        modVals : Path -> AccessControlled (Module.Definition extra) -> List ( Path, Name, Type extra )
-        modVals path acsCtrlModDef =
-            case acsCtrlModDef.access of
-                Public ->
-                    acsCtrlModDef.value.types
-                        |> Dict.toList
-                        |> List.filterMap (\( name, valDef ) -> typedValues path name valDef)
+        createStatefulAppArgs : Path -> AccessControlled (Module.Definition extra) -> List (StatefulAppArgs extra)
+        createStatefulAppArgs modPath acsCtrlModDef =
+            let
+                maybeApp : Maybe (AppArgs extra)
+                maybeApp =
+                    case acsCtrlModDef.access of
+                        Public ->
+                            case acsCtrlModDef.value of
+                                { types, values } ->
+                                    case Dict.get (Name.fromString "app") types of
+                                        Just acsCtrlTypeDef ->
+                                            case acsCtrlTypeDef.access of
+                                                Public ->
+                                                    case acsCtrlTypeDef.value of
+                                                        TypeAliasDefinition _ tpe ->
+                                                            { appPath = pkgPath ++ modPath
+                                                            , appType = tpe
+                                                            }
+                                                                |> Just
 
-                _ ->
-                    []
+                                                        _ ->
+                                                            Nothing
 
-        typedValues : Path -> Name -> AccessControlled (Type.Definition extra) -> Maybe ( Path, Name, Type extra )
-        typedValues path name acsCtrlValDef =
-            case acsCtrlValDef.access of
-                Public ->
-                    case acsCtrlValDef.value of
-                        TypeAliasDefinition _ tpe ->
-                            Just ( path, name, tpe )
+                                                _ ->
+                                                    Nothing
+
+                                        _ ->
+                                            Nothing
 
                         _ ->
                             Nothing
 
-                _ ->
-                    Nothing
+                innerTypes : List ( Name, AccessControlled (Type.Definition ()) )
+                innerTypes =
+                    case acsCtrlModDef.access of
+                        Public ->
+                            case acsCtrlModDef.value of
+                                { types, values } ->
+                                    Dict.remove (Name.fromString "app") types
+                                        |> Dict.map (\_ acsCtrlTypeDef -> AccessControlled.map Type.eraseExtra acsCtrlTypeDef)
+                                        |> Dict.toList
+
+                        Private ->
+                            []
+            in
+            Maybe.map
+                (\app -> { app = app, innerTypes = innerTypes })
+                maybeApp
+                |> MaybeExtra.toList
     in
     appFiles
         |> List.map Writer.writeFile
@@ -156,8 +193,8 @@ elmBackendResult packageDef =
 
 codecs : Name -> AccessControlled (Type.Definition ()) -> List (Node ElmSyn.Declaration)
 codecs typeName acsCtrlTypeDef =
-    [ EncoderGen.typeDefToEncoder () typeName acsCtrlTypeDef |> Utils.emptyRangeNode
-    , DecoderGen.typeDefToDecoder () typeName acsCtrlTypeDef |> Utils.emptyRangeNode
+    [ EncoderGen.typeDefToEncoder typeName acsCtrlTypeDef |> Utils.emptyRangeNode
+    , DecoderGen.typeDefToDecoder typeName acsCtrlTypeDef |> Utils.emptyRangeNode
     ]
 
 

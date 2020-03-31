@@ -4,21 +4,22 @@
   "description": "Elm bindings for Morphir",
   "scripts": {
     "test": "elm-test",
-    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize && elm make src/Morphir/Elm/GenCLI.elm --output Morphir.Elm.GenCLI.js --optimize"
+    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js --optimize"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Morgan-Stanley/morphir-elm.git"
   },
   "bin": {
-    "morphir-elm": "./cli/morphir-elm.js"
+    "morphir-elm": "./cli/morphir-elm.js",
+    "morphir-dapr": "./cli/morphir-dapr.js"
   },
   "files": [
     "cli/morphir-elm.js",
     "cli/morphir-elm-make.js",
-    "cli/morphir-elm-gen.js",
+    "cli/morphir-dapr.js",
     "cli/Morphir.Elm.CLI.js",
-    "cli/Morphir.Elm.GenCLI.js"
+    "cli/Morphir.Elm.DaprCLI.js"
   ],
   "keywords": [
     "morphir",

@@ -11,8 +11,8 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Constructor, Definition(..), Field, Type(..))
 
 
-typeDefToDecoder : extra -> Name -> AccessControlled (Type.Definition extra) -> Declaration
-typeDefToDecoder e typeName accessCtrlTypeDef =
+typeDefToDecoder : Name -> AccessControlled (Type.Definition ()) -> Declaration
+typeDefToDecoder typeName accessCtrlTypeDef =
     let
         decoderVar : Pattern
         decoderVar =
@@ -32,7 +32,7 @@ typeDefToDecoder e typeName accessCtrlTypeDef =
                                             Literal "Opaque types are not supported"
 
                                         ctor :: [] ->
-                                            constructorDecoder e True ctor
+                                            constructorDecoder True ctor
 
                                         ctors ->
                                             let
@@ -43,7 +43,7 @@ typeDefToDecoder e typeName accessCtrlTypeDef =
                                                 listOfPossibleDecoders : Expression
                                                 listOfPossibleDecoders =
                                                     ctors
-                                                        |> List.map (constructorDecoder e False)
+                                                        |> List.map (constructorDecoder False)
                                                         |> List.map Utils.emptyRangeNode
                                                         |> ListExpr
                                             in
@@ -66,8 +66,8 @@ typeDefToDecoder e typeName accessCtrlTypeDef =
         (decoderExpr |> Utils.emptyRangeNode)
 
 
-constructorDecoder : extra -> Bool -> Constructor extra -> Expression
-constructorDecoder e isSingle ( ctorName, fields ) =
+constructorDecoder : Bool -> Constructor () -> Expression
+constructorDecoder isSingle ( ctorName, fields ) =
     case fields of
         [] ->
             Application
@@ -89,7 +89,7 @@ constructorDecoder e isSingle ( ctorName, fields ) =
 
         _ ->
             let
-                ctorFieldToRecField : ( Name, Type extra ) -> Field extra
+                ctorFieldToRecField : ( Name, Type () ) -> Field ()
                 ctorFieldToRecField ( name, tpe ) =
                     Field name tpe
 
@@ -100,28 +100,28 @@ constructorDecoder e isSingle ( ctorName, fields ) =
                     else
                         [ "$type" ]
             in
-            Record (fields |> List.map ctorFieldToRecField) e
+            Record (fields |> List.map ctorFieldToRecField) ()
                 |> typeToDecoder ctorName topLevelFieldNames
 
 
-typeToDecoder : Name -> List String -> Type extra -> Expression
+typeToDecoder : Name -> List String -> Type () -> Expression
 typeToDecoder typeName topLevelFieldNames tpe =
     case tpe of
         Reference fqName typeParams _ ->
             case fqName of
-                FQName [] [] [ "string" ] ->
+                FQName _ _ [ "string" ] ->
                     FunctionOrValue decoderModuleName "string"
 
-                FQName [] [] [ "bool" ] ->
+                FQName _ _ [ "bool" ] ->
                     FunctionOrValue decoderModuleName "bool"
 
-                FQName [] [] [ "int" ] ->
+                FQName _ _ [ "int" ] ->
                     FunctionOrValue decoderModuleName "int"
 
-                FQName [] [] [ "float" ] ->
+                FQName _ _ [ "float" ] ->
                     FunctionOrValue decoderModuleName "float"
 
-                FQName [] [] [ "maybe" ] ->
+                FQName _ _ [ "maybe" ] ->
                     let
                         typeParamEncoder =
                             case typeParams of
@@ -144,14 +144,10 @@ typeToDecoder typeName topLevelFieldNames tpe =
                         |> Utils.emptyRangeNode
                         |> ParenthesizedExpression
 
-                FQName [] [] name ->
+                FQName _ _ name ->
                     FunctionOrValue
                         []
                         ("decoder" ++ (name |> Name.toTitleCase))
-
-                _ ->
-                    Literal """Only string bool float
-                    and int primitives are supported"""
 
         Record fields _ ->
             let
@@ -167,7 +163,7 @@ typeToDecoder typeName topLevelFieldNames tpe =
                         |> Name.toTitleCase
                         |> FunctionOrValue []
 
-                fieldDecoder : Name -> Field extra -> Expression
+                fieldDecoder : Name -> Field () -> Expression
                 fieldDecoder _ field =
                     Application <|
                         [ FunctionOrValue decoderModuleName "at" |> Utils.emptyRangeNode
