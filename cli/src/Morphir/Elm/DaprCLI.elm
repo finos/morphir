@@ -17,11 +17,11 @@ import Morphir.Elm.Backend.Dapr.StatefulApp as StatefulApp exposing (gen)
 import Morphir.Elm.Backend.Utils as Utils exposing (..)
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, decodePackageInfo, encodeError)
 import Morphir.IR.AccessControlled as AccessControlled exposing (..)
-import Morphir.IR.Advanced.Module as Module exposing (..)
-import Morphir.IR.Advanced.Package as Package
-import Morphir.IR.Advanced.Type as Type exposing (Definition(..), Type)
+import Morphir.IR.Module as Module exposing (..)
 import Morphir.IR.Name as Name exposing (Name, toCamelCase)
+import Morphir.IR.Package as Package
 import Morphir.IR.Path exposing (Path)
+import Morphir.IR.Type as Type exposing (Definition(..), Type)
 
 
 port packageDefinitionFromSource : (( Decode.Value, List SourceFile ) -> msg) -> Sub msg
@@ -57,16 +57,16 @@ update msg model =
     case msg of
         PackageDefinitionFromSource ( packageInfoJson, sourceFiles ) ->
             case Decode.decodeValue decodePackageInfo packageInfoJson of
-                Ok packageInfo ->
+                Ok pkgInfo ->
                     let
                         packageDefResult : Result Frontend.Errors (Package.Definition ())
                         packageDefResult =
-                            Frontend.packageDefinitionFromSource packageInfo sourceFiles
+                            Frontend.packageDefinitionFromSource pkgInfo sourceFiles
                                 |> Result.map Package.eraseDefinitionExtra
 
                         result =
                             packageDefResult
-                                |> Result.map (\pd -> IrAndElmBackendResult pd (daprSource pd))
+                                |> Result.map (\pkgDef -> IrAndElmBackendResult pkgDef (daprSource pkgInfo.name pkgDef))
                     in
                     ( model, result |> encodeResult (Encode.list encodeError) (Package.encodeDefinition (\_ -> Encode.null)) |> packageDefAndDaprCodeFromSrcResult )
 
@@ -86,21 +86,21 @@ type alias StatefulAppArgs extra =
     }
 
 
-daprSource : Package.Definition () -> String
-daprSource packageDef =
+daprSource : Path -> Package.Definition () -> String
+daprSource pkgPath pkgDef =
     let
         appFiles : List File
         appFiles =
-            packageDef.modules
+            pkgDef.modules
                 |> Dict.toList
-                |> List.map (\( path, modDef ) -> createStatefulAppArgs path modDef)
+                |> List.map (\( modPath, modDef ) -> createStatefulAppArgs modPath modDef)
                 |> List.concat
                 |> List.map (\statefulAppArgs -> StatefulApp.gen statefulAppArgs.app.appPath (Name.fromString "app") statefulAppArgs.app.appType statefulAppArgs.innerTypes)
                 |> List.map MaybeExtra.toList
                 |> List.concat
 
         createStatefulAppArgs : Path -> AccessControlled (Module.Definition extra) -> List (StatefulAppArgs extra)
-        createStatefulAppArgs path acsCtrlModDef =
+        createStatefulAppArgs modPath acsCtrlModDef =
             let
                 maybeApp : Maybe (AppArgs extra)
                 maybeApp =
@@ -114,7 +114,7 @@ daprSource packageDef =
                                                 Public ->
                                                     case acsCtrlTypeDef.value of
                                                         TypeAliasDefinition _ tpe ->
-                                                            { appPath = path
+                                                            { appPath = pkgPath ++ modPath
                                                             , appType = tpe
                                                             }
                                                                 |> Just

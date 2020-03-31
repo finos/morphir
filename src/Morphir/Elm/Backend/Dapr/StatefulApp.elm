@@ -18,16 +18,16 @@ import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen exposing (typeDefToEnc
 import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
 import Morphir.Elm.Frontend as Frontend exposing (ContentLocation, ContentRange, SourceFile, SourceLocation, mapDeclarationsToType)
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, map)
-import Morphir.IR.Advanced.Type as Type exposing (Definition(..), Field, Type(..), eraseExtra)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name, toCamelCase)
 import Morphir.IR.Path exposing (Path)
+import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..), eraseExtra)
 
 
 gen : Path -> Name -> Type () -> List ( Name, AccessControlled (Type.Definition ()) ) -> Maybe File
-gen modPath appName appType otherTypeDefs =
+gen fullAppPath appName appType otherTypeDefs =
     case appType of
-        Reference (FQName [ [ "morphir" ] ] [ [ "s", "d", "k" ], [ "stateful", "app" ] ] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) _ ->
+        Reference (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "stateful", "app" ] ] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) _ ->
             let
                 moduleDef : Module
                 moduleDef =
@@ -40,7 +40,7 @@ gen modPath appName appType otherTypeDefs =
                 imports =
                     [ makeSimpleImport [ "Json", "Encode" ] (Just [ "E" ]) |> Utils.emptyRangeNode
                     , makeSimpleImport [ "Json", "Decode" ] (Just [ "D" ]) |> Utils.emptyRangeNode
-                    , makeSimpleImport (modPath |> List.map Name.toTitleCase) Nothing |> Utils.emptyRangeNode
+                    , makeSimpleImport (fullAppPath |> List.map Name.toTitleCase) Nothing |> Utils.emptyRangeNode
                     ]
 
                 innerDecoders : List Declaration
