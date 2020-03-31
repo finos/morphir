@@ -3,7 +3,7 @@ port module Morphir.Elm.CLI exposing (main)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, decodePackageInfo, encodeError)
-import Morphir.IR.Advanced.Package as Package
+import Morphir.IR.Package as Package
 
 
 port packageDefinitionFromSource : (( Decode.Value, List SourceFile ) -> msg) -> Sub msg
