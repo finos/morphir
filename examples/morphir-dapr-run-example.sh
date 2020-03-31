@@ -5,11 +5,11 @@ npm run make-cli
 sleep 2
 
 # Compile the morphir model
-morphir-dapr -p tests/ -o tests/Main.elm
+morphir-dapr -p examples/ -o examples/Main.elm
 sleep 2
 
 # Compile the output from the previous compilation to a Javascript file
-cd tests || exit
+cd examples || exit
 elm make Main.elm --output=Main.js
 sleep 2
 

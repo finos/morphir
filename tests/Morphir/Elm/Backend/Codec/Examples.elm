@@ -1,4 +1,4 @@
-module Morphir.Elm.Backend.Codec.Examples exposing (..)
+module Main exposing (Age, Animal, Color(..), Li(..), Name, Option(..), Person, Player, Point(..), User(..), decoderAge, decoderAnimal, decoderColor, decoderMaybeString, decoderName, decoderPerson, decoderPlayer, decoderPoint, decoderUser, encodeAge, encodeAnimal, encodeColor, encodeMaybeString, encodeName, encodePerson, encodePlayer, encodePoint, encodeUser, intListDecoder, intListEncode)
 
 import Json.Decode as D exposing (..)
 import Json.Encode as E exposing (..)
