@@ -1,7 +1,7 @@
 module Morphir.Elm.FrontendTests exposing (..)
 
 import Dict
-import Expect
+import Expect exposing (Expectation)
 import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.FQName exposing (fQName)
@@ -12,8 +12,10 @@ import Morphir.IR.SDK.Float as Float
 import Morphir.IR.SDK.Int as Int
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Maybe as Maybe
+import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
+import Morphir.IR.Value as Value exposing (Literal(..), Value(..))
 import Set
 import Test exposing (..)
 
@@ -166,47 +168,74 @@ frontendTest =
                 |> Expect.equal (Ok expected)
 
 
+valueTests : Test
+valueTests =
+    let
+        packageInfo =
+            { name = []
+            , exposedModules = Set.fromList [ [ [ "test" ] ] ]
+            }
 
---valueTests : Test
---valueTests =
---    let
---        packageInfo =
---            { name = []
---            , exposedModules = Set.empty
---            }
---
---        moduleSource : String -> SourceFile
---        moduleSource sourceValue =
---            { path = "Test.elm"
---            , content =
---                String.join "\n"
---                    [ "module Test exposing (..)"
---                    , ""
---                    , "testValue = " ++ sourceValue
---                    ]
---            }
---
---        checkIR : String -> Value () -> Test
---        checkIR valueSource expectedValueIR =
---            test valueSource <|
---                \_ ->
---                    Frontend.packageDefinitionFromSource packageInfo [ moduleSource valueSource ]
---                        |> Result.map Package.eraseDefinitionExtra
---                        |> Result.toMaybe
---                        |> Maybe.andThen
---                            (\packageDef ->
---                                packageDef.modules
---                                    |> Dict.get [ [ "test" ] ]
---                                    |> Maybe.andThen
---                                        (\moduleDef ->
---                                            moduleDef.value.values
---                                                |> Dict.get [ "test", "value" ]
---                                                |> Maybe.map (.value >> Value.getDefinitionBody)
---                                        )
---                            )
---                        |> Maybe.map (Expect.equal expectedValueIR)
---                        |> Maybe.withDefault (Expect.fail "Could not find the value in the IR")
---    in
---    describe "Values are mapped correctly"
---        [ checkIR "1" <| Literal (IntLiteral 1) ()
---        ]
+        moduleSource : String -> SourceFile
+        moduleSource sourceValue =
+            { path = "Test.elm"
+            , content =
+                String.join "\n"
+                    [ "module Test exposing (..)"
+                    , ""
+                    , "testValue = " ++ sourceValue
+                    ]
+            }
+
+        checkIR : String -> Value () -> Test
+        checkIR valueSource expectedValueIR =
+            test valueSource <|
+                \_ ->
+                    Frontend.packageDefinitionFromSource packageInfo [ moduleSource valueSource ]
+                        |> Result.map Package.eraseDefinitionExtra
+                        |> Result.mapError (\error -> "Error while reading model")
+                        |> Result.andThen
+                            (\packageDef ->
+                                packageDef.modules
+                                    |> Dict.get [ [ "test" ] ]
+                                    |> Result.fromMaybe "Could not find test module"
+                                    |> Result.andThen
+                                        (\moduleDef ->
+                                            moduleDef.value.values
+                                                |> Dict.get [ "test", "value" ]
+                                                |> Result.fromMaybe "Could not find test value"
+                                                |> Result.map (.value >> Value.getDefinitionBody)
+                                        )
+                            )
+                        |> resultToExpectation expectedValueIR
+
+        ref : String -> Value ()
+        ref name =
+            Reference (fQName [] [] [ name ]) ()
+    in
+    describe "Values are mapped correctly"
+        [ checkIR "()" <| Unit ()
+        , checkIR "1" <| Literal (IntLiteral 1) ()
+        , checkIR "0x20" <| Literal (IntLiteral 32) ()
+        , checkIR "1.5" <| Literal (FloatLiteral 1.5) ()
+        , checkIR "\"foo\"" <| Literal (StringLiteral "foo") ()
+        , checkIR "True" <| Literal (BoolLiteral True) ()
+        , checkIR "False" <| Literal (BoolLiteral False) ()
+        , checkIR "'A'" <| Literal (CharLiteral 'A') ()
+        , checkIR "foo" <| ref "foo"
+        , checkIR "Bar.foo" <| Reference (fQName [] [ [ "bar" ] ] [ "foo" ]) ()
+        , checkIR "MyPack.Bar.foo" <| Reference (fQName [] [ [ "my", "pack" ], [ "bar" ] ] [ "foo" ]) ()
+        , checkIR "foo bar" <| Apply (ref "foo") (ref "bar") ()
+        , checkIR "foo bar baz" <| Apply (Apply (ref "foo") (ref "bar") ()) (ref "baz") ()
+        , checkIR "-1" <| Number.negate () () (Literal (IntLiteral 1) ())
+        ]
+
+
+resultToExpectation : a -> Result String a -> Expectation
+resultToExpectation expectedValue result =
+    case result of
+        Ok actualValue ->
+            Expect.equal expectedValue actualValue
+
+        Err error ->
+            Expect.fail error

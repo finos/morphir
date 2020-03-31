@@ -6,10 +6,13 @@ import Elm.Processing as Processing
 import Elm.RawFile as RawFile exposing (RawFile)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
+import Elm.Syntax.Expression as Expression exposing (Expression, FunctionImplementation)
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node(..))
+import Elm.Syntax.Pattern exposing (Pattern(..))
+import Elm.Syntax.Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -22,6 +25,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK as SDK
+import Morphir.IR.SDK.Number as Number
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.JsonExtra as JsonExtra
@@ -126,6 +130,8 @@ type Error
     = ParseError String (List Parser.DeadEnd)
     | CyclicModules (Graph (List String))
     | ResolveError SourceLocation Resolve.Error
+    | EmptyApply SourceLocation
+    | NotSupported SourceLocation String
 
 
 encodeError : Error -> Encode.Value
@@ -145,6 +151,17 @@ encodeError error =
             JsonExtra.encodeConstructor "ResolveError"
                 [ encodeSourceLocation sourceLocation
                 , Resolve.encodeError resolveError
+                ]
+
+        EmptyApply sourceLocation ->
+            JsonExtra.encodeConstructor "EmptyApply"
+                [ encodeSourceLocation sourceLocation
+                ]
+
+        NotSupported sourceLocation message ->
+            JsonExtra.encodeConstructor "NotSupported"
+                [ encodeSourceLocation sourceLocation
+                , Encode.string message
                 ]
 
 
@@ -512,6 +529,29 @@ mapDeclarationsToValue sourceFile expose decls =
         |> List.filterMap
             (\decl ->
                 case decl of
+                    FunctionDeclaration function ->
+                        let
+                            valueName : Name
+                            valueName =
+                                function.declaration
+                                    |> Node.value
+                                    |> .name
+                                    |> Node.value
+                                    |> Name.fromString
+
+                            valueDef : Result Errors (AccessControlled (Value.Definition SourceLocation))
+                            valueDef =
+                                function.declaration
+                                    |> Node.value
+                                    |> (\funImpl ->
+                                            mapFunctionImplementation sourceFile funImpl.arguments funImpl.expression
+                                       )
+                                    |> Result.map public
+                        in
+                        valueDef
+                            |> Result.map (Tuple.pair valueName)
+                            |> Just
+
                     _ ->
                         Nothing
             )
@@ -587,6 +627,138 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 )
                 (mapTypeAnnotation sourceFile argTypeNode)
                 (mapTypeAnnotation sourceFile returnTypeNode)
+
+
+mapFunctionImplementation : SourceFile -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Definition SourceLocation)
+mapFunctionImplementation sourceFile argumentNodes expression =
+    let
+        sourceLocation : Range -> SourceLocation
+        sourceLocation range =
+            range |> SourceLocation sourceFile
+
+        extractNamedParams : List Name -> List (Node Pattern) -> ( List Name, List (Node Pattern) )
+        extractNamedParams namedParams patternParams =
+            case patternParams of
+                [] ->
+                    ( namedParams, patternParams )
+
+                (Node _ firstParam) :: restOfParams ->
+                    case firstParam of
+                        VarPattern paramName ->
+                            extractNamedParams (namedParams ++ [ Name.fromString paramName ]) restOfParams
+
+                        _ ->
+                            ( namedParams, patternParams )
+
+        ( paramNames, lambdaArgPatterns ) =
+            extractNamedParams [] argumentNodes
+
+        bodyResult : Result Errors (Value.Value SourceLocation)
+        bodyResult =
+            let
+                lambdaWithParams : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation)
+                lambdaWithParams params body =
+                    case params of
+                        [] ->
+                            mapExpression sourceFile body
+
+                        (Node range firstParam) :: restOfParams ->
+                            Result.map2 (\lambdaArg lambdaBody -> Value.Lambda lambdaArg lambdaBody (sourceLocation range))
+                                (mapPattern sourceFile (Node range firstParam))
+                                (lambdaWithParams restOfParams body)
+            in
+            lambdaWithParams lambdaArgPatterns expression
+    in
+    bodyResult
+        |> Result.map (Value.UntypedDefinition paramNames)
+
+
+mapExpression : SourceFile -> Node Expression -> Result Errors (Value.Value SourceLocation)
+mapExpression sourceFile (Node range exp) =
+    let
+        sourceLocation =
+            range |> SourceLocation sourceFile
+    in
+    case exp of
+        Expression.UnitExpr ->
+            Ok (Value.Unit sourceLocation)
+
+        Expression.Application expNodes ->
+            let
+                toApply : List (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                toApply valuesReversed =
+                    case valuesReversed of
+                        [] ->
+                            Err [ EmptyApply sourceLocation ]
+
+                        [ singleValue ] ->
+                            Ok singleValue
+
+                        lastValue :: restOfValuesReversed ->
+                            toApply restOfValuesReversed
+                                |> Result.map
+                                    (\funValue ->
+                                        Value.Apply funValue lastValue sourceLocation
+                                    )
+            in
+            expNodes
+                |> List.map (mapExpression sourceFile)
+                |> ResultList.toResult
+                |> Result.mapError List.concat
+                |> Result.andThen (List.reverse >> toApply)
+
+        Expression.FunctionOrValue moduleName valueName ->
+            case ( moduleName, valueName ) of
+                ( [], "True" ) ->
+                    Ok (Value.Literal (Value.BoolLiteral True) sourceLocation)
+
+                ( [], "False" ) ->
+                    Ok (Value.Literal (Value.BoolLiteral False) sourceLocation)
+
+                _ ->
+                    Ok (Value.Reference (fQName [] (moduleName |> List.map Name.fromString) (valueName |> Name.fromString)) sourceLocation)
+
+        Expression.Integer value ->
+            Ok (Value.Literal (Value.IntLiteral value) sourceLocation)
+
+        Expression.Hex value ->
+            Ok (Value.Literal (Value.IntLiteral value) sourceLocation)
+
+        Expression.Negation arg ->
+            mapExpression sourceFile arg
+                |> Result.map (Number.negate sourceLocation sourceLocation)
+
+        Expression.Floatable value ->
+            Ok (Value.Literal (Value.FloatLiteral value) sourceLocation)
+
+        Expression.Literal value ->
+            Ok (Value.Literal (Value.StringLiteral value) sourceLocation)
+
+        Expression.CharLiteral value ->
+            Ok (Value.Literal (Value.CharLiteral value) sourceLocation)
+
+        Expression.TupledExpression expNodes ->
+            expNodes
+                |> List.map (mapExpression sourceFile)
+                |> ResultList.toResult
+                |> Result.mapError List.concat
+                |> Result.map (\elems -> Value.Tuple elems sourceLocation)
+
+        other ->
+            Ok (Value.Literal (Value.StringLiteral (Debug.toString other)) sourceLocation)
+
+
+
+--Err [ NotSupported sourceLocation "unknown" ]
+
+
+mapPattern : SourceFile -> Node Pattern -> Result Errors (Value.Pattern SourceLocation)
+mapPattern sourceFile (Node range patternNode) =
+    let
+        sourceLocation =
+            range |> SourceLocation sourceFile
+    in
+    Ok (Value.WildcardPattern sourceLocation)
 
 
 resolveLocalTypes : Path -> Path -> ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
