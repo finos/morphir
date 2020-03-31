@@ -663,7 +663,7 @@ mapFunctionImplementation sourceFile argumentNodes expression =
                             mapExpression sourceFile body
 
                         (Node range firstParam) :: restOfParams ->
-                            Result.map2 (\lambdaArg lambdaBody -> Value.Lambda lambdaArg lambdaBody (sourceLocation range))
+                            Result.map2 (\lambdaArg lambdaBody -> Value.Lambda (sourceLocation range) lambdaArg lambdaBody)
                                 (mapPattern sourceFile (Node range firstParam))
                                 (lambdaWithParams restOfParams body)
             in
@@ -698,7 +698,7 @@ mapExpression sourceFile (Node range exp) =
                             toApply restOfValuesReversed
                                 |> Result.map
                                     (\funValue ->
-                                        Value.Apply funValue lastValue sourceLocation
+                                        Value.Apply sourceLocation funValue lastValue
                                     )
             in
             expNodes
@@ -710,42 +710,42 @@ mapExpression sourceFile (Node range exp) =
         Expression.FunctionOrValue moduleName valueName ->
             case ( moduleName, valueName ) of
                 ( [], "True" ) ->
-                    Ok (Value.Literal (Value.BoolLiteral True) sourceLocation)
+                    Ok (Value.Literal sourceLocation (Value.BoolLiteral True))
 
                 ( [], "False" ) ->
-                    Ok (Value.Literal (Value.BoolLiteral False) sourceLocation)
+                    Ok (Value.Literal sourceLocation (Value.BoolLiteral False))
 
                 _ ->
-                    Ok (Value.Reference (fQName [] (moduleName |> List.map Name.fromString) (valueName |> Name.fromString)) sourceLocation)
+                    Ok (Value.Reference sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (valueName |> Name.fromString)))
 
         Expression.Integer value ->
-            Ok (Value.Literal (Value.IntLiteral value) sourceLocation)
+            Ok (Value.Literal sourceLocation (Value.IntLiteral value))
 
         Expression.Hex value ->
-            Ok (Value.Literal (Value.IntLiteral value) sourceLocation)
+            Ok (Value.Literal sourceLocation (Value.IntLiteral value))
 
         Expression.Negation arg ->
             mapExpression sourceFile arg
                 |> Result.map (Number.negate sourceLocation sourceLocation)
 
         Expression.Floatable value ->
-            Ok (Value.Literal (Value.FloatLiteral value) sourceLocation)
+            Ok (Value.Literal sourceLocation (Value.FloatLiteral value))
 
         Expression.Literal value ->
-            Ok (Value.Literal (Value.StringLiteral value) sourceLocation)
+            Ok (Value.Literal sourceLocation (Value.StringLiteral value))
 
         Expression.CharLiteral value ->
-            Ok (Value.Literal (Value.CharLiteral value) sourceLocation)
+            Ok (Value.Literal sourceLocation (Value.CharLiteral value))
 
         Expression.TupledExpression expNodes ->
             expNodes
                 |> List.map (mapExpression sourceFile)
                 |> ResultList.toResult
                 |> Result.mapError List.concat
-                |> Result.map (\elems -> Value.Tuple elems sourceLocation)
+                |> Result.map (Value.Tuple sourceLocation)
 
         other ->
-            Ok (Value.Literal (Value.StringLiteral (Debug.toString other)) sourceLocation)
+            Ok (Value.Literal sourceLocation (Value.StringLiteral (Debug.toString other)))
 
 
 

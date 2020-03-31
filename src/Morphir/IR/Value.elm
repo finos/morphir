@@ -64,7 +64,6 @@ which is just the specification of those. Value definitions can be typed or unty
 
 -}
 
-import Fuzz exposing (Fuzzer)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName)
@@ -76,25 +75,25 @@ import String
 
 {-| Type that represents a value.
 -}
-type Value extra
-    = Literal Literal extra
-    | Constructor FQName extra
-    | Tuple (List (Value extra)) extra
-    | List (List (Value extra)) extra
-    | Record (List ( Name, Value extra )) extra
-    | Variable Name extra
-    | Reference FQName extra
-    | Field (Value extra) Name extra
-    | FieldFunction Name extra
-    | Apply (Value extra) (Value extra) extra
-    | Lambda (Pattern extra) (Value extra) extra
-    | LetDefinition Name (Definition extra) (Value extra) extra
-    | LetRecursion (List ( Name, Definition extra )) (Value extra) extra
-    | Destructure (Pattern extra) (Value extra) (Value extra) extra
-    | IfThenElse (Value extra) (Value extra) (Value extra) extra
-    | PatternMatch (Value extra) (List ( Pattern extra, Value extra )) extra
-    | UpdateRecord (Value extra) (List ( Name, Value extra )) extra
-    | Unit extra
+type Value a
+    = Literal a Literal
+    | Constructor a FQName
+    | Tuple a (List (Value a))
+    | List a (List (Value a))
+    | Record a (List ( Name, Value a ))
+    | Variable a Name
+    | Reference a FQName
+    | Field a (Value a) Name
+    | FieldFunction a Name
+    | Apply a (Value a) (Value a)
+    | Lambda a (Pattern a) (Value a)
+    | LetDefinition a Name (Definition a) (Value a)
+    | LetRecursion a (List ( Name, Definition a )) (Value a)
+    | Destructure a (Pattern a) (Value a) (Value a)
+    | IfThenElse a (Value a) (Value a) (Value a)
+    | PatternMatch a (Value a) (List ( Pattern a, Value a ))
+    | UpdateRecord a (Value a) (List ( Name, Value a ))
+    | Unit a
 
 
 {-| Type that represents a literal value.
@@ -109,35 +108,35 @@ type Literal
 
 {-| Type that represents a pattern.
 -}
-type Pattern extra
-    = WildcardPattern extra
-    | AsPattern (Pattern extra) Name extra
-    | TuplePattern (List (Pattern extra)) extra
-    | RecordPattern (List Name) extra
-    | ConstructorPattern FQName (List (Pattern extra)) extra
-    | EmptyListPattern extra
-    | HeadTailPattern (Pattern extra) (Pattern extra) extra
-    | LiteralPattern Literal extra
+type Pattern a
+    = WildcardPattern a
+    | AsPattern a (Pattern a) Name
+    | TuplePattern a (List (Pattern a))
+    | RecordPattern a (List Name)
+    | ConstructorPattern a FQName (List (Pattern a))
+    | EmptyListPattern a
+    | HeadTailPattern a (Pattern a) (Pattern a)
+    | LiteralPattern a Literal
 
 
 {-| Type that represents a value or function specification. The specification of what the value or function
 is without the actual data or logic behind it.
 -}
-type alias Specification extra =
-    { inputs : List ( Name, Type extra )
-    , output : Type extra
+type alias Specification a =
+    { inputs : List ( Name, Type a )
+    , output : Type a
     }
 
 
 {-| Type that represents a value or function definition. A definition is the actual data or logic as opposed to a specification
 which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.
 -}
-type Definition extra
-    = TypedDefinition (Type extra) (List Name) (Value extra)
-    | UntypedDefinition (List Name) (Value extra)
+type Definition a
+    = TypedDefinition (Type a) (List Name) (Value a)
+    | UntypedDefinition (List Name) (Value a)
 
 
-getDefinitionBody : Definition extra -> Value extra
+getDefinitionBody : Definition a -> Value a
 getDefinitionBody def =
     case def of
         TypedDefinition _ _ body ->
@@ -201,51 +200,50 @@ mapDefinition mapType mapValue def =
 mapValueExtra : (a -> b) -> Value a -> Value b
 mapValueExtra f v =
     case v of
-        Literal value extra ->
-            Literal value (f extra)
+        Literal a value ->
+            Literal (f a) value
 
-        Constructor fullyQualifiedName extra ->
-            Constructor fullyQualifiedName (f extra)
+        Constructor a fullyQualifiedName ->
+            Constructor (f a) fullyQualifiedName
 
-        Tuple elements extra ->
-            Tuple (elements |> List.map (mapValueExtra f)) (f extra)
+        Tuple a elements ->
+            Tuple (f a) (elements |> List.map (mapValueExtra f))
 
-        List items extra ->
-            List (items |> List.map (mapValueExtra f)) (f extra)
+        List a items ->
+            List (f a) (items |> List.map (mapValueExtra f))
 
-        Record fields extra ->
-            Record
+        Record a fields ->
+            Record (f a)
                 (fields
                     |> List.map
                         (\( fieldName, fieldValue ) ->
                             ( fieldName, mapValueExtra f fieldValue )
                         )
                 )
-                (f extra)
 
-        Variable name extra ->
-            Variable name (f extra)
+        Variable a name ->
+            Variable (f a) name
 
-        Reference fullyQualifiedName extra ->
-            Reference fullyQualifiedName (f extra)
+        Reference a fullyQualifiedName ->
+            Reference (f a) fullyQualifiedName
 
-        Field subjectValue fieldName extra ->
-            Field (mapValueExtra f subjectValue) fieldName (f extra)
+        Field a subjectValue fieldName ->
+            Field (f a) (mapValueExtra f subjectValue) fieldName
 
-        FieldFunction fieldName extra ->
-            FieldFunction fieldName (f extra)
+        FieldFunction a fieldName ->
+            FieldFunction (f a) fieldName
 
-        Apply function argument extra ->
-            Apply (mapValueExtra f function) (mapValueExtra f argument) (f extra)
+        Apply a function argument ->
+            Apply (f a) (mapValueExtra f function) (mapValueExtra f argument)
 
-        Lambda argumentPattern body extra ->
-            Lambda (mapPatternExtra f argumentPattern) (mapValueExtra f body) (f extra)
+        Lambda a argumentPattern body ->
+            Lambda (f a) (mapPatternExtra f argumentPattern) (mapValueExtra f body)
 
-        LetDefinition valueName valueDefinition inValue extra ->
-            LetDefinition valueName (mapDefinitionExtra f valueDefinition) (mapValueExtra f inValue) (f extra)
+        LetDefinition a valueName valueDefinition inValue ->
+            LetDefinition (f a) valueName (mapDefinitionExtra f valueDefinition) (mapValueExtra f inValue)
 
-        LetRecursion valueDefinitions inValue extra ->
-            LetRecursion
+        LetRecursion a valueDefinitions inValue ->
+            LetRecursion (f a)
                 (valueDefinitions
                     |> List.map
                         (\( name, def ) ->
@@ -253,64 +251,63 @@ mapValueExtra f v =
                         )
                 )
                 (mapValueExtra f inValue)
-                (f extra)
 
-        Destructure pattern valueToDestruct inValue extra ->
-            Destructure (mapPatternExtra f pattern) (mapValueExtra f valueToDestruct) (mapValueExtra f inValue) (f extra)
+        Destructure a pattern valueToDestruct inValue ->
+            Destructure (f a) (mapPatternExtra f pattern) (mapValueExtra f valueToDestruct) (mapValueExtra f inValue)
 
-        IfThenElse condition thenBranch elseBranch extra ->
-            IfThenElse (mapValueExtra f condition) (mapValueExtra f thenBranch) (mapValueExtra f elseBranch) (f extra)
+        IfThenElse a condition thenBranch elseBranch ->
+            IfThenElse (f a) (mapValueExtra f condition) (mapValueExtra f thenBranch) (mapValueExtra f elseBranch)
 
-        PatternMatch branchOutOn cases extra ->
-            PatternMatch (mapValueExtra f branchOutOn)
+        PatternMatch a branchOutOn cases ->
+            PatternMatch (f a)
+                (mapValueExtra f branchOutOn)
                 (cases
                     |> List.map
                         (\( pattern, body ) ->
                             ( mapPatternExtra f pattern, mapValueExtra f body )
                         )
                 )
-                (f extra)
 
-        UpdateRecord valueToUpdate fieldsToUpdate extra ->
-            UpdateRecord (mapValueExtra f valueToUpdate)
+        UpdateRecord a valueToUpdate fieldsToUpdate ->
+            UpdateRecord (f a)
+                (mapValueExtra f valueToUpdate)
                 (fieldsToUpdate
                     |> List.map
                         (\( fieldName, fieldValue ) ->
                             ( fieldName, mapValueExtra f fieldValue )
                         )
                 )
-                (f extra)
 
-        Unit extra ->
-            Unit (f extra)
+        Unit a ->
+            Unit (f a)
 
 
 mapPatternExtra : (a -> b) -> Pattern a -> Pattern b
 mapPatternExtra f p =
     case p of
-        WildcardPattern extra ->
-            WildcardPattern (f extra)
+        WildcardPattern a ->
+            WildcardPattern (f a)
 
-        AsPattern p2 name extra ->
-            AsPattern (mapPatternExtra f p2) name (f extra)
+        AsPattern a p2 name ->
+            AsPattern (f a) (mapPatternExtra f p2) name
 
-        TuplePattern elementPatterns extra ->
-            TuplePattern (elementPatterns |> List.map (mapPatternExtra f)) (f extra)
+        TuplePattern a elementPatterns ->
+            TuplePattern (f a) (elementPatterns |> List.map (mapPatternExtra f))
 
-        RecordPattern fieldNames extra ->
-            RecordPattern fieldNames (f extra)
+        RecordPattern a fieldNames ->
+            RecordPattern (f a) fieldNames
 
-        ConstructorPattern constructorName argumentPatterns extra ->
-            ConstructorPattern constructorName (argumentPatterns |> List.map (mapPatternExtra f)) (f extra)
+        ConstructorPattern a constructorName argumentPatterns ->
+            ConstructorPattern (f a) constructorName (argumentPatterns |> List.map (mapPatternExtra f))
 
-        EmptyListPattern extra ->
-            EmptyListPattern (f extra)
+        EmptyListPattern a ->
+            EmptyListPattern (f a)
 
-        HeadTailPattern headPattern tailPattern extra ->
-            HeadTailPattern (mapPatternExtra f headPattern) (mapPatternExtra f tailPattern) (f extra)
+        HeadTailPattern a headPattern tailPattern ->
+            HeadTailPattern (f a) (mapPatternExtra f headPattern) (mapPatternExtra f tailPattern)
 
-        LiteralPattern value extra ->
-            LiteralPattern value (f extra)
+        LiteralPattern a value ->
+            LiteralPattern (f a) value
 
 
 mapDefinitionExtra : (a -> b) -> Definition a -> Definition b
@@ -338,9 +335,9 @@ mapDefinitionExtra f d =
 [lit]: https://en.wikipedia.org/wiki/Literal_(computer_programming)
 
 -}
-literal : Literal -> extra -> Value extra
-literal value extra =
-    Literal value extra
+literal : a -> Literal -> Value a
+literal attributes value =
+    Literal attributes value
 
 
 {-| A reference to a constructor of a custom type.
@@ -350,9 +347,9 @@ literal value extra =
     Foo.Bar -- Constructor ( ..., [ [ "foo" ] ], [ "bar" ] )
 
 -}
-constructor : FQName -> extra -> Value extra
-constructor fullyQualifiedName extra =
-    Constructor fullyQualifiedName extra
+constructor : a -> FQName -> Value a
+constructor attributes fullyQualifiedName =
+    Constructor attributes fullyQualifiedName
 
 
 {-| A [tuple] represents an ordered list of values where each value can be of a different type.
@@ -368,9 +365,9 @@ constructor fullyQualifiedName extra =
 [tuple]: https://en.wikipedia.org/wiki/Tuple
 
 -}
-tuple : List (Value extra) -> extra -> Value extra
-tuple elements extra =
-    Tuple elements extra
+tuple : a -> List (Value a) -> Value a
+tuple attributes elements =
+    Tuple attributes elements
 
 
 {-| A [list] represents an ordered list of values where every value has to be of the same type.
@@ -382,9 +379,9 @@ tuple elements extra =
 [list]: https://en.wikipedia.org/wiki/List_(abstract_data_type)
 
 -}
-list : List (Value extra) -> extra -> Value extra
-list items extra =
-    List items extra
+list : a -> List (Value a) -> Value a
+list attributes items =
+    List attributes items
 
 
 {-| A [record] represents a list of fields where each field has a name and a value.
@@ -398,9 +395,9 @@ list items extra =
 [record]: https://en.wikipedia.org/wiki/Record_(computer_science)
 
 -}
-record : List ( Name, Value extra ) -> extra -> Value extra
-record fields extra =
-    Record fields extra
+record : a -> List ( Name, Value a ) -> Value a
+record attributes fields =
+    Record attributes fields
 
 
 {-| A [variable] represents a reference to a named value in the scope.
@@ -412,9 +409,9 @@ record fields extra =
 [variable]: https://en.wikipedia.org/wiki/Variable_(computer_science)
 
 -}
-variable : Name -> extra -> Value extra
-variable name extra =
-    Variable name extra
+variable : a -> Name -> Value a
+variable attributes name =
+    Variable attributes name
 
 
 {-| A reference that refers to a function or a value with its fully-qualified name.
@@ -422,9 +419,9 @@ variable name extra =
     List.map -- Reference ( [ ..., [ [ "list" ] ], [ "map" ] )
 
 -}
-reference : FQName -> extra -> Value extra
-reference fullyQualifiedName extra =
-    Reference fullyQualifiedName extra
+reference : a -> FQName -> Value a
+reference attributes fullyQualifiedName =
+    Reference attributes fullyQualifiedName
 
 
 {-| Extracts the value of a record's field.
@@ -432,9 +429,9 @@ reference fullyQualifiedName extra =
     a.foo -- Field (Variable [ "a" ]) [ "foo" ]
 
 -}
-field : Value extra -> Name -> extra -> Value extra
-field subjectValue fieldName extra =
-    Field subjectValue fieldName extra
+field : a -> Value a -> Name -> Value a
+field attributes subjectValue fieldName =
+    Field attributes subjectValue fieldName
 
 
 {-| Represents a function that extract a field from a record value passed to it.
@@ -442,9 +439,9 @@ field subjectValue fieldName extra =
     .foo -- FieldFunction [ "foo" ]
 
 -}
-fieldFunction : Name -> extra -> Value extra
-fieldFunction fieldName extra =
-    FieldFunction fieldName extra
+fieldFunction : a -> Name -> Value a
+fieldFunction attributes fieldName =
+    FieldFunction attributes fieldName
 
 
 {-| Represents a function invocation. We use currying to represent function invocations with multiple arguments.
@@ -456,9 +453,9 @@ fieldFunction fieldName extra =
     True || False -- Apply (Apply (Reference ( ..., [ [ "basics" ] ], [ "and" ]))) (Literal (BoolLiteral True)) (Literal (BoolLiteral True))
 
 -}
-apply : Value extra -> Value extra -> extra -> Value extra
-apply function argument extra =
-    Apply function argument extra
+apply : a -> Value a -> Value a -> Value a
+apply attributes function argument =
+    Apply attributes function argument
 
 
 {-| Represents a lambda abstraction.
@@ -475,9 +472,9 @@ apply function argument extra =
 ```
 
 -}
-lambda : Pattern extra -> Value extra -> extra -> Value extra
-lambda argumentPattern body extra =
-    Lambda argumentPattern body extra
+lambda : a -> Pattern a -> Value a -> Value a
+lambda attributes argumentPattern body =
+    Lambda attributes argumentPattern body
 
 
 {-| Represents a let expression that assigns a value (and optionally type) to a name.
@@ -510,9 +507,9 @@ lambda argumentPattern body extra =
     --     )
 
 -}
-letDef : Name -> Definition extra -> Value extra -> extra -> Value extra
-letDef valueName valueDefinition inValue extra =
-    LetDefinition valueName valueDefinition inValue extra
+letDef : a -> Name -> Definition a -> Value a -> Value a
+letDef attributes valueName valueDefinition inValue =
+    LetDefinition attributes valueName valueDefinition inValue
 
 
 {-| Represents a let expression with one or many recursive definitions.
@@ -532,9 +529,9 @@ letDef valueName valueDefinition inValue extra =
     --     (Variable [ "a" ])
 
 -}
-letRec : List ( Name, Definition extra ) -> Value extra -> extra -> Value extra
-letRec valueDefinitions inValue extra =
-    LetRecursion valueDefinitions inValue extra
+letRec : a -> List ( Name, Definition a ) -> Value a -> Value a
+letRec attributes valueDefinitions inValue =
+    LetRecursion attributes valueDefinitions inValue
 
 
 {-| Represents a let expression that extracts values using a pattern.
@@ -549,9 +546,9 @@ letRec valueDefinitions inValue extra =
     --     (Variable ["a"])
 
 -}
-letDestruct : Pattern extra -> Value extra -> Value extra -> extra -> Value extra
-letDestruct pattern valueToDestruct inValue extra =
-    Destructure pattern valueToDestruct inValue extra
+letDestruct : a -> Pattern a -> Value a -> Value a -> Value a
+letDestruct attributes pattern valueToDestruct inValue =
+    Destructure attributes pattern valueToDestruct inValue
 
 
 {-| Represents and if/then/else expression.
@@ -565,9 +562,9 @@ letDestruct pattern valueToDestruct inValue extra =
     --     (Variable ["c"])
 
 -}
-ifThenElse : Value extra -> Value extra -> Value extra -> extra -> Value extra
-ifThenElse condition thenBranch elseBranch extra =
-    IfThenElse condition thenBranch elseBranch extra
+ifThenElse : a -> Value a -> Value a -> Value a -> Value a
+ifThenElse attributes condition thenBranch elseBranch =
+    IfThenElse attributes condition thenBranch elseBranch
 
 
 {-| Represents a pattern-match.
@@ -584,9 +581,9 @@ ifThenElse condition thenBranch elseBranch extra =
     --     ]
 
 -}
-patternMatch : Value extra -> List ( Pattern extra, Value extra ) -> extra -> Value extra
-patternMatch branchOutOn cases extra =
-    PatternMatch branchOutOn cases extra
+patternMatch : a -> Value a -> List ( Pattern a, Value a ) -> Value a
+patternMatch attributes branchOutOn cases =
+    PatternMatch attributes branchOutOn cases
 
 
 {-| Update one or many fields of a record value.
@@ -594,9 +591,9 @@ patternMatch branchOutOn cases extra =
     { a | foo = 1 } -- Update (Variable ["a"]) [ ( ["foo"], Literal (IntLiteral 1) ) ]
 
 -}
-update : Value extra -> List ( Name, Value extra ) -> extra -> Value extra
-update valueToUpdate fieldsToUpdate extra =
-    UpdateRecord valueToUpdate fieldsToUpdate extra
+update : a -> Value a -> List ( Name, Value a ) -> Value a
+update attributes valueToUpdate fieldsToUpdate =
+    UpdateRecord attributes valueToUpdate fieldsToUpdate
 
 
 {-| Represents the unit value.
@@ -604,9 +601,9 @@ update valueToUpdate fieldsToUpdate extra =
     () -- Unit
 
 -}
-unit : extra -> Value extra
-unit extra =
-    Unit extra
+unit : a -> Value a
+unit attributes =
+    Unit attributes
 
 
 {-| Represents a boolean value. Only possible values are: `True`, `False`
@@ -649,9 +646,9 @@ floatLiteral value =
     _ -- WildcardPattern
 
 -}
-wildcardPattern : extra -> Pattern extra
-wildcardPattern extra =
-    WildcardPattern extra
+wildcardPattern : a -> Pattern a
+wildcardPattern attributes =
+    WildcardPattern attributes
 
 
 {-| Assigns a variable name to a pattern.
@@ -663,9 +660,9 @@ wildcardPattern extra =
     [] as foo -- AsPattern EmptyListPattern ["foo"]
 
 -}
-asPattern : Pattern extra -> Name -> extra -> Pattern extra
-asPattern pattern name extra =
-    AsPattern pattern name extra
+asPattern : a -> Pattern a -> Name -> Pattern a
+asPattern attributes pattern name =
+    AsPattern attributes pattern name
 
 
 {-| Destructures a tuple using a pattern for every element.
@@ -673,9 +670,9 @@ asPattern pattern name extra =
     ( _, foo ) -- TuplePattern [ WildcardPattern, AsPattern WildcardPattern ["foo"] ]
 
 -}
-tuplePattern : List (Pattern extra) -> extra -> Pattern extra
-tuplePattern elementPatterns extra =
-    TuplePattern elementPatterns extra
+tuplePattern : a -> List (Pattern a) -> Pattern a
+tuplePattern attributes elementPatterns =
+    TuplePattern attributes elementPatterns
 
 
 {-| Pulls out the values of some fields from a record value.
@@ -683,9 +680,9 @@ tuplePattern elementPatterns extra =
     { foo, bar } -- RecordPattern [ ["foo"], ["bar"] ]
 
 -}
-recordPattern : List Name -> extra -> Pattern extra
-recordPattern fieldNames extra =
-    RecordPattern fieldNames extra
+recordPattern : a -> List Name -> Pattern a
+recordPattern attributes fieldNames =
+    RecordPattern attributes fieldNames
 
 
 {-| Matches on a custom type's constructor.
@@ -697,9 +694,9 @@ When there are multiple constructors it also does filtering so it cannot be used
     Just _ -- ConstructorPattern ( ..., [["maybe"]], ["just"]) [ WildcardPattern ]
 
 -}
-constructorPattern : FQName -> List (Pattern extra) -> extra -> Pattern extra
-constructorPattern constructorName argumentPatterns extra =
-    ConstructorPattern constructorName argumentPatterns extra
+constructorPattern : a -> FQName -> List (Pattern a) -> Pattern a
+constructorPattern attributes constructorName argumentPatterns =
+    ConstructorPattern attributes constructorName argumentPatterns
 
 
 {-| Matches an empty list. Can be used standalon but frequently used as a terminal pattern
@@ -713,9 +710,9 @@ in a [`HeadTailPattern`](#headTailPattern).
     --     EmptyListPattern
 
 -}
-emptyListPattern : extra -> Pattern extra
-emptyListPattern extra =
-    EmptyListPattern extra
+emptyListPattern : a -> Pattern a
+emptyListPattern attributes =
+    EmptyListPattern attributes
 
 
 {-| Matches the head and the tail of a list. It can be used to match lists of at least N items
@@ -740,9 +737,9 @@ by nesting this pattern N times and terminating with [`EmptyListPattern`](#empty
     --     )
 
 -}
-headTailPattern : Pattern extra -> Pattern extra -> extra -> Pattern extra
-headTailPattern headPattern tailPattern extra =
-    HeadTailPattern headPattern tailPattern extra
+headTailPattern : a -> Pattern a -> Pattern a -> Pattern a
+headTailPattern attributes headPattern tailPattern =
+    HeadTailPattern attributes headPattern tailPattern
 
 
 {-| Matches a specific literal value. This pattern can only be used in a [pattern-match](#patternMatch)
@@ -759,9 +756,9 @@ since it always filters.
     15.4 -- LiteralPattern (FloatLiteral 15.4)
 
 -}
-literalPattern : Literal -> extra -> Pattern extra
-literalPattern value extra =
-    LiteralPattern value extra
+literalPattern : a -> Literal -> Pattern a
+literalPattern attributes value =
+    LiteralPattern attributes value
 
 
 {-| Typed value or function definition.
@@ -788,7 +785,7 @@ arguments. The examples below try to visualize the process.
             body
 
 -}
-typedDefinition : Type extra -> List Name -> Value extra -> Definition extra
+typedDefinition : Type a -> List Name -> Value a -> Definition a
 typedDefinition valueType argumentNames body =
     TypedDefinition valueType argumentNames body
 
@@ -811,447 +808,431 @@ arguments. The examples below try to visualize the process.
             body
 
 -}
-untypedDefinition : List Name -> Value extra -> Definition extra
+untypedDefinition : List Name -> Value a -> Definition a
 untypedDefinition argumentNames body =
     UntypedDefinition argumentNames body
 
 
-encodeValue : (extra -> Encode.Value) -> Value extra -> Encode.Value
-encodeValue encodeExtra v =
-    let
-        typeTag tag =
-            ( "@type", Encode.string tag )
-    in
+encodeValue : (a -> Encode.Value) -> Value a -> Encode.Value
+encodeValue encodeAttributes v =
     case v of
-        Literal value extra ->
-            Encode.object
-                [ typeTag "literal"
-                , ( "value", encodeLiteral value )
-                , ( "extra", encodeExtra extra )
+        Literal a value ->
+            Encode.list identity
+                [ Encode.string "Literal"
+                , encodeAttributes a
+                , encodeLiteral value
                 ]
 
-        Constructor fullyQualifiedName extra ->
-            Encode.object
-                [ typeTag "constructor"
-                , ( "fullyQualifiedName", encodeFQName fullyQualifiedName )
-                , ( "extra", encodeExtra extra )
+        Constructor a fullyQualifiedName ->
+            Encode.list identity
+                [ Encode.string "Constructor"
+                , encodeAttributes a
+                , encodeFQName fullyQualifiedName
                 ]
 
-        Tuple elements extra ->
-            Encode.object
-                [ typeTag "tuple"
-                , ( "elements", elements |> Encode.list (encodeValue encodeExtra) )
-                , ( "extra", encodeExtra extra )
+        Tuple a elements ->
+            Encode.list identity
+                [ Encode.string "Tuple"
+                , encodeAttributes a
+                , elements |> Encode.list (encodeValue encodeAttributes)
                 ]
 
-        List items extra ->
-            Encode.object
-                [ typeTag "list"
-                , ( "items", items |> Encode.list (encodeValue encodeExtra) )
-                , ( "extra", encodeExtra extra )
+        List a items ->
+            Encode.list identity
+                [ Encode.string "List"
+                , encodeAttributes a
+                , items |> Encode.list (encodeValue encodeAttributes)
                 ]
 
-        Record fields extra ->
-            Encode.object
-                [ typeTag "record"
-                , ( "fields"
-                  , fields
-                        |> Encode.list
-                            (\( fieldName, fieldValue ) ->
-                                Encode.list identity
-                                    [ encodeName fieldName
-                                    , encodeValue encodeExtra fieldValue
-                                    ]
-                            )
-                  )
-                , ( "extra", encodeExtra extra )
+        Record a fields ->
+            Encode.list identity
+                [ Encode.string "Record"
+                , encodeAttributes a
+                , fields
+                    |> Encode.list
+                        (\( fieldName, fieldValue ) ->
+                            Encode.list identity
+                                [ encodeName fieldName
+                                , encodeValue encodeAttributes fieldValue
+                                ]
+                        )
                 ]
 
-        Variable name extra ->
-            Encode.object
-                [ typeTag "variable"
-                , ( "name", encodeName name )
-                , ( "extra", encodeExtra extra )
+        Variable a name ->
+            Encode.list identity
+                [ Encode.string "Variable"
+                , encodeAttributes a
+                , encodeName name
                 ]
 
-        Reference fullyQualifiedName extra ->
-            Encode.object
-                [ typeTag "reference"
-                , ( "fullyQualifiedName", encodeFQName fullyQualifiedName )
-                , ( "extra", encodeExtra extra )
+        Reference a fullyQualifiedName ->
+            Encode.list identity
+                [ Encode.string "Reference"
+                , encodeAttributes a
+                , encodeFQName fullyQualifiedName
                 ]
 
-        Field subjectValue fieldName extra ->
-            Encode.object
-                [ typeTag "field"
-                , ( "subjectValue", encodeValue encodeExtra subjectValue )
-                , ( "fieldName", encodeName fieldName )
-                , ( "extra", encodeExtra extra )
+        Field a subjectValue fieldName ->
+            Encode.list identity
+                [ Encode.string "Field"
+                , encodeAttributes a
+                , encodeValue encodeAttributes subjectValue
+                , encodeName fieldName
                 ]
 
-        FieldFunction fieldName extra ->
-            Encode.object
-                [ typeTag "fieldFunction"
-                , ( "fieldName", encodeName fieldName )
-                , ( "extra", encodeExtra extra )
+        FieldFunction a fieldName ->
+            Encode.list identity
+                [ Encode.string "FieldFunction"
+                , encodeAttributes a
+                , encodeName fieldName
                 ]
 
-        Apply function argument extra ->
-            Encode.object
-                [ typeTag "apply"
-                , ( "function", encodeValue encodeExtra function )
-                , ( "argument", encodeValue encodeExtra argument )
-                , ( "extra", encodeExtra extra )
+        Apply a function argument ->
+            Encode.list identity
+                [ Encode.string "Apply"
+                , encodeAttributes a
+                , encodeValue encodeAttributes function
+                , encodeValue encodeAttributes argument
                 ]
 
-        Lambda argumentPattern body extra ->
-            Encode.object
-                [ typeTag "lambda"
-                , ( "argumentPattern", encodePattern encodeExtra argumentPattern )
-                , ( "body", encodeValue encodeExtra body )
-                , ( "extra", encodeExtra extra )
+        Lambda a argumentPattern body ->
+            Encode.list identity
+                [ Encode.string "Lambda"
+                , encodeAttributes a
+                , encodePattern encodeAttributes argumentPattern
+                , encodeValue encodeAttributes body
                 ]
 
-        LetDefinition valueName valueDefinition inValue extra ->
-            Encode.object
-                [ typeTag "letDef"
-                , ( "valueName", encodeName valueName )
-                , ( "valueDefintion", encodeDefinition encodeExtra valueDefinition )
-                , ( "inValue", encodeValue encodeExtra inValue )
-                , ( "extra", encodeExtra extra )
+        LetDefinition a valueName valueDefinition inValue ->
+            Encode.list identity
+                [ Encode.string "LetDefinition"
+                , encodeAttributes a
+                , encodeName valueName
+                , encodeDefinition encodeAttributes valueDefinition
+                , encodeValue encodeAttributes inValue
                 ]
 
-        LetRecursion valueDefinitions inValue extra ->
-            Encode.object
-                [ typeTag "letRec"
-                , ( "valueDefintions"
-                  , valueDefinitions
-                        |> Encode.list
-                            (\( name, def ) ->
-                                Encode.list identity
-                                    [ encodeName name
-                                    , encodeDefinition encodeExtra def
-                                    ]
-                            )
-                  )
-                , ( "inValue", encodeValue encodeExtra inValue )
-                , ( "extra", encodeExtra extra )
+        LetRecursion a valueDefinitions inValue ->
+            Encode.list identity
+                [ Encode.string "LetRecursion"
+                , encodeAttributes a
+                , valueDefinitions
+                    |> Encode.list
+                        (\( name, def ) ->
+                            Encode.list identity
+                                [ encodeName name
+                                , encodeDefinition encodeAttributes def
+                                ]
+                        )
+                , encodeValue encodeAttributes inValue
                 ]
 
-        Destructure pattern valueToDestruct inValue extra ->
-            Encode.object
-                [ typeTag "letDestruct"
-                , ( "pattern", encodePattern encodeExtra pattern )
-                , ( "valueToDestruct", encodeValue encodeExtra valueToDestruct )
-                , ( "inValue", encodeValue encodeExtra inValue )
-                , ( "extra", encodeExtra extra )
+        Destructure a pattern valueToDestruct inValue ->
+            Encode.list identity
+                [ Encode.string "Destructure"
+                , encodeAttributes a
+                , encodePattern encodeAttributes pattern
+                , encodeValue encodeAttributes valueToDestruct
+                , encodeValue encodeAttributes inValue
                 ]
 
-        IfThenElse condition thenBranch elseBranch extra ->
-            Encode.object
-                [ typeTag "ifThenElse"
-                , ( "condition", encodeValue encodeExtra condition )
-                , ( "thenBranch", encodeValue encodeExtra thenBranch )
-                , ( "elseBranch", encodeValue encodeExtra elseBranch )
-                , ( "extra", encodeExtra extra )
+        IfThenElse a condition thenBranch elseBranch ->
+            Encode.list identity
+                [ Encode.string "IfThenElse"
+                , encodeAttributes a
+                , encodeValue encodeAttributes condition
+                , encodeValue encodeAttributes thenBranch
+                , encodeValue encodeAttributes elseBranch
                 ]
 
-        PatternMatch branchOutOn cases extra ->
-            Encode.object
-                [ typeTag "patternMatch"
-                , ( "branchOutOn", encodeValue encodeExtra branchOutOn )
-                , ( "cases"
-                  , cases
-                        |> Encode.list
-                            (\( pattern, body ) ->
-                                Encode.list identity
-                                    [ encodePattern encodeExtra pattern
-                                    , encodeValue encodeExtra body
-                                    ]
-                            )
-                  )
-                , ( "extra", encodeExtra extra )
+        PatternMatch a branchOutOn cases ->
+            Encode.list identity
+                [ Encode.string "PatternMatch"
+                , encodeAttributes a
+                , encodeValue encodeAttributes branchOutOn
+                , cases
+                    |> Encode.list
+                        (\( pattern, body ) ->
+                            Encode.list identity
+                                [ encodePattern encodeAttributes pattern
+                                , encodeValue encodeAttributes body
+                                ]
+                        )
                 ]
 
-        UpdateRecord valueToUpdate fieldsToUpdate extra ->
-            Encode.object
-                [ typeTag "update"
-                , ( "valueToUpdate", encodeValue encodeExtra valueToUpdate )
-                , ( "fieldsToUpdate"
-                  , fieldsToUpdate
-                        |> Encode.list
-                            (\( fieldName, fieldValue ) ->
-                                Encode.list identity
-                                    [ encodeName fieldName
-                                    , encodeValue encodeExtra fieldValue
-                                    ]
-                            )
-                  )
-                , ( "extra", encodeExtra extra )
+        UpdateRecord a valueToUpdate fieldsToUpdate ->
+            Encode.list identity
+                [ Encode.string "Update"
+                , encodeAttributes a
+                , encodeValue encodeAttributes valueToUpdate
+                , fieldsToUpdate
+                    |> Encode.list
+                        (\( fieldName, fieldValue ) ->
+                            Encode.list identity
+                                [ encodeName fieldName
+                                , encodeValue encodeAttributes fieldValue
+                                ]
+                        )
                 ]
 
-        Unit extra ->
-            Encode.object
-                [ typeTag "unit"
-                , ( "extra", encodeExtra extra )
+        Unit a ->
+            Encode.list identity
+                [ Encode.string "Unit"
+                , encodeAttributes a
                 ]
 
 
-decodeValue : Decode.Decoder extra -> Decode.Decoder (Value extra)
-decodeValue decodeExtra =
+decodeValue : Decode.Decoder a -> Decode.Decoder (Value a)
+decodeValue decodeAttributes =
     let
         lazyDecodeValue =
             Decode.lazy <|
                 \_ ->
-                    decodeValue decodeExtra
+                    decodeValue decodeAttributes
     in
-    Decode.field "@type" Decode.string
+    Decode.index 0 Decode.string
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "literal" ->
+                    "Literal" ->
                         Decode.map2 Literal
-                            (Decode.field "value" decodeLiteral)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeLiteral)
 
-                    "constructor" ->
+                    "Constructor" ->
                         Decode.map2 Constructor
-                            (Decode.field "fullyQualifiedName" decodeFQName)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeFQName)
 
-                    "tuple" ->
+                    "Tuple" ->
                         Decode.map2 Tuple
-                            (Decode.field "elements" <| Decode.list lazyDecodeValue)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| Decode.list lazyDecodeValue)
 
-                    "list" ->
+                    "List" ->
                         Decode.map2 List
-                            (Decode.field "items" <| Decode.list lazyDecodeValue)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| Decode.list lazyDecodeValue)
 
-                    "record" ->
+                    "Record" ->
                         Decode.map2 Record
-                            (Decode.field "fields"
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2
                                 (Decode.list
                                     (Decode.map2 Tuple.pair
                                         (Decode.index 0 decodeName)
-                                        (Decode.index 1 <| decodeValue decodeExtra)
+                                        (Decode.index 1 <| decodeValue decodeAttributes)
                                     )
                                 )
                             )
-                            (Decode.field "extra" decodeExtra)
 
-                    "variable" ->
+                    "Variable" ->
                         Decode.map2 Variable
-                            (Decode.field "name" decodeName)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeName)
 
-                    "reference" ->
+                    "Reference" ->
                         Decode.map2 Reference
-                            (Decode.field "fullyQualifiedName" decodeFQName)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeFQName)
 
-                    "field" ->
+                    "Field" ->
                         Decode.map3 Field
-                            (Decode.field "subjectValue" <| decodeValue decodeExtra)
-                            (Decode.field "fieldName" decodeName)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| decodeValue decodeAttributes)
+                            (Decode.index 3 decodeName)
 
-                    "fieldFunction" ->
+                    "FieldFunction" ->
                         Decode.map2 FieldFunction
-                            (Decode.field "fieldName" decodeName)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeName)
 
-                    "apply" ->
+                    "Apply" ->
                         Decode.map3 Apply
-                            (Decode.field "function" <| decodeValue decodeExtra)
-                            (Decode.field "argument" <| decodeValue decodeExtra)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| decodeValue decodeAttributes)
+                            (Decode.index 3 <| decodeValue decodeAttributes)
 
-                    "lambda" ->
+                    "Lambda" ->
                         Decode.map3 Lambda
-                            (Decode.field "argumentPattern" <| decodePattern decodeExtra)
-                            (Decode.field "body" <| decodeValue decodeExtra)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| decodePattern decodeAttributes)
+                            (Decode.index 3 <| decodeValue decodeAttributes)
 
-                    "letDef" ->
+                    "LetDefinition" ->
                         Decode.map4 LetDefinition
-                            (Decode.field "valueName" decodeName)
-                            (Decode.field "valueDefintion" <| decodeDefinition decodeExtra)
-                            (Decode.field "inValue" <| decodeValue decodeExtra)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeName)
+                            (Decode.index 3 <| decodeDefinition decodeAttributes)
+                            (Decode.index 4 <| decodeValue decodeAttributes)
 
-                    "letRec" ->
+                    "LetRecursion" ->
                         Decode.map3 LetRecursion
-                            (Decode.field "valueDefintions"
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2
                                 (Decode.list
                                     (Decode.map2 Tuple.pair
                                         (Decode.index 0 decodeName)
-                                        (Decode.index 1 <| decodeDefinition decodeExtra)
+                                        (Decode.index 1 <| decodeDefinition decodeAttributes)
                                     )
                                 )
                             )
-                            (Decode.field "inValue" <| decodeValue decodeExtra)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 3 <| decodeValue decodeAttributes)
 
-                    "letDestruct" ->
+                    "Destructure" ->
                         Decode.map4 Destructure
-                            (Decode.field "pattern" <| decodePattern decodeExtra)
-                            (Decode.field "valueToDestruct" <| decodeValue decodeExtra)
-                            (Decode.field "inValue" <| decodeValue decodeExtra)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| decodePattern decodeAttributes)
+                            (Decode.index 3 <| decodeValue decodeAttributes)
+                            (Decode.index 4 <| decodeValue decodeAttributes)
 
-                    "ifThenElse" ->
+                    "IfThenElse" ->
                         Decode.map4 IfThenElse
-                            (Decode.field "condition" <| decodeValue decodeExtra)
-                            (Decode.field "thenBranch" <| decodeValue decodeExtra)
-                            (Decode.field "elseBranch" <| decodeValue decodeExtra)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| decodeValue decodeAttributes)
+                            (Decode.index 3 <| decodeValue decodeAttributes)
+                            (Decode.index 4 <| decodeValue decodeAttributes)
 
-                    "patternMatch" ->
+                    "PatternMatch" ->
                         Decode.map3 PatternMatch
-                            (Decode.field "branchOutOn" <| decodeValue decodeExtra)
-                            (Decode.field "cases" <|
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| decodeValue decodeAttributes)
+                            (Decode.index 3 <|
                                 Decode.list
                                     (Decode.map2 Tuple.pair
-                                        (decodePattern decodeExtra)
-                                        (decodeValue decodeExtra)
+                                        (decodePattern decodeAttributes)
+                                        (decodeValue decodeAttributes)
                                     )
                             )
-                            (Decode.field "extra" decodeExtra)
 
-                    "update" ->
+                    "UpdateRecord" ->
                         Decode.map3 UpdateRecord
-                            (Decode.field "valueToUpdate" <| decodeValue decodeExtra)
-                            (Decode.field "fieldsToUpdate" <|
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| decodeValue decodeAttributes)
+                            (Decode.index 3 <|
                                 Decode.list <|
                                     Decode.map2 Tuple.pair
                                         decodeName
-                                        (decodeValue decodeExtra)
+                                        (decodeValue decodeAttributes)
                             )
-                            (Decode.field "extra" decodeExtra)
 
-                    "unit" ->
+                    "Unit" ->
                         Decode.map Unit
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
 
                     other ->
                         Decode.fail <| "Unknown value type: " ++ other
             )
 
 
-encodePattern : (extra -> Encode.Value) -> Pattern extra -> Encode.Value
-encodePattern encodeExtra pattern =
-    let
-        typeTag tag =
-            ( "@type", Encode.string tag )
-    in
+encodePattern : (a -> Encode.Value) -> Pattern a -> Encode.Value
+encodePattern encodeAttributes pattern =
     case pattern of
-        WildcardPattern extra ->
-            Encode.object
-                [ typeTag "wildcardPattern"
-                , ( "extra", encodeExtra extra )
+        WildcardPattern a ->
+            Encode.list identity
+                [ Encode.string "WildcardPattern"
+                , encodeAttributes a
                 ]
 
-        AsPattern p name extra ->
-            Encode.object
-                [ typeTag "asPattern"
-                , ( "pattern", encodePattern encodeExtra p )
-                , ( "name", encodeName name )
-                , ( "extra", encodeExtra extra )
+        AsPattern a p name ->
+            Encode.list identity
+                [ Encode.string "AsPattern"
+                , encodeAttributes a
+                , encodePattern encodeAttributes p
+                , encodeName name
                 ]
 
-        TuplePattern elementPatterns extra ->
-            Encode.object
-                [ typeTag "tuplePattern"
-                , ( "elementPatterns", elementPatterns |> Encode.list (encodePattern encodeExtra) )
-                , ( "extra", encodeExtra extra )
+        TuplePattern a elementPatterns ->
+            Encode.list identity
+                [ Encode.string "TuplePattern"
+                , encodeAttributes a
+                , elementPatterns |> Encode.list (encodePattern encodeAttributes)
                 ]
 
-        RecordPattern fieldNames extra ->
-            Encode.object
-                [ typeTag "recordPattern"
-                , ( "fieldNames", fieldNames |> Encode.list encodeName )
-                , ( "extra", encodeExtra extra )
+        RecordPattern a fieldNames ->
+            Encode.list identity
+                [ Encode.string "RecordPattern"
+                , encodeAttributes a
+                , fieldNames |> Encode.list encodeName
                 ]
 
-        ConstructorPattern constructorName argumentPatterns extra ->
-            Encode.object
-                [ typeTag "constructorPattern"
-                , ( "constructorName", encodeFQName constructorName )
-                , ( "argumentPatterns", argumentPatterns |> Encode.list (encodePattern encodeExtra) )
-                , ( "extra", encodeExtra extra )
+        ConstructorPattern a constructorName argumentPatterns ->
+            Encode.list identity
+                [ Encode.string "ConstructorPattern"
+                , encodeAttributes a
+                , encodeFQName constructorName
+                , argumentPatterns |> Encode.list (encodePattern encodeAttributes)
                 ]
 
-        EmptyListPattern extra ->
-            Encode.object
-                [ typeTag "emptyListPattern"
-                , ( "extra", encodeExtra extra )
+        EmptyListPattern a ->
+            Encode.list identity
+                [ Encode.string "EmptyListPattern"
+                , encodeAttributes a
                 ]
 
-        HeadTailPattern headPattern tailPattern extra ->
-            Encode.object
-                [ typeTag "headTailPattern"
-                , ( "headPattern", encodePattern encodeExtra headPattern )
-                , ( "tailPattern", encodePattern encodeExtra tailPattern )
-                , ( "extra", encodeExtra extra )
+        HeadTailPattern a headPattern tailPattern ->
+            Encode.list identity
+                [ Encode.string "HeadTailPattern"
+                , encodeAttributes a
+                , encodePattern encodeAttributes headPattern
+                , encodePattern encodeAttributes tailPattern
                 ]
 
-        LiteralPattern value extra ->
-            Encode.object
-                [ typeTag "literalPattern"
-                , ( "value", encodeLiteral value )
-                , ( "extra", encodeExtra extra )
+        LiteralPattern a value ->
+            Encode.list identity
+                [ Encode.string "LiteralPattern"
+                , encodeAttributes a
+                , encodeLiteral value
                 ]
 
 
 decodePattern : Decode.Decoder extra -> Decode.Decoder (Pattern extra)
-decodePattern decodeExtra =
+decodePattern decodeAttributes =
     let
         lazyDecodePattern =
             Decode.lazy <|
                 \_ ->
-                    decodePattern decodeExtra
+                    decodePattern decodeAttributes
     in
-    Decode.field "@type" Decode.string
+    Decode.index 0 Decode.string
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "wildcardPattern" ->
+                    "WildcardPattern" ->
                         Decode.map WildcardPattern
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
 
-                    "asPattern" ->
+                    "AsPattern" ->
                         Decode.map3 AsPattern
-                            (Decode.field "pattern" lazyDecodePattern)
-                            (Decode.field "name" decodeName)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 lazyDecodePattern)
+                            (Decode.index 3 decodeName)
 
-                    "tuplePattern" ->
+                    "TuplePattern" ->
                         Decode.map2 TuplePattern
-                            (Decode.field "elementPatterns" <| Decode.list lazyDecodePattern)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| Decode.list lazyDecodePattern)
 
-                    "recordPattern" ->
+                    "RecordPattern" ->
                         Decode.map2 RecordPattern
-                            (Decode.field "fieldNames" <| Decode.list decodeName)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 <| Decode.list decodeName)
 
-                    "constructorPattern" ->
+                    "ConstructorPattern" ->
                         Decode.map3 ConstructorPattern
-                            (Decode.field "constructorName" decodeFQName)
-                            (Decode.field "argumentPatterns" <| Decode.list lazyDecodePattern)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeFQName)
+                            (Decode.index 3 <| Decode.list lazyDecodePattern)
 
-                    "emptyListPattern" ->
+                    "EmptyListPattern" ->
                         Decode.map EmptyListPattern
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
 
-                    "headTailPattern" ->
+                    "HeadTailPattern" ->
                         Decode.map3 HeadTailPattern
-                            (Decode.field "headPattern" lazyDecodePattern)
-                            (Decode.field "tailPattern" lazyDecodePattern)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 lazyDecodePattern)
+                            (Decode.index 3 lazyDecodePattern)
 
                     other ->
                         Decode.fail <| "Unknown pattern type: " ++ other

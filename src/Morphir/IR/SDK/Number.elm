@@ -40,4 +40,4 @@ numberClass extra =
 
 negate : extra -> extra -> Value extra -> Value extra
 negate refExtra valueExtra arg =
-    Value.Apply (Value.Reference (fromLocalName "negate") refExtra) arg valueExtra
+    Value.Apply valueExtra (Value.Reference refExtra (fromLocalName "negate")) arg

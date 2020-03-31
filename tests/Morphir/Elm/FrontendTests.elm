@@ -211,23 +211,23 @@ valueTests =
 
         ref : String -> Value ()
         ref name =
-            Reference (fQName [] [] [ name ]) ()
+            Reference () (fQName [] [] [ name ])
     in
     describe "Values are mapped correctly"
         [ checkIR "()" <| Unit ()
-        , checkIR "1" <| Literal (IntLiteral 1) ()
-        , checkIR "0x20" <| Literal (IntLiteral 32) ()
-        , checkIR "1.5" <| Literal (FloatLiteral 1.5) ()
-        , checkIR "\"foo\"" <| Literal (StringLiteral "foo") ()
-        , checkIR "True" <| Literal (BoolLiteral True) ()
-        , checkIR "False" <| Literal (BoolLiteral False) ()
-        , checkIR "'A'" <| Literal (CharLiteral 'A') ()
+        , checkIR "1" <| Literal () (IntLiteral 1)
+        , checkIR "0x20" <| Literal () (IntLiteral 32)
+        , checkIR "1.5" <| Literal () (FloatLiteral 1.5)
+        , checkIR "\"foo\"" <| Literal () (StringLiteral "foo")
+        , checkIR "True" <| Literal () (BoolLiteral True)
+        , checkIR "False" <| Literal () (BoolLiteral False)
+        , checkIR "'A'" <| Literal () (CharLiteral 'A')
         , checkIR "foo" <| ref "foo"
-        , checkIR "Bar.foo" <| Reference (fQName [] [ [ "bar" ] ] [ "foo" ]) ()
-        , checkIR "MyPack.Bar.foo" <| Reference (fQName [] [ [ "my", "pack" ], [ "bar" ] ] [ "foo" ]) ()
-        , checkIR "foo bar" <| Apply (ref "foo") (ref "bar") ()
-        , checkIR "foo bar baz" <| Apply (Apply (ref "foo") (ref "bar") ()) (ref "baz") ()
-        , checkIR "-1" <| Number.negate () () (Literal (IntLiteral 1) ())
+        , checkIR "Bar.foo" <| Reference () (fQName [] [ [ "bar" ] ] [ "foo" ])
+        , checkIR "MyPack.Bar.foo" <| Reference () (fQName [] [ [ "my", "pack" ], [ "bar" ] ] [ "foo" ])
+        , checkIR "foo bar" <| Apply () (ref "foo") (ref "bar")
+        , checkIR "foo bar baz" <| Apply () (Apply () (ref "foo") (ref "bar")) (ref "baz")
+        , checkIR "-1" <| Number.negate () () (Literal () (IntLiteral 1))
         ]
 
 
