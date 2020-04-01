@@ -7,7 +7,7 @@ module Morphir.IR.Type exposing
     , Constructors
     , fuzzType
     , encodeType, decodeType, encodeSpecification, encodeDefinition
-    , Constructor, definitionToSpecification, eraseAttributes, mapDefinition, mapSpecification, mapTypeExtra, rewriteType
+    , Constructor, definitionToSpecification, eraseAttributes, mapDefinition, mapSpecification, mapTypeAttributes, rewriteType
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -213,26 +213,26 @@ mapDefinition f def =
                 |> Result.map (CustomTypeDefinition params)
 
 
-mapTypeExtra : (a -> b) -> Type a -> Type b
-mapTypeExtra f tpe =
+mapTypeAttributes : (a -> b) -> Type a -> Type b
+mapTypeAttributes f tpe =
     case tpe of
         Variable a name ->
             Variable (f a) name
 
         Reference a fQName argTypes ->
-            Reference (f a) fQName (argTypes |> List.map (mapTypeExtra f))
+            Reference (f a) fQName (argTypes |> List.map (mapTypeAttributes f))
 
         Tuple a elemTypes ->
-            Tuple (f a) (elemTypes |> List.map (mapTypeExtra f))
+            Tuple (f a) (elemTypes |> List.map (mapTypeAttributes f))
 
         Record a fields ->
-            Record (f a) (fields |> List.map (mapFieldType (mapTypeExtra f)))
+            Record (f a) (fields |> List.map (mapFieldType (mapTypeAttributes f)))
 
         ExtensibleRecord a name fields ->
-            ExtensibleRecord (f a) name (fields |> List.map (mapFieldType (mapTypeExtra f)))
+            ExtensibleRecord (f a) name (fields |> List.map (mapFieldType (mapTypeAttributes f)))
 
         Function a argType returnType ->
-            Function (f a) (argType |> mapTypeExtra f) (returnType |> mapTypeExtra f)
+            Function (f a) (argType |> mapTypeAttributes f) (returnType |> mapTypeAttributes f)
 
         Unit a ->
             Unit (f a)
@@ -267,27 +267,27 @@ eraseAttributes : Definition a -> Definition ()
 eraseAttributes typeDef =
     case typeDef of
         TypeAliasDefinition typeVars tpe ->
-            TypeAliasDefinition typeVars (mapTypeExtra (\_ -> ()) tpe)
+            TypeAliasDefinition typeVars (mapTypeAttributes (\_ -> ()) tpe)
 
         CustomTypeDefinition typeVars acsCtrlConstructors ->
             let
-                eraseExtraCtor : Constructor extra -> Constructor ()
-                eraseExtraCtor ( name, types ) =
+                eraseCtor : Constructor a -> Constructor ()
+                eraseCtor ( name, types ) =
                     let
                         extraErasedTypes : List ( Name, Type () )
                         extraErasedTypes =
                             types
-                                |> List.map (\( n, t ) -> ( n, mapTypeExtra (\_ -> ()) t ))
+                                |> List.map (\( n, t ) -> ( n, mapTypeAttributes (\_ -> ()) t ))
                     in
                     ( name, extraErasedTypes )
 
-                emptyExtraCtors : AccessControlled (Constructors extra) -> AccessControlled (Constructors ())
-                emptyExtraCtors acsCtrlCtors =
+                eraseAccessControlledCtors : AccessControlled (Constructors a) -> AccessControlled (Constructors ())
+                eraseAccessControlledCtors acsCtrlCtors =
                     AccessControlled.map
-                        (\ctors -> ctors |> List.map eraseExtraCtor)
+                        (\ctors -> ctors |> List.map eraseCtor)
                         acsCtrlCtors
             in
-            CustomTypeDefinition typeVars (emptyExtraCtors acsCtrlConstructors)
+            CustomTypeDefinition typeVars (eraseAccessControlledCtors acsCtrlConstructors)
 
 
 {-| Creates a type variable.
@@ -401,31 +401,31 @@ unit attributes =
 
 
 {-| -}
-typeAliasDefinition : List Name -> Type extra -> Definition extra
+typeAliasDefinition : List Name -> Type a -> Definition a
 typeAliasDefinition typeParams typeExp =
     TypeAliasDefinition typeParams typeExp
 
 
 {-| -}
-customTypeDefinition : List Name -> AccessControlled (Constructors extra) -> Definition extra
+customTypeDefinition : List Name -> AccessControlled (Constructors a) -> Definition a
 customTypeDefinition typeParams ctors =
     CustomTypeDefinition typeParams ctors
 
 
 {-| -}
-typeAliasSpecification : List Name -> Type extra -> Specification extra
+typeAliasSpecification : List Name -> Type a -> Specification a
 typeAliasSpecification typeParams typeExp =
     TypeAliasSpecification typeParams typeExp
 
 
 {-| -}
-opaqueTypeSpecification : List Name -> Specification extra
+opaqueTypeSpecification : List Name -> Specification a
 opaqueTypeSpecification typeParams =
     OpaqueTypeSpecification typeParams
 
 
 {-| -}
-customTypeSpecification : List Name -> Constructors extra -> Specification extra
+customTypeSpecification : List Name -> Constructors a -> Specification a
 customTypeSpecification typeParams ctors =
     CustomTypeSpecification typeParams ctors
 
@@ -503,7 +503,7 @@ rewriteType rewriteBranch rewriteLeaf typeToRewrite =
         == Just ( [ "foo" ], SDK.Basics.intType )
 
 -}
-matchField : Pattern Name a -> Pattern (Type extra) b -> Pattern (Field extra) ( a, b )
+matchField : Pattern Name a -> Pattern (Type a) b -> Pattern (Field a) ( a, b )
 matchField matchFieldName matchFieldType field =
     Maybe.map2 Tuple.pair
         (matchFieldName field.name)
@@ -512,7 +512,7 @@ matchField matchFieldName matchFieldType field =
 
 {-| Map the name of the field to get a new field.
 -}
-mapFieldName : (Name -> Name) -> Field extra -> Field extra
+mapFieldName : (Name -> Name) -> Field a -> Field a
 mapFieldName f field =
     Field (f field.name) field.tpe
 
@@ -716,30 +716,30 @@ decodeType decodeAttributes =
             )
 
 
-encodeField : (extra -> Encode.Value) -> Field extra -> Encode.Value
-encodeField encodeExtra field =
+encodeField : (a -> Encode.Value) -> Field a -> Encode.Value
+encodeField encodeAttributes field =
     Encode.list identity
         [ encodeName field.name
-        , encodeType encodeExtra field.tpe
+        , encodeType encodeAttributes field.tpe
         ]
 
 
-decodeField : Decode.Decoder extra -> Decode.Decoder (Field extra)
-decodeField decodeExtra =
+decodeField : Decode.Decoder a -> Decode.Decoder (Field a)
+decodeField decodeAttributes =
     Decode.map2 Field
         (Decode.index 0 decodeName)
-        (Decode.index 1 (decodeType decodeExtra))
+        (Decode.index 1 (decodeType decodeAttributes))
 
 
 {-| -}
-encodeSpecification : (extra -> Encode.Value) -> Specification extra -> Encode.Value
-encodeSpecification encodeExtra spec =
+encodeSpecification : (a -> Encode.Value) -> Specification a -> Encode.Value
+encodeSpecification encodeAttributes spec =
     case spec of
         TypeAliasSpecification params exp ->
             Encode.list identity
                 [ Encode.string "TypeAliasSpecification"
                 , Encode.list encodeName params
-                , encodeType encodeExtra exp
+                , encodeType encodeAttributes exp
                 ]
 
         OpaqueTypeSpecification params ->
@@ -752,31 +752,31 @@ encodeSpecification encodeExtra spec =
             Encode.list identity
                 [ Encode.string "CustomTypeSpecification"
                 , Encode.list encodeName params
-                , encodeConstructors encodeExtra ctors
+                , encodeConstructors encodeAttributes ctors
                 ]
 
 
 {-| -}
-encodeDefinition : (extra -> Encode.Value) -> Definition extra -> Encode.Value
-encodeDefinition encodeExtra def =
+encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
+encodeDefinition encodeAttributes def =
     case def of
         TypeAliasDefinition params exp ->
             Encode.list identity
                 [ Encode.string "TypeAliasDefinition"
                 , Encode.list encodeName params
-                , encodeType encodeExtra exp
+                , encodeType encodeAttributes exp
                 ]
 
         CustomTypeDefinition params ctors ->
             Encode.list identity
                 [ Encode.string "CustomTypeDefinition"
                 , Encode.list encodeName params
-                , encodeAccessControlled (encodeConstructors encodeExtra) ctors
+                , encodeAccessControlled (encodeConstructors encodeAttributes) ctors
                 ]
 
 
-encodeConstructors : (extra -> Encode.Value) -> Constructors extra -> Encode.Value
-encodeConstructors encodeExtra ctors =
+encodeConstructors : (a -> Encode.Value) -> Constructors a -> Encode.Value
+encodeConstructors encodeAttributes ctors =
     ctors
         |> Encode.list
             (\( ctorName, ctorArgs ) ->
@@ -788,7 +788,7 @@ encodeConstructors encodeExtra ctors =
                                 (\( argName, argType ) ->
                                     Encode.list identity
                                         [ encodeName argName
-                                        , encodeType encodeExtra argType
+                                        , encodeType encodeAttributes argType
                                         ]
                                 )
                       )

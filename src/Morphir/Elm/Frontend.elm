@@ -340,7 +340,7 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 |> Dict.map
                     (\path def ->
                         Module.definitionToSpecification def
-                            |> Module.eraseSpecificationExtra
+                            |> Module.eraseSpecificationAttributes
                     )
 
         dependencies =

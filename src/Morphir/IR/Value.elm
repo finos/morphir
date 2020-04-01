@@ -6,7 +6,7 @@ module Morphir.IR.Value exposing
     , Specification
     , Definition(..), typedDefinition, untypedDefinition
     , encodeValue, encodeSpecification, encodeDefinition
-    , getDefinitionBody, mapDefinition, mapSpecification, mapValueExtra
+    , getDefinitionBody, mapDefinition, mapSpecification, mapValueAttributes
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -197,8 +197,8 @@ mapDefinition mapType mapValue def =
                 |> Ok
 
 
-mapValueExtra : (a -> b) -> Value a -> Value b
-mapValueExtra f v =
+mapValueAttributes : (a -> b) -> Value a -> Value b
+mapValueAttributes f v =
     case v of
         Literal a value ->
             Literal (f a) value
@@ -207,17 +207,17 @@ mapValueExtra f v =
             Constructor (f a) fullyQualifiedName
 
         Tuple a elements ->
-            Tuple (f a) (elements |> List.map (mapValueExtra f))
+            Tuple (f a) (elements |> List.map (mapValueAttributes f))
 
         List a items ->
-            List (f a) (items |> List.map (mapValueExtra f))
+            List (f a) (items |> List.map (mapValueAttributes f))
 
         Record a fields ->
             Record (f a)
                 (fields
                     |> List.map
                         (\( fieldName, fieldValue ) ->
-                            ( fieldName, mapValueExtra f fieldValue )
+                            ( fieldName, mapValueAttributes f fieldValue )
                         )
                 )
 
@@ -228,53 +228,53 @@ mapValueExtra f v =
             Reference (f a) fullyQualifiedName
 
         Field a subjectValue fieldName ->
-            Field (f a) (mapValueExtra f subjectValue) fieldName
+            Field (f a) (mapValueAttributes f subjectValue) fieldName
 
         FieldFunction a fieldName ->
             FieldFunction (f a) fieldName
 
         Apply a function argument ->
-            Apply (f a) (mapValueExtra f function) (mapValueExtra f argument)
+            Apply (f a) (mapValueAttributes f function) (mapValueAttributes f argument)
 
         Lambda a argumentPattern body ->
-            Lambda (f a) (mapPatternExtra f argumentPattern) (mapValueExtra f body)
+            Lambda (f a) (mapPatternAttributes f argumentPattern) (mapValueAttributes f body)
 
         LetDefinition a valueName valueDefinition inValue ->
-            LetDefinition (f a) valueName (mapDefinitionExtra f valueDefinition) (mapValueExtra f inValue)
+            LetDefinition (f a) valueName (mapDefinitionAttributes f valueDefinition) (mapValueAttributes f inValue)
 
         LetRecursion a valueDefinitions inValue ->
             LetRecursion (f a)
                 (valueDefinitions
                     |> List.map
                         (\( name, def ) ->
-                            ( name, mapDefinitionExtra f def )
+                            ( name, mapDefinitionAttributes f def )
                         )
                 )
-                (mapValueExtra f inValue)
+                (mapValueAttributes f inValue)
 
         Destructure a pattern valueToDestruct inValue ->
-            Destructure (f a) (mapPatternExtra f pattern) (mapValueExtra f valueToDestruct) (mapValueExtra f inValue)
+            Destructure (f a) (mapPatternAttributes f pattern) (mapValueAttributes f valueToDestruct) (mapValueAttributes f inValue)
 
         IfThenElse a condition thenBranch elseBranch ->
-            IfThenElse (f a) (mapValueExtra f condition) (mapValueExtra f thenBranch) (mapValueExtra f elseBranch)
+            IfThenElse (f a) (mapValueAttributes f condition) (mapValueAttributes f thenBranch) (mapValueAttributes f elseBranch)
 
         PatternMatch a branchOutOn cases ->
             PatternMatch (f a)
-                (mapValueExtra f branchOutOn)
+                (mapValueAttributes f branchOutOn)
                 (cases
                     |> List.map
                         (\( pattern, body ) ->
-                            ( mapPatternExtra f pattern, mapValueExtra f body )
+                            ( mapPatternAttributes f pattern, mapValueAttributes f body )
                         )
                 )
 
         UpdateRecord a valueToUpdate fieldsToUpdate ->
             UpdateRecord (f a)
-                (mapValueExtra f valueToUpdate)
+                (mapValueAttributes f valueToUpdate)
                 (fieldsToUpdate
                     |> List.map
                         (\( fieldName, fieldValue ) ->
-                            ( fieldName, mapValueExtra f fieldValue )
+                            ( fieldName, mapValueAttributes f fieldValue )
                         )
                 )
 
@@ -282,42 +282,42 @@ mapValueExtra f v =
             Unit (f a)
 
 
-mapPatternExtra : (a -> b) -> Pattern a -> Pattern b
-mapPatternExtra f p =
+mapPatternAttributes : (a -> b) -> Pattern a -> Pattern b
+mapPatternAttributes f p =
     case p of
         WildcardPattern a ->
             WildcardPattern (f a)
 
         AsPattern a p2 name ->
-            AsPattern (f a) (mapPatternExtra f p2) name
+            AsPattern (f a) (mapPatternAttributes f p2) name
 
         TuplePattern a elementPatterns ->
-            TuplePattern (f a) (elementPatterns |> List.map (mapPatternExtra f))
+            TuplePattern (f a) (elementPatterns |> List.map (mapPatternAttributes f))
 
         RecordPattern a fieldNames ->
             RecordPattern (f a) fieldNames
 
         ConstructorPattern a constructorName argumentPatterns ->
-            ConstructorPattern (f a) constructorName (argumentPatterns |> List.map (mapPatternExtra f))
+            ConstructorPattern (f a) constructorName (argumentPatterns |> List.map (mapPatternAttributes f))
 
         EmptyListPattern a ->
             EmptyListPattern (f a)
 
         HeadTailPattern a headPattern tailPattern ->
-            HeadTailPattern (f a) (mapPatternExtra f headPattern) (mapPatternExtra f tailPattern)
+            HeadTailPattern (f a) (mapPatternAttributes f headPattern) (mapPatternAttributes f tailPattern)
 
         LiteralPattern a value ->
             LiteralPattern (f a) value
 
 
-mapDefinitionExtra : (a -> b) -> Definition a -> Definition b
-mapDefinitionExtra f d =
+mapDefinitionAttributes : (a -> b) -> Definition a -> Definition b
+mapDefinitionAttributes f d =
     case d of
         TypedDefinition tpe args body ->
-            TypedDefinition (Type.mapTypeExtra f tpe) args (mapValueExtra f body)
+            TypedDefinition (Type.mapTypeAttributes f tpe) args (mapValueAttributes f body)
 
         UntypedDefinition args body ->
-            UntypedDefinition args (mapValueExtra f body)
+            UntypedDefinition args (mapValueAttributes f body)
 
 
 {-| A [literal][lit] represents a fixed value in the IR. We only allow values of basic types: bool, char, string, int, float.
@@ -1186,7 +1186,7 @@ encodePattern encodeAttributes pattern =
                 ]
 
 
-decodePattern : Decode.Decoder extra -> Decode.Decoder (Pattern extra)
+decodePattern : Decode.Decoder a -> Decode.Decoder (Pattern a)
 decodePattern decodeAttributes =
     let
         lazyDecodePattern =
@@ -1318,8 +1318,8 @@ decodeLiteral =
             )
 
 
-encodeSpecification : (extra -> Encode.Value) -> Specification extra -> Encode.Value
-encodeSpecification encodeExtra spec =
+encodeSpecification : (a -> Encode.Value) -> Specification a -> Encode.Value
+encodeSpecification encodeAttributes spec =
     Encode.object
         [ ( "inputs"
           , spec.inputs
@@ -1327,49 +1327,49 @@ encodeSpecification encodeExtra spec =
                     (\( argName, argType ) ->
                         Encode.object
                             [ ( "argName", encodeName argName )
-                            , ( "argType", encodeType encodeExtra argType )
+                            , ( "argType", encodeType encodeAttributes argType )
                             ]
                     )
           )
-        , ( "output", encodeType encodeExtra spec.output )
+        , ( "output", encodeType encodeAttributes spec.output )
         ]
 
 
-encodeDefinition : (extra -> Encode.Value) -> Definition extra -> Encode.Value
-encodeDefinition encodeExtra definition =
+encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
+encodeDefinition encodeAttributes definition =
     case definition of
         TypedDefinition valueType argumentNames body ->
             Encode.object
                 [ ( "@type", Encode.string "typedDefinition" )
-                , ( "valueType", encodeType encodeExtra valueType )
+                , ( "valueType", encodeType encodeAttributes valueType )
                 , ( "argumentNames", argumentNames |> Encode.list encodeName )
-                , ( "body", encodeValue encodeExtra body )
+                , ( "body", encodeValue encodeAttributes body )
                 ]
 
         UntypedDefinition argumentNames body ->
             Encode.object
                 [ ( "@type", Encode.string "untypedDefinition" )
                 , ( "argumentNames", argumentNames |> Encode.list encodeName )
-                , ( "body", encodeValue encodeExtra body )
+                , ( "body", encodeValue encodeAttributes body )
                 ]
 
 
-decodeDefinition : Decode.Decoder extra -> Decode.Decoder (Definition extra)
-decodeDefinition decodeExtra =
+decodeDefinition : Decode.Decoder a -> Decode.Decoder (Definition a)
+decodeDefinition decodeAttributes =
     Decode.field "@type" Decode.string
         |> Decode.andThen
             (\kind ->
                 case kind of
                     "typedDefinition" ->
                         Decode.map3 TypedDefinition
-                            (Decode.field "valueType" <| decodeType decodeExtra)
+                            (Decode.field "valueType" <| decodeType decodeAttributes)
                             (Decode.field "argumentNames" <| Decode.list decodeName)
-                            (Decode.field "body" <| Decode.lazy (\_ -> decodeValue decodeExtra))
+                            (Decode.field "body" <| Decode.lazy (\_ -> decodeValue decodeAttributes))
 
                     "untypedDefinition" ->
                         Decode.map2 UntypedDefinition
                             (Decode.field "argumentNames" <| Decode.list decodeName)
-                            (Decode.field "body" <| Decode.lazy (\_ -> decodeValue decodeExtra))
+                            (Decode.field "body" <| Decode.lazy (\_ -> decodeValue decodeAttributes))
 
                     other ->
                         Decode.fail <| "Unknown definition type: " ++ other

@@ -38,6 +38,6 @@ numberClass attributes =
     Variable attributes [ "number" ]
 
 
-negate : extra -> extra -> Value extra -> Value extra
-negate refExtra valueExtra arg =
-    Value.Apply valueExtra (Value.Reference refExtra (fromLocalName "negate")) arg
+negate : a -> a -> Value a -> Value a
+negate refAttributes valueAttributes arg =
+    Value.Apply valueAttributes (Value.Reference refAttributes (fromLocalName "negate")) arg
