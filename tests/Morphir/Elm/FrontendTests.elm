@@ -192,7 +192,29 @@ valueTests =
                 \_ ->
                     Frontend.packageDefinitionFromSource packageInfo [ moduleSource valueSource ]
                         |> Result.map Package.eraseDefinitionAttributes
-                        |> Result.mapError (\error -> "Error while reading model")
+                        |> Result.mapError
+                            (\errors ->
+                                errors
+                                    |> List.map
+                                        (\error ->
+                                            case error of
+                                                Frontend.ParseError _ _ ->
+                                                    "Parse Error"
+
+                                                Frontend.CyclicModules _ ->
+                                                    "Cyclic Modules"
+
+                                                Frontend.ResolveError _ _ ->
+                                                    "Resolve Error"
+
+                                                Frontend.EmptyApply _ ->
+                                                    "Empty Apply"
+
+                                                Frontend.NotSupported _ expType ->
+                                                    "Not Supported: " ++ expType
+                                        )
+                                    |> String.join ", "
+                            )
                         |> Result.andThen
                             (\packageDef ->
                                 packageDef.modules
@@ -227,6 +249,14 @@ valueTests =
         , checkIR "foo bar" <| Apply () (ref "foo") (ref "bar")
         , checkIR "foo bar baz" <| Apply () (Apply () (ref "foo") (ref "bar")) (ref "baz")
         , checkIR "-1" <| Number.negate () () (Literal () (IntLiteral 1))
+        , checkIR "if foo then bar else baz" <| IfThenElse () (ref "foo") (ref "bar") (ref "baz")
+        , checkIR "( foo, bar, baz )" <| Tuple () [ ref "foo", ref "bar", ref "baz" ]
+        , checkIR "( foo )" <| ref "foo"
+        , checkIR "[ foo, bar, baz ]" <| List () [ ref "foo", ref "bar", ref "baz" ]
+        , checkIR "{ foo = foo, bar = bar, baz = baz }" <| Record () [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ), ( [ "baz" ], ref "baz" ) ]
+        , checkIR "foo.bar" <| Field () (ref "foo") [ "bar" ]
+        , checkIR ".bar" <| FieldFunction () [ "bar" ]
+        , checkIR "{ a | foo = foo, bar = bar }" <| UpdateRecord () (Variable () [ "a" ]) [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ) ]
         ]
 
 

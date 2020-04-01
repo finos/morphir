@@ -692,6 +692,9 @@ mapExpression sourceFile (Node range exp) =
                 |> Result.mapError List.concat
                 |> Result.andThen (List.reverse >> toApply)
 
+        Expression.OperatorApplication op infixDirection leftNode rightNode ->
+            Err [ NotSupported sourceLocation "TODO: OperatorApplication" ]
+
         Expression.FunctionOrValue moduleName valueName ->
             case ( moduleName, valueName ) of
                 ( [], "True" ) ->
@@ -703,18 +706,30 @@ mapExpression sourceFile (Node range exp) =
                 _ ->
                     Ok (Value.Reference sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (valueName |> Name.fromString)))
 
+        Expression.IfBlock condNode thenNode elseNode ->
+            Result.map3 (Value.IfThenElse sourceLocation)
+                (mapExpression sourceFile condNode)
+                (mapExpression sourceFile thenNode)
+                (mapExpression sourceFile elseNode)
+
+        Expression.PrefixOperator op ->
+            Err [ NotSupported sourceLocation "TODO: PrefixOperator" ]
+
+        Expression.Operator op ->
+            Err [ NotSupported sourceLocation "TODO: Operator" ]
+
         Expression.Integer value ->
             Ok (Value.Literal sourceLocation (Value.IntLiteral value))
 
         Expression.Hex value ->
             Ok (Value.Literal sourceLocation (Value.IntLiteral value))
 
+        Expression.Floatable value ->
+            Ok (Value.Literal sourceLocation (Value.FloatLiteral value))
+
         Expression.Negation arg ->
             mapExpression sourceFile arg
                 |> Result.map (Number.negate sourceLocation sourceLocation)
-
-        Expression.Floatable value ->
-            Ok (Value.Literal sourceLocation (Value.FloatLiteral value))
 
         Expression.Literal value ->
             Ok (Value.Literal sourceLocation (Value.StringLiteral value))
@@ -729,8 +744,62 @@ mapExpression sourceFile (Node range exp) =
                 |> Result.mapError List.concat
                 |> Result.map (Value.Tuple sourceLocation)
 
-        other ->
-            Err [ NotSupported sourceLocation "TODO" ]
+        Expression.ParenthesizedExpression expNode ->
+            mapExpression sourceFile expNode
+
+        Expression.LetExpression letBlock ->
+            Err [ NotSupported sourceLocation "TODO: LetExpression" ]
+
+        Expression.CaseExpression caseBlock ->
+            Err [ NotSupported sourceLocation "TODO: CaseExpression" ]
+
+        Expression.LambdaExpression lambda ->
+            Err [ NotSupported sourceLocation "TODO: LambdaExpression" ]
+
+        Expression.RecordExpr fieldNodes ->
+            fieldNodes
+                |> List.map Node.value
+                |> List.map
+                    (\( Node _ fieldName, fieldValue ) ->
+                        mapExpression sourceFile fieldValue
+                            |> Result.map (Tuple.pair (fieldName |> Name.fromString))
+                    )
+                |> ResultList.toResult
+                |> Result.mapError List.concat
+                |> Result.map (Value.Record sourceLocation)
+
+        Expression.ListExpr itemNodes ->
+            itemNodes
+                |> List.map (mapExpression sourceFile)
+                |> ResultList.toResult
+                |> Result.mapError List.concat
+                |> Result.map (Value.List sourceLocation)
+
+        Expression.RecordAccess targetNode fieldNameNode ->
+            mapExpression sourceFile targetNode
+                |> Result.map
+                    (\subjectValue ->
+                        Value.Field sourceLocation subjectValue (fieldNameNode |> Node.value |> Name.fromString)
+                    )
+
+        Expression.RecordAccessFunction fieldName ->
+            Ok (Value.FieldFunction sourceLocation (fieldName |> Name.fromString))
+
+        Expression.RecordUpdateExpression targetVarNameNode fieldNodes ->
+            fieldNodes
+                |> List.map Node.value
+                |> List.map
+                    (\( Node _ fieldName, fieldValue ) ->
+                        mapExpression sourceFile fieldValue
+                            |> Result.map (Tuple.pair (fieldName |> Name.fromString))
+                    )
+                |> ResultList.toResult
+                |> Result.mapError List.concat
+                |> Result.map
+                    (Value.UpdateRecord sourceLocation (targetVarNameNode |> Node.value |> Name.fromString |> Value.Variable sourceLocation))
+
+        Expression.GLSLExpression _ ->
+            Err [ NotSupported sourceLocation "GLSLExpression" ]
 
 
 mapPattern : SourceFile -> Node Pattern -> Result Errors (Value.Pattern SourceLocation)
