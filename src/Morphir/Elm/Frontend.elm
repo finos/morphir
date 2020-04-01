@@ -567,13 +567,11 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
     in
     case typeAnnotation of
         GenericType varName ->
-            Ok (Type.variable (varName |> Name.fromString) sourceLocation)
+            Ok (Type.Variable sourceLocation (varName |> Name.fromString))
 
         Typed (Node _ ( moduleName, localName )) argNodes ->
             Result.map
-                (\args ->
-                    Type.reference (fQName [] (moduleName |> List.map Name.fromString) (Name.fromString localName)) args sourceLocation
-                )
+                (Type.Reference sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (Name.fromString localName)))
                 (argNodes
                     |> List.map (mapTypeAnnotation sourceFile)
                     |> ResultList.toResult
@@ -581,13 +579,13 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 )
 
         Unit ->
-            Ok (Type.unit sourceLocation)
+            Ok (Type.Unit sourceLocation)
 
         Tupled elemNodes ->
             elemNodes
                 |> List.map (mapTypeAnnotation sourceFile)
                 |> ResultList.toResult
-                |> Result.map (\elemTypes -> Type.tuple elemTypes sourceLocation)
+                |> Result.map (Type.Tuple sourceLocation)
                 |> Result.mapError List.concat
 
         Record fieldNodes ->
@@ -599,10 +597,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                             |> Result.map (Type.Field (fieldName |> Name.fromString))
                     )
                 |> ResultList.toResult
-                |> Result.map
-                    (\fields ->
-                        Type.record fields sourceLocation
-                    )
+                |> Result.map (Type.Record sourceLocation)
                 |> Result.mapError List.concat
 
         GenericRecord (Node _ argName) (Node _ fieldNodes) ->
@@ -614,17 +609,11 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                             |> Result.map (Type.Field (fieldName |> Name.fromString))
                     )
                 |> ResultList.toResult
-                |> Result.map
-                    (\fields ->
-                        Type.extensibleRecord (argName |> Name.fromString) fields sourceLocation
-                    )
+                |> Result.map (Type.ExtensibleRecord sourceLocation (argName |> Name.fromString))
                 |> Result.mapError List.concat
 
         FunctionTypeAnnotation argTypeNode returnTypeNode ->
-            Result.map2
-                (\argType returnType ->
-                    Type.function argType returnType sourceLocation
-                )
+            Result.map2 (Type.Function sourceLocation)
                 (mapTypeAnnotation sourceFile argTypeNode)
                 (mapTypeAnnotation sourceFile returnTypeNode)
 
@@ -769,7 +758,7 @@ resolveLocalTypes packagePath modulePath moduleResolver moduleDef =
             Rewrite.bottomUp Type.rewriteType
                 (\tpe ->
                     case tpe of
-                        Type.Reference refFullName args sourceLocation ->
+                        Type.Reference sourceLocation refFullName args ->
                             let
                                 refModulePath : Path
                                 refModulePath =
@@ -797,7 +786,7 @@ resolveLocalTypes packagePath modulePath moduleResolver moduleDef =
                             resolvedFullNameResult
                                 |> Result.map
                                     (\resolvedFullName ->
-                                        Type.Reference resolvedFullName args sourceLocation
+                                        Type.Reference sourceLocation resolvedFullName args
                                     )
                                 |> Result.mapError (ResolveError sourceLocation)
                                 |> Just

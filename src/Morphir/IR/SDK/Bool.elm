@@ -34,6 +34,6 @@ fromLocalName name =
         |> FQName.fromQName packageName
 
 
-boolType : extra -> Type extra
-boolType extra =
-    Reference (fromLocalName "bool") [] extra
+boolType : a -> Type a
+boolType attributes =
+    Reference attributes (fromLocalName "bool") []

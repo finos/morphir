@@ -21,7 +21,7 @@ import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlle
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name, toCamelCase)
 import Morphir.IR.Path exposing (Path)
-import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..), eraseExtra)
+import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..), eraseAttributes)
 
 
 gen : Path -> Name -> Type () -> List ( Name, AccessControlled (Type.Definition ()) ) -> Maybe File
@@ -237,7 +237,7 @@ msgDecoderDecl keyType stateType cmdType =
         Ok (( typeName, typeDef ) :: []) ->
             DecoderGen.typeDefToDecoder
                 typeName
-                (typeDef |> AccessControlled.map eraseExtra)
+                (typeDef |> AccessControlled.map eraseAttributes)
 
         _ ->
             emptyDecl
@@ -329,7 +329,7 @@ encodeStateEventDecl keyType stateType eventType =
     in
     case morphirTypeDef of
         Ok (( typeName, typeDef ) :: []) ->
-            EncoderGen.typeDefToEncoder typeName (typeDef |> AccessControlled.map eraseExtra)
+            EncoderGen.typeDefToEncoder typeName (typeDef |> AccessControlled.map eraseAttributes)
 
         _ ->
             emptyDecl

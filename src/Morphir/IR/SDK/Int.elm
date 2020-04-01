@@ -34,6 +34,6 @@ fromLocalName name =
         |> FQName.fromQName packageName
 
 
-intType : extra -> Type extra
-intType extra =
-    Reference (fromLocalName "int") [] extra
+intType : a -> Type a
+intType attributes =
+    Reference attributes (fromLocalName "int") []

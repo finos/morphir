@@ -21,7 +21,7 @@ moduleSpec =
         Dict.fromList
             [ ( [ "maybe" ]
               , CustomTypeSpecification [ [ "a" ] ]
-                    [ ( [ "just" ], [ ( [ "value" ], Type.Variable [ "a" ] () ) ] )
+                    [ ( [ "just" ], [ ( [ "value" ], Type.Variable () [ "a" ] ) ] )
                     , ( [ "nothing" ], [] )
                     ]
               )
@@ -39,6 +39,6 @@ fromLocalName name =
         |> FQName.fromQName packageName
 
 
-maybeType : Type extra -> extra -> Type extra
-maybeType itemType extra =
-    Reference (fromLocalName "maybe") [ itemType ] extra
+maybeType : a -> Type a -> Type a
+maybeType attributes itemType =
+    Reference attributes (fromLocalName "maybe") [ itemType ]

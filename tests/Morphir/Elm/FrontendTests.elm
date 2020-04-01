@@ -97,16 +97,16 @@ frontendTest =
                                 Dict.fromList
                                     [ ( [ "bar" ]
                                       , public
-                                            (Type.typeAliasDefinition []
-                                                (Type.reference (fQName packageName [ [ "a" ] ] [ "foo" ]) [] ())
+                                            (Type.TypeAliasDefinition []
+                                                (Type.Reference () (fQName packageName [ [ "a" ] ] [ "foo" ]) [])
                                             )
                                       )
                                     , ( [ "foo" ]
                                       , public
-                                            (Type.customTypeDefinition []
+                                            (Type.CustomTypeDefinition []
                                                 (public
                                                     [ ( [ "foo" ]
-                                                      , [ ( [ "arg", "1" ], Type.reference (fQName packageName [ [ "b" ] ] [ "bee" ]) [] () )
+                                                      , [ ( [ "arg", "1" ], Type.Reference () (fQName packageName [ [ "b" ] ] [ "bee" ]) [] )
                                                         ]
                                                       )
                                                     ]
@@ -115,12 +115,12 @@ frontendTest =
                                       )
                                     , ( [ "rec" ]
                                       , public
-                                            (Type.typeAliasDefinition []
-                                                (Type.record
+                                            (Type.TypeAliasDefinition []
+                                                (Type.Record ()
                                                     [ Type.Field [ "field", "1" ]
-                                                        (Type.reference (fQName packageName [ [ "a" ] ] [ "foo" ]) [] ())
+                                                        (Type.Reference () (fQName packageName [ [ "a" ] ] [ "foo" ]) [])
                                                     , Type.Field [ "field", "2" ]
-                                                        (Type.reference (fQName packageName [ [ "a" ] ] [ "bar" ]) [] ())
+                                                        (Type.Reference () (fQName packageName [ [ "a" ] ] [ "bar" ]) [])
                                                     , Type.Field [ "field", "3" ]
                                                         (Bool.boolType ())
                                                     , Type.Field [ "field", "4" ]
@@ -130,11 +130,10 @@ frontendTest =
                                                     , Type.Field [ "field", "6" ]
                                                         (String.stringType ())
                                                     , Type.Field [ "field", "7" ]
-                                                        (Maybe.maybeType (Int.intType ()) ())
+                                                        (Maybe.maybeType () (Int.intType ()))
                                                     , Type.Field [ "field", "8" ]
-                                                        (List.listType (Float.floatType ()) ())
+                                                        (List.listType () (Float.floatType ()))
                                                     ]
-                                                    ()
                                                 )
                                             )
                                       )
@@ -149,7 +148,7 @@ frontendTest =
                                 Dict.fromList
                                     [ ( [ "bee" ]
                                       , public
-                                            (Type.customTypeDefinition []
+                                            (Type.CustomTypeDefinition []
                                                 (public [ ( [ "bee" ], [] ) ])
                                             )
                                       )

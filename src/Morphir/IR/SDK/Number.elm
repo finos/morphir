@@ -33,9 +33,9 @@ fromLocalName name =
         |> FQName.fromQName packageName
 
 
-numberClass : extra -> Type extra
-numberClass extra =
-    Variable [ "number" ] extra
+numberClass : a -> Type a
+numberClass attributes =
+    Variable attributes [ "number" ]
 
 
 negate : extra -> extra -> Value extra -> Value extra

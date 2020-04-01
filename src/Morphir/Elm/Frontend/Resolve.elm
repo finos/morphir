@@ -164,14 +164,13 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                                 )
                             |> Result.map
                                 (\typeDecl ->
-                                    typeDecl
-                                        |> Type.matchCustomTypeSpecification matchAny matchAny
-                                        |> Maybe.map
-                                            (\( _, ctors ) ->
-                                                ctors
-                                                    |> List.map (Tuple.first >> Name.toTitleCase)
-                                            )
-                                        |> Maybe.withDefault []
+                                    case typeDecl of
+                                        Type.CustomTypeSpecification _ ctors ->
+                                            ctors
+                                                |> List.map (Tuple.first >> Name.toTitleCase)
+
+                                        _ ->
+                                            []
                                 )
                     )
 
