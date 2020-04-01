@@ -138,14 +138,10 @@ encodeError : Error -> Encode.Value
 encodeError error =
     case error of
         ParseError _ _ ->
-            Encode.object
-                [ ( "$type", Encode.string "ParseError" )
-                ]
+            JsonExtra.encodeConstructor "ParseError" []
 
         CyclicModules _ ->
-            Encode.object
-                [ ( "$type", Encode.string "CyclicModules" )
-                ]
+            JsonExtra.encodeConstructor "CyclicModules" []
 
         ResolveError sourceLocation resolveError ->
             JsonExtra.encodeConstructor "ResolveError"
@@ -734,11 +730,7 @@ mapExpression sourceFile (Node range exp) =
                 |> Result.map (Value.Tuple sourceLocation)
 
         other ->
-            Ok (Value.Literal sourceLocation (Value.StringLiteral (Debug.toString other)))
-
-
-
---Err [ NotSupported sourceLocation "unknown" ]
+            Err [ NotSupported sourceLocation "TODO" ]
 
 
 mapPattern : SourceFile -> Node Pattern -> Result Errors (Value.Pattern SourceLocation)

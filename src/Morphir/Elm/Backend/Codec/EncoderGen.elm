@@ -134,7 +134,7 @@ typeDefToEncoder typeName typeDef =
 typeToEncoder : Bool -> List Name -> Type () -> Expression
 typeToEncoder fwdNames varName tpe =
     case tpe of
-        Reference fqName typeArgs _ ->
+        Reference _ fqName typeArgs ->
             case fqName of
                 FQName _ _ [ "int" ] ->
                     elmJsonEncoderApplication
@@ -202,7 +202,7 @@ typeToEncoder fwdNames varName tpe =
                         ([ "encode" ] ++ names |> Name.toCamelCase |> FunctionOrValue [])
                         (varPathToExpr varName)
 
-        Record fields _ ->
+        Record _ fields ->
             let
                 namesToFwd name =
                     if fwdNames then
@@ -284,7 +284,7 @@ constructorToRecord ( _, types ) =
             types
                 |> List.map (\t -> Field (Tuple.first t) (Tuple.second t))
     in
-    record fields ()
+    record () fields
 
 
 customTypeTopExpr : Expression -> Expression

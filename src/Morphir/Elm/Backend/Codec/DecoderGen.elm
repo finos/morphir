@@ -100,14 +100,14 @@ constructorDecoder isSingle ( ctorName, fields ) =
                     else
                         [ "$type" ]
             in
-            Record (fields |> List.map ctorFieldToRecField) ()
+            Record () (fields |> List.map ctorFieldToRecField)
                 |> typeToDecoder ctorName topLevelFieldNames
 
 
 typeToDecoder : Name -> List String -> Type () -> Expression
 typeToDecoder typeName topLevelFieldNames tpe =
     case tpe of
-        Reference fqName typeParams _ ->
+        Reference _ fqName typeParams ->
             case fqName of
                 FQName _ _ [ "string" ] ->
                     FunctionOrValue decoderModuleName "string"
@@ -149,7 +149,7 @@ typeToDecoder typeName topLevelFieldNames tpe =
                         []
                         ("decoder" ++ (name |> Name.toTitleCase))
 
-        Record fields _ ->
+        Record _ fields ->
             let
                 mapFunc : Expression
                 mapFunc =

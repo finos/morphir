@@ -163,7 +163,7 @@ frontendTest =
     test "first" <|
         \_ ->
             Frontend.packageDefinitionFromSource packageInfo [ sourceA, sourceB, sourceC ]
-                |> Result.map Package.eraseDefinitionExtra
+                |> Result.map Package.eraseDefinitionAttributes
                 |> Expect.equal (Ok expected)
 
 
@@ -191,7 +191,7 @@ valueTests =
             test valueSource <|
                 \_ ->
                     Frontend.packageDefinitionFromSource packageInfo [ moduleSource valueSource ]
-                        |> Result.map Package.eraseDefinitionExtra
+                        |> Result.map Package.eraseDefinitionAttributes
                         |> Result.mapError (\error -> "Error while reading model")
                         |> Result.andThen
                             (\packageDef ->

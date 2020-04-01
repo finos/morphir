@@ -62,7 +62,7 @@ update msg model =
                         packageDefResult : Result Frontend.Errors (Package.Definition ())
                         packageDefResult =
                             Frontend.packageDefinitionFromSource pkgInfo sourceFiles
-                                |> Result.map Package.eraseDefinitionExtra
+                                |> Result.map Package.eraseDefinitionAttributes
 
                         result =
                             packageDefResult
