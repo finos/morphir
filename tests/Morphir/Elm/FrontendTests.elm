@@ -105,10 +105,9 @@ frontendTest =
                                       , public
                                             (Type.CustomTypeDefinition []
                                                 (public
-                                                    [ ( [ "foo" ]
-                                                      , [ ( [ "arg", "1" ], Type.Reference () (fQName packageName [ [ "b" ] ] [ "bee" ]) [] )
+                                                    [ Type.Constructor [ "foo" ]
+                                                        [ ( [ "arg", "1" ], Type.Reference () (fQName packageName [ [ "b" ] ] [ "bee" ]) [] )
                                                         ]
-                                                      )
                                                     ]
                                                 )
                                             )
@@ -149,7 +148,7 @@ frontendTest =
                                     [ ( [ "bee" ]
                                       , public
                                             (Type.CustomTypeDefinition []
-                                                (public [ ( [ "bee" ], [] ) ])
+                                                (public [ Type.Constructor [ "bee" ] [] ])
                                             )
                                       )
                                     ]

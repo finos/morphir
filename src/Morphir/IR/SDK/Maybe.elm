@@ -21,8 +21,8 @@ moduleSpec =
         Dict.fromList
             [ ( [ "maybe" ]
               , CustomTypeSpecification [ [ "a" ] ]
-                    [ ( [ "just" ], [ ( [ "value" ], Type.Variable () [ "a" ] ) ] )
-                    , ( [ "nothing" ], [] )
+                    [ Type.Constructor [ "just" ] [ ( [ "value" ], Type.Variable () [ "a" ] ) ]
+                    , Type.Constructor [ "nothing" ] []
                     ]
               )
             ]

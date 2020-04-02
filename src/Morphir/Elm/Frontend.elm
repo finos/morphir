@@ -499,7 +499,7 @@ mapDeclarationsToType sourceFile expose decls =
                                             ctorArgsResult
                                                 |> Result.map
                                                     (\ctorArgs ->
-                                                        ( ctorName, ctorArgs )
+                                                        Type.Constructor ctorName ctorArgs
                                                     )
                                         )
                                     |> ResultList.toResult

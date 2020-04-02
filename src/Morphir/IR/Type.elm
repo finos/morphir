@@ -4,10 +4,10 @@ module Morphir.IR.Type exposing
     , Field, matchField, mapFieldName, mapFieldType
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
     , Definition(..), typeAliasDefinition, customTypeDefinition
-    , Constructors
+    , Constructors, Constructor(..)
     , fuzzType
     , encodeType, decodeType, encodeSpecification, encodeDefinition
-    , Constructor, definitionToSpecification, eraseAttributes, mapDefinition, mapSpecification, mapTypeAttributes, rewriteType
+    , definitionToSpecification, eraseAttributes, mapDefinition, mapSpecification, mapTypeAttributes, rewriteType
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -45,7 +45,7 @@ module Morphir.IR.Type exposing
 
 # Constructors
 
-@docs Constructors
+@docs Constructors, Constructor
 
 
 # Property Testing
@@ -127,8 +127,8 @@ type alias Constructors a =
 
 
 {-| -}
-type alias Constructor a =
-    ( Name, List ( Name, Type a ) )
+type Constructor a
+    = Constructor Name (List ( Name, Type a ))
 
 
 definitionToSpecification : Definition a -> Specification a
@@ -164,7 +164,7 @@ mapSpecification f spec =
                 ctorsResult =
                     constructors
                         |> List.map
-                            (\( ctorName, ctorArgs ) ->
+                            (\(Constructor ctorName ctorArgs) ->
                                 ctorArgs
                                     |> List.map
                                         (\( argName, argType ) ->
@@ -172,7 +172,7 @@ mapSpecification f spec =
                                                 |> Result.map (Tuple.pair argName)
                                         )
                                     |> ResultList.toResult
-                                    |> Result.map (Tuple.pair ctorName)
+                                    |> Result.map (Constructor ctorName)
                             )
                         |> ResultList.toResult
                         |> Result.mapError List.concat
@@ -195,7 +195,7 @@ mapDefinition f def =
                 ctorsResult =
                     constructors.value
                         |> List.map
-                            (\( ctorName, ctorArgs ) ->
+                            (\(Constructor ctorName ctorArgs) ->
                                 ctorArgs
                                     |> List.map
                                         (\( argName, argType ) ->
@@ -203,7 +203,7 @@ mapDefinition f def =
                                                 |> Result.map (Tuple.pair argName)
                                         )
                                     |> ResultList.toResult
-                                    |> Result.map (Tuple.pair ctorName)
+                                    |> Result.map (Constructor ctorName)
                             )
                         |> ResultList.toResult
                         |> Result.map (AccessControlled constructors.access)
@@ -272,14 +272,14 @@ eraseAttributes typeDef =
         CustomTypeDefinition typeVars acsCtrlConstructors ->
             let
                 eraseCtor : Constructor a -> Constructor ()
-                eraseCtor ( name, types ) =
+                eraseCtor (Constructor name types) =
                     let
                         extraErasedTypes : List ( Name, Type () )
                         extraErasedTypes =
                             types
                                 |> List.map (\( n, t ) -> ( n, mapTypeAttributes (\_ -> ()) t ))
                     in
-                    ( name, extraErasedTypes )
+                    Constructor name extraErasedTypes
 
                 eraseAccessControlledCtors : AccessControlled (Constructors a) -> AccessControlled (Constructors ())
                 eraseAccessControlledCtors acsCtrlCtors =
@@ -779,18 +779,17 @@ encodeConstructors : (a -> Encode.Value) -> Constructors a -> Encode.Value
 encodeConstructors encodeAttributes ctors =
     ctors
         |> Encode.list
-            (\( ctorName, ctorArgs ) ->
-                Encode.object
-                    [ ( "name", encodeName ctorName )
-                    , ( "args"
-                      , ctorArgs
-                            |> Encode.list
-                                (\( argName, argType ) ->
-                                    Encode.list identity
-                                        [ encodeName argName
-                                        , encodeType encodeAttributes argType
-                                        ]
-                                )
-                      )
+            (\(Constructor ctorName ctorArgs) ->
+                Encode.list identity
+                    [ Encode.string "Constructor"
+                    , encodeName ctorName
+                    , ctorArgs
+                        |> Encode.list
+                            (\( argName, argType ) ->
+                                Encode.list identity
+                                    [ encodeName argName
+                                    , encodeType encodeAttributes argType
+                                    ]
+                            )
                     ]
             )

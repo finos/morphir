@@ -167,7 +167,10 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                                     case typeDecl of
                                         Type.CustomTypeSpecification _ ctors ->
                                             ctors
-                                                |> List.map (Tuple.first >> Name.toTitleCase)
+                                                |> List.map
+                                                    (\(Type.Constructor ctorName _) ->
+                                                        ctorName |> Name.toTitleCase
+                                                    )
 
                                         _ ->
                                             []

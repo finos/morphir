@@ -1,10 +1,10 @@
-module Morphir.IR.SDK.Number exposing (..)
+module Morphir.IR.SDK.Number exposing (negate)
 
 import Dict
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name
-import Morphir.IR.Path exposing (Path)
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName as QName
 import Morphir.IR.SDK.Common exposing (packageName)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
@@ -13,7 +13,7 @@ import Morphir.IR.Value as Value exposing (Value)
 
 moduleName : Path
 moduleName =
-    [ [ "number" ] ]
+    Path.fromString "Number"
 
 
 moduleSpec : Module.Specification ()
