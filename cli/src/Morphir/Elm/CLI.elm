@@ -37,7 +37,7 @@ update msg model =
                     let
                         result =
                             Frontend.packageDefinitionFromSource packageInfo sourceFiles
-                                |> Result.map Package.eraseDefinitionExtra
+                                |> Result.map Package.eraseDefinitionAttributes
                     in
                     ( model, result |> encodeResult (Encode.list encodeError) (Package.encodeDefinition (\_ -> Encode.null)) |> packageDefinitionFromSourceResult )
 

@@ -106,15 +106,15 @@ encodeAccessControlled : (a -> Encode.Value) -> AccessControlled a -> Encode.Val
 encodeAccessControlled encodeValue ac =
     case ac.access of
         Public ->
-            Encode.object
-                [ ( "$type", Encode.string "public" )
-                , ( "value", encodeValue ac.value )
+            Encode.list identity
+                [ Encode.string "Public"
+                , encodeValue ac.value
                 ]
 
         Private ->
-            Encode.object
-                [ ( "$type", Encode.string "private" )
-                , ( "value", encodeValue ac.value )
+            Encode.list identity
+                [ Encode.string "Private"
+                , encodeValue ac.value
                 ]
 
 
@@ -122,17 +122,17 @@ encodeAccessControlled encodeValue ac =
 -}
 decodeAccessControlled : Decode.Decoder a -> Decode.Decoder (AccessControlled a)
 decodeAccessControlled decodeValue =
-    Decode.field "$type" Decode.string
+    Decode.index 0 Decode.string
         |> Decode.andThen
             (\tag ->
                 case tag of
-                    "public" ->
+                    "Public" ->
                         Decode.map (AccessControlled Public)
-                            (Decode.field "value" decodeValue)
+                            (Decode.index 1 decodeValue)
 
-                    "private" ->
+                    "Private" ->
                         Decode.map (AccessControlled Private)
-                            (Decode.field "value" decodeValue)
+                            (Decode.index 1 decodeValue)
 
                     other ->
                         Decode.fail <| "Unknown access controlled type: " ++ other

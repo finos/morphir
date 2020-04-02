@@ -1,26 +1,25 @@
-module Morphir.IR.SDK.Float exposing (..)
+module Morphir.IR.SDK.Number exposing (negate)
 
 import Dict
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name
-import Morphir.IR.Path exposing (Path)
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName as QName
 import Morphir.IR.SDK.Common exposing (packageName)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
+import Morphir.IR.Value as Value exposing (Value)
 
 
 moduleName : Path
 moduleName =
-    [ [ "float" ] ]
+    Path.fromString "Number"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
-        Dict.fromList
-            [ ( [ "float" ], OpaqueTypeSpecification [] )
-            ]
+        Dict.empty
     , values =
         Dict.empty
     }
@@ -34,6 +33,11 @@ fromLocalName name =
         |> FQName.fromQName packageName
 
 
-floatType : a -> Type a
-floatType attributes =
-    Reference attributes (fromLocalName "float") []
+numberClass : a -> Type a
+numberClass attributes =
+    Variable attributes [ "number" ]
+
+
+negate : a -> a -> Value a -> Value a
+negate refAttributes valueAttributes arg =
+    Value.Apply valueAttributes (Value.Reference refAttributes (fromLocalName "negate")) arg

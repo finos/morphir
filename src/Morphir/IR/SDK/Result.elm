@@ -21,8 +21,8 @@ moduleSpec =
         Dict.fromList
             [ ( [ "result" ]
               , CustomTypeSpecification [ [ "e" ], [ "a" ] ]
-                    [ ( [ "ok" ], [ ( [ "value" ], Type.Variable [ "a" ] () ) ] )
-                    , ( [ "err" ], [ ( [ "error" ], Type.Variable [ "e" ] () ) ] )
+                    [ Type.Constructor [ "ok" ] [ ( [ "value" ], Type.Variable () [ "a" ] ) ]
+                    , Type.Constructor [ "err" ] [ ( [ "error" ], Type.Variable () [ "e" ] ) ]
                     ]
               )
             ]
@@ -39,6 +39,6 @@ fromLocalName name =
         |> FQName.fromQName packageName
 
 
-resultType : Type extra -> extra -> Type extra
-resultType itemType extra =
-    Reference (fromLocalName "result") [ itemType ] extra
+resultType : a -> Type a -> Type a
+resultType attributes itemType =
+    Reference attributes (fromLocalName "result") [ itemType ]
