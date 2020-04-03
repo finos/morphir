@@ -1,7 +1,7 @@
 module Morphir.IR.Module exposing
     ( Specification, Definition
     , encodeSpecification, encodeDefinition
-    , definitionToSpecification, eraseSpecificationAttributes, mapDefinition, mapSpecification
+    , ModulePath, definitionToSpecification, eraseSpecificationAttributes, mapDefinition, mapSpecification
     )
 
 {-| Modules are groups of types and values that belong together.
@@ -17,9 +17,14 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
 import Morphir.IR.Name exposing (Name, encodeName)
+import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.ResultList as ResultList
+
+
+type alias ModulePath =
+    Path
 
 
 {-| Type that represents a module specification.
