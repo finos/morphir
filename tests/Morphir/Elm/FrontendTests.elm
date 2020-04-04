@@ -5,6 +5,7 @@ import Expect exposing (Expectation)
 import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.FQName exposing (fQName)
+import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Bool as Bool
@@ -15,7 +16,7 @@ import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value exposing (Literal(..), Value(..))
+import Morphir.IR.Value as Value exposing (Literal(..), Pattern(..), Value(..))
 import Set
 import Test exposing (..)
 
@@ -256,6 +257,21 @@ valueTests =
         , checkIR "foo.bar" <| Field () (ref "foo") [ "bar" ]
         , checkIR ".bar" <| FieldFunction () [ "bar" ]
         , checkIR "{ a | foo = foo, bar = bar }" <| UpdateRecord () (Variable () [ "a" ]) [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ) ]
+        , checkIR "\\() -> foo " <| Lambda () (UnitPattern ()) (ref "foo")
+        , checkIR "\\() () -> foo " <| Lambda () (UnitPattern ()) (Lambda () (UnitPattern ()) (ref "foo"))
+        , checkIR "\\_ -> foo " <| Lambda () (WildcardPattern ()) (ref "foo")
+        , checkIR "\\'a' -> foo " <| Lambda () (LiteralPattern () (CharLiteral 'a')) (ref "foo")
+        , checkIR "\\\"foo\" -> foo " <| Lambda () (LiteralPattern () (StringLiteral "foo")) (ref "foo")
+        , checkIR "\\42 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 42)) (ref "foo")
+        , checkIR "\\0x20 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 32)) (ref "foo")
+        , checkIR "\\( 1, 2 ) -> foo " <| Lambda () (TuplePattern () [ LiteralPattern () (IntLiteral 1), LiteralPattern () (IntLiteral 2) ]) (ref "foo")
+        , checkIR "\\{ foo, bar } -> foo " <| Lambda () (RecordPattern () [ Name.fromString "foo", Name.fromString "bar" ]) (ref "foo")
+        , checkIR "\\1 :: 2 -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (LiteralPattern () (IntLiteral 2))) (ref "foo")
+        , checkIR "\\[] -> foo " <| Lambda () (EmptyListPattern ()) (ref "foo")
+        , checkIR "\\[ 1 ] -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (EmptyListPattern ())) (ref "foo")
+        , checkIR "\\([] as bar) -> foo " <| Lambda () (AsPattern () (EmptyListPattern ()) (Name.fromString "bar")) (ref "foo")
+        , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [] [] [ "foo" ]) [ LiteralPattern () (IntLiteral 1), WildcardPattern () ]) (ref "foo")
+        , checkIR "\\Foo.Bar.Baz -> foo " <| Lambda () (ConstructorPattern () (fQName [] [ [ "foo" ], [ "bar" ] ] [ "baz" ]) []) (ref "foo")
         ]
 
 

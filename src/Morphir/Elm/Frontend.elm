@@ -11,7 +11,7 @@ import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node(..))
-import Elm.Syntax.Pattern exposing (Pattern(..))
+import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
 import Elm.Syntax.Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Json.Decode as Decode
@@ -24,6 +24,7 @@ import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.QName as QName
 import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.Type as Type exposing (Type)
@@ -754,7 +755,19 @@ mapExpression sourceFile (Node range exp) =
             Err [ NotSupported sourceLocation "TODO: CaseExpression" ]
 
         Expression.LambdaExpression lambda ->
-            Err [ NotSupported sourceLocation "TODO: LambdaExpression" ]
+            let
+                curriedLambda : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation)
+                curriedLambda argNodes bodyNode =
+                    case argNodes of
+                        [] ->
+                            mapExpression sourceFile bodyNode
+
+                        firstArgNode :: restOfArgNodes ->
+                            Result.map2 (Value.Lambda sourceLocation)
+                                (mapPattern sourceFile firstArgNode)
+                                (curriedLambda restOfArgNodes bodyNode)
+            in
+            curriedLambda lambda.args lambda.expression
 
         Expression.RecordExpr fieldNodes ->
             fieldNodes
@@ -803,12 +816,91 @@ mapExpression sourceFile (Node range exp) =
 
 
 mapPattern : SourceFile -> Node Pattern -> Result Errors (Value.Pattern SourceLocation)
-mapPattern sourceFile (Node range patternNode) =
+mapPattern sourceFile (Node range pattern) =
     let
         sourceLocation =
             range |> SourceLocation sourceFile
     in
-    Ok (Value.WildcardPattern sourceLocation)
+    case pattern of
+        Pattern.AllPattern ->
+            Ok (Value.WildcardPattern sourceLocation)
+
+        Pattern.UnitPattern ->
+            Ok (Value.UnitPattern sourceLocation)
+
+        Pattern.CharPattern char ->
+            Ok (Value.LiteralPattern sourceLocation (Value.CharLiteral char))
+
+        Pattern.StringPattern string ->
+            Ok (Value.LiteralPattern sourceLocation (Value.StringLiteral string))
+
+        Pattern.IntPattern int ->
+            Ok (Value.LiteralPattern sourceLocation (Value.IntLiteral int))
+
+        Pattern.HexPattern int ->
+            Ok (Value.LiteralPattern sourceLocation (Value.IntLiteral int))
+
+        Pattern.FloatPattern float ->
+            Ok (Value.LiteralPattern sourceLocation (Value.FloatLiteral float))
+
+        Pattern.TuplePattern elemNodes ->
+            elemNodes
+                |> List.map (mapPattern sourceFile)
+                |> ResultList.toResult
+                |> Result.mapError List.concat
+                |> Result.map (Value.TuplePattern sourceLocation)
+
+        Pattern.RecordPattern fieldNameNodes ->
+            Ok
+                (Value.RecordPattern sourceLocation
+                    (fieldNameNodes
+                        |> List.map (Node.value >> Name.fromString)
+                    )
+                )
+
+        Pattern.UnConsPattern headNode tailNode ->
+            Result.map2 (Value.HeadTailPattern sourceLocation)
+                (mapPattern sourceFile headNode)
+                (mapPattern sourceFile tailNode)
+
+        Pattern.ListPattern itemNodes ->
+            let
+                toPattern : List (Node Pattern) -> Result Errors (Value.Pattern SourceLocation)
+                toPattern patternNodes =
+                    case patternNodes of
+                        [] ->
+                            Ok (Value.EmptyListPattern sourceLocation)
+
+                        headNode :: tailNodes ->
+                            Result.map2 (Value.HeadTailPattern sourceLocation)
+                                (mapPattern sourceFile headNode)
+                                (toPattern tailNodes)
+            in
+            toPattern itemNodes
+
+        Pattern.VarPattern name ->
+            Ok (Value.AsPattern sourceLocation (Value.WildcardPattern sourceLocation) (Name.fromString name))
+
+        Pattern.NamedPattern qualifiedNameRef argNodes ->
+            let
+                qualifiedName =
+                    qualifiedNameRef.name
+                        |> Name.fromString
+                        |> QName.fromName (qualifiedNameRef.moduleName |> List.map Name.fromString)
+                        |> FQName.fromQName []
+            in
+            argNodes
+                |> List.map (mapPattern sourceFile)
+                |> ResultList.toResult
+                |> Result.mapError List.concat
+                |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
+
+        Pattern.AsPattern subjectNode aliasNode ->
+            mapPattern sourceFile subjectNode
+                |> Result.map (\subject -> Value.AsPattern sourceLocation subject (aliasNode |> Node.value |> Name.fromString))
+
+        Pattern.ParenthesizedPattern childNode ->
+            mapPattern sourceFile childNode
 
 
 resolveLocalTypes : Path -> Path -> ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
