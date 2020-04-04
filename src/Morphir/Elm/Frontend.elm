@@ -752,7 +752,18 @@ mapExpression sourceFile (Node range exp) =
             Err [ NotSupported sourceLocation "TODO: LetExpression" ]
 
         Expression.CaseExpression caseBlock ->
-            Err [ NotSupported sourceLocation "TODO: CaseExpression" ]
+            Result.map2 (Value.PatternMatch sourceLocation)
+                (mapExpression sourceFile caseBlock.expression)
+                (caseBlock.cases
+                    |> List.map
+                        (\( patternNode, bodyNode ) ->
+                            Result.map2 Tuple.pair
+                                (mapPattern sourceFile patternNode)
+                                (mapExpression sourceFile bodyNode)
+                        )
+                    |> ResultList.toResult
+                    |> Result.mapError List.concat
+                )
 
         Expression.LambdaExpression lambda ->
             let

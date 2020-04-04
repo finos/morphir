@@ -272,6 +272,7 @@ valueTests =
         , checkIR "\\([] as bar) -> foo " <| Lambda () (AsPattern () (EmptyListPattern ()) (Name.fromString "bar")) (ref "foo")
         , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [] [] [ "foo" ]) [ LiteralPattern () (IntLiteral 1), WildcardPattern () ]) (ref "foo")
         , checkIR "\\Foo.Bar.Baz -> foo " <| Lambda () (ConstructorPattern () (fQName [] [ [ "foo" ], [ "bar" ] ] [ "baz" ]) []) (ref "foo")
+        , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (IntLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
         ]
 
 
