@@ -6,7 +6,7 @@ import Elm.Processing as Processing
 import Elm.RawFile as RawFile exposing (RawFile)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
-import Elm.Syntax.Expression as Expression exposing (Expression, FunctionImplementation)
+import Elm.Syntax.Expression as Expression exposing (Expression, Function, FunctionImplementation)
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
@@ -26,6 +26,14 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName as QName
 import Morphir.IR.SDK as SDK
+import Morphir.IR.SDK.Appending as Appending
+import Morphir.IR.SDK.Bool as Bool
+import Morphir.IR.SDK.Comparison as Comparison
+import Morphir.IR.SDK.Composition as Composition
+import Morphir.IR.SDK.Equality as Equality
+import Morphir.IR.SDK.Float as Float
+import Morphir.IR.SDK.Int as Int
+import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
@@ -538,11 +546,8 @@ mapDeclarationsToValue sourceFile expose decls =
 
                             valueDef : Result Errors (AccessControlled (Value.Definition SourceLocation))
                             valueDef =
-                                function.declaration
-                                    |> Node.value
-                                    |> (\funImpl ->
-                                            mapFunctionImplementation sourceFile funImpl.arguments funImpl.expression
-                                       )
+                                function
+                                    |> mapFunction sourceFile
                                     |> Result.map public
                         in
                         valueDef
@@ -613,6 +618,15 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
             Result.map2 (Type.Function sourceLocation)
                 (mapTypeAnnotation sourceFile argTypeNode)
                 (mapTypeAnnotation sourceFile returnTypeNode)
+
+
+mapFunction : SourceFile -> Function -> Result Errors (Value.Definition SourceLocation)
+mapFunction sourceFile function =
+    function.declaration
+        |> Node.value
+        |> (\funImpl ->
+                mapFunctionImplementation sourceFile funImpl.arguments funImpl.expression
+           )
 
 
 mapFunctionImplementation : SourceFile -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Definition SourceLocation)
@@ -694,7 +708,82 @@ mapExpression sourceFile (Node range exp) =
                 |> Result.andThen (List.reverse >> toApply)
 
         Expression.OperatorApplication op infixDirection leftNode rightNode ->
-            Err [ NotSupported sourceLocation "TODO: OperatorApplication" ]
+            let
+                applyBinary : (SourceLocation -> Value SourceLocation -> Value SourceLocation -> Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                applyBinary fun =
+                    Result.map2 (fun sourceLocation)
+                        (mapExpression sourceFile leftNode)
+                        (mapExpression sourceFile rightNode)
+            in
+            case op of
+                "<|" ->
+                    -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
+                    Result.map2 (Value.Apply sourceLocation)
+                        (mapExpression sourceFile leftNode)
+                        (mapExpression sourceFile rightNode)
+
+                "|>" ->
+                    -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
+                    Result.map2 (Value.Apply sourceLocation)
+                        (mapExpression sourceFile rightNode)
+                        (mapExpression sourceFile leftNode)
+
+                "||" ->
+                    applyBinary Bool.or
+
+                "&&" ->
+                    applyBinary Bool.and
+
+                "==" ->
+                    applyBinary Equality.equal
+
+                "/=" ->
+                    applyBinary Equality.notEqual
+
+                "<" ->
+                    applyBinary Comparison.lessThan
+
+                ">" ->
+                    applyBinary Comparison.greaterThan
+
+                "<=" ->
+                    applyBinary Comparison.lessThanOrEqual
+
+                ">=" ->
+                    applyBinary Comparison.greaterThanOrEqual
+
+                "++" ->
+                    applyBinary Appending.append
+
+                "+" ->
+                    applyBinary Number.add
+
+                "-" ->
+                    applyBinary Number.subtract
+
+                "*" ->
+                    applyBinary Number.multiply
+
+                "/" ->
+                    applyBinary Float.divide
+
+                "//" ->
+                    applyBinary Int.divide
+
+                "^" ->
+                    applyBinary Number.power
+
+                "<<" ->
+                    applyBinary Composition.composeLeft
+
+                ">>" ->
+                    applyBinary Composition.composeRight
+
+                "::" ->
+                    applyBinary List.construct
+
+                _ ->
+                    Err [ NotSupported sourceLocation <| "OperatorApplication: " ++ op ]
 
         Expression.FunctionOrValue moduleName valueName ->
             case ( moduleName, valueName ) of

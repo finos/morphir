@@ -8,7 +8,11 @@ import Morphir.IR.FQName exposing (fQName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path
+import Morphir.IR.SDK.Appending as Appending
 import Morphir.IR.SDK.Bool as Bool
+import Morphir.IR.SDK.Comparison as Comparison
+import Morphir.IR.SDK.Composition as Composition
+import Morphir.IR.SDK.Equality as Equality
 import Morphir.IR.SDK.Float as Float
 import Morphir.IR.SDK.Int as Int
 import Morphir.IR.SDK.List as List
@@ -273,6 +277,26 @@ valueTests =
         , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [] [] [ "foo" ]) [ LiteralPattern () (IntLiteral 1), WildcardPattern () ]) (ref "foo")
         , checkIR "\\Foo.Bar.Baz -> foo " <| Lambda () (ConstructorPattern () (fQName [] [ [ "foo" ], [ "bar" ] ] [ "baz" ]) []) (ref "foo")
         , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (IntLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
+        , checkIR "a <| b" <| Apply () (ref "a") (ref "b")
+        , checkIR "a |> b" <| Apply () (ref "b") (ref "a")
+        , checkIR "a || b" <| Bool.or () (ref "a") (ref "b")
+        , checkIR "a && b" <| Bool.and () (ref "a") (ref "b")
+        , checkIR "a == b" <| Equality.equal () (ref "a") (ref "b")
+        , checkIR "a /= b" <| Equality.notEqual () (ref "a") (ref "b")
+        , checkIR "a < b" <| Comparison.lessThan () (ref "a") (ref "b")
+        , checkIR "a > b" <| Comparison.greaterThan () (ref "a") (ref "b")
+        , checkIR "a <= b" <| Comparison.lessThanOrEqual () (ref "a") (ref "b")
+        , checkIR "a >= b" <| Comparison.greaterThanOrEqual () (ref "a") (ref "b")
+        , checkIR "a ++ b" <| Appending.append () (ref "a") (ref "b")
+        , checkIR "a + b" <| Number.add () (ref "a") (ref "b")
+        , checkIR "a - b" <| Number.subtract () (ref "a") (ref "b")
+        , checkIR "a * b" <| Number.multiply () (ref "a") (ref "b")
+        , checkIR "a / b" <| Float.divide () (ref "a") (ref "b")
+        , checkIR "a // b" <| Int.divide () (ref "a") (ref "b")
+        , checkIR "a ^ b" <| Number.power () (ref "a") (ref "b")
+        , checkIR "a << b" <| Composition.composeLeft () (ref "a") (ref "b")
+        , checkIR "a >> b" <| Composition.composeRight () (ref "a") (ref "b")
+        , checkIR "a :: b" <| List.construct () (ref "a") (ref "b")
         ]
 
 

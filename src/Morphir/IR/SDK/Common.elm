@@ -6,6 +6,7 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Package exposing (PackagePath)
 import Morphir.IR.Path as Path
 import Morphir.IR.QName as QName
+import Morphir.IR.Value as Value exposing (Value)
 
 
 packageName : PackagePath
@@ -19,3 +20,8 @@ toFQName modulePath localName =
         |> Name.fromString
         |> QName.fromName modulePath
         |> FQName.fromQName packageName
+
+
+binaryApply : ModulePath -> String -> a -> Value a -> Value a -> Value a
+binaryApply moduleName localName attributes arg1 arg2 =
+    Value.Apply attributes (Value.Apply attributes (Value.Reference attributes (toFQName moduleName localName)) arg1) arg2
