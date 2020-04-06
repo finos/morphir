@@ -1,39 +1,40 @@
 module Morphir.IR.SDK.Bool exposing (..)
 
 import Dict
-import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Module as Module
+import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
-import Morphir.IR.Path exposing (Path)
-import Morphir.IR.QName as QName
-import Morphir.IR.SDK.Common exposing (packageName)
+import Morphir.IR.Path as Path
+import Morphir.IR.SDK.Common exposing (binaryApply, toFQName)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
+import Morphir.IR.Value as Value exposing (Value)
 
 
-moduleName : Path
+moduleName : ModulePath
 moduleName =
-    [ [ "bool" ] ]
+    Path.fromString "Bool"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( [ "bool" ], OpaqueTypeSpecification [] )
+            [ ( Name.fromString "Bool", OpaqueTypeSpecification [] )
             ]
     , values =
         Dict.empty
     }
 
 
-fromLocalName : String -> FQName
-fromLocalName name =
-    name
-        |> Name.fromString
-        |> QName.fromName moduleName
-        |> FQName.fromQName packageName
-
-
 boolType : a -> Type a
 boolType attributes =
-    Reference attributes (fromLocalName "bool") []
+    Reference attributes (toFQName moduleName "Bool") []
+
+
+and : a -> Value a -> Value a -> Value a
+and =
+    binaryApply moduleName "and"
+
+
+or : a -> Value a -> Value a -> Value a
+or =
+    binaryApply moduleName "or"

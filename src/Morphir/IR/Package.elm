@@ -1,7 +1,7 @@
 module Morphir.IR.Package exposing
     ( Specification
     , Definition, emptyDefinition
-    , definitionToSpecification, encodeDefinition, eraseDefinitionAttributes, eraseSpecificationAttributes
+    , PackagePath, definitionToSpecification, encodeDefinition, eraseDefinitionAttributes, eraseSpecificationAttributes
     )
 
 {-| Tools to work with packages.
@@ -16,7 +16,7 @@ import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
-import Morphir.IR.Module as Module
+import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Path exposing (Path, encodePath)
 import Morphir.IR.QName exposing (QName, encodeQName)
 import Morphir.IR.Type as Type exposing (Type)
@@ -24,10 +24,14 @@ import Morphir.IR.Value as Value exposing (Value)
 import Morphir.ResultList as ResultList
 
 
+type alias PackagePath =
+    Path
+
+
 {-| Type that represents a package specification.
 -}
 type alias Specification a =
-    { modules : Dict Path (Module.Specification a)
+    { modules : Dict ModulePath (Module.Specification a)
     }
 
 
@@ -40,8 +44,8 @@ emptySpecification =
 {-| Type that represents a package definition.
 -}
 type alias Definition a =
-    { dependencies : Dict Path (Specification a)
-    , modules : Dict Path (AccessControlled (Module.Definition a))
+    { dependencies : Dict PackagePath (Specification a)
+    , modules : Dict ModulePath (AccessControlled (Module.Definition a))
     }
 
 

@@ -1,39 +1,35 @@
 module Morphir.IR.SDK.List exposing (..)
 
 import Dict
-import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Module as Module
+import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
-import Morphir.IR.Path exposing (Path)
-import Morphir.IR.QName as QName
-import Morphir.IR.SDK.Common exposing (packageName)
-import Morphir.IR.Type exposing (Specification(..), Type(..))
+import Morphir.IR.Path as Path
+import Morphir.IR.SDK.Common exposing (binaryApply, toFQName)
+import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
+import Morphir.IR.Value exposing (Value)
 
 
-moduleName : Path
+moduleName : ModulePath
 moduleName =
-    [ [ "list" ] ]
+    Path.fromString "List"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( [ "list" ], OpaqueTypeSpecification [ [ "a" ] ] )
+            [ ( Name.fromString "List", OpaqueTypeSpecification [ [ "a" ] ] )
             ]
     , values =
         Dict.empty
     }
 
 
-fromLocalName : String -> FQName
-fromLocalName name =
-    name
-        |> Name.fromString
-        |> QName.fromName moduleName
-        |> FQName.fromQName packageName
-
-
 listType : a -> Type a -> Type a
 listType attributes itemType =
-    Reference attributes (fromLocalName "list") [ itemType ]
+    Type.Reference attributes (toFQName moduleName "List") [ itemType ]
+
+
+construct : a -> Value a -> Value a -> Value a
+construct =
+    binaryApply moduleName "construct"

@@ -117,6 +117,7 @@ type Pattern a
     | EmptyListPattern a
     | HeadTailPattern a (Pattern a) (Pattern a)
     | LiteralPattern a Literal
+    | UnitPattern a
 
 
 {-| Type that represents a value or function specification. The specification of what the value or function
@@ -308,6 +309,9 @@ mapPatternAttributes f p =
 
         LiteralPattern a value ->
             LiteralPattern (f a) value
+
+        UnitPattern a ->
+            UnitPattern (f a)
 
 
 mapDefinitionAttributes : (a -> b) -> Definition a -> Definition b
@@ -1183,6 +1187,12 @@ encodePattern encodeAttributes pattern =
                 [ Encode.string "LiteralPattern"
                 , encodeAttributes a
                 , encodeLiteral value
+                ]
+
+        UnitPattern a ->
+            Encode.list identity
+                [ Encode.string "UnitPattern"
+                , encodeAttributes a
                 ]
 
 

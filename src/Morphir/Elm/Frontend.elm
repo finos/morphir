@@ -6,12 +6,12 @@ import Elm.Processing as Processing
 import Elm.RawFile as RawFile exposing (RawFile)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
-import Elm.Syntax.Expression as Expression exposing (Expression, FunctionImplementation)
+import Elm.Syntax.Expression as Expression exposing (Expression, Function, FunctionImplementation)
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node(..))
-import Elm.Syntax.Pattern exposing (Pattern(..))
+import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
 import Elm.Syntax.Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Json.Decode as Decode
@@ -24,7 +24,16 @@ import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.QName as QName
 import Morphir.IR.SDK as SDK
+import Morphir.IR.SDK.Appending as Appending
+import Morphir.IR.SDK.Bool as Bool
+import Morphir.IR.SDK.Comparison as Comparison
+import Morphir.IR.SDK.Composition as Composition
+import Morphir.IR.SDK.Equality as Equality
+import Morphir.IR.SDK.Float as Float
+import Morphir.IR.SDK.Int as Int
+import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
@@ -537,11 +546,8 @@ mapDeclarationsToValue sourceFile expose decls =
 
                             valueDef : Result Errors (AccessControlled (Value.Definition SourceLocation))
                             valueDef =
-                                function.declaration
-                                    |> Node.value
-                                    |> (\funImpl ->
-                                            mapFunctionImplementation sourceFile funImpl.arguments funImpl.expression
-                                       )
+                                function
+                                    |> mapFunction sourceFile
                                     |> Result.map public
                         in
                         valueDef
@@ -612,6 +618,15 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
             Result.map2 (Type.Function sourceLocation)
                 (mapTypeAnnotation sourceFile argTypeNode)
                 (mapTypeAnnotation sourceFile returnTypeNode)
+
+
+mapFunction : SourceFile -> Function -> Result Errors (Value.Definition SourceLocation)
+mapFunction sourceFile function =
+    function.declaration
+        |> Node.value
+        |> (\funImpl ->
+                mapFunctionImplementation sourceFile funImpl.arguments funImpl.expression
+           )
 
 
 mapFunctionImplementation : SourceFile -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Definition SourceLocation)
@@ -693,7 +708,82 @@ mapExpression sourceFile (Node range exp) =
                 |> Result.andThen (List.reverse >> toApply)
 
         Expression.OperatorApplication op infixDirection leftNode rightNode ->
-            Err [ NotSupported sourceLocation "TODO: OperatorApplication" ]
+            let
+                applyBinary : (SourceLocation -> Value SourceLocation -> Value SourceLocation -> Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                applyBinary fun =
+                    Result.map2 (fun sourceLocation)
+                        (mapExpression sourceFile leftNode)
+                        (mapExpression sourceFile rightNode)
+            in
+            case op of
+                "<|" ->
+                    -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
+                    Result.map2 (Value.Apply sourceLocation)
+                        (mapExpression sourceFile leftNode)
+                        (mapExpression sourceFile rightNode)
+
+                "|>" ->
+                    -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
+                    Result.map2 (Value.Apply sourceLocation)
+                        (mapExpression sourceFile rightNode)
+                        (mapExpression sourceFile leftNode)
+
+                "||" ->
+                    applyBinary Bool.or
+
+                "&&" ->
+                    applyBinary Bool.and
+
+                "==" ->
+                    applyBinary Equality.equal
+
+                "/=" ->
+                    applyBinary Equality.notEqual
+
+                "<" ->
+                    applyBinary Comparison.lessThan
+
+                ">" ->
+                    applyBinary Comparison.greaterThan
+
+                "<=" ->
+                    applyBinary Comparison.lessThanOrEqual
+
+                ">=" ->
+                    applyBinary Comparison.greaterThanOrEqual
+
+                "++" ->
+                    applyBinary Appending.append
+
+                "+" ->
+                    applyBinary Number.add
+
+                "-" ->
+                    applyBinary Number.subtract
+
+                "*" ->
+                    applyBinary Number.multiply
+
+                "/" ->
+                    applyBinary Float.divide
+
+                "//" ->
+                    applyBinary Int.divide
+
+                "^" ->
+                    applyBinary Number.power
+
+                "<<" ->
+                    applyBinary Composition.composeLeft
+
+                ">>" ->
+                    applyBinary Composition.composeRight
+
+                "::" ->
+                    applyBinary List.construct
+
+                _ ->
+                    Err [ NotSupported sourceLocation <| "OperatorApplication: " ++ op ]
 
         Expression.FunctionOrValue moduleName valueName ->
             case ( moduleName, valueName ) of
@@ -751,10 +841,33 @@ mapExpression sourceFile (Node range exp) =
             Err [ NotSupported sourceLocation "TODO: LetExpression" ]
 
         Expression.CaseExpression caseBlock ->
-            Err [ NotSupported sourceLocation "TODO: CaseExpression" ]
+            Result.map2 (Value.PatternMatch sourceLocation)
+                (mapExpression sourceFile caseBlock.expression)
+                (caseBlock.cases
+                    |> List.map
+                        (\( patternNode, bodyNode ) ->
+                            Result.map2 Tuple.pair
+                                (mapPattern sourceFile patternNode)
+                                (mapExpression sourceFile bodyNode)
+                        )
+                    |> ResultList.toResult
+                    |> Result.mapError List.concat
+                )
 
         Expression.LambdaExpression lambda ->
-            Err [ NotSupported sourceLocation "TODO: LambdaExpression" ]
+            let
+                curriedLambda : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation)
+                curriedLambda argNodes bodyNode =
+                    case argNodes of
+                        [] ->
+                            mapExpression sourceFile bodyNode
+
+                        firstArgNode :: restOfArgNodes ->
+                            Result.map2 (Value.Lambda sourceLocation)
+                                (mapPattern sourceFile firstArgNode)
+                                (curriedLambda restOfArgNodes bodyNode)
+            in
+            curriedLambda lambda.args lambda.expression
 
         Expression.RecordExpr fieldNodes ->
             fieldNodes
@@ -803,12 +916,91 @@ mapExpression sourceFile (Node range exp) =
 
 
 mapPattern : SourceFile -> Node Pattern -> Result Errors (Value.Pattern SourceLocation)
-mapPattern sourceFile (Node range patternNode) =
+mapPattern sourceFile (Node range pattern) =
     let
         sourceLocation =
             range |> SourceLocation sourceFile
     in
-    Ok (Value.WildcardPattern sourceLocation)
+    case pattern of
+        Pattern.AllPattern ->
+            Ok (Value.WildcardPattern sourceLocation)
+
+        Pattern.UnitPattern ->
+            Ok (Value.UnitPattern sourceLocation)
+
+        Pattern.CharPattern char ->
+            Ok (Value.LiteralPattern sourceLocation (Value.CharLiteral char))
+
+        Pattern.StringPattern string ->
+            Ok (Value.LiteralPattern sourceLocation (Value.StringLiteral string))
+
+        Pattern.IntPattern int ->
+            Ok (Value.LiteralPattern sourceLocation (Value.IntLiteral int))
+
+        Pattern.HexPattern int ->
+            Ok (Value.LiteralPattern sourceLocation (Value.IntLiteral int))
+
+        Pattern.FloatPattern float ->
+            Ok (Value.LiteralPattern sourceLocation (Value.FloatLiteral float))
+
+        Pattern.TuplePattern elemNodes ->
+            elemNodes
+                |> List.map (mapPattern sourceFile)
+                |> ResultList.toResult
+                |> Result.mapError List.concat
+                |> Result.map (Value.TuplePattern sourceLocation)
+
+        Pattern.RecordPattern fieldNameNodes ->
+            Ok
+                (Value.RecordPattern sourceLocation
+                    (fieldNameNodes
+                        |> List.map (Node.value >> Name.fromString)
+                    )
+                )
+
+        Pattern.UnConsPattern headNode tailNode ->
+            Result.map2 (Value.HeadTailPattern sourceLocation)
+                (mapPattern sourceFile headNode)
+                (mapPattern sourceFile tailNode)
+
+        Pattern.ListPattern itemNodes ->
+            let
+                toPattern : List (Node Pattern) -> Result Errors (Value.Pattern SourceLocation)
+                toPattern patternNodes =
+                    case patternNodes of
+                        [] ->
+                            Ok (Value.EmptyListPattern sourceLocation)
+
+                        headNode :: tailNodes ->
+                            Result.map2 (Value.HeadTailPattern sourceLocation)
+                                (mapPattern sourceFile headNode)
+                                (toPattern tailNodes)
+            in
+            toPattern itemNodes
+
+        Pattern.VarPattern name ->
+            Ok (Value.AsPattern sourceLocation (Value.WildcardPattern sourceLocation) (Name.fromString name))
+
+        Pattern.NamedPattern qualifiedNameRef argNodes ->
+            let
+                qualifiedName =
+                    qualifiedNameRef.name
+                        |> Name.fromString
+                        |> QName.fromName (qualifiedNameRef.moduleName |> List.map Name.fromString)
+                        |> FQName.fromQName []
+            in
+            argNodes
+                |> List.map (mapPattern sourceFile)
+                |> ResultList.toResult
+                |> Result.mapError List.concat
+                |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
+
+        Pattern.AsPattern subjectNode aliasNode ->
+            mapPattern sourceFile subjectNode
+                |> Result.map (\subject -> Value.AsPattern sourceLocation subject (aliasNode |> Node.value |> Name.fromString))
+
+        Pattern.ParenthesizedPattern childNode ->
+            mapPattern sourceFile childNode
 
 
 resolveLocalTypes : Path -> Path -> ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)

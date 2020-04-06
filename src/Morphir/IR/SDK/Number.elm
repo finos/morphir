@@ -1,17 +1,14 @@
-module Morphir.IR.SDK.Number exposing (negate)
+module Morphir.IR.SDK.Number exposing (..)
 
 import Dict
-import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Module as Module
-import Morphir.IR.Name as Name
+import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.QName as QName
-import Morphir.IR.SDK.Common exposing (packageName)
+import Morphir.IR.SDK.Common exposing (binaryApply, toFQName)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
 
-moduleName : Path
+moduleName : ModulePath
 moduleName =
     Path.fromString "Number"
 
@@ -25,14 +22,6 @@ moduleSpec =
     }
 
 
-fromLocalName : String -> FQName
-fromLocalName name =
-    name
-        |> Name.fromString
-        |> QName.fromName moduleName
-        |> FQName.fromQName packageName
-
-
 numberClass : a -> Type a
 numberClass attributes =
     Variable attributes [ "number" ]
@@ -40,4 +29,24 @@ numberClass attributes =
 
 negate : a -> a -> Value a -> Value a
 negate refAttributes valueAttributes arg =
-    Value.Apply valueAttributes (Value.Reference refAttributes (fromLocalName "negate")) arg
+    Value.Apply valueAttributes (Value.Reference refAttributes (toFQName moduleName "negate")) arg
+
+
+add : a -> Value a -> Value a -> Value a
+add =
+    binaryApply moduleName "add"
+
+
+subtract : a -> Value a -> Value a -> Value a
+subtract =
+    binaryApply moduleName "subtract"
+
+
+multiply : a -> Value a -> Value a -> Value a
+multiply =
+    binaryApply moduleName "multiply"
+
+
+power : a -> Value a -> Value a -> Value a
+power =
+    binaryApply moduleName "power"

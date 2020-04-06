@@ -1,7 +1,7 @@
 module Morphir.IR.SDK exposing (..)
 
 import Dict
-import Morphir.IR.Package as Package
+import Morphir.IR.Package as Package exposing (PackagePath)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Bool as Bool
 import Morphir.IR.SDK.Char as Char
@@ -13,7 +13,7 @@ import Morphir.IR.SDK.Result as Result
 import Morphir.IR.SDK.String as String
 
 
-packageName : Path
+packageName : PackagePath
 packageName =
     Path.fromString "Morphir.SDK"
 
