@@ -21,6 +21,8 @@ For this example, we'll look at a set of interacting applications that form a co
 * [Order](../../morphir-examples/src/Morphir/src/Morphir/Sample/Apps/Order) - Processes order requests and records any confirmations to Books and Records.
 * [Trader](../../morphir-examples/src/Morphir/src/Morphir/Sample/Apps/Trader) - An automated trading algorithm that makes decisions based on the market and the state of the current book of deals.  It relies on both Books and Records and Order.
 
+## Modeling the Persistent App specification
+All three of these are instances of applications that manage 
 
 ## Modeling the API
 Books and Records is used by Order to book executions, so it needs a way to accept orders.  We model this in Morphir using the API type as such:
