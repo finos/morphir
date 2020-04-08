@@ -4,11 +4,11 @@ import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Pattern exposing (Pattern(..))
-import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
+import Morphir.Elm.Backend.Utils as Utils
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Type as Type exposing (Constructor, Definition(..), Field, Type(..))
+import Morphir.IR.Type as Type exposing (Constructor(..), Definition(..), Field, Type(..))
 
 
 typeDefToDecoder : Name -> AccessControlled (Type.Definition ()) -> Declaration
@@ -67,7 +67,7 @@ typeDefToDecoder typeName accessCtrlTypeDef =
 
 
 constructorDecoder : Bool -> Constructor () -> Expression
-constructorDecoder isSingle ( ctorName, fields ) =
+constructorDecoder isSingle (Constructor ctorName fields) =
     case fields of
         [] ->
             Application
@@ -100,14 +100,14 @@ constructorDecoder isSingle ( ctorName, fields ) =
                     else
                         [ "$type" ]
             in
-            Record (fields |> List.map ctorFieldToRecField) ()
+            Record () (fields |> List.map ctorFieldToRecField)
                 |> typeToDecoder ctorName topLevelFieldNames
 
 
 typeToDecoder : Name -> List String -> Type () -> Expression
 typeToDecoder typeName topLevelFieldNames tpe =
     case tpe of
-        Reference fqName typeParams _ ->
+        Reference _ fqName typeParams ->
             case fqName of
                 FQName _ _ [ "string" ] ->
                     FunctionOrValue decoderModuleName "string"
@@ -149,7 +149,7 @@ typeToDecoder typeName topLevelFieldNames tpe =
                         []
                         ("decoder" ++ (name |> Name.toTitleCase))
 
-        Record fields _ ->
+        Record _ fields ->
             let
                 mapFunc : Expression
                 mapFunc =

@@ -1,7 +1,7 @@
 module Morphir.IR.Package exposing
     ( Specification
     , Definition, emptyDefinition
-    , definitionToSpecification, encodeDefinition, eraseDefinitionExtra, eraseSpecificationExtra
+    , PackagePath, definitionToSpecification, encodeDefinition, eraseDefinitionAttributes, eraseSpecificationAttributes
     )
 
 {-| Tools to work with packages.
@@ -16,7 +16,7 @@ import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
-import Morphir.IR.Module as Module
+import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Path exposing (Path, encodePath)
 import Morphir.IR.QName exposing (QName, encodeQName)
 import Morphir.IR.Type as Type exposing (Type)
@@ -24,14 +24,18 @@ import Morphir.IR.Value as Value exposing (Value)
 import Morphir.ResultList as ResultList
 
 
+type alias PackagePath =
+    Path
+
+
 {-| Type that represents a package specification.
 -}
-type alias Specification extra =
-    { modules : Dict Path (Module.Specification extra)
+type alias Specification a =
+    { modules : Dict ModulePath (Module.Specification a)
     }
 
 
-emptySpecification : Specification extra
+emptySpecification : Specification a
 emptySpecification =
     { modules = Dict.empty
     }
@@ -39,22 +43,22 @@ emptySpecification =
 
 {-| Type that represents a package definition.
 -}
-type alias Definition extra =
-    { dependencies : Dict Path (Specification extra)
-    , modules : Dict Path (AccessControlled (Module.Definition extra))
+type alias Definition a =
+    { dependencies : Dict PackagePath (Specification a)
+    , modules : Dict ModulePath (AccessControlled (Module.Definition a))
     }
 
 
 {-| An empty package definition.
 -}
-emptyDefinition : Definition extra
+emptyDefinition : Definition a
 emptyDefinition =
     { dependencies = Dict.empty
     , modules = Dict.empty
     }
 
 
-definitionToSpecification : Definition extra -> Specification extra
+definitionToSpecification : Definition a -> Specification a
 definitionToSpecification def =
     { modules =
         def.modules
@@ -92,12 +96,12 @@ mapSpecification mapType mapValue spec =
     Result.map Specification modulesResult
 
 
-eraseSpecificationExtra : Specification a -> Specification ()
-eraseSpecificationExtra spec =
+eraseSpecificationAttributes : Specification a -> Specification ()
+eraseSpecificationAttributes spec =
     spec
         |> mapSpecification
-            (Type.mapTypeExtra (\_ -> ()) >> Ok)
-            (Value.mapValueExtra (\_ -> ()))
+            (Type.mapTypeAttributes (\_ -> ()) >> Ok)
+            (Value.mapValueAttributes (\_ -> ()))
         |> Result.withDefault emptySpecification
 
 
@@ -138,17 +142,17 @@ mapDefinition mapType mapValue def =
         modulesResult
 
 
-eraseDefinitionExtra : Definition a -> Definition ()
-eraseDefinitionExtra def =
+eraseDefinitionAttributes : Definition a -> Definition ()
+eraseDefinitionAttributes def =
     def
         |> mapDefinition
-            (Type.mapTypeExtra (\_ -> ()) >> Ok)
-            (Value.mapValueExtra (\_ -> ()))
+            (Type.mapTypeAttributes (\_ -> ()) >> Ok)
+            (Value.mapValueAttributes (\_ -> ()))
         |> Result.withDefault emptyDefinition
 
 
-encodeSpecification : (extra -> Encode.Value) -> Specification extra -> Encode.Value
-encodeSpecification encodeExtra spec =
+encodeSpecification : (a -> Encode.Value) -> Specification a -> Encode.Value
+encodeSpecification encodeAttributes spec =
     Encode.object
         [ ( "modules"
           , spec.modules
@@ -157,15 +161,15 @@ encodeSpecification encodeExtra spec =
                     (\( moduleName, moduleSpec ) ->
                         Encode.object
                             [ ( "name", encodePath moduleName )
-                            , ( "spec", Module.encodeSpecification encodeExtra moduleSpec )
+                            , ( "spec", Module.encodeSpecification encodeAttributes moduleSpec )
                             ]
                     )
           )
         ]
 
 
-encodeDefinition : (extra -> Encode.Value) -> Definition extra -> Encode.Value
-encodeDefinition encodeExtra def =
+encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
+encodeDefinition encodeAttributes def =
     Encode.object
         [ ( "dependencies"
           , def.dependencies
@@ -174,7 +178,7 @@ encodeDefinition encodeExtra def =
                     (\( packageName, packageSpec ) ->
                         Encode.object
                             [ ( "name", encodePath packageName )
-                            , ( "spec", encodeSpecification encodeExtra packageSpec )
+                            , ( "spec", encodeSpecification encodeAttributes packageSpec )
                             ]
                     )
           )
@@ -185,7 +189,7 @@ encodeDefinition encodeExtra def =
                     (\( moduleName, moduleDef ) ->
                         Encode.object
                             [ ( "name", encodePath moduleName )
-                            , ( "def", encodeAccessControlled (Module.encodeDefinition encodeExtra) moduleDef )
+                            , ( "def", encodeAccessControlled (Module.encodeDefinition encodeAttributes) moduleDef )
                             ]
                     )
           )

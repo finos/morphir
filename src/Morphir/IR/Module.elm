@@ -1,7 +1,7 @@
 module Morphir.IR.Module exposing
     ( Specification, Definition
     , encodeSpecification, encodeDefinition
-    , definitionToSpecification, eraseSpecificationExtra, mapDefinition, mapSpecification
+    , ModulePath, definitionToSpecification, eraseSpecificationAttributes, mapDefinition, mapSpecification
     )
 
 {-| Modules are groups of types and values that belong together.
@@ -17,20 +17,25 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
 import Morphir.IR.Name exposing (Name, encodeName)
+import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.ResultList as ResultList
 
 
+type alias ModulePath =
+    Path
+
+
 {-| Type that represents a module specification.
 -}
-type alias Specification extra =
-    { types : Dict Name (Type.Specification extra)
-    , values : Dict Name (Value.Specification extra)
+type alias Specification a =
+    { types : Dict Name (Type.Specification a)
+    , values : Dict Name (Value.Specification a)
     }
 
 
-emptySpecification : Specification extra
+emptySpecification : Specification a
 emptySpecification =
     { types = Dict.empty
     , values = Dict.empty
@@ -39,13 +44,13 @@ emptySpecification =
 
 {-| Type that represents a module definition. It includes types and values.
 -}
-type alias Definition extra =
-    { types : Dict Name (AccessControlled (Type.Definition extra))
-    , values : Dict Name (AccessControlled (Value.Definition extra))
+type alias Definition a =
+    { types : Dict Name (AccessControlled (Type.Definition a))
+    , values : Dict Name (AccessControlled (Value.Definition a))
     }
 
 
-definitionToSpecification : Definition extra -> Specification extra
+definitionToSpecification : Definition a -> Specification a
 definitionToSpecification def =
     { types =
         def.types
@@ -78,18 +83,18 @@ definitionToSpecification def =
     }
 
 
-eraseSpecificationExtra : Specification a -> Specification ()
-eraseSpecificationExtra spec =
+eraseSpecificationAttributes : Specification a -> Specification ()
+eraseSpecificationAttributes spec =
     spec
         |> mapSpecification
-            (Type.mapTypeExtra (\_ -> ()) >> Ok)
-            (Value.mapValueExtra (\_ -> ()))
+            (Type.mapTypeAttributes (\_ -> ()) >> Ok)
+            (Value.mapValueAttributes (\_ -> ()))
         |> Result.withDefault emptySpecification
 
 
 {-| -}
-encodeSpecification : (extra -> Encode.Value) -> Specification extra -> Encode.Value
-encodeSpecification encodeExtra spec =
+encodeSpecification : (a -> Encode.Value) -> Specification a -> Encode.Value
+encodeSpecification encodeAttributes spec =
     Encode.object
         [ ( "types"
           , spec.types
@@ -98,7 +103,7 @@ encodeSpecification encodeExtra spec =
                     (\( name, typeSpec ) ->
                         Encode.object
                             [ ( "name", encodeName name )
-                            , ( "spec", Type.encodeSpecification encodeExtra typeSpec )
+                            , ( "spec", Type.encodeSpecification encodeAttributes typeSpec )
                             ]
                     )
           )
@@ -109,7 +114,7 @@ encodeSpecification encodeExtra spec =
                     (\( name, valueSpec ) ->
                         Encode.object
                             [ ( "name", encodeName name )
-                            , ( "spec", Value.encodeSpecification encodeExtra valueSpec )
+                            , ( "spec", Value.encodeSpecification encodeAttributes valueSpec )
                             ]
                     )
           )
@@ -191,8 +196,8 @@ mapDefinition mapType mapValue def =
 
 
 {-| -}
-encodeDefinition : (extra -> Encode.Value) -> Definition extra -> Encode.Value
-encodeDefinition encodeExtra def =
+encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
+encodeDefinition encodeAttributes def =
     Encode.object
         [ ( "types"
           , def.types
@@ -201,7 +206,7 @@ encodeDefinition encodeExtra def =
                     (\( name, typeDef ) ->
                         Encode.object
                             [ ( "name", encodeName name )
-                            , ( "def", encodeAccessControlled (Type.encodeDefinition encodeExtra) typeDef )
+                            , ( "def", encodeAccessControlled (Type.encodeDefinition encodeAttributes) typeDef )
                             ]
                     )
           )
@@ -212,7 +217,7 @@ encodeDefinition encodeExtra def =
                     (\( name, valueDef ) ->
                         Encode.object
                             [ ( "name", encodeName name )
-                            , ( "def", encodeAccessControlled (Value.encodeDefinition encodeExtra) valueDef )
+                            , ( "def", encodeAccessControlled (Value.encodeDefinition encodeAttributes) valueDef )
                             ]
                     )
           )

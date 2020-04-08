@@ -62,7 +62,7 @@ update msg model =
                         packageDefResult : Result Frontend.Errors (Package.Definition ())
                         packageDefResult =
                             Frontend.packageDefinitionFromSource pkgInfo sourceFiles
-                                |> Result.map Package.eraseDefinitionExtra
+                                |> Result.map Package.eraseDefinitionAttributes
 
                         result =
                             packageDefResult
@@ -138,7 +138,7 @@ daprSource pkgPath pkgDef =
                             case acsCtrlModDef.value of
                                 { types, values } ->
                                     Dict.remove (Name.fromString "app") types
-                                        |> Dict.map (\_ acsCtrlTypeDef -> AccessControlled.map Type.eraseExtra acsCtrlTypeDef)
+                                        |> Dict.map (\_ acsCtrlTypeDef -> AccessControlled.map Type.eraseAttributes acsCtrlTypeDef)
                                         |> Dict.toList
 
                         Private ->

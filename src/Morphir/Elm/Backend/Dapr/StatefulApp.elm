@@ -21,13 +21,13 @@ import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlle
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name, toCamelCase)
 import Morphir.IR.Path exposing (Path)
-import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..), eraseExtra)
+import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..), eraseAttributes)
 
 
 gen : Path -> Name -> Type () -> List ( Name, AccessControlled (Type.Definition ()) ) -> Maybe File
 gen fullAppPath appName appType otherTypeDefs =
     case appType of
-        Reference (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "stateful", "app" ] ] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) _ ->
+        Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "stateful", "app" ] ] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) ->
             let
                 moduleDef : Module
                 moduleDef =
@@ -237,7 +237,7 @@ msgDecoderDecl keyType stateType cmdType =
         Ok (( typeName, typeDef ) :: []) ->
             DecoderGen.typeDefToDecoder
                 typeName
-                (typeDef |> AccessControlled.map eraseExtra)
+                (typeDef |> AccessControlled.map eraseAttributes)
 
         _ ->
             emptyDecl
@@ -329,7 +329,7 @@ encodeStateEventDecl keyType stateType eventType =
     in
     case morphirTypeDef of
         Ok (( typeName, typeDef ) :: []) ->
-            EncoderGen.typeDefToEncoder typeName (typeDef |> AccessControlled.map eraseExtra)
+            EncoderGen.typeDefToEncoder typeName (typeDef |> AccessControlled.map eraseAttributes)
 
         _ ->
             emptyDecl
@@ -553,22 +553,22 @@ subscriptions =
 morphirToElmTypeDef : Type () -> TypeAnnotation
 morphirToElmTypeDef tpe =
     case tpe of
-        Variable name _ ->
+        Variable _ name ->
             name |> Name.toCamelCase |> GenericType
 
-        Reference (FQName _ _ [ "bool" ]) [] _ ->
+        Reference _ (FQName _ _ [ "bool" ]) [] ->
             Typed (( [], "Bool" ) |> Utils.emptyRangeNode) []
 
-        Reference (FQName _ _ [ "int" ]) [] _ ->
+        Reference _ (FQName _ _ [ "int" ]) [] ->
             Typed (( [], "Int" ) |> Utils.emptyRangeNode) []
 
-        Reference (FQName _ _ [ "float" ]) [] _ ->
+        Reference _ (FQName _ _ [ "float" ]) [] ->
             Typed (( [], "Float" ) |> Utils.emptyRangeNode) []
 
-        Reference (FQName _ _ [ "string" ]) [] _ ->
+        Reference _ (FQName _ _ [ "string" ]) [] ->
             Typed (( [], "String" ) |> Utils.emptyRangeNode) []
 
-        Reference (FQName pkgPath modPath tpeName) types _ ->
+        Reference _ (FQName pkgPath modPath tpeName) types ->
             let
                 moduleName : ModuleName
                 moduleName =
@@ -588,7 +588,7 @@ morphirToElmTypeDef tpe =
                 (( moduleName, typeName ) |> Utils.emptyRangeNode)
                 innerTypes
 
-        Type.Record fields _ ->
+        Type.Record _ fields ->
             let
                 morphirToElmField : Field () -> ( Node String, Node TypeAnnotation )
                 morphirToElmField field =
@@ -664,26 +664,21 @@ emptyFuncImpl =
 
 test : Type ()
 test =
-    Reference
+    Reference ()
         (FQName [ [ "morphir" ] ] [ [ "s", "d", "k" ], [ "stateful", "app" ] ] [ "stateful", "app" ])
-        [ Reference
+        [ Reference ()
             (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
             []
-            ()
-        , Reference
+        , Reference ()
             (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
             []
-            ()
-        , Reference
+        , Reference ()
             (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
             []
-            ()
-        , Reference
+        , Reference ()
             (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
             []
-            ()
         ]
-        ()
 
 
 testRun : Maybe String

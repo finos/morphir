@@ -1,14 +1,13 @@
 module Morphir.IR.Type exposing
     ( Type(..)
     , variable, reference, tuple, record, extensibleRecord, function, unit
-    , matchVariable, matchReference, matchTuple, matchRecord, matchExtensibleRecord, matchFunction, matchUnit
     , Field, matchField, mapFieldName, mapFieldType
-    , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification, matchCustomTypeSpecification
+    , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
     , Definition(..), typeAliasDefinition, customTypeDefinition
-    , Constructors
+    , Constructors, Constructor(..)
     , fuzzType
     , encodeType, decodeType, encodeSpecification, encodeDefinition
-    , Constructor, definitionToSpecification, eraseExtra, mapDefinition, mapSpecification, mapTypeExtra, rewriteType
+    , definitionToSpecification, eraseAttributes, mapDefinition, mapSpecification, mapTypeAttributes, rewriteType
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -46,7 +45,7 @@ module Morphir.IR.Type exposing
 
 # Constructors
 
-@docs Constructors
+@docs Constructors, Constructor
 
 
 # Property Testing
@@ -83,29 +82,29 @@ for more details:
   - unit type: [creation](#unit), [matching](#matchUnit)
 
 -}
-type Type extra
-    = Variable Name extra
-    | Reference FQName (List (Type extra)) extra
-    | Tuple (List (Type extra)) extra
-    | Record (List (Field extra)) extra
-    | ExtensibleRecord Name (List (Field extra)) extra
-    | Function (Type extra) (Type extra) extra
-    | Unit extra
+type Type a
+    = Variable a Name
+    | Reference a FQName (List (Type a))
+    | Tuple a (List (Type a))
+    | Record a (List (Field a))
+    | ExtensibleRecord a Name (List (Field a))
+    | Function a (Type a) (Type a)
+    | Unit a
 
 
 {-| An opaque representation of a field. It's made up of a name and a type.
 -}
-type alias Field extra =
+type alias Field a =
     { name : Name
-    , tpe : Type extra
+    , tpe : Type a
     }
 
 
 {-| -}
-type Specification extra
-    = TypeAliasSpecification (List Name) (Type extra)
+type Specification a
+    = TypeAliasSpecification (List Name) (Type a)
     | OpaqueTypeSpecification (List Name)
-    | CustomTypeSpecification (List Name) (Constructors extra)
+    | CustomTypeSpecification (List Name) (Constructors a)
 
 
 {-| This syntax represents a type definition. For example:
@@ -117,22 +116,22 @@ In the definition, the `List Name` refers to type parameters on the LHS
 and `Type extra` refers to the RHS
 
 -}
-type Definition extra
-    = TypeAliasDefinition (List Name) (Type extra)
-    | CustomTypeDefinition (List Name) (AccessControlled (Constructors extra))
+type Definition a
+    = TypeAliasDefinition (List Name) (Type a)
+    | CustomTypeDefinition (List Name) (AccessControlled (Constructors a))
 
 
 {-| -}
-type alias Constructors extra =
-    List (Constructor extra)
+type alias Constructors a =
+    List (Constructor a)
 
 
 {-| -}
-type alias Constructor extra =
-    ( Name, List ( Name, Type extra ) )
+type Constructor a
+    = Constructor Name (List ( Name, Type a ))
 
 
-definitionToSpecification : Definition extra -> Specification extra
+definitionToSpecification : Definition a -> Specification a
 definitionToSpecification def =
     case def of
         TypeAliasDefinition params exp ->
@@ -165,7 +164,7 @@ mapSpecification f spec =
                 ctorsResult =
                     constructors
                         |> List.map
-                            (\( ctorName, ctorArgs ) ->
+                            (\(Constructor ctorName ctorArgs) ->
                                 ctorArgs
                                     |> List.map
                                         (\( argName, argType ) ->
@@ -173,7 +172,7 @@ mapSpecification f spec =
                                                 |> Result.map (Tuple.pair argName)
                                         )
                                     |> ResultList.toResult
-                                    |> Result.map (Tuple.pair ctorName)
+                                    |> Result.map (Constructor ctorName)
                             )
                         |> ResultList.toResult
                         |> Result.mapError List.concat
@@ -196,7 +195,7 @@ mapDefinition f def =
                 ctorsResult =
                     constructors.value
                         |> List.map
-                            (\( ctorName, ctorArgs ) ->
+                            (\(Constructor ctorName ctorArgs) ->
                                 ctorArgs
                                     |> List.map
                                         (\( argName, argType ) ->
@@ -204,7 +203,7 @@ mapDefinition f def =
                                                 |> Result.map (Tuple.pair argName)
                                         )
                                     |> ResultList.toResult
-                                    |> Result.map (Tuple.pair ctorName)
+                                    |> Result.map (Constructor ctorName)
                             )
                         |> ResultList.toResult
                         |> Result.map (AccessControlled constructors.access)
@@ -214,81 +213,81 @@ mapDefinition f def =
                 |> Result.map (CustomTypeDefinition params)
 
 
-mapTypeExtra : (a -> b) -> Type a -> Type b
-mapTypeExtra f tpe =
+mapTypeAttributes : (a -> b) -> Type a -> Type b
+mapTypeAttributes f tpe =
     case tpe of
-        Variable name extra ->
-            Variable name (f extra)
+        Variable a name ->
+            Variable (f a) name
 
-        Reference fQName argTypes extra ->
-            Reference fQName (argTypes |> List.map (mapTypeExtra f)) (f extra)
+        Reference a fQName argTypes ->
+            Reference (f a) fQName (argTypes |> List.map (mapTypeAttributes f))
 
-        Tuple elemTypes extra ->
-            Tuple (elemTypes |> List.map (mapTypeExtra f)) (f extra)
+        Tuple a elemTypes ->
+            Tuple (f a) (elemTypes |> List.map (mapTypeAttributes f))
 
-        Record fields extra ->
-            Record (fields |> List.map (mapFieldType (mapTypeExtra f))) (f extra)
+        Record a fields ->
+            Record (f a) (fields |> List.map (mapFieldType (mapTypeAttributes f)))
 
-        ExtensibleRecord name fields extra ->
-            ExtensibleRecord name (fields |> List.map (mapFieldType (mapTypeExtra f))) (f extra)
+        ExtensibleRecord a name fields ->
+            ExtensibleRecord (f a) name (fields |> List.map (mapFieldType (mapTypeAttributes f)))
 
-        Function argType returnType extra ->
-            Function (argType |> mapTypeExtra f) (returnType |> mapTypeExtra f) (f extra)
+        Function a argType returnType ->
+            Function (f a) (argType |> mapTypeAttributes f) (returnType |> mapTypeAttributes f)
 
-        Unit extra ->
-            Unit (f extra)
+        Unit a ->
+            Unit (f a)
 
 
-typeExtra : Type a -> a
-typeExtra tpe =
+typeAttributes : Type a -> a
+typeAttributes tpe =
     case tpe of
-        Variable name extra ->
-            extra
+        Variable a name ->
+            a
 
-        Reference fQName argTypes extra ->
-            extra
+        Reference a fQName argTypes ->
+            a
 
-        Tuple elemTypes extra ->
-            extra
+        Tuple a elemTypes ->
+            a
 
-        Record fields extra ->
-            extra
+        Record a fields ->
+            a
 
-        ExtensibleRecord name fields extra ->
-            extra
+        ExtensibleRecord a name fields ->
+            a
 
-        Function argType returnType extra ->
-            extra
+        Function a argType returnType ->
+            a
 
-        Unit extra ->
-            extra
+        Unit a ->
+            a
 
 
-eraseExtra : Definition extra -> Definition ()
-eraseExtra typeDef =
+eraseAttributes : Definition a -> Definition ()
+eraseAttributes typeDef =
     case typeDef of
         TypeAliasDefinition typeVars tpe ->
-            TypeAliasDefinition typeVars (mapTypeExtra (\_ -> ()) tpe)
+            TypeAliasDefinition typeVars (mapTypeAttributes (\_ -> ()) tpe)
 
         CustomTypeDefinition typeVars acsCtrlConstructors ->
             let
-                eraseExtraCtor : Constructor extra -> Constructor ()
-                eraseExtraCtor ( name, types ) =
+                eraseCtor : Constructor a -> Constructor ()
+                eraseCtor (Constructor name types) =
                     let
                         extraErasedTypes : List ( Name, Type () )
                         extraErasedTypes =
                             types
-                                |> List.map (\( n, t ) -> ( n, mapTypeExtra (\_ -> ()) t ))
+                                |> List.map (\( n, t ) -> ( n, mapTypeAttributes (\_ -> ()) t ))
                     in
-                    ( name, extraErasedTypes )
+                    Constructor name extraErasedTypes
 
-                emptyExtraCtors : AccessControlled (Constructors extra) -> AccessControlled (Constructors ())
-                emptyExtraCtors acsCtrlCtors =
+                eraseAccessControlledCtors : AccessControlled (Constructors a) -> AccessControlled (Constructors ())
+                eraseAccessControlledCtors acsCtrlCtors =
                     AccessControlled.map
-                        (\ctors -> ctors |> List.map eraseExtraCtor)
+                        (\ctors -> ctors |> List.map eraseCtor)
                         acsCtrlCtors
             in
-            CustomTypeDefinition typeVars (emptyExtraCtors acsCtrlConstructors)
+            CustomTypeDefinition typeVars (eraseAccessControlledCtors acsCtrlConstructors)
 
 
 {-| Creates a type variable.
@@ -298,22 +297,9 @@ eraseExtra typeDef =
     toIR fooBar == variable [ "foo", "bar" ] ()
 
 -}
-variable : Name -> extra -> Type extra
-variable name extra =
-    Variable name extra
-
-
-{-| -}
-matchVariable : Pattern Name a -> Pattern extra b -> Pattern (Type extra) ( a, b )
-matchVariable matchName matchExtra typeToMatch =
-    case typeToMatch of
-        Variable name extra ->
-            Maybe.map2 Tuple.pair
-                (matchName name)
-                (matchExtra extra)
-
-        _ ->
-            Nothing
+variable : a -> Name -> Type a
+variable attributes name =
+    Variable attributes name
 
 
 {-| Creates a fully-qualified reference to a type.
@@ -327,23 +313,9 @@ matchVariable matchName matchExtra typeToMatch =
             []
 
 -}
-reference : FQName -> List (Type extra) -> extra -> Type extra
-reference typeName typeParameters extra =
-    Reference typeName typeParameters extra
-
-
-{-| -}
-matchReference : Pattern FQName a -> Pattern (List (Type extra)) b -> Pattern extra c -> Pattern (Type extra) ( a, b, c )
-matchReference matchTypeName matchTypeParameters matchExtra typeToMatch =
-    case typeToMatch of
-        Reference typeName typeParameters extra ->
-            Maybe.map3 (\a b c -> ( a, b, c ))
-                (matchTypeName typeName)
-                (matchTypeParameters typeParameters)
-                (matchExtra extra)
-
-        _ ->
-            Nothing
+reference : a -> FQName -> List (Type a) -> Type a
+reference attributes typeName typeParameters =
+    Reference attributes typeName typeParameters
 
 
 {-| Creates a tuple type.
@@ -352,33 +324,9 @@ matchReference matchTypeName matchTypeParameters matchExtra typeToMatch =
         == tuple [ basic intType, basic boolType ]
 
 -}
-tuple : List (Type extra) -> extra -> Type extra
-tuple elementTypes extra =
-    Tuple elementTypes extra
-
-
-{-| Matches a tuple type and extracts element types.
-
-    tpe =
-        tuple [ SDK.Basics.intType, SDK.Basics.boolType ]
-
-    pattern =
-        matchTuple (list [ matchBasic any, matchBasic any ])
-
-    pattern tpe ==
-        [ SDK.Basics.intType, SDK.Basics.boolType ]
-
--}
-matchTuple : Pattern (List (Type extra)) a -> Pattern extra b -> Pattern (Type extra) ( a, b )
-matchTuple matchElementTypes matchExtra typeToMatch =
-    case typeToMatch of
-        Tuple elementTypes extra ->
-            Maybe.map2 Tuple.pair
-                (matchElementTypes elementTypes)
-                (matchExtra extra)
-
-        _ ->
-            Nothing
+tuple : a -> List (Type a) -> Type a
+tuple attributes elementTypes =
+    Tuple attributes elementTypes
 
 
 {-| Creates a record type.
@@ -397,43 +345,9 @@ matchTuple matchElementTypes matchExtra typeToMatch =
             ]
 
 -}
-record : List (Field extra) -> extra -> Type extra
-record fieldTypes extra =
-    Record fieldTypes extra
-
-
-{-| Match a record type.
-
-    matchRecordFooBar =
-        matchRecord
-                (matchList
-                    [ matchField
-                        (matchValue ["foo"])
-                        matchAny
-                    , matchField
-                        (matchValue ["bar"])
-                        matchAny
-                    ]
-                )
-
-    matchRecordFooBar <|
-        record
-            [ field ["foo"] SDK.Basics.intType
-            , field ["bar"] SDK.Basics.boolType
-            ]
-    --> Just ( SDK.Basics.intType, SDK.Basics.boolType )
-
--}
-matchRecord : Pattern (List (Field extra)) a -> Pattern extra b -> Pattern (Type extra) ( a, b )
-matchRecord matchFieldTypes matchExtra typeToMatch =
-    case typeToMatch of
-        Record fieldTypes extra ->
-            Maybe.map2 Tuple.pair
-                (matchFieldTypes fieldTypes)
-                (matchExtra extra)
-
-        _ ->
-            Nothing
+record : a -> List (Field a) -> Type a
+record attributes fieldTypes =
+    Record attributes fieldTypes
 
 
 {-| Creates an extensible record type.
@@ -450,23 +364,9 @@ matchRecord matchFieldTypes matchExtra typeToMatch =
             ]
 
 -}
-extensibleRecord : Name -> List (Field extra) -> extra -> Type extra
-extensibleRecord variableName fieldTypes extra =
-    ExtensibleRecord variableName fieldTypes extra
-
-
-{-| -}
-matchExtensibleRecord : Pattern Name a -> Pattern (List (Field extra)) b -> Pattern extra c -> Pattern (Type extra) ( a, b, c )
-matchExtensibleRecord matchVariableName matchFieldTypes matchExtra typeToMatch =
-    case typeToMatch of
-        ExtensibleRecord variableName fieldTypes extra ->
-            Maybe.map3 (\a b c -> ( a, b, c ))
-                (matchVariableName variableName)
-                (matchFieldTypes fieldTypes)
-                (matchExtra extra)
-
-        _ ->
-            Nothing
+extensibleRecord : a -> Name -> List (Field a) -> Type a
+extensibleRecord attributes variableName fieldTypes =
+    ExtensibleRecord attributes variableName fieldTypes
 
 
 {-| Creates a function type. Use currying to create functions with more than one argument.
@@ -485,34 +385,9 @@ matchExtensibleRecord matchVariableName matchFieldTypes matchExtra typeToMatch =
             )
 
 -}
-function : Type extra -> Type extra -> extra -> Type extra
-function argumentType returnType extra =
-    Function argumentType returnType extra
-
-
-{-| Matches a function type.
-
-    tpe =
-        function SDK.Basics.intType SDK.Basics.boolType
-
-    pattern =
-        matchFunction matchAny matchAny
-
-    pattern tpe ==
-        ( SDK.Basics.intType, SDK.Basics.boolType )
-
--}
-matchFunction : Pattern (Type extra) a -> Pattern (Type extra) b -> Pattern extra c -> Pattern (Type extra) ( a, b, c )
-matchFunction matchArgType matchReturnType matchExtra typeToMatch =
-    case typeToMatch of
-        Function argType returnType extra ->
-            Maybe.map3 (\a b c -> ( a, b, c ))
-                (matchArgType argType)
-                (matchReturnType returnType)
-                (matchExtra extra)
-
-        _ ->
-            Nothing
+function : a -> Type a -> Type a -> Type a
+function attributes argumentType returnType =
+    Function attributes argumentType returnType
 
 
 {-| Creates a unit type.
@@ -520,69 +395,45 @@ matchFunction matchArgType matchReturnType matchExtra typeToMatch =
     toIR () == unit
 
 -}
-unit : extra -> Type extra
-unit extra =
-    Unit extra
+unit : a -> Type a
+unit attributes =
+    Unit attributes
 
 
 {-| -}
-matchUnit : Pattern extra a -> Pattern (Type extra) a
-matchUnit matchExtra typeToMatch =
-    case typeToMatch of
-        Unit extra ->
-            matchExtra extra
-
-        _ ->
-            Nothing
-
-
-{-| -}
-typeAliasDefinition : List Name -> Type extra -> Definition extra
+typeAliasDefinition : List Name -> Type a -> Definition a
 typeAliasDefinition typeParams typeExp =
     TypeAliasDefinition typeParams typeExp
 
 
 {-| -}
-customTypeDefinition : List Name -> AccessControlled (Constructors extra) -> Definition extra
+customTypeDefinition : List Name -> AccessControlled (Constructors a) -> Definition a
 customTypeDefinition typeParams ctors =
     CustomTypeDefinition typeParams ctors
 
 
 {-| -}
-typeAliasSpecification : List Name -> Type extra -> Specification extra
+typeAliasSpecification : List Name -> Type a -> Specification a
 typeAliasSpecification typeParams typeExp =
     TypeAliasSpecification typeParams typeExp
 
 
 {-| -}
-opaqueTypeSpecification : List Name -> Specification extra
+opaqueTypeSpecification : List Name -> Specification a
 opaqueTypeSpecification typeParams =
     OpaqueTypeSpecification typeParams
 
 
 {-| -}
-customTypeSpecification : List Name -> Constructors extra -> Specification extra
+customTypeSpecification : List Name -> Constructors a -> Specification a
 customTypeSpecification typeParams ctors =
     CustomTypeSpecification typeParams ctors
 
 
-{-| -}
-matchCustomTypeSpecification : Pattern (List Name) a -> Pattern (Constructors extra) b -> Pattern (Specification extra) ( a, b )
-matchCustomTypeSpecification matchTypeParams matchCtors specToMatch =
-    case specToMatch of
-        CustomTypeSpecification typeParams ctors ->
-            Maybe.map2 Tuple.pair
-                (matchTypeParams typeParams)
-                (matchCtors ctors)
-
-        _ ->
-            Nothing
-
-
-rewriteType : Rewrite e (Type extra)
+rewriteType : Rewrite e (Type a)
 rewriteType rewriteBranch rewriteLeaf typeToRewrite =
     case typeToRewrite of
-        Reference fQName argTypes extra ->
+        Reference a fQName argTypes ->
             argTypes
                 |> List.foldr
                     (\nextArg resultSoFar ->
@@ -591,12 +442,9 @@ rewriteType rewriteBranch rewriteLeaf typeToRewrite =
                             resultSoFar
                     )
                     (Ok [])
-                |> Result.map
-                    (\args ->
-                        Reference fQName args extra
-                    )
+                |> Result.map (Reference a fQName)
 
-        Tuple elemTypes extra ->
+        Tuple a elemTypes ->
             elemTypes
                 |> List.foldr
                     (\nextArg resultSoFar ->
@@ -605,12 +453,9 @@ rewriteType rewriteBranch rewriteLeaf typeToRewrite =
                             resultSoFar
                     )
                     (Ok [])
-                |> Result.map
-                    (\elems ->
-                        Tuple elems extra
-                    )
+                |> Result.map (Tuple a)
 
-        Record fieldTypes extra ->
+        Record a fieldTypes ->
             fieldTypes
                 |> List.foldr
                     (\field resultSoFar ->
@@ -621,12 +466,9 @@ rewriteType rewriteBranch rewriteLeaf typeToRewrite =
                             resultSoFar
                     )
                     (Ok [])
-                |> Result.map
-                    (\fields ->
-                        Record fields extra
-                    )
+                |> Result.map (Record a)
 
-        ExtensibleRecord varName fieldTypes extra ->
+        ExtensibleRecord a varName fieldTypes ->
             fieldTypes
                 |> List.foldr
                     (\field resultSoFar ->
@@ -637,13 +479,10 @@ rewriteType rewriteBranch rewriteLeaf typeToRewrite =
                             resultSoFar
                     )
                     (Ok [])
-                |> Result.map
-                    (\fields ->
-                        ExtensibleRecord varName fields extra
-                    )
+                |> Result.map (ExtensibleRecord a varName)
 
-        Function argType returnType extra ->
-            Result.map2 (\arg return -> Function arg return extra)
+        Function a argType returnType ->
+            Result.map2 (Function a)
                 (rewriteBranch argType)
                 (rewriteBranch returnType)
 
@@ -664,7 +503,7 @@ rewriteType rewriteBranch rewriteLeaf typeToRewrite =
         == Just ( [ "foo" ], SDK.Basics.intType )
 
 -}
-matchField : Pattern Name a -> Pattern (Type extra) b -> Pattern (Field extra) ( a, b )
+matchField : Pattern Name a -> Pattern (Type a) b -> Pattern (Field a) ( a, b )
 matchField matchFieldName matchFieldType field =
     Maybe.map2 Tuple.pair
         (matchFieldName field.name)
@@ -673,7 +512,7 @@ matchField matchFieldName matchFieldType field =
 
 {-| Map the name of the field to get a new field.
 -}
-mapFieldName : (Name -> Name) -> Field extra -> Field extra
+mapFieldName : (Name -> Name) -> Field a -> Field a
 mapFieldName f field =
     Field (f field.name) field.tpe
 
@@ -687,50 +526,50 @@ mapFieldType f field =
 
 {-| Generate random types.
 -}
-fuzzType : Int -> Fuzzer extra -> Fuzzer (Type extra)
-fuzzType maxDepth fuzzExtra =
+fuzzType : Int -> Fuzzer a -> Fuzzer (Type a)
+fuzzType maxDepth fuzzAttributes =
     let
         fuzzField depth =
             Fuzz.map2 Field
                 fuzzName
-                (fuzzType depth fuzzExtra)
+                (fuzzType depth fuzzAttributes)
 
         fuzzVariable =
             Fuzz.map2 Variable
+                fuzzAttributes
                 fuzzName
-                fuzzExtra
 
         fuzzReference depth =
             Fuzz.map3 Reference
+                fuzzAttributes
                 fuzzFQName
-                (Fuzz.list (fuzzType depth fuzzExtra) |> Fuzz.map (List.take depth))
-                fuzzExtra
+                (Fuzz.list (fuzzType depth fuzzAttributes) |> Fuzz.map (List.take depth))
 
         fuzzTuple depth =
             Fuzz.map2 Tuple
-                (Fuzz.list (fuzzType depth fuzzExtra) |> Fuzz.map (List.take depth))
-                fuzzExtra
+                fuzzAttributes
+                (Fuzz.list (fuzzType depth fuzzAttributes) |> Fuzz.map (List.take depth))
 
         fuzzRecord depth =
             Fuzz.map2 Record
+                fuzzAttributes
                 (Fuzz.list (fuzzField (depth - 1)) |> Fuzz.map (List.take depth))
-                fuzzExtra
 
         fuzzExtensibleRecord depth =
             Fuzz.map3 ExtensibleRecord
+                fuzzAttributes
                 fuzzName
                 (Fuzz.list (fuzzField (depth - 1)) |> Fuzz.map (List.take depth))
-                fuzzExtra
 
         fuzzFunction depth =
             Fuzz.map3 Function
-                (fuzzType depth fuzzExtra)
-                (fuzzType depth fuzzExtra)
-                fuzzExtra
+                fuzzAttributes
+                (fuzzType depth fuzzAttributes)
+                (fuzzType depth fuzzAttributes)
 
         fuzzUnit =
             Fuzz.map Unit
-                fuzzExtra
+                fuzzAttributes
 
         fuzzLeaf =
             Fuzz.oneOf
@@ -759,203 +598,198 @@ fuzzType maxDepth fuzzExtra =
 
 {-| Encode a type into JSON.
 -}
-encodeType : (extra -> Encode.Value) -> Type extra -> Encode.Value
-encodeType encodeExtra tpe =
-    let
-        typeTag tag =
-            ( "@type", Encode.string tag )
-    in
+encodeType : (a -> Encode.Value) -> Type a -> Encode.Value
+encodeType encodeAttributes tpe =
     case tpe of
-        Variable name extra ->
-            Encode.object
-                [ typeTag "variable"
-                , ( "name", encodeName name )
-                , ( "extra", encodeExtra extra )
+        Variable a name ->
+            Encode.list identity
+                [ Encode.string "Variable"
+                , encodeAttributes a
+                , encodeName name
                 ]
 
-        Reference typeName typeParameters extra ->
-            Encode.object
-                [ typeTag "reference"
-                , ( "typeName", encodeFQName typeName )
-                , ( "typeParameters", Encode.list (encodeType encodeExtra) typeParameters )
-                , ( "extra", encodeExtra extra )
+        Reference a typeName typeParameters ->
+            Encode.list identity
+                [ Encode.string "Reference"
+                , encodeAttributes a
+                , encodeFQName typeName
+                , Encode.list (encodeType encodeAttributes) typeParameters
                 ]
 
-        Tuple elementTypes extra ->
-            Encode.object
-                [ typeTag "tuple"
-                , ( "elementTypes", Encode.list (encodeType encodeExtra) elementTypes )
-                , ( "extra", encodeExtra extra )
+        Tuple a elementTypes ->
+            Encode.list identity
+                [ Encode.string "Tuple"
+                , encodeAttributes a
+                , Encode.list (encodeType encodeAttributes) elementTypes
                 ]
 
-        Record fieldTypes extra ->
-            Encode.object
-                [ typeTag "record"
-                , ( "fieldTypes", Encode.list (encodeField encodeExtra) fieldTypes )
-                , ( "extra", encodeExtra extra )
+        Record a fieldTypes ->
+            Encode.list identity
+                [ Encode.string "Record"
+                , encodeAttributes a
+                , Encode.list (encodeField encodeAttributes) fieldTypes
                 ]
 
-        ExtensibleRecord variableName fieldTypes extra ->
-            Encode.object
-                [ typeTag "extensibleRecord"
-                , ( "variableName", encodeName variableName )
-                , ( "fieldTypes", Encode.list (encodeField encodeExtra) fieldTypes )
-                , ( "extra", encodeExtra extra )
+        ExtensibleRecord a variableName fieldTypes ->
+            Encode.list identity
+                [ Encode.string "ExtensibleRecord"
+                , encodeAttributes a
+                , encodeName variableName
+                , Encode.list (encodeField encodeAttributes) fieldTypes
                 ]
 
-        Function argumentType returnType extra ->
-            Encode.object
-                [ typeTag "function"
-                , ( "argumentType", encodeType encodeExtra argumentType )
-                , ( "returnType", encodeType encodeExtra returnType )
-                , ( "extra", encodeExtra extra )
+        Function a argumentType returnType ->
+            Encode.list identity
+                [ Encode.string "Function"
+                , encodeAttributes a
+                , encodeType encodeAttributes argumentType
+                , encodeType encodeAttributes returnType
                 ]
 
-        Unit extra ->
-            Encode.object
-                [ typeTag "unit"
-                , ( "extra", encodeExtra extra )
+        Unit a ->
+            Encode.list identity
+                [ Encode.string "Unit"
+                , encodeAttributes a
                 ]
 
 
 {-| Decode a type from JSON.
 -}
-decodeType : Decode.Decoder extra -> Decode.Decoder (Type extra)
-decodeType decodeExtra =
+decodeType : Decode.Decoder a -> Decode.Decoder (Type a)
+decodeType decodeAttributes =
     let
         lazyDecodeType =
             Decode.lazy
                 (\_ ->
-                    decodeType decodeExtra
+                    decodeType decodeAttributes
                 )
 
         lazyDecodeField =
             Decode.lazy
                 (\_ ->
-                    decodeField decodeExtra
+                    decodeField decodeAttributes
                 )
     in
-    Decode.field "@type" Decode.string
+    Decode.index 0 Decode.string
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "variable" ->
+                    "Variable" ->
                         Decode.map2 Variable
-                            (Decode.field "name" decodeName)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeName)
 
-                    "reference" ->
+                    "Reference" ->
                         Decode.map3 Reference
-                            (Decode.field "typeName" decodeFQName)
-                            (Decode.field "typeParameters" (Decode.list (Decode.lazy (\_ -> decodeType decodeExtra))))
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeFQName)
+                            (Decode.index 3 (Decode.list (Decode.lazy (\_ -> decodeType decodeAttributes))))
 
-                    "tuple" ->
+                    "Tuple" ->
                         Decode.map2 Tuple
-                            (Decode.field "elementTypes" (Decode.list lazyDecodeType))
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 (Decode.list lazyDecodeType))
 
-                    "record" ->
+                    "Record" ->
                         Decode.map2 Record
-                            (Decode.field "fieldTypes" (Decode.list lazyDecodeField))
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 (Decode.list lazyDecodeField))
 
-                    "extensibleRecord" ->
+                    "ExtensibleRecord" ->
                         Decode.map3 ExtensibleRecord
-                            (Decode.field "variableName" decodeName)
-                            (Decode.field "fieldTypes" (Decode.list lazyDecodeField))
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeName)
+                            (Decode.index 3 (Decode.list lazyDecodeField))
 
-                    "function" ->
+                    "Function" ->
                         Decode.map3 Function
-                            (Decode.field "argumentType" lazyDecodeType)
-                            (Decode.field "returnType" lazyDecodeType)
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 lazyDecodeType)
+                            (Decode.index 3 lazyDecodeType)
 
-                    "unit" ->
+                    "Unit" ->
                         Decode.map Unit
-                            (Decode.field "extra" decodeExtra)
+                            (Decode.index 1 decodeAttributes)
 
                     _ ->
                         Decode.fail ("Unknown kind: " ++ kind)
             )
 
 
-encodeField : (extra -> Encode.Value) -> Field extra -> Encode.Value
-encodeField encodeExtra field =
+encodeField : (a -> Encode.Value) -> Field a -> Encode.Value
+encodeField encodeAttributes field =
     Encode.list identity
         [ encodeName field.name
-        , encodeType encodeExtra field.tpe
+        , encodeType encodeAttributes field.tpe
         ]
 
 
-decodeField : Decode.Decoder extra -> Decode.Decoder (Field extra)
-decodeField decodeExtra =
+decodeField : Decode.Decoder a -> Decode.Decoder (Field a)
+decodeField decodeAttributes =
     Decode.map2 Field
         (Decode.index 0 decodeName)
-        (Decode.index 1 (decodeType decodeExtra))
+        (Decode.index 1 (decodeType decodeAttributes))
 
 
 {-| -}
-encodeSpecification : (extra -> Encode.Value) -> Specification extra -> Encode.Value
-encodeSpecification encodeExtra spec =
+encodeSpecification : (a -> Encode.Value) -> Specification a -> Encode.Value
+encodeSpecification encodeAttributes spec =
     case spec of
         TypeAliasSpecification params exp ->
-            Encode.object
-                [ ( "$type", Encode.string "typeAlias" )
-                , ( "params", Encode.list encodeName params )
-                , ( "exp", encodeType encodeExtra exp )
+            Encode.list identity
+                [ Encode.string "TypeAliasSpecification"
+                , Encode.list encodeName params
+                , encodeType encodeAttributes exp
                 ]
 
         OpaqueTypeSpecification params ->
-            Encode.object
-                [ ( "$type", Encode.string "opaqueType" )
-                , ( "params", Encode.list encodeName params )
+            Encode.list identity
+                [ Encode.string "OpaqueTypeSpecification"
+                , Encode.list encodeName params
                 ]
 
         CustomTypeSpecification params ctors ->
-            Encode.object
-                [ ( "$type", Encode.string "customType" )
-                , ( "params", Encode.list encodeName params )
-                , ( "ctors", encodeConstructors encodeExtra ctors )
+            Encode.list identity
+                [ Encode.string "CustomTypeSpecification"
+                , Encode.list encodeName params
+                , encodeConstructors encodeAttributes ctors
                 ]
 
 
 {-| -}
-encodeDefinition : (extra -> Encode.Value) -> Definition extra -> Encode.Value
-encodeDefinition encodeExtra def =
+encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
+encodeDefinition encodeAttributes def =
     case def of
         TypeAliasDefinition params exp ->
-            Encode.object
-                [ ( "$type", Encode.string "typeAlias" )
-                , ( "params", Encode.list encodeName params )
-                , ( "exp", encodeType encodeExtra exp )
+            Encode.list identity
+                [ Encode.string "TypeAliasDefinition"
+                , Encode.list encodeName params
+                , encodeType encodeAttributes exp
                 ]
 
         CustomTypeDefinition params ctors ->
-            Encode.object
-                [ ( "$type", Encode.string "customType" )
-                , ( "params", Encode.list encodeName params )
-                , ( "ctors", encodeAccessControlled (encodeConstructors encodeExtra) ctors )
+            Encode.list identity
+                [ Encode.string "CustomTypeDefinition"
+                , Encode.list encodeName params
+                , encodeAccessControlled (encodeConstructors encodeAttributes) ctors
                 ]
 
 
-encodeConstructors : (extra -> Encode.Value) -> Constructors extra -> Encode.Value
-encodeConstructors encodeExtra ctors =
+encodeConstructors : (a -> Encode.Value) -> Constructors a -> Encode.Value
+encodeConstructors encodeAttributes ctors =
     ctors
         |> Encode.list
-            (\( ctorName, ctorArgs ) ->
-                Encode.object
-                    [ ( "name", encodeName ctorName )
-                    , ( "args"
-                      , ctorArgs
-                            |> Encode.list
-                                (\( argName, argType ) ->
-                                    Encode.list identity
-                                        [ encodeName argName
-                                        , encodeType encodeExtra argType
-                                        ]
-                                )
-                      )
+            (\(Constructor ctorName ctorArgs) ->
+                Encode.list identity
+                    [ Encode.string "Constructor"
+                    , encodeName ctorName
+                    , ctorArgs
+                        |> Encode.list
+                            (\( argName, argType ) ->
+                                Encode.list identity
+                                    [ encodeName argName
+                                    , encodeType encodeAttributes argType
+                                    ]
+                            )
                     ]
             )

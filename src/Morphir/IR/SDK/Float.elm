@@ -1,39 +1,35 @@
 module Morphir.IR.SDK.Float exposing (..)
 
 import Dict
-import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Module as Module
+import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
-import Morphir.IR.Path exposing (Path)
-import Morphir.IR.QName as QName
-import Morphir.IR.SDK.Common exposing (packageName)
+import Morphir.IR.Path as Path
+import Morphir.IR.SDK.Common exposing (binaryApply, toFQName)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
+import Morphir.IR.Value exposing (Value)
 
 
-moduleName : Path
+moduleName : ModulePath
 moduleName =
-    [ [ "float" ] ]
+    Path.fromString "Float"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( [ "float" ], OpaqueTypeSpecification [] )
+            [ ( Name.fromString "Float", OpaqueTypeSpecification [] )
             ]
     , values =
         Dict.empty
     }
 
 
-fromLocalName : String -> FQName
-fromLocalName name =
-    name
-        |> Name.fromString
-        |> QName.fromName moduleName
-        |> FQName.fromQName packageName
+floatType : a -> Type a
+floatType attributes =
+    Reference attributes (toFQName moduleName "Float") []
 
 
-floatType : extra -> Type extra
-floatType extra =
-    Reference (fromLocalName "float") [] extra
+divide : a -> Value a -> Value a -> Value a
+divide =
+    binaryApply moduleName "divide"
