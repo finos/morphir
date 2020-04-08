@@ -51,7 +51,7 @@ const handleCommand =
             } catch (error) {
                 stateValue = null
             }
-            console.log(`Retrieved state : ${stateValue}`)
+            console.log(`Retrieved state : ${JSON.stringify(stateValue)}`)
         } else {
             console.log(`Error occured while loading state: ${stateValueResp.statusText}`)
         }
