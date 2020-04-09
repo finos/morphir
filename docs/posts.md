@@ -2,6 +2,7 @@
 
 ## Introduction and Background
 * [Background](background)
+* [Community](morphir_community)
 * [What's it all about?](whats_it_about)
 * [Working Across Technologies](work_across_languages_and_platforms)
 * [Why we use Functional Programming?](why_functional_programming)
