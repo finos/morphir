@@ -1,5 +1,7 @@
 # Maximize the soul of your application
 
+Morphir approaches application development from the perspective that the application's business knowledge should be enshrined.  Adopting this knowledge-first has brought us great benefits, including:
+
 > **Transparency** - Turn business rules into insightful data visualizations
 
 > **Agility** - Move between languages and platforms effortlessly.
@@ -7,6 +9,8 @@
 > **Reliability** - No runtime exceptions, integrated testing and quality checks.
 
 > **Delivery** - Deliver changes faster and with fewer errors.
+
+This has been impactful enough that we want to bring it to the open-source community. Morphir is all about potential. We have benefited and will contribute these. The true potential is in what the community can bring to the Morphir ecosystem.
 
 ## Why use Morphir?
 Your application has a soul - it's reason for existing.  It might be embodied in calculations, business rules, and other logic.  Collectively these are your application's most important assets.  You need to protect these assets.  You also want to do useful things with it.  
