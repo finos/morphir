@@ -1,11 +1,12 @@
 #!/usr/bin/env sh
 
 # Make morphir dapr CLI tool
+npm install
 npm run make-cli
 sleep 2
 
 # Compile the morphir model
-morphir-dapr -p examples/ -o examples/Main.elm
+node cli/morphir-dapr -p examples/ -o examples/Main.elm
 sleep 2
 
 # Compile the output from the previous compilation to a Javascript file
