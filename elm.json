@@ -5,18 +5,7 @@
     "license": "Apache-2.0",
     "version": "1.0.0",
     "exposed-modules": [
-        "Morphir.Pattern",
-        "Morphir.Rule",
-        "Morphir.Rewrite",
-        "Morphir.IR.AccessControlled",
-        "Morphir.IR.Package",
-        "Morphir.IR.Module",
-        "Morphir.IR.Name",
-        "Morphir.IR.Path",
-        "Morphir.IR.QName",
-        "Morphir.IR.FQName",
-        "Morphir.IR.Type",
-        "Morphir.IR.Value"
+        "Morphir.SDK.StatefulApp"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {
