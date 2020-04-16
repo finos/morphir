@@ -1,72 +1,75 @@
-module Morphir.Graph exposing (Graph, empty, fromDict, fromList, isEmpty, reachableNodes, topologicalSort)
+module Morphir.Graph exposing (Graph, empty, fromList, isEmpty, reachableNodes, topologicalSort)
 
 import Dict exposing (Dict)
 import Set exposing (Set)
 
 
-type Graph comparable
-    = Graph (Dict comparable (Set comparable))
+type Graph node comparable
+    = Graph (List ( node, comparable, Set comparable ))
 
 
-fromDict : Dict comparable (Set comparable) -> Graph comparable
-fromDict =
-    Graph
-
-
-fromList : List ( comparable, List comparable ) -> Graph comparable
+fromList : List ( node, comparable, List comparable ) -> Graph node comparable
 fromList list =
     list
-        |> List.map (\( from, tos ) -> ( from, Set.fromList tos ))
-        |> Dict.fromList
+        |> List.map (\( node, fromKey, toKeys ) -> ( node, fromKey, Set.fromList toKeys ))
         |> Graph
 
 
-empty : Graph comparable
+empty : Graph node comparable
 empty =
-    Graph Dict.empty
+    Graph []
 
 
-isEmpty : Graph comparable -> Bool
+isEmpty : Graph node comparable -> Bool
 isEmpty (Graph edges) =
-    Dict.isEmpty edges
+    List.isEmpty edges
 
 
-topologicalSort : Graph comparable -> ( List comparable, Graph comparable )
+topologicalSort : Graph node comparable -> ( List comparable, Graph node comparable )
 topologicalSort (Graph edges) =
     let
+        normalize : List ( node, comparable, Set comparable ) -> List ( node, comparable, Set comparable )
         normalize graphEdges =
             let
                 toNodes =
                     graphEdges
-                        |> Dict.values
+                        |> List.map (\( _, _, toKeys ) -> toKeys)
                         |> List.foldl Set.union Set.empty
 
                 fromNodes =
                     graphEdges
-                        |> Dict.keys
+                        |> List.map (\( _, fromKey, _ ) -> fromKey)
                         |> Set.fromList
 
                 emptyFromNodes =
                     Set.diff toNodes fromNodes
                         |> Set.toList
-                        |> List.map
-                            (\from ->
-                                ( from, Set.empty )
-                            )
-                        |> Dict.fromList
-            in
-            Dict.union graphEdges emptyFromNodes
+                        |> List.concatMap
+                            (\fromKey ->
+                                graphEdges
+                                    |> List.filterMap
+                                        (\( node, key, _ ) ->
+                                            if key == fromKey then
+                                                Just ( node, fromKey, Set.empty )
 
+                                            else
+                                                Nothing
+                                        )
+                            )
+            in
+            graphEdges ++ emptyFromNodes
+
+        step : List ( node, comparable, Set comparable ) -> List comparable -> ( List comparable, Graph node comparable )
         step graphEdges sorting =
             let
                 toNodes =
                     graphEdges
-                        |> Dict.values
+                        |> List.map (\( _, _, toKeys ) -> toKeys)
                         |> List.foldl Set.union Set.empty
 
                 fromNodes =
                     graphEdges
-                        |> Dict.keys
+                        |> List.map (\( _, fromKey, _ ) -> fromKey)
                         |> Set.fromList
 
                 startNodes =
@@ -77,12 +80,10 @@ topologicalSort (Graph edges) =
                     let
                         newGraphEdges =
                             graphEdges
-                                |> Dict.toList
                                 |> List.filter
-                                    (\( from, tos ) ->
-                                        from /= startNode
+                                    (\( _, fromKey, _ ) ->
+                                        fromKey /= startNode
                                     )
-                                |> Dict.fromList
                     in
                     step newGraphEdges (startNode :: sorting)
 
@@ -92,15 +93,14 @@ topologicalSort (Graph edges) =
     step (normalize edges) []
 
 
-reachableNodes : Set comparable -> Graph comparable -> Set comparable
+reachableNodes : Set comparable -> Graph node comparable -> Set comparable
 reachableNodes startNodes (Graph edges) =
     let
         directlyReachable : Set comparable -> Set comparable
         directlyReachable fromNodes =
             edges
-                |> Dict.toList
                 |> List.filterMap
-                    (\( fromNode, toNodes ) ->
+                    (\( _, fromNode, toNodes ) ->
                         if fromNodes |> Set.member fromNode then
                             Just toNodes
 
