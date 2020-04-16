@@ -118,6 +118,7 @@ defaultImports =
     , importExplicit [ "Morphir", "SDK", "Maybe" ] Nothing [ TypeOrAliasExpose "Maybe" ]
     , importExplicit [ "Morphir", "SDK", "Result" ] Nothing [ TypeOrAliasExpose "Result" ]
     , importExplicit [ "Morphir", "SDK", "List" ] Nothing [ TypeOrAliasExpose "List" ]
+    , importExplicit [ "Morphir", "SDK", "StatefulApp" ] Nothing [ TypeOrAliasExpose "StatefulApp" ]
     ]
 
 
