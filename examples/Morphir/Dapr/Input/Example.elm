@@ -50,7 +50,7 @@ app =
     StatefulApp logic
 
 
-logic : ID -> Maybe Deal -> DealCmd -> ( String, Maybe Deal, DealEvent )
+logic : ID -> Maybe Deal -> DealCmd -> ( ID, Maybe Deal, DealEvent )
 logic dealId deal dealCmd =
     case deal of
         Just d ->
