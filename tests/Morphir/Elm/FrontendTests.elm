@@ -20,7 +20,7 @@ import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value exposing (Literal(..), Pattern(..), Value(..))
+import Morphir.IR.Value as Value exposing (Definition(..), Literal(..), Pattern(..), Value(..))
 import Set
 import Test exposing (..)
 
@@ -237,6 +237,10 @@ valueTests =
         ref : String -> Value ()
         ref name =
             Reference () (fQName [] [] [ name ])
+
+        var : String -> Pattern ()
+        var name =
+            AsPattern () (WildcardPattern ()) (Name.fromString name)
     in
     describe "Values are mapped correctly"
         [ checkIR "()" <| Unit ()
@@ -297,6 +301,143 @@ valueTests =
         , checkIR "a << b" <| Composition.composeLeft () (ref "a") (ref "b")
         , checkIR "a >> b" <| Composition.composeRight () (ref "a") (ref "b")
         , checkIR "a :: b" <| List.construct () (ref "a") (ref "b")
+        , checkIR
+            (String.join "\n"
+                [ "  let"
+                , "    ( a, b ) = c"
+                , "  in"
+                , "  d"
+                ]
+            )
+          <|
+            Destructure ()
+                (TuplePattern () [ var "a", var "b" ])
+                (ref "c")
+                (ref "d")
+        , checkIR
+            (String.join "\n"
+                [ "  let"
+                , "    foo a = c"
+                , "  in"
+                , "  d"
+                ]
+            )
+          <|
+            LetDefinition ()
+                (Name.fromString "foo")
+                (UntypedDefinition [ Name.fromString "a" ] (ref "c"))
+                (ref "d")
+        , checkIR
+            (String.join "\n"
+                [ "  let"
+                , "    ( a, b ) = c"
+                , "    ( d, e ) = a"
+                , "  in"
+                , "  f"
+                ]
+            )
+          <|
+            Destructure ()
+                (TuplePattern () [ var "a", var "b" ])
+                (ref "c")
+                (Destructure ()
+                    (TuplePattern () [ var "d", var "e" ])
+                    (ref "a")
+                    (ref "f")
+                )
+        , checkIR
+            (String.join "\n"
+                [ "  let"
+                , "    ( d, e ) = a"
+                , "    ( a, b ) = c"
+                , "  in"
+                , "  f"
+                ]
+            )
+          <|
+            Destructure ()
+                (TuplePattern () [ var "a", var "b" ])
+                (ref "c")
+                (Destructure ()
+                    (TuplePattern () [ var "d", var "e" ])
+                    (ref "a")
+                    (ref "f")
+                )
+        , checkIR
+            (String.join "\n"
+                [ "  let"
+                , "    b = c"
+                , "    a = b"
+                , "  in"
+                , "  a"
+                ]
+            )
+          <|
+            LetDefinition ()
+                (Name.fromString "b")
+                (UntypedDefinition [] (ref "c"))
+                (LetDefinition ()
+                    (Name.fromString "a")
+                    (UntypedDefinition [] (ref "b"))
+                    (ref "a")
+                )
+        , checkIR
+            (String.join "\n"
+                [ "  let"
+                , "    a = b"
+                , "    b = c"
+                , "  in"
+                , "  a"
+                ]
+            )
+          <|
+            LetDefinition ()
+                (Name.fromString "b")
+                (UntypedDefinition [] (ref "c"))
+                (LetDefinition ()
+                    (Name.fromString "a")
+                    (UntypedDefinition [] (ref "b"))
+                    (ref "a")
+                )
+        , checkIR
+            (String.join "\n"
+                [ "  let"
+                , "    a = b"
+                , "    b = a"
+                , "  in"
+                , "  a"
+                ]
+            )
+          <|
+            LetRecursion ()
+                (Dict.fromList
+                    [ ( Name.fromString "b", UntypedDefinition [] (ref "a") )
+                    , ( Name.fromString "a", UntypedDefinition [] (ref "b") )
+                    ]
+                )
+                (ref "a")
+        , checkIR
+            (String.join "\n"
+                [ "  let"
+                , "    c = d"
+                , "    a = b"
+                , "    b = a"
+                , "  in"
+                , "  a"
+                ]
+            )
+          <|
+            LetDefinition ()
+                (Name.fromString "c")
+                (UntypedDefinition [] (ref "d"))
+                (LetRecursion ()
+                    (Dict.fromList
+                        [ ( Name.fromString "b", UntypedDefinition [] (ref "a") )
+                        , ( Name.fromString "a", UntypedDefinition [] (ref "b") )
+                        ]
+                    )
+                    (ref "a")
+                )
         ]
 
 

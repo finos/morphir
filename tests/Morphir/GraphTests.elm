@@ -25,12 +25,12 @@ reachableNodesTests =
                     |> Expect.equal Set.empty
         , test "unreachable node removed" <|
             \_ ->
-                Graph.fromList [ ( 1, [ 2 ] ), ( 2, [ 3 ] ), ( 4, [ 5 ] ) ]
+                Graph.fromList [ ( "1", 1, [ 2 ] ), ( "2", 2, [ 3 ] ), ( "4", 4, [ 5 ] ) ]
                     |> Graph.reachableNodes (Set.fromList [ 1 ])
                     |> Expect.equal (Set.fromList [ 1, 2, 3 ])
         , test "cycles handled gracefully" <|
             \_ ->
-                Graph.fromList [ ( 1, [ 2 ] ), ( 2, [ 1 ] ), ( 4, [ 5 ] ) ]
+                Graph.fromList [ ( "1", 1, [ 2 ] ), ( "2", 2, [ 1 ] ), ( "4", 4, [ 5 ] ) ]
                     |> Graph.reachableNodes (Set.fromList [ 1 ])
                     |> Expect.equal (Set.fromList [ 1, 2 ])
         ]
