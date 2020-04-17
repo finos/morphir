@@ -13,14 +13,13 @@ module Morphir.IR.Module exposing
 -}
 
 import Dict exposing (Dict)
-import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
 import Morphir.IR.Name exposing (Name, encodeName)
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.ResultList as ResultList
+import Morphir.ListOfResults as ListOfResults
 
 
 type alias ModulePath =
@@ -134,7 +133,7 @@ mapSpecification mapType mapValue spec =
                             |> Type.mapSpecification mapType
                             |> Result.map (Tuple.pair typeName)
                     )
-                |> ResultList.toResult
+                |> ListOfResults.toResult
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
@@ -148,7 +147,7 @@ mapSpecification mapType mapValue spec =
                             |> Value.mapSpecification mapType mapValue
                             |> Result.map (Tuple.pair valueName)
                     )
-                |> ResultList.toResult
+                |> ListOfResults.toResult
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in
@@ -171,7 +170,7 @@ mapDefinition mapType mapValue def =
                             |> Result.map (AccessControlled typeDef.access)
                             |> Result.map (Tuple.pair typeName)
                     )
-                |> ResultList.toResult
+                |> ListOfResults.toResult
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
@@ -186,7 +185,7 @@ mapDefinition mapType mapValue def =
                             |> Result.map (AccessControlled valueDef.access)
                             |> Result.map (Tuple.pair valueName)
                     )
-                |> ResultList.toResult
+                |> ListOfResults.toResult
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in

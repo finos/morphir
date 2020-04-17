@@ -1,4 +1,4 @@
-module Morphir.ResultList exposing (liftLastError, reduce, toResult)
+module Morphir.ListOfResults exposing (liftLastError, reduce, toResult)
 
 
 reduce : (List a -> b) -> List (Result e a) -> Result e b

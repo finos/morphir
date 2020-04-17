@@ -70,8 +70,7 @@ import Json.Encode as Encode
 import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName)
 import Morphir.IR.Name exposing (Name, decodeName, encodeName)
 import Morphir.IR.Type as Type exposing (Type, decodeType, encodeType)
-import Morphir.ResultList as ResultList
-import Morphir.Rewrite exposing (Rewrite)
+import Morphir.ListOfResults as ListOfResults
 import String
 
 
@@ -173,7 +172,7 @@ mapSpecification mapType mapValue spec =
                         mapType tpe
                             |> Result.map (Tuple.pair name)
                     )
-                |> ResultList.toResult
+                |> ListOfResults.toResult
 
         outputResult =
             mapType spec.output
