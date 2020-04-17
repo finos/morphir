@@ -172,7 +172,7 @@ mapSpecification mapType mapValue spec =
                         mapType tpe
                             |> Result.map (Tuple.pair name)
                     )
-                |> ListOfResults.toResultOfList
+                |> ListOfResults.liftAllErrors
 
         outputResult =
             mapType spec.output

@@ -87,7 +87,7 @@ mapSpecification mapType mapValue spec =
                             |> Module.mapSpecification mapType mapValue
                             |> Result.map (Tuple.pair modulePath)
                     )
-                |> ListOfResults.toResultOfList
+                |> ListOfResults.liftAllErrors
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in
@@ -116,7 +116,7 @@ mapDefinition mapType mapValue def =
                             |> mapSpecification mapType mapValue
                             |> Result.map (Tuple.pair packagePath)
                     )
-                |> ListOfResults.toResultOfList
+                |> ListOfResults.liftAllErrors
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
@@ -131,7 +131,7 @@ mapDefinition mapType mapValue def =
                             |> Result.map (AccessControlled moduleDef.access)
                             |> Result.map (Tuple.pair modulePath)
                     )
-                |> ListOfResults.toResultOfList
+                |> ListOfResults.liftAllErrors
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in
