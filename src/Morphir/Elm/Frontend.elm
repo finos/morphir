@@ -1287,8 +1287,9 @@ resolveLocalNames packagePath modulePath moduleResolver moduleDef =
                             Nothing
                 )
 
-        rewriteValues =
-            identity
+        rewriteValues : Value SourceLocation -> Result Error (Value SourceLocation)
+        rewriteValues value =
+            Ok value
     in
     Module.mapDefinition rewriteTypes rewriteValues moduleDef
 

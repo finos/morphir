@@ -163,7 +163,7 @@ getDefinitionBody def =
 --             in
 
 
-mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Specification a -> Result (List e) (Specification b)
+mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Result e (Value b)) -> Specification a -> Result (List e) (Specification b)
 mapSpecification mapType mapValue spec =
     let
         inputsResult =
@@ -184,20 +184,19 @@ mapSpecification mapType mapValue spec =
         outputResult
 
 
-mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Definition a -> Result (List e) (Definition b)
+mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Result e (Value b)) -> Definition a -> Result (List e) (Definition b)
 mapDefinition mapType mapValue def =
     case def of
         TypedDefinition tpe args body ->
-            mapType tpe
-                |> Result.map
-                    (\t ->
-                        TypedDefinition t args (mapValue body)
-                    )
+            Result.map2 (\t v -> TypedDefinition t args v)
+                (mapType tpe)
+                (mapValue body)
                 |> Result.mapError List.singleton
 
         UntypedDefinition args body ->
-            UntypedDefinition args (mapValue body)
-                |> Ok
+            mapValue body
+                |> Result.map (UntypedDefinition args)
+                |> Result.mapError List.singleton
 
 
 mapValueAttributes : (a -> b) -> Value a -> Value b

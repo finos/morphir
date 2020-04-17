@@ -88,7 +88,7 @@ eraseSpecificationAttributes spec =
     spec
         |> mapSpecification
             (Type.mapTypeAttributes (\_ -> ()) >> Ok)
-            (Value.mapValueAttributes (\_ -> ()))
+            (Value.mapValueAttributes (\_ -> ()) >> Ok)
         |> Result.withDefault emptySpecification
 
 
@@ -121,7 +121,7 @@ encodeSpecification encodeAttributes spec =
         ]
 
 
-mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Specification a -> Result (List e) (Specification b)
+mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Result e (Value b)) -> Specification a -> Result (List e) (Specification b)
 mapSpecification mapType mapValue spec =
     let
         typesResult : Result (List e) (Dict Name (Type.Specification b))
@@ -157,7 +157,7 @@ mapSpecification mapType mapValue spec =
         valuesResult
 
 
-mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Definition a -> Result (List e) (Definition b)
+mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Result e (Value b)) -> Definition a -> Result (List e) (Definition b)
 mapDefinition mapType mapValue def =
     let
         typesResult : Result (List e) (Dict Name (AccessControlled (Type.Definition b)))

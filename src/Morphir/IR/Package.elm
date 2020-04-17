@@ -76,7 +76,7 @@ definitionToSpecification def =
     }
 
 
-mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Specification a -> Result (List e) (Specification b)
+mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Result e (Value b)) -> Specification a -> Result (List e) (Specification b)
 mapSpecification mapType mapValue spec =
     let
         modulesResult : Result (List e) (Dict Path (Module.Specification b))
@@ -101,11 +101,11 @@ eraseSpecificationAttributes spec =
     spec
         |> mapSpecification
             (Type.mapTypeAttributes (\_ -> ()) >> Ok)
-            (Value.mapValueAttributes (\_ -> ()))
+            (Value.mapValueAttributes (\_ -> ()) >> Ok)
         |> Result.withDefault emptySpecification
 
 
-mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Definition a -> Result (List e) (Definition b)
+mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Result e (Value b)) -> Definition a -> Result (List e) (Definition b)
 mapDefinition mapType mapValue def =
     let
         dependenciesResult : Result (List e) (Dict Path (Specification b))
@@ -147,7 +147,7 @@ eraseDefinitionAttributes def =
     def
         |> mapDefinition
             (Type.mapTypeAttributes (\_ -> ()) >> Ok)
-            (Value.mapValueAttributes (\_ -> ()))
+            (Value.mapValueAttributes (\_ -> ()) >> Ok)
         |> Result.withDefault emptyDefinition
 
 
