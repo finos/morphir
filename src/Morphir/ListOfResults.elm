@@ -1,4 +1,4 @@
-module Morphir.ListOfResults exposing (liftLastError, reduce, toResultOfList)
+module Morphir.ListOfResults exposing (reduce, toResultOfList)
 
 
 reduce : (List a -> b) -> List (Result e a) -> Result e b
@@ -61,10 +61,3 @@ toResultOfList results =
 
         _ ->
             Err errs
-
-
-{-| Turn a list of results into a single result of a list returning only the last error in the list.
--}
-liftLastError : List (Result e a) -> Result e (List a)
-liftLastError results =
-    List.foldr (Result.map2 (::)) (Ok []) results
