@@ -64,12 +64,14 @@ which is just the specification of those. Value definitions can be typed or unty
 
 -}
 
+import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName)
 import Morphir.IR.Name exposing (Name, decodeName, encodeName)
 import Morphir.IR.Type as Type exposing (Type, decodeType, encodeType)
 import Morphir.ResultList as ResultList
+import Morphir.Rewrite exposing (Rewrite)
 import String
 
 
@@ -88,7 +90,7 @@ type Value a
     | Apply a (Value a) (Value a)
     | Lambda a (Pattern a) (Value a)
     | LetDefinition a Name (Definition a) (Value a)
-    | LetRecursion a (List ( Name, Definition a )) (Value a)
+    | LetRecursion a (Dict Name (Definition a)) (Value a)
     | Destructure a (Pattern a) (Value a) (Value a)
     | IfThenElse a (Value a) (Value a) (Value a)
     | PatternMatch a (Value a) (List ( Pattern a, Value a ))
@@ -246,9 +248,9 @@ mapValueAttributes f v =
         LetRecursion a valueDefinitions inValue ->
             LetRecursion (f a)
                 (valueDefinitions
-                    |> List.map
-                        (\( name, def ) ->
-                            ( name, mapDefinitionAttributes f def )
+                    |> Dict.map
+                        (\_ def ->
+                            mapDefinitionAttributes f def
                         )
                 )
                 (mapValueAttributes f inValue)
@@ -322,6 +324,90 @@ mapDefinitionAttributes f d =
 
         UntypedDefinition args body ->
             UntypedDefinition args (mapValueAttributes f body)
+
+
+
+--rewriteValue : Rewrite e (Value a)
+--rewriteValue rewriteBranch rewriteLeaf valueToRewrite =
+--    case valueToRewrite of
+--        Tuple a elements ->
+--            elements
+--                |> List.map rewriteBranch
+--                |> ResultList.liftLastError
+--                |> Result.map (Tuple a)
+--
+--        List a items ->
+--            items
+--                |> List.map rewriteBranch
+--                |> ResultList.liftLastError
+--                |> Result.map (List a)
+--
+--        Record a fields ->
+--            fields
+--                |> List.map
+--                    (\( fieldName, fieldValue ) ->
+--                        rewriteBranch fieldValue
+--                            |> Result.map (Tuple.pair fieldName)
+--                    )
+--                |> ResultList.liftLastError
+--                |> Result.map (Record a)
+--
+--        Field a subjectValue fieldName ->
+--            rewriteBranch subjectValue
+--                |> Result.map
+--                    (\subject ->
+--                        Field a subject fieldName
+--                    )
+--
+--        Apply a function argument ->
+--            Result.map2 (Apply a)
+--                (rewriteBranch function)
+--                (rewriteBranch argument)
+--
+--        Lambda a argumentPattern body ->
+--            Lambda (f a) (mapPatternAttributes f argumentPattern) (mapValueAttributes f body)
+--
+--        LetDefinition a valueName valueDefinition inValue ->
+--            LetDefinition (f a) valueName (mapDefinitionAttributes f valueDefinition) (mapValueAttributes f inValue)
+--
+--        LetRecursion a valueDefinitions inValue ->
+--            LetRecursion (f a)
+--                (valueDefinitions
+--                    |> List.map
+--                        (\( name, def ) ->
+--                            ( name, mapDefinitionAttributes f def )
+--                        )
+--                )
+--                (mapValueAttributes f inValue)
+--
+--        Destructure a pattern valueToDestruct inValue ->
+--            Destructure (f a) (mapPatternAttributes f pattern) (mapValueAttributes f valueToDestruct) (mapValueAttributes f inValue)
+--
+--        IfThenElse a condition thenBranch elseBranch ->
+--            IfThenElse (f a) (mapValueAttributes f condition) (mapValueAttributes f thenBranch) (mapValueAttributes f elseBranch)
+--
+--        PatternMatch a branchOutOn cases ->
+--            PatternMatch (f a)
+--                (mapValueAttributes f branchOutOn)
+--                (cases
+--                    |> List.map
+--                        (\( pattern, body ) ->
+--                            ( mapPatternAttributes f pattern, mapValueAttributes f body )
+--                        )
+--                )
+--
+--        UpdateRecord a valueToUpdate fieldsToUpdate ->
+--            UpdateRecord (f a)
+--                (mapValueAttributes f valueToUpdate)
+--                (fieldsToUpdate
+--                    |> List.map
+--                        (\( fieldName, fieldValue ) ->
+--                            ( fieldName, mapValueAttributes f fieldValue )
+--                        )
+--                )
+--
+--        _ ->
+--            rewriteLeaf valueToRewrite
 
 
 {-| A [literal][lit] represents a fixed value in the IR. We only allow values of basic types: bool, char, string, int, float.
@@ -533,7 +619,7 @@ letDef attributes valueName valueDefinition inValue =
     --     (Variable [ "a" ])
 
 -}
-letRec : a -> List ( Name, Definition a ) -> Value a -> Value a
+letRec : a -> Dict Name (Definition a) -> Value a -> Value a
 letRec attributes valueDefinitions inValue =
     LetRecursion attributes valueDefinitions inValue
 
@@ -921,6 +1007,7 @@ encodeValue encodeAttributes v =
                 [ Encode.string "LetRecursion"
                 , encodeAttributes a
                 , valueDefinitions
+                    |> Dict.toList
                     |> Encode.list
                         (\( name, def ) ->
                             Encode.list identity
@@ -1079,6 +1166,7 @@ decodeValue decodeAttributes =
                                         (Decode.index 0 decodeName)
                                         (Decode.index 1 <| decodeDefinition decodeAttributes)
                                     )
+                                    |> Decode.map Dict.fromList
                                 )
                             )
                             (Decode.index 3 <| decodeValue decodeAttributes)
