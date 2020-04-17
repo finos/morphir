@@ -74,11 +74,11 @@ Following is an example of a `morphir-dapr.json` configuration file
 
 ```
 {
-    "name": "Morphir/Dapr/Input",
-    "sourceDirectories": ["examples"],
-    "exposedModules": [
-        "Example"
-    ]
+  "name": "Company/Operations",
+  "sourceDirectories": ["src"],
+  "exposedModules": [
+    "BooksAndRecords"
+  ]
 }
 ```
 
