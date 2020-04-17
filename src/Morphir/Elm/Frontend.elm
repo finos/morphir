@@ -342,7 +342,7 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
         moduleDeclsSoFar =
             modulesSoFar
                 |> Dict.map
-                    (\path def ->
+                    (\_ def ->
                         Module.definitionToSpecification def
                             |> Module.eraseSpecificationAttributes
                     )
@@ -515,8 +515,8 @@ mapDeclarationsToType sourceFile expose decls =
                         in
                         ctorsResult
                             |> Result.map
-                                (\ctors ->
-                                    ( name, withAccessControl isTypeExposed (Type.customTypeDefinition typeParams (withAccessControl isCtorExposed ctors)) )
+                                (\constructors ->
+                                    ( name, withAccessControl isTypeExposed (Type.customTypeDefinition typeParams (withAccessControl isCtorExposed constructors)) )
                                 )
                             |> Just
 
@@ -706,7 +706,7 @@ mapExpression sourceFile (Node range exp) =
                 |> Result.mapError List.concat
                 |> Result.andThen (List.reverse >> toApply)
 
-        Expression.OperatorApplication op infixDirection leftNode rightNode ->
+        Expression.OperatorApplication op _ leftNode rightNode ->
             mapOperator sourceFile sourceLocation op leftNode rightNode
 
         Expression.FunctionOrValue moduleName valueName ->
@@ -726,10 +726,10 @@ mapExpression sourceFile (Node range exp) =
                 (mapExpression sourceFile thenNode)
                 (mapExpression sourceFile elseNode)
 
-        Expression.PrefixOperator op ->
+        Expression.PrefixOperator _ ->
             Err [ NotSupported sourceLocation "TODO: PrefixOperator" ]
 
-        Expression.Operator op ->
+        Expression.Operator _ ->
             Err [ NotSupported sourceLocation "TODO: Operator" ]
 
         Expression.Integer value ->
