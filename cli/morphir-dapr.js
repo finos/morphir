@@ -65,7 +65,7 @@ async function gen(projectDir, output, debug, deleteBuildDir) {
 
     console.log(`Copying compilation assets to ${buildDir} ...`)
     fsExtra.copySync(`${__dirname}/assets/`, buildDir)
-    fsExtra.copySync(`${__dirname}/src1`, buildDir)
+    fsExtra.copySync(`${__dirname}/../src`, buildDir)
 
     console.log(`Copying original sources to ${buildDir}`)
     morphirJson

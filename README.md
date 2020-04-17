@@ -62,9 +62,9 @@ morphir-elm gen
 
 ## Generate Dapr application
 
-This command reads Elm source code to generate [Dapr]((https://dapr.io)) applications
+This command reads Elm source code to generate [Dapr](https://dapr.io) applications
 
-**Important**: Requires [elm-platform 0.19.1]((https://guide.elm-lang.org/install/elm.html)) to be available locally.
+**Important**: Requires [elm-platform 0.19.1](https://guide.elm-lang.org/install/elm.html) to be available locally.
 
 ```
 morphir-dapr -p <path/to/morphir-dapr.json> -o <path/to/dapr/output>
