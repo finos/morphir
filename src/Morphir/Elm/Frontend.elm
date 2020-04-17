@@ -201,7 +201,7 @@ packageDefinitionFromSource packageInfo sourceFiles =
                                 )
                             |> Result.mapError (ParseError sourceFile.path)
                     )
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
 
         exposedModuleNames : Set ModuleName
         exposedModuleNames =
@@ -501,7 +501,7 @@ mapDeclarationsToType sourceFile expose decls =
                                                                             )
                                                                         )
                                                             )
-                                                        |> ListOfResults.toResult
+                                                        |> ListOfResults.toResultOfList
                                                         |> Result.mapError List.concat
                                             in
                                             ctorArgsResult
@@ -510,7 +510,7 @@ mapDeclarationsToType sourceFile expose decls =
                                                         Type.Constructor ctorName ctorArgs
                                                     )
                                         )
-                                    |> ListOfResults.toResult
+                                    |> ListOfResults.toResultOfList
                                     |> Result.mapError List.concat
                         in
                         ctorsResult
@@ -523,7 +523,7 @@ mapDeclarationsToType sourceFile expose decls =
                     _ ->
                         Nothing
             )
-        |> ListOfResults.toResult
+        |> ListOfResults.toResultOfList
         |> Result.mapError List.concat
 
 
@@ -556,7 +556,7 @@ mapDeclarationsToValue sourceFile expose decls =
                     _ ->
                         Nothing
             )
-        |> ListOfResults.toResult
+        |> ListOfResults.toResultOfList
         |> Result.mapError List.concat
 
 
@@ -575,7 +575,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 (Type.Reference sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (Name.fromString localName)))
                 (argNodes
                     |> List.map (mapTypeAnnotation sourceFile)
-                    |> ListOfResults.toResult
+                    |> ListOfResults.toResultOfList
                     |> Result.mapError List.concat
                 )
 
@@ -585,7 +585,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
         Tupled elemNodes ->
             elemNodes
                 |> List.map (mapTypeAnnotation sourceFile)
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.map (Type.Tuple sourceLocation)
                 |> Result.mapError List.concat
 
@@ -597,7 +597,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                         mapTypeAnnotation sourceFile fieldTypeNode
                             |> Result.map (Type.Field (fieldName |> Name.fromString))
                     )
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.map (Type.Record sourceLocation)
                 |> Result.mapError List.concat
 
@@ -609,7 +609,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                         mapTypeAnnotation sourceFile fieldTypeNode
                             |> Result.map (Type.Field (fieldName |> Name.fromString))
                     )
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.map (Type.ExtensibleRecord sourceLocation (argName |> Name.fromString))
                 |> Result.mapError List.concat
 
@@ -702,7 +702,7 @@ mapExpression sourceFile (Node range exp) =
             in
             expNodes
                 |> List.map (mapExpression sourceFile)
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.mapError List.concat
                 |> Result.andThen (List.reverse >> toApply)
 
@@ -754,7 +754,7 @@ mapExpression sourceFile (Node range exp) =
         Expression.TupledExpression expNodes ->
             expNodes
                 |> List.map (mapExpression sourceFile)
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.mapError List.concat
                 |> Result.map (Value.Tuple sourceLocation)
 
@@ -774,7 +774,7 @@ mapExpression sourceFile (Node range exp) =
                                 (mapPattern sourceFile patternNode)
                                 (mapExpression sourceFile bodyNode)
                         )
-                    |> ListOfResults.toResult
+                    |> ListOfResults.toResultOfList
                     |> Result.mapError List.concat
                 )
 
@@ -801,14 +801,14 @@ mapExpression sourceFile (Node range exp) =
                         mapExpression sourceFile fieldValue
                             |> Result.map (Tuple.pair (fieldName |> Name.fromString))
                     )
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.mapError List.concat
                 |> Result.map (Value.Record sourceLocation)
 
         Expression.ListExpr itemNodes ->
             itemNodes
                 |> List.map (mapExpression sourceFile)
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.mapError List.concat
                 |> Result.map (Value.List sourceLocation)
 
@@ -830,7 +830,7 @@ mapExpression sourceFile (Node range exp) =
                         mapExpression sourceFile fieldValue
                             |> Result.map (Tuple.pair (fieldName |> Name.fromString))
                     )
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.mapError List.concat
                 |> Result.map
                     (Value.UpdateRecord sourceLocation (targetVarNameNode |> Node.value |> Name.fromString |> Value.Variable sourceLocation))
@@ -870,7 +870,7 @@ mapPattern sourceFile (Node range pattern) =
         Pattern.TuplePattern elemNodes ->
             elemNodes
                 |> List.map (mapPattern sourceFile)
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.mapError List.concat
                 |> Result.map (Value.TuplePattern sourceLocation)
 
@@ -915,7 +915,7 @@ mapPattern sourceFile (Node range pattern) =
             in
             argNodes
                 |> List.map (mapPattern sourceFile)
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.mapError List.concat
                 |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
 
@@ -1180,7 +1180,7 @@ mapLetExpression sourceFile sourceLocation letBlock =
                                                 Expression.LetDestructuring _ _ ->
                                                     Err [ NotSupported sourceLocation "Recursive destructuring" ]
                                         )
-                                    |> ListOfResults.toResult
+                                    |> ListOfResults.toResultOfList
                                     |> Result.mapError List.concat
                                     |> Result.map Dict.fromList
                                 )

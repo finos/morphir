@@ -133,7 +133,7 @@ mapSpecification mapType mapValue spec =
                             |> Type.mapSpecification mapType
                             |> Result.map (Tuple.pair typeName)
                     )
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
@@ -147,7 +147,7 @@ mapSpecification mapType mapValue spec =
                             |> Value.mapSpecification mapType mapValue
                             |> Result.map (Tuple.pair valueName)
                     )
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in
@@ -170,7 +170,7 @@ mapDefinition mapType mapValue def =
                             |> Result.map (AccessControlled typeDef.access)
                             |> Result.map (Tuple.pair typeName)
                     )
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
@@ -185,7 +185,7 @@ mapDefinition mapType mapValue def =
                             |> Result.map (AccessControlled valueDef.access)
                             |> Result.map (Tuple.pair valueName)
                     )
-                |> ListOfResults.toResult
+                |> ListOfResults.toResultOfList
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in

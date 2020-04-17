@@ -171,10 +171,10 @@ mapSpecification f spec =
                                             f argType
                                                 |> Result.map (Tuple.pair argName)
                                         )
-                                    |> ListOfResults.toResult
+                                    |> ListOfResults.toResultOfList
                                     |> Result.map (Constructor ctorName)
                             )
-                        |> ListOfResults.toResult
+                        |> ListOfResults.toResultOfList
                         |> Result.mapError List.concat
             in
             ctorsResult
@@ -202,10 +202,10 @@ mapDefinition f def =
                                             f argType
                                                 |> Result.map (Tuple.pair argName)
                                         )
-                                    |> ListOfResults.toResult
+                                    |> ListOfResults.toResultOfList
                                     |> Result.map (Constructor ctorName)
                             )
-                        |> ListOfResults.toResult
+                        |> ListOfResults.toResultOfList
                         |> Result.map (AccessControlled constructors.access)
                         |> Result.mapError List.concat
             in

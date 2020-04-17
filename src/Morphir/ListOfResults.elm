@@ -1,4 +1,4 @@
-module Morphir.ListOfResults exposing (liftLastError, reduce, toResult)
+module Morphir.ListOfResults exposing (liftLastError, reduce, toResultOfList)
 
 
 reduce : (List a -> b) -> List (Result e a) -> Result e b
@@ -32,8 +32,8 @@ reduce f results =
             Err firstError
 
 
-toResult : List (Result e a) -> Result (List e) (List a)
-toResult results =
+toResultOfList : List (Result e a) -> Result (List e) (List a)
+toResultOfList results =
     let
         oks =
             results
