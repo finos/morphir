@@ -20,9 +20,9 @@ import Json.Encode as Encode
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, PackageResolver)
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
-import Morphir.IR.FQName as FQName exposing (FQName, fQName)
+import Morphir.IR.FQName as FQName exposing (FQName(..), fQName)
 import Morphir.IR.Module as Module
-import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Name as Name exposing (Name, encodeName)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName as QName
@@ -142,6 +142,8 @@ type Error
     | ResolveError SourceLocation Resolve.Error
     | EmptyApply SourceLocation
     | NotSupported SourceLocation String
+    | DuplicateNameInPattern Name SourceLocation SourceLocation
+    | VariableShadowing Name SourceLocation SourceLocation
 
 
 encodeError : Error -> Encode.Value
@@ -168,6 +170,20 @@ encodeError error =
             JsonExtra.encodeConstructor "NotSupported"
                 [ encodeSourceLocation sourceLocation
                 , Encode.string message
+                ]
+
+        DuplicateNameInPattern name sourceLocation1 sourceLocation2 ->
+            JsonExtra.encodeConstructor "DuplicateNameInPattern"
+                [ encodeName name
+                , encodeSourceLocation sourceLocation1
+                , encodeSourceLocation sourceLocation2
+                ]
+
+        VariableShadowing name sourceLocation1 sourceLocation2 ->
+            JsonExtra.encodeConstructor "VariableShadowing"
+                [ encodeName name
+                , encodeSourceLocation sourceLocation1
+                , encodeSourceLocation sourceLocation2
                 ]
 
 
@@ -669,7 +685,7 @@ mapFunctionImplementation sourceFile argumentNodes expression =
             lambdaWithParams lambdaArgPatterns expression
     in
     bodyResult
-        |> Result.map (Value.UntypedDefinition paramNames)
+        |> Result.map (Value.Definition Nothing paramNames)
 
 
 mapExpression : SourceFile -> Node Expression -> Result Errors (Value.Value SourceLocation)
@@ -1292,6 +1308,253 @@ resolveLocalNames packagePath modulePath moduleResolver moduleDef =
             Ok value
     in
     Module.mapDefinition rewriteTypes rewriteValues moduleDef
+
+
+resolveVariables : Dict Name SourceLocation -> Value SourceLocation -> Result Errors (Value SourceLocation)
+resolveVariables variables value =
+    let
+        unionNames : (Name -> SourceLocation -> SourceLocation -> Error) -> Dict Name SourceLocation -> Dict Name SourceLocation -> Result Errors (Dict Name SourceLocation)
+        unionNames toError namesA namesB =
+            let
+                duplicateNames : List Name
+                duplicateNames =
+                    Set.intersect (namesA |> Dict.keys |> Set.fromList) (namesB |> Dict.keys |> Set.fromList)
+                        |> Set.toList
+            in
+            if List.isEmpty duplicateNames then
+                Ok (Dict.union namesA namesB)
+
+            else
+                Err
+                    (duplicateNames
+                        |> List.filterMap
+                            (\name ->
+                                Maybe.map2 (toError name)
+                                    (namesA |> Dict.get name)
+                                    (namesB |> Dict.get name)
+                            )
+                    )
+
+        unionPatternNames : Dict Name SourceLocation -> Dict Name SourceLocation -> Result Errors (Dict Name SourceLocation)
+        unionPatternNames =
+            unionNames DuplicateNameInPattern
+
+        unionVariableNames : Dict Name SourceLocation -> Dict Name SourceLocation -> Result Errors (Dict Name SourceLocation)
+        unionVariableNames =
+            unionNames VariableShadowing
+
+        namesBoundInPattern : Value.Pattern SourceLocation -> Result Errors (Dict Name SourceLocation)
+        namesBoundInPattern pattern =
+            case pattern of
+                Value.AsPattern sourceLocation subjectPattern alias ->
+                    namesBoundInPattern subjectPattern
+                        |> Result.andThen
+                            (\subjectNames ->
+                                unionPatternNames subjectNames
+                                    (Dict.singleton alias sourceLocation)
+                            )
+
+                Value.TuplePattern _ elems ->
+                    elems
+                        |> List.map namesBoundInPattern
+                        |> List.foldl
+                            (\nextNames soFar ->
+                                soFar
+                                    |> Result.andThen
+                                        (\namesSoFar ->
+                                            nextNames
+                                                |> Result.andThen (unionPatternNames namesSoFar)
+                                        )
+                            )
+                            (Ok Dict.empty)
+
+                Value.RecordPattern sourceLocation fieldNames ->
+                    Ok
+                        (fieldNames
+                            |> List.map (\fieldName -> ( fieldName, sourceLocation ))
+                            |> Dict.fromList
+                        )
+
+                Value.ConstructorPattern _ _ args ->
+                    args
+                        |> List.map namesBoundInPattern
+                        |> List.foldl
+                            (\nextNames soFar ->
+                                soFar
+                                    |> Result.andThen
+                                        (\namesSoFar ->
+                                            nextNames
+                                                |> Result.andThen (unionPatternNames namesSoFar)
+                                        )
+                            )
+                            (Ok Dict.empty)
+
+                Value.HeadTailPattern _ headPattern tailPattern ->
+                    namesBoundInPattern headPattern
+                        |> Result.andThen
+                            (\headNames ->
+                                namesBoundInPattern tailPattern
+                                    |> Result.andThen (unionPatternNames headNames)
+                            )
+
+                _ ->
+                    Ok Dict.empty
+    in
+    case value of
+        Value.Reference a (FQName [] [] localName) ->
+            if variables |> Dict.member localName then
+                Ok (Value.Variable a localName)
+
+            else
+                Ok value
+
+        Value.Lambda a argPattern bodyValue ->
+            namesBoundInPattern argPattern
+                |> Result.andThen
+                    (\patternNames ->
+                        unionVariableNames variables patternNames
+                    )
+                |> Result.andThen
+                    (\newVariables ->
+                        resolveVariables newVariables bodyValue
+                    )
+                |> Result.map (Value.Lambda a argPattern)
+
+        Value.LetDefinition sourceLocation name def inValue ->
+            Result.map2 (Value.LetDefinition sourceLocation name)
+                (resolveVariables variables def.body
+                    |> Result.map
+                        (\resolvedBody ->
+                            { def
+                                | body = resolvedBody
+                            }
+                        )
+                )
+                (unionVariableNames variables (Dict.singleton name sourceLocation)
+                    |> Result.andThen
+                        (\newVariables ->
+                            resolveVariables newVariables inValue
+                        )
+                )
+
+        Value.LetRecursion sourceLocation defs inValue ->
+            defs
+                |> Dict.map (\_ _ -> sourceLocation)
+                |> unionVariableNames variables
+                |> Result.andThen
+                    (\newVariables ->
+                        Result.map2 (Value.LetRecursion sourceLocation)
+                            (defs
+                                |> Dict.toList
+                                |> List.map
+                                    (\( name, def ) ->
+                                        resolveVariables newVariables def.body
+                                            |> Result.map
+                                                (\resolvedBody ->
+                                                    ( name
+                                                    , { def
+                                                        | body = resolvedBody
+                                                      }
+                                                    )
+                                                )
+                                    )
+                                |> ListOfResults.liftAllErrors
+                                |> Result.mapError List.concat
+                                |> Result.map Dict.fromList
+                            )
+                            (resolveVariables newVariables inValue)
+                    )
+
+        Value.Destructure a pattern subjectValue inValue ->
+            Result.map2 (Value.Destructure a pattern)
+                (resolveVariables variables subjectValue)
+                (namesBoundInPattern pattern
+                    |> Result.andThen
+                        (\patternNames ->
+                            unionVariableNames variables patternNames
+                        )
+                    |> Result.andThen
+                        (\newVariables ->
+                            resolveVariables newVariables inValue
+                        )
+                )
+
+        Value.PatternMatch a matchValue cases ->
+            Result.map2 (Value.PatternMatch a)
+                (resolveVariables variables matchValue)
+                (cases
+                    |> List.map
+                        (\( casePattern, caseValue ) ->
+                            namesBoundInPattern casePattern
+                                |> Result.andThen
+                                    (\patternNames ->
+                                        unionVariableNames variables patternNames
+                                    )
+                                |> Result.andThen
+                                    (\newVariables ->
+                                        resolveVariables newVariables caseValue
+                                    )
+                                |> Result.map (Tuple.pair casePattern)
+                        )
+                    |> ListOfResults.liftAllErrors
+                    |> Result.mapError List.concat
+                )
+
+        Value.Tuple a elems ->
+            elems
+                |> List.map (resolveVariables variables)
+                |> ListOfResults.liftAllErrors
+                |> Result.mapError List.concat
+                |> Result.map (Value.Tuple a)
+
+        Value.List a items ->
+            items
+                |> List.map (resolveVariables variables)
+                |> ListOfResults.liftAllErrors
+                |> Result.mapError List.concat
+                |> Result.map (Value.List a)
+
+        Value.Record a fields ->
+            fields
+                |> List.map
+                    (\( fieldName, fieldValue ) ->
+                        resolveVariables variables fieldValue
+                            |> Result.map (Tuple.pair fieldName)
+                    )
+                |> ListOfResults.liftAllErrors
+                |> Result.mapError List.concat
+                |> Result.map (Value.Record a)
+
+        Value.Field a subjectValue fieldName ->
+            resolveVariables variables subjectValue
+                |> Result.map (\s -> Value.Field a s fieldName)
+
+        Value.Apply a funValue argValue ->
+            Result.map2 (Value.Apply a)
+                (resolveVariables variables funValue)
+                (resolveVariables variables argValue)
+
+        Value.IfThenElse a condValue thenValue elseValue ->
+            Result.map3 (Value.IfThenElse a)
+                (resolveVariables variables condValue)
+                (resolveVariables variables thenValue)
+                (resolveVariables variables elseValue)
+
+        Value.UpdateRecord a subjectValue newFieldValues ->
+            Result.map2 (Value.UpdateRecord a)
+                (resolveVariables variables subjectValue)
+                (newFieldValues
+                    |> List.map
+                        (\( fieldName, fieldValue ) ->
+                            resolveVariables variables fieldValue
+                                |> Result.map (Tuple.pair fieldName)
+                        )
+                    |> ListOfResults.liftAllErrors
+                    |> Result.mapError List.concat
+                )
+
+        _ ->
+            Ok value
 
 
 withAccessControl : Bool -> a -> AccessControlled a

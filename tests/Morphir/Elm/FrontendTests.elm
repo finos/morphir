@@ -20,7 +20,7 @@ import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value exposing (Definition(..), Literal(..), Pattern(..), Value(..))
+import Morphir.IR.Value as Value exposing (Definition, Literal(..), Pattern(..), Value(..))
 import Set
 import Test exposing (..)
 
@@ -216,6 +216,12 @@ valueTests =
 
                                                 Frontend.NotSupported _ expType ->
                                                     "Not Supported: " ++ expType
+
+                                                Frontend.DuplicateNameInPattern name _ _ ->
+                                                    "Duplicate name in pattern: " ++ Name.toCamelCase name
+
+                                                Frontend.VariableShadowing name _ _ ->
+                                                    "Variable shadowing: " ++ Name.toCamelCase name
                                         )
                                     |> String.join ", "
                             )
@@ -325,7 +331,7 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "foo")
-                (UntypedDefinition [ Name.fromString "a" ] (ref "c"))
+                (Definition Nothing [ Name.fromString "a" ] (ref "c"))
                 (ref "d")
         , checkIR
             (String.join "\n"
@@ -375,10 +381,10 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "b")
-                (UntypedDefinition [] (ref "c"))
+                (Definition Nothing [] (ref "c"))
                 (LetDefinition ()
                     (Name.fromString "a")
-                    (UntypedDefinition [] (ref "b"))
+                    (Definition Nothing [] (ref "b"))
                     (ref "a")
                 )
         , checkIR
@@ -393,10 +399,10 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "b")
-                (UntypedDefinition [] (ref "c"))
+                (Definition Nothing [] (ref "c"))
                 (LetDefinition ()
                     (Name.fromString "a")
-                    (UntypedDefinition [] (ref "b"))
+                    (Definition Nothing [] (ref "b"))
                     (ref "a")
                 )
         , checkIR
@@ -411,8 +417,8 @@ valueTests =
           <|
             LetRecursion ()
                 (Dict.fromList
-                    [ ( Name.fromString "b", UntypedDefinition [] (ref "a") )
-                    , ( Name.fromString "a", UntypedDefinition [] (ref "b") )
+                    [ ( Name.fromString "b", Definition Nothing [] (ref "a") )
+                    , ( Name.fromString "a", Definition Nothing [] (ref "b") )
                     ]
                 )
                 (ref "a")
@@ -429,11 +435,11 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "c")
-                (UntypedDefinition [] (ref "d"))
+                (Definition Nothing [] (ref "d"))
                 (LetRecursion ()
                     (Dict.fromList
-                        [ ( Name.fromString "b", UntypedDefinition [] (ref "a") )
-                        , ( Name.fromString "a", UntypedDefinition [] (ref "b") )
+                        [ ( Name.fromString "b", Definition Nothing [] (ref "a") )
+                        , ( Name.fromString "a", Definition Nothing [] (ref "b") )
                         ]
                     )
                     (ref "a")
