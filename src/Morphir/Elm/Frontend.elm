@@ -1261,7 +1261,7 @@ namesBoundByPattern p =
 resolveLocalNames : Path -> Path -> ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
 resolveLocalNames packagePath modulePath moduleResolver moduleDef =
     let
-        rewriteTypes : Type SourceLocation -> Result Error (Type SourceLocation)
+        rewriteTypes : Type SourceLocation -> Result Errors (Type SourceLocation)
         rewriteTypes =
             Rewrite.bottomUp Type.rewriteType
                 (\tpe ->
@@ -1296,18 +1296,19 @@ resolveLocalNames packagePath modulePath moduleResolver moduleDef =
                                     (\resolvedFullName ->
                                         Type.Reference sourceLocation resolvedFullName args
                                     )
-                                |> Result.mapError (ResolveError sourceLocation)
+                                |> Result.mapError (ResolveError sourceLocation >> List.singleton)
                                 |> Just
 
                         _ ->
                             Nothing
                 )
 
-        rewriteValues : Value SourceLocation -> Result Error (Value SourceLocation)
+        rewriteValues : Value SourceLocation -> Result Errors (Value SourceLocation)
         rewriteValues value =
-            Ok value
+            resolveVariables Dict.empty value
     in
     Module.mapDefinition rewriteTypes rewriteValues moduleDef
+        |> Result.mapError List.concat
 
 
 resolveVariables : Dict Name SourceLocation -> Value SourceLocation -> Result Errors (Value SourceLocation)

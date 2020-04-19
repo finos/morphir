@@ -244,8 +244,12 @@ valueTests =
         ref name =
             Reference () (fQName [] [] [ name ])
 
-        var : String -> Pattern ()
+        var : String -> Value ()
         var name =
+            Variable () [ name ]
+
+        pvar : String -> Pattern ()
+        pvar name =
             AsPattern () (WildcardPattern ()) (Name.fromString name)
     in
     describe "Values are mapped correctly"
@@ -279,7 +283,7 @@ valueTests =
         , checkIR "\\42 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 42)) (ref "foo")
         , checkIR "\\0x20 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 32)) (ref "foo")
         , checkIR "\\( 1, 2 ) -> foo " <| Lambda () (TuplePattern () [ LiteralPattern () (IntLiteral 1), LiteralPattern () (IntLiteral 2) ]) (ref "foo")
-        , checkIR "\\{ foo, bar } -> foo " <| Lambda () (RecordPattern () [ Name.fromString "foo", Name.fromString "bar" ]) (ref "foo")
+        , checkIR "\\{ foo, bar } -> foo " <| Lambda () (RecordPattern () [ Name.fromString "foo", Name.fromString "bar" ]) (var "foo")
         , checkIR "\\1 :: 2 -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (LiteralPattern () (IntLiteral 2))) (ref "foo")
         , checkIR "\\[] -> foo " <| Lambda () (EmptyListPattern ()) (ref "foo")
         , checkIR "\\[ 1 ] -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (EmptyListPattern ())) (ref "foo")
@@ -317,7 +321,7 @@ valueTests =
             )
           <|
             Destructure ()
-                (TuplePattern () [ var "a", var "b" ])
+                (TuplePattern () [ pvar "a", pvar "b" ])
                 (ref "c")
                 (ref "d")
         , checkIR
@@ -344,11 +348,11 @@ valueTests =
             )
           <|
             Destructure ()
-                (TuplePattern () [ var "a", var "b" ])
+                (TuplePattern () [ pvar "a", pvar "b" ])
                 (ref "c")
                 (Destructure ()
-                    (TuplePattern () [ var "d", var "e" ])
-                    (ref "a")
+                    (TuplePattern () [ pvar "d", pvar "e" ])
+                    (var "a")
                     (ref "f")
                 )
         , checkIR
@@ -362,11 +366,11 @@ valueTests =
             )
           <|
             Destructure ()
-                (TuplePattern () [ var "a", var "b" ])
+                (TuplePattern () [ pvar "a", pvar "b" ])
                 (ref "c")
                 (Destructure ()
-                    (TuplePattern () [ var "d", var "e" ])
-                    (ref "a")
+                    (TuplePattern () [ pvar "d", pvar "e" ])
+                    (var "a")
                     (ref "f")
                 )
         , checkIR
@@ -384,8 +388,8 @@ valueTests =
                 (Definition Nothing [] (ref "c"))
                 (LetDefinition ()
                     (Name.fromString "a")
-                    (Definition Nothing [] (ref "b"))
-                    (ref "a")
+                    (Definition Nothing [] (var "b"))
+                    (var "a")
                 )
         , checkIR
             (String.join "\n"
@@ -402,8 +406,8 @@ valueTests =
                 (Definition Nothing [] (ref "c"))
                 (LetDefinition ()
                     (Name.fromString "a")
-                    (Definition Nothing [] (ref "b"))
-                    (ref "a")
+                    (Definition Nothing [] (var "b"))
+                    (var "a")
                 )
         , checkIR
             (String.join "\n"
@@ -417,11 +421,11 @@ valueTests =
           <|
             LetRecursion ()
                 (Dict.fromList
-                    [ ( Name.fromString "b", Definition Nothing [] (ref "a") )
-                    , ( Name.fromString "a", Definition Nothing [] (ref "b") )
+                    [ ( Name.fromString "b", Definition Nothing [] (var "a") )
+                    , ( Name.fromString "a", Definition Nothing [] (var "b") )
                     ]
                 )
-                (ref "a")
+                (var "a")
         , checkIR
             (String.join "\n"
                 [ "  let"
@@ -438,11 +442,11 @@ valueTests =
                 (Definition Nothing [] (ref "d"))
                 (LetRecursion ()
                     (Dict.fromList
-                        [ ( Name.fromString "b", Definition Nothing [] (ref "a") )
-                        , ( Name.fromString "a", Definition Nothing [] (ref "b") )
+                        [ ( Name.fromString "b", Definition Nothing [] (var "a") )
+                        , ( Name.fromString "a", Definition Nothing [] (var "b") )
                         ]
                     )
-                    (ref "a")
+                    (var "a")
                 )
         ]
 
