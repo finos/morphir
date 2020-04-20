@@ -14,7 +14,8 @@ module Morphir.IR.Module exposing
 
 import Dict exposing (Dict)
 import Json.Encode as Encode
-import Morphir.IR.AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled exposing (AccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled.Codec exposing (encodeAccessControlled)
 import Morphir.IR.Name exposing (Name, encodeName)
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)

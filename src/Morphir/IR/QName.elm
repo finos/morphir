@@ -1,37 +1,27 @@
 module Morphir.IR.QName exposing
-    ( QName, fromTuple, toTuple, getModulePath, getLocalName
+    ( QName(..), toTuple, getModulePath, getLocalName
+    , fromName, fromTuple
     , toString
-    , fuzzQName
-    , encodeQName, decodeQName
-    , fromName
     )
 
 {-| Module to work with qualified names. A qualified name is a combination of a module path and a local name.
 
-@docs QName, fromTuple, toTuple, qName, getModulePath, getLocalName
+@docs QName, toTuple, getModulePath, getLocalName
+
+
+# Creation
+
+@docs fromName, fromTuple
 
 
 # String conversion
 
 @docs toString
 
-
-# Property Testing
-
-@docs fuzzQName
-
-
-# Serialization
-
-@docs encodeQName, decodeQName
-
 -}
 
-import Fuzz exposing (Fuzzer)
-import Json.Decode as Decode
-import Json.Encode as Encode
-import Morphir.IR.Name exposing (Name, decodeName, encodeName, fuzzName)
-import Morphir.IR.Path as Path exposing (Path, decodePath, encodePath, fuzzPath)
+import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Path as Path exposing (Path)
 
 
 {-| Type that represents a qualified name.
@@ -101,31 +91,3 @@ toString pathPartToString nameToString sep (QName mPath lName) =
         |> List.map pathPartToString
         |> List.append [ nameToString lName ]
         |> String.join sep
-
-
-{-| QName fuzzer.
--}
-fuzzQName : Fuzzer QName
-fuzzQName =
-    Fuzz.map2 QName
-        fuzzPath
-        fuzzName
-
-
-{-| Encode a qualified name to JSON.
--}
-encodeQName : QName -> Encode.Value
-encodeQName (QName modulePath localName) =
-    Encode.list identity
-        [ modulePath |> encodePath
-        , localName |> encodeName
-        ]
-
-
-{-| Decode a qualified name from JSON.
--}
-decodeQName : Decode.Decoder QName
-decodeQName =
-    Decode.map2 QName
-        (Decode.index 0 decodePath)
-        (Decode.index 1 decodeName)

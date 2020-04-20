@@ -5,7 +5,12 @@
     "license": "Apache-2.0",
     "version": "1.0.0",
     "exposed-modules": [
-        "Morphir.SDK.StatefulApp"
+        "Morphir.SDK.StatefulApp",
+        "Morphir.IR.Name",
+        "Morphir.IR.Path",
+        "Morphir.IR.QName",
+        "Morphir.IR.FQName",
+        "Morphir.IR.AccessControlled"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {

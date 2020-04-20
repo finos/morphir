@@ -62,7 +62,8 @@ module Morphir.IR.Type exposing
 import Fuzz exposing (Fuzzer)
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled.Codec exposing (encodeAccessControlled)
 import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName, fuzzFQName)
 import Morphir.IR.Name exposing (Name, decodeName, encodeName, fuzzName)
 import Morphir.ListOfResults as ListOfResults
