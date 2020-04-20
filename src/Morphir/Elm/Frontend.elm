@@ -20,9 +20,9 @@ import Json.Encode as Encode
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, PackageResolver)
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
-import Morphir.IR.FQName as FQName exposing (FQName, fQName)
+import Morphir.IR.FQName as FQName exposing (FQName(..), fQName)
 import Morphir.IR.Module as Module
-import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Name as Name exposing (Name, encodeName)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName as QName
@@ -39,7 +39,7 @@ import Morphir.IR.SDK.Number as Number
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.JsonExtra as JsonExtra
-import Morphir.ResultList as ResultList
+import Morphir.ListOfResults as ListOfResults
 import Morphir.Rewrite as Rewrite
 import Parser
 import Set exposing (Set)
@@ -142,6 +142,8 @@ type Error
     | ResolveError SourceLocation Resolve.Error
     | EmptyApply SourceLocation
     | NotSupported SourceLocation String
+    | DuplicateNameInPattern Name SourceLocation SourceLocation
+    | VariableShadowing Name SourceLocation SourceLocation
 
 
 encodeError : Error -> Encode.Value
@@ -168,6 +170,20 @@ encodeError error =
             JsonExtra.encodeConstructor "NotSupported"
                 [ encodeSourceLocation sourceLocation
                 , Encode.string message
+                ]
+
+        DuplicateNameInPattern name sourceLocation1 sourceLocation2 ->
+            JsonExtra.encodeConstructor "DuplicateNameInPattern"
+                [ encodeName name
+                , encodeSourceLocation sourceLocation1
+                , encodeSourceLocation sourceLocation2
+                ]
+
+        VariableShadowing name sourceLocation1 sourceLocation2 ->
+            JsonExtra.encodeConstructor "VariableShadowing"
+                [ encodeName name
+                , encodeSourceLocation sourceLocation1
+                , encodeSourceLocation sourceLocation2
                 ]
 
 
@@ -201,7 +217,7 @@ packageDefinitionFromSource packageInfo sourceFiles =
                                 )
                             |> Result.mapError (ParseError sourceFile.path)
                     )
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
 
         exposedModuleNames : Set ModuleName
         exposedModuleNames =
@@ -342,7 +358,7 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
         moduleDeclsSoFar =
             modulesSoFar
                 |> Dict.map
-                    (\path def ->
+                    (\_ def ->
                         Module.definitionToSpecification def
                             |> Module.eraseSpecificationAttributes
                     )
@@ -351,12 +367,6 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
             Dict.fromList
                 [ ( SDK.packageName, SDK.packageSpec )
                 ]
-
-        moduleResolver : ModuleResolver
-        moduleResolver =
-            Resolve.createModuleResolver
-                (Resolve.createPackageResolver dependencies currentPackagePath moduleDeclsSoFar)
-                (processedFile.file.imports |> List.map Node.value)
 
         typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
         typesResult =
@@ -375,7 +385,19 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 valuesResult
     in
     moduleResult
-        |> Result.andThen (resolveLocalNames currentPackagePath modulePath moduleResolver)
+        |> Result.andThen
+            (\moduleDef ->
+                let
+                    moduleResolver : ModuleResolver
+                    moduleResolver =
+                        Resolve.createModuleResolver
+                            (Resolve.createPackageResolver dependencies currentPackagePath moduleDeclsSoFar)
+                            (processedFile.file.imports |> List.map Node.value)
+                            modulePath
+                            moduleDef
+                in
+                resolveLocalNames moduleResolver moduleDef
+            )
         |> Result.map
             (\m ->
                 modulesSoFar
@@ -501,7 +523,7 @@ mapDeclarationsToType sourceFile expose decls =
                                                                             )
                                                                         )
                                                             )
-                                                        |> ResultList.toResult
+                                                        |> ListOfResults.liftAllErrors
                                                         |> Result.mapError List.concat
                                             in
                                             ctorArgsResult
@@ -510,20 +532,20 @@ mapDeclarationsToType sourceFile expose decls =
                                                         Type.Constructor ctorName ctorArgs
                                                     )
                                         )
-                                    |> ResultList.toResult
+                                    |> ListOfResults.liftAllErrors
                                     |> Result.mapError List.concat
                         in
                         ctorsResult
                             |> Result.map
-                                (\ctors ->
-                                    ( name, withAccessControl isTypeExposed (Type.customTypeDefinition typeParams (withAccessControl isCtorExposed ctors)) )
+                                (\constructors ->
+                                    ( name, withAccessControl isTypeExposed (Type.customTypeDefinition typeParams (withAccessControl isCtorExposed constructors)) )
                                 )
                             |> Just
 
                     _ ->
                         Nothing
             )
-        |> ResultList.toResult
+        |> ListOfResults.liftAllErrors
         |> Result.mapError List.concat
 
 
@@ -556,7 +578,7 @@ mapDeclarationsToValue sourceFile expose decls =
                     _ ->
                         Nothing
             )
-        |> ResultList.toResult
+        |> ListOfResults.liftAllErrors
         |> Result.mapError List.concat
 
 
@@ -575,7 +597,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 (Type.Reference sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (Name.fromString localName)))
                 (argNodes
                     |> List.map (mapTypeAnnotation sourceFile)
-                    |> ResultList.toResult
+                    |> ListOfResults.liftAllErrors
                     |> Result.mapError List.concat
                 )
 
@@ -585,7 +607,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
         Tupled elemNodes ->
             elemNodes
                 |> List.map (mapTypeAnnotation sourceFile)
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.map (Type.Tuple sourceLocation)
                 |> Result.mapError List.concat
 
@@ -597,7 +619,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                         mapTypeAnnotation sourceFile fieldTypeNode
                             |> Result.map (Type.Field (fieldName |> Name.fromString))
                     )
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.map (Type.Record sourceLocation)
                 |> Result.mapError List.concat
 
@@ -609,7 +631,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                         mapTypeAnnotation sourceFile fieldTypeNode
                             |> Result.map (Type.Field (fieldName |> Name.fromString))
                     )
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.map (Type.ExtensibleRecord sourceLocation (argName |> Name.fromString))
                 |> Result.mapError List.concat
 
@@ -669,7 +691,7 @@ mapFunctionImplementation sourceFile argumentNodes expression =
             lambdaWithParams lambdaArgPatterns expression
     in
     bodyResult
-        |> Result.map (Value.UntypedDefinition paramNames)
+        |> Result.map (Value.Definition Nothing paramNames)
 
 
 mapExpression : SourceFile -> Node Expression -> Result Errors (Value.Value SourceLocation)
@@ -702,87 +724,12 @@ mapExpression sourceFile (Node range exp) =
             in
             expNodes
                 |> List.map (mapExpression sourceFile)
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
                 |> Result.andThen (List.reverse >> toApply)
 
-        Expression.OperatorApplication op infixDirection leftNode rightNode ->
-            let
-                applyBinary : (SourceLocation -> Value SourceLocation -> Value SourceLocation -> Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
-                applyBinary fun =
-                    Result.map2 (fun sourceLocation)
-                        (mapExpression sourceFile leftNode)
-                        (mapExpression sourceFile rightNode)
-            in
-            case op of
-                "<|" ->
-                    -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
-                    Result.map2 (Value.Apply sourceLocation)
-                        (mapExpression sourceFile leftNode)
-                        (mapExpression sourceFile rightNode)
-
-                "|>" ->
-                    -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
-                    Result.map2 (Value.Apply sourceLocation)
-                        (mapExpression sourceFile rightNode)
-                        (mapExpression sourceFile leftNode)
-
-                "||" ->
-                    applyBinary Bool.or
-
-                "&&" ->
-                    applyBinary Bool.and
-
-                "==" ->
-                    applyBinary Equality.equal
-
-                "/=" ->
-                    applyBinary Equality.notEqual
-
-                "<" ->
-                    applyBinary Comparison.lessThan
-
-                ">" ->
-                    applyBinary Comparison.greaterThan
-
-                "<=" ->
-                    applyBinary Comparison.lessThanOrEqual
-
-                ">=" ->
-                    applyBinary Comparison.greaterThanOrEqual
-
-                "++" ->
-                    applyBinary Appending.append
-
-                "+" ->
-                    applyBinary Number.add
-
-                "-" ->
-                    applyBinary Number.subtract
-
-                "*" ->
-                    applyBinary Number.multiply
-
-                "/" ->
-                    applyBinary Float.divide
-
-                "//" ->
-                    applyBinary Int.divide
-
-                "^" ->
-                    applyBinary Number.power
-
-                "<<" ->
-                    applyBinary Composition.composeLeft
-
-                ">>" ->
-                    applyBinary Composition.composeRight
-
-                "::" ->
-                    applyBinary List.construct
-
-                _ ->
-                    Err [ NotSupported sourceLocation <| "OperatorApplication: " ++ op ]
+        Expression.OperatorApplication op _ leftNode rightNode ->
+            mapOperator sourceFile sourceLocation op leftNode rightNode
 
         Expression.FunctionOrValue moduleName valueName ->
             case ( moduleName, valueName ) of
@@ -801,10 +748,10 @@ mapExpression sourceFile (Node range exp) =
                 (mapExpression sourceFile thenNode)
                 (mapExpression sourceFile elseNode)
 
-        Expression.PrefixOperator op ->
+        Expression.PrefixOperator _ ->
             Err [ NotSupported sourceLocation "TODO: PrefixOperator" ]
 
-        Expression.Operator op ->
+        Expression.Operator _ ->
             Err [ NotSupported sourceLocation "TODO: Operator" ]
 
         Expression.Integer value ->
@@ -829,7 +776,7 @@ mapExpression sourceFile (Node range exp) =
         Expression.TupledExpression expNodes ->
             expNodes
                 |> List.map (mapExpression sourceFile)
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.Tuple sourceLocation)
 
@@ -837,268 +784,7 @@ mapExpression sourceFile (Node range exp) =
             mapExpression sourceFile expNode
 
         Expression.LetExpression letBlock ->
-            let
-                namesReferredByExpression : Expression -> List String
-                namesReferredByExpression expression =
-                    case expression of
-                        Expression.Application argNodes ->
-                            argNodes |> List.concatMap (Node.value >> namesReferredByExpression)
-
-                        Expression.OperatorApplication _ _ (Node _ leftExp) (Node _ rightExp) ->
-                            namesReferredByExpression leftExp ++ namesReferredByExpression rightExp
-
-                        Expression.FunctionOrValue [] name ->
-                            [ name ]
-
-                        Expression.IfBlock (Node _ condExp) (Node _ thenExp) (Node _ elseExp) ->
-                            namesReferredByExpression condExp ++ namesReferredByExpression thenExp ++ namesReferredByExpression elseExp
-
-                        Expression.Negation (Node _ childExp) ->
-                            namesReferredByExpression childExp
-
-                        Expression.TupledExpression argNodes ->
-                            argNodes |> List.concatMap (Node.value >> namesReferredByExpression)
-
-                        Expression.ParenthesizedExpression (Node _ childExp) ->
-                            namesReferredByExpression childExp
-
-                        Expression.LetExpression innerLetBlock ->
-                            innerLetBlock.declarations
-                                |> List.concatMap
-                                    (\(Node _ decl) ->
-                                        case decl of
-                                            Expression.LetFunction function ->
-                                                function.declaration |> Node.value |> .expression |> Node.value |> namesReferredByExpression
-
-                                            Expression.LetDestructuring _ (Node _ childExp) ->
-                                                namesReferredByExpression childExp
-                                    )
-                                |> (++) (innerLetBlock.expression |> Node.value |> namesReferredByExpression)
-
-                        Expression.CaseExpression caseBlock ->
-                            caseBlock.cases
-                                |> List.concatMap
-                                    (\( _, Node _ childExp ) ->
-                                        namesReferredByExpression childExp
-                                    )
-                                |> (++) (caseBlock.expression |> Node.value |> namesReferredByExpression)
-
-                        Expression.LambdaExpression lambda ->
-                            lambda.expression |> Node.value |> namesReferredByExpression
-
-                        Expression.RecordExpr setterNodes ->
-                            setterNodes |> List.concatMap (\(Node _ ( _, Node _ childExp )) -> namesReferredByExpression childExp)
-
-                        Expression.ListExpr argNodes ->
-                            argNodes |> List.concatMap (Node.value >> namesReferredByExpression)
-
-                        Expression.RecordAccess (Node _ childExp) _ ->
-                            namesReferredByExpression childExp
-
-                        Expression.RecordUpdateExpression (Node _ recordRef) setterNodes ->
-                            recordRef :: (setterNodes |> List.concatMap (\(Node _ ( _, Node _ childExp )) -> namesReferredByExpression childExp))
-
-                        _ ->
-                            []
-
-                namesBoundByPattern : Pattern -> List String
-                namesBoundByPattern pattern =
-                    case pattern of
-                        TuplePattern elemPatternNodes ->
-                            elemPatternNodes |> List.concatMap (Node.value >> namesBoundByPattern)
-
-                        RecordPattern fieldNameNodes ->
-                            fieldNameNodes |> List.map Node.value
-
-                        UnConsPattern (Node _ headPattern) (Node _ tailPattern) ->
-                            namesBoundByPattern headPattern ++ namesBoundByPattern tailPattern
-
-                        ListPattern itemPatternNodes ->
-                            itemPatternNodes |> List.concatMap (Node.value >> namesBoundByPattern)
-
-                        VarPattern name ->
-                            [ name ]
-
-                        NamedPattern _ argPatternNodes ->
-                            argPatternNodes |> List.concatMap (Node.value >> namesBoundByPattern)
-
-                        AsPattern (Node _ childPattern) (Node _ alias) ->
-                            alias :: namesBoundByPattern childPattern
-
-                        ParenthesizedPattern (Node _ childPattern) ->
-                            namesBoundByPattern childPattern
-
-                        _ ->
-                            []
-
-                letBlockToValue : List (Node Expression.LetDeclaration) -> Node Expression -> Result Errors (Value.Value SourceLocation)
-                letBlockToValue declarationNodes inNode =
-                    let
-                        -- build a dictionary from variable name to declaration index
-                        declarationIndexForName : Dict String Int
-                        declarationIndexForName =
-                            declarationNodes
-                                |> List.indexedMap
-                                    (\index (Node _ decl) ->
-                                        case decl of
-                                            Expression.LetFunction function ->
-                                                [ ( function.declaration |> Node.value |> .name |> Node.value, index ) ]
-
-                                            Expression.LetDestructuring (Node _ pattern) _ ->
-                                                namesBoundByPattern pattern
-                                                    |> List.map (\name -> ( name, index ))
-                                    )
-                                |> List.concat
-                                |> Dict.fromList
-
-                        -- build a dependency graph between declarations
-                        declarationDependencyGraph : Graph (Node Expression.LetDeclaration) String
-                        declarationDependencyGraph =
-                            let
-                                nodes : List (Graph.Node (Node Expression.LetDeclaration))
-                                nodes =
-                                    declarationNodes
-                                        |> List.indexedMap
-                                            (\index declNode ->
-                                                Graph.Node index declNode
-                                            )
-
-                                edges : List (Graph.Edge String)
-                                edges =
-                                    declarationNodes
-                                        |> List.indexedMap
-                                            (\fromIndex (Node _ decl) ->
-                                                case decl of
-                                                    Expression.LetFunction function ->
-                                                        function.declaration
-                                                            |> Node.value
-                                                            |> .expression
-                                                            |> Node.value
-                                                            |> namesReferredByExpression
-                                                            |> List.filterMap
-                                                                (\name ->
-                                                                    declarationIndexForName
-                                                                        |> Dict.get name
-                                                                        |> Maybe.map (\toIndex -> Graph.Edge fromIndex toIndex name)
-                                                                )
-
-                                                    Expression.LetDestructuring _ expression ->
-                                                        expression
-                                                            |> Node.value
-                                                            |> namesReferredByExpression
-                                                            |> List.filterMap
-                                                                (\name ->
-                                                                    declarationIndexForName
-                                                                        |> Dict.get name
-                                                                        |> Maybe.map (\toIndex -> Graph.Edge fromIndex toIndex name)
-                                                                )
-                                            )
-                                        |> List.concat
-                            in
-                            Graph.fromNodesAndEdges nodes edges
-
-                        letDeclarationToValue : Node Expression.LetDeclaration -> Result Errors (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
-                        letDeclarationToValue letDeclarationNode valueResult =
-                            case letDeclarationNode |> Node.value of
-                                Expression.LetFunction function ->
-                                    Result.map2 (Value.LetDefinition sourceLocation (function.declaration |> Node.value |> .name |> Node.value |> Name.fromString))
-                                        (mapFunction sourceFile function)
-                                        valueResult
-
-                                Expression.LetDestructuring patternNode letExpressionNode ->
-                                    Result.map3 (Value.Destructure sourceLocation)
-                                        (mapPattern sourceFile patternNode)
-                                        (mapExpression sourceFile letExpressionNode)
-                                        valueResult
-
-                        componentGraphToValue : Graph (Node Expression.LetDeclaration) String -> Result Errors (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
-                        componentGraphToValue componentGraph valueResult =
-                            case componentGraph |> Graph.checkAcyclic of
-                                Ok acyclic ->
-                                    acyclic
-                                        |> Graph.topologicalSort
-                                        |> List.foldl
-                                            (\nodeContext innerSoFar ->
-                                                letDeclarationToValue nodeContext.node.label innerSoFar
-                                            )
-                                            valueResult
-
-                                Err _ ->
-                                    Result.map2 (Value.LetRecursion sourceLocation)
-                                        (componentGraph
-                                            |> Graph.nodes
-                                            |> List.map
-                                                (\graphNode ->
-                                                    case graphNode.label |> Node.value of
-                                                        Expression.LetFunction function ->
-                                                            mapFunction sourceFile function
-                                                                |> Result.map (Tuple.pair (function.declaration |> Node.value |> .name |> Node.value |> Name.fromString))
-
-                                                        Expression.LetDestructuring _ _ ->
-                                                            Err [ NotSupported sourceLocation "Recursive destructuring" ]
-                                                )
-                                            |> ResultList.toResult
-                                            |> Result.mapError List.concat
-                                            |> Result.map Dict.fromList
-                                        )
-                                        valueResult
-                    in
-                    case declarationDependencyGraph |> Graph.stronglyConnectedComponents of
-                        Ok acyclic ->
-                            acyclic
-                                |> Graph.topologicalSort
-                                |> List.foldl
-                                    (\nodeContext soFar ->
-                                        letDeclarationToValue nodeContext.node.label soFar
-                                    )
-                                    (mapExpression sourceFile inNode)
-
-                        Err components ->
-                            components
-                                |> List.foldl
-                                    componentGraphToValue
-                                    (mapExpression sourceFile inNode)
-
-                --case declarationNodes of
-                --    [] ->
-                --        mapExpression sourceFile inNode
-                --
-                --    firstDeclaration :: restOfDeclarations ->
-                --        case firstDeclaration |> Node.value of
-                --            Expression.LetFunction function ->
-                --                Result.map2 (Value.LetDefinition sourceLocation (function.declaration |> Node.value |> .name |> Node.value |> Name.fromString))
-                --                    (mapFunction sourceFile function)
-                --                    (letBlockToValue restOfDeclarations inNode)
-                --
-                --            Expression.LetDestructuring patternNode letExpressionNode ->
-                --                let
-                --                    referencedNames : Set String
-                --                    referencedNames =
-                --                        letExpressionNode |> Node.value |> namesReferredByExpression |> Set.fromList
-                --
-                --                    ( referencedDecls, unreferencedDecls ) =
-                --                        restOfDeclarations
-                --                            |> List.partition
-                --                                (\(Node _ decl) ->
-                --                                    case decl of
-                --                                        Expression.LetFunction function ->
-                --                                            referencedNames
-                --                                                |> Set.member (function.declaration |> Node.value |> .name |> Node.value)
-                --
-                --                                        Expression.LetDestructuring _ (Node _ body) ->
-                --                                            Set.isEmpty
-                --                                                (Set.intersect
-                --                                                    (namesReferredByExpression body |> Set.fromList)
-                --                                                    referencedNames
-                --                                                )
-                --                                )
-                --                in
-                --                Result.map3 (Value.Destructure sourceLocation)
-                --                    (mapPattern sourceFile patternNode)
-                --                    (mapExpression sourceFile letExpressionNode)
-                --                    (letBlockToValue restOfDeclarations inNode)
-            in
-            letBlockToValue letBlock.declarations letBlock.expression
+            mapLetExpression sourceFile sourceLocation letBlock
 
         Expression.CaseExpression caseBlock ->
             Result.map2 (Value.PatternMatch sourceLocation)
@@ -1110,7 +796,7 @@ mapExpression sourceFile (Node range exp) =
                                 (mapPattern sourceFile patternNode)
                                 (mapExpression sourceFile bodyNode)
                         )
-                    |> ResultList.toResult
+                    |> ListOfResults.liftAllErrors
                     |> Result.mapError List.concat
                 )
 
@@ -1137,14 +823,14 @@ mapExpression sourceFile (Node range exp) =
                         mapExpression sourceFile fieldValue
                             |> Result.map (Tuple.pair (fieldName |> Name.fromString))
                     )
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.Record sourceLocation)
 
         Expression.ListExpr itemNodes ->
             itemNodes
                 |> List.map (mapExpression sourceFile)
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.List sourceLocation)
 
@@ -1166,7 +852,7 @@ mapExpression sourceFile (Node range exp) =
                         mapExpression sourceFile fieldValue
                             |> Result.map (Tuple.pair (fieldName |> Name.fromString))
                     )
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
                 |> Result.map
                     (Value.UpdateRecord sourceLocation (targetVarNameNode |> Node.value |> Name.fromString |> Value.Variable sourceLocation))
@@ -1206,7 +892,7 @@ mapPattern sourceFile (Node range pattern) =
         Pattern.TuplePattern elemNodes ->
             elemNodes
                 |> List.map (mapPattern sourceFile)
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.TuplePattern sourceLocation)
 
@@ -1251,7 +937,7 @@ mapPattern sourceFile (Node range pattern) =
             in
             argNodes
                 |> List.map (mapPattern sourceFile)
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
 
@@ -1263,55 +949,604 @@ mapPattern sourceFile (Node range pattern) =
             mapPattern sourceFile childNode
 
 
-resolveLocalNames : Path -> Path -> ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
-resolveLocalNames packagePath modulePath moduleResolver moduleDef =
+mapOperator : SourceFile -> SourceLocation -> String -> Node Expression -> Node Expression -> Result Errors (Value.Value SourceLocation)
+mapOperator sourceFile sourceLocation op leftNode rightNode =
     let
-        rewriteTypes : Type SourceLocation -> Result Error (Type SourceLocation)
+        applyBinary : (SourceLocation -> Value SourceLocation -> Value SourceLocation -> Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+        applyBinary fun =
+            Result.map2 (fun sourceLocation)
+                (mapExpression sourceFile leftNode)
+                (mapExpression sourceFile rightNode)
+    in
+    case op of
+        "<|" ->
+            -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
+            Result.map2 (Value.Apply sourceLocation)
+                (mapExpression sourceFile leftNode)
+                (mapExpression sourceFile rightNode)
+
+        "|>" ->
+            -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
+            Result.map2 (Value.Apply sourceLocation)
+                (mapExpression sourceFile rightNode)
+                (mapExpression sourceFile leftNode)
+
+        "||" ->
+            applyBinary Bool.or
+
+        "&&" ->
+            applyBinary Bool.and
+
+        "==" ->
+            applyBinary Equality.equal
+
+        "/=" ->
+            applyBinary Equality.notEqual
+
+        "<" ->
+            applyBinary Comparison.lessThan
+
+        ">" ->
+            applyBinary Comparison.greaterThan
+
+        "<=" ->
+            applyBinary Comparison.lessThanOrEqual
+
+        ">=" ->
+            applyBinary Comparison.greaterThanOrEqual
+
+        "++" ->
+            applyBinary Appending.append
+
+        "+" ->
+            applyBinary Number.add
+
+        "-" ->
+            applyBinary Number.subtract
+
+        "*" ->
+            applyBinary Number.multiply
+
+        "/" ->
+            applyBinary Float.divide
+
+        "//" ->
+            applyBinary Int.divide
+
+        "^" ->
+            applyBinary Number.power
+
+        "<<" ->
+            applyBinary Composition.composeLeft
+
+        ">>" ->
+            applyBinary Composition.composeRight
+
+        "::" ->
+            applyBinary List.construct
+
+        _ ->
+            Err [ NotSupported sourceLocation <| "OperatorApplication: " ++ op ]
+
+
+mapLetExpression : SourceFile -> SourceLocation -> Expression.LetBlock -> Result Errors (Value SourceLocation)
+mapLetExpression sourceFile sourceLocation letBlock =
+    let
+        namesReferredByExpression : Expression -> List String
+        namesReferredByExpression expression =
+            case expression of
+                Expression.Application argNodes ->
+                    argNodes |> List.concatMap (Node.value >> namesReferredByExpression)
+
+                Expression.OperatorApplication _ _ (Node _ leftExp) (Node _ rightExp) ->
+                    namesReferredByExpression leftExp ++ namesReferredByExpression rightExp
+
+                Expression.FunctionOrValue [] name ->
+                    [ name ]
+
+                Expression.IfBlock (Node _ condExp) (Node _ thenExp) (Node _ elseExp) ->
+                    namesReferredByExpression condExp ++ namesReferredByExpression thenExp ++ namesReferredByExpression elseExp
+
+                Expression.Negation (Node _ childExp) ->
+                    namesReferredByExpression childExp
+
+                Expression.TupledExpression argNodes ->
+                    argNodes |> List.concatMap (Node.value >> namesReferredByExpression)
+
+                Expression.ParenthesizedExpression (Node _ childExp) ->
+                    namesReferredByExpression childExp
+
+                Expression.LetExpression innerLetBlock ->
+                    innerLetBlock.declarations
+                        |> List.concatMap
+                            (\(Node _ decl) ->
+                                case decl of
+                                    Expression.LetFunction function ->
+                                        function.declaration |> Node.value |> .expression |> Node.value |> namesReferredByExpression
+
+                                    Expression.LetDestructuring _ (Node _ childExp) ->
+                                        namesReferredByExpression childExp
+                            )
+                        |> (++) (innerLetBlock.expression |> Node.value |> namesReferredByExpression)
+
+                Expression.CaseExpression caseBlock ->
+                    caseBlock.cases
+                        |> List.concatMap
+                            (\( _, Node _ childExp ) ->
+                                namesReferredByExpression childExp
+                            )
+                        |> (++) (caseBlock.expression |> Node.value |> namesReferredByExpression)
+
+                Expression.LambdaExpression lambda ->
+                    lambda.expression |> Node.value |> namesReferredByExpression
+
+                Expression.RecordExpr setterNodes ->
+                    setterNodes |> List.concatMap (\(Node _ ( _, Node _ childExp )) -> namesReferredByExpression childExp)
+
+                Expression.ListExpr argNodes ->
+                    argNodes |> List.concatMap (Node.value >> namesReferredByExpression)
+
+                Expression.RecordAccess (Node _ childExp) _ ->
+                    namesReferredByExpression childExp
+
+                Expression.RecordUpdateExpression (Node _ recordRef) setterNodes ->
+                    recordRef :: (setterNodes |> List.concatMap (\(Node _ ( _, Node _ childExp )) -> namesReferredByExpression childExp))
+
+                _ ->
+                    []
+
+        letBlockToValue : List (Node Expression.LetDeclaration) -> Node Expression -> Result Errors (Value.Value SourceLocation)
+        letBlockToValue declarationNodes inNode =
+            let
+                -- build a dictionary from variable name to declaration index
+                declarationIndexForName : Dict String Int
+                declarationIndexForName =
+                    declarationNodes
+                        |> List.indexedMap
+                            (\index (Node _ decl) ->
+                                case decl of
+                                    Expression.LetFunction function ->
+                                        [ ( function.declaration |> Node.value |> .name |> Node.value, index ) ]
+
+                                    Expression.LetDestructuring (Node _ pattern) _ ->
+                                        namesBoundByPattern pattern
+                                            |> Set.map (\name -> ( name, index ))
+                                            |> Set.toList
+                            )
+                        |> List.concat
+                        |> Dict.fromList
+
+                -- build a dependency graph between declarations
+                declarationDependencyGraph : Graph (Node Expression.LetDeclaration) String
+                declarationDependencyGraph =
+                    let
+                        nodes : List (Graph.Node (Node Expression.LetDeclaration))
+                        nodes =
+                            declarationNodes
+                                |> List.indexedMap
+                                    (\index declNode ->
+                                        Graph.Node index declNode
+                                    )
+
+                        edges : List (Graph.Edge String)
+                        edges =
+                            declarationNodes
+                                |> List.indexedMap
+                                    (\fromIndex (Node _ decl) ->
+                                        case decl of
+                                            Expression.LetFunction function ->
+                                                function.declaration
+                                                    |> Node.value
+                                                    |> .expression
+                                                    |> Node.value
+                                                    |> namesReferredByExpression
+                                                    |> List.filterMap
+                                                        (\name ->
+                                                            declarationIndexForName
+                                                                |> Dict.get name
+                                                                |> Maybe.map (\toIndex -> Graph.Edge fromIndex toIndex name)
+                                                        )
+
+                                            Expression.LetDestructuring _ expression ->
+                                                expression
+                                                    |> Node.value
+                                                    |> namesReferredByExpression
+                                                    |> List.filterMap
+                                                        (\name ->
+                                                            declarationIndexForName
+                                                                |> Dict.get name
+                                                                |> Maybe.map (\toIndex -> Graph.Edge fromIndex toIndex name)
+                                                        )
+                                    )
+                                |> List.concat
+                    in
+                    Graph.fromNodesAndEdges nodes edges
+
+                letDeclarationToValue : Node Expression.LetDeclaration -> Result Errors (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                letDeclarationToValue letDeclarationNode valueResult =
+                    case letDeclarationNode |> Node.value of
+                        Expression.LetFunction function ->
+                            Result.map2 (Value.LetDefinition sourceLocation (function.declaration |> Node.value |> .name |> Node.value |> Name.fromString))
+                                (mapFunction sourceFile function)
+                                valueResult
+
+                        Expression.LetDestructuring patternNode letExpressionNode ->
+                            Result.map3 (Value.Destructure sourceLocation)
+                                (mapPattern sourceFile patternNode)
+                                (mapExpression sourceFile letExpressionNode)
+                                valueResult
+
+                componentGraphToValue : Graph (Node Expression.LetDeclaration) String -> Result Errors (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                componentGraphToValue componentGraph valueResult =
+                    case componentGraph |> Graph.checkAcyclic of
+                        Ok acyclic ->
+                            acyclic
+                                |> Graph.topologicalSort
+                                |> List.foldl
+                                    (\nodeContext innerSoFar ->
+                                        letDeclarationToValue nodeContext.node.label innerSoFar
+                                    )
+                                    valueResult
+
+                        Err _ ->
+                            Result.map2 (Value.LetRecursion sourceLocation)
+                                (componentGraph
+                                    |> Graph.nodes
+                                    |> List.map
+                                        (\graphNode ->
+                                            case graphNode.label |> Node.value of
+                                                Expression.LetFunction function ->
+                                                    mapFunction sourceFile function
+                                                        |> Result.map (Tuple.pair (function.declaration |> Node.value |> .name |> Node.value |> Name.fromString))
+
+                                                Expression.LetDestructuring _ _ ->
+                                                    Err [ NotSupported sourceLocation "Recursive destructuring" ]
+                                        )
+                                    |> ListOfResults.liftAllErrors
+                                    |> Result.mapError List.concat
+                                    |> Result.map Dict.fromList
+                                )
+                                valueResult
+            in
+            case declarationDependencyGraph |> Graph.stronglyConnectedComponents of
+                Ok acyclic ->
+                    acyclic
+                        |> Graph.topologicalSort
+                        |> List.foldl
+                            (\nodeContext soFar ->
+                                letDeclarationToValue nodeContext.node.label soFar
+                            )
+                            (mapExpression sourceFile inNode)
+
+                Err components ->
+                    components
+                        |> List.foldl
+                            componentGraphToValue
+                            (mapExpression sourceFile inNode)
+    in
+    letBlockToValue letBlock.declarations letBlock.expression
+
+
+namesBoundByPattern : Pattern -> Set String
+namesBoundByPattern p =
+    let
+        namesBound : Pattern -> List String
+        namesBound pattern =
+            case pattern of
+                TuplePattern elemPatternNodes ->
+                    elemPatternNodes |> List.concatMap (Node.value >> namesBound)
+
+                RecordPattern fieldNameNodes ->
+                    fieldNameNodes |> List.map Node.value
+
+                UnConsPattern (Node _ headPattern) (Node _ tailPattern) ->
+                    namesBound headPattern ++ namesBound tailPattern
+
+                ListPattern itemPatternNodes ->
+                    itemPatternNodes |> List.concatMap (Node.value >> namesBound)
+
+                VarPattern name ->
+                    [ name ]
+
+                NamedPattern _ argPatternNodes ->
+                    argPatternNodes |> List.concatMap (Node.value >> namesBound)
+
+                AsPattern (Node _ childPattern) (Node _ alias) ->
+                    alias :: namesBound childPattern
+
+                ParenthesizedPattern (Node _ childPattern) ->
+                    namesBound childPattern
+
+                _ ->
+                    []
+    in
+    namesBound p
+        |> Set.fromList
+
+
+resolveLocalNames : ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
+resolveLocalNames moduleResolver moduleDef =
+    let
+        rewriteTypes : Type SourceLocation -> Result Errors (Type SourceLocation)
         rewriteTypes =
             Rewrite.bottomUp Type.rewriteType
                 (\tpe ->
                     case tpe of
                         Type.Reference sourceLocation refFullName args ->
-                            let
-                                refModulePath : Path
-                                refModulePath =
-                                    refFullName
-                                        |> FQName.getModulePath
-
-                                refLocalName : Name
-                                refLocalName =
-                                    refFullName
-                                        |> FQName.getLocalName
-
-                                resolvedFullNameResult : Result Resolve.Error FQName
-                                resolvedFullNameResult =
-                                    case moduleDef.types |> Dict.get refLocalName of
-                                        Just _ ->
-                                            if Path.isPrefixOf modulePath packagePath then
-                                                Ok (fQName packagePath (modulePath |> List.drop (List.length packagePath)) refLocalName)
-
-                                            else
-                                                Err (Resolve.PackageNotPrefixOfModule packagePath modulePath)
-
-                                        Nothing ->
-                                            moduleResolver.resolveType (refModulePath |> List.map Name.toTitleCase) (refLocalName |> Name.toTitleCase)
-                            in
-                            resolvedFullNameResult
+                            moduleResolver.resolveType
+                                (refFullName |> FQName.getModulePath |> List.map Name.toTitleCase)
+                                (refFullName |> FQName.getLocalName |> Name.toTitleCase)
                                 |> Result.map
                                     (\resolvedFullName ->
                                         Type.Reference sourceLocation resolvedFullName args
                                     )
-                                |> Result.mapError (ResolveError sourceLocation)
+                                |> Result.mapError (ResolveError sourceLocation >> List.singleton)
                                 |> Just
 
                         _ ->
                             Nothing
                 )
 
-        rewriteValues =
-            identity
+        rewriteValues : Value SourceLocation -> Result Errors (Value SourceLocation)
+        rewriteValues value =
+            resolveVariablesAndReferences Dict.empty moduleResolver value
     in
     Module.mapDefinition rewriteTypes rewriteValues moduleDef
+        |> Result.mapError List.concat
+
+
+resolveVariablesAndReferences : Dict Name SourceLocation -> ModuleResolver -> Value SourceLocation -> Result Errors (Value SourceLocation)
+resolveVariablesAndReferences variables moduleResolver value =
+    let
+        unionNames : (Name -> SourceLocation -> SourceLocation -> Error) -> Dict Name SourceLocation -> Dict Name SourceLocation -> Result Errors (Dict Name SourceLocation)
+        unionNames toError namesA namesB =
+            let
+                duplicateNames : List Name
+                duplicateNames =
+                    Set.intersect (namesA |> Dict.keys |> Set.fromList) (namesB |> Dict.keys |> Set.fromList)
+                        |> Set.toList
+            in
+            if List.isEmpty duplicateNames then
+                Ok (Dict.union namesA namesB)
+
+            else
+                Err
+                    (duplicateNames
+                        |> List.filterMap
+                            (\name ->
+                                Maybe.map2 (toError name)
+                                    (namesA |> Dict.get name)
+                                    (namesB |> Dict.get name)
+                            )
+                    )
+
+        unionPatternNames : Dict Name SourceLocation -> Dict Name SourceLocation -> Result Errors (Dict Name SourceLocation)
+        unionPatternNames =
+            unionNames DuplicateNameInPattern
+
+        unionVariableNames : Dict Name SourceLocation -> Dict Name SourceLocation -> Result Errors (Dict Name SourceLocation)
+        unionVariableNames =
+            unionNames VariableShadowing
+
+        namesBoundInPattern : Value.Pattern SourceLocation -> Result Errors (Dict Name SourceLocation)
+        namesBoundInPattern pattern =
+            case pattern of
+                Value.AsPattern sourceLocation subjectPattern alias ->
+                    namesBoundInPattern subjectPattern
+                        |> Result.andThen
+                            (\subjectNames ->
+                                unionPatternNames subjectNames
+                                    (Dict.singleton alias sourceLocation)
+                            )
+
+                Value.TuplePattern _ elems ->
+                    elems
+                        |> List.map namesBoundInPattern
+                        |> List.foldl
+                            (\nextNames soFar ->
+                                soFar
+                                    |> Result.andThen
+                                        (\namesSoFar ->
+                                            nextNames
+                                                |> Result.andThen (unionPatternNames namesSoFar)
+                                        )
+                            )
+                            (Ok Dict.empty)
+
+                Value.RecordPattern sourceLocation fieldNames ->
+                    Ok
+                        (fieldNames
+                            |> List.map (\fieldName -> ( fieldName, sourceLocation ))
+                            |> Dict.fromList
+                        )
+
+                Value.ConstructorPattern _ _ args ->
+                    args
+                        |> List.map namesBoundInPattern
+                        |> List.foldl
+                            (\nextNames soFar ->
+                                soFar
+                                    |> Result.andThen
+                                        (\namesSoFar ->
+                                            nextNames
+                                                |> Result.andThen (unionPatternNames namesSoFar)
+                                        )
+                            )
+                            (Ok Dict.empty)
+
+                Value.HeadTailPattern _ headPattern tailPattern ->
+                    namesBoundInPattern headPattern
+                        |> Result.andThen
+                            (\headNames ->
+                                namesBoundInPattern tailPattern
+                                    |> Result.andThen (unionPatternNames headNames)
+                            )
+
+                _ ->
+                    Ok Dict.empty
+    in
+    case value of
+        Value.Reference sourceLocation (FQName [] modulePath localName) ->
+            if variables |> Dict.member localName then
+                Ok (Value.Variable sourceLocation localName)
+
+            else
+                moduleResolver.resolveValue
+                    (modulePath |> List.map Name.toTitleCase)
+                    (localName |> Name.toTitleCase)
+                    |> Result.map
+                        (\resolvedFullName ->
+                            Value.Reference sourceLocation resolvedFullName
+                        )
+                    |> Result.mapError (ResolveError sourceLocation >> List.singleton)
+
+        Value.Lambda a argPattern bodyValue ->
+            namesBoundInPattern argPattern
+                |> Result.andThen
+                    (\patternNames ->
+                        unionVariableNames variables patternNames
+                    )
+                |> Result.andThen
+                    (\newVariables ->
+                        resolveVariablesAndReferences newVariables moduleResolver bodyValue
+                    )
+                |> Result.map (Value.Lambda a argPattern)
+
+        Value.LetDefinition sourceLocation name def inValue ->
+            Result.map2 (Value.LetDefinition sourceLocation name)
+                (resolveVariablesAndReferences variables moduleResolver def.body
+                    |> Result.map
+                        (\resolvedBody ->
+                            { def
+                                | body = resolvedBody
+                            }
+                        )
+                )
+                (unionVariableNames variables (Dict.singleton name sourceLocation)
+                    |> Result.andThen
+                        (\newVariables ->
+                            resolveVariablesAndReferences newVariables moduleResolver inValue
+                        )
+                )
+
+        Value.LetRecursion sourceLocation defs inValue ->
+            defs
+                |> Dict.map (\_ _ -> sourceLocation)
+                |> unionVariableNames variables
+                |> Result.andThen
+                    (\newVariables ->
+                        Result.map2 (Value.LetRecursion sourceLocation)
+                            (defs
+                                |> Dict.toList
+                                |> List.map
+                                    (\( name, def ) ->
+                                        resolveVariablesAndReferences newVariables moduleResolver def.body
+                                            |> Result.map
+                                                (\resolvedBody ->
+                                                    ( name
+                                                    , { def
+                                                        | body = resolvedBody
+                                                      }
+                                                    )
+                                                )
+                                    )
+                                |> ListOfResults.liftAllErrors
+                                |> Result.mapError List.concat
+                                |> Result.map Dict.fromList
+                            )
+                            (resolveVariablesAndReferences newVariables moduleResolver inValue)
+                    )
+
+        Value.Destructure a pattern subjectValue inValue ->
+            Result.map2 (Value.Destructure a pattern)
+                (resolveVariablesAndReferences variables moduleResolver subjectValue)
+                (namesBoundInPattern pattern
+                    |> Result.andThen
+                        (\patternNames ->
+                            unionVariableNames variables patternNames
+                        )
+                    |> Result.andThen
+                        (\newVariables ->
+                            resolveVariablesAndReferences newVariables moduleResolver inValue
+                        )
+                )
+
+        Value.PatternMatch a matchValue cases ->
+            Result.map2 (Value.PatternMatch a)
+                (resolveVariablesAndReferences variables moduleResolver matchValue)
+                (cases
+                    |> List.map
+                        (\( casePattern, caseValue ) ->
+                            namesBoundInPattern casePattern
+                                |> Result.andThen
+                                    (\patternNames ->
+                                        unionVariableNames variables patternNames
+                                    )
+                                |> Result.andThen
+                                    (\newVariables ->
+                                        resolveVariablesAndReferences newVariables moduleResolver caseValue
+                                    )
+                                |> Result.map (Tuple.pair casePattern)
+                        )
+                    |> ListOfResults.liftAllErrors
+                    |> Result.mapError List.concat
+                )
+
+        Value.Tuple a elems ->
+            elems
+                |> List.map (resolveVariablesAndReferences variables moduleResolver)
+                |> ListOfResults.liftAllErrors
+                |> Result.mapError List.concat
+                |> Result.map (Value.Tuple a)
+
+        Value.List a items ->
+            items
+                |> List.map (resolveVariablesAndReferences variables moduleResolver)
+                |> ListOfResults.liftAllErrors
+                |> Result.mapError List.concat
+                |> Result.map (Value.List a)
+
+        Value.Record a fields ->
+            fields
+                |> List.map
+                    (\( fieldName, fieldValue ) ->
+                        resolveVariablesAndReferences variables moduleResolver fieldValue
+                            |> Result.map (Tuple.pair fieldName)
+                    )
+                |> ListOfResults.liftAllErrors
+                |> Result.mapError List.concat
+                |> Result.map (Value.Record a)
+
+        Value.Field a subjectValue fieldName ->
+            resolveVariablesAndReferences variables moduleResolver subjectValue
+                |> Result.map (\s -> Value.Field a s fieldName)
+
+        Value.Apply a funValue argValue ->
+            Result.map2 (Value.Apply a)
+                (resolveVariablesAndReferences variables moduleResolver funValue)
+                (resolveVariablesAndReferences variables moduleResolver argValue)
+
+        Value.IfThenElse a condValue thenValue elseValue ->
+            Result.map3 (Value.IfThenElse a)
+                (resolveVariablesAndReferences variables moduleResolver condValue)
+                (resolveVariablesAndReferences variables moduleResolver thenValue)
+                (resolveVariablesAndReferences variables moduleResolver elseValue)
+
+        Value.UpdateRecord a subjectValue newFieldValues ->
+            Result.map2 (Value.UpdateRecord a)
+                (resolveVariablesAndReferences variables moduleResolver subjectValue)
+                (newFieldValues
+                    |> List.map
+                        (\( fieldName, fieldValue ) ->
+                            resolveVariablesAndReferences variables moduleResolver fieldValue
+                                |> Result.map (Tuple.pair fieldName)
+                        )
+                    |> ListOfResults.liftAllErrors
+                    |> Result.mapError List.concat
+                )
+
+        _ ->
+            Ok value
 
 
 withAccessControl : Bool -> a -> AccessControlled a

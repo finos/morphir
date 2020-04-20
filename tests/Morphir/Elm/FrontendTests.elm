@@ -2,6 +2,7 @@ module Morphir.Elm.FrontendTests exposing (..)
 
 import Dict
 import Expect exposing (Expectation)
+import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.FQName exposing (fQName)
@@ -20,7 +21,7 @@ import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value exposing (Definition(..), Literal(..), Pattern(..), Value(..))
+import Morphir.IR.Value as Value exposing (Definition, Literal(..), Pattern(..), Value(..))
 import Set
 import Test exposing (..)
 
@@ -186,6 +187,25 @@ valueTests =
                 String.join "\n"
                     [ "module Test exposing (..)"
                     , ""
+                    , "import Bar as Bar"
+                    , "import MyPack.Bar"
+                    , ""
+                    , "foo = 0"
+                    , ""
+                    , "bar = 0"
+                    , ""
+                    , "baz = 0"
+                    , ""
+                    , "a = 1"
+                    , ""
+                    , "b = 2"
+                    , ""
+                    , "c = 3"
+                    , ""
+                    , "d = 4"
+                    , ""
+                    , "f = 5"
+                    , ""
                     , "testValue = " ++ sourceValue
                     ]
             }
@@ -198,26 +218,7 @@ valueTests =
                         |> Result.map Package.eraseDefinitionAttributes
                         |> Result.mapError
                             (\errors ->
-                                errors
-                                    |> List.map
-                                        (\error ->
-                                            case error of
-                                                Frontend.ParseError _ _ ->
-                                                    "Parse Error"
-
-                                                Frontend.CyclicModules _ ->
-                                                    "Cyclic Modules"
-
-                                                Frontend.ResolveError _ _ ->
-                                                    "Resolve Error"
-
-                                                Frontend.EmptyApply _ ->
-                                                    "Empty Apply"
-
-                                                Frontend.NotSupported _ expType ->
-                                                    "Not Supported: " ++ expType
-                                        )
-                                    |> String.join ", "
+                                Encode.encode 0 (Encode.list Frontend.encodeError errors)
                             )
                         |> Result.andThen
                             (\packageDef ->
@@ -236,10 +237,14 @@ valueTests =
 
         ref : String -> Value ()
         ref name =
-            Reference () (fQName [] [] [ name ])
+            Reference () (fQName [] [ [ "test" ] ] [ name ])
 
-        var : String -> Pattern ()
+        var : String -> Value ()
         var name =
+            Variable () [ name ]
+
+        pvar : String -> Pattern ()
+        pvar name =
             AsPattern () (WildcardPattern ()) (Name.fromString name)
     in
     describe "Values are mapped correctly"
@@ -273,7 +278,7 @@ valueTests =
         , checkIR "\\42 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 42)) (ref "foo")
         , checkIR "\\0x20 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 32)) (ref "foo")
         , checkIR "\\( 1, 2 ) -> foo " <| Lambda () (TuplePattern () [ LiteralPattern () (IntLiteral 1), LiteralPattern () (IntLiteral 2) ]) (ref "foo")
-        , checkIR "\\{ foo, bar } -> foo " <| Lambda () (RecordPattern () [ Name.fromString "foo", Name.fromString "bar" ]) (ref "foo")
+        , checkIR "\\{ foo, bar } -> foo " <| Lambda () (RecordPattern () [ Name.fromString "foo", Name.fromString "bar" ]) (var "foo")
         , checkIR "\\1 :: 2 -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (LiteralPattern () (IntLiteral 2))) (ref "foo")
         , checkIR "\\[] -> foo " <| Lambda () (EmptyListPattern ()) (ref "foo")
         , checkIR "\\[ 1 ] -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (EmptyListPattern ())) (ref "foo")
@@ -311,7 +316,7 @@ valueTests =
             )
           <|
             Destructure ()
-                (TuplePattern () [ var "a", var "b" ])
+                (TuplePattern () [ pvar "a", pvar "b" ])
                 (ref "c")
                 (ref "d")
         , checkIR
@@ -325,7 +330,7 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "foo")
-                (UntypedDefinition [ Name.fromString "a" ] (ref "c"))
+                (Definition Nothing [ Name.fromString "a" ] (ref "c"))
                 (ref "d")
         , checkIR
             (String.join "\n"
@@ -338,11 +343,11 @@ valueTests =
             )
           <|
             Destructure ()
-                (TuplePattern () [ var "a", var "b" ])
+                (TuplePattern () [ pvar "a", pvar "b" ])
                 (ref "c")
                 (Destructure ()
-                    (TuplePattern () [ var "d", var "e" ])
-                    (ref "a")
+                    (TuplePattern () [ pvar "d", pvar "e" ])
+                    (var "a")
                     (ref "f")
                 )
         , checkIR
@@ -356,11 +361,11 @@ valueTests =
             )
           <|
             Destructure ()
-                (TuplePattern () [ var "a", var "b" ])
+                (TuplePattern () [ pvar "a", pvar "b" ])
                 (ref "c")
                 (Destructure ()
-                    (TuplePattern () [ var "d", var "e" ])
-                    (ref "a")
+                    (TuplePattern () [ pvar "d", pvar "e" ])
+                    (var "a")
                     (ref "f")
                 )
         , checkIR
@@ -375,11 +380,11 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "b")
-                (UntypedDefinition [] (ref "c"))
+                (Definition Nothing [] (ref "c"))
                 (LetDefinition ()
                     (Name.fromString "a")
-                    (UntypedDefinition [] (ref "b"))
-                    (ref "a")
+                    (Definition Nothing [] (var "b"))
+                    (var "a")
                 )
         , checkIR
             (String.join "\n"
@@ -393,11 +398,11 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "b")
-                (UntypedDefinition [] (ref "c"))
+                (Definition Nothing [] (ref "c"))
                 (LetDefinition ()
                     (Name.fromString "a")
-                    (UntypedDefinition [] (ref "b"))
-                    (ref "a")
+                    (Definition Nothing [] (var "b"))
+                    (var "a")
                 )
         , checkIR
             (String.join "\n"
@@ -411,11 +416,11 @@ valueTests =
           <|
             LetRecursion ()
                 (Dict.fromList
-                    [ ( Name.fromString "b", UntypedDefinition [] (ref "a") )
-                    , ( Name.fromString "a", UntypedDefinition [] (ref "b") )
+                    [ ( Name.fromString "b", Definition Nothing [] (var "a") )
+                    , ( Name.fromString "a", Definition Nothing [] (var "b") )
                     ]
                 )
-                (ref "a")
+                (var "a")
         , checkIR
             (String.join "\n"
                 [ "  let"
@@ -429,14 +434,14 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "c")
-                (UntypedDefinition [] (ref "d"))
+                (Definition Nothing [] (ref "d"))
                 (LetRecursion ()
                     (Dict.fromList
-                        [ ( Name.fromString "b", UntypedDefinition [] (ref "a") )
-                        , ( Name.fromString "a", UntypedDefinition [] (ref "b") )
+                        [ ( Name.fromString "b", Definition Nothing [] (var "a") )
+                        , ( Name.fromString "a", Definition Nothing [] (var "b") )
                         ]
                     )
-                    (ref "a")
+                    (var "a")
                 )
         ]
 

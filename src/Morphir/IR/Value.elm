@@ -4,7 +4,7 @@ module Morphir.IR.Value exposing
     , Literal(..), boolLiteral, charLiteral, stringLiteral, intLiteral, floatLiteral
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, recordPattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification
-    , Definition(..), typedDefinition, untypedDefinition
+    , Definition, typedDefinition, untypedDefinition
     , encodeValue, encodeSpecification, encodeDefinition
     , getDefinitionBody, mapDefinition, mapSpecification, mapValueAttributes
     )
@@ -70,8 +70,7 @@ import Json.Encode as Encode
 import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName)
 import Morphir.IR.Name exposing (Name, decodeName, encodeName)
 import Morphir.IR.Type as Type exposing (Type, decodeType, encodeType)
-import Morphir.ResultList as ResultList
-import Morphir.Rewrite exposing (Rewrite)
+import Morphir.ListOfResults as ListOfResults
 import String
 
 
@@ -134,19 +133,16 @@ type alias Specification a =
 {-| Type that represents a value or function definition. A definition is the actual data or logic as opposed to a specification
 which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.
 -}
-type Definition a
-    = TypedDefinition (Type a) (List Name) (Value a)
-    | UntypedDefinition (List Name) (Value a)
+type alias Definition a =
+    { valueType : Maybe (Type a)
+    , argumentNames : List Name
+    , body : Value a
+    }
 
 
 getDefinitionBody : Definition a -> Value a
-getDefinitionBody def =
-    case def of
-        TypedDefinition _ _ body ->
-            body
-
-        UntypedDefinition _ body ->
-            body
+getDefinitionBody =
+    .body
 
 
 
@@ -163,7 +159,7 @@ getDefinitionBody def =
 --             in
 
 
-mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Specification a -> Result (List e) (Specification b)
+mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Result e (Value b)) -> Specification a -> Result (List e) (Specification b)
 mapSpecification mapType mapValue spec =
     let
         inputsResult =
@@ -173,7 +169,7 @@ mapSpecification mapType mapValue spec =
                         mapType tpe
                             |> Result.map (Tuple.pair name)
                     )
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
 
         outputResult =
             mapType spec.output
@@ -184,20 +180,19 @@ mapSpecification mapType mapValue spec =
         outputResult
 
 
-mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Definition a -> Result (List e) (Definition b)
+mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Result e (Value b)) -> Definition a -> Result (List e) (Definition b)
 mapDefinition mapType mapValue def =
-    case def of
-        TypedDefinition tpe args body ->
-            mapType tpe
-                |> Result.map
-                    (\t ->
-                        TypedDefinition t args (mapValue body)
-                    )
-                |> Result.mapError List.singleton
+    Result.map2 (\t v -> Definition t def.argumentNames v)
+        (case def.valueType of
+            Just valueType ->
+                mapType valueType
+                    |> Result.map Just
 
-        UntypedDefinition args body ->
-            UntypedDefinition args (mapValue body)
-                |> Ok
+            Nothing ->
+                Ok Nothing
+        )
+        (mapValue def.body)
+        |> Result.mapError List.singleton
 
 
 mapValueAttributes : (a -> b) -> Value a -> Value b
@@ -318,12 +313,7 @@ mapPatternAttributes f p =
 
 mapDefinitionAttributes : (a -> b) -> Definition a -> Definition b
 mapDefinitionAttributes f d =
-    case d of
-        TypedDefinition tpe args body ->
-            TypedDefinition (Type.mapTypeAttributes f tpe) args (mapValueAttributes f body)
-
-        UntypedDefinition args body ->
-            UntypedDefinition args (mapValueAttributes f body)
+    Definition (d.valueType |> Maybe.map (Type.mapTypeAttributes f)) d.argumentNames (mapValueAttributes f d.body)
 
 
 
@@ -877,7 +867,7 @@ arguments. The examples below try to visualize the process.
 -}
 typedDefinition : Type a -> List Name -> Value a -> Definition a
 typedDefinition valueType argumentNames body =
-    TypedDefinition valueType argumentNames body
+    Definition (Just valueType) argumentNames body
 
 
 {-| Untyped value or function definition.
@@ -900,7 +890,7 @@ arguments. The examples below try to visualize the process.
 -}
 untypedDefinition : List Name -> Value a -> Definition a
 untypedDefinition argumentNames body =
-    UntypedDefinition argumentNames body
+    Definition Nothing argumentNames body
 
 
 encodeValue : (a -> Encode.Value) -> Value a -> Encode.Value
@@ -1434,41 +1424,23 @@ encodeSpecification encodeAttributes spec =
 
 
 encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
-encodeDefinition encodeAttributes definition =
-    case definition of
-        TypedDefinition valueType argumentNames body ->
-            Encode.object
-                [ ( "@type", Encode.string "typedDefinition" )
-                , ( "valueType", encodeType encodeAttributes valueType )
-                , ( "argumentNames", argumentNames |> Encode.list encodeName )
-                , ( "body", encodeValue encodeAttributes body )
-                ]
+encodeDefinition encodeAttributes def =
+    Encode.list identity
+        [ Encode.string "Definition"
+        , case def.valueType of
+            Just valueType ->
+                encodeType encodeAttributes valueType
 
-        UntypedDefinition argumentNames body ->
-            Encode.object
-                [ ( "@type", Encode.string "untypedDefinition" )
-                , ( "argumentNames", argumentNames |> Encode.list encodeName )
-                , ( "body", encodeValue encodeAttributes body )
-                ]
+            Nothing ->
+                Encode.null
+        , def.argumentNames |> Encode.list encodeName
+        , encodeValue encodeAttributes def.body
+        ]
 
 
 decodeDefinition : Decode.Decoder a -> Decode.Decoder (Definition a)
 decodeDefinition decodeAttributes =
-    Decode.field "@type" Decode.string
-        |> Decode.andThen
-            (\kind ->
-                case kind of
-                    "typedDefinition" ->
-                        Decode.map3 TypedDefinition
-                            (Decode.field "valueType" <| decodeType decodeAttributes)
-                            (Decode.field "argumentNames" <| Decode.list decodeName)
-                            (Decode.field "body" <| Decode.lazy (\_ -> decodeValue decodeAttributes))
-
-                    "untypedDefinition" ->
-                        Decode.map2 UntypedDefinition
-                            (Decode.field "argumentNames" <| Decode.list decodeName)
-                            (Decode.field "body" <| Decode.lazy (\_ -> decodeValue decodeAttributes))
-
-                    other ->
-                        Decode.fail <| "Unknown definition type: " ++ other
-            )
+    Decode.map3 Definition
+        (Decode.index 1 (Decode.maybe (decodeType decodeAttributes)))
+        (Decode.index 2 (Decode.list decodeName))
+        (Decode.index 3 (Decode.lazy (\_ -> decodeValue decodeAttributes)))

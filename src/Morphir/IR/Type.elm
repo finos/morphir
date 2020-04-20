@@ -65,8 +65,8 @@ import Json.Encode as Encode
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
 import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName, fuzzFQName)
 import Morphir.IR.Name exposing (Name, decodeName, encodeName, fuzzName)
+import Morphir.ListOfResults as ListOfResults
 import Morphir.Pattern exposing (Pattern)
-import Morphir.ResultList as ResultList
 import Morphir.Rewrite exposing (Rewrite)
 
 
@@ -171,10 +171,10 @@ mapSpecification f spec =
                                             f argType
                                                 |> Result.map (Tuple.pair argName)
                                         )
-                                    |> ResultList.toResult
+                                    |> ListOfResults.liftAllErrors
                                     |> Result.map (Constructor ctorName)
                             )
-                        |> ResultList.toResult
+                        |> ListOfResults.liftAllErrors
                         |> Result.mapError List.concat
             in
             ctorsResult
@@ -202,10 +202,10 @@ mapDefinition f def =
                                             f argType
                                                 |> Result.map (Tuple.pair argName)
                                         )
-                                    |> ResultList.toResult
+                                    |> ListOfResults.liftAllErrors
                                     |> Result.map (Constructor ctorName)
                             )
-                        |> ResultList.toResult
+                        |> ListOfResults.liftAllErrors
                         |> Result.map (AccessControlled constructors.access)
                         |> Result.mapError List.concat
             in

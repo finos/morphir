@@ -13,15 +13,13 @@ module Morphir.IR.Package exposing
 -}
 
 import Dict exposing (Dict)
-import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled exposing (AccessControlled, encodeAccessControlled, withPublicAccess)
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Path exposing (Path, encodePath)
-import Morphir.IR.QName exposing (QName, encodeQName)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.ResultList as ResultList
+import Morphir.ListOfResults as ListOfResults
 
 
 type alias PackagePath =
@@ -76,7 +74,7 @@ definitionToSpecification def =
     }
 
 
-mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Specification a -> Result (List e) (Specification b)
+mapSpecification : (Type a -> Result e (Type b)) -> (Value a -> Result e (Value b)) -> Specification a -> Result (List e) (Specification b)
 mapSpecification mapType mapValue spec =
     let
         modulesResult : Result (List e) (Dict Path (Module.Specification b))
@@ -89,7 +87,7 @@ mapSpecification mapType mapValue spec =
                             |> Module.mapSpecification mapType mapValue
                             |> Result.map (Tuple.pair modulePath)
                     )
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in
@@ -101,11 +99,11 @@ eraseSpecificationAttributes spec =
     spec
         |> mapSpecification
             (Type.mapTypeAttributes (\_ -> ()) >> Ok)
-            (Value.mapValueAttributes (\_ -> ()))
+            (Value.mapValueAttributes (\_ -> ()) >> Ok)
         |> Result.withDefault emptySpecification
 
 
-mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Value b) -> Definition a -> Result (List e) (Definition b)
+mapDefinition : (Type a -> Result e (Type b)) -> (Value a -> Result e (Value b)) -> Definition a -> Result (List e) (Definition b)
 mapDefinition mapType mapValue def =
     let
         dependenciesResult : Result (List e) (Dict Path (Specification b))
@@ -118,7 +116,7 @@ mapDefinition mapType mapValue def =
                             |> mapSpecification mapType mapValue
                             |> Result.map (Tuple.pair packagePath)
                     )
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
@@ -133,7 +131,7 @@ mapDefinition mapType mapValue def =
                             |> Result.map (AccessControlled moduleDef.access)
                             |> Result.map (Tuple.pair modulePath)
                     )
-                |> ResultList.toResult
+                |> ListOfResults.liftAllErrors
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
     in
@@ -147,7 +145,7 @@ eraseDefinitionAttributes def =
     def
         |> mapDefinition
             (Type.mapTypeAttributes (\_ -> ()) >> Ok)
-            (Value.mapValueAttributes (\_ -> ()))
+            (Value.mapValueAttributes (\_ -> ()) >> Ok)
         |> Result.withDefault emptyDefinition
 
 
