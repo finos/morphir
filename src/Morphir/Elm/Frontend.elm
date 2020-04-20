@@ -368,12 +368,6 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 [ ( SDK.packageName, SDK.packageSpec )
                 ]
 
-        moduleResolver : ModuleResolver
-        moduleResolver =
-            Resolve.createModuleResolver
-                (Resolve.createPackageResolver dependencies currentPackagePath moduleDeclsSoFar)
-                (processedFile.file.imports |> List.map Node.value)
-
         typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
         typesResult =
             mapDeclarationsToType processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
@@ -391,7 +385,19 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 valuesResult
     in
     moduleResult
-        |> Result.andThen (resolveLocalNames currentPackagePath modulePath moduleResolver)
+        |> Result.andThen
+            (\moduleDef ->
+                let
+                    moduleResolver : ModuleResolver
+                    moduleResolver =
+                        Resolve.createModuleResolver
+                            (Resolve.createPackageResolver dependencies currentPackagePath moduleDeclsSoFar)
+                            (processedFile.file.imports |> List.map Node.value)
+                            modulePath
+                            moduleDef
+                in
+                resolveLocalNames moduleResolver moduleDef
+            )
         |> Result.map
             (\m ->
                 modulesSoFar
@@ -1258,8 +1264,8 @@ namesBoundByPattern p =
         |> Set.fromList
 
 
-resolveLocalNames : Path -> Path -> ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
-resolveLocalNames packagePath modulePath moduleResolver moduleDef =
+resolveLocalNames : ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
+resolveLocalNames moduleResolver moduleDef =
     let
         rewriteTypes : Type SourceLocation -> Result Errors (Type SourceLocation)
         rewriteTypes =
@@ -1267,31 +1273,9 @@ resolveLocalNames packagePath modulePath moduleResolver moduleDef =
                 (\tpe ->
                     case tpe of
                         Type.Reference sourceLocation refFullName args ->
-                            let
-                                refModulePath : Path
-                                refModulePath =
-                                    refFullName
-                                        |> FQName.getModulePath
-
-                                refLocalName : Name
-                                refLocalName =
-                                    refFullName
-                                        |> FQName.getLocalName
-
-                                resolvedFullNameResult : Result Resolve.Error FQName
-                                resolvedFullNameResult =
-                                    case moduleDef.types |> Dict.get refLocalName of
-                                        Just _ ->
-                                            if Path.isPrefixOf modulePath packagePath then
-                                                Ok (fQName packagePath (modulePath |> List.drop (List.length packagePath)) refLocalName)
-
-                                            else
-                                                Err (Resolve.PackageNotPrefixOfModule packagePath modulePath)
-
-                                        Nothing ->
-                                            moduleResolver.resolveType (refModulePath |> List.map Name.toTitleCase) (refLocalName |> Name.toTitleCase)
-                            in
-                            resolvedFullNameResult
+                            moduleResolver.resolveType
+                                (refFullName |> FQName.getModulePath |> List.map Name.toTitleCase)
+                                (refFullName |> FQName.getLocalName |> Name.toTitleCase)
                                 |> Result.map
                                     (\resolvedFullName ->
                                         Type.Reference sourceLocation resolvedFullName args
@@ -1305,14 +1289,14 @@ resolveLocalNames packagePath modulePath moduleResolver moduleDef =
 
         rewriteValues : Value SourceLocation -> Result Errors (Value SourceLocation)
         rewriteValues value =
-            resolveVariables Dict.empty value
+            resolveVariablesAndReferences Dict.empty moduleResolver value
     in
     Module.mapDefinition rewriteTypes rewriteValues moduleDef
         |> Result.mapError List.concat
 
 
-resolveVariables : Dict Name SourceLocation -> Value SourceLocation -> Result Errors (Value SourceLocation)
-resolveVariables variables value =
+resolveVariablesAndReferences : Dict Name SourceLocation -> ModuleResolver -> Value SourceLocation -> Result Errors (Value SourceLocation)
+resolveVariablesAndReferences variables moduleResolver value =
     let
         unionNames : (Name -> SourceLocation -> SourceLocation -> Error) -> Dict Name SourceLocation -> Dict Name SourceLocation -> Result Errors (Dict Name SourceLocation)
         unionNames toError namesA namesB =
@@ -1402,12 +1386,19 @@ resolveVariables variables value =
                     Ok Dict.empty
     in
     case value of
-        Value.Reference a (FQName [] [] localName) ->
+        Value.Reference sourceLocation (FQName [] modulePath localName) ->
             if variables |> Dict.member localName then
-                Ok (Value.Variable a localName)
+                Ok (Value.Variable sourceLocation localName)
 
             else
-                Ok value
+                moduleResolver.resolveValue
+                    (modulePath |> List.map Name.toTitleCase)
+                    (localName |> Name.toTitleCase)
+                    |> Result.map
+                        (\resolvedFullName ->
+                            Value.Reference sourceLocation resolvedFullName
+                        )
+                    |> Result.mapError (ResolveError sourceLocation >> List.singleton)
 
         Value.Lambda a argPattern bodyValue ->
             namesBoundInPattern argPattern
@@ -1417,13 +1408,13 @@ resolveVariables variables value =
                     )
                 |> Result.andThen
                     (\newVariables ->
-                        resolveVariables newVariables bodyValue
+                        resolveVariablesAndReferences newVariables moduleResolver bodyValue
                     )
                 |> Result.map (Value.Lambda a argPattern)
 
         Value.LetDefinition sourceLocation name def inValue ->
             Result.map2 (Value.LetDefinition sourceLocation name)
-                (resolveVariables variables def.body
+                (resolveVariablesAndReferences variables moduleResolver def.body
                     |> Result.map
                         (\resolvedBody ->
                             { def
@@ -1434,7 +1425,7 @@ resolveVariables variables value =
                 (unionVariableNames variables (Dict.singleton name sourceLocation)
                     |> Result.andThen
                         (\newVariables ->
-                            resolveVariables newVariables inValue
+                            resolveVariablesAndReferences newVariables moduleResolver inValue
                         )
                 )
 
@@ -1449,7 +1440,7 @@ resolveVariables variables value =
                                 |> Dict.toList
                                 |> List.map
                                     (\( name, def ) ->
-                                        resolveVariables newVariables def.body
+                                        resolveVariablesAndReferences newVariables moduleResolver def.body
                                             |> Result.map
                                                 (\resolvedBody ->
                                                     ( name
@@ -1463,12 +1454,12 @@ resolveVariables variables value =
                                 |> Result.mapError List.concat
                                 |> Result.map Dict.fromList
                             )
-                            (resolveVariables newVariables inValue)
+                            (resolveVariablesAndReferences newVariables moduleResolver inValue)
                     )
 
         Value.Destructure a pattern subjectValue inValue ->
             Result.map2 (Value.Destructure a pattern)
-                (resolveVariables variables subjectValue)
+                (resolveVariablesAndReferences variables moduleResolver subjectValue)
                 (namesBoundInPattern pattern
                     |> Result.andThen
                         (\patternNames ->
@@ -1476,13 +1467,13 @@ resolveVariables variables value =
                         )
                     |> Result.andThen
                         (\newVariables ->
-                            resolveVariables newVariables inValue
+                            resolveVariablesAndReferences newVariables moduleResolver inValue
                         )
                 )
 
         Value.PatternMatch a matchValue cases ->
             Result.map2 (Value.PatternMatch a)
-                (resolveVariables variables matchValue)
+                (resolveVariablesAndReferences variables moduleResolver matchValue)
                 (cases
                     |> List.map
                         (\( casePattern, caseValue ) ->
@@ -1493,7 +1484,7 @@ resolveVariables variables value =
                                     )
                                 |> Result.andThen
                                     (\newVariables ->
-                                        resolveVariables newVariables caseValue
+                                        resolveVariablesAndReferences newVariables moduleResolver caseValue
                                     )
                                 |> Result.map (Tuple.pair casePattern)
                         )
@@ -1503,14 +1494,14 @@ resolveVariables variables value =
 
         Value.Tuple a elems ->
             elems
-                |> List.map (resolveVariables variables)
+                |> List.map (resolveVariablesAndReferences variables moduleResolver)
                 |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.Tuple a)
 
         Value.List a items ->
             items
-                |> List.map (resolveVariables variables)
+                |> List.map (resolveVariablesAndReferences variables moduleResolver)
                 |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
                 |> Result.map (Value.List a)
@@ -1519,7 +1510,7 @@ resolveVariables variables value =
             fields
                 |> List.map
                     (\( fieldName, fieldValue ) ->
-                        resolveVariables variables fieldValue
+                        resolveVariablesAndReferences variables moduleResolver fieldValue
                             |> Result.map (Tuple.pair fieldName)
                     )
                 |> ListOfResults.liftAllErrors
@@ -1527,27 +1518,27 @@ resolveVariables variables value =
                 |> Result.map (Value.Record a)
 
         Value.Field a subjectValue fieldName ->
-            resolveVariables variables subjectValue
+            resolveVariablesAndReferences variables moduleResolver subjectValue
                 |> Result.map (\s -> Value.Field a s fieldName)
 
         Value.Apply a funValue argValue ->
             Result.map2 (Value.Apply a)
-                (resolveVariables variables funValue)
-                (resolveVariables variables argValue)
+                (resolveVariablesAndReferences variables moduleResolver funValue)
+                (resolveVariablesAndReferences variables moduleResolver argValue)
 
         Value.IfThenElse a condValue thenValue elseValue ->
             Result.map3 (Value.IfThenElse a)
-                (resolveVariables variables condValue)
-                (resolveVariables variables thenValue)
-                (resolveVariables variables elseValue)
+                (resolveVariablesAndReferences variables moduleResolver condValue)
+                (resolveVariablesAndReferences variables moduleResolver thenValue)
+                (resolveVariablesAndReferences variables moduleResolver elseValue)
 
         Value.UpdateRecord a subjectValue newFieldValues ->
             Result.map2 (Value.UpdateRecord a)
-                (resolveVariables variables subjectValue)
+                (resolveVariablesAndReferences variables moduleResolver subjectValue)
                 (newFieldValues
                     |> List.map
                         (\( fieldName, fieldValue ) ->
-                            resolveVariables variables fieldValue
+                            resolveVariablesAndReferences variables moduleResolver fieldValue
                                 |> Result.map (Tuple.pair fieldName)
                         )
                     |> ListOfResults.liftAllErrors

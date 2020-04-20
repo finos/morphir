@@ -13,7 +13,6 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type
 import Morphir.JsonExtra as JsonExtra
-import Morphir.Pattern exposing (matchAny)
 import Set exposing (Set)
 
 
@@ -86,7 +85,8 @@ type alias ModuleResolver =
 
 
 type alias PackageResolver =
-    { ctorNames : ModuleName -> LocalName -> Result Error (List String)
+    { packagePath : Path
+    , ctorNames : ModuleName -> LocalName -> Result Error (List String)
     , exposesType : ModuleName -> LocalName -> Result Error Bool
     , exposesValue : ModuleName -> LocalName -> Result Error Bool
     , decomposeModuleName : ModuleName -> Result Error ( Path, Path )
@@ -242,11 +242,11 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                     )
                 |> Result.fromMaybe (CouldNotDecompose moduleName)
     in
-    PackageResolver ctorNames exposesType exposesValue decomposeModuleName
+    PackageResolver currentPackagePath ctorNames exposesType exposesValue decomposeModuleName
 
 
-createModuleResolver : PackageResolver -> List Import -> ModuleResolver
-createModuleResolver packageResolver explicitImports =
+createModuleResolver : PackageResolver -> List Import -> Path -> Module.Definition a -> ModuleResolver
+createModuleResolver packageResolver explicitImports currenctModulePath moduleDef =
     let
         imports : List Import
         imports =
@@ -402,14 +402,43 @@ createModuleResolver packageResolver explicitImports =
                     else
                         Err (ModuleNotImported fullModuleName)
 
-        resolve : Bool -> ModuleName -> LocalName -> Result Error FQName
-        resolve isType moduleName localName =
+        resolveExternally : Bool -> ModuleName -> LocalName -> Result Error FQName
+        resolveExternally isType moduleName localName =
             resolveModuleName isType moduleName localName
                 |> Result.andThen packageResolver.decomposeModuleName
                 |> Result.map
                     (\( packagePath, modulePath ) ->
                         fQName packagePath modulePath (Name.fromString localName)
                     )
+
+        resolve : Bool -> ModuleName -> LocalName -> Result Error FQName
+        resolve isType elmModuleName elmLocalName =
+            if List.isEmpty elmModuleName then
+                -- If the name is not prefixed with a module we need to look it up within the module first
+                let
+                    localNames =
+                        if isType then
+                            moduleDef.types |> Dict.keys
+
+                        else
+                            moduleDef.values |> Dict.keys
+
+                    localName =
+                        elmLocalName |> Name.fromString
+                in
+                if localNames |> List.member localName then
+                    if Path.isPrefixOf currenctModulePath packageResolver.packagePath then
+                        Ok (fQName packageResolver.packagePath (currenctModulePath |> List.drop (List.length packageResolver.packagePath)) localName)
+
+                    else
+                        Err (PackageNotPrefixOfModule packageResolver.packagePath currenctModulePath)
+
+                else
+                    resolveExternally isType elmModuleName elmLocalName
+
+            else
+                -- If the name is prefixed with a module we can skip the local resolution
+                resolveExternally isType elmModuleName elmLocalName
 
         resolveType : ModuleName -> LocalName -> Result Error FQName
         resolveType =

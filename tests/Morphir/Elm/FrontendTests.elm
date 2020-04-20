@@ -2,6 +2,7 @@ module Morphir.Elm.FrontendTests exposing (..)
 
 import Dict
 import Expect exposing (Expectation)
+import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.FQName exposing (fQName)
@@ -186,6 +187,25 @@ valueTests =
                 String.join "\n"
                     [ "module Test exposing (..)"
                     , ""
+                    , "import Bar as Bar"
+                    , "import MyPack.Bar"
+                    , ""
+                    , "foo = 0"
+                    , ""
+                    , "bar = 0"
+                    , ""
+                    , "baz = 0"
+                    , ""
+                    , "a = 1"
+                    , ""
+                    , "b = 2"
+                    , ""
+                    , "c = 3"
+                    , ""
+                    , "d = 4"
+                    , ""
+                    , "f = 5"
+                    , ""
                     , "testValue = " ++ sourceValue
                     ]
             }
@@ -198,32 +218,7 @@ valueTests =
                         |> Result.map Package.eraseDefinitionAttributes
                         |> Result.mapError
                             (\errors ->
-                                errors
-                                    |> List.map
-                                        (\error ->
-                                            case error of
-                                                Frontend.ParseError _ _ ->
-                                                    "Parse Error"
-
-                                                Frontend.CyclicModules _ ->
-                                                    "Cyclic Modules"
-
-                                                Frontend.ResolveError _ _ ->
-                                                    "Resolve Error"
-
-                                                Frontend.EmptyApply _ ->
-                                                    "Empty Apply"
-
-                                                Frontend.NotSupported _ expType ->
-                                                    "Not Supported: " ++ expType
-
-                                                Frontend.DuplicateNameInPattern name _ _ ->
-                                                    "Duplicate name in pattern: " ++ Name.toCamelCase name
-
-                                                Frontend.VariableShadowing name _ _ ->
-                                                    "Variable shadowing: " ++ Name.toCamelCase name
-                                        )
-                                    |> String.join ", "
+                                Encode.encode 0 (Encode.list Frontend.encodeError errors)
                             )
                         |> Result.andThen
                             (\packageDef ->
@@ -242,7 +237,7 @@ valueTests =
 
         ref : String -> Value ()
         ref name =
-            Reference () (fQName [] [] [ name ])
+            Reference () (fQName [] [ [ "test" ] ] [ name ])
 
         var : String -> Value ()
         var name =
