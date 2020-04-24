@@ -1,30 +1,13 @@
-module Morphir.IR.FQName exposing
-    ( FQName(..), fQName, fromQName, getPackagePath, getModulePath, getLocalName
-    , fuzzFQName
-    , encodeFQName, decodeFQName
-    )
+module Morphir.IR.FQName exposing (FQName(..), fQName, fromQName, getPackagePath, getModulePath, getLocalName)
 
 {-| Module to work with fully-qualified names. A qualified name is a combination of a package path, a module path and a local name.
 
 @docs FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName
 
-
-# Property Testing
-
-@docs fuzzFQName
-
-
-# Serialization
-
-@docs encodeFQName, decodeFQName
-
 -}
 
-import Fuzz exposing (Fuzzer)
-import Json.Decode as Decode
-import Json.Encode as Encode
-import Morphir.IR.Name exposing (Name, decodeName, encodeName, fuzzName)
-import Morphir.IR.Path exposing (Path, decodePath, encodePath, fuzzPath)
+import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Path exposing (Path)
 import Morphir.IR.QName as QName exposing (QName)
 
 
@@ -67,34 +50,3 @@ getModulePath (FQName _ m _) =
 getLocalName : FQName -> Name
 getLocalName (FQName _ _ l) =
     l
-
-
-{-| FQName fuzzer.
--}
-fuzzFQName : Fuzzer FQName
-fuzzFQName =
-    Fuzz.map3 FQName
-        fuzzPath
-        fuzzPath
-        fuzzName
-
-
-{-| Encode a fully-qualified name to JSON.
--}
-encodeFQName : FQName -> Encode.Value
-encodeFQName (FQName packagePath modulePath localName) =
-    Encode.list identity
-        [ packagePath |> encodePath
-        , modulePath |> encodePath
-        , localName |> encodeName
-        ]
-
-
-{-| Decode a fully-qualified name from JSON.
--}
-decodeFQName : Decode.Decoder FQName
-decodeFQName =
-    Decode.map3 FQName
-        (Decode.index 0 decodePath)
-        (Decode.index 1 decodePath)
-        (Decode.index 2 decodeName)

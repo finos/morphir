@@ -3,8 +3,7 @@ module Morphir.IR.SDK.Composition exposing (..)
 import Dict
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Common exposing (binaryApply, toFQName)
-import Morphir.IR.Type exposing (Specification(..), Type(..))
+import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Value as Value exposing (Value)
 
 
@@ -22,11 +21,11 @@ moduleSpec =
     }
 
 
-composeLeft : a -> Value a -> Value a -> Value a
-composeLeft =
-    binaryApply moduleName "composeLeft"
+composeLeft : a -> Value a
+composeLeft a =
+    Value.Reference a (toFQName moduleName "composeLeft")
 
 
-composeRight : a -> Value a -> Value a -> Value a
-composeRight =
-    binaryApply moduleName "composeRight"
+composeRight : a -> Value a
+composeRight a =
+    Value.Reference a (toFQName moduleName "composeRight")

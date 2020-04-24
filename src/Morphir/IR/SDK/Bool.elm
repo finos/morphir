@@ -4,7 +4,7 @@ import Dict
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
-import Morphir.IR.SDK.Common exposing (binaryApply, toFQName)
+import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
@@ -30,11 +30,11 @@ boolType attributes =
     Reference attributes (toFQName moduleName "Bool") []
 
 
-and : a -> Value a -> Value a -> Value a
-and =
-    binaryApply moduleName "and"
+and : a -> Value a
+and a =
+    Value.Reference a (toFQName moduleName "and")
 
 
-or : a -> Value a -> Value a -> Value a
-or =
-    binaryApply moduleName "or"
+or : a -> Value a
+or a =
+    Value.Reference a (toFQName moduleName "or")

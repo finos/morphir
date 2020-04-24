@@ -22,7 +22,8 @@ import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.FQName as FQName exposing (FQName(..), fQName)
 import Morphir.IR.Module as Module
-import Morphir.IR.Name as Name exposing (Name, encodeName)
+import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName as QName
@@ -37,6 +38,7 @@ import Morphir.IR.SDK.Int as Int
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type.Rewrite exposing (rewriteType)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.JsonExtra as JsonExtra
 import Morphir.ListOfResults as ListOfResults
@@ -657,16 +659,16 @@ mapFunctionImplementation sourceFile argumentNodes expression =
         sourceLocation range =
             range |> SourceLocation sourceFile
 
-        extractNamedParams : List Name -> List (Node Pattern) -> ( List Name, List (Node Pattern) )
+        extractNamedParams : List ( Name, SourceLocation ) -> List (Node Pattern) -> ( List ( Name, SourceLocation ), List (Node Pattern) )
         extractNamedParams namedParams patternParams =
             case patternParams of
                 [] ->
                     ( namedParams, patternParams )
 
-                (Node _ firstParam) :: restOfParams ->
+                (Node range firstParam) :: restOfParams ->
                     case firstParam of
                         VarPattern paramName ->
-                            extractNamedParams (namedParams ++ [ Name.fromString paramName ]) restOfParams
+                            extractNamedParams (namedParams ++ [ ( Name.fromString paramName, range |> SourceLocation sourceFile ) ]) restOfParams
 
                         _ ->
                             ( namedParams, patternParams )
@@ -729,18 +731,45 @@ mapExpression sourceFile (Node range exp) =
                 |> Result.andThen (List.reverse >> toApply)
 
         Expression.OperatorApplication op _ leftNode rightNode ->
-            mapOperator sourceFile sourceLocation op leftNode rightNode
+            case op of
+                "<|" ->
+                    -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
+                    Result.map2 (Value.Apply sourceLocation)
+                        (mapExpression sourceFile leftNode)
+                        (mapExpression sourceFile rightNode)
 
-        Expression.FunctionOrValue moduleName valueName ->
-            case ( moduleName, valueName ) of
-                ( [], "True" ) ->
-                    Ok (Value.Literal sourceLocation (Value.BoolLiteral True))
-
-                ( [], "False" ) ->
-                    Ok (Value.Literal sourceLocation (Value.BoolLiteral False))
+                "|>" ->
+                    -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
+                    Result.map2 (Value.Apply sourceLocation)
+                        (mapExpression sourceFile rightNode)
+                        (mapExpression sourceFile leftNode)
 
                 _ ->
-                    Ok (Value.Reference sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (valueName |> Name.fromString)))
+                    Result.map3 (\fun arg1 arg2 -> Value.Apply sourceLocation (Value.Apply sourceLocation fun arg1) arg2)
+                        (mapOperator sourceLocation op)
+                        (mapExpression sourceFile leftNode)
+                        (mapExpression sourceFile rightNode)
+
+        Expression.FunctionOrValue moduleName localName ->
+            localName
+                |> String.uncons
+                |> Result.fromMaybe [ NotSupported sourceLocation "Empty value name" ]
+                |> Result.andThen
+                    (\( firstChar, _ ) ->
+                        if Char.isUpper firstChar then
+                            case ( moduleName, localName ) of
+                                ( [], "True" ) ->
+                                    Ok (Value.Literal sourceLocation (Value.BoolLiteral True))
+
+                                ( [], "False" ) ->
+                                    Ok (Value.Literal sourceLocation (Value.BoolLiteral False))
+
+                                _ ->
+                                    Ok (Value.Constructor sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (localName |> Name.fromString)))
+
+                        else
+                            Ok (Value.Reference sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (localName |> Name.fromString)))
+                    )
 
         Expression.IfBlock condNode thenNode elseNode ->
             Result.map3 (Value.IfThenElse sourceLocation)
@@ -748,11 +777,11 @@ mapExpression sourceFile (Node range exp) =
                 (mapExpression sourceFile thenNode)
                 (mapExpression sourceFile elseNode)
 
-        Expression.PrefixOperator _ ->
-            Err [ NotSupported sourceLocation "TODO: PrefixOperator" ]
+        Expression.PrefixOperator op ->
+            mapOperator sourceLocation op
 
-        Expression.Operator _ ->
-            Err [ NotSupported sourceLocation "TODO: Operator" ]
+        Expression.Operator op ->
+            mapOperator sourceLocation op
 
         Expression.Integer value ->
             Ok (Value.Literal sourceLocation (Value.IntLiteral value))
@@ -949,81 +978,62 @@ mapPattern sourceFile (Node range pattern) =
             mapPattern sourceFile childNode
 
 
-mapOperator : SourceFile -> SourceLocation -> String -> Node Expression -> Node Expression -> Result Errors (Value.Value SourceLocation)
-mapOperator sourceFile sourceLocation op leftNode rightNode =
-    let
-        applyBinary : (SourceLocation -> Value SourceLocation -> Value SourceLocation -> Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
-        applyBinary fun =
-            Result.map2 (fun sourceLocation)
-                (mapExpression sourceFile leftNode)
-                (mapExpression sourceFile rightNode)
-    in
+mapOperator : SourceLocation -> String -> Result Errors (Value.Value SourceLocation)
+mapOperator sourceLocation op =
     case op of
-        "<|" ->
-            -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
-            Result.map2 (Value.Apply sourceLocation)
-                (mapExpression sourceFile leftNode)
-                (mapExpression sourceFile rightNode)
-
-        "|>" ->
-            -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
-            Result.map2 (Value.Apply sourceLocation)
-                (mapExpression sourceFile rightNode)
-                (mapExpression sourceFile leftNode)
-
         "||" ->
-            applyBinary Bool.or
+            Ok <| Bool.or sourceLocation
 
         "&&" ->
-            applyBinary Bool.and
+            Ok <| Bool.and sourceLocation
 
         "==" ->
-            applyBinary Equality.equal
+            Ok <| Equality.equal sourceLocation
 
         "/=" ->
-            applyBinary Equality.notEqual
+            Ok <| Equality.notEqual sourceLocation
 
         "<" ->
-            applyBinary Comparison.lessThan
+            Ok <| Comparison.lessThan sourceLocation
 
         ">" ->
-            applyBinary Comparison.greaterThan
+            Ok <| Comparison.greaterThan sourceLocation
 
         "<=" ->
-            applyBinary Comparison.lessThanOrEqual
+            Ok <| Comparison.lessThanOrEqual sourceLocation
 
         ">=" ->
-            applyBinary Comparison.greaterThanOrEqual
+            Ok <| Comparison.greaterThanOrEqual sourceLocation
 
         "++" ->
-            applyBinary Appending.append
+            Ok <| Appending.append sourceLocation
 
         "+" ->
-            applyBinary Number.add
+            Ok <| Number.add sourceLocation
 
         "-" ->
-            applyBinary Number.subtract
+            Ok <| Number.subtract sourceLocation
 
         "*" ->
-            applyBinary Number.multiply
+            Ok <| Number.multiply sourceLocation
 
         "/" ->
-            applyBinary Float.divide
+            Ok <| Float.divide sourceLocation
 
         "//" ->
-            applyBinary Int.divide
+            Ok <| Int.divide sourceLocation
 
         "^" ->
-            applyBinary Number.power
+            Ok <| Number.power sourceLocation
 
         "<<" ->
-            applyBinary Composition.composeLeft
+            Ok <| Composition.composeLeft sourceLocation
 
         ">>" ->
-            applyBinary Composition.composeRight
+            Ok <| Composition.composeRight sourceLocation
 
         "::" ->
-            applyBinary List.construct
+            Ok <| List.construct sourceLocation
 
         _ ->
             Err [ NotSupported sourceLocation <| "OperatorApplication: " ++ op ]
@@ -1269,7 +1279,7 @@ resolveLocalNames moduleResolver moduleDef =
     let
         rewriteTypes : Type SourceLocation -> Result Errors (Type SourceLocation)
         rewriteTypes =
-            Rewrite.bottomUp Type.rewriteType
+            Rewrite.bottomUp rewriteType
                 (\tpe ->
                     case tpe of
                         Type.Reference sourceLocation refFullName args ->
@@ -1287,12 +1297,50 @@ resolveLocalNames moduleResolver moduleDef =
                             Nothing
                 )
 
-        rewriteValues : Value SourceLocation -> Result Errors (Value SourceLocation)
-        rewriteValues value =
-            resolveVariablesAndReferences Dict.empty moduleResolver value
+        rewriteValues : Dict Name SourceLocation -> Value SourceLocation -> Result Errors (Value SourceLocation)
+        rewriteValues variables value =
+            resolveVariablesAndReferences variables moduleResolver value
+
+        typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
+        typesResult =
+            moduleDef.types
+                |> Dict.toList
+                |> List.map
+                    (\( typeName, typeDef ) ->
+                        typeDef.value
+                            |> Type.mapDefinition rewriteTypes
+                            |> Result.map (AccessControlled typeDef.access)
+                            |> Result.map (Tuple.pair typeName)
+                            |> Result.mapError List.concat
+                    )
+                |> ListOfResults.liftAllErrors
+                |> Result.map Dict.fromList
+                |> Result.mapError List.concat
+
+        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation)))
+        valuesResult =
+            moduleDef.values
+                |> Dict.toList
+                |> List.map
+                    (\( valueName, valueDef ) ->
+                        let
+                            variables : Dict Name SourceLocation
+                            variables =
+                                valueDef.value.arguments |> Dict.fromList
+                        in
+                        valueDef.value
+                            |> Value.mapDefinition rewriteTypes (rewriteValues variables)
+                            |> Result.map (AccessControlled valueDef.access)
+                            |> Result.map (Tuple.pair valueName)
+                            |> Result.mapError List.concat
+                    )
+                |> ListOfResults.liftAllErrors
+                |> Result.map Dict.fromList
+                |> Result.mapError List.concat
     in
-    Module.mapDefinition rewriteTypes rewriteValues moduleDef
-        |> Result.mapError List.concat
+    Result.map2 Module.Definition
+        typesResult
+        valuesResult
 
 
 resolveVariablesAndReferences : Dict Name SourceLocation -> ModuleResolver -> Value SourceLocation -> Result Errors (Value SourceLocation)
@@ -1393,7 +1441,7 @@ resolveVariablesAndReferences variables moduleResolver value =
             else
                 moduleResolver.resolveValue
                     (modulePath |> List.map Name.toTitleCase)
-                    (localName |> Name.toTitleCase)
+                    (localName |> Name.toCamelCase)
                     |> Result.map
                         (\resolvedFullName ->
                             Value.Reference sourceLocation resolvedFullName
@@ -1414,12 +1462,19 @@ resolveVariablesAndReferences variables moduleResolver value =
 
         Value.LetDefinition sourceLocation name def inValue ->
             Result.map2 (Value.LetDefinition sourceLocation name)
-                (resolveVariablesAndReferences variables moduleResolver def.body
-                    |> Result.map
-                        (\resolvedBody ->
-                            { def
-                                | body = resolvedBody
-                            }
+                (def.arguments
+                    |> Dict.fromList
+                    |> Dict.insert name sourceLocation
+                    |> unionVariableNames variables
+                    |> Result.andThen
+                        (\variablesDefNameAndArgs ->
+                            resolveVariablesAndReferences variablesDefNameAndArgs moduleResolver def.body
+                                |> Result.map
+                                    (\resolvedBody ->
+                                        { def
+                                            | body = resolvedBody
+                                        }
+                                    )
                         )
                 )
                 (unionVariableNames variables (Dict.singleton name sourceLocation)
@@ -1434,27 +1489,33 @@ resolveVariablesAndReferences variables moduleResolver value =
                 |> Dict.map (\_ _ -> sourceLocation)
                 |> unionVariableNames variables
                 |> Result.andThen
-                    (\newVariables ->
+                    (\variablesAndDefNames ->
                         Result.map2 (Value.LetRecursion sourceLocation)
                             (defs
                                 |> Dict.toList
                                 |> List.map
                                     (\( name, def ) ->
-                                        resolveVariablesAndReferences newVariables moduleResolver def.body
-                                            |> Result.map
-                                                (\resolvedBody ->
-                                                    ( name
-                                                    , { def
-                                                        | body = resolvedBody
-                                                      }
-                                                    )
+                                        def.arguments
+                                            |> Dict.fromList
+                                            |> unionVariableNames variablesAndDefNames
+                                            |> Result.andThen
+                                                (\variablesDefNamesAndArgs ->
+                                                    resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body
+                                                        |> Result.map
+                                                            (\resolvedBody ->
+                                                                ( name
+                                                                , { def
+                                                                    | body = resolvedBody
+                                                                  }
+                                                                )
+                                                            )
                                                 )
                                     )
                                 |> ListOfResults.liftAllErrors
                                 |> Result.mapError List.concat
                                 |> Result.map Dict.fromList
                             )
-                            (resolveVariablesAndReferences newVariables moduleResolver inValue)
+                            (resolveVariablesAndReferences variablesAndDefNames moduleResolver inValue)
                     )
 
         Value.Destructure a pattern subjectValue inValue ->

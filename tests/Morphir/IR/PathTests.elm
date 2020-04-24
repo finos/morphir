@@ -1,10 +1,12 @@
 module Morphir.IR.PathTests exposing (..)
 
 import Expect
+import Json.Encode exposing (encode)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
+import Morphir.IR.Path.Codec exposing (encodePath)
 import Test exposing (..)
-import Json.Encode exposing (encode)
+
 
 isPrefixOfTests : Test
 isPrefixOfTests =
@@ -31,6 +33,7 @@ isPrefixOfTests =
         , isPrefixOf [ [ "foo" ], [ "bar" ] ] [ [ "foo" ], [ "bar" ] ] True
         ]
 
+
 encodePathTests : Test
 encodePathTests =
     let
@@ -38,11 +41,11 @@ encodePathTests =
             test ("encodePath " ++ (expectedJsonText ++ " ")) <|
                 \_ ->
                     Path.fromList input
-                        |> Path.encodePath
+                        |> encodePath
                         |> encode 0
                         |> Expect.equal expectedJsonText
     in
     describe "encodePath"
-        [ assert (Path.fromList [Name.fromList ["alpha"], Name.fromList ["beta"], Name.fromList ["gamma"]])  """[["alpha"],["beta"],["gamma"]]"""
-        , assert (Path.fromList [Name.fromList ["alpha","omega"], Name.fromList ["beta","delta"], Name.fromList ["gamma"]])  """[["alpha","omega"],["beta","delta"],["gamma"]]"""
+        [ assert (Path.fromList [ Name.fromList [ "alpha" ], Name.fromList [ "beta" ], Name.fromList [ "gamma" ] ]) """[["alpha"],["beta"],["gamma"]]"""
+        , assert (Path.fromList [ Name.fromList [ "alpha", "omega" ], Name.fromList [ "beta", "delta" ], Name.fromList [ "gamma" ] ]) """[["alpha","omega"],["beta","delta"],["gamma"]]"""
         ]

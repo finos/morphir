@@ -1,13 +1,11 @@
 module Morphir.IR.Type exposing
     ( Type(..)
     , variable, reference, tuple, record, extensibleRecord, function, unit
-    , Field, matchField, mapFieldName, mapFieldType
+    , Field, mapFieldName, mapFieldType
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
-    , Definition(..), typeAliasDefinition, customTypeDefinition
+    , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification
     , Constructors, Constructor(..)
-    , fuzzType
-    , encodeType, decodeType, encodeSpecification, encodeDefinition
-    , definitionToSpecification, eraseAttributes, mapDefinition, mapSpecification, mapTypeAttributes, rewriteType
+    , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -23,24 +21,19 @@ module Morphir.IR.Type exposing
 @docs variable, reference, tuple, record, extensibleRecord, function, unit
 
 
-## Matching
-
-@docs matchVariable, matchReference, matchTuple, matchRecord, matchExtensibleRecord, matchFunction, matchUnit
-
-
 # Record Field
 
-@docs Field, matchField, mapFieldName, mapFieldType
+@docs Field, mapFieldName, mapFieldType
 
 
 # Specification
 
-@docs Specification, typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification, matchCustomTypeSpecification
+@docs Specification, typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
 
 
 # Definition
 
-@docs Definition, typeAliasDefinition, customTypeDefinition
+@docs Definition, typeAliasDefinition, customTypeDefinition, definitionToSpecification
 
 
 # Constructors
@@ -48,27 +41,16 @@ module Morphir.IR.Type exposing
 @docs Constructors, Constructor
 
 
-# Property Testing
+# Mapping
 
-@docs fuzzType
-
-
-# Serialization
-
-@docs encodeType, decodeType, encodeSpecification, encodeDefinition
+@docs mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes
 
 -}
 
-import Fuzz exposing (Fuzzer)
-import Json.Decode as Decode
-import Json.Encode as Encode
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, withPublicAccess)
-import Morphir.IR.AccessControlled.Codec exposing (encodeAccessControlled)
-import Morphir.IR.FQName exposing (FQName, decodeFQName, encodeFQName, fuzzFQName)
-import Morphir.IR.Name exposing (Name, decodeName, encodeName, fuzzName)
+import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.Name exposing (Name)
 import Morphir.ListOfResults as ListOfResults
-import Morphir.Pattern exposing (Pattern)
-import Morphir.Rewrite exposing (Rewrite)
 
 
 {-| An opaque representation of a type. Check out the docs for each building blocks
@@ -132,6 +114,7 @@ type Constructor a
     = Constructor Name (List ( Name, Type a ))
 
 
+{-| -}
 definitionToSpecification : Definition a -> Specification a
 definitionToSpecification def =
     case def of
@@ -147,41 +130,33 @@ definitionToSpecification def =
                     OpaqueTypeSpecification params
 
 
-mapSpecification : (Type a -> Result e (Type b)) -> Specification a -> Result (List e) (Specification b)
-mapSpecification f spec =
+{-| -}
+mapSpecificationAttributes : (a -> b) -> Specification a -> Specification b
+mapSpecificationAttributes f spec =
     case spec of
         TypeAliasSpecification params tpe ->
-            f tpe
-                |> Result.map (TypeAliasSpecification params)
-                |> Result.mapError List.singleton
+            TypeAliasSpecification params (mapTypeAttributes f tpe)
 
         OpaqueTypeSpecification params ->
             OpaqueTypeSpecification params
-                |> Ok
 
         CustomTypeSpecification params constructors ->
-            let
-                ctorsResult : Result (List e) (Constructors b)
-                ctorsResult =
-                    constructors
-                        |> List.map
-                            (\(Constructor ctorName ctorArgs) ->
-                                ctorArgs
+            CustomTypeSpecification params
+                (constructors
+                    |> List.map
+                        (\(Constructor ctorName ctorArgs) ->
+                            Constructor ctorName
+                                (ctorArgs
                                     |> List.map
                                         (\( argName, argType ) ->
-                                            f argType
-                                                |> Result.map (Tuple.pair argName)
+                                            ( argName, mapTypeAttributes f argType )
                                         )
-                                    |> ListOfResults.liftAllErrors
-                                    |> Result.map (Constructor ctorName)
-                            )
-                        |> ListOfResults.liftAllErrors
-                        |> Result.mapError List.concat
-            in
-            ctorsResult
-                |> Result.map (CustomTypeSpecification params)
+                                )
+                        )
+                )
 
 
+{-| -}
 mapDefinition : (Type a -> Result e (Type b)) -> Definition a -> Result (List e) (Definition b)
 mapDefinition f def =
     case def of
@@ -214,6 +189,32 @@ mapDefinition f def =
                 |> Result.map (CustomTypeDefinition params)
 
 
+{-| -}
+mapDefinitionAttributes : (a -> b) -> Definition a -> Definition b
+mapDefinitionAttributes f def =
+    case def of
+        TypeAliasDefinition params tpe ->
+            TypeAliasDefinition params (mapTypeAttributes f tpe)
+
+        CustomTypeDefinition params constructors ->
+            CustomTypeDefinition params
+                (AccessControlled constructors.access
+                    (constructors.value
+                        |> List.map
+                            (\(Constructor ctorName ctorArgs) ->
+                                Constructor ctorName
+                                    (ctorArgs
+                                        |> List.map
+                                            (\( argName, argType ) ->
+                                                ( argName, mapTypeAttributes f argType )
+                                            )
+                                    )
+                            )
+                    )
+                )
+
+
+{-| -}
 mapTypeAttributes : (a -> b) -> Type a -> Type b
 mapTypeAttributes f tpe =
     case tpe of
@@ -239,6 +240,7 @@ mapTypeAttributes f tpe =
             Unit (f a)
 
 
+{-| -}
 typeAttributes : Type a -> a
 typeAttributes tpe =
     case tpe of
@@ -264,6 +266,7 @@ typeAttributes tpe =
             a
 
 
+{-| -}
 eraseAttributes : Definition a -> Definition ()
 eraseAttributes typeDef =
     case typeDef of
@@ -431,86 +434,6 @@ customTypeSpecification typeParams ctors =
     CustomTypeSpecification typeParams ctors
 
 
-rewriteType : Rewrite e (Type a)
-rewriteType rewriteBranch rewriteLeaf typeToRewrite =
-    case typeToRewrite of
-        Reference a fQName argTypes ->
-            argTypes
-                |> List.foldr
-                    (\nextArg resultSoFar ->
-                        Result.map2 (::)
-                            (rewriteBranch nextArg)
-                            resultSoFar
-                    )
-                    (Ok [])
-                |> Result.map (Reference a fQName)
-
-        Tuple a elemTypes ->
-            elemTypes
-                |> List.foldr
-                    (\nextArg resultSoFar ->
-                        Result.map2 (::)
-                            (rewriteBranch nextArg)
-                            resultSoFar
-                    )
-                    (Ok [])
-                |> Result.map (Tuple a)
-
-        Record a fieldTypes ->
-            fieldTypes
-                |> List.foldr
-                    (\field resultSoFar ->
-                        Result.map2 (::)
-                            (rewriteBranch field.tpe
-                                |> Result.map (Field field.name)
-                            )
-                            resultSoFar
-                    )
-                    (Ok [])
-                |> Result.map (Record a)
-
-        ExtensibleRecord a varName fieldTypes ->
-            fieldTypes
-                |> List.foldr
-                    (\field resultSoFar ->
-                        Result.map2 (::)
-                            (rewriteBranch field.tpe
-                                |> Result.map (Field field.name)
-                            )
-                            resultSoFar
-                    )
-                    (Ok [])
-                |> Result.map (ExtensibleRecord a varName)
-
-        Function a argType returnType ->
-            Result.map2 (Function a)
-                (rewriteBranch argType)
-                (rewriteBranch returnType)
-
-        _ ->
-            rewriteLeaf typeToRewrite
-
-
-{-| Matches a field.
-
-    let
-        field =
-            field [ "foo" ] SDK.Basics.intType
-
-        pattern =
-            matchField matchAny matchAny
-    in
-    pattern field
-        == Just ( [ "foo" ], SDK.Basics.intType )
-
--}
-matchField : Pattern Name a -> Pattern (Type a) b -> Pattern (Field a) ( a, b )
-matchField matchFieldName matchFieldType field =
-    Maybe.map2 Tuple.pair
-        (matchFieldName field.name)
-        (matchFieldType field.tpe)
-
-
 {-| Map the name of the field to get a new field.
 -}
 mapFieldName : (Name -> Name) -> Field a -> Field a
@@ -523,274 +446,3 @@ mapFieldName f field =
 mapFieldType : (Type a -> Type b) -> Field a -> Field b
 mapFieldType f field =
     Field field.name (f field.tpe)
-
-
-{-| Generate random types.
--}
-fuzzType : Int -> Fuzzer a -> Fuzzer (Type a)
-fuzzType maxDepth fuzzAttributes =
-    let
-        fuzzField depth =
-            Fuzz.map2 Field
-                fuzzName
-                (fuzzType depth fuzzAttributes)
-
-        fuzzVariable =
-            Fuzz.map2 Variable
-                fuzzAttributes
-                fuzzName
-
-        fuzzReference depth =
-            Fuzz.map3 Reference
-                fuzzAttributes
-                fuzzFQName
-                (Fuzz.list (fuzzType depth fuzzAttributes) |> Fuzz.map (List.take depth))
-
-        fuzzTuple depth =
-            Fuzz.map2 Tuple
-                fuzzAttributes
-                (Fuzz.list (fuzzType depth fuzzAttributes) |> Fuzz.map (List.take depth))
-
-        fuzzRecord depth =
-            Fuzz.map2 Record
-                fuzzAttributes
-                (Fuzz.list (fuzzField (depth - 1)) |> Fuzz.map (List.take depth))
-
-        fuzzExtensibleRecord depth =
-            Fuzz.map3 ExtensibleRecord
-                fuzzAttributes
-                fuzzName
-                (Fuzz.list (fuzzField (depth - 1)) |> Fuzz.map (List.take depth))
-
-        fuzzFunction depth =
-            Fuzz.map3 Function
-                fuzzAttributes
-                (fuzzType depth fuzzAttributes)
-                (fuzzType depth fuzzAttributes)
-
-        fuzzUnit =
-            Fuzz.map Unit
-                fuzzAttributes
-
-        fuzzLeaf =
-            Fuzz.oneOf
-                [ fuzzVariable
-                , fuzzUnit
-                ]
-
-        fuzzBranch depth =
-            Fuzz.oneOf
-                [ fuzzFunction depth
-                , fuzzReference depth
-                , fuzzTuple depth
-                , fuzzRecord depth
-                , fuzzExtensibleRecord depth
-                ]
-    in
-    if maxDepth <= 0 then
-        fuzzLeaf
-
-    else
-        Fuzz.oneOf
-            [ fuzzLeaf
-            , fuzzBranch (maxDepth - 1)
-            ]
-
-
-{-| Encode a type into JSON.
--}
-encodeType : (a -> Encode.Value) -> Type a -> Encode.Value
-encodeType encodeAttributes tpe =
-    case tpe of
-        Variable a name ->
-            Encode.list identity
-                [ Encode.string "Variable"
-                , encodeAttributes a
-                , encodeName name
-                ]
-
-        Reference a typeName typeParameters ->
-            Encode.list identity
-                [ Encode.string "Reference"
-                , encodeAttributes a
-                , encodeFQName typeName
-                , Encode.list (encodeType encodeAttributes) typeParameters
-                ]
-
-        Tuple a elementTypes ->
-            Encode.list identity
-                [ Encode.string "Tuple"
-                , encodeAttributes a
-                , Encode.list (encodeType encodeAttributes) elementTypes
-                ]
-
-        Record a fieldTypes ->
-            Encode.list identity
-                [ Encode.string "Record"
-                , encodeAttributes a
-                , Encode.list (encodeField encodeAttributes) fieldTypes
-                ]
-
-        ExtensibleRecord a variableName fieldTypes ->
-            Encode.list identity
-                [ Encode.string "ExtensibleRecord"
-                , encodeAttributes a
-                , encodeName variableName
-                , Encode.list (encodeField encodeAttributes) fieldTypes
-                ]
-
-        Function a argumentType returnType ->
-            Encode.list identity
-                [ Encode.string "Function"
-                , encodeAttributes a
-                , encodeType encodeAttributes argumentType
-                , encodeType encodeAttributes returnType
-                ]
-
-        Unit a ->
-            Encode.list identity
-                [ Encode.string "Unit"
-                , encodeAttributes a
-                ]
-
-
-{-| Decode a type from JSON.
--}
-decodeType : Decode.Decoder a -> Decode.Decoder (Type a)
-decodeType decodeAttributes =
-    let
-        lazyDecodeType =
-            Decode.lazy
-                (\_ ->
-                    decodeType decodeAttributes
-                )
-
-        lazyDecodeField =
-            Decode.lazy
-                (\_ ->
-                    decodeField decodeAttributes
-                )
-    in
-    Decode.index 0 Decode.string
-        |> Decode.andThen
-            (\kind ->
-                case kind of
-                    "Variable" ->
-                        Decode.map2 Variable
-                            (Decode.index 1 decodeAttributes)
-                            (Decode.index 2 decodeName)
-
-                    "Reference" ->
-                        Decode.map3 Reference
-                            (Decode.index 1 decodeAttributes)
-                            (Decode.index 2 decodeFQName)
-                            (Decode.index 3 (Decode.list (Decode.lazy (\_ -> decodeType decodeAttributes))))
-
-                    "Tuple" ->
-                        Decode.map2 Tuple
-                            (Decode.index 1 decodeAttributes)
-                            (Decode.index 2 (Decode.list lazyDecodeType))
-
-                    "Record" ->
-                        Decode.map2 Record
-                            (Decode.index 1 decodeAttributes)
-                            (Decode.index 2 (Decode.list lazyDecodeField))
-
-                    "ExtensibleRecord" ->
-                        Decode.map3 ExtensibleRecord
-                            (Decode.index 1 decodeAttributes)
-                            (Decode.index 2 decodeName)
-                            (Decode.index 3 (Decode.list lazyDecodeField))
-
-                    "Function" ->
-                        Decode.map3 Function
-                            (Decode.index 1 decodeAttributes)
-                            (Decode.index 2 lazyDecodeType)
-                            (Decode.index 3 lazyDecodeType)
-
-                    "Unit" ->
-                        Decode.map Unit
-                            (Decode.index 1 decodeAttributes)
-
-                    _ ->
-                        Decode.fail ("Unknown kind: " ++ kind)
-            )
-
-
-encodeField : (a -> Encode.Value) -> Field a -> Encode.Value
-encodeField encodeAttributes field =
-    Encode.list identity
-        [ encodeName field.name
-        , encodeType encodeAttributes field.tpe
-        ]
-
-
-decodeField : Decode.Decoder a -> Decode.Decoder (Field a)
-decodeField decodeAttributes =
-    Decode.map2 Field
-        (Decode.index 0 decodeName)
-        (Decode.index 1 (decodeType decodeAttributes))
-
-
-{-| -}
-encodeSpecification : (a -> Encode.Value) -> Specification a -> Encode.Value
-encodeSpecification encodeAttributes spec =
-    case spec of
-        TypeAliasSpecification params exp ->
-            Encode.list identity
-                [ Encode.string "TypeAliasSpecification"
-                , Encode.list encodeName params
-                , encodeType encodeAttributes exp
-                ]
-
-        OpaqueTypeSpecification params ->
-            Encode.list identity
-                [ Encode.string "OpaqueTypeSpecification"
-                , Encode.list encodeName params
-                ]
-
-        CustomTypeSpecification params ctors ->
-            Encode.list identity
-                [ Encode.string "CustomTypeSpecification"
-                , Encode.list encodeName params
-                , encodeConstructors encodeAttributes ctors
-                ]
-
-
-{-| -}
-encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
-encodeDefinition encodeAttributes def =
-    case def of
-        TypeAliasDefinition params exp ->
-            Encode.list identity
-                [ Encode.string "TypeAliasDefinition"
-                , Encode.list encodeName params
-                , encodeType encodeAttributes exp
-                ]
-
-        CustomTypeDefinition params ctors ->
-            Encode.list identity
-                [ Encode.string "CustomTypeDefinition"
-                , Encode.list encodeName params
-                , encodeAccessControlled (encodeConstructors encodeAttributes) ctors
-                ]
-
-
-encodeConstructors : (a -> Encode.Value) -> Constructors a -> Encode.Value
-encodeConstructors encodeAttributes ctors =
-    ctors
-        |> Encode.list
-            (\(Constructor ctorName ctorArgs) ->
-                Encode.list identity
-                    [ Encode.string "Constructor"
-                    , encodeName ctorName
-                    , ctorArgs
-                        |> Encode.list
-                            (\( argName, argType ) ->
-                                Encode.list identity
-                                    [ encodeName argName
-                                    , encodeType encodeAttributes argType
-                                    ]
-                            )
-                    ]
-            )

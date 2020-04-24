@@ -96,12 +96,12 @@ type alias PackageResolver =
 defaultImports : List Import
 defaultImports =
     let
-        importExplicit : ModuleName -> Maybe ModuleName -> List TopLevelExpose -> Import
+        importExplicit : ModuleName -> Maybe String -> List TopLevelExpose -> Import
         importExplicit moduleName maybeAlias exposingList =
             Import
                 (Node emptyRange moduleName)
                 (maybeAlias
-                    |> Maybe.map (Node emptyRange)
+                    |> Maybe.map (List.singleton >> Node emptyRange)
                 )
                 (exposingList
                     |> List.map (Node emptyRange)
@@ -111,14 +111,23 @@ defaultImports =
                 )
     in
     [ importExplicit [ "Morphir", "SDK", "Bool" ] Nothing [ TypeOrAliasExpose "Bool" ]
-    , importExplicit [ "Morphir", "SDK", "Char" ] Nothing [ TypeOrAliasExpose "Char" ]
+    , importExplicit [ "Morphir", "SDK", "Char" ] (Just "Char") [ TypeOrAliasExpose "Char" ]
     , importExplicit [ "Morphir", "SDK", "Int" ] Nothing [ TypeOrAliasExpose "Int" ]
     , importExplicit [ "Morphir", "SDK", "Float" ] Nothing [ TypeOrAliasExpose "Float" ]
-    , importExplicit [ "Morphir", "SDK", "String" ] Nothing [ TypeOrAliasExpose "String" ]
-    , importExplicit [ "Morphir", "SDK", "Maybe" ] Nothing [ TypeOrAliasExpose "Maybe" ]
-    , importExplicit [ "Morphir", "SDK", "Result" ] Nothing [ TypeOrAliasExpose "Result" ]
-    , importExplicit [ "Morphir", "SDK", "List" ] Nothing [ TypeOrAliasExpose "List" ]
+    , importExplicit [ "Morphir", "SDK", "String" ] (Just "String") [ TypeOrAliasExpose "String" ]
+    , importExplicit [ "Morphir", "SDK", "Maybe" ] (Just "Maybe") [ TypeOrAliasExpose "Maybe" ]
+    , importExplicit [ "Morphir", "SDK", "Result" ] (Just "Result") [ TypeOrAliasExpose "Result" ]
+    , importExplicit [ "Morphir", "SDK", "List" ] (Just "List") [ TypeOrAliasExpose "List" ]
+    , importExplicit [ "Morphir", "SDK", "Regex" ] (Just "Regex") [ TypeOrAliasExpose "Regex" ]
+    , importExplicit [ "Morphir", "SDK", "Tuple" ] (Just "Tuple") []
     ]
+
+
+moduleMapping : Dict ModuleName ModuleName
+moduleMapping =
+    Dict.fromList
+        [ ( [ "Dict" ], [ "Morphir", "SDK", "Dict" ] )
+        ]
 
 
 createPackageResolver : Dict Path (Package.Specification a) -> Path -> Dict Path (Module.Specification a) -> PackageResolver
@@ -220,9 +229,13 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
         decomposeModuleName : ModuleName -> Result Error ( Path, Path )
         decomposeModuleName moduleName =
             let
+                morphirModuleName : ModuleName
+                morphirModuleName =
+                    moduleMapping |> Dict.get moduleName |> Maybe.withDefault moduleName
+
                 suppliedModulePath : Path
                 suppliedModulePath =
-                    moduleName
+                    morphirModuleName
                         |> List.map Name.fromString
 
                 matchModuleToPackagePath modulePath packagePath =
@@ -240,14 +253,31 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                         |> List.filterMap (matchModuleToPackagePath suppliedModulePath)
                         |> List.head
                     )
-                |> Result.fromMaybe (CouldNotDecompose moduleName)
+                |> Result.fromMaybe (CouldNotDecompose morphirModuleName)
     in
     PackageResolver currentPackagePath ctorNames exposesType exposesValue decomposeModuleName
 
 
 createModuleResolver : PackageResolver -> List Import -> Path -> Module.Definition a -> ModuleResolver
-createModuleResolver packageResolver explicitImports currenctModulePath moduleDef =
+createModuleResolver packageResolver elmImports currenctModulePath moduleDef =
     let
+        explicitImports : List Import
+        explicitImports =
+            elmImports
+                |> List.map
+                    (\imp ->
+                        { imp
+                            | moduleName =
+                                imp.moduleName
+                                    |> Node.map
+                                        (\moduleName ->
+                                            moduleMapping
+                                                |> Dict.get moduleName
+                                                |> Maybe.withDefault moduleName
+                                        )
+                        }
+                    )
+
         imports : List Import
         imports =
             defaultImports ++ explicitImports
@@ -441,11 +471,13 @@ createModuleResolver packageResolver explicitImports currenctModulePath moduleDe
                 resolveExternally isType elmModuleName elmLocalName
 
         resolveType : ModuleName -> LocalName -> Result Error FQName
-        resolveType =
+        resolveType moduleName =
             resolve True
+                (moduleMapping |> Dict.get moduleName |> Maybe.withDefault moduleName)
 
         resolveValue : ModuleName -> LocalName -> Result Error FQName
-        resolveValue =
+        resolveValue moduleName =
             resolve False
+                (moduleMapping |> Dict.get moduleName |> Maybe.withDefault moduleName)
     in
     ModuleResolver resolveType resolveValue
