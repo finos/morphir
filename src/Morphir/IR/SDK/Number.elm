@@ -3,7 +3,7 @@ module Morphir.IR.SDK.Number exposing (..)
 import Dict
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Common exposing (binaryApply, toFQName)
+import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
@@ -32,21 +32,21 @@ negate refAttributes valueAttributes arg =
     Value.Apply valueAttributes (Value.Reference refAttributes (toFQName moduleName "negate")) arg
 
 
-add : a -> Value a -> Value a -> Value a
-add =
-    binaryApply moduleName "add"
+add : a -> Value a
+add a =
+    Value.Reference a (toFQName moduleName "add")
 
 
-subtract : a -> Value a -> Value a -> Value a
-subtract =
-    binaryApply moduleName "subtract"
+subtract : a -> Value a
+subtract a =
+    Value.Reference a (toFQName moduleName "subtract")
 
 
-multiply : a -> Value a -> Value a -> Value a
-multiply =
-    binaryApply moduleName "multiply"
+multiply : a -> Value a
+multiply a =
+    Value.Reference a (toFQName moduleName "multiply")
 
 
-power : a -> Value a -> Value a -> Value a
-power =
-    binaryApply moduleName "power"
+power : a -> Value a
+power a =
+    Value.Reference a (toFQName moduleName "power")

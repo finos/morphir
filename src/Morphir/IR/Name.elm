@@ -1,8 +1,6 @@
 module Morphir.IR.Name exposing
     ( Name, fromList, toList
     , fromString, toTitleCase, toCamelCase, toSnakeCase, toHumanWords
-    , fuzzName
-    , encodeName, decodeName
     )
 
 {-| `Name` is an abstraction of human-readable identifiers made up of words. This abstraction
@@ -39,21 +37,8 @@ abbreviation:
 
 @docs fromString, toTitleCase, toCamelCase, toSnakeCase, toHumanWords
 
-
-# Property Testing
-
-@docs fuzzName
-
-
-# Serialization
-
-@docs encodeName, decodeName
-
 -}
 
-import Fuzz exposing (Fuzzer)
-import Json.Decode as Decode
-import Json.Encode as Encode
 import Regex exposing (Regex)
 
 
@@ -219,81 +204,3 @@ fromList words =
 toList : Name -> List String
 toList words =
     words
-
-
-{-| Name fuzzer.
--}
-fuzzName : Fuzzer Name
-fuzzName =
-    let
-        nouns =
-            [ "area"
-            , "benchmark"
-            , "book"
-            , "business"
-            , "company"
-            , "country"
-            , "currency"
-            , "day"
-            , "description"
-            , "entity"
-            , "fact"
-            , "family"
-            , "from"
-            , "government"
-            , "group"
-            , "home"
-            , "id"
-            , "job"
-            , "left"
-            , "lot"
-            , "market"
-            , "minute"
-            , "money"
-            , "month"
-            , "name"
-            , "number"
-            , "owner"
-            , "parent"
-            , "part"
-            , "problem"
-            , "rate"
-            , "right"
-            , "state"
-            , "source"
-            , "system"
-            , "time"
-            , "title"
-            , "to"
-            , "valid"
-            , "week"
-            , "work"
-            , "world"
-            , "year"
-            ]
-
-        fuzzWord =
-            nouns
-                |> List.map Fuzz.constant
-                |> Fuzz.oneOf
-    in
-    Fuzz.list fuzzWord
-        |> Fuzz.map (List.take 3)
-        |> Fuzz.map fromList
-
-
-{-| Encode a name to JSON.
--}
-encodeName : Name -> Encode.Value
-encodeName name =
-    name
-        |> toList
-        |> Encode.list Encode.string
-
-
-{-| Decode a name from JSON.
--}
-decodeName : Decode.Decoder Name
-decodeName =
-    Decode.list Decode.string
-        |> Decode.map fromList

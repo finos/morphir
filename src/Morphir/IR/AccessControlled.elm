@@ -1,9 +1,8 @@
 module Morphir.IR.AccessControlled exposing
-    ( AccessControlled
+    ( AccessControlled, Access(..)
     , public, private
     , withPublicAccess, withPrivateAccess
-    , decodeAccessControlled, encodeAccessControlled
-    , Access(..), map
+    , map
     )
 
 {-| Module to manage access to a node in the IR. This is only used to declare access levels
@@ -11,7 +10,7 @@ not to enforce them. Enforcement can be done through the helper functions
 [withPublicAccess](#withPublicAccess) and [withPrivateAccess](#withPrivateAccess) but it's
 up to the consumer of the API to call the righ function.
 
-@docs AccessControlled
+@docs AccessControlled, Access
 
 
 # Creation
@@ -24,14 +23,11 @@ up to the consumer of the API to call the righ function.
 @docs withPublicAccess, withPrivateAccess
 
 
-# Serialization
+# Transform
 
-@docs decodeAccessControlled, encodeAccessControlled
+@docs map
 
 -}
-
-import Json.Decode as Decode
-import Json.Encode as Encode
 
 
 {-| Type that represents different access levels.
@@ -42,6 +38,8 @@ type alias AccessControlled a =
     }
 
 
+{-| Public or private access.
+-}
 type Access
     = Public
     | Private
@@ -95,45 +93,8 @@ withPrivateAccess ac =
             ac.value
 
 
+{-| Apply a function to the access controlled value but keep the access unchanged.
+-}
 map : (a -> b) -> AccessControlled a -> AccessControlled b
 map f ac =
     AccessControlled ac.access (f ac.value)
-
-
-{-| Encode AccessControlled to JSON.
--}
-encodeAccessControlled : (a -> Encode.Value) -> AccessControlled a -> Encode.Value
-encodeAccessControlled encodeValue ac =
-    case ac.access of
-        Public ->
-            Encode.list identity
-                [ Encode.string "Public"
-                , encodeValue ac.value
-                ]
-
-        Private ->
-            Encode.list identity
-                [ Encode.string "Private"
-                , encodeValue ac.value
-                ]
-
-
-{-| Decode AccessControlled from JSON.
--}
-decodeAccessControlled : Decode.Decoder a -> Decode.Decoder (AccessControlled a)
-decodeAccessControlled decodeValue =
-    Decode.index 0 Decode.string
-        |> Decode.andThen
-            (\tag ->
-                case tag of
-                    "Public" ->
-                        Decode.map (AccessControlled Public)
-                            (Decode.index 1 decodeValue)
-
-                    "Private" ->
-                        Decode.map (AccessControlled Private)
-                            (Decode.index 1 decodeValue)
-
-                    other ->
-                        Decode.fail <| "Unknown access controlled type: " ++ other
-            )

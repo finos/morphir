@@ -230,7 +230,7 @@ valueTests =
                                             moduleDef.value.values
                                                 |> Dict.get [ "test", "value" ]
                                                 |> Result.fromMaybe "Could not find test value"
-                                                |> Result.map (.value >> Value.getDefinitionBody)
+                                                |> Result.map (.value >> .body)
                                         )
                             )
                         |> resultToExpectation expectedValueIR
@@ -246,6 +246,10 @@ valueTests =
         pvar : String -> Pattern ()
         pvar name =
             AsPattern () (WildcardPattern ()) (Name.fromString name)
+
+        binary : (() -> Value ()) -> Value () -> Value () -> Value ()
+        binary fun arg1 arg2 =
+            Apply () (Apply () (fun ()) arg1) arg2
     in
     describe "Values are mapped correctly"
         [ checkIR "()" <| Unit ()
@@ -288,24 +292,26 @@ valueTests =
         , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (IntLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
         , checkIR "a <| b" <| Apply () (ref "a") (ref "b")
         , checkIR "a |> b" <| Apply () (ref "b") (ref "a")
-        , checkIR "a || b" <| Bool.or () (ref "a") (ref "b")
-        , checkIR "a && b" <| Bool.and () (ref "a") (ref "b")
-        , checkIR "a == b" <| Equality.equal () (ref "a") (ref "b")
-        , checkIR "a /= b" <| Equality.notEqual () (ref "a") (ref "b")
-        , checkIR "a < b" <| Comparison.lessThan () (ref "a") (ref "b")
-        , checkIR "a > b" <| Comparison.greaterThan () (ref "a") (ref "b")
-        , checkIR "a <= b" <| Comparison.lessThanOrEqual () (ref "a") (ref "b")
-        , checkIR "a >= b" <| Comparison.greaterThanOrEqual () (ref "a") (ref "b")
-        , checkIR "a ++ b" <| Appending.append () (ref "a") (ref "b")
-        , checkIR "a + b" <| Number.add () (ref "a") (ref "b")
-        , checkIR "a - b" <| Number.subtract () (ref "a") (ref "b")
-        , checkIR "a * b" <| Number.multiply () (ref "a") (ref "b")
-        , checkIR "a / b" <| Float.divide () (ref "a") (ref "b")
-        , checkIR "a // b" <| Int.divide () (ref "a") (ref "b")
-        , checkIR "a ^ b" <| Number.power () (ref "a") (ref "b")
-        , checkIR "a << b" <| Composition.composeLeft () (ref "a") (ref "b")
-        , checkIR "a >> b" <| Composition.composeRight () (ref "a") (ref "b")
-        , checkIR "a :: b" <| List.construct () (ref "a") (ref "b")
+        , checkIR "a || b" <| binary Bool.or (ref "a") (ref "b")
+        , checkIR "a && b" <| binary Bool.and (ref "a") (ref "b")
+        , checkIR "a == b" <| binary Equality.equal (ref "a") (ref "b")
+        , checkIR "a /= b" <| binary Equality.notEqual (ref "a") (ref "b")
+        , checkIR "a < b" <| binary Comparison.lessThan (ref "a") (ref "b")
+        , checkIR "a > b" <| binary Comparison.greaterThan (ref "a") (ref "b")
+        , checkIR "a <= b" <| binary Comparison.lessThanOrEqual (ref "a") (ref "b")
+        , checkIR "a >= b" <| binary Comparison.greaterThanOrEqual (ref "a") (ref "b")
+        , checkIR "a ++ b" <| binary Appending.append (ref "a") (ref "b")
+        , checkIR "a + b" <| binary Number.add (ref "a") (ref "b")
+        , checkIR "a - b" <| binary Number.subtract (ref "a") (ref "b")
+        , checkIR "a * b" <| binary Number.multiply (ref "a") (ref "b")
+        , checkIR "a / b" <| binary Float.divide (ref "a") (ref "b")
+        , checkIR "a // b" <| binary Int.divide (ref "a") (ref "b")
+        , checkIR "a ^ b" <| binary Number.power (ref "a") (ref "b")
+        , checkIR "a << b" <| binary Composition.composeLeft (ref "a") (ref "b")
+        , checkIR "a >> b" <| binary Composition.composeRight (ref "a") (ref "b")
+        , checkIR "a :: b" <| binary List.construct (ref "a") (ref "b")
+        , checkIR "::" <| List.construct ()
+        , checkIR "foo (::)" <| Apply () (ref "foo") (List.construct ())
         , checkIR
             (String.join "\n"
                 [ "  let"
@@ -330,7 +336,7 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "foo")
-                (Definition Nothing [ Name.fromString "a" ] (ref "c"))
+                (Definition Nothing [ ( Name.fromString "a", () ) ] (ref "c"))
                 (ref "d")
         , checkIR
             (String.join "\n"
