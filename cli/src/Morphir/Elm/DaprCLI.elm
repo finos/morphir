@@ -6,20 +6,21 @@ import Elm.Syntax.Exposing exposing (Exposing(..))
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Module exposing (Module(..))
 import Elm.Syntax.Node exposing (Node)
-import Elm.Syntax.Range as Range exposing (emptyRange)
+import Elm.Syntax.Range as Range
 import Elm.Writer as Writer exposing (..)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Maybe.Extra as MaybeExtra exposing (..)
-import Morphir.Elm.Backend.Codec.DecoderGen as DecoderGen exposing (typeDefToDecoder)
-import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen exposing (typeDefToEncoder)
-import Morphir.Elm.Backend.Dapr.StatefulApp as StatefulApp exposing (gen)
+import Morphir.Elm.Backend.Codec.DecoderGen as DecoderGen
+import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen
+import Morphir.Elm.Backend.Dapr.StatefulApp as StatefulApp
 import Morphir.Elm.Backend.Utils as Utils exposing (..)
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, decodePackageInfo, encodeError)
 import Morphir.IR.AccessControlled as AccessControlled exposing (..)
 import Morphir.IR.Module as Module exposing (..)
-import Morphir.IR.Name as Name exposing (Name, toCamelCase)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
+import Morphir.IR.Package.Codec as PackageCodec
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Definition(..), Type)
 
@@ -68,7 +69,7 @@ update msg model =
                             packageDefResult
                                 |> Result.map (\pkgDef -> IrAndElmBackendResult pkgDef (daprSource pkgInfo.name pkgDef))
                     in
-                    ( model, result |> encodeResult (Encode.list encodeError) (Package.encodeDefinition (\_ -> Encode.null)) |> packageDefAndDaprCodeFromSrcResult )
+                    ( model, result |> encodeResult (Encode.list encodeError) (PackageCodec.encodeDefinition (\_ -> Encode.null)) |> packageDefAndDaprCodeFromSrcResult )
 
                 Err errorMessage ->
                     ( model, errorMessage |> Decode.errorToString |> decodeError )
