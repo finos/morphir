@@ -43,7 +43,7 @@ import Morphir.IR.Value as Value exposing (Value)
 import Morphir.JsonExtra as JsonExtra
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Rewrite as Rewrite
-import Parser
+import Parser exposing (DeadEnd)
 import Set exposing (Set)
 
 
@@ -148,11 +148,22 @@ type Error
     | VariableShadowing Name SourceLocation SourceLocation
 
 
+encodeDeadEnd : DeadEnd -> Encode.Value
+encodeDeadEnd deadEnd =
+    Encode.list identity
+        [ Encode.int deadEnd.row
+        , Encode.int deadEnd.col
+        ]
+
+
 encodeError : Error -> Encode.Value
 encodeError error =
     case error of
-        ParseError _ _ ->
-            JsonExtra.encodeConstructor "ParseError" []
+        ParseError sourcePath deadEnds ->
+            JsonExtra.encodeConstructor "ParseError"
+                [ Encode.string sourcePath
+                , Encode.list encodeDeadEnd deadEnds
+                ]
 
         CyclicModules _ ->
             JsonExtra.encodeConstructor "CyclicModules" []
