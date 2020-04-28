@@ -10,6 +10,8 @@ module Morphir.IR.Package exposing
 
 @docs Definition, emptyDefinition
 
+@docs PackagePath, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
+
 -}
 
 import Dict exposing (Dict)
@@ -18,6 +20,7 @@ import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Path exposing (Path)
 
 
+{-| -}
 type alias PackagePath =
     Path
 
@@ -29,6 +32,7 @@ type alias Specification a =
     }
 
 
+{-| -}
 emptySpecification : Specification a
 emptySpecification =
     { modules = Dict.empty
@@ -52,6 +56,7 @@ emptyDefinition =
     }
 
 
+{-| -}
 definitionToSpecification : Definition a -> Specification a
 definitionToSpecification def =
     { modules =
@@ -70,6 +75,7 @@ definitionToSpecification def =
     }
 
 
+{-| -}
 mapSpecificationAttributes : (a -> b) -> Specification a -> Specification b
 mapSpecificationAttributes f spec =
     Specification
@@ -81,6 +87,7 @@ mapSpecificationAttributes f spec =
         )
 
 
+{-| -}
 mapDefinitionAttributes : (a -> b) -> Definition a -> Definition b
 mapDefinitionAttributes f def =
     Definition
@@ -99,12 +106,14 @@ mapDefinitionAttributes f def =
         )
 
 
+{-| -}
 eraseSpecificationAttributes : Specification a -> Specification ()
 eraseSpecificationAttributes spec =
     spec
         |> mapSpecificationAttributes (\_ -> ())
 
 
+{-| -}
 eraseDefinitionAttributes : Definition a -> Definition ()
 eraseDefinitionAttributes def =
     def

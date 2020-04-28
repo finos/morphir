@@ -6,6 +6,7 @@ module Morphir.IR.Module exposing
 {-| Modules are groups of types and values that belong together.
 
 @docs Specification, Definition
+@docs ModulePath, definitionToSpecification, eraseSpecificationAttributes, mapDefinitionAttributes, mapSpecificationAttributes
 
 -}
 
@@ -17,6 +18,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 
 
+{-| -}
 type alias ModulePath =
     Path
 
@@ -29,6 +31,7 @@ type alias Specification a =
     }
 
 
+{-| -}
 emptySpecification : Specification a
 emptySpecification =
     { types = Dict.empty
@@ -44,6 +47,7 @@ type alias Definition a =
     }
 
 
+{-| -}
 definitionToSpecification : Definition a -> Specification a
 definitionToSpecification def =
     { types =
@@ -77,12 +81,14 @@ definitionToSpecification def =
     }
 
 
+{-| -}
 eraseSpecificationAttributes : Specification a -> Specification ()
 eraseSpecificationAttributes spec =
     spec
         |> mapSpecificationAttributes (\_ -> ())
 
 
+{-| -}
 mapSpecificationAttributes : (a -> b) -> Specification a -> Specification b
 mapSpecificationAttributes f spec =
     Specification
@@ -100,6 +106,7 @@ mapSpecificationAttributes f spec =
         )
 
 
+{-| -}
 mapDefinitionAttributes : (a -> b) -> Definition a -> Definition b
 mapDefinitionAttributes f def =
     Definition
