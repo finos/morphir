@@ -20,7 +20,7 @@ For starters, you definately want it to **[function correctly](why_functional_pr
 This is where Morphir comes in.  **Morphir treats logic like data**.  This simple concept makes it possible to do all of these things and more.  Morphir makes development better. To learn more ...
 
 
-[Home](/index) | [Posts](posts) | [Examples](../morphir-examples/)
+[Projects](https://github.com/Morgan-Stanley?q=morphir&type=&language=) | [Posts](posts) | [Examples](../morphir-examples/)
 -----|------|------
  | | 
 
