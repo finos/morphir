@@ -1,5 +1,5 @@
 # morphir
-Welcome to **Morphir**.  Taking development up a level.
+Welcome to **Morphir** - Taking development up a level.
 
 Morphir is about enshrining your application's business concepts.  That's a powerful concept that enables:
 
