@@ -10,7 +10,7 @@ Morphir is a multi-language system built on a data format that captures an appli
 
 While the core idea behind Morphir is very simple it's still challenging to describe it because it doesn't fit into any well-known categories. To help you understand what it is and how you can use it to solve real-world problems we came up with a list of questions and short answers:
 
-- [How do I define my domain model and business logic?](#How-do-I-define-my-domain-model-and-business-logic)
+- [How do I define my domain model and business logic?](#how-do-I-define-my-domain-model-and-business-logic)
 - [How does Morphir turn logic into data?](#how-does-morphir-turn-logic-into-data)
 - [What does the data format look like?](#what-does-the-data-format-look-like)
 
@@ -50,3 +50,20 @@ In Morphir's data format this would translate into something like this:
 ]
 ```
 
+# Further reading
+
+## Introduction and Background
+* [Background](background)
+* [Community](morphir_community)
+* [What's it all about?](whats_it_about)
+* [Working Across Technologies](work_across_languages_and_platforms)
+* [Why we use Functional Programming?](why_functional_programming)
+
+## Using Morphir
+* [What Makes a Good Model](what-makes-a-good-domain-model)
+* [Development Automation (Dev Bots)](dev_bots)
+* [Modeling An Application](application_modeling)
+
+## Applicability
+* [Sharing Business Logic Across Application Boundaries](shared_logic_modeling)
+* [Regulatory Technology](regtech_modeling)
