@@ -1,3 +1,5 @@
+#Morphir
+
 **Morphir** is a multi-language system built on a data format that captures an application's domain model and business logic in a technology agnostic manner. Having all the business knowledge available as data allows you to process it programatically in various ways:
 
 - **Translate it** to move between languages and platforms effortlessly as technology evolves
@@ -8,7 +10,9 @@
 
 Read more [Morphir documentation](https://morgan-stanley.github.io/morphir/)
 
-Or visit the Morphir sub-projects:
+
+## Morphir sub-projects:
+
 **Core**
 * [morphir](https://github.com/Morgan-Stanley/morphir) - The core IR data structure and common SDK.
 * [morphir-examples](https://github.com/Morgan-Stanley/morphir-examples) - Examples of various types of Morphir modeling (mostly in Elm).
