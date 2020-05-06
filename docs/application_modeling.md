@@ -1,5 +1,13 @@
 # Modeling Entire Applications
 
+Morphir Application Modeling imagines an evolution of programming as:
+* You code just pure business logic.
+* That code is guaranteed to be free of exceptions.
+* Merging your code triggers full SDLC automation through to deployment.
+* Your application automatically conforms to your firm's standards now and in the future.
+* Your users have transparency into how your application behaves and why.
+* You retain full control to modify any of the above.
+
 Most applications generally follow a small set of well known patterns based on how the application will run (as opposed to its business purpose). These patterns are what the many application frameworks are built around.  As a result, much of the development process is simply following recipes to build code to these patterns.  
 
 There is another set of patterns that sits in the fuzzy area where the busines patterns meet the technical.  These patterns are not entirely business and are consistent across applications regardless of how they will end up being executed.  It's likely that these patterns will remain unchanged even as technology evolves. If we can capture these patterns in our models that would allow us to move execution across different technologies without changing our models at all.  This is important because an individual application usually exists within a larger ecosystem. Constantly keeping large numbers of existing applications up-to-date with the latest ecosystem changes, commonly refered to as *hygiene* takes a lot of development effort that subtracts from a team's ability to provide business value.
