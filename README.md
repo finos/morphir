@@ -33,9 +33,13 @@ Morphir simply turns that intermediate representation into a developer-friendly 
 
 ## What does the data format look like?
 
+It's easiest to start with an example. Say you have some simple business logic like this:
+
 ```javascript
 quantity * unitPrice
 ```
+
+In Morphir's data format this would translate into something like this:
 
 ```javascript
 ["Apply"
@@ -45,8 +49,3 @@ quantity * unitPrice
 , ["Variable", ["unit", "price"]]
 ]
 ```
-
-
-
-
-See more at our [Documentation](https://morgan-stanley.github.io/morphir/).

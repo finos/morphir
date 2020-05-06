@@ -1,26 +1,52 @@
-# Maximize the soul of your application
+# Morphir
 
-Morphir approaches application development from the perspective that the application's business knowledge should be enshrined.  Adopting this knowledge-first has brought us great benefits, including:
+Morphir is a multi-language system built on a data format that captures an application's domain model and business logic in a technology agnostic manner. Having all the business knowledge available as data allows you to process it programatically in various ways:
 
-> **Transparency** - Turn business rules into insightful data visualizations
+- **Translate it** to move between languages and platforms effortlessly as technology evolves
+- **Visualize it** to turn black-box logic into insightful explanations for your business users
+- **Share it** across different departments or organizations for consistent interpretation
+- **Store it** to retrieve and explain earlier versions of the logic in seconds
+- and much more ...
 
-> **Agility** - Move between languages and platforms effortlessly.
+While the core idea behind Morphir is very simple it's still challenging to describe it because it doesn't fit into any well-known categories. To help you understand what it is and how you can use it to solve real-world problems we came up with a list of questions and short answers:
 
-> **Reliability** - No runtime exceptions, integrated testing and quality checks.
-
-> **Delivery** - Deliver changes faster and with fewer errors.
-
-This has been impactful enough that we want to bring it to the open-source community. Morphir is all about potential. We have benefited and will contribute these. The true potential is in what the community can bring to the Morphir ecosystem.
-
-## Why use Morphir?
-Your application has a soul - it's reason for existing.  It might be embodied in calculations, business rules, and other logic.  Collectively these are your application's most important assets.  You need to protect these assets.  You also want to do useful things with it.  
-
-For starters, you definately want it to **[function correctly](why_functional_programming)**.  Ideally, it could do that **[across different technologies and platforms](work_across_languages_and_platforms)**.  In addition, you also want to **[share the knowledge](shared_logic_modeling)** to your application's stakeholders. This provides transparency and gives them **[confidence](build_confidence)** in what you're delivering.  It also makes supporting and learning about your application easier.  The world is changing fast, so you want all of these characteristics while **[delivering quickly and efficiently](dev_bots)**.
-
-This is where Morphir comes in.  **Morphir treats logic like data**.  This simple concept makes it possible to do all of these things and more.  Morphir makes development better. To learn more ...
+- [How do I define my domain model and business logic?](#How-do-I-define-my-domain-model-and-business-logic)
+- [How does Morphir turn logic into data?](#how-does-morphir-turn-logic-into-data)
+- [What does the data format look like?](#what-does-the-data-format-look-like)
 
 
-[Home](/index) | [Posts](posts) | [Examples](../morphir-examples/)
------|------|------
- | | 
+## How do I define my domain model and business logic?
+
+Morphir is a multi-language system so it gives you flexibility in what language or tool you use to define your domain model and business logic (we refer to them as frontends). As a community we are continuously building new language frontends and if the one you are looking for is not available we provide tools for you to build it yourself.
+
+Our main frontend is currently the [Elm](https://elm-lang.org/) programming language. We support the whole language (except for some very platform specific features like ports) so defining your domain model and business logic boils down to writing Elm code. To learn more about the fronted see [morphir-elm](https://github.com/Morgan-Stanley/morphir-elm).
+
+Other frontends:
+
+- [Bosque Programming Language](https://github.com/Morgan-Stanley/morphir-bosque)
+
+## How does Morphir turn logic into data?
+
+The process of turning logic into data is well known because every programming language compiler and interpreter does it. They parse the source code to generate an [abstract syntax tree](https://en.wikipedia.org/wiki/Abstract_syntax_tree) which is then transformed into an [intermediate representation](https://en.wikipedia.org/wiki/Intermediate_representation) of some sort.
+
+Morphir simply turns that intermediate representation into a developer-friendly data format that makes it easy to build automation on top of it.
+
+## What does the data format look like?
+
+It's easiest to start with an example. Say you have some simple business logic like this:
+
+```javascript
+quantity * unitPrice
+```
+
+In Morphir's data format this would translate into something like this:
+
+```javascript
+["Apply"
+, ["Apply"
+  , ["Reference", [["Morphir", "SDK"], ["Number"], "multiply"]]
+  , ["Variable", ["quantity"]]]
+, ["Variable", ["unit", "price"]]
+]
+```
 
