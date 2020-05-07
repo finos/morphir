@@ -2,6 +2,7 @@ module Morphir.Dapr.Input.Example exposing (..)
 
 import Morphir.SDK.StatefulApp exposing (StatefulApp)
 
+{- Type aliases for modeling in the language of the business -}
 
 type alias ID =
     String
@@ -18,7 +19,7 @@ type alias Price =
 type alias Quantity =
     Int
 
-
+{- Identifies a structure that can be associated to a persistance entity -}
 type alias Deal =
     { id : ID
     , product : ProductID
@@ -26,12 +27,12 @@ type alias Deal =
     , quantity : Quantity
     }
 
-
+{- These define the requests that can be made of this service -}
 type DealCmd
     = OpenDeal ID ProductID Price Quantity
     | CloseDeal ID
 
-
+{- These define the responses that would result from requests -}
 type DealEvent
     = DealOpened ID ProductID Price Quantity
     | DealClosed ID
@@ -40,7 +41,13 @@ type DealEvent
     | DuplicateDeal ID
     | DealNotFound ID
 
-
+{- Defines that this is a stateful application that uses ID as the entity key (for possible partioning), 
+   accepts requests of type DealCmd,
+   manages data in the form of a Deal,
+   and produces events of type DealEvent.
+   
+   Note that there's no indication of whether the API is synchronous or asynchronous.  That's up to the implementation to decide.
+-}
 type alias App =
     StatefulApp ID DealCmd Deal DealEvent
 
@@ -50,8 +57,12 @@ app =
     StatefulApp logic
 
 
+{- Defines the business logic of this app. 
+   That is whether or not to accept a request to open or close a deal. 
+-}
 logic : ID -> Maybe Deal -> DealCmd -> ( ID, Maybe Deal, DealEvent )
 logic dealId deal dealCmd =
+    -- Act accordingly based on whether the deal already exists.
     case deal of
         Just d ->
             case dealCmd of
