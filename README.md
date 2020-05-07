@@ -4,7 +4,7 @@
 morphir-elm is a set of tools to work with Morphir in Elm. It's dual published as an NPM and an Elm package:
 
 - NPM package: [![npm version](https://badge.fury.io/js/morphir-elm.svg)](https://badge.fury.io/js/morphir-elm)
-- Elm package: ![Latest version of the Elm package](https://reiner-dolp.github.io/elm-badges/Morgan-Stanley/morphir-elm/version.svg)
+- Elm package: [![Latest version of the Elm package](https://reiner-dolp.github.io/elm-badges/Morgan-Stanley/morphir-elm/version.svg)](https://package.elm-lang.org/packages/Morgan-Stanley/morphir-elm/latest)
  
 The NPM package provides a CLI to run the tooling while the Elm package can be used for direct integration. 
 The CLI currently supports the following features:  
