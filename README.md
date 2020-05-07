@@ -10,6 +10,12 @@
 
 Read more [Morphir documentation](https://morgan-stanley.github.io/morphir/)
 
+## Morphir IR
+
+The heart of Morphir is an intermediate representation that captures the domain model and business logic of your application. 
+Our main serialization format is JSON for maximum language interoperability. This repo will contain the specification of the JSON
+format in the near future. While we are working on it you can check out the documentation of the corresponding 
+[Elm library](https://github.com/Morgan-Stanley/morphir-elm#morphir-ir) to get an idea on the structure.
 
 ## Morphir sub-projects:
 
