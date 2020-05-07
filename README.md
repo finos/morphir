@@ -1,11 +1,15 @@
 # morphir-elm
 
-[![npm version](https://badge.fury.io/js/morphir-elm.svg)](https://badge.fury.io/js/morphir-elm)
 
-morphir-elm is a set of tools to work with Morphir in Elm. It currently provides these features: 
+morphir-elm is a set of tools to work with Morphir in Elm. It's dual published as an NPM and an Elm package:
 
-* Translate Elm sources to Morphir IR
-* Generate code from the Morphir IR
+- NPM package: [![npm version](https://badge.fury.io/js/morphir-elm.svg)](https://badge.fury.io/js/morphir-elm)
+- Elm package: ![Latest version of the Elm package](https://reiner-dolp.github.io/elm-badges/Morgan-Stanley/morphir-elm/version.svg)
+ 
+The NPM package provides a CLI to run the tooling while the Elm package can be used for direct integration. 
+The CLI currently supports the following features:  
+
+- [Translate Elm sources to Morphir IR](#translate-elm-sources-to-morphir-ir)
 
 # Installation
 
@@ -47,15 +51,9 @@ root directory with the following structure:
 
 ### Options
 
-|Option|Shorthand|Description|
-|---|---|---|
-|`--project-dir <path>`|`-p`|Root directory of the project where morphir.json is located. (default: ".")|
-|`--output <path>`|`-o`|Target location where the Morphir IR will be sent. Defaults to STDOUT.|
-
-## Generate code from the Morphir IR 
-
-Generate code from the Morphir IR
-
-```
-morphir-elm gen
-```
+- `--project-dir <path>`, `-p`
+  - Root directory of the project where morphir.json is located. 
+  - Defaults to current directory.
+- `--output <path>`, `-o`
+  - Target location where the Morphir IR will be sent
+  - Defaults to STDOUT.
