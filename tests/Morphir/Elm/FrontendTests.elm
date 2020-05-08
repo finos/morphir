@@ -6,6 +6,7 @@ import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.FQName exposing (fQName)
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path
@@ -21,7 +22,7 @@ import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value exposing (Definition, Literal(..), Pattern(..), Value(..))
+import Morphir.IR.Value exposing (Definition, Pattern(..), Value(..))
 import Set
 import Test exposing (..)
 

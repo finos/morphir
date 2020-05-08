@@ -7,7 +7,7 @@ import Morphir.IR.FQName.Codec exposing (decodeFQName, encodeFQName)
 import Morphir.IR.Literal.Codec exposing (decodeLiteral, encodeLiteral)
 import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
 import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
-import Morphir.IR.Value exposing (Definition, Literal(..), Pattern(..), Specification, Value(..))
+import Morphir.IR.Value exposing (Definition, Pattern(..), Specification, Value(..))
 
 
 encodeValue : (a -> Encode.Value) -> Value a -> Encode.Value
