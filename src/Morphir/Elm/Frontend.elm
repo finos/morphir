@@ -21,6 +21,7 @@ import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, Package
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.FQName as FQName exposing (FQName(..), fQName)
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Name.Codec exposing (encodeName)
@@ -770,10 +771,10 @@ mapExpression sourceFile (Node range exp) =
                         if Char.isUpper firstChar then
                             case ( moduleName, localName ) of
                                 ( [], "True" ) ->
-                                    Ok (Value.Literal sourceLocation (Value.BoolLiteral True))
+                                    Ok (Value.Literal sourceLocation (BoolLiteral True))
 
                                 ( [], "False" ) ->
-                                    Ok (Value.Literal sourceLocation (Value.BoolLiteral False))
+                                    Ok (Value.Literal sourceLocation (BoolLiteral False))
 
                                 _ ->
                                     Ok (Value.Constructor sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (localName |> Name.fromString)))
@@ -795,23 +796,23 @@ mapExpression sourceFile (Node range exp) =
             mapOperator sourceLocation op
 
         Expression.Integer value ->
-            Ok (Value.Literal sourceLocation (Value.IntLiteral value))
+            Ok (Value.Literal sourceLocation (IntLiteral value))
 
         Expression.Hex value ->
-            Ok (Value.Literal sourceLocation (Value.IntLiteral value))
+            Ok (Value.Literal sourceLocation (IntLiteral value))
 
         Expression.Floatable value ->
-            Ok (Value.Literal sourceLocation (Value.FloatLiteral value))
+            Ok (Value.Literal sourceLocation (FloatLiteral value))
 
         Expression.Negation arg ->
             mapExpression sourceFile arg
                 |> Result.map (Number.negate sourceLocation sourceLocation)
 
         Expression.Literal value ->
-            Ok (Value.Literal sourceLocation (Value.StringLiteral value))
+            Ok (Value.Literal sourceLocation (StringLiteral value))
 
         Expression.CharLiteral value ->
-            Ok (Value.Literal sourceLocation (Value.CharLiteral value))
+            Ok (Value.Literal sourceLocation (CharLiteral value))
 
         Expression.TupledExpression expNodes ->
             expNodes
@@ -915,19 +916,19 @@ mapPattern sourceFile (Node range pattern) =
             Ok (Value.UnitPattern sourceLocation)
 
         Pattern.CharPattern char ->
-            Ok (Value.LiteralPattern sourceLocation (Value.CharLiteral char))
+            Ok (Value.LiteralPattern sourceLocation (CharLiteral char))
 
         Pattern.StringPattern string ->
-            Ok (Value.LiteralPattern sourceLocation (Value.StringLiteral string))
+            Ok (Value.LiteralPattern sourceLocation (StringLiteral string))
 
         Pattern.IntPattern int ->
-            Ok (Value.LiteralPattern sourceLocation (Value.IntLiteral int))
+            Ok (Value.LiteralPattern sourceLocation (IntLiteral int))
 
         Pattern.HexPattern int ->
-            Ok (Value.LiteralPattern sourceLocation (Value.IntLiteral int))
+            Ok (Value.LiteralPattern sourceLocation (IntLiteral int))
 
         Pattern.FloatPattern float ->
-            Ok (Value.LiteralPattern sourceLocation (Value.FloatLiteral float))
+            Ok (Value.LiteralPattern sourceLocation (FloatLiteral float))
 
         Pattern.TuplePattern elemNodes ->
             elemNodes

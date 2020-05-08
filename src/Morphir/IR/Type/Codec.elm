@@ -15,14 +15,14 @@ encodeType encodeAttributes tpe =
     case tpe of
         Variable a name ->
             Encode.list identity
-                [ Encode.string "Variable"
+                [ Encode.string "variable"
                 , encodeAttributes a
                 , encodeName name
                 ]
 
         Reference a typeName typeParameters ->
             Encode.list identity
-                [ Encode.string "Reference"
+                [ Encode.string "reference"
                 , encodeAttributes a
                 , encodeFQName typeName
                 , Encode.list (encodeType encodeAttributes) typeParameters
@@ -30,21 +30,21 @@ encodeType encodeAttributes tpe =
 
         Tuple a elementTypes ->
             Encode.list identity
-                [ Encode.string "Tuple"
+                [ Encode.string "tuple"
                 , encodeAttributes a
                 , Encode.list (encodeType encodeAttributes) elementTypes
                 ]
 
         Record a fieldTypes ->
             Encode.list identity
-                [ Encode.string "Record"
+                [ Encode.string "record"
                 , encodeAttributes a
                 , Encode.list (encodeField encodeAttributes) fieldTypes
                 ]
 
         ExtensibleRecord a variableName fieldTypes ->
             Encode.list identity
-                [ Encode.string "ExtensibleRecord"
+                [ Encode.string "extensible_record"
                 , encodeAttributes a
                 , encodeName variableName
                 , Encode.list (encodeField encodeAttributes) fieldTypes
@@ -52,7 +52,7 @@ encodeType encodeAttributes tpe =
 
         Function a argumentType returnType ->
             Encode.list identity
-                [ Encode.string "Function"
+                [ Encode.string "function"
                 , encodeAttributes a
                 , encodeType encodeAttributes argumentType
                 , encodeType encodeAttributes returnType
@@ -60,7 +60,7 @@ encodeType encodeAttributes tpe =
 
         Unit a ->
             Encode.list identity
-                [ Encode.string "Unit"
+                [ Encode.string "unit"
                 , encodeAttributes a
                 ]
 
@@ -86,40 +86,40 @@ decodeType decodeAttributes =
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "Variable" ->
+                    "variable" ->
                         Decode.map2 Variable
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeName)
 
-                    "Reference" ->
+                    "reference" ->
                         Decode.map3 Reference
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeFQName)
                             (Decode.index 3 (Decode.list (Decode.lazy (\_ -> decodeType decodeAttributes))))
 
-                    "Tuple" ->
+                    "tuple" ->
                         Decode.map2 Tuple
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 (Decode.list lazyDecodeType))
 
-                    "Record" ->
+                    "record" ->
                         Decode.map2 Record
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 (Decode.list lazyDecodeField))
 
-                    "ExtensibleRecord" ->
+                    "extensible_record" ->
                         Decode.map3 ExtensibleRecord
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeName)
                             (Decode.index 3 (Decode.list lazyDecodeField))
 
-                    "Function" ->
+                    "function" ->
                         Decode.map3 Function
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 lazyDecodeType)
                             (Decode.index 3 lazyDecodeType)
 
-                    "Unit" ->
+                    "unit" ->
                         Decode.map Unit
                             (Decode.index 1 decodeAttributes)
 
@@ -149,20 +149,20 @@ encodeSpecification encodeAttributes spec =
     case spec of
         TypeAliasSpecification params exp ->
             Encode.list identity
-                [ Encode.string "TypeAliasSpecification"
+                [ Encode.string "type_alias_specification"
                 , Encode.list encodeName params
                 , encodeType encodeAttributes exp
                 ]
 
         OpaqueTypeSpecification params ->
             Encode.list identity
-                [ Encode.string "OpaqueTypeSpecification"
+                [ Encode.string "opaque_type_specification"
                 , Encode.list encodeName params
                 ]
 
         CustomTypeSpecification params ctors ->
             Encode.list identity
-                [ Encode.string "CustomTypeSpecification"
+                [ Encode.string "custom_type_specification"
                 , Encode.list encodeName params
                 , encodeConstructors encodeAttributes ctors
                 ]
@@ -174,14 +174,14 @@ encodeDefinition encodeAttributes def =
     case def of
         TypeAliasDefinition params exp ->
             Encode.list identity
-                [ Encode.string "TypeAliasDefinition"
+                [ Encode.string "type_alias_definition"
                 , Encode.list encodeName params
                 , encodeType encodeAttributes exp
                 ]
 
         CustomTypeDefinition params ctors ->
             Encode.list identity
-                [ Encode.string "CustomTypeDefinition"
+                [ Encode.string "custom_type_definition"
                 , Encode.list encodeName params
                 , encodeAccessControlled (encodeConstructors encodeAttributes) ctors
                 ]
@@ -193,7 +193,7 @@ encodeConstructors encodeAttributes ctors =
         |> Encode.list
             (\(Constructor ctorName ctorArgs) ->
                 Encode.list identity
-                    [ Encode.string "Constructor"
+                    [ Encode.string "constructor"
                     , encodeName ctorName
                     , ctorArgs
                         |> Encode.list

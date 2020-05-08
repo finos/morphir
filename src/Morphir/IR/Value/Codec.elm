@@ -4,9 +4,10 @@ import Dict
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.FQName.Codec exposing (decodeFQName, encodeFQName)
+import Morphir.IR.Literal.Codec exposing (decodeLiteral, encodeLiteral)
 import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
 import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
-import Morphir.IR.Value exposing (Definition, Literal(..), Pattern(..), Specification, Value(..))
+import Morphir.IR.Value exposing (Definition, Pattern(..), Specification, Value(..))
 
 
 encodeValue : (a -> Encode.Value) -> Value a -> Encode.Value
@@ -14,35 +15,35 @@ encodeValue encodeAttributes v =
     case v of
         Literal a value ->
             Encode.list identity
-                [ Encode.string "Literal"
+                [ Encode.string "literal"
                 , encodeAttributes a
                 , encodeLiteral value
                 ]
 
         Constructor a fullyQualifiedName ->
             Encode.list identity
-                [ Encode.string "Constructor"
+                [ Encode.string "constructor"
                 , encodeAttributes a
                 , encodeFQName fullyQualifiedName
                 ]
 
         Tuple a elements ->
             Encode.list identity
-                [ Encode.string "Tuple"
+                [ Encode.string "tuple"
                 , encodeAttributes a
                 , elements |> Encode.list (encodeValue encodeAttributes)
                 ]
 
         List a items ->
             Encode.list identity
-                [ Encode.string "List"
+                [ Encode.string "list"
                 , encodeAttributes a
                 , items |> Encode.list (encodeValue encodeAttributes)
                 ]
 
         Record a fields ->
             Encode.list identity
-                [ Encode.string "Record"
+                [ Encode.string "record"
                 , encodeAttributes a
                 , fields
                     |> Encode.list
@@ -56,21 +57,21 @@ encodeValue encodeAttributes v =
 
         Variable a name ->
             Encode.list identity
-                [ Encode.string "Variable"
+                [ Encode.string "variable"
                 , encodeAttributes a
                 , encodeName name
                 ]
 
         Reference a fullyQualifiedName ->
             Encode.list identity
-                [ Encode.string "Reference"
+                [ Encode.string "reference"
                 , encodeAttributes a
                 , encodeFQName fullyQualifiedName
                 ]
 
         Field a subjectValue fieldName ->
             Encode.list identity
-                [ Encode.string "Field"
+                [ Encode.string "field"
                 , encodeAttributes a
                 , encodeValue encodeAttributes subjectValue
                 , encodeName fieldName
@@ -78,14 +79,14 @@ encodeValue encodeAttributes v =
 
         FieldFunction a fieldName ->
             Encode.list identity
-                [ Encode.string "FieldFunction"
+                [ Encode.string "field_function"
                 , encodeAttributes a
                 , encodeName fieldName
                 ]
 
         Apply a function argument ->
             Encode.list identity
-                [ Encode.string "Apply"
+                [ Encode.string "apply"
                 , encodeAttributes a
                 , encodeValue encodeAttributes function
                 , encodeValue encodeAttributes argument
@@ -93,7 +94,7 @@ encodeValue encodeAttributes v =
 
         Lambda a argumentPattern body ->
             Encode.list identity
-                [ Encode.string "Lambda"
+                [ Encode.string "lambda"
                 , encodeAttributes a
                 , encodePattern encodeAttributes argumentPattern
                 , encodeValue encodeAttributes body
@@ -101,7 +102,7 @@ encodeValue encodeAttributes v =
 
         LetDefinition a valueName valueDefinition inValue ->
             Encode.list identity
-                [ Encode.string "LetDefinition"
+                [ Encode.string "let_definition"
                 , encodeAttributes a
                 , encodeName valueName
                 , encodeDefinition encodeAttributes valueDefinition
@@ -110,7 +111,7 @@ encodeValue encodeAttributes v =
 
         LetRecursion a valueDefinitions inValue ->
             Encode.list identity
-                [ Encode.string "LetRecursion"
+                [ Encode.string "let_recursion"
                 , encodeAttributes a
                 , valueDefinitions
                     |> Dict.toList
@@ -126,7 +127,7 @@ encodeValue encodeAttributes v =
 
         Destructure a pattern valueToDestruct inValue ->
             Encode.list identity
-                [ Encode.string "Destructure"
+                [ Encode.string "destructure"
                 , encodeAttributes a
                 , encodePattern encodeAttributes pattern
                 , encodeValue encodeAttributes valueToDestruct
@@ -135,7 +136,7 @@ encodeValue encodeAttributes v =
 
         IfThenElse a condition thenBranch elseBranch ->
             Encode.list identity
-                [ Encode.string "IfThenElse"
+                [ Encode.string "if_then_else"
                 , encodeAttributes a
                 , encodeValue encodeAttributes condition
                 , encodeValue encodeAttributes thenBranch
@@ -144,7 +145,7 @@ encodeValue encodeAttributes v =
 
         PatternMatch a branchOutOn cases ->
             Encode.list identity
-                [ Encode.string "PatternMatch"
+                [ Encode.string "pattern_match"
                 , encodeAttributes a
                 , encodeValue encodeAttributes branchOutOn
                 , cases
@@ -159,7 +160,7 @@ encodeValue encodeAttributes v =
 
         UpdateRecord a valueToUpdate fieldsToUpdate ->
             Encode.list identity
-                [ Encode.string "Update"
+                [ Encode.string "update"
                 , encodeAttributes a
                 , encodeValue encodeAttributes valueToUpdate
                 , fieldsToUpdate
@@ -174,7 +175,7 @@ encodeValue encodeAttributes v =
 
         Unit a ->
             Encode.list identity
-                [ Encode.string "Unit"
+                [ Encode.string "unit"
                 , encodeAttributes a
                 ]
 
@@ -191,27 +192,27 @@ decodeValue decodeAttributes =
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "Literal" ->
+                    "literal" ->
                         Decode.map2 Literal
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeLiteral)
 
-                    "Constructor" ->
+                    "constructor" ->
                         Decode.map2 Constructor
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeFQName)
 
-                    "Tuple" ->
+                    "tuple" ->
                         Decode.map2 Tuple
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| Decode.list lazyDecodeValue)
 
-                    "List" ->
+                    "list" ->
                         Decode.map2 List
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| Decode.list lazyDecodeValue)
 
-                    "Record" ->
+                    "record" ->
                         Decode.map2 Record
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2
@@ -223,47 +224,47 @@ decodeValue decodeAttributes =
                                 )
                             )
 
-                    "Variable" ->
+                    "variable" ->
                         Decode.map2 Variable
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeName)
 
-                    "Reference" ->
+                    "reference" ->
                         Decode.map2 Reference
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeFQName)
 
-                    "Field" ->
+                    "field" ->
                         Decode.map3 Field
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| decodeValue decodeAttributes)
                             (Decode.index 3 decodeName)
 
-                    "FieldFunction" ->
+                    "field_function" ->
                         Decode.map2 FieldFunction
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeName)
 
-                    "Apply" ->
+                    "apply" ->
                         Decode.map3 Apply
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| decodeValue decodeAttributes)
                             (Decode.index 3 <| decodeValue decodeAttributes)
 
-                    "Lambda" ->
+                    "lambda" ->
                         Decode.map3 Lambda
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| decodePattern decodeAttributes)
                             (Decode.index 3 <| decodeValue decodeAttributes)
 
-                    "LetDefinition" ->
+                    "let_definition" ->
                         Decode.map4 LetDefinition
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeName)
                             (Decode.index 3 <| decodeDefinition decodeAttributes)
                             (Decode.index 4 <| decodeValue decodeAttributes)
 
-                    "LetRecursion" ->
+                    "let_recursion" ->
                         Decode.map3 LetRecursion
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2
@@ -277,21 +278,21 @@ decodeValue decodeAttributes =
                             )
                             (Decode.index 3 <| decodeValue decodeAttributes)
 
-                    "Destructure" ->
+                    "destructure" ->
                         Decode.map4 Destructure
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| decodePattern decodeAttributes)
                             (Decode.index 3 <| decodeValue decodeAttributes)
                             (Decode.index 4 <| decodeValue decodeAttributes)
 
-                    "IfThenElse" ->
+                    "if_then_else" ->
                         Decode.map4 IfThenElse
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| decodeValue decodeAttributes)
                             (Decode.index 3 <| decodeValue decodeAttributes)
                             (Decode.index 4 <| decodeValue decodeAttributes)
 
-                    "PatternMatch" ->
+                    "pattern_match" ->
                         Decode.map3 PatternMatch
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| decodeValue decodeAttributes)
@@ -303,7 +304,7 @@ decodeValue decodeAttributes =
                                     )
                             )
 
-                    "UpdateRecord" ->
+                    "update_record" ->
                         Decode.map3 UpdateRecord
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| decodeValue decodeAttributes)
@@ -314,7 +315,7 @@ decodeValue decodeAttributes =
                                         (decodeValue decodeAttributes)
                             )
 
-                    "Unit" ->
+                    "unit" ->
                         Decode.map Unit
                             (Decode.index 1 decodeAttributes)
 
@@ -328,13 +329,13 @@ encodePattern encodeAttributes pattern =
     case pattern of
         WildcardPattern a ->
             Encode.list identity
-                [ Encode.string "WildcardPattern"
+                [ Encode.string "wildcard_pattern"
                 , encodeAttributes a
                 ]
 
         AsPattern a p name ->
             Encode.list identity
-                [ Encode.string "AsPattern"
+                [ Encode.string "as_pattern"
                 , encodeAttributes a
                 , encodePattern encodeAttributes p
                 , encodeName name
@@ -342,21 +343,21 @@ encodePattern encodeAttributes pattern =
 
         TuplePattern a elementPatterns ->
             Encode.list identity
-                [ Encode.string "TuplePattern"
+                [ Encode.string "tuple_pattern"
                 , encodeAttributes a
                 , elementPatterns |> Encode.list (encodePattern encodeAttributes)
                 ]
 
         RecordPattern a fieldNames ->
             Encode.list identity
-                [ Encode.string "RecordPattern"
+                [ Encode.string "record_pattern"
                 , encodeAttributes a
                 , fieldNames |> Encode.list encodeName
                 ]
 
         ConstructorPattern a constructorName argumentPatterns ->
             Encode.list identity
-                [ Encode.string "ConstructorPattern"
+                [ Encode.string "constructor_pattern"
                 , encodeAttributes a
                 , encodeFQName constructorName
                 , argumentPatterns |> Encode.list (encodePattern encodeAttributes)
@@ -364,13 +365,13 @@ encodePattern encodeAttributes pattern =
 
         EmptyListPattern a ->
             Encode.list identity
-                [ Encode.string "EmptyListPattern"
+                [ Encode.string "empty_list_pattern"
                 , encodeAttributes a
                 ]
 
         HeadTailPattern a headPattern tailPattern ->
             Encode.list identity
-                [ Encode.string "HeadTailPattern"
+                [ Encode.string "head_tail_pattern"
                 , encodeAttributes a
                 , encodePattern encodeAttributes headPattern
                 , encodePattern encodeAttributes tailPattern
@@ -378,14 +379,14 @@ encodePattern encodeAttributes pattern =
 
         LiteralPattern a value ->
             Encode.list identity
-                [ Encode.string "LiteralPattern"
+                [ Encode.string "literal_pattern"
                 , encodeAttributes a
                 , encodeLiteral value
                 ]
 
         UnitPattern a ->
             Encode.list identity
-                [ Encode.string "UnitPattern"
+                [ Encode.string "unit_pattern"
                 , encodeAttributes a
                 ]
 
@@ -402,123 +403,48 @@ decodePattern decodeAttributes =
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "WildcardPattern" ->
+                    "wildcard_pattern" ->
                         Decode.map WildcardPattern
                             (Decode.index 1 decodeAttributes)
 
-                    "AsPattern" ->
+                    "as_pattern" ->
                         Decode.map3 AsPattern
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 lazyDecodePattern)
                             (Decode.index 3 decodeName)
 
-                    "TuplePattern" ->
+                    "tuple_pattern" ->
                         Decode.map2 TuplePattern
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| Decode.list lazyDecodePattern)
 
-                    "RecordPattern" ->
+                    "record_pattern" ->
                         Decode.map2 RecordPattern
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| Decode.list decodeName)
 
-                    "ConstructorPattern" ->
+                    "constructor_pattern" ->
                         Decode.map3 ConstructorPattern
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeFQName)
                             (Decode.index 3 <| Decode.list lazyDecodePattern)
 
-                    "EmptyListPattern" ->
+                    "empty_list_pattern" ->
                         Decode.map EmptyListPattern
                             (Decode.index 1 decodeAttributes)
 
-                    "HeadTailPattern" ->
+                    "head_tail_pattern" ->
                         Decode.map3 HeadTailPattern
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 lazyDecodePattern)
                             (Decode.index 3 lazyDecodePattern)
 
+                    "unit_pattern" ->
+                        Decode.map UnitPattern
+                            (Decode.index 1 decodeAttributes)
+
                     other ->
                         Decode.fail <| "Unknown pattern type: " ++ other
-            )
-
-
-encodeLiteral : Literal -> Encode.Value
-encodeLiteral l =
-    let
-        typeTag tag =
-            ( "@type", Encode.string tag )
-    in
-    case l of
-        BoolLiteral v ->
-            Encode.object
-                [ typeTag "boolLiteral"
-                , ( "value", Encode.bool v )
-                ]
-
-        CharLiteral v ->
-            Encode.object
-                [ typeTag "charLiteral"
-                , ( "value", Encode.string (String.fromChar v) )
-                ]
-
-        StringLiteral v ->
-            Encode.object
-                [ typeTag "stringLiteral"
-                , ( "value", Encode.string v )
-                ]
-
-        IntLiteral v ->
-            Encode.object
-                [ typeTag "intLiteral"
-                , ( "value", Encode.int v )
-                ]
-
-        FloatLiteral v ->
-            Encode.object
-                [ typeTag "floatLiteral"
-                , ( "value", Encode.float v )
-                ]
-
-
-decodeLiteral : Decode.Decoder Literal
-decodeLiteral =
-    Decode.field "@type" Decode.string
-        |> Decode.andThen
-            (\kind ->
-                case kind of
-                    "boolLiteral" ->
-                        Decode.map BoolLiteral
-                            (Decode.field "value" Decode.bool)
-
-                    "charLiteral" ->
-                        Decode.map CharLiteral
-                            (Decode.field "value" Decode.string
-                                |> Decode.andThen
-                                    (\str ->
-                                        case String.uncons str of
-                                            Just ( ch, _ ) ->
-                                                Decode.succeed ch
-
-                                            Nothing ->
-                                                Decode.fail "Single char expected"
-                                    )
-                            )
-
-                    "stringLiteral" ->
-                        Decode.map StringLiteral
-                            (Decode.field "value" Decode.string)
-
-                    "intLiteral" ->
-                        Decode.map IntLiteral
-                            (Decode.field "value" Decode.int)
-
-                    "floatLiteral" ->
-                        Decode.map FloatLiteral
-                            (Decode.field "value" Decode.float)
-
-                    other ->
-                        Decode.fail <| "Unknown literal type: " ++ other
             )
 
 
@@ -542,7 +468,7 @@ encodeSpecification encodeAttributes spec =
 encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
 encodeDefinition encodeAttributes def =
     Encode.list identity
-        [ Encode.string "Definition"
+        [ Encode.string "definition"
         , case def.valueType of
             Just valueType ->
                 encodeType encodeAttributes valueType
