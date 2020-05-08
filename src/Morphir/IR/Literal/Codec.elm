@@ -10,31 +10,31 @@ encodeLiteral l =
     case l of
         BoolLiteral v ->
             Encode.list identity
-                [ Encode.string "BoolLiteral"
+                [ Encode.string "bool_literal"
                 , Encode.bool v
                 ]
 
         CharLiteral v ->
             Encode.list identity
-                [ Encode.string "CharLiteral"
+                [ Encode.string "char_literal"
                 , Encode.string (String.fromChar v)
                 ]
 
         StringLiteral v ->
             Encode.list identity
-                [ Encode.string "StringLiteral"
+                [ Encode.string "string_literal"
                 , Encode.string v
                 ]
 
         IntLiteral v ->
             Encode.list identity
-                [ Encode.string "IntLiteral"
+                [ Encode.string "int_literal"
                 , Encode.int v
                 ]
 
         FloatLiteral v ->
             Encode.list identity
-                [ Encode.string "FloatLiteral"
+                [ Encode.string "float_literal"
                 , Encode.float v
                 ]
 
@@ -45,11 +45,11 @@ decodeLiteral =
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "BoolLiteral" ->
+                    "bool_literal" ->
                         Decode.map BoolLiteral
                             (Decode.index 1 Decode.bool)
 
-                    "CharLiteral" ->
+                    "char_literal" ->
                         Decode.map CharLiteral
                             (Decode.index 1 Decode.string
                                 |> Decode.andThen
@@ -63,15 +63,15 @@ decodeLiteral =
                                     )
                             )
 
-                    "StringLiteral" ->
+                    "string_literal" ->
                         Decode.map StringLiteral
                             (Decode.index 1 Decode.string)
 
-                    "IntLiteral" ->
+                    "int_literal" ->
                         Decode.map IntLiteral
                             (Decode.index 1 Decode.int)
 
-                    "FloatLiteral" ->
+                    "float_literal" ->
                         Decode.map FloatLiteral
                             (Decode.index 1 Decode.float)
 
