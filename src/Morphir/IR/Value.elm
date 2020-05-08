@@ -2,7 +2,6 @@ module Morphir.IR.Value exposing
     ( Value(..), literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
     , tuple, variable, ifThenElse, patternMatch, update, unit
     , mapValueAttributes
-    , Literal(..), boolLiteral, charLiteral, stringLiteral, intLiteral, floatLiteral
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, recordPattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, typedDefinition, untypedDefinition, mapDefinition, mapDefinitionAttributes
@@ -18,19 +17,6 @@ Value is the top level building block for data and logic. See the constructor fu
 @docs Value, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
 @docs tuple, variable, ifThenElse, patternMatch, update, unit
 @docs mapValueAttributes
-
-
-# Literal
-
-Literals represent fixed values in the IR. We support the same set of basic types as Elm which almost matches JSON's supported values:
-
-  - Bool
-  - Char
-  - String
-  - Int
-  - Float
-
-@docs Literal, boolLiteral, charLiteral, stringLiteral, intLiteral, floatLiteral
 
 
 # Pattern
@@ -61,6 +47,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import String
@@ -87,16 +74,6 @@ type Value a
     | PatternMatch a (Value a) (List ( Pattern a, Value a ))
     | UpdateRecord a (Value a) (List ( Name, Value a ))
     | Unit a
-
-
-{-| Type that represents a literal value.
--}
-type Literal
-    = BoolLiteral Bool
-    | CharLiteral Char
-    | StringLiteral String
-    | IntLiteral Int
-    | FloatLiteral Float
 
 
 {-| Type that represents a pattern.
@@ -670,41 +647,6 @@ update attributes valueToUpdate fieldsToUpdate =
 unit : a -> Value a
 unit attributes =
     Unit attributes
-
-
-{-| Represents a boolean value. Only possible values are: `True`, `False`
--}
-boolLiteral : Bool -> Literal
-boolLiteral value =
-    BoolLiteral value
-
-
-{-| Represents a character value. Some possible values: `'a'`, `'Z'`, `'3'`
--}
-charLiteral : Char -> Literal
-charLiteral value =
-    CharLiteral value
-
-
-{-| Represents a string value. Some possible values: `""`, `"foo"`, `"Bar baz: 123"`
--}
-stringLiteral : String -> Literal
-stringLiteral value =
-    StringLiteral value
-
-
-{-| Represents an integer value. Some possible values: `0`, `-1`, `9832479`
--}
-intLiteral : Int -> Literal
-intLiteral value =
-    IntLiteral value
-
-
-{-| Represents a floating-point number. Some possible values: `1.25`, `-13.4`
--}
-floatLiteral : Float -> Literal
-floatLiteral value =
-    FloatLiteral value
 
 
 {-| Matches any value and ignores it (assigns no variable name).

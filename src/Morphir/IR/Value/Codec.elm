@@ -4,6 +4,7 @@ import Dict
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.FQName.Codec exposing (decodeFQName, encodeFQName)
+import Morphir.IR.Literal.Codec exposing (decodeLiteral, encodeLiteral)
 import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
 import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
 import Morphir.IR.Value exposing (Definition, Literal(..), Pattern(..), Specification, Value(..))
@@ -440,85 +441,6 @@ decodePattern decodeAttributes =
 
                     other ->
                         Decode.fail <| "Unknown pattern type: " ++ other
-            )
-
-
-encodeLiteral : Literal -> Encode.Value
-encodeLiteral l =
-    let
-        typeTag tag =
-            ( "@type", Encode.string tag )
-    in
-    case l of
-        BoolLiteral v ->
-            Encode.object
-                [ typeTag "boolLiteral"
-                , ( "value", Encode.bool v )
-                ]
-
-        CharLiteral v ->
-            Encode.object
-                [ typeTag "charLiteral"
-                , ( "value", Encode.string (String.fromChar v) )
-                ]
-
-        StringLiteral v ->
-            Encode.object
-                [ typeTag "stringLiteral"
-                , ( "value", Encode.string v )
-                ]
-
-        IntLiteral v ->
-            Encode.object
-                [ typeTag "intLiteral"
-                , ( "value", Encode.int v )
-                ]
-
-        FloatLiteral v ->
-            Encode.object
-                [ typeTag "floatLiteral"
-                , ( "value", Encode.float v )
-                ]
-
-
-decodeLiteral : Decode.Decoder Literal
-decodeLiteral =
-    Decode.field "@type" Decode.string
-        |> Decode.andThen
-            (\kind ->
-                case kind of
-                    "boolLiteral" ->
-                        Decode.map BoolLiteral
-                            (Decode.field "value" Decode.bool)
-
-                    "charLiteral" ->
-                        Decode.map CharLiteral
-                            (Decode.field "value" Decode.string
-                                |> Decode.andThen
-                                    (\str ->
-                                        case String.uncons str of
-                                            Just ( ch, _ ) ->
-                                                Decode.succeed ch
-
-                                            Nothing ->
-                                                Decode.fail "Single char expected"
-                                    )
-                            )
-
-                    "stringLiteral" ->
-                        Decode.map StringLiteral
-                            (Decode.field "value" Decode.string)
-
-                    "intLiteral" ->
-                        Decode.map IntLiteral
-                            (Decode.field "value" Decode.int)
-
-                    "floatLiteral" ->
-                        Decode.map FloatLiteral
-                            (Decode.field "value" Decode.float)
-
-                    other ->
-                        Decode.fail <| "Unknown literal type: " ++ other
             )
 
 
