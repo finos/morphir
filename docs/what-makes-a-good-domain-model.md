@@ -14,14 +14,14 @@ interpretation to the consumer completely while enums limit the possible values 
 
 Is there a way to measure the ambugity? One approximation we can use is the cardinality of types.
 Taking the above example a String has an infinite cardinality while an enum is always finite and
-usually has less than a 100 values. So a String is infinitely more ambiguous than an enum.
+usually has less than 100 values. So a String is infinitely more ambiguous than an enum.
 
 Stepping up a level we can derive a few more useful metrics by looking at type cardinalities 
 in the context of functions:
 
 ## Domain-to-Range Cardinality Ratio
 
-Take a simple example of `String -> Enum` function. This takes an ambiguous value and truns it
+Take a simple example of `String -> Enum` function. This takes an ambiguous value and turns it
 into a less ambiguous one which is great since it decreases ambiguity. Taking the opposite 
 `Enum -> String` though turns a relatively unambiguous value to a completely ambiguous one which
 decreases the quality of the output model. So clearly, you want to avoid the latter.

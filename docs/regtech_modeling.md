@@ -4,10 +4,10 @@ There are a number of highly regulated industries that must adhere to complex re
 
 There have been attempts to do so using shared libraries.  The challenge with this approach is that these libraries don't work natively across the complexities of each firm's existing systems.  In  order to use them they would need to invest significantly to build new systems that use the shared libraries.  Another issue is that technology advances quickly and an optimal solution at any point in time is not likely to be the best solution in a short time.
 
-There is an alternative.  If regulations were codified in a declarative model that could be cross-compiled to run in different exeuction contexts, then that would enable firms to create their own processors to translate the model to work in their systems. In that way they get the advantage of a codified, unambiguous, and verifiable model while still retaining their existing systems.  Morphir provides exaclty this capability by providing tools to project a unified model into various execution contexts.
+There is an alternative.  If regulations were codified in a declarative model that could be cross-compiled to run in different execution contexts, then that would enable firms to create their own processors to translate the model to work in their systems. In that way they get the advantage of a codified, unambiguous, and verifiable model while still retaining their existing systems.  Morphir provides exactly this capability by providing tools to project a unified model into various execution contexts.
 
 # Use case: US LCR
-The [US Liquidity Coverage Ratio](https://en.wikipedia.org/wiki/Basel_III#US_version_of_the_Basel_Liquidity_Coverage_Ratio_requirements) is a required report for certain banks and systemically important financial institutions.  It's definition can be found at [https://www.govinfo.gov/content/pkg/FR-2014-10-10/pdf/2014-22520.pdf](https://www.govinfo.gov/content/pkg/FR-2014-10-10/pdf/2014-22520.pdf).  It's complex enough that the there are accompanying documents and samples that attempt to clarify it.  Ultimately it's a set of calculations that can be defined concisely and unambiguously in a concise and unambiguous programming language.
+The [US Liquidity Coverage Ratio](https://en.wikipedia.org/wiki/Basel_III#US_version_of_the_Basel_Liquidity_Coverage_Ratio_requirements) is a required report for certain banks and systemically important financial institutions.  Its definition can be found at [https://www.govinfo.gov/content/pkg/FR-2014-10-10/pdf/2014-22520.pdf](https://www.govinfo.gov/content/pkg/FR-2014-10-10/pdf/2014-22520.pdf).  It's complex enough that there are accompanying documents and samples that attempt to clarify it.  Ultimately it's a set of calculations that can be defined concisely and unambiguously in a concise and unambiguous programming language.
 
 We'll step through how we can define such a regulation using Morphir using the LCR as an example.
 
@@ -60,7 +60,7 @@ adjustedExcessHQLAAmount =
         adjustedLevel2CapExcessAmount + adjustedlevel2bCapExcessAmount
 ```
 
-It's included here just to show how much easier it is to understand a model than the written descritpion [TODO: cite the text].
+It's included here just to show how much easier it is to understand a model than the written description [TODO: cite the text].
 
 ## Modeling collection operations
 The LCR spec is peppered with operations of collections of data.  For example:
@@ -102,10 +102,10 @@ type alias Flow =
     }
 ```
 
-Notice that most of the types are named using the language of the business.  This is a aspect of domain modeling, the ubiquitous language, that helps all of the stakeholders to reduce misunderstandings.
+Notice that most of the types are named using the language of the business.  This is an aspect of domain modeling, the ubiquitous language, that helps all of the stakeholders to reduce misunderstandings.
 
 # Verifying the model
-This is just a small sampling of what's required to turn a full specification into functioning code. It's enough to see that it's not a trivial task and there's a significant advantage if someone else could do it for you *and* prove that it's correct.  This is where the use of a pure functional programming language for business modeling really shines.  The common statement that *"if it compiles it's guaranteed to run without errors"* really applies well to RegTech.  The Elm compiler catches a huge number of potential errors that would otherwise be possible in non-FP languages.  
+This is just a small sampling of what's required to turn a full specification into functioning code. It's enough to see that it's not a trivial task and there's a significant advantage if someone else could do it for you *and* prove that it's correct.  This is where the use of a pure functional programming language for business modeling really shines.  The common statement that *"if it compiles it's guaranteed to run without errors"* really applies well to RegTech.  The Elm compiler catches a huge number of potential errors that would otherwise be impossible in non-FP languages.  
 
 It's worth noting that there are languages that provide even more guarantees, like Coq and Microsoft's Bosque.  In creating Morphir, we were careful not to write our own or lockin on a particular language.  This leaves the possibility to use the best language for the job as long as that language can be co-compiled into the Morphir IR.
 
@@ -123,9 +123,9 @@ select sum amount
 from t0_flows tf
 where tf.assetType = 'Level 2a Assets' and tf.isHQLA = 'T'
 ```
-You can see in the examples that the generated code makes some assumptions about the physical environment.  These are the things that are likely to be very different across firms.  The value of modeling is that each firm can customize the code generation to match their own environments.
+You can see in the example that the generated code makes some assumptions about the physical environment.  These are the things that are likely to be very different across firms.  The value of modeling is that each firm can customize the code generation to match their own environments.
 
-Of course, it's naive to think that the full LCR calculation would be able to execute entirely in a data warehouse.  In fact, many firms are migrating these calculations to new technologies like Spark. Doing a large scale migration of a report like the LCR to a new technology is usually a significant and risky effort. On the other hand, if you're running from a model, it's just a matter of switching to a new backend generator. While that's not trivial, it sure is a good deal easier, cheaper, and less risky that rewriting the entire calcultion from scratch.  Let's take a look at the Spark version of our sample:
+Of course, it's naive to think that the full LCR calculation would be able to execute entirely in a data warehouse.  In fact, many firms are migrating these calculations to new technologies like Spark. Doing a large scale migration of a report like the LCR to a new technology is usually a significant and risky effort. On the other hand, if you're running from a model, it's just a matter of switching to a new backend generator. While that's not trivial, it sure is a good deal easier, cheaper, and less risky that rewriting the entire calculation from scratch.  Let's take a look at the Spark version of our sample:
 
 **Spark Scala**
 ```scala
