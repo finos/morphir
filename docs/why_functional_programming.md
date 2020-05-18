@@ -33,7 +33,7 @@ public Map<String,Object> processSupplies(Supplier[] suppliers) {
 }
 ```
 
-It's even harder to project that intent into a variety of execution contexts.  On the other hand, this code is easy to interprit:
+It's even harder to project that intent into a variety of execution contexts.  On the other hand, this code is easy to interpret:
 
 ```elm
 processSupplies suppliers =
@@ -54,4 +54,4 @@ processSupplies suppliers =
 
 That's much easier to process.  It's also much easier to translate into different contexts.  We can turn this into efficient Java code and efficient SQL.  You might say it's inefficient because it's traversing the list twice, once for total and again for max.  The cool thing is that we can recognize this pretty easily and have our code generators optimize the execution to take this into account.
 
-With all of that said, it's certainly possible to derive intent from other types of languages.  In fact, we've found much success in giving a lifeline to the plethora of bespoke expression languages and domain-specific languages (DSLs) that pepper most enterprises.  Parsing these languages into Morphir offers a way to transpile them into other languages and to take advantage of the other tools Morphir offers.  This has been an affective way to upgrade application technologies without risking their important behaviors.
+With all of that said, it's certainly possible to derive intent from other types of languages.  In fact, we've found much success in giving a lifeline to the plethora of bespoke expression languages and domain-specific languages (DSLs) that pepper most enterprises.  Parsing these languages into Morphir offers a way to transpile them into other languages and to take advantage of the other tools Morphir offers.  This has been an effective way to upgrade application technologies without risking their important behaviors.
