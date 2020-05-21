@@ -46,7 +46,7 @@
         
         $scope.selectLong = function (longPos) {
             $scope.pageGlobal.explainSrc =
-                "/rates/fields/rules.html?field=urn:Matching/matches";
+                "./rates/fields/rules.html?field=urn:Matching/matches";
             $scope.pageGlobal.selectedShort = null;
             $scope.pageGlobal.selectedLong = longPos;
             $scope.pageGlobal.data.ShortPosition.forEach(function (shortPos) {
