@@ -1,0 +1,120 @@
+body
+{
+    margin: 0 0 0 0;
+    padding: 0 0 0 0;
+    font-family: Tahoma, Geneva, sans-serif;
+    font-size: 10px;
+}
+div.fieldSection
+{
+	padding: 5 5 5 5;
+}
+div.fieldSectionDetail
+{
+	padding: 0 0 0 10;
+}
+.fieldSectionHeader
+{
+    font-family: Tahoma, Geneva, sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+    color: #555555;
+}
+table
+{
+    margin: 0px;
+    border-collapse: collapse;
+}
+table thead th
+{
+	font-family: Arial, Helvetica, sans-serif;
+	text-align: left;
+	font-size: 10px;
+	color: #427A3B;
+    padding: 2px 10px 2px 5px;
+    white-space: nowrap;
+    border-bottom: 1px solid #CCCCCC;
+}
+table tbody td.header
+{
+	font-family: Arial, Helvetica, sans-serif;
+	text-align: left;
+	font-size: 10px;
+	font-weight: bold;
+	color: #427A3B;
+    padding: 2px 10px 2px 5px;
+    white-space: nowrap;
+}
+table tbody td.match
+{
+	font-size: 10px;
+    padding: 2px 10px 2px 10px;
+    white-space: nowrap;
+    border-bottom: 1px solid #000000;
+    background-color: #DCFFC2;
+}
+table tbody td.mismatch
+{
+	font-size: 10px;
+    padding: 2px 10px 2px 10px;
+    white-space: nowrap;
+    border-bottom: 1px solid #000000;
+    background-color: #FFCFC2;
+}
+table tbody td
+{
+	font-size: 10px;
+    padding: 2px 10px 2px 10px;
+    white-space: nowrap;
+    border-bottom: 1px solid #CCCCCC;
+}
+table.data tbody td.decimal
+{
+    text-align: right;
+}
+ul
+{
+	margin: 0 0 0 15;
+}
+span.operator, h2
+{
+	font-family: "Arial Black", Gadget, sans-serif;
+	font-size: 11px;
+	color: #427A3B;
+}
+h2
+{
+    padding-top: 15px;
+}
+span.keyword
+{
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 10px;
+	font-weight: bold;
+	color: #297A1F;
+}
+span.parameter
+{
+	font-size: 11px;
+	font-weight: bold;
+	color: #4994AB;
+}
+a.alias
+{
+	font-size: 11px;
+	font-weight: bold;
+	color: #4994AB;
+}
+a.alias:hover
+{
+	font-size: 11px;
+	font-weight: bold;
+	color: #0089BF;
+}
+span.constant
+{
+	font-family: Tahoma, Geneva, sans-serif;
+	font-weight: bold;
+	font-size: 11px;
+	color: #AB6166;
+}
