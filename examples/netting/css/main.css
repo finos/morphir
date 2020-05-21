@@ -1,0 +1,53 @@
+h2 {
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+}
+table.data {
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    border-collapse: collapse;
+    border-top: 2px solid #999;
+    border-right: 2px solid #999;
+    border-bottom: 2px solid #999;
+    border-left: 2px solid #999;
+    margin-top: 3px;
+}
+table.data thead th {
+    padding: 2px 8px 2px 8px;
+}
+table.data tbody td {
+    padding: 1px 8px 1px 8px;
+    border: 1px solid #ddd;
+}
+table.data tbody td.decimal {
+    text-align: right;
+}
+table.data tbody tr.zeroed { 
+    font-style: italic;
+    color: #aaaaaa; 
+}
+table.data tbody tr:hover { 
+    background-color: #deeeff; 
+}
+table.data.short tbody tr:hover { 
+    background-color: #ffffcc; 
+}
+table.data tbody tr.selected { 
+    background-color: #cdddff; 
+}
+table.data.short tbody tr.selected { 
+    background-color: #ffee99;
+}
+table.data tbody tr.matched { 
+    background-color: #deffee; 
+}
+table.data.short tbody tr.selected.matched { 
+    background-color: #bbffbb; 
+}
+.explain {
+    border: 0px;
+    width: 100%;
+    height: 270px;
+    overflow: hidden;
+}

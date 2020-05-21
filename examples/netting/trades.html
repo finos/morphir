@@ -1,0 +1,96 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" >
+  
+    <title>Trades Example</title>
+  
+    <link rel="stylesheet" type="text/css" href="css/main.css" />
+  
+</head>
+
+<body ng-app="TradesExample">
+
+<div ng-controller="pageCtrl">
+
+    <h2>Products</h2>
+
+    <table class="data">
+    <thead>
+        <tr>
+            <th>Cusip</th>
+            <th>Price $</th>
+            <th>Total Borrow MV $</th>
+            <th>Volume</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="product in pageGlobal.data.Product">
+            <td ng-bind="product.Product_cusip"></td>
+            <td class="decimal" ng-bind="product.Product_closePriceUsd"></td>
+            <td class="decimal" ng-bind="pageGlobal.calculatedFields.Product_borrowValue(product).formatMoney()"></td>
+            <td ng-bind="pageGlobal.calculatedFields.Product_volumeIndicator(product)"></td>
+        </tr>
+    </tbody>
+    <tfoot>
+        <tr>
+            <td><input size="7" ng-model="newProduct.Product_cusip"></input></td>
+            <td><input style="text-align: right;" size="3" ng-model="newProduct.Product_closePriceUsd"></input></td>
+            <td colspan="2"><input type="button" value="Add Product" ng-click="addProduct(newProduct)"></input></td>
+        </tr>
+    </tfoot>
+    </table>
+
+    <h2>Trades</h2>
+
+    <table class="data">
+    <thead>
+        <tr>
+            <th>Trade Id</th>
+            <th>Cusip</th>
+            <th>Quantity</th>
+            <th>Side</th>
+            <th>Market Value $</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="trade in pageGlobal.data.Trade">
+            <td ng-bind="trade.Trade_tradeId"></td>
+            <td ng-bind="trade.Product_cusip"></td>
+            <td class="decimal"><input style="text-align: right;" ng-model="trade.Trade_quantity" size="5"></input></td>
+            <td ng-bind="trade.Trade_side"></td>
+            <td class="decimal" ng-bind="pageGlobal.calculatedFields.Trade_value(trade).formatMoney()"></td>
+        </tr>
+    </tbody>
+    <tfoot>
+        <tr>
+            <td><input size="5" ng-model="newTrade.Trade_tradeId"></input></td>
+            <td>
+                <select ng-model="newTrade.Product_cusip" ng-options="cusip for cusip in getCusips(pageGlobal.data.Product)">
+                </select>
+            </td>
+            <td><input style="text-align: right;" size="5" ng-model="newTrade.Trade_quantity"></input></td>
+            <td>
+                <select ng-model="newTrade.Trade_side">
+                    <option>Borrow</option>
+                    <option>Loan</option>
+                </select>
+            </td>
+            <td><input type="button" value="Add Trade" ng-click="addTrade(newTrade)"></input></td>
+        </tr>
+    </tfoot>
+    </table>
+    
+</div>
+
+<script src="lib/jquery.min.js"></script>
+<script src="lib/angular.min.js"></script>
+<script src="rates/fields/calculated.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/TradesExample.js"></script>
+    
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" >
+  
+    <title>Matching Example</title>
+  
+    <link rel="stylesheet" type="text/css" href="css/main.css" />
+  
+</head>
+
+<body ng-app="PositionsExample">
+
+<div ng-controller="pageCtrl">
+
+<table style="width: 100%;">
+<tbody>
+<tr>
+<td>
+
+    <h2>Long Positions</h2>
+
+</td>
+<td>
+
+    <h2>Short Positions</h2>
+
+</td>
+</tr>
+<tr>
+<td style="vertical-align: top;">
+
+    <table class="data">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Cusip</th>
+            <th>Product Category</th>
+            <th>Tenor</th>
+            <th>Maturity Date</th>
+            <th>Original Value</th>
+            <th>Netted Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="pos in pageGlobal.data.LongPosition" ng-click="selectLong(pos)" ng-class="longPositionClass(pos)">
+            <td ng-bind="pos.LongPosition_id"></td>
+            <td ng-bind="pos.Product_cusip"></td>
+            <td ng-bind="pos.LongPosition_productCategory"></td>
+            <td class="decimal" ng-bind="pos.LongPosition_tenor"></td>
+            <td ng-bind="pos.LongPosition_maturityDate"></td>
+            <td class="decimal" ng-bind="pos.LongPosition_notionalValue"></td>
+            <td class="decimal" ng-bind="pos.notionalValue"></td>
+        </tr>
+    </tbody>
+    </table>
+
+</td>
+<td style="vertical-align: top;">
+
+    <table class="data short">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Cusip</th>
+            <th>Product Category</th>
+            <th>Tenor</th>
+            <th>Maturity Date</th>
+            <th>Original Value</th>
+            <th>Netted Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="pos in pageGlobal.data.ShortPosition" ng-click="selectShort(pos)" ng-class="shortPositionClass(pos)">
+            <td ng-bind="pos.ShortPosition_id"></td>
+            <td ng-bind="pos.Product_cusip"></td>
+            <td ng-bind="pos.ShortPosition_productCategory"></td>
+            <td class="decimal" ng-bind="pos.ShortPosition_tenor"></td>
+            <td ng-bind="pos.ShortPosition_maturityDate"></td>
+            <td class="decimal" ng-bind="pos.ShortPosition_notionalValue"></td>
+            <td class="decimal" ng-bind="pos.notionalValue"></td>
+        </tr>
+    </tbody>
+    </table>
+
+</td>
+</tr>
+</tbody>
+</table>
+
+    
+
+    <h2>Explanation</h2>
+    
+    <iframe 
+        name="explain" 
+        class="explain"
+        ng-src="{{pageGlobal.explainSrc}}">
+        
+    </iframe>
+</div>
+
+<script src="lib/jquery.min.js"></script>
+<script src="lib/angular.min.js"></script>
+<script src="rates/fields/calculated.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/PositionsExample.js"></script>
+    
+</body>
+</html>

@@ -1,0 +1,62 @@
+<html>
+      <head>
+        <link rel="stylesheet" type="text/css" href="insight.css" media="screen"/>
+      </head>
+      <body>
+        <div id="Matching_maturityWithinDelta" class="fieldSection">
+            <span class="fieldSectionHeader">Maturity is within delta = No</span>
+            <div class="fieldSectionDetail"><table>
+          <thead>
+            <tr><th>If</th><th>Then</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+                  <td class="match"><span class="">
+              <span><span><span>
+        <span class="parameter" title="Swaps">Long product category</span>
+        <span class="keyword">is one of</span>
+        <span class="constant">Swaps</span><span> <span class="keyword">or</span> <span class="constant">FRA</span></span>
+      </span></span> <span class="keyword">and</span> <span><span><span class="parameter" title="15">Tenor</span> <span class="keyword">is not more than</span> <span class="constant">30</span></span></span></span>
+            </span></td>
+                  <td class="match"><span><span><span class="keyword">days between</span> <span class="parameter" title="2015-08-14">Long Maturity Date</span> <span class="keyword">and</span> <span class="parameter" title="2015-09-01">Short Maturity Date</span></span> <span class="keyword">is not more than</span> <span class="constant">0</span></span></td>
+                </tr><tr>
+                  <td class=""><span class="">
+              <span><span><span>
+        <span class="parameter" title="Swaps">Long product category</span>
+        <span class="keyword">is one of</span>
+        <span class="constant">Swaps</span><span> <span class="keyword">or</span> <span class="constant">FRA</span></span>
+      </span></span> <span class="keyword">and</span> <span><span><span class="parameter" title="15">Tenor</span> <span class="keyword">is not more than</span> <span class="constant">365</span></span></span></span>
+            </span></td>
+                  <td class=""><span><span><span class="keyword">days between</span> <span class="parameter" title="2015-08-14">Long Maturity Date</span> <span class="keyword">and</span> <span class="parameter" title="2015-09-01">Short Maturity Date</span></span> <span class="keyword">is not more than</span> <span class="constant">7</span></span></td>
+                </tr><tr>
+                  <td class=""><span>
+        <span class="parameter" title="Swaps">Long product category</span>
+        <span class="keyword">is one of</span>
+        <span class="constant">Swaps</span><span> <span class="keyword">or</span> <span class="constant">FRA</span></span>
+      </span></td>
+                  <td class=""><span><span><span class="keyword">days between</span> <span class="parameter" title="2015-08-14">Long Maturity Date</span> <span class="keyword">and</span> <span class="parameter" title="2015-09-01">Short Maturity Date</span></span> <span class="keyword">is not more than</span> <span class="constant">30</span></span></td>
+                </tr><tr>
+                  <td class=""><span class="mismatch">
+              <span><span><span><span class="parameter" title="Swaps">Long product category</span> <span class="keyword">is the same as</span> <span class="constant">Forwards</span></span></span> <span class="keyword">and</span> <span><span><span class="parameter" title="15">Tenor</span> <span class="keyword">is not more than</span> <span class="constant">30</span></span></span></span>
+            </span></td>
+                  <td class=""><span><span><span class="keyword">days between</span> <span class="parameter" title="2015-08-14">Long Maturity Date</span> <span class="keyword">and</span> <span class="parameter" title="2015-09-01">Short Maturity Date</span></span> <span class="keyword">is not more than</span> <span class="constant">0</span></span></td>
+                </tr><tr>
+                  <td class=""><span class="mismatch">
+              <span><span><span><span class="parameter" title="Swaps">Long product category</span> <span class="keyword">is the same as</span> <span class="constant">Forwards</span></span></span> <span class="keyword">and</span> <span><span><span class="parameter" title="15">Tenor</span> <span class="keyword">is not more than</span> <span class="constant">365</span></span></span></span>
+            </span></td>
+                  <td class=""><span><span><span class="keyword">days between</span> <span class="parameter" title="2015-08-14">Long Maturity Date</span> <span class="keyword">and</span> <span class="parameter" title="2015-09-01">Short Maturity Date</span></span> <span class="keyword">is not more than</span> <span class="constant">7</span></span></td>
+                </tr><tr>
+                  <td class=""><span><span class="parameter" title="Swaps">Long product category</span> <span class="keyword">is the same as</span> <span class="constant">Forwards</span></span></td>
+                  <td class=""><span><span><span class="keyword">days between</span> <span class="parameter" title="2015-08-14">Long Maturity Date</span> <span class="keyword">and</span> <span class="parameter" title="2015-09-01">Short Maturity Date</span></span> <span class="keyword">is not more than</span> <span class="constant">30</span></span></td>
+                </tr><tr>
+                  <td class=""><span><span class="parameter" title="Swaps">Long product category</span> <span class="keyword">is the same as</span> <span class="constant">Future</span></span></td>
+                  <td class=""><span><span><span class="keyword">days between</span> <span class="parameter" title="2015-08-14">Long Maturity Date</span> <span class="keyword">and</span> <span class="parameter" title="2015-09-01">Short Maturity Date</span></span> <span class="keyword">is not more than</span> <span class="constant">7</span></span></td>
+                </tr><tr>
+                  <td class="header ">Otherwise</td>
+                  <td class=""><span class="constant">No</span></td>
+                </tr>
+          </tbody>
+        </table></div>
+          </div>
+      </body>
+    </html>
