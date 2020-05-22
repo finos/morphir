@@ -5,6 +5,7 @@ import Expect exposing (Expectation)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
@@ -42,6 +43,7 @@ frontendTest =
                     , ""
                     , "type alias Bar = Foo"
                     , ""
+                    , "{-| It's a rec -}"
                     , "type alias Rec ="
                     , "    { field1 : Foo"
                     , "    , field2 : Bar"
@@ -61,6 +63,7 @@ frontendTest =
                 String.join "\n"
                     [ "module My.Package.B exposing (..)"
                     , ""
+                    , "{-| It's a bee -}"
                     , "type Bee = Bee"
                     ]
             }
@@ -104,42 +107,48 @@ frontendTest =
                                 Dict.fromList
                                     [ ( [ "bar" ]
                                       , public
-                                            (Type.TypeAliasDefinition []
-                                                (Type.Reference () (fQName packageName [ [ "a" ] ] [ "foo" ]) [])
+                                            (Documented ""
+                                                (Type.TypeAliasDefinition []
+                                                    (Type.Reference () (fQName packageName [ [ "a" ] ] [ "foo" ]) [])
+                                                )
                                             )
                                       )
                                     , ( [ "foo" ]
                                       , public
-                                            (Type.CustomTypeDefinition []
-                                                (public
-                                                    [ Type.Constructor [ "foo" ]
-                                                        [ ( [ "arg", "1" ], Type.Reference () (fQName packageName [ [ "b" ] ] [ "bee" ]) [] )
+                                            (Documented ""
+                                                (Type.CustomTypeDefinition []
+                                                    (public
+                                                        [ Type.Constructor [ "foo" ]
+                                                            [ ( [ "arg", "1" ], Type.Reference () (fQName packageName [ [ "b" ] ] [ "bee" ]) [] )
+                                                            ]
                                                         ]
-                                                    ]
+                                                    )
                                                 )
                                             )
                                       )
                                     , ( [ "rec" ]
                                       , public
-                                            (Type.TypeAliasDefinition []
-                                                (Type.Record ()
-                                                    [ Type.Field [ "field", "1" ]
-                                                        (Type.Reference () (fQName packageName [ [ "a" ] ] [ "foo" ]) [])
-                                                    , Type.Field [ "field", "2" ]
-                                                        (Type.Reference () (fQName packageName [ [ "a" ] ] [ "bar" ]) [])
-                                                    , Type.Field [ "field", "3" ]
-                                                        (Bool.boolType ())
-                                                    , Type.Field [ "field", "4" ]
-                                                        (Int.intType ())
-                                                    , Type.Field [ "field", "5" ]
-                                                        (Float.floatType ())
-                                                    , Type.Field [ "field", "6" ]
-                                                        (String.stringType ())
-                                                    , Type.Field [ "field", "7" ]
-                                                        (Maybe.maybeType () (Int.intType ()))
-                                                    , Type.Field [ "field", "8" ]
-                                                        (List.listType () (Float.floatType ()))
-                                                    ]
+                                            (Documented " It's a rec "
+                                                (Type.TypeAliasDefinition []
+                                                    (Type.Record ()
+                                                        [ Type.Field [ "field", "1" ]
+                                                            (Type.Reference () (fQName packageName [ [ "a" ] ] [ "foo" ]) [])
+                                                        , Type.Field [ "field", "2" ]
+                                                            (Type.Reference () (fQName packageName [ [ "a" ] ] [ "bar" ]) [])
+                                                        , Type.Field [ "field", "3" ]
+                                                            (Bool.boolType ())
+                                                        , Type.Field [ "field", "4" ]
+                                                            (Int.intType ())
+                                                        , Type.Field [ "field", "5" ]
+                                                            (Float.floatType ())
+                                                        , Type.Field [ "field", "6" ]
+                                                            (String.stringType ())
+                                                        , Type.Field [ "field", "7" ]
+                                                            (Maybe.maybeType () (Int.intType ()))
+                                                        , Type.Field [ "field", "8" ]
+                                                            (List.listType () (Float.floatType ()))
+                                                        ]
+                                                    )
                                                 )
                                             )
                                       )
@@ -154,8 +163,10 @@ frontendTest =
                                 Dict.fromList
                                     [ ( [ "bee" ]
                                       , public
-                                            (Type.CustomTypeDefinition []
-                                                (public [ Type.Constructor [ "bee" ] [] ])
+                                            (Documented " It's a bee "
+                                                (Type.CustomTypeDefinition []
+                                                    (public [ Type.Constructor [ "bee" ] [] ])
+                                                )
                                             )
                                       )
                                     ]

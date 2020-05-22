@@ -172,8 +172,8 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                                         |> Result.fromMaybe (CouldNotFindName packagePath modulePath typeName)
                                 )
                             |> Result.map
-                                (\typeDecl ->
-                                    case typeDecl of
+                                (\documentedTypeDecl ->
+                                    case documentedTypeDecl.value of
                                         Type.CustomTypeSpecification _ ctors ->
                                             ctors
                                                 |> List.map

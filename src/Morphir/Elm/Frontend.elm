@@ -20,6 +20,7 @@ import Json.Encode as Encode
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, PackageResolver)
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName(..), fQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
@@ -382,7 +383,7 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 [ ( SDK.packageName, SDK.packageSpec )
                 ]
 
-        typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
+        typesResult : Result Errors (Dict Name (AccessControlled (Documented (Type.Definition SourceLocation))))
         typesResult =
             mapDeclarationsToType processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
                 |> Result.map Dict.fromList
@@ -419,7 +420,7 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
             )
 
 
-mapDeclarationsToType : SourceFile -> Exposing -> List Declaration -> Result Errors (List ( Name, AccessControlled (Type.Definition SourceLocation) ))
+mapDeclarationsToType : SourceFile -> Exposing -> List Declaration -> Result Errors (List ( Name, AccessControlled (Documented (Type.Definition SourceLocation)) ))
 mapDeclarationsToType sourceFile expose decls =
     decls
         |> List.filterMap
@@ -456,8 +457,13 @@ mapDeclarationsToType sourceFile expose decls =
                                         typeParams =
                                             typeAlias.generics
                                                 |> List.map (Node.value >> Name.fromString)
+
+                                        doc =
+                                            typeAlias.documentation
+                                                |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
+                                                |> Maybe.withDefault ""
                                     in
-                                    ( name, withAccessControl isExposed (Type.typeAliasDefinition typeParams typeExp) )
+                                    ( name, withAccessControl isExposed (Documented doc (Type.typeAliasDefinition typeParams typeExp)) )
                                 )
                             |> Just
 
@@ -548,11 +554,16 @@ mapDeclarationsToType sourceFile expose decls =
                                         )
                                     |> ListOfResults.liftAllErrors
                                     |> Result.mapError List.concat
+
+                            doc =
+                                customType.documentation
+                                    |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
+                                    |> Maybe.withDefault ""
                         in
                         ctorsResult
                             |> Result.map
                                 (\constructors ->
-                                    ( name, withAccessControl isTypeExposed (Type.customTypeDefinition typeParams (withAccessControl isCtorExposed constructors)) )
+                                    ( name, withAccessControl isTypeExposed (Documented doc (Type.customTypeDefinition typeParams (withAccessControl isCtorExposed constructors))) )
                                 )
                             |> Just
 
@@ -1313,14 +1324,15 @@ resolveLocalNames moduleResolver moduleDef =
         rewriteValues variables value =
             resolveVariablesAndReferences variables moduleResolver value
 
-        typesResult : Result Errors (Dict Name (AccessControlled (Type.Definition SourceLocation)))
+        typesResult : Result Errors (Dict Name (AccessControlled (Documented (Type.Definition SourceLocation))))
         typesResult =
             moduleDef.types
                 |> Dict.toList
                 |> List.map
                     (\( typeName, typeDef ) ->
-                        typeDef.value
+                        typeDef.value.value
                             |> Type.mapDefinition rewriteTypes
+                            |> Result.map (Documented typeDef.value.doc)
                             |> Result.map (AccessControlled typeDef.access)
                             |> Result.map (Tuple.pair typeName)
                             |> Result.mapError List.concat

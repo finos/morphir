@@ -12,6 +12,7 @@ module Morphir.IR.Module exposing
 
 import Dict exposing (Dict)
 import Morphir.IR.AccessControlled exposing (AccessControlled, withPublicAccess)
+import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
@@ -26,7 +27,7 @@ type alias ModulePath =
 {-| Type that represents a module specification.
 -}
 type alias Specification a =
-    { types : Dict Name (Type.Specification a)
+    { types : Dict Name (Documented (Type.Specification a))
     , values : Dict Name (Value.Specification a)
     }
 
@@ -42,7 +43,7 @@ emptySpecification =
 {-| Type that represents a module definition. It includes types and values.
 -}
 type alias Definition a =
-    { types : Dict Name (AccessControlled (Type.Definition a))
+    { types : Dict Name (AccessControlled (Documented (Type.Definition a)))
     , values : Dict Name (AccessControlled (Value.Definition a))
     }
 
@@ -59,7 +60,7 @@ definitionToSpecification def =
                         |> withPublicAccess
                         |> Maybe.map
                             (\typeDef ->
-                                ( path, Type.definitionToSpecification typeDef )
+                                ( path, typeDef |> Documented.map Type.definitionToSpecification )
                             )
                 )
             |> Dict.fromList
@@ -95,7 +96,7 @@ mapSpecificationAttributes f spec =
         (spec.types
             |> Dict.map
                 (\_ typeSpec ->
-                    Type.mapSpecificationAttributes f typeSpec
+                    typeSpec |> Documented.map (Type.mapSpecificationAttributes f)
                 )
         )
         (spec.values
@@ -114,7 +115,7 @@ mapDefinitionAttributes f def =
             |> Dict.map
                 (\_ typeDef ->
                     AccessControlled typeDef.access
-                        (Type.mapDefinitionAttributes f typeDef.value)
+                        (typeDef.value |> Documented.map (Type.mapDefinitionAttributes f))
                 )
         )
         (def.values

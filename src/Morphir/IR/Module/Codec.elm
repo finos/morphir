@@ -5,6 +5,7 @@ module Morphir.IR.Module.Codec exposing (..)
 import Dict
 import Json.Encode as Encode
 import Morphir.IR.AccessControlled.Codec exposing (encodeAccessControlled)
+import Morphir.IR.Documented.Codec exposing (encodeDocumented)
 import Morphir.IR.Module exposing (Definition, Specification)
 import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Type.Codec as TypeCodec
@@ -20,9 +21,9 @@ encodeSpecification encodeAttributes spec =
                 |> Dict.toList
                 |> Encode.list
                     (\( name, typeSpec ) ->
-                        Encode.object
-                            [ ( "name", encodeName name )
-                            , ( "spec", TypeCodec.encodeSpecification encodeAttributes typeSpec )
+                        Encode.list identity
+                            [ encodeName name
+                            , typeSpec |> encodeDocumented (TypeCodec.encodeSpecification encodeAttributes)
                             ]
                     )
           )
@@ -31,9 +32,9 @@ encodeSpecification encodeAttributes spec =
                 |> Dict.toList
                 |> Encode.list
                     (\( name, valueSpec ) ->
-                        Encode.object
-                            [ ( "name", encodeName name )
-                            , ( "spec", ValueCodec.encodeSpecification encodeAttributes valueSpec )
+                        Encode.list identity
+                            [ encodeName name
+                            , valueSpec |> ValueCodec.encodeSpecification encodeAttributes
                             ]
                     )
           )
@@ -48,9 +49,9 @@ encodeDefinition encodeAttributes def =
                 |> Dict.toList
                 |> Encode.list
                     (\( name, typeDef ) ->
-                        Encode.object
-                            [ ( "name", encodeName name )
-                            , ( "def", encodeAccessControlled (TypeCodec.encodeDefinition encodeAttributes) typeDef )
+                        Encode.list identity
+                            [ encodeName name
+                            , typeDef |> encodeAccessControlled (encodeDocumented (TypeCodec.encodeDefinition encodeAttributes))
                             ]
                     )
           )
@@ -59,9 +60,9 @@ encodeDefinition encodeAttributes def =
                 |> Dict.toList
                 |> Encode.list
                     (\( name, valueDef ) ->
-                        Encode.object
-                            [ ( "name", encodeName name )
-                            , ( "def", encodeAccessControlled (ValueCodec.encodeDefinition encodeAttributes) valueDef )
+                        Encode.list identity
+                            [ encodeName name
+                            , valueDef |> encodeAccessControlled (ValueCodec.encodeDefinition encodeAttributes)
                             ]
                     )
           )

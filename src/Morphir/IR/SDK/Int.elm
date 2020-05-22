@@ -1,6 +1,7 @@
 module Morphir.IR.SDK.Int exposing (..)
 
 import Dict
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
@@ -18,7 +19,7 @@ moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Int", OpaqueTypeSpecification [] )
+            [ ( Name.fromString "Int", OpaqueTypeSpecification [] |> Documented "Type that represents an integer value." )
             ]
     , values =
         Dict.empty
