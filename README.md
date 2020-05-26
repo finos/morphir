@@ -41,7 +41,7 @@ root directory with the following structure:
 
 ```
 {
-    "name": "package-name",
+    "name": "My.Package",
     "sourceDirectory": "src",
     "exposedModules": [
         "Foo",
@@ -49,6 +49,13 @@ root directory with the following structure:
     ]
 }
 ```
+
+* **name** - The name of the package. The package name should be a valid Elm module name and it should be used as a 
+module prefix in your Elm models. If your package name is `My.Package` all your module files should either be directly 
+under that or in submodules.
+* **sourceDirectory** - The directory where your Elm sources are located.
+* **exposedModules** - The list of modules in the public interface of the package. Module names should exclude the 
+common package prefix. In the above example `Foo` refers to the Elm module `My.Package.Foo`. 
 
 #### Options
 

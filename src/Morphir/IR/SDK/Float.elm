@@ -1,6 +1,7 @@
 module Morphir.IR.SDK.Float exposing (..)
 
 import Dict
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
@@ -18,7 +19,7 @@ moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Float", OpaqueTypeSpecification [] )
+            [ ( Name.fromString "Float", OpaqueTypeSpecification [] |> Documented "Type that represents a floating-point number." )
             ]
     , values =
         Dict.empty

@@ -1,6 +1,7 @@
 module Morphir.IR.SDK.Maybe exposing (..)
 
 import Dict
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
@@ -22,6 +23,7 @@ moduleSpec =
                     [ Type.Constructor (Name.fromString "Just") [ ( [ "value" ], Type.Variable () (Name.fromString "a") ) ]
                     , Type.Constructor (Name.fromString "Nothing") []
                     ]
+                    |> Documented "Type that represents an optional value."
               )
             ]
     , values =
