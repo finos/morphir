@@ -1,3 +1,7 @@
+## [0.4.3](https://github.com/Morgan-Stanley/morphir-elm/compare/v0.4.2...v0.4.3) (2020-05-28)
+
+
+
 ## [0.4.2](https://github.com/Morgan-Stanley/morphir-elm/compare/v0.1.0...v0.4.2) (2020-05-26)
 
 
