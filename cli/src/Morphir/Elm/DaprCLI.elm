@@ -17,6 +17,7 @@ import Morphir.Elm.Backend.Dapr.StatefulApp as StatefulApp
 import Morphir.Elm.Backend.Utils as Utils exposing (..)
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, decodePackageInfo, encodeError)
 import Morphir.IR.AccessControlled as AccessControlled exposing (..)
+import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (..)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
@@ -83,7 +84,7 @@ type alias AppArgs extra =
 
 type alias StatefulAppArgs extra =
     { app : AppArgs extra
-    , innerTypes : List ( Name, AccessControlled (Type.Definition ()) )
+    , innerTypes : List ( Name, AccessControlled (Documented (Type.Definition ())) )
     }
 
 
@@ -113,7 +114,7 @@ daprSource pkgPath pkgDef =
                                         Just acsCtrlTypeDef ->
                                             case acsCtrlTypeDef.access of
                                                 Public ->
-                                                    case acsCtrlTypeDef.value of
+                                                    case acsCtrlTypeDef.value.value of
                                                         TypeAliasDefinition _ tpe ->
                                                             { appPath = pkgPath ++ modPath
                                                             , appType = tpe
@@ -132,14 +133,14 @@ daprSource pkgPath pkgDef =
                         _ ->
                             Nothing
 
-                innerTypes : List ( Name, AccessControlled (Type.Definition ()) )
+                innerTypes : List ( Name, AccessControlled (Documented (Type.Definition ())) )
                 innerTypes =
                     case acsCtrlModDef.access of
                         Public ->
                             case acsCtrlModDef.value of
                                 { types, values } ->
                                     Dict.remove (Name.fromString "app") types
-                                        |> Dict.map (\_ acsCtrlTypeDef -> AccessControlled.map Type.eraseAttributes acsCtrlTypeDef)
+                                        |> Dict.map (\_ acsCtrlTypeDef -> acsCtrlTypeDef |> AccessControlled.map (Documented.map Type.eraseAttributes))
                                         |> Dict.toList
 
                         Private ->
@@ -192,7 +193,7 @@ elmBackendResult packageDef =
         |> Writer.write
 
 
-codecs : Name -> AccessControlled (Type.Definition ()) -> List (Node ElmSyn.Declaration)
+codecs : Name -> AccessControlled (Documented (Type.Definition ())) -> List (Node ElmSyn.Declaration)
 codecs typeName acsCtrlTypeDef =
     [ EncoderGen.typeDefToEncoder typeName acsCtrlTypeDef |> Utils.emptyRangeNode
     , DecoderGen.typeDefToDecoder typeName acsCtrlTypeDef |> Utils.emptyRangeNode

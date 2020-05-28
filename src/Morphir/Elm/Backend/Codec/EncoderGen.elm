@@ -7,13 +7,14 @@ import Elm.Syntax.Node exposing (Node(..))
 import Elm.Syntax.Pattern exposing (Pattern(..), QualifiedNameRef)
 import Morphir.Elm.Backend.Utils as Utils
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type exposing (Constructor(..), Definition(..), Field, Type(..), record)
 
 
-typeDefToEncoder : Name -> AccessControlled (Definition ()) -> Declaration
+typeDefToEncoder : Name -> AccessControlled (Documented (Definition ())) -> Declaration
 typeDefToEncoder typeName typeDef =
     let
         function : Function
@@ -38,7 +39,7 @@ typeDefToEncoder typeName typeDef =
         args =
             case typeDef.access of
                 Public ->
-                    case typeDef.value of
+                    case typeDef.value.value of
                         CustomTypeDefinition _ constructors ->
                             case constructors.access of
                                 Public ->
@@ -69,7 +70,7 @@ typeDefToEncoder typeName typeDef =
         funcExpr =
             case typeDef.access of
                 Public ->
-                    case typeDef.value of
+                    case typeDef.value.value of
                         CustomTypeDefinition _ constructors ->
                             case constructors.access of
                                 Public ->
