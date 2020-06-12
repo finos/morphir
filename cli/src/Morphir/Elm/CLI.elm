@@ -40,7 +40,7 @@ update msg model =
                             Frontend.packageDefinitionFromSource packageInfo sourceFiles
                                 |> Result.map Package.eraseDefinitionAttributes
                     in
-                    ( model, result |> encodeResult (Encode.list encodeError) (PackageCodec.encodeDefinition (\_ -> Encode.null)) |> packageDefinitionFromSourceResult )
+                    ( model, result |> encodeResult (Encode.list encodeError) (PackageCodec.encodeDefinition (\_ -> Encode.object [])) |> packageDefinitionFromSourceResult )
 
                 Err errorMessage ->
                     ( model, errorMessage |> Decode.errorToString |> decodeError )

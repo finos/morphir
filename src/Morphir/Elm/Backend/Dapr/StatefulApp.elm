@@ -18,13 +18,14 @@ import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen exposing (typeDefToEnc
 import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
 import Morphir.Elm.Frontend as Frontend exposing (ContentLocation, ContentRange, SourceFile, SourceLocation, mapDeclarationsToType)
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, map)
+import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name, toCamelCase)
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..), eraseAttributes)
 
 
-gen : Path -> Name -> Type () -> List ( Name, AccessControlled (Type.Definition ()) ) -> Maybe File
+gen : Path -> Name -> Type () -> List ( Name, AccessControlled (Documented (Type.Definition ())) ) -> Maybe File
 gen fullAppPath appName appType otherTypeDefs =
     case appType of
         Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "stateful", "app" ] ] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) ->
@@ -226,7 +227,7 @@ outgoingMsgTypeAliasDecl keyType stateType eventType =
 msgDecoderDecl : Type () -> Type () -> Type () -> Declaration
 msgDecoderDecl keyType stateType cmdType =
     let
-        morphirTypeDef : Result Frontend.Errors (List ( Name, AccessControlled (Definition SourceLocation) ))
+        morphirTypeDef : Result Frontend.Errors (List ( Name, AccessControlled (Documented (Definition SourceLocation)) ))
         morphirTypeDef =
             Frontend.mapDeclarationsToType
                 emptySourceFile
@@ -237,7 +238,7 @@ msgDecoderDecl keyType stateType cmdType =
         Ok (( typeName, typeDef ) :: []) ->
             DecoderGen.typeDefToDecoder
                 typeName
-                (typeDef |> AccessControlled.map eraseAttributes)
+                (typeDef |> AccessControlled.map (Documented.map eraseAttributes))
 
         _ ->
             emptyDecl
@@ -329,7 +330,7 @@ encodeStateEventDecl keyType stateType eventType =
     in
     case morphirTypeDef of
         Ok (( typeName, typeDef ) :: []) ->
-            EncoderGen.typeDefToEncoder typeName (typeDef |> AccessControlled.map eraseAttributes)
+            EncoderGen.typeDefToEncoder typeName (typeDef |> AccessControlled.map (Documented.map eraseAttributes))
 
         _ ->
             emptyDecl
