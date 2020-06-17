@@ -1,6 +1,7 @@
 module Morphir.IR.SDK.Result exposing (..)
 
 import Dict
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
@@ -22,6 +23,7 @@ moduleSpec =
                     [ Type.Constructor (Name.fromString "Ok") [ ( Name.fromString "value", Type.Variable () (Name.fromString "a") ) ]
                     , Type.Constructor (Name.fromString "Err") [ ( Name.fromString "error", Type.Variable () (Name.fromString "e") ) ]
                     ]
+                    |> Documented "Type that represents the result of a computation that can either succeed or fail."
               )
             ]
     , values =

@@ -6,12 +6,13 @@ import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Pattern exposing (Pattern(..))
 import Morphir.Elm.Backend.Utils as Utils
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Constructor(..), Definition(..), Field, Type(..))
 
 
-typeDefToDecoder : Name -> AccessControlled (Type.Definition ()) -> Declaration
+typeDefToDecoder : Name -> AccessControlled (Documented (Type.Definition ())) -> Declaration
 typeDefToDecoder typeName accessCtrlTypeDef =
     let
         decoderVar : Pattern
@@ -23,7 +24,7 @@ typeDefToDecoder typeName accessCtrlTypeDef =
         decoderExpr =
             case accessCtrlTypeDef.access of
                 Public ->
-                    case accessCtrlTypeDef.value of
+                    case accessCtrlTypeDef.value.value of
                         CustomTypeDefinition _ acsCtrlCtors ->
                             case acsCtrlCtors.access of
                                 Public ->

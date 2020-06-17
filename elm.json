@@ -3,9 +3,18 @@
     "name": "Morgan-Stanley/morphir-elm",
     "summary": "Morphir Elm bindings",
     "license": "Apache-2.0",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "exposed-modules": [
-        "Morphir.SDK.StatefulApp"
+        "Morphir.SDK.StatefulApp",
+        "Morphir.IR.Name",
+        "Morphir.IR.Path",
+        "Morphir.IR.QName",
+        "Morphir.IR.FQName",
+        "Morphir.IR.AccessControlled",
+        "Morphir.IR.Type",
+        "Morphir.IR.Value",
+        "Morphir.IR.Module",
+        "Morphir.IR.Package"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {

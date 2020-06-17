@@ -13,7 +13,6 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type
 import Morphir.JsonExtra as JsonExtra
-import Morphir.Pattern exposing (matchAny)
 import Set exposing (Set)
 
 
@@ -86,7 +85,8 @@ type alias ModuleResolver =
 
 
 type alias PackageResolver =
-    { ctorNames : ModuleName -> LocalName -> Result Error (List String)
+    { packagePath : Path
+    , ctorNames : ModuleName -> LocalName -> Result Error (List String)
     , exposesType : ModuleName -> LocalName -> Result Error Bool
     , exposesValue : ModuleName -> LocalName -> Result Error Bool
     , decomposeModuleName : ModuleName -> Result Error ( Path, Path )
@@ -96,12 +96,12 @@ type alias PackageResolver =
 defaultImports : List Import
 defaultImports =
     let
-        importExplicit : ModuleName -> Maybe ModuleName -> List TopLevelExpose -> Import
+        importExplicit : ModuleName -> Maybe String -> List TopLevelExpose -> Import
         importExplicit moduleName maybeAlias exposingList =
             Import
                 (Node emptyRange moduleName)
                 (maybeAlias
-                    |> Maybe.map (Node emptyRange)
+                    |> Maybe.map (List.singleton >> Node emptyRange)
                 )
                 (exposingList
                     |> List.map (Node emptyRange)
@@ -111,15 +111,24 @@ defaultImports =
                 )
     in
     [ importExplicit [ "Morphir", "SDK", "Bool" ] Nothing [ TypeOrAliasExpose "Bool" ]
-    , importExplicit [ "Morphir", "SDK", "Char" ] Nothing [ TypeOrAliasExpose "Char" ]
+    , importExplicit [ "Morphir", "SDK", "Char" ] (Just "Char") [ TypeOrAliasExpose "Char" ]
     , importExplicit [ "Morphir", "SDK", "Int" ] Nothing [ TypeOrAliasExpose "Int" ]
     , importExplicit [ "Morphir", "SDK", "Float" ] Nothing [ TypeOrAliasExpose "Float" ]
-    , importExplicit [ "Morphir", "SDK", "String" ] Nothing [ TypeOrAliasExpose "String" ]
-    , importExplicit [ "Morphir", "SDK", "Maybe" ] Nothing [ TypeOrAliasExpose "Maybe" ]
-    , importExplicit [ "Morphir", "SDK", "Result" ] Nothing [ TypeOrAliasExpose "Result" ]
-    , importExplicit [ "Morphir", "SDK", "List" ] Nothing [ TypeOrAliasExpose "List" ]
+    , importExplicit [ "Morphir", "SDK", "String" ] (Just "String") [ TypeOrAliasExpose "String" ]
+    , importExplicit [ "Morphir", "SDK", "Maybe" ] (Just "Maybe") [ TypeOrAliasExpose "Maybe" ]
+    , importExplicit [ "Morphir", "SDK", "Result" ] (Just "Result") [ TypeOrAliasExpose "Result" ]
+    , importExplicit [ "Morphir", "SDK", "List" ] (Just "List") [ TypeOrAliasExpose "List" ]
+    , importExplicit [ "Morphir", "SDK", "Regex" ] (Just "Regex") [ TypeOrAliasExpose "Regex" ]
+    , importExplicit [ "Morphir", "SDK", "Tuple" ] (Just "Tuple") []
     , importExplicit [ "Morphir", "SDK", "StatefulApp" ] Nothing [ TypeOrAliasExpose "StatefulApp" ]
     ]
+
+
+moduleMapping : Dict ModuleName ModuleName
+moduleMapping =
+    Dict.fromList
+        [ ( [ "Dict" ], [ "Morphir", "SDK", "Dict" ] )
+        ]
 
 
 createPackageResolver : Dict Path (Package.Specification a) -> Path -> Dict Path (Module.Specification a) -> PackageResolver
@@ -164,8 +173,8 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                                         |> Result.fromMaybe (CouldNotFindName packagePath modulePath typeName)
                                 )
                             |> Result.map
-                                (\typeDecl ->
-                                    case typeDecl of
+                                (\documentedTypeDecl ->
+                                    case documentedTypeDecl.value of
                                         Type.CustomTypeSpecification _ ctors ->
                                             ctors
                                                 |> List.map
@@ -221,9 +230,13 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
         decomposeModuleName : ModuleName -> Result Error ( Path, Path )
         decomposeModuleName moduleName =
             let
+                morphirModuleName : ModuleName
+                morphirModuleName =
+                    moduleMapping |> Dict.get moduleName |> Maybe.withDefault moduleName
+
                 suppliedModulePath : Path
                 suppliedModulePath =
-                    moduleName
+                    morphirModuleName
                         |> List.map Name.fromString
 
                 matchModuleToPackagePath modulePath packagePath =
@@ -241,14 +254,31 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                         |> List.filterMap (matchModuleToPackagePath suppliedModulePath)
                         |> List.head
                     )
-                |> Result.fromMaybe (CouldNotDecompose moduleName)
+                |> Result.fromMaybe (CouldNotDecompose morphirModuleName)
     in
-    PackageResolver ctorNames exposesType exposesValue decomposeModuleName
+    PackageResolver currentPackagePath ctorNames exposesType exposesValue decomposeModuleName
 
 
-createModuleResolver : PackageResolver -> List Import -> ModuleResolver
-createModuleResolver packageResolver explicitImports =
+createModuleResolver : PackageResolver -> List Import -> Path -> Module.Definition a -> ModuleResolver
+createModuleResolver packageResolver elmImports currenctModulePath moduleDef =
     let
+        explicitImports : List Import
+        explicitImports =
+            elmImports
+                |> List.map
+                    (\imp ->
+                        { imp
+                            | moduleName =
+                                imp.moduleName
+                                    |> Node.map
+                                        (\moduleName ->
+                                            moduleMapping
+                                                |> Dict.get moduleName
+                                                |> Maybe.withDefault moduleName
+                                        )
+                        }
+                    )
+
         imports : List Import
         imports =
             defaultImports ++ explicitImports
@@ -403,8 +433,8 @@ createModuleResolver packageResolver explicitImports =
                     else
                         Err (ModuleNotImported fullModuleName)
 
-        resolve : Bool -> ModuleName -> LocalName -> Result Error FQName
-        resolve isType moduleName localName =
+        resolveExternally : Bool -> ModuleName -> LocalName -> Result Error FQName
+        resolveExternally isType moduleName localName =
             resolveModuleName isType moduleName localName
                 |> Result.andThen packageResolver.decomposeModuleName
                 |> Result.map
@@ -412,12 +442,43 @@ createModuleResolver packageResolver explicitImports =
                         fQName packagePath modulePath (Name.fromString localName)
                     )
 
+        resolve : Bool -> ModuleName -> LocalName -> Result Error FQName
+        resolve isType elmModuleName elmLocalName =
+            if List.isEmpty elmModuleName then
+                -- If the name is not prefixed with a module we need to look it up within the module first
+                let
+                    localNames =
+                        if isType then
+                            moduleDef.types |> Dict.keys
+
+                        else
+                            moduleDef.values |> Dict.keys
+
+                    localName =
+                        elmLocalName |> Name.fromString
+                in
+                if localNames |> List.member localName then
+                    if Path.isPrefixOf currenctModulePath packageResolver.packagePath then
+                        Ok (fQName packageResolver.packagePath (currenctModulePath |> List.drop (List.length packageResolver.packagePath)) localName)
+
+                    else
+                        Err (PackageNotPrefixOfModule packageResolver.packagePath currenctModulePath)
+
+                else
+                    resolveExternally isType elmModuleName elmLocalName
+
+            else
+                -- If the name is prefixed with a module we can skip the local resolution
+                resolveExternally isType elmModuleName elmLocalName
+
         resolveType : ModuleName -> LocalName -> Result Error FQName
-        resolveType =
+        resolveType moduleName =
             resolve True
+                (moduleMapping |> Dict.get moduleName |> Maybe.withDefault moduleName)
 
         resolveValue : ModuleName -> LocalName -> Result Error FQName
-        resolveValue =
+        resolveValue moduleName =
             resolve False
+                (moduleMapping |> Dict.get moduleName |> Maybe.withDefault moduleName)
     in
     ModuleResolver resolveType resolveValue

@@ -3,8 +3,7 @@ module Morphir.IR.SDK.Equality exposing (..)
 import Dict
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Common exposing (binaryApply, toFQName)
-import Morphir.IR.Type exposing (Specification(..), Type(..))
+import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Value as Value exposing (Value)
 
 
@@ -22,11 +21,11 @@ moduleSpec =
     }
 
 
-equal : a -> Value a -> Value a -> Value a
-equal =
-    binaryApply moduleName "equal"
+equal : a -> Value a
+equal a =
+    Value.Reference a (toFQName moduleName "equal")
 
 
-notEqual : a -> Value a -> Value a -> Value a
-notEqual =
-    binaryApply moduleName "notEqual"
+notEqual : a -> Value a
+notEqual a =
+    Value.Reference a (toFQName moduleName "notEqual")

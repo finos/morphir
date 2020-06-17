@@ -2,8 +2,6 @@ module Morphir.IR.Path exposing
     ( Path, fromList, toList
     , fromString, toString
     , isPrefixOf
-    , fuzzPath
-    , encodePath, decodePath
     )
 
 {-| `Path` is a list of names that represents a path in the tree. It's used at various
@@ -21,22 +19,9 @@ places in the IR to identify types and values.
 
 @docs isPrefixOf
 
-
-# Property Testing
-
-@docs fuzzPath
-
-
-# Serialization
-
-@docs encodePath, decodePath
-
 -}
 
-import Fuzz exposing (Fuzzer)
-import Json.Decode as Decode
-import Json.Encode as Encode
-import Morphir.IR.Name as Name exposing (Name, decodeName, encodeName, fuzzName)
+import Morphir.IR.Name as Name exposing (Name)
 import Regex exposing (Regex)
 
 
@@ -139,29 +124,3 @@ isPrefixOf prefix path =
 
             else
                 False
-
-
-{-| Path fuzzer.
--}
-fuzzPath : Fuzzer Path
-fuzzPath =
-    Fuzz.list fuzzName
-        |> Fuzz.map (List.take 3)
-        |> Fuzz.map fromList
-
-
-{-| Encode a path to JSON.
--}
-encodePath : Path -> Encode.Value
-encodePath path =
-    path
-        |> toList
-        |> Encode.list encodeName
-
-
-{-| Decode a path from JSON.
--}
-decodePath : Decode.Decoder Path
-decodePath =
-    Decode.list decodeName
-        |> Decode.map fromList

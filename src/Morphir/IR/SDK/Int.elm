@@ -1,12 +1,13 @@
 module Morphir.IR.SDK.Int exposing (..)
 
 import Dict
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
-import Morphir.IR.SDK.Common exposing (binaryApply, toFQName)
+import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value exposing (Value)
+import Morphir.IR.Value as Value exposing (Value)
 
 
 moduleName : ModulePath
@@ -18,7 +19,7 @@ moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Int", OpaqueTypeSpecification [] )
+            [ ( Name.fromString "Int", OpaqueTypeSpecification [] |> Documented "Type that represents an integer value." )
             ]
     , values =
         Dict.empty
@@ -30,6 +31,6 @@ intType attributes =
     Reference attributes (toFQName moduleName "Int") []
 
 
-divide : a -> Value a -> Value a -> Value a
-divide =
-    binaryApply moduleName "divide"
+divide : a -> Value a
+divide a =
+    Value.Reference a (toFQName moduleName "divide")

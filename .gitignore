@@ -2,3 +2,4 @@ node_modules
 elm-stuff
 .vscode
 .idea
+dist/
