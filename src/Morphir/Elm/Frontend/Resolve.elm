@@ -120,6 +120,7 @@ defaultImports =
     , importExplicit [ "Morphir", "SDK", "List" ] (Just "List") [ TypeOrAliasExpose "List" ]
     , importExplicit [ "Morphir", "SDK", "Regex" ] (Just "Regex") [ TypeOrAliasExpose "Regex" ]
     , importExplicit [ "Morphir", "SDK", "Tuple" ] (Just "Tuple") []
+    , importExplicit [ "Morphir", "SDK", "StatefulApp" ] Nothing [ TypeOrAliasExpose "StatefulApp" ]
     ]
 
 
