@@ -62,7 +62,8 @@ In Morphir's data format this would translate into something like this:
 ## Using Morphir
 * [What Makes a Good Model](what-makes-a-good-domain-model)
 * [Development Automation (Dev Bots)](dev_bots)
-* [Modeling An Application](application_modeling)
+* [Modeling an Application](application_modeling)
+* [Modeling Decision Tables](../morphir-examples/src/Morphir/Sample/Rules) 
 
 ## Applicability
 * [Sharing Business Logic Across Application Boundaries](shared_logic_modeling)
