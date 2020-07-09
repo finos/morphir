@@ -1,4 +1,4 @@
-module Morphir.IR.SDK.Comparison exposing (..)
+module Morphir.IR.SDK.Comparable exposing (..)
 
 import Dict
 import Morphir.IR.Module as Module exposing (ModulePath)

@@ -12,7 +12,7 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Bool as Bool
-import Morphir.IR.SDK.Comparison as Comparison
+import Morphir.IR.SDK.Comparable as Comparison
 import Morphir.IR.SDK.Equality as Equality
 import Morphir.IR.SDK.Float as Float
 import Morphir.IR.SDK.Function as Function

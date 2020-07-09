@@ -31,7 +31,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName as QName
 import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Bool as Bool
-import Morphir.IR.SDK.Comparison as Comparison
+import Morphir.IR.SDK.Comparable as Comparison
 import Morphir.IR.SDK.Equality as Equality
 import Morphir.IR.SDK.Float as Float
 import Morphir.IR.SDK.Function as Function
