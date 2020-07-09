@@ -11,12 +11,11 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path
-import Morphir.IR.SDK.Appending as Appending
 import Morphir.IR.SDK.Bool as Bool
-import Morphir.IR.SDK.Comparison as Comparison
-import Morphir.IR.SDK.Composition as Composition
+import Morphir.IR.SDK.Comparable as Comparison
 import Morphir.IR.SDK.Equality as Equality
 import Morphir.IR.SDK.Float as Float
+import Morphir.IR.SDK.Function as Function
 import Morphir.IR.SDK.Int as Int
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Maybe as Maybe
@@ -312,15 +311,14 @@ valueTests =
         , checkIR "a > b" <| binary Comparison.greaterThan (ref "a") (ref "b")
         , checkIR "a <= b" <| binary Comparison.lessThanOrEqual (ref "a") (ref "b")
         , checkIR "a >= b" <| binary Comparison.greaterThanOrEqual (ref "a") (ref "b")
-        , checkIR "a ++ b" <| binary Appending.append (ref "a") (ref "b")
         , checkIR "a + b" <| binary Number.add (ref "a") (ref "b")
         , checkIR "a - b" <| binary Number.subtract (ref "a") (ref "b")
         , checkIR "a * b" <| binary Number.multiply (ref "a") (ref "b")
         , checkIR "a / b" <| binary Float.divide (ref "a") (ref "b")
         , checkIR "a // b" <| binary Int.divide (ref "a") (ref "b")
         , checkIR "a ^ b" <| binary Number.power (ref "a") (ref "b")
-        , checkIR "a << b" <| binary Composition.composeLeft (ref "a") (ref "b")
-        , checkIR "a >> b" <| binary Composition.composeRight (ref "a") (ref "b")
+        , checkIR "a << b" <| binary Function.composeLeft (ref "a") (ref "b")
+        , checkIR "a >> b" <| binary Function.composeRight (ref "a") (ref "b")
         , checkIR "a :: b" <| binary List.construct (ref "a") (ref "b")
         , checkIR "::" <| List.construct ()
         , checkIR "foo (::)" <| Apply () (ref "foo") (List.construct ())

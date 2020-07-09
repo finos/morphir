@@ -1,4 +1,4 @@
-module Morphir.SDK.Comparison exposing (lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, max, min, compare, Order)
+module Morphir.SDK.Comparable exposing (lessThan, greaterThan, lessThanOrEqual, greaterThanOrEqual, max, min, compare, Order)
 
 {-| Comparing ordered values.
 

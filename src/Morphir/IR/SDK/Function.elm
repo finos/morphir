@@ -1,4 +1,4 @@
-module Morphir.IR.SDK.Appending exposing (..)
+module Morphir.IR.SDK.Function exposing (..)
 
 import Dict
 import Morphir.IR.Module as Module exposing (ModulePath)
@@ -9,7 +9,7 @@ import Morphir.IR.Value as Value exposing (Value)
 
 moduleName : ModulePath
 moduleName =
-    Path.fromString "Appending"
+    Path.fromString "Function"
 
 
 moduleSpec : Module.Specification ()
@@ -21,6 +21,11 @@ moduleSpec =
     }
 
 
-append : a -> Value a
-append a =
-    Value.Reference a (toFQName moduleName "append")
+composeLeft : a -> Value a
+composeLeft a =
+    Value.Reference a (toFQName moduleName "composeLeft")
+
+
+composeRight : a -> Value a
+composeRight a =
+    Value.Reference a (toFQName moduleName "composeRight")

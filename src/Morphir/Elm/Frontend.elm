@@ -30,12 +30,11 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName as QName
 import Morphir.IR.SDK as SDK
-import Morphir.IR.SDK.Appending as Appending
 import Morphir.IR.SDK.Bool as Bool
-import Morphir.IR.SDK.Comparison as Comparison
-import Morphir.IR.SDK.Composition as Composition
+import Morphir.IR.SDK.Comparable as Comparison
 import Morphir.IR.SDK.Equality as Equality
 import Morphir.IR.SDK.Float as Float
+import Morphir.IR.SDK.Function as Function
 import Morphir.IR.SDK.Int as Int
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Number as Number
@@ -1029,7 +1028,7 @@ mapOperator sourceLocation op =
             Ok <| Comparison.greaterThanOrEqual sourceLocation
 
         "++" ->
-            Ok <| Appending.append sourceLocation
+            Err [ NotSupported sourceLocation "The ++ operator is currently not supported. Please use String.append or List.append. See docs/error-append-not-supported.md" ]
 
         "+" ->
             Ok <| Number.add sourceLocation
@@ -1050,10 +1049,10 @@ mapOperator sourceLocation op =
             Ok <| Number.power sourceLocation
 
         "<<" ->
-            Ok <| Composition.composeLeft sourceLocation
+            Ok <| Function.composeLeft sourceLocation
 
         ">>" ->
-            Ok <| Composition.composeRight sourceLocation
+            Ok <| Function.composeRight sourceLocation
 
         "::" ->
             Ok <| List.construct sourceLocation
