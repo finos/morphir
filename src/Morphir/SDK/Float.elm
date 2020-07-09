@@ -76,11 +76,11 @@ values like this:
 
     halfOf : Int -> Float
     halfOf number =
-        toFloat number / 2
+        fromInt number / 2
 
 -}
-toFloat : Int -> Float
-toFloat =
+fromInt : Int -> Float
+fromInt =
     Basics.toFloat
 
 
