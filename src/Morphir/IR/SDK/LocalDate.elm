@@ -11,14 +11,14 @@ import Morphir.IR.Type exposing (Specification(..), Type(..))
 
 moduleName : ModulePath
 moduleName =
-    Path.fromString "Date"
+    Path.fromString "LocalDate"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Date", OpaqueTypeSpecification [] |> Documented "Type that represents a date concept." )
+            [ ( Name.fromString "LocalDate", OpaqueTypeSpecification [] |> Documented "Type that represents a date concept." )
             ]
     , values =
         Dict.empty
@@ -27,4 +27,4 @@ moduleSpec =
 
 dateType : a -> Type a
 dateType attributes =
-    Reference attributes (toFQName moduleName "Date") []
+    Reference attributes (toFQName moduleName "LocalDate") []
