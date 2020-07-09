@@ -1,4 +1,4 @@
-module Morphir.IR.SDK.Composition exposing (..)
+module Morphir.IR.SDK.Function exposing (..)
 
 import Dict
 import Morphir.IR.Module as Module exposing (ModulePath)
@@ -9,7 +9,7 @@ import Morphir.IR.Value as Value exposing (Value)
 
 moduleName : ModulePath
 moduleName =
-    Path.fromString "Composition"
+    Path.fromString "Function"
 
 
 moduleSpec : Module.Specification ()
