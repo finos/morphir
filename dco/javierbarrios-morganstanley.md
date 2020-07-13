@@ -3,8 +3,8 @@
 Thank you for your interest in the open source software project(s) (the “Project”) maintained or managed by 
 Morgan Stanley Services Group Inc. (“us” or “we”). The purpose of this Developer Certificate of Origin (the “DCO” or
 “Agreement”) is to define the intellectual property license granted by persons or entities that make Contributions 
-(defined below) to the Project. You, **`<your name>`**, agree and certify as set forth in this Agreement. You may be 
-contacted at **`<your email address>`**.
+(defined below) to the Project. You, Javier Barrios, agree and certify as set forth in this Agreement. You may be 
+contacted at ingjavierbarrios@gmail.com.
 
 By submitting a Contribution, including but not limited to by pull request, you agree that you have read and 
 understood this Agreement and you will be legally bound thereby.  In consideration of the opportunity to 
@@ -41,7 +41,7 @@ software distributed by the Project:
         1. if any third party, including your employer and/or its affiliates, has rights to any intellectual 
         property included in your Contribution, then (i) each such third party has provided you written permission 
         to make the Contribution as specified herein or a written waiver of such rights in and to your Contribution, 
-        **`[and (ii) such third party(ies) is/are <name of copyright holder(s)>]`**;
+        and (ii) such third party is Morgan Stanley;
         1. your Contribution is an original work created by you, and except for third parties who have given 
         permission to make the Contribution as set forth above, to your knowledge, no other person or entity has 
         claimed, claims, or has the right to claim any right whatsoever in the Contribution; and
