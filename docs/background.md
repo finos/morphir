@@ -19,7 +19,7 @@ Let's take a look at what that all means and how Morphir works to address these 
 
 
 ### Promoting Business Knowledge
-The business oncepts underlying your application are its most valuable asset.  It's often difficult to discern business concepts when they're embedded within platform and execution code. On top of that, many programming languages are so full of abstractions that it can become difficult to understand the business meaning at all.
+The business concepts underlying your application are its most valuable asset.  It's often difficult to discern business concepts when they're embedded within platform and execution code. On top of that, many programming languages are so full of abstractions that it can become difficult to understand the business meaning at all.
 
 Morphir tackles this challenge in a few ways. First, it provides a common structure to save business concepts, including both data and logic. This is the Morphir IR. It is a ....The key to this structure is that it focusus solely on business logic and data. No side effects (like saving to a database or reading from a file) are allowed. The IR is the core to Morphir and allows it to work across languages and platforms.
 
