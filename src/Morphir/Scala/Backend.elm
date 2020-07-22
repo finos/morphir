@@ -48,13 +48,12 @@ mapModuleDefinition opt packageDef modulePath accessControlledModuleDef =
                 lastName :: reverseModulePath ->
                     ( reverseModulePath |> List.reverse, lastName )
 
-        typeMembers : List Scala.MemberDecl
-        typeMembers =
-            accessControlledModuleDef.value.types
-                |> Dict.toList
-                |> List.concatMap
-                    (\( typeName, accessControlledTypeDef ))
-
+        --typeMembers : List Scala.MemberDecl
+        --typeMembers =
+        --    accessControlledModuleDef.value.types
+        --        |> Dict.toList
+        --        |> List.concatMap
+        --            (\( typeName, accessControlledTypeDef ))
         --recordTypeAliasUnits =
         --    impl.typeAliases
         --        |> Dict.toList
