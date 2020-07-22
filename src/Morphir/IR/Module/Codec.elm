@@ -3,6 +3,7 @@ module Morphir.IR.Module.Codec exposing (..)
 {-| -}
 
 import Dict
+import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.AccessControlled.Codec exposing (encodeAccessControlled)
 import Morphir.IR.Documented.Codec exposing (encodeDocumented)
@@ -67,3 +68,8 @@ encodeDefinition encodeAttributes def =
                     )
           )
         ]
+
+
+decodeDefinition : Decode.Decoder a -> Decode.Decoder (Definition a)
+decodeDefinition decodeAttributes =
+    Decode.succeed { types = Dict.empty, values = Dict.empty }
