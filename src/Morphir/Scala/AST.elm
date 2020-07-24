@@ -9,12 +9,18 @@ type alias Path =
     List Name
 
 
+type alias Documented a =
+    { doc : Maybe String
+    , value : a
+    }
+
+
 type alias CompilationUnit =
     { dirPath : List String
     , fileName : String
     , packageDecl : PackageDecl
     , imports : List ImportDecl
-    , typeDecls : List TypeDecl
+    , typeDecls : List (Documented TypeDecl)
     }
 
 

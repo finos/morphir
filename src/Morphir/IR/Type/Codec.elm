@@ -2,7 +2,7 @@ module Morphir.IR.Type.Codec exposing (..)
 
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.AccessControlled.Codec exposing (encodeAccessControlled)
+import Morphir.IR.AccessControlled.Codec exposing (decodeAccessControlled, encodeAccessControlled)
 import Morphir.IR.FQName.Codec exposing (decodeFQName, encodeFQName)
 import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
 import Morphir.IR.Type exposing (Constructor(..), Constructors, Definition(..), Field, Specification(..), Type(..))
@@ -187,6 +187,27 @@ encodeDefinition encodeAttributes def =
                 ]
 
 
+decodeDefinition : Decode.Decoder a -> Decode.Decoder (Definition a)
+decodeDefinition decodeAttributes =
+    Decode.index 0 Decode.string
+        |> Decode.andThen
+            (\kind ->
+                case kind of
+                    "type_alias_definition" ->
+                        Decode.map2 TypeAliasDefinition
+                            (Decode.index 1 (Decode.list decodeName))
+                            (Decode.index 2 (decodeType decodeAttributes))
+
+                    "custom_type_definition" ->
+                        Decode.map2 CustomTypeDefinition
+                            (Decode.index 1 (Decode.list decodeName))
+                            (Decode.index 2 (decodeAccessControlled (decodeConstructors decodeAttributes)))
+
+                    _ ->
+                        Decode.fail ("Unknown kind: " ++ kind)
+            )
+
+
 encodeConstructors : (a -> Encode.Value) -> Constructors a -> Encode.Value
 encodeConstructors encodeAttributes ctors =
     ctors
@@ -205,3 +226,28 @@ encodeConstructors encodeAttributes ctors =
                             )
                     ]
             )
+
+
+decodeConstructors : Decode.Decoder a -> Decode.Decoder (Constructors a)
+decodeConstructors decodeAttributes =
+    Decode.list
+        (Decode.index 0 Decode.string
+            |> Decode.andThen
+                (\kind ->
+                    case kind of
+                        "constructor" ->
+                            Decode.map2 Constructor
+                                (Decode.index 1 decodeName)
+                                (Decode.index 2
+                                    (Decode.list
+                                        (Decode.map2 Tuple.pair
+                                            (Decode.index 0 decodeName)
+                                            (Decode.index 1 (decodeType decodeAttributes))
+                                        )
+                                    )
+                                )
+
+                        _ ->
+                            Decode.fail ("Unknown kind: " ++ kind)
+                )
+        )

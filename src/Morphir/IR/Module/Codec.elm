@@ -5,10 +5,10 @@ module Morphir.IR.Module.Codec exposing (..)
 import Dict
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.AccessControlled.Codec exposing (encodeAccessControlled)
-import Morphir.IR.Documented.Codec exposing (encodeDocumented)
+import Morphir.IR.AccessControlled.Codec exposing (decodeAccessControlled, encodeAccessControlled)
+import Morphir.IR.Documented.Codec exposing (decodeDocumented, encodeDocumented)
 import Morphir.IR.Module exposing (Definition, Specification)
-import Morphir.IR.Name.Codec exposing (encodeName)
+import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
 import Morphir.IR.Type.Codec as TypeCodec
 import Morphir.IR.Value.Codec as ValueCodec
 
@@ -72,4 +72,15 @@ encodeDefinition encodeAttributes def =
 
 decodeDefinition : Decode.Decoder a -> Decode.Decoder (Definition a)
 decodeDefinition decodeAttributes =
-    Decode.succeed { types = Dict.empty, values = Dict.empty }
+    Decode.map2 Definition
+        (Decode.field "types"
+            (Decode.map Dict.fromList
+                (Decode.list
+                    (Decode.map2 Tuple.pair
+                        (Decode.index 0 decodeName)
+                        (Decode.index 1 (decodeAccessControlled (decodeDocumented (TypeCodec.decodeDefinition decodeAttributes))))
+                    )
+                )
+            )
+        )
+        (Decode.field "values" (Decode.succeed Dict.empty))

@@ -10,13 +10,27 @@ type alias Options =
     }
 
 
+mapDocumented : (a -> Doc) -> Documented a -> Doc
+mapDocumented valueToDoc documented =
+    case documented.doc of
+        Just doc ->
+            concat
+                [ concat [ "/** ", doc, newLine ]
+                , concat [ "*/", newLine ]
+                , valueToDoc documented.value
+                ]
+
+        Nothing ->
+            valueToDoc documented.value
+
+
 mapCompilationUnit : Options -> CompilationUnit -> Doc
 mapCompilationUnit opt cu =
     concat
         [ concat [ "package ", dotSep cu.packageDecl, newLine ]
         , newLine
         , cu.typeDecls
-            |> List.map (mapTypeDecl opt)
+            |> List.map (mapDocumented (mapTypeDecl opt))
             |> String.join (newLine ++ newLine)
         ]
 
