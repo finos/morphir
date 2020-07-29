@@ -165,19 +165,19 @@ toHumanWords name =
                         prefix
 
                     else
-                        prefix ++ [ join abbrev ]
+                        List.append prefix [ join abbrev ]
 
                 first :: rest ->
                     if String.length first == 1 then
-                        process prefix (abbrev ++ [ first ]) rest
+                        process prefix (List.append abbrev [ first ]) rest
 
                     else
                         case abbrev of
                             [] ->
-                                process (prefix ++ [ first ]) [] rest
+                                process (List.append prefix [ first ]) [] rest
 
                             _ ->
-                                process (prefix ++ [ join abbrev, first ]) [] rest
+                                process (List.append prefix [ join abbrev, first ]) [] rest
     in
     process [] [] words
 
