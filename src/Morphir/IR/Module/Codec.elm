@@ -83,4 +83,13 @@ decodeDefinition decodeAttributes =
                 )
             )
         )
-        (Decode.field "values" (Decode.succeed Dict.empty))
+        (Decode.field "values"
+            (Decode.map Dict.fromList
+                (Decode.list
+                    (Decode.map2 Tuple.pair
+                        (Decode.index 0 decodeName)
+                        (Decode.index 1 (decodeAccessControlled (ValueCodec.decodeDefinition decodeAttributes)))
+                    )
+                )
+            )
+        )

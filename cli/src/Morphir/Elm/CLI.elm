@@ -67,7 +67,7 @@ update msg model =
                 Ok ( options, packageDef ) ->
                     let
                         fileMap =
-                            Backend.mapPackageDefinition options packageDef
+                            Backend.mapPackageDefinition options [ [ "morphir" ] ] packageDef
                     in
                     ( model, fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult )
 

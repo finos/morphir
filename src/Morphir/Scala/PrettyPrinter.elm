@@ -98,7 +98,7 @@ mapMemberDecl : Options -> MemberDecl -> Doc
 mapMemberDecl opt memberDecl =
     case memberDecl of
         TypeAlias typeAlias ->
-            "type " ++ typeAlias.alias ++ " = " ++ mapTypeArgs opt typeAlias.typeArgs ++ mapType opt typeAlias.tpe
+            "type " ++ typeAlias.alias ++ mapTypeArgs opt typeAlias.typeArgs ++ " = " ++ mapType opt typeAlias.tpe
 
         FunctionDecl decl ->
             let

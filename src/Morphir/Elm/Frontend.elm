@@ -147,6 +147,7 @@ type Error
     | NotSupported SourceLocation String
     | DuplicateNameInPattern Name SourceLocation SourceLocation
     | VariableShadowing Name SourceLocation SourceLocation
+    | MissingTypeSignature SourceLocation
 
 
 encodeDeadEnd : DeadEnd -> Encode.Value
@@ -198,6 +199,11 @@ encodeError error =
                 [ encodeName name
                 , encodeSourceLocation sourceLocation1
                 , encodeSourceLocation sourceLocation2
+                ]
+
+        MissingTypeSignature sourceLocation ->
+            JsonExtra.encodeConstructor "MissingTypeSignature"
+                [ encodeSourceLocation sourceLocation
                 ]
 
 
@@ -389,7 +395,7 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
 
         valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation)))
         valuesResult =
-            mapDeclarationsToValue processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
+            mapDeclarationsToValue processedFile.parsedFile.sourceFile moduleExpose processedFile.file.declarations
                 |> Result.map Dict.fromList
 
         moduleResult : Result Errors (Module.Definition SourceLocation)
@@ -573,11 +579,11 @@ mapDeclarationsToType sourceFile expose decls =
         |> Result.mapError List.concat
 
 
-mapDeclarationsToValue : SourceFile -> Exposing -> List Declaration -> Result Errors (List ( Name, AccessControlled (Value.Definition SourceLocation) ))
+mapDeclarationsToValue : SourceFile -> Exposing -> List (Node Declaration) -> Result Errors (List ( Name, AccessControlled (Value.Definition SourceLocation) ))
 mapDeclarationsToValue sourceFile expose decls =
     decls
         |> List.filterMap
-            (\decl ->
+            (\(Node range decl) ->
                 case decl of
                     FunctionDeclaration function ->
                         let
@@ -591,7 +597,7 @@ mapDeclarationsToValue sourceFile expose decls =
 
                             valueDef : Result Errors (AccessControlled (Value.Definition SourceLocation))
                             valueDef =
-                                function
+                                Node range function
                                     |> mapFunction sourceFile
                                     |> Result.map public
                         in
@@ -665,38 +671,55 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 (mapTypeAnnotation sourceFile returnTypeNode)
 
 
-mapFunction : SourceFile -> Function -> Result Errors (Value.Definition SourceLocation)
-mapFunction sourceFile function =
-    function.declaration
-        |> Node.value
-        |> (\funImpl ->
-                mapFunctionImplementation sourceFile funImpl.arguments funImpl.expression
-           )
+mapFunction : SourceFile -> Node Function -> Result Errors (Value.Definition SourceLocation)
+mapFunction sourceFile (Node range function) =
+    let
+        valueTypeResult : Result Errors (Type SourceLocation)
+        valueTypeResult =
+            case function.signature of
+                Just (Node _ signature) ->
+                    mapTypeAnnotation sourceFile signature.typeAnnotation
+
+                Nothing ->
+                    Err [ MissingTypeSignature (SourceLocation sourceFile range) ]
+    in
+    valueTypeResult
+        |> Result.andThen
+            (\valueType ->
+                function.declaration
+                    |> Node.value
+                    |> (\funImpl ->
+                            mapFunctionImplementation sourceFile valueType funImpl.arguments funImpl.expression
+                       )
+            )
 
 
-mapFunctionImplementation : SourceFile -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Definition SourceLocation)
-mapFunctionImplementation sourceFile argumentNodes expression =
+mapFunctionImplementation : SourceFile -> Type SourceLocation -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Definition SourceLocation)
+mapFunctionImplementation sourceFile valueType argumentNodes expression =
     let
         sourceLocation : Range -> SourceLocation
         sourceLocation range =
             range |> SourceLocation sourceFile
 
-        extractNamedParams : List ( Name, SourceLocation ) -> List (Node Pattern) -> ( List ( Name, SourceLocation ), List (Node Pattern) )
-        extractNamedParams namedParams patternParams =
-            case patternParams of
-                [] ->
-                    ( namedParams, patternParams )
+        extractNamedParams : List ( Name, SourceLocation, Type SourceLocation ) -> List (Node Pattern) -> Type SourceLocation -> ( List ( Name, SourceLocation, Type SourceLocation ), Type SourceLocation, List (Node Pattern) )
+        extractNamedParams namedParams patternParams restOfTypeSignature =
+            case ( patternParams, restOfTypeSignature ) of
+                ( [], _ ) ->
+                    ( namedParams, restOfTypeSignature, patternParams )
 
-                (Node range firstParam) :: restOfParams ->
+                ( (Node range firstParam) :: restOfParams, Type.Function _ inType outType ) ->
                     case firstParam of
                         VarPattern paramName ->
-                            extractNamedParams (namedParams ++ [ ( Name.fromString paramName, range |> SourceLocation sourceFile ) ]) restOfParams
+                            extractNamedParams (namedParams ++ [ ( Name.fromString paramName, range |> SourceLocation sourceFile, inType ) ]) restOfParams outType
 
                         _ ->
-                            ( namedParams, patternParams )
+                            ( namedParams, restOfTypeSignature, patternParams )
 
-        ( paramNames, lambdaArgPatterns ) =
-            extractNamedParams [] argumentNodes
+                _ ->
+                    ( namedParams, restOfTypeSignature, patternParams )
+
+        ( inputTypes, outputType, lambdaArgPatterns ) =
+            extractNamedParams [] argumentNodes valueType
 
         bodyResult : Result Errors (Value.Value SourceLocation)
         bodyResult =
@@ -715,7 +738,7 @@ mapFunctionImplementation sourceFile argumentNodes expression =
             lambdaWithParams lambdaArgPatterns expression
     in
     bodyResult
-        |> Result.map (Value.Definition Nothing paramNames)
+        |> Result.map (Value.Definition inputTypes outputType)
 
 
 mapExpression : SourceFile -> Node Expression -> Result Errors (Value.Value SourceLocation)
@@ -1196,13 +1219,13 @@ mapLetExpression sourceFile sourceLocation letBlock =
 
                 letDeclarationToValue : Node Expression.LetDeclaration -> Result Errors (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
                 letDeclarationToValue letDeclarationNode valueResult =
-                    case letDeclarationNode |> Node.value of
-                        Expression.LetFunction function ->
+                    case letDeclarationNode of
+                        Node range (Expression.LetFunction function) ->
                             Result.map2 (Value.LetDefinition sourceLocation (function.declaration |> Node.value |> .name |> Node.value |> Name.fromString))
-                                (mapFunction sourceFile function)
+                                (mapFunction sourceFile (Node range function))
                                 valueResult
 
-                        Expression.LetDestructuring patternNode letExpressionNode ->
+                        Node range (Expression.LetDestructuring patternNode letExpressionNode) ->
                             Result.map3 (Value.Destructure sourceLocation)
                                 (mapPattern sourceFile patternNode)
                                 (mapExpression sourceFile letExpressionNode)
@@ -1226,12 +1249,12 @@ mapLetExpression sourceFile sourceLocation letBlock =
                                     |> Graph.nodes
                                     |> List.map
                                         (\graphNode ->
-                                            case graphNode.label |> Node.value of
-                                                Expression.LetFunction function ->
-                                                    mapFunction sourceFile function
+                                            case graphNode.label of
+                                                Node range (Expression.LetFunction function) ->
+                                                    mapFunction sourceFile (Node range function)
                                                         |> Result.map (Tuple.pair (function.declaration |> Node.value |> .name |> Node.value |> Name.fromString))
 
-                                                Expression.LetDestructuring _ _ ->
+                                                Node range (Expression.LetDestructuring _ _) ->
                                                     Err [ NotSupported sourceLocation "Recursive destructuring" ]
                                         )
                                     |> ListOfResults.liftAllErrors
@@ -1296,29 +1319,30 @@ namesBoundByPattern p =
         |> Set.fromList
 
 
+rewriteTypes : ModuleResolver -> Type SourceLocation -> Result Errors (Type SourceLocation)
+rewriteTypes moduleResolver =
+    Rewrite.bottomUp rewriteType
+        (\tpe ->
+            case tpe of
+                Type.Reference sourceLocation refFullName args ->
+                    moduleResolver.resolveType
+                        (refFullName |> FQName.getModulePath |> List.map Name.toTitleCase)
+                        (refFullName |> FQName.getLocalName |> Name.toTitleCase)
+                        |> Result.map
+                            (\resolvedFullName ->
+                                Type.Reference sourceLocation resolvedFullName args
+                            )
+                        |> Result.mapError (ResolveError sourceLocation >> List.singleton)
+                        |> Just
+
+                _ ->
+                    Nothing
+        )
+
+
 resolveLocalNames : ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
 resolveLocalNames moduleResolver moduleDef =
     let
-        rewriteTypes : Type SourceLocation -> Result Errors (Type SourceLocation)
-        rewriteTypes =
-            Rewrite.bottomUp rewriteType
-                (\tpe ->
-                    case tpe of
-                        Type.Reference sourceLocation refFullName args ->
-                            moduleResolver.resolveType
-                                (refFullName |> FQName.getModulePath |> List.map Name.toTitleCase)
-                                (refFullName |> FQName.getLocalName |> Name.toTitleCase)
-                                |> Result.map
-                                    (\resolvedFullName ->
-                                        Type.Reference sourceLocation resolvedFullName args
-                                    )
-                                |> Result.mapError (ResolveError sourceLocation >> List.singleton)
-                                |> Just
-
-                        _ ->
-                            Nothing
-                )
-
         rewriteValues : Dict Name SourceLocation -> Value SourceLocation -> Result Errors (Value SourceLocation)
         rewriteValues variables value =
             resolveVariablesAndReferences variables moduleResolver value
@@ -1330,7 +1354,7 @@ resolveLocalNames moduleResolver moduleDef =
                 |> List.map
                     (\( typeName, typeDef ) ->
                         typeDef.value.value
-                            |> Type.mapDefinition rewriteTypes
+                            |> Type.mapDefinition (rewriteTypes moduleResolver)
                             |> Result.map (Documented typeDef.value.doc)
                             |> Result.map (AccessControlled typeDef.access)
                             |> Result.map (Tuple.pair typeName)
@@ -1349,10 +1373,12 @@ resolveLocalNames moduleResolver moduleDef =
                         let
                             variables : Dict Name SourceLocation
                             variables =
-                                valueDef.value.arguments |> Dict.fromList
+                                valueDef.value.inputTypes
+                                    |> List.map (\( name, loc, _ ) -> ( name, loc ))
+                                    |> Dict.fromList
                         in
                         valueDef.value
-                            |> Value.mapDefinition rewriteTypes (rewriteValues variables)
+                            |> Value.mapDefinition (rewriteTypes moduleResolver) (rewriteValues variables)
                             |> Result.map (AccessControlled valueDef.access)
                             |> Result.map (Tuple.pair valueName)
                             |> Result.mapError List.concat
@@ -1455,6 +1481,20 @@ resolveVariablesAndReferences variables moduleResolver value =
 
                 _ ->
                     Ok Dict.empty
+
+        resolveValueDefinition def variablesDefNamesAndArgs =
+            Result.map3 Value.Definition
+                (def.inputTypes
+                    |> List.map
+                        (\( argName, a, argType ) ->
+                            rewriteTypes moduleResolver argType
+                                |> Result.map (\t -> ( argName, a, t ))
+                        )
+                    |> ListOfResults.liftAllErrors
+                    |> Result.mapError List.concat
+                )
+                (rewriteTypes moduleResolver def.outputType)
+                (resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body)
     in
     case value of
         Value.Reference sourceLocation (FQName [] modulePath localName) ->
@@ -1485,20 +1525,12 @@ resolveVariablesAndReferences variables moduleResolver value =
 
         Value.LetDefinition sourceLocation name def inValue ->
             Result.map2 (Value.LetDefinition sourceLocation name)
-                (def.arguments
+                (def.inputTypes
+                    |> List.map (\( argName, loc, _ ) -> ( argName, loc ))
                     |> Dict.fromList
                     |> Dict.insert name sourceLocation
                     |> unionVariableNames variables
-                    |> Result.andThen
-                        (\variablesDefNameAndArgs ->
-                            resolveVariablesAndReferences variablesDefNameAndArgs moduleResolver def.body
-                                |> Result.map
-                                    (\resolvedBody ->
-                                        { def
-                                            | body = resolvedBody
-                                        }
-                                    )
-                        )
+                    |> Result.andThen (resolveValueDefinition def)
                 )
                 (unionVariableNames variables (Dict.singleton name sourceLocation)
                     |> Result.andThen
@@ -1518,20 +1550,14 @@ resolveVariablesAndReferences variables moduleResolver value =
                                 |> Dict.toList
                                 |> List.map
                                     (\( name, def ) ->
-                                        def.arguments
+                                        def.inputTypes
+                                            |> List.map (\( argName, loc, _ ) -> ( argName, loc ))
                                             |> Dict.fromList
                                             |> unionVariableNames variablesAndDefNames
                                             |> Result.andThen
                                                 (\variablesDefNamesAndArgs ->
-                                                    resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body
-                                                        |> Result.map
-                                                            (\resolvedBody ->
-                                                                ( name
-                                                                , { def
-                                                                    | body = resolvedBody
-                                                                  }
-                                                                )
-                                                            )
+                                                    Result.map (Tuple.pair name)
+                                                        (resolveValueDefinition def variablesDefNamesAndArgs)
                                                 )
                                     )
                                 |> ListOfResults.liftAllErrors

@@ -6,5 +6,4 @@ import Morphir.Scala.Backend exposing (Options)
 
 decodeOptions : Decode.Decoder Options
 decodeOptions =
-    Decode.map Options
-        (Decode.field "targetPackage" (Decode.list Decode.string))
+    Decode.succeed Options

@@ -4,6 +4,7 @@ module Morphir.ListOfResults exposing (liftAllErrors, liftFirstError)
 liftAllErrors : List (Result e a) -> Result (List e) (List a)
 liftAllErrors results =
     let
+        oks : List a
         oks =
             results
                 |> List.filterMap
@@ -12,6 +13,7 @@ liftAllErrors results =
                             |> Result.toMaybe
                     )
 
+        errs : List e
         errs =
             results
                 |> List.filterMap

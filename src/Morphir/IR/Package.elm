@@ -1,10 +1,13 @@
 module Morphir.IR.Package exposing
-    ( Specification
+    ( Distribution(..)
+    , Specification
     , Definition, emptyDefinition
     , PackagePath, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
     )
 
 {-| Tools to work with packages.
+
+@docs Distribution
 
 @docs Specification
 
@@ -18,6 +21,13 @@ import Dict exposing (Dict)
 import Morphir.IR.AccessControlled exposing (AccessControlled, withPublicAccess)
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Path exposing (Path)
+
+
+{-| Type that represents a package distribution. A distribution contains all the necessary information to consume a
+package.
+-}
+type Distribution
+    = Library PackagePath (Definition ())
 
 
 {-| -}

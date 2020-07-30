@@ -150,14 +150,17 @@ words.
 toHumanWords : Name -> List String
 toHumanWords name =
     let
+        words : List String
         words =
             toList name
 
+        join : List String -> String
         join abbrev =
             abbrev
                 |> String.join ""
                 |> String.toUpper
 
+        process : List String -> List String -> List String -> List String
         process prefix abbrev suffix =
             case suffix of
                 [] ->
