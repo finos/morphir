@@ -187,7 +187,7 @@ valueTests : Test
 valueTests =
     let
         packageInfo =
-            { name = []
+            { name = [ [ "my" ] ]
             , exposedModules = Set.fromList [ [ [ "test" ] ] ]
             }
 
@@ -196,27 +196,36 @@ valueTests =
             { path = "Test.elm"
             , content =
                 String.join "\n"
-                    [ "module Test exposing (..)"
+                    [ "module My.Test exposing (..)"
                     , ""
-                    , "import Bar as Bar"
+                    , "import My.Bar as Bar"
                     , "import MyPack.Bar"
                     , ""
+                    , "foo : Int"
                     , "foo = 0"
                     , ""
+                    , "bar : Int"
                     , "bar = 0"
                     , ""
+                    , "baz : Int"
                     , "baz = 0"
                     , ""
+                    , "a : Int"
                     , "a = 1"
                     , ""
+                    , "b : Int"
                     , "b = 2"
                     , ""
+                    , "c : Int"
                     , "c = 3"
                     , ""
+                    , "d : Int"
                     , "d = 4"
                     , ""
+                    , "f : Int"
                     , "f = 5"
                     , ""
+                    , "testValue : a"
                     , "testValue = " ++ sourceValue
                     ]
             }
@@ -248,7 +257,7 @@ valueTests =
 
         ref : String -> Value ()
         ref name =
-            Reference () (fQName [] [ [ "test" ] ] [ name ])
+            Reference () (fQName [ [ "my" ] ] [ [ "test" ] ] [ name ])
 
         var : String -> Value ()
         var name =
@@ -272,8 +281,9 @@ valueTests =
         , checkIR "False" <| Literal () (BoolLiteral False)
         , checkIR "'A'" <| Literal () (CharLiteral 'A')
         , checkIR "foo" <| ref "foo"
-        , checkIR "Bar.foo" <| Reference () (fQName [] [ [ "bar" ] ] [ "foo" ])
-        , checkIR "MyPack.Bar.foo" <| Reference () (fQName [] [ [ "my", "pack" ], [ "bar" ] ] [ "foo" ])
+        , checkIR "Bar.foo" <| Reference () (fQName [ [ "my" ] ] [ [ "bar" ] ] [ "foo" ])
+
+        --, checkIR "MyPack.Bar.foo" <| Reference () (fQName [] [ [ "my", "pack" ], [ "bar" ] ] [ "foo" ])
         , checkIR "foo bar" <| Apply () (ref "foo") (ref "bar")
         , checkIR "foo bar baz" <| Apply () (Apply () (ref "foo") (ref "bar")) (ref "baz")
         , checkIR "-1" <| Number.negate () () (Literal () (IntLiteral 1))
@@ -338,6 +348,7 @@ valueTests =
         , checkIR
             (String.join "\n"
                 [ "  let"
+                , "    foo : Int -> Int"
                 , "    foo a = c"
                 , "  in"
                 , "  d"
@@ -346,7 +357,7 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "foo")
-                (Definition Nothing [ ( Name.fromString "a", () ) ] (ref "c"))
+                (Definition [ ( Name.fromString "a", (), Int.intType () ) ] (Int.intType ()) (ref "c"))
                 (ref "d")
         , checkIR
             (String.join "\n"
@@ -387,7 +398,9 @@ valueTests =
         , checkIR
             (String.join "\n"
                 [ "  let"
+                , "    b : Int"
                 , "    b = c"
+                , "    a : Int"
                 , "    a = b"
                 , "  in"
                 , "  a"
@@ -396,16 +409,18 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "b")
-                (Definition Nothing [] (ref "c"))
+                (Definition [] (Int.intType ()) (ref "c"))
                 (LetDefinition ()
                     (Name.fromString "a")
-                    (Definition Nothing [] (var "b"))
+                    (Definition [] (Int.intType ()) (var "b"))
                     (var "a")
                 )
         , checkIR
             (String.join "\n"
                 [ "  let"
+                , "    a : Int"
                 , "    a = b"
+                , "    b : Int"
                 , "    b = c"
                 , "  in"
                 , "  a"
@@ -414,16 +429,18 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "b")
-                (Definition Nothing [] (ref "c"))
+                (Definition [] (Int.intType ()) (ref "c"))
                 (LetDefinition ()
                     (Name.fromString "a")
-                    (Definition Nothing [] (var "b"))
+                    (Definition [] (Int.intType ()) (var "b"))
                     (var "a")
                 )
         , checkIR
             (String.join "\n"
                 [ "  let"
+                , "    a : Int"
                 , "    a = b"
+                , "    b : Int"
                 , "    b = a"
                 , "  in"
                 , "  a"
@@ -432,16 +449,19 @@ valueTests =
           <|
             LetRecursion ()
                 (Dict.fromList
-                    [ ( Name.fromString "b", Definition Nothing [] (var "a") )
-                    , ( Name.fromString "a", Definition Nothing [] (var "b") )
+                    [ ( Name.fromString "b", Definition [] (Int.intType ()) (var "a") )
+                    , ( Name.fromString "a", Definition [] (Int.intType ()) (var "b") )
                     ]
                 )
                 (var "a")
         , checkIR
             (String.join "\n"
                 [ "  let"
+                , "    c : Int"
                 , "    c = d"
+                , "    a : Int"
                 , "    a = b"
+                , "    b : Int"
                 , "    b = a"
                 , "  in"
                 , "  a"
@@ -450,11 +470,11 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "c")
-                (Definition Nothing [] (ref "d"))
+                (Definition [] (Int.intType ()) (ref "d"))
                 (LetRecursion ()
                     (Dict.fromList
-                        [ ( Name.fromString "b", Definition Nothing [] (var "a") )
-                        , ( Name.fromString "a", Definition Nothing [] (var "b") )
+                        [ ( Name.fromString "b", Definition [] (Int.intType ()) (var "a") )
+                        , ( Name.fromString "a", Definition [] (Int.intType ()) (var "b") )
                         ]
                     )
                     (var "a")

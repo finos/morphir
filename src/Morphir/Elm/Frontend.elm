@@ -1319,29 +1319,30 @@ namesBoundByPattern p =
         |> Set.fromList
 
 
+rewriteTypes : ModuleResolver -> Type SourceLocation -> Result Errors (Type SourceLocation)
+rewriteTypes moduleResolver =
+    Rewrite.bottomUp rewriteType
+        (\tpe ->
+            case tpe of
+                Type.Reference sourceLocation refFullName args ->
+                    moduleResolver.resolveType
+                        (refFullName |> FQName.getModulePath |> List.map Name.toTitleCase)
+                        (refFullName |> FQName.getLocalName |> Name.toTitleCase)
+                        |> Result.map
+                            (\resolvedFullName ->
+                                Type.Reference sourceLocation resolvedFullName args
+                            )
+                        |> Result.mapError (ResolveError sourceLocation >> List.singleton)
+                        |> Just
+
+                _ ->
+                    Nothing
+        )
+
+
 resolveLocalNames : ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
 resolveLocalNames moduleResolver moduleDef =
     let
-        rewriteTypes : Type SourceLocation -> Result Errors (Type SourceLocation)
-        rewriteTypes =
-            Rewrite.bottomUp rewriteType
-                (\tpe ->
-                    case tpe of
-                        Type.Reference sourceLocation refFullName args ->
-                            moduleResolver.resolveType
-                                (refFullName |> FQName.getModulePath |> List.map Name.toTitleCase)
-                                (refFullName |> FQName.getLocalName |> Name.toTitleCase)
-                                |> Result.map
-                                    (\resolvedFullName ->
-                                        Type.Reference sourceLocation resolvedFullName args
-                                    )
-                                |> Result.mapError (ResolveError sourceLocation >> List.singleton)
-                                |> Just
-
-                        _ ->
-                            Nothing
-                )
-
         rewriteValues : Dict Name SourceLocation -> Value SourceLocation -> Result Errors (Value SourceLocation)
         rewriteValues variables value =
             resolveVariablesAndReferences variables moduleResolver value
@@ -1353,7 +1354,7 @@ resolveLocalNames moduleResolver moduleDef =
                 |> List.map
                     (\( typeName, typeDef ) ->
                         typeDef.value.value
-                            |> Type.mapDefinition rewriteTypes
+                            |> Type.mapDefinition (rewriteTypes moduleResolver)
                             |> Result.map (Documented typeDef.value.doc)
                             |> Result.map (AccessControlled typeDef.access)
                             |> Result.map (Tuple.pair typeName)
@@ -1377,7 +1378,7 @@ resolveLocalNames moduleResolver moduleDef =
                                     |> Dict.fromList
                         in
                         valueDef.value
-                            |> Value.mapDefinition rewriteTypes (rewriteValues variables)
+                            |> Value.mapDefinition (rewriteTypes moduleResolver) (rewriteValues variables)
                             |> Result.map (AccessControlled valueDef.access)
                             |> Result.map (Tuple.pair valueName)
                             |> Result.mapError List.concat
@@ -1480,6 +1481,20 @@ resolveVariablesAndReferences variables moduleResolver value =
 
                 _ ->
                     Ok Dict.empty
+
+        resolveValueDefinition def variablesDefNamesAndArgs =
+            Result.map3 Value.Definition
+                (def.inputTypes
+                    |> List.map
+                        (\( argName, a, argType ) ->
+                            rewriteTypes moduleResolver argType
+                                |> Result.map (\t -> ( argName, a, t ))
+                        )
+                    |> ListOfResults.liftAllErrors
+                    |> Result.mapError List.concat
+                )
+                (rewriteTypes moduleResolver def.outputType)
+                (resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body)
     in
     case value of
         Value.Reference sourceLocation (FQName [] modulePath localName) ->
@@ -1515,16 +1530,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                     |> Dict.fromList
                     |> Dict.insert name sourceLocation
                     |> unionVariableNames variables
-                    |> Result.andThen
-                        (\variablesDefNameAndArgs ->
-                            resolveVariablesAndReferences variablesDefNameAndArgs moduleResolver def.body
-                                |> Result.map
-                                    (\resolvedBody ->
-                                        { def
-                                            | body = resolvedBody
-                                        }
-                                    )
-                        )
+                    |> Result.andThen (resolveValueDefinition def)
                 )
                 (unionVariableNames variables (Dict.singleton name sourceLocation)
                     |> Result.andThen
@@ -1550,15 +1556,8 @@ resolveVariablesAndReferences variables moduleResolver value =
                                             |> unionVariableNames variablesAndDefNames
                                             |> Result.andThen
                                                 (\variablesDefNamesAndArgs ->
-                                                    resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body
-                                                        |> Result.map
-                                                            (\resolvedBody ->
-                                                                ( name
-                                                                , { def
-                                                                    | body = resolvedBody
-                                                                  }
-                                                                )
-                                                            )
+                                                    Result.map (Tuple.pair name)
+                                                        (resolveValueDefinition def variablesDefNamesAndArgs)
                                                 )
                                     )
                                 |> ListOfResults.liftAllErrors
