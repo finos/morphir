@@ -1,11 +1,12 @@
 module Morphir.Scala.Backend exposing (..)
 
 import Dict
+import List.Extra as ListExtra
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Module as Module
-import Morphir.IR.Name as Name
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
@@ -15,17 +16,23 @@ import Set exposing (Set)
 
 
 type alias Options =
-    { targetPackage : List String
-    }
+    {}
 
 
-mapPackageDefinition : Options -> Package.Definition a -> FileMap
-mapPackageDefinition opt packageDef =
+mapDistribution : Options -> Package.Distribution -> FileMap
+mapDistribution opt distro =
+    case distro of
+        Package.Library packagePath packageDef ->
+            mapPackageDefinition opt packagePath packageDef
+
+
+mapPackageDefinition : Options -> Package.PackagePath -> Package.Definition a -> FileMap
+mapPackageDefinition opt packagePath packageDef =
     packageDef.modules
         |> Dict.toList
         |> List.concatMap
             (\( modulePath, moduleImpl ) ->
-                mapModuleDefinition opt packageDef modulePath moduleImpl
+                mapModuleDefinition opt packagePath modulePath moduleImpl
                     |> List.map
                         (\compilationUnit ->
                             let
@@ -48,19 +55,29 @@ mapFQNameToTypeRef (FQName packagePath modulePath localName) =
                     []
 
                 lastName :: reverseModulePath ->
-                    List.append (List.append (packagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower))) [ lastName |> Name.toTitleCase ]
+                    List.concat
+                        [ packagePath
+                            |> List.map (Name.toCamelCase >> String.toLower)
+                        , reverseModulePath
+                            |> List.reverse
+                            |> List.map (Name.toCamelCase >> String.toLower)
+                        , [ lastName
+                                |> Name.toTitleCase
+                          ]
+                        ]
     in
-    Scala.TypeRef scalaModulePath (localName |> Name.toTitleCase)
+    Scala.TypeRef
+        scalaModulePath
+        (localName
+            |> Name.toTitleCase
+        )
 
 
-mapModuleDefinition : Options -> Package.Definition a -> Path -> AccessControlled (Module.Definition a) -> List Scala.CompilationUnit
-mapModuleDefinition opt packageDef modulePath accessControlledModuleDef =
+mapModuleDefinition : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition a) -> List Scala.CompilationUnit
+mapModuleDefinition opt currentPackagePath currentModulePath accessControlledModuleDef =
     let
-        currentPackagePath =
-            [ [ "morphir" ] ]
-
         ( scalaPackagePath, moduleName ) =
-            case modulePath |> List.reverse of
+            case currentModulePath |> List.reverse of
                 [] ->
                     ( [], [] )
 
@@ -75,120 +92,57 @@ mapModuleDefinition opt packageDef modulePath accessControlledModuleDef =
                     (\( typeName, accessControlledDocumentedTypeDef ) ->
                         case accessControlledDocumentedTypeDef.value.value of
                             Type.TypeAliasDefinition typeParams typeExp ->
-                                []
+                                [ Scala.TypeAlias
+                                    { alias =
+                                        typeName |> Name.toTitleCase
+                                    , typeArgs =
+                                        typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                                    , tpe =
+                                        mapType typeExp
+                                    }
+                                ]
 
                             Type.CustomTypeDefinition typeParams accessControlledCtors ->
-                                List.map Scala.MemberTypeDecl
-                                    (List.concat
-                                        [ [ Scala.Trait
-                                                { modifiers = [ Scala.Sealed ]
-                                                , name = typeName |> Name.toTitleCase
-                                                , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
-                                                , extends = []
-                                                , members = []
-                                                }
-                                          ]
-                                        , accessControlledCtors.value
-                                            |> List.map
-                                                (\(Type.Constructor ctorName ctorArgs) ->
-                                                    Scala.Class
-                                                        { modifiers = [ Scala.Case ]
-                                                        , name = ctorName |> Name.toTitleCase
-                                                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
-                                                        , ctorArgs =
-                                                            ctorArgs
-                                                                |> List.map
-                                                                    (\( argName, argType ) ->
-                                                                        { modifiers = []
-                                                                        , tpe = mapType argType
-                                                                        , name = argName |> Name.toCamelCase
-                                                                        , defaultValue = Nothing
-                                                                        }
-                                                                    )
-                                                                |> List.singleton
-                                                        , extends =
-                                                            let
-                                                                parentTraitRef =
-                                                                    mapFQNameToTypeRef (FQName currentPackagePath modulePath typeName)
-                                                            in
-                                                            if List.isEmpty typeParams then
-                                                                [ parentTraitRef ]
-
-                                                            else
-                                                                [ Scala.TypeApply parentTraitRef (typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)) ]
-                                                        }
-                                                )
-                                        ]
-                                    )
+                                mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams accessControlledCtors
                     )
 
-        --recordTypeAliasUnits =
-        --    impl.typeAliases
-        --        |> Dict.toList
-        --        |> List.map
-        --            (\( typeName, typeDecl ) ->
-        --                { dirPath = modulePath |> List.map (Name.toCamelCase >> String.toLower)
-        --                , fileName = (typeName |> Name.toTitleCase) ++ ".scala"
-        --                , packageDecl = modulePath |> List.map (Name.toCamelCase >> String.toLower)
-        --                , imports = []
-        --                , typeDecls = Types.mapRecordTypeAlias typeName typeDecl
-        --                }
-        --            )
-        --
-        --typeAliasUnit =
-        --    { dirPath = modulePath |> List.map (Name.toCamelCase >> String.toLower)
-        --    , fileName = "package.scala"
-        --    , packageDecl = packagePath |> List.map (Name.toCamelCase >> String.toLower)
-        --    , imports = []
-        --    , typeDecls =
-        --        [ Scala.Object
-        --            { modifiers = [ Scala.Package ]
-        --            , name = moduleName |> Name.toCamelCase |> String.toLower
-        --            , members =
-        --                impl.typeAliases
-        --                    |> Dict.toList
-        --                    |> List.filterMap
-        --                        (\( typeName, typeDecl ) ->
-        --                            case typeDecl.exp of
-        --                                -- Do not generate type alias for record types because they will be represented by case classes
-        --                                T.Record _ ->
-        --                                    Nothing
-        --
-        --                                -- Do not generate type alias for native types
-        --                                T.Constructor ( [ [ "slate", "x" ], [ "core" ], [ "native" ] ], [ "native" ] ) _ ->
-        --                                    Nothing
-        --
-        --                                _ ->
-        --                                    Just
-        --                                        (Scala.TypeAlias
-        --                                            { alias = typeName |> Name.toTitleCase
-        --                                            , typeArgs = typeDecl.params |> List.map (T.Variable >> Types.mapExp)
-        --                                            , tpe = Types.mapExp typeDecl.exp
-        --                                            }
-        --                                        )
-        --                        )
-        --            , extends = []
-        --            }
-        --        ]
-        --    }
-        --
-        --unionTypeUnits =
-        --    impl.unionTypes
-        --        |> Dict.toList
-        --        |> List.map
-        --            (\( typeName, typeDecl ) ->
-        --                { dirPath =
-        --                    modulePath |> List.map (Name.toCamelCase >> String.toLower)
-        --                , fileName =
-        --                    (typeName |> Name.toTitleCase) ++ ".scala"
-        --                , packageDecl =
-        --                    modulePath |> List.map (Name.toCamelCase >> String.toLower)
-        --                , imports =
-        --                    []
-        --                , typeDecls =
-        --                    Types.mapUnionType modulePath typeName typeDecl
-        --                }
-        --            )
+        functionMembers : List Scala.MemberDecl
+        functionMembers =
+            accessControlledModuleDef.value.values
+                |> Dict.toList
+                |> List.concatMap
+                    (\( valueName, accessControlledValueDef ) ->
+                        [ Scala.FunctionDecl
+                            { modifiers =
+                                case accessControlledValueDef.access of
+                                    Public ->
+                                        []
+
+                                    Private ->
+                                        [ Scala.Private Nothing ]
+                            , name =
+                                valueName |> Name.toCamelCase
+                            , typeArgs =
+                                []
+                            , args =
+                                [ accessControlledValueDef.value.inputTypes
+                                    |> List.map
+                                        (\( argName, a, argType ) ->
+                                            { modifiers = []
+                                            , tpe = mapType argType
+                                            , name = argName |> Name.toCamelCase
+                                            , defaultValue = Nothing
+                                            }
+                                        )
+                                ]
+                            , returnType =
+                                Just (mapType accessControlledValueDef.value.outputType)
+                            , body =
+                                Just (Scala.Tuple [])
+                            }
+                        ]
+                    )
+
         moduleUnit : Scala.CompilationUnit
         moduleUnit =
             { dirPath = scalaPackagePath
@@ -196,7 +150,7 @@ mapModuleDefinition opt packageDef modulePath accessControlledModuleDef =
             , packageDecl = scalaPackagePath
             , imports = []
             , typeDecls =
-                [ Scala.Documented (Just (String.join "" [ "Generated based on ", modulePath |> Path.toString Name.toTitleCase "." ])) <|
+                [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ])) <|
                     Scala.Object
                         { modifiers =
                             case accessControlledModuleDef.access of
@@ -204,77 +158,84 @@ mapModuleDefinition opt packageDef modulePath accessControlledModuleDef =
                                     []
 
                                 Private ->
-                                    [ Scala.Private (opt.targetPackage |> List.reverse |> List.head) ]
+                                    [ Scala.Private
+                                        (currentPackagePath
+                                            |> ListExtra.last
+                                            |> Maybe.map (Name.toCamelCase >> String.toLower)
+                                        )
+                                    ]
                         , name =
                             moduleName |> Name.toTitleCase
                         , members =
-                            typeMembers
-
-                        --accessControlledModuleDef.value.values
-                        --    |> Dict.toList
-                        --    |> List.map
-                        --        (\( name, accessControlledValue ) ->
-                        --            let
-                        --                scalaName =
-                        --                    name |> Name.toCamelCase
-                        --
-                        --                normalizedName =
-                        --                    if reservedValueNames |> Set.member scalaName then
-                        --                        "_" ++ scalaName
-                        --
-                        --                    else
-                        --                        scalaName
-                        --
-                        --                ( scalaValue, scalaReturnType ) =
-                        --                    case impl.valueTypes |> Dict.get name of
-                        --                        Just valueType ->
-                        --                            let
-                        --                                valueWithTypeOrError =
-                        --                                    TypeInferencer.checkPackage packageDef valueType accessControlledValue
-                        --                            in
-                        --                            ( valueWithTypeOrError |> Values.mapExp, valueType |> Types.mapExp |> Just )
-                        --
-                        --                        Nothing ->
-                        --                            let
-                        --                                valueWithTypeOrError =
-                        --                                    TypeInferencer.inferPackage packageDef accessControlledValue
-                        --
-                        --                                maybeValueType =
-                        --                                    valueWithTypeOrError
-                        --                                        |> A.annotation
-                        --                                        |> Result.toMaybe
-                        --                            in
-                        --                            ( valueWithTypeOrError |> Values.mapExp, maybeValueType |> Maybe.map Types.mapExp )
-                        --            in
-                        --            Scala.FunctionDecl
-                        --                { modifiers = []
-                        --                , name = normalizedName
-                        --                , typeArgs =
-                        --                    let
-                        --                        extractedTypeArgNames =
-                        --                            impl.valueTypes
-                        --                                |> Dict.get name
-                        --                                |> Maybe.map List.singleton
-                        --                                |> Maybe.withDefault []
-                        --                                |> Types.extractTypeArgNames
-                        --                    in
-                        --                    extractedTypeArgNames
-                        --                        |> List.map (T.Variable >> Types.mapExp)
-                        --                , args = []
-                        --                , returnType =
-                        --                    impl.valueTypes
-                        --                        |> Dict.get name
-                        --                        |> Maybe.map Types.mapExp
-                        --                , body =
-                        --                    Just scalaValue
-                        --                }
-                        --        )
-                        , extends = []
+                            List.append typeMembers functionMembers
+                        , extends =
+                            []
                         }
                 ]
             }
     in
     [ moduleUnit ]
+
+
+mapCustomTypeDefinition : Package.PackagePath -> Path -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
+mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams accessControlledCtors =
+    let
+        caseClass name args extends =
+            Scala.Class
+                { modifiers = [ Scala.Case ]
+                , name = name |> Name.toTitleCase
+                , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                , ctorArgs =
+                    args
+                        |> List.map
+                            (\( argName, argType ) ->
+                                { modifiers = []
+                                , tpe = mapType argType
+                                , name = argName |> Name.toCamelCase
+                                , defaultValue = Nothing
+                                }
+                            )
+                        |> List.singleton
+                , extends = extends
+                }
+
+        parentTraitRef =
+            mapFQNameToTypeRef (FQName currentPackagePath currentModulePath typeName)
+
+        sealedTraitHierarchy =
+            List.concat
+                [ [ Scala.Trait
+                        { modifiers = [ Scala.Sealed ]
+                        , name = typeName |> Name.toTitleCase
+                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                        , extends = []
+                        , members = []
+                        }
+                  ]
+                , accessControlledCtors.value
+                    |> List.map
+                        (\(Type.Constructor ctorName ctorArgs) ->
+                            caseClass ctorName
+                                ctorArgs
+                                (if List.isEmpty typeParams then
+                                    [ parentTraitRef ]
+
+                                 else
+                                    [ Scala.TypeApply parentTraitRef (typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)) ]
+                                )
+                        )
+                ]
+    in
+    case accessControlledCtors.value of
+        [ Type.Constructor ctorName ctorArgs ] ->
+            if ctorName == typeName then
+                [ Scala.MemberTypeDecl (caseClass ctorName ctorArgs []) ]
+
+            else
+                sealedTraitHierarchy |> List.map Scala.MemberTypeDecl
+
+        _ ->
+            sealedTraitHierarchy |> List.map Scala.MemberTypeDecl
 
 
 mapType : Type a -> Scala.Type
@@ -298,10 +259,36 @@ mapType tpe =
             Scala.TupleType (elemTypes |> List.map mapType)
 
         Type.Record a fields ->
-            Scala.TypeVar "Record"
+            Scala.StructuralType
+                (fields
+                    |> List.map
+                        (\field ->
+                            Scala.FunctionDecl
+                                { modifiers = []
+                                , name = field.name |> Name.toCamelCase
+                                , typeArgs = []
+                                , args = []
+                                , returnType = Just (mapType field.tpe)
+                                , body = Nothing
+                                }
+                        )
+                )
 
         Type.ExtensibleRecord a argName fields ->
-            Scala.TypeVar "ExtensibleRecord"
+            Scala.StructuralType
+                (fields
+                    |> List.map
+                        (\field ->
+                            Scala.FunctionDecl
+                                { modifiers = []
+                                , name = field.name |> Name.toCamelCase
+                                , typeArgs = []
+                                , args = []
+                                , returnType = Just (mapType field.tpe)
+                                , body = Nothing
+                                }
+                        )
+                )
 
         Type.Function a argType returnType ->
             Scala.FunctionType (mapType argType) (mapType returnType)

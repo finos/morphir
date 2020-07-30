@@ -4,7 +4,7 @@ module Morphir.IR.Value exposing
     , mapValueAttributes
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, recordPattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
-    , Definition, typedDefinition, untypedDefinition, mapDefinition, mapDefinitionAttributes
+    , Definition, mapDefinition, mapDefinitionAttributes
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -41,7 +41,7 @@ is without the actual data or logic behind it.
 A definition is the actual data or logic as opposed to a specification
 which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.
 
-@docs Definition, typedDefinition, untypedDefinition, mapDefinition, mapDefinitionAttributes
+@docs Definition, mapDefinition, mapDefinitionAttributes
 
 -}
 
@@ -50,6 +50,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
+import Morphir.ListOfResults as ListOfResults
 import String
 
 
@@ -103,8 +104,8 @@ type alias Specification a =
 which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.
 -}
 type alias Definition a =
-    { valueType : Maybe (Type a)
-    , arguments : List ( Name, a )
+    { inputTypes : List ( Name, a, Type a )
+    , outputType : Type a
     , body : Value a
     }
 
@@ -126,17 +127,20 @@ type alias Definition a =
 {-| -}
 mapDefinition : (Type a -> Result e (Type a)) -> (Value a -> Result e (Value a)) -> Definition a -> Result (List e) (Definition a)
 mapDefinition mapType mapValue def =
-    Result.map2 (\t v -> Definition t def.arguments v)
-        (case def.valueType of
-            Just valueType ->
-                mapType valueType
-                    |> Result.map Just
-
-            Nothing ->
-                Ok Nothing
+    Result.map3 (\inputTypes outputType body -> Definition inputTypes outputType body)
+        (def.inputTypes
+            |> List.map
+                (\( name, attr, tpe ) ->
+                    mapType tpe
+                        |> Result.map
+                            (\t ->
+                                ( name, attr, t )
+                            )
+                )
+            |> ListOfResults.liftAllErrors
         )
-        (mapValue def.body)
-        |> Result.mapError List.singleton
+        (mapType def.outputType |> Result.mapError List.singleton)
+        (mapValue def.body |> Result.mapError List.singleton)
 
 
 {-| -}
@@ -274,8 +278,8 @@ mapPatternAttributes f p =
 mapDefinitionAttributes : (a -> b) -> Definition a -> Definition b
 mapDefinitionAttributes f d =
     Definition
-        (d.valueType |> Maybe.map (Type.mapTypeAttributes f))
-        (d.arguments |> List.map (\( name, a ) -> ( name, f a )))
+        (d.inputTypes |> List.map (\( name, attr, tpe ) -> ( name, f attr, Type.mapTypeAttributes f tpe )))
+        (Type.mapTypeAttributes f d.outputType)
         (mapValueAttributes f d.body)
 
 
@@ -767,55 +771,3 @@ since it always filters.
 literalPattern : a -> Literal -> Pattern a
 literalPattern attributes value =
     LiteralPattern attributes value
-
-
-{-| Typed value or function definition.
-
-**Note**: Elm uses patterns instead of argument names which is flexible but makes it more
-difficult to understand the model. Since most business models will actually use names which
-is represented as `AsPattern WildcardPattern name` in the IR we will extract those into the
-definition. This is a best-efforts process and stops when it runs into a more complex pattern.
-When that happens the rest of the argument patterns will be pushed down to the body as lambda
-arguments. The examples below try to visualize the process.
-
-    myFun : Int -> Int -> { foo : Int } -> Int
-    myFun a b { foo } =
-        body
-
-    -- the above is logically translated to the below
-    myFun :
-        Int
-        -> Int
-        -> { foo : Int }
-        -> Int -- the value type does not change in the process
-    myFun a b =
-        \{ foo } ->
-            body
-
--}
-typedDefinition : Type a -> List ( Name, a ) -> Value a -> Definition a
-typedDefinition valueType argumentNames body =
-    Definition (Just valueType) argumentNames body
-
-
-{-| Untyped value or function definition.
-
-**Note**: Elm uses patterns instead of argument names which is flexible but makes it more
-difficult to understand the model. Since most business models will actually use names which
-is represented as `AsPattern WildcardPattern name` in the IR we will extract those into the
-definition. This is a best-efforts process and stops when it runs into a more complex pattern.
-When that happens the rest of the argument patterns will be pushed down to the body as lambda
-arguments. The examples below try to visualize the process.
-
-    myFun a b { foo } =
-        body
-
-    -- the above is logically translated to the below
-    myFun a b =
-        \{ foo } ->
-            body
-
--}
-untypedDefinition : List ( Name, a ) -> Value a -> Definition a
-untypedDefinition argumentNames body =
-    Definition Nothing argumentNames body

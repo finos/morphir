@@ -299,8 +299,8 @@ decodeValue decodeAttributes =
                             (Decode.index 3 <|
                                 Decode.list
                                     (Decode.map2 Tuple.pair
-                                        (decodePattern decodeAttributes)
-                                        (decodeValue decodeAttributes)
+                                        (Decode.index 0 (decodePattern decodeAttributes))
+                                        (Decode.index 1 (decodeValue decodeAttributes))
                                     )
                             )
 
@@ -467,29 +467,34 @@ encodeSpecification encodeAttributes spec =
 
 encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
 encodeDefinition encodeAttributes def =
-    Encode.list identity
-        [ Encode.string "definition"
-        , case def.valueType of
-            Just valueType ->
-                encodeType encodeAttributes valueType
-
-            Nothing ->
-                Encode.null
-        , def.arguments
-            |> Encode.list
-                (\( name, a ) ->
-                    Encode.list identity
-                        [ encodeName name
-                        , encodeAttributes a
-                        ]
-                )
-        , encodeValue encodeAttributes def.body
+    Encode.object
+        [ ( "inputTypes"
+          , def.inputTypes
+                |> Encode.list
+                    (\( argName, a, argType ) ->
+                        Encode.list identity
+                            [ encodeName argName
+                            , encodeAttributes a
+                            , encodeType encodeAttributes argType
+                            ]
+                    )
+          )
+        , ( "outputType", encodeType encodeAttributes def.outputType )
+        , ( "body", encodeValue encodeAttributes def.body )
         ]
 
 
 decodeDefinition : Decode.Decoder a -> Decode.Decoder (Definition a)
 decodeDefinition decodeAttributes =
     Decode.map3 Definition
-        (Decode.index 1 (Decode.maybe (decodeType decodeAttributes)))
-        (Decode.index 2 (Decode.list (Decode.map2 Tuple.pair decodeName decodeAttributes)))
-        (Decode.index 3 (Decode.lazy (\_ -> decodeValue decodeAttributes)))
+        (Decode.field "inputTypes"
+            (Decode.list
+                (Decode.map3 (\n a t -> ( n, a, t ))
+                    (Decode.index 0 decodeName)
+                    (Decode.index 1 decodeAttributes)
+                    (Decode.index 2 (decodeType decodeAttributes))
+                )
+            )
+        )
+        (Decode.field "outputType" (decodeType decodeAttributes))
+        (Decode.field "body" (Decode.lazy (\_ -> decodeValue decodeAttributes)))
