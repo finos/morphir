@@ -20,8 +20,6 @@ The Morphir roadmap contains a significant amount of tools to give users confide
 
 Once the models are ready, the next step is to convert them whatever form they'll be executed in.  This is aspect of FDM utilizes techniques from Model-Driven Development in the form of code generation.  This is similar to the codegen phase of many projects when dealing with things like XSD, IDL, or OpenAPI processing. We refer to these as Dev Bots, since they are automating away many of the mundane and error prone aspects of development for which humans provide no value.  
 
-[//]: # (See [Setting up code generation](../morphir-gen-setup.md) and [Scala Dev Bot](../dev-bots/scala-dev-bot.md) for more information on invoking Dev Bots within your development lifecycle.)
-
 ## Incorporating into your code
 
 One of the advantages of Morphir is that it is completely open, so teams can customize their own Dev Bots as needed for their projects.  Morphir has support for common Dev Bots to fit different paradigms of development.
