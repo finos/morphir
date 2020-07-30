@@ -163,7 +163,7 @@ type OrderPrice
 
 Notice that a market price doesn't have a specific value associated with it since it moves with the market but a limit price
 would have a specific price limit. In order to take full advantage of this flexibility you should use a pattern match to 
-branch out on the various cases. [Here](pattern-match.md) is some more information on how to use pattern matches effectively.
+branch out on the various cases. 
 
 ## Special case: enumerations
 
