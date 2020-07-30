@@ -111,9 +111,7 @@ It's worth noting that there are languages that provide even more guarantees, li
 
 [TODO] show examples of catching errors
 
-The OCC helpfully provided some test examples that we can also use to verify our models.  We've done so in the form of unit tests on our Elm code.
-
-[TODO] show unit test sample...
+The OCC helpfully provided some test examples that we can also use to verify our models.  We've done so in the form of unit tests on our Elm code.  [These tests](https://github.com/Morgan-Stanley/morphir-examples/blob/master/tests/Morphir/Sample/LCR/) demostrate how the OCC's tests, which were provided in a document, could actually be codified into the modeled rules.
 
 # Using automation to adapt the model to your systems
 Now that we've ensured that our model of the LCR is correct, we want to turn it into code that can execute in our systems.  For this purpose, we'll assume that the regulatory reporting data is currently housed in a SQL data warehouse.  Let's take a look at how the sample above translates to SQL.
