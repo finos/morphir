@@ -303,7 +303,6 @@ valueTests =
         , checkIR "\\42 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 42)) (ref "foo")
         , checkIR "\\0x20 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 32)) (ref "foo")
         , checkIR "\\( 1, 2 ) -> foo " <| Lambda () (TuplePattern () [ LiteralPattern () (IntLiteral 1), LiteralPattern () (IntLiteral 2) ]) (ref "foo")
-        , checkIR "\\{ foo, bar } -> foo " <| Lambda () (RecordPattern () [ Name.fromString "foo", Name.fromString "bar" ]) (var "foo")
         , checkIR "\\1 :: 2 -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (LiteralPattern () (IntLiteral 2))) (ref "foo")
         , checkIR "\\[] -> foo " <| Lambda () (EmptyListPattern ()) (ref "foo")
         , checkIR "\\[ 1 ] -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (EmptyListPattern ())) (ref "foo")

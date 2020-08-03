@@ -148,6 +148,7 @@ type Error
     | DuplicateNameInPattern Name SourceLocation SourceLocation
     | VariableShadowing Name SourceLocation SourceLocation
     | MissingTypeSignature SourceLocation
+    | RecordPatternNotSupported SourceLocation
 
 
 encodeDeadEnd : DeadEnd -> Encode.Value
@@ -203,6 +204,11 @@ encodeError error =
 
         MissingTypeSignature sourceLocation ->
             JsonExtra.encodeConstructor "MissingTypeSignature"
+                [ encodeSourceLocation sourceLocation
+                ]
+
+        RecordPatternNotSupported sourceLocation ->
+            JsonExtra.encodeConstructor "RecordPatternNotSupported"
                 [ encodeSourceLocation sourceLocation
                 ]
 
@@ -971,12 +977,7 @@ mapPattern sourceFile (Node range pattern) =
                 |> Result.map (Value.TuplePattern sourceLocation)
 
         Pattern.RecordPattern fieldNameNodes ->
-            Ok
-                (Value.RecordPattern sourceLocation
-                    (fieldNameNodes
-                        |> List.map (Node.value >> Name.fromString)
-                    )
-                )
+            Err [ RecordPatternNotSupported sourceLocation ]
 
         Pattern.UnConsPattern headNode tailNode ->
             Result.map2 (Value.HeadTailPattern sourceLocation)
@@ -1449,13 +1450,6 @@ resolveVariablesAndReferences variables moduleResolver value =
                                         )
                             )
                             (Ok Dict.empty)
-
-                Value.RecordPattern sourceLocation fieldNames ->
-                    Ok
-                        (fieldNames
-                            |> List.map (\fieldName -> ( fieldName, sourceLocation ))
-                            |> Dict.fromList
-                        )
 
                 Value.ConstructorPattern _ _ args ->
                     args

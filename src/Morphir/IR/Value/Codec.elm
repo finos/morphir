@@ -348,13 +348,6 @@ encodePattern encodeAttributes pattern =
                 , elementPatterns |> Encode.list (encodePattern encodeAttributes)
                 ]
 
-        RecordPattern a fieldNames ->
-            Encode.list identity
-                [ Encode.string "record_pattern"
-                , encodeAttributes a
-                , fieldNames |> Encode.list encodeName
-                ]
-
         ConstructorPattern a constructorName argumentPatterns ->
             Encode.list identity
                 [ Encode.string "constructor_pattern"
@@ -417,11 +410,6 @@ decodePattern decodeAttributes =
                         Decode.map2 TuplePattern
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| Decode.list lazyDecodePattern)
-
-                    "record_pattern" ->
-                        Decode.map2 RecordPattern
-                            (Decode.index 1 decodeAttributes)
-                            (Decode.index 2 <| Decode.list decodeName)
 
                     "constructor_pattern" ->
                         Decode.map3 ConstructorPattern

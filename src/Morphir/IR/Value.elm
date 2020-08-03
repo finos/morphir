@@ -2,7 +2,7 @@ module Morphir.IR.Value exposing
     ( Value(..), literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
     , tuple, variable, ifThenElse, patternMatch, update, unit
     , mapValueAttributes
-    , Pattern(..), wildcardPattern, asPattern, tuplePattern, recordPattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
+    , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
     )
@@ -83,7 +83,6 @@ type Pattern a
     = WildcardPattern a
     | AsPattern a (Pattern a) Name
     | TuplePattern a (List (Pattern a))
-    | RecordPattern a (List Name)
     | ConstructorPattern a FQName (List (Pattern a))
     | EmptyListPattern a
     | HeadTailPattern a (Pattern a) (Pattern a)
@@ -254,9 +253,6 @@ mapPatternAttributes f p =
 
         TuplePattern a elementPatterns ->
             TuplePattern (f a) (elementPatterns |> List.map (mapPatternAttributes f))
-
-        RecordPattern a fieldNames ->
-            RecordPattern (f a) fieldNames
 
         ConstructorPattern a constructorName argumentPatterns ->
             ConstructorPattern (f a) constructorName (argumentPatterns |> List.map (mapPatternAttributes f))
@@ -685,16 +681,6 @@ asPattern attributes pattern name =
 tuplePattern : a -> List (Pattern a) -> Pattern a
 tuplePattern attributes elementPatterns =
     TuplePattern attributes elementPatterns
-
-
-{-| Pulls out the values of some fields from a record value.
-
-    { foo, bar } -- RecordPattern [ ["foo"], ["bar"] ]
-
--}
-recordPattern : a -> List Name -> Pattern a
-recordPattern attributes fieldNames =
-    RecordPattern attributes fieldNames
 
 
 {-| Matches on a custom type's constructor.
