@@ -1,3 +1,5 @@
+module Morphir.SDK.LocalDateTests exposing (..)
+
 {-
 Copyright 2020 Morgan Stanley
 
@@ -14,8 +16,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -}
 
-
-module Morphir.SDK.LocalDateTests exposing (..)
 
 import Expect
 import Test exposing (..)
