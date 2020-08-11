@@ -1,3 +1,5 @@
+module Morphir.Elm.FrontendTests exposing (..)
+
 {-
 Copyright 2020 Morgan Stanley
 
@@ -13,9 +15,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -}
-
-
-module Morphir.Elm.FrontendTests exposing (..)
 
 import Dict
 import Expect exposing (Expectation)
