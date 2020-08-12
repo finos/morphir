@@ -5,11 +5,13 @@ import List.Extra as ListExtra
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Value exposing (Pattern(..), Value(..))
 import Morphir.Scala.AST as Scala
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
@@ -46,8 +48,8 @@ mapPackageDefinition opt packagePath packageDef =
         |> Dict.fromList
 
 
-mapFQNameToTypeRef : FQName -> Scala.Type
-mapFQNameToTypeRef (FQName packagePath modulePath localName) =
+mapFQNameToPathAndName : FQName -> ( Scala.Path, Name )
+mapFQNameToPathAndName (FQName packagePath modulePath localName) =
     let
         scalaModulePath =
             case modulePath |> List.reverse of
@@ -66,11 +68,18 @@ mapFQNameToTypeRef (FQName packagePath modulePath localName) =
                           ]
                         ]
     in
-    Scala.TypeRef
-        scalaModulePath
-        (localName
-            |> Name.toTitleCase
-        )
+    ( scalaModulePath
+    , localName
+    )
+
+
+mapFQNameToTypeRef : FQName -> Scala.Type
+mapFQNameToTypeRef fQName =
+    let
+        ( path, name ) =
+            mapFQNameToPathAndName fQName
+    in
+    Scala.TypeRef path (name |> Name.toTitleCase)
 
 
 mapModuleDefinition : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition a) -> List Scala.CompilationUnit
@@ -138,7 +147,7 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
                             , returnType =
                                 Just (mapType accessControlledValueDef.value.outputType)
                             , body =
-                                Just (Scala.Tuple [])
+                                Just (mapValue accessControlledValueDef.value.body)
                             }
                         ]
                     )
@@ -295,6 +304,103 @@ mapType tpe =
 
         Type.Unit a ->
             Scala.TypeRef [ "scala" ] "Unit"
+
+
+mapLiteral : Literal -> Scala.Lit
+mapLiteral literal =
+    case literal of
+        BoolLiteral v ->
+            Scala.BooleanLit v
+
+        CharLiteral v ->
+            Scala.CharacterLit v
+
+        StringLiteral v ->
+            Scala.StringLit v
+
+        IntLiteral v ->
+            Scala.IntegerLit v
+
+        FloatLiteral v ->
+            Scala.FloatLit v
+
+
+mapValue : Value a -> Scala.Value
+mapValue value =
+    case value of
+        Literal a v ->
+            Scala.Literal (mapLiteral v)
+
+        --| Constructor a FQName
+        --| Tuple a (List (Value a))
+        --| List a (List (Value a))
+        --| Record a (List ( Name, Value a ))
+        Variable a name ->
+            Scala.Var (name |> Name.toCamelCase)
+
+        Reference a fQName ->
+            let
+                ( path, name ) =
+                    mapFQNameToPathAndName fQName
+            in
+            Scala.Ref path (name |> Name.toCamelCase)
+
+        --| Field a (Value a) Name
+        --| FieldFunction a Name
+        Apply a fun arg ->
+            Scala.Apply (mapValue fun) [ Scala.ArgValue Nothing (mapValue arg) ]
+
+        --| Lambda a (Pattern a) (Value a)
+        --| LetDefinition a Name (Definition a) (Value a)
+        --| LetRecursion a (Dict Name (Definition a)) (Value a)
+        --| Destructure a (Pattern a) (Value a) (Value a)
+        --| IfThenElse a (Value a) (Value a) (Value a)
+        --| PatternMatch a (Value a) (List ( Pattern a, Value a ))
+        --| UpdateRecord a (Value a) (List ( Name, Value a ))
+        --| Unit a
+        _ ->
+            Scala.Tuple []
+
+
+mapPattern : Pattern a -> Scala.Pattern
+mapPattern pattern =
+    case pattern of
+        WildcardPattern a ->
+            Scala.WildcardMatch
+
+        AsPattern a (WildcardPattern _) alias ->
+            Scala.NamedMatch (alias |> Name.toCamelCase)
+
+        AsPattern a aliasedPattern alias ->
+            Scala.AliasedMatch (alias |> Name.toCamelCase) (mapPattern aliasedPattern)
+
+        TuplePattern a itemPatterns ->
+            Scala.TupleMatch (itemPatterns |> List.map mapPattern)
+
+        ConstructorPattern a fQName argPatterns ->
+            let
+                ( path, name ) =
+                    mapFQNameToPathAndName fQName
+            in
+            Scala.UnapplyMatch path
+                (name |> Name.toTitleCase)
+                (argPatterns
+                    |> List.map mapPattern
+                )
+
+        EmptyListPattern a ->
+            Scala.EmptyListMatch
+
+        HeadTailPattern a headPattern tailPattern ->
+            Scala.HeadTailMatch
+                (mapPattern headPattern)
+                (mapPattern tailPattern)
+
+        LiteralPattern a literal ->
+            Scala.LiteralMatch (mapLiteral literal)
+
+        UnitPattern a ->
+            Scala.WildcardMatch
 
 
 reservedValueNames : Set String

@@ -81,10 +81,8 @@ type alias ArgDecl =
     }
 
 
-type alias ArgValue =
-    { name : Maybe Name
-    , value : Value
-    }
+type ArgValue
+    = ArgValue (Maybe Name) Value
 
 
 type MemberDecl
@@ -134,11 +132,12 @@ type Value
 
 type Pattern
     = WildcardMatch
-    | AliasMatch Name
+    | NamedMatch Name
+    | AliasedMatch Name Pattern
     | LiteralMatch Lit
     | UnapplyMatch Path Name (List Pattern)
     | TupleMatch (List Pattern)
-    | ListItemsMatch (List Pattern)
+    | EmptyListMatch
     | HeadTailMatch Pattern Pattern
     | CommentedPattern Pattern String
 

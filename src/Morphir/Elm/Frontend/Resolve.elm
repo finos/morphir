@@ -128,6 +128,7 @@ moduleMapping : Dict ModuleName ModuleName
 moduleMapping =
     Dict.fromList
         [ ( [ "Dict" ], [ "Morphir", "SDK", "Dict" ] )
+        , ( [ "Regex" ], [ "Morphir", "SDK", "Regex" ] )
         ]
 
 
@@ -232,7 +233,9 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
             let
                 morphirModuleName : ModuleName
                 morphirModuleName =
-                    moduleMapping |> Dict.get moduleName |> Maybe.withDefault moduleName
+                    moduleMapping
+                        |> Dict.get moduleName
+                        |> Maybe.withDefault moduleName
 
                 suppliedModulePath : Path
                 suppliedModulePath =

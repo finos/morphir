@@ -310,7 +310,7 @@ mapValue opt value =
             "_"
 
         Apply funValue argValues ->
-            mapValue opt funValue ++ argValueBlock opt argValues
+            parens (mapValue opt funValue) ++ argValueBlock opt argValues
 
         UnOp op right ->
             op ++ mapValue opt right
@@ -396,8 +396,11 @@ mapPattern pattern =
         WildcardMatch ->
             "_"
 
-        AliasMatch name ->
+        NamedMatch name ->
             name
+
+        AliasedMatch name aliasedPattern ->
+            concat [ name, " @ ", mapPattern aliasedPattern ]
 
         LiteralMatch lit ->
             mapLit lit
@@ -427,17 +430,8 @@ mapPattern pattern =
                     |> concat
                 )
 
-        ListItemsMatch itemPatterns ->
-            let
-                itemsToCons patterns =
-                    case patterns of
-                        [] ->
-                            "Nil"
-
-                        headPattern :: tailPatterns ->
-                            mapPattern headPattern ++ " :: " ++ itemsToCons tailPatterns
-            in
-            itemsToCons itemPatterns
+        EmptyListMatch ->
+            "Nil"
 
         HeadTailMatch headPattern tailPattern ->
             mapPattern headPattern ++ " :: " ++ mapPattern tailPattern
@@ -484,13 +478,13 @@ argValueBlock opt argValues =
     parens
         (argValues
             |> List.map
-                (\argValue ->
-                    case argValue.name of
+                (\(ArgValue name value) ->
+                    case name of
                         Just argName ->
-                            argName ++ " = " ++ mapValue opt argValue.value
+                            argName ++ " = " ++ mapValue opt value
 
                         Nothing ->
-                            mapValue opt argValue.value
+                            mapValue opt value
                 )
             |> List.intersperse ", "
             |> concat
