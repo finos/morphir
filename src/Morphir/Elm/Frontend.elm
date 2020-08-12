@@ -25,11 +25,12 @@ import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
 import Elm.Syntax.Expression as Expression exposing (Expression, Function, FunctionImplementation)
 import Elm.Syntax.File exposing (File)
+import Elm.Syntax.Infix as Infix
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
-import Elm.Syntax.Range exposing (Range)
+import Elm.Syntax.Range as Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
 import Json.Decode as Decode
@@ -770,7 +771,7 @@ mapExpression sourceFile (Node range exp) =
         sourceLocation =
             range |> SourceLocation sourceFile
     in
-    case exp of
+    case fixAssociativity exp of
         Expression.UnitExpr ->
             Ok (Value.Unit sourceLocation)
 
@@ -1677,3 +1678,21 @@ withAccessControl isExposed a =
 
     else
         private a
+
+
+{-| This is an incomplete fis for an associativity issue in elm-syntax.
+It only works when the operators are the same instead of relying on precedence equality.
+Consequently it also doesn't take mixed associativities into account.
+-}
+fixAssociativity : Expression -> Expression
+fixAssociativity expr =
+    case expr of
+        Expression.OperatorApplication o d (Node lr l) (Node _ (Expression.OperatorApplication ro rd (Node rlr rl) (Node rrr rr))) ->
+            if (o == ro) && d == Infix.Left then
+                Expression.OperatorApplication o d (Node (Range.combine [ lr, rlr ]) (Expression.OperatorApplication ro rd (Node lr l) (Node rlr rl))) (Node rrr rr)
+
+            else
+                expr
+
+        _ ->
+            expr
