@@ -22,11 +22,12 @@ const program = new commander.Command()
 program
     .name('morphir-elm gen')
     .description('Generate code from Morphir IR')
+    .option('-i, --input <path>', 'Source location where the Morphir IR will be loaded from. Defaults to STDIN.')
     .option('-o, --output <path>', 'Target location where the generated code will be saved. Defaults to ./dist.', './dist')
     .parse(process.argv)
 
 
-gen(path.resolve(program.output), { targetPackage: ["com", "foo"] })
+gen(program.input, path.resolve(program.output), {})
     .then(() => {
         console.log("Done.")
     })
@@ -35,9 +36,9 @@ gen(path.resolve(program.output), { targetPackage: ["com", "foo"] })
         process.exit(1)
     })
 
-async function gen(outputPath, options) {
-    const morphirIrJson = await getStdin()
-    const fileMap = await generate(options, JSON.parse(morphirIrJson))
+async function gen(input, outputPath, options) {
+    const morphirIrJson = input ? await readFile(path.resolve(input)) : await getStdin()
+    const fileMap = await generate(options, JSON.parse(morphirIrJson.toString()))
     const writePromises =
         fileMap.map(async ([[dirPath, fileName], content]) => {
             const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)

@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -117,6 +117,14 @@ mapMemberDecl opt memberDecl =
         TypeAlias typeAlias ->
             "type " ++ typeAlias.alias ++ mapTypeArgs opt typeAlias.typeArgs ++ " = " ++ mapType opt typeAlias.tpe
 
+        ValueDecl decl ->
+            concat
+                [ "val "
+                , mapPattern decl.pattern
+                , " = "
+                , mapValue opt decl.value
+                ]
+
         FunctionDecl decl ->
             let
                 modifierDoc =
@@ -142,6 +150,9 @@ mapMemberDecl opt memberDecl =
 
                 bodyDoc =
                     case decl.body of
+                        Just ((Block _ _) as value) ->
+                            " = " ++ mapValue opt value
+
                         Just value ->
                             " =" ++ newLine ++ indent opt.indentDepth (mapValue opt value)
 
@@ -285,13 +296,18 @@ mapType opt tpe =
                 )
 
         StructuralType memberDecls ->
-            "{ "
-                ++ (memberDecls
+            if List.isEmpty memberDecls then
+                "{}"
+
+            else
+                concat
+                    [ "{ "
+                    , memberDecls
                         |> List.map (mapMemberDecl opt)
                         |> List.intersperse "; "
                         |> concat
-                   )
-                ++ " }"
+                    , " }"
+                    ]
 
         FunctionType argType returnType ->
             (case argType of
@@ -314,7 +330,7 @@ mapValue opt value =
         Literal lit ->
             mapLit lit
 
-        Var name ->
+        Variable name ->
             name
 
         Ref path name ->
@@ -350,21 +366,14 @@ mapValue opt value =
                 ++ newLine
                 ++ indent opt.indentDepth (mapValue opt bodyValue)
 
-        LetBlock bindings inValue ->
+        Block decls returnValue ->
             let
-                bindingStatements =
-                    bindings
-                        |> List.map
-                            (\( bindingPattern, bindingValue ) ->
-                                "val "
-                                    ++ mapPattern bindingPattern
-                                    ++ " ="
-                                    ++ newLine
-                                    ++ indent opt.indentDepth (mapValue opt bindingValue)
-                            )
+                declDocs =
+                    decls
+                        |> List.map (mapMemberDecl opt)
 
                 statements =
-                    bindingStatements ++ [ inValue |> mapValue opt ]
+                    declDocs ++ [ returnValue |> mapValue opt ]
             in
             statements
                 |> List.intersperse empty
@@ -382,18 +391,19 @@ mapValue opt value =
             mapValue opt targetValue ++ " match " ++ mapValue opt casesValue
 
         IfElse condValue trueValue falseValue ->
-            "if "
-                ++ parens (mapValue opt condValue)
-                ++ " "
-                ++ statementBlock opt [ trueValue |> mapValue opt ]
-                ++ " else "
-                ++ (case falseValue of
-                        IfElse _ _ _ ->
-                            mapValue opt falseValue
+            concat
+                [ "if "
+                , parens (mapValue opt condValue)
+                , " "
+                , statementBlock opt [ trueValue |> mapValue opt ]
+                , " else "
+                , case falseValue of
+                    IfElse _ _ _ ->
+                        mapValue opt falseValue
 
-                        _ ->
-                            statementBlock opt [ mapValue opt falseValue ]
-                   )
+                    _ ->
+                        statementBlock opt [ mapValue opt falseValue ]
+                ]
 
         Tuple elemValues ->
             parens
@@ -402,6 +412,27 @@ mapValue opt value =
                     |> List.intersperse ", "
                     |> concat
                 )
+
+        StructuralValue fieldValues ->
+            if List.isEmpty fieldValues then
+                "new {}"
+
+            else
+                concat
+                    [ "new {"
+                    , newLine
+                    , fieldValues
+                        |> List.map
+                            (\( fieldName, fieldValue ) ->
+                                concat [ "def ", fieldName, " = ", mapValue opt fieldValue ]
+                            )
+                        |> indentLines opt.indentDepth
+                    , newLine
+                    , "}"
+                    ]
+
+        Unit ->
+            "{}"
 
         CommentedValue childValue message ->
             mapValue opt childValue ++ " /* " ++ message ++ " */ "
@@ -413,8 +444,11 @@ mapPattern pattern =
         WildcardMatch ->
             "_"
 
-        AliasMatch name ->
+        NamedMatch name ->
             name
+
+        AliasedMatch name aliasedPattern ->
+            concat [ name, " @ ", mapPattern aliasedPattern ]
 
         LiteralMatch lit ->
             mapLit lit
@@ -444,17 +478,8 @@ mapPattern pattern =
                     |> concat
                 )
 
-        ListItemsMatch itemPatterns ->
-            let
-                itemsToCons patterns =
-                    case patterns of
-                        [] ->
-                            "Nil"
-
-                        headPattern :: tailPatterns ->
-                            mapPattern headPattern ++ " :: " ++ itemsToCons tailPatterns
-            in
-            itemsToCons itemPatterns
+        EmptyListMatch ->
+            "Nil"
 
         HeadTailMatch headPattern tailPattern ->
             mapPattern headPattern ++ " :: " ++ mapPattern tailPattern
@@ -492,6 +517,7 @@ statementBlock opt statements =
         [ "{"
         , newLine
         , indentLines opt.indentDepth statements
+        , newLine
         , "}"
         ]
 
@@ -501,13 +527,13 @@ argValueBlock opt argValues =
     parens
         (argValues
             |> List.map
-                (\argValue ->
-                    case argValue.name of
+                (\(ArgValue name value) ->
+                    case name of
                         Just argName ->
-                            argName ++ " = " ++ mapValue opt argValue.value
+                            argName ++ " = " ++ mapValue opt value
 
                         Nothing ->
-                            mapValue opt argValue.value
+                            mapValue opt value
                 )
             |> List.intersperse ", "
             |> concat
