@@ -133,7 +133,7 @@ basicLetRecursion =
     a 10
 
 
-basicDestructure : int
+basicDestructure : Int
 basicDestructure =
     let
         ( a, b ) =
