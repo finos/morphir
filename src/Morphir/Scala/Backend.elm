@@ -28,7 +28,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value exposing (Pattern(..), Value(..))
+import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 import Morphir.Scala.AST as Scala
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
@@ -117,6 +117,28 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
                 |> List.concatMap
                     (\( typeName, accessControlledDocumentedTypeDef ) ->
                         case accessControlledDocumentedTypeDef.value.value of
+                            Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
+                                [ Scala.MemberTypeDecl
+                                    (Scala.Class
+                                        { modifiers = [ Scala.Case ]
+                                        , name = typeName |> Name.toTitleCase
+                                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                                        , ctorArgs =
+                                            fields
+                                                |> List.map
+                                                    (\field ->
+                                                        { modifiers = []
+                                                        , tpe = mapType field.tpe
+                                                        , name = field.name |> Name.toCamelCase
+                                                        , defaultValue = Nothing
+                                                        }
+                                                    )
+                                                |> List.singleton
+                                        , extends = []
+                                        }
+                                    )
+                                ]
+
                             Type.TypeAliasDefinition typeParams typeExp ->
                                 [ Scala.TypeAlias
                                     { alias =
@@ -151,16 +173,20 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
                             , typeArgs =
                                 []
                             , args =
-                                [ accessControlledValueDef.value.inputTypes
-                                    |> List.map
-                                        (\( argName, a, argType ) ->
-                                            { modifiers = []
-                                            , tpe = mapType argType
-                                            , name = argName |> Name.toCamelCase
-                                            , defaultValue = Nothing
-                                            }
-                                        )
-                                ]
+                                if List.isEmpty accessControlledValueDef.value.inputTypes then
+                                    []
+
+                                else
+                                    [ accessControlledValueDef.value.inputTypes
+                                        |> List.map
+                                            (\( argName, a, argType ) ->
+                                                { modifiers = []
+                                                , tpe = mapType argType
+                                                , name = argName |> Name.toCamelCase
+                                                , defaultValue = Nothing
+                                                }
+                                            )
+                                    ]
                             , returnType =
                                 Just (mapType accessControlledValueDef.value.outputType)
                             , body =
@@ -323,37 +349,64 @@ mapType tpe =
             Scala.TypeRef [ "scala" ] "Unit"
 
 
-mapLiteral : Literal -> Scala.Lit
-mapLiteral literal =
-    case literal of
-        BoolLiteral v ->
-            Scala.BooleanLit v
-
-        CharLiteral v ->
-            Scala.CharacterLit v
-
-        StringLiteral v ->
-            Scala.StringLit v
-
-        IntLiteral v ->
-            Scala.IntegerLit v
-
-        FloatLiteral v ->
-            Scala.FloatLit v
-
-
 mapValue : Value a -> Scala.Value
 mapValue value =
     case value of
-        Literal a v ->
-            Scala.Literal (mapLiteral v)
+        Literal a literal ->
+            let
+                wrap : String -> Scala.Lit -> Scala.Value
+                wrap moduleName lit =
+                    Scala.Apply
+                        (Scala.Ref [ "morphir", "sdk" ] moduleName)
+                        [ Scala.ArgValue Nothing (Scala.Literal lit) ]
+            in
+            case literal of
+                BoolLiteral v ->
+                    wrap "Bool" (Scala.BooleanLit v)
 
-        --| Constructor a FQName
-        --| Tuple a (List (Value a))
-        --| List a (List (Value a))
-        --| Record a (List ( Name, Value a ))
+                CharLiteral v ->
+                    wrap "Char" (Scala.CharacterLit v)
+
+                StringLiteral v ->
+                    wrap "String" (Scala.StringLit v)
+
+                IntLiteral v ->
+                    wrap "Int" (Scala.IntegerLit v)
+
+                FloatLiteral v ->
+                    wrap "Float" (Scala.FloatLit v)
+
+        Constructor a fQName ->
+            let
+                ( path, name ) =
+                    mapFQNameToPathAndName fQName
+            in
+            Scala.Ref path
+                (name |> Name.toTitleCase)
+
+        Tuple a elemValues ->
+            Scala.Tuple
+                (elemValues |> List.map mapValue)
+
+        List a itemValues ->
+            Scala.Apply
+                (Scala.Ref [ "morphir", "sdk" ] "List")
+                (itemValues
+                    |> List.map mapValue
+                    |> List.map (Scala.ArgValue Nothing)
+                )
+
+        Record a fieldValues ->
+            Scala.StructuralValue
+                (fieldValues
+                    |> List.map
+                        (\( fieldName, fieldValue ) ->
+                            ( fieldName |> Name.toCamelCase, mapValue fieldValue )
+                        )
+                )
+
         Variable a name ->
-            Scala.Var (name |> Name.toCamelCase)
+            Scala.Variable (name |> Name.toCamelCase)
 
         Reference a fQName ->
             let
@@ -362,21 +415,133 @@ mapValue value =
             in
             Scala.Ref path (name |> Name.toCamelCase)
 
-        --| Field a (Value a) Name
-        --| FieldFunction a Name
-        Apply a fun arg ->
-            Scala.Apply (mapValue fun) [ Scala.ArgValue Nothing (mapValue arg) ]
+        Field a subjectValue fieldName ->
+            Scala.Select (mapValue subjectValue) (fieldName |> Name.toCamelCase)
 
-        --| Lambda a (Pattern a) (Value a)
-        --| LetDefinition a Name (Definition a) (Value a)
-        --| LetRecursion a (Dict Name (Definition a)) (Value a)
-        --| Destructure a (Pattern a) (Value a) (Value a)
-        --| IfThenElse a (Value a) (Value a) (Value a)
-        --| PatternMatch a (Value a) (List ( Pattern a, Value a ))
-        --| UpdateRecord a (Value a) (List ( Name, Value a ))
-        --| Unit a
-        _ ->
-            Scala.Tuple []
+        FieldFunction a fieldName ->
+            Scala.Select Scala.Wildcard (fieldName |> Name.toCamelCase)
+
+        Apply a fun arg ->
+            let
+                ( bottomFun, args ) =
+                    Value.uncurryApply fun arg
+            in
+            Scala.Apply (mapValue bottomFun)
+                (args
+                    |> List.map
+                        (\argValue ->
+                            Scala.ArgValue Nothing (mapValue argValue)
+                        )
+                )
+
+        Lambda a argPattern bodyValue ->
+            case argPattern of
+                AsPattern _ (WildcardPattern _) alias ->
+                    Scala.Lambda [ alias |> Name.toCamelCase ] (mapValue bodyValue)
+
+                _ ->
+                    Scala.MatchCases [ ( mapPattern argPattern, mapValue bodyValue ) ]
+
+        LetDefinition a defName def inValue ->
+            Scala.Block
+                [ Scala.FunctionDecl
+                    { modifiers = []
+                    , name = defName |> Name.toCamelCase
+                    , typeArgs = []
+                    , args =
+                        if List.isEmpty def.inputTypes then
+                            []
+
+                        else
+                            [ def.inputTypes
+                                |> List.map
+                                    (\( argName, _, argType ) ->
+                                        { modifiers = []
+                                        , tpe = mapType argType
+                                        , name = argName |> Name.toCamelCase
+                                        , defaultValue = Nothing
+                                        }
+                                    )
+                            ]
+                    , returnType =
+                        Just (mapType def.outputType)
+                    , body =
+                        Just (mapValue def.body)
+                    }
+                ]
+                (mapValue inValue)
+
+        LetRecursion a defs inValue ->
+            Scala.Block
+                (defs
+                    |> Dict.toList
+                    |> List.map
+                        (\( defName, def ) ->
+                            Scala.FunctionDecl
+                                { modifiers = []
+                                , name = defName |> Name.toCamelCase
+                                , typeArgs = []
+                                , args =
+                                    if List.isEmpty def.inputTypes then
+                                        []
+
+                                    else
+                                        [ def.inputTypes
+                                            |> List.map
+                                                (\( argName, _, argType ) ->
+                                                    { modifiers = []
+                                                    , tpe = mapType argType
+                                                    , name = argName |> Name.toCamelCase
+                                                    , defaultValue = Nothing
+                                                    }
+                                                )
+                                        ]
+                                , returnType =
+                                    Just (mapType def.outputType)
+                                , body =
+                                    Just (mapValue def.body)
+                                }
+                        )
+                )
+                (mapValue inValue)
+
+        Destructure a bindPattern bindValue inValue ->
+            Scala.Block
+                [ Scala.ValueDecl
+                    { modifiers = []
+                    , pattern = mapPattern bindPattern
+                    , value = mapValue bindValue
+                    }
+                ]
+                (mapValue inValue)
+
+        IfThenElse a condValue thenValue elseValue ->
+            Scala.IfElse (mapValue condValue) (mapValue thenValue) (mapValue elseValue)
+
+        PatternMatch a onValue cases ->
+            Scala.Match (mapValue onValue)
+                (cases
+                    |> List.map
+                        (\( casePattern, caseValue ) ->
+                            ( mapPattern casePattern, mapValue caseValue )
+                        )
+                    |> Scala.MatchCases
+                )
+
+        UpdateRecord a subjectValue fieldUpdates ->
+            Scala.Apply
+                (Scala.Select (mapValue subjectValue) "copy")
+                (fieldUpdates
+                    |> List.map
+                        (\( fieldName, fieldValue ) ->
+                            Scala.ArgValue
+                                (Just (fieldName |> Name.toCamelCase))
+                                (mapValue fieldValue)
+                        )
+                )
+
+        Unit a ->
+            Scala.Unit
 
 
 mapPattern : Pattern a -> Scala.Pattern
@@ -414,7 +579,25 @@ mapPattern pattern =
                 (mapPattern tailPattern)
 
         LiteralPattern a literal ->
-            Scala.LiteralMatch (mapLiteral literal)
+            let
+                map l =
+                    case l of
+                        BoolLiteral v ->
+                            Scala.BooleanLit v
+
+                        CharLiteral v ->
+                            Scala.CharacterLit v
+
+                        StringLiteral v ->
+                            Scala.StringLit v
+
+                        IntLiteral v ->
+                            Scala.IntegerLit v
+
+                        FloatLiteral v ->
+                            Scala.FloatLit v
+            in
+            Scala.LiteralMatch (map literal)
 
         UnitPattern a ->
             Scala.WildcardMatch

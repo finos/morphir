@@ -315,7 +315,7 @@ packageDefinitionFromSource packageInfo sourceFiles =
                         |> Morphir.Graph.topologicalSort
             in
             if Morphir.Graph.isEmpty cycles then
-                Ok sortedModules
+                Ok (sortedModules |> List.reverse)
 
             else
                 Err [ CyclicModules cycles ]
@@ -1509,6 +1509,15 @@ resolveVariablesAndReferences variables moduleResolver value =
                 (resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body)
     in
     case value of
+        --Value.Constructor sourceLocation (FQName [] modulePath localName) ->
+        --    moduleResolver.resolveCtor
+        --        (modulePath |> List.map Name.toTitleCase)
+        --        (localName |> Name.toTitleCase)
+        --        |> Result.map
+        --            (\resolvedFullName ->
+        --                Value.Constructor sourceLocation resolvedFullName
+        --            )
+        --        |> Result.mapError (ResolveError sourceLocation >> List.singleton)
         Value.Reference sourceLocation (FQName [] modulePath localName) ->
             if variables |> Dict.member localName then
                 Ok (Value.Variable sourceLocation localName)

@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -23,6 +23,7 @@ import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Range exposing (emptyRange)
 import Json.Encode as Encode
+import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.FQName exposing (FQName, fQName)
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
@@ -43,7 +44,7 @@ type alias LocalName =
 
 type Error
     = CouldNotDecompose ModuleName
-    | CouldNotFindLocalName LocalName
+    | CouldNotFindLocalName ResolveTarget LocalName
     | CouldNotFindName Path Path Name
     | CouldNotFindModule Path Path
     | CouldNotFindPackage Path
@@ -59,9 +60,11 @@ encodeError error =
             JsonExtra.encodeConstructor "CouldNotDecompose"
                 [ Encode.string (String.join "." moduleName) ]
 
-        CouldNotFindLocalName localName ->
+        CouldNotFindLocalName target localName ->
             JsonExtra.encodeConstructor "CouldNotFindLocalName"
-                [ Encode.string localName ]
+                [ encodeResolveTarget target
+                , Encode.string localName
+                ]
 
         CouldNotFindName packagePath modulePath localName ->
             JsonExtra.encodeConstructor "CouldNotFindName"
@@ -97,6 +100,7 @@ encodeError error =
 
 type alias ModuleResolver =
     { resolveType : ModuleName -> LocalName -> Result Error FQName
+    , resolveCtor : ModuleName -> LocalName -> Result Error FQName
     , resolveValue : ModuleName -> LocalName -> Result Error FQName
     }
 
@@ -105,9 +109,29 @@ type alias PackageResolver =
     { packagePath : Path
     , ctorNames : ModuleName -> LocalName -> Result Error (List String)
     , exposesType : ModuleName -> LocalName -> Result Error Bool
+    , exposesCtor : ModuleName -> LocalName -> Result Error Bool
     , exposesValue : ModuleName -> LocalName -> Result Error Bool
     , decomposeModuleName : ModuleName -> Result Error ( Path, Path )
     }
+
+
+type ResolveTarget
+    = Type
+    | Ctor
+    | Value
+
+
+encodeResolveTarget : ResolveTarget -> Encode.Value
+encodeResolveTarget target =
+    case target of
+        Type ->
+            Encode.string "type"
+
+        Ctor ->
+            Encode.string "ctor"
+
+        Value ->
+            Encode.string "value"
 
 
 defaultImports : List Import
@@ -225,6 +249,43 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                                 )
                     )
 
+        exposesCtor : ModuleName -> LocalName -> Result Error Bool
+        exposesCtor moduleName localName =
+            let
+                ctorName : Name
+                ctorName =
+                    Name.fromString localName
+            in
+            decomposeModuleName moduleName
+                |> Result.andThen
+                    (\( packagePath, modulePath ) ->
+                        lookupModule packagePath modulePath
+                            |> Result.map
+                                (\moduleDecl ->
+                                    let
+                                        allCtorNames : List Name
+                                        allCtorNames =
+                                            moduleDecl.types
+                                                |> Dict.toList
+                                                |> List.concatMap
+                                                    (\( _, documentedTypeDecl ) ->
+                                                        case documentedTypeDecl.value of
+                                                            Type.CustomTypeSpecification _ ctors ->
+                                                                ctors
+                                                                    |> List.map
+                                                                        (\(Type.Constructor cName _) ->
+                                                                            cName
+                                                                        )
+
+                                                            _ ->
+                                                                []
+                                                    )
+                                    in
+                                    allCtorNames
+                                        |> List.member ctorName
+                                )
+                    )
+
         exposesValue : ModuleName -> LocalName -> Result Error Bool
         exposesValue moduleName localName =
             let
@@ -276,7 +337,7 @@ createPackageResolver dependencies currentPackagePath currentPackageModules =
                     )
                 |> Result.fromMaybe (CouldNotDecompose morphirModuleName)
     in
-    PackageResolver currentPackagePath ctorNames exposesType exposesValue decomposeModuleName
+    PackageResolver currentPackagePath ctorNames exposesType exposesCtor exposesValue decomposeModuleName
 
 
 createModuleResolver : PackageResolver -> List Import -> Path -> Module.Definition a -> ModuleResolver
@@ -345,14 +406,11 @@ createModuleResolver packageResolver elmImports currenctModulePath moduleDef =
                             []
                 )
 
-        explicitValueNames : Dict LocalName ModuleName
-        explicitValueNames =
+        explicitCtorNames : Dict LocalName ModuleName
+        explicitCtorNames =
             explicitNames
                 (\moduleName topLevelExpose ->
                     case topLevelExpose of
-                        FunctionExpose name ->
-                            [ name ]
-
                         TypeExpose { name, open } ->
                             open
                                 |> Maybe.andThen
@@ -361,6 +419,18 @@ createModuleResolver packageResolver elmImports currenctModulePath moduleDef =
                                             |> Result.toMaybe
                                     )
                                 |> Maybe.withDefault []
+
+                        _ ->
+                            []
+                )
+
+        explicitValueNames : Dict LocalName ModuleName
+        explicitValueNames =
+            explicitNames
+                (\moduleName topLevelExpose ->
+                    case topLevelExpose of
+                        FunctionExpose name ->
+                            [ name ]
 
                         _ ->
                             []
@@ -400,22 +470,30 @@ createModuleResolver packageResolver elmImports currenctModulePath moduleDef =
                     )
                 |> Dict.fromList
 
-        resolveWithoutModuleName : Bool -> LocalName -> Maybe ModuleName
-        resolveWithoutModuleName isType localName =
+        resolveWithoutModuleName : ResolveTarget -> LocalName -> Maybe ModuleName
+        resolveWithoutModuleName target localName =
             let
                 explNames =
-                    if isType then
-                        explicitTypeNames
+                    case target of
+                        Type ->
+                            explicitTypeNames
 
-                    else
-                        explicitValueNames
+                        Ctor ->
+                            explicitCtorNames
+
+                        Value ->
+                            explicitValueNames
 
                 exposes =
-                    if isType then
-                        packageResolver.exposesType
+                    case target of
+                        Type ->
+                            packageResolver.exposesType
 
-                    else
-                        packageResolver.exposesValue
+                        Ctor ->
+                            packageResolver.exposesCtor
+
+                        Value ->
+                            packageResolver.exposesValue
             in
             case explNames |> Dict.get localName of
                 Just moduleName ->
@@ -434,12 +512,12 @@ createModuleResolver packageResolver elmImports currenctModulePath moduleDef =
                             )
                         |> List.head
 
-        resolveModuleName : Bool -> ModuleName -> LocalName -> Result Error ModuleName
-        resolveModuleName isType moduleName localName =
+        resolveModuleName : ResolveTarget -> ModuleName -> LocalName -> Result Error ModuleName
+        resolveModuleName target moduleName localName =
             case moduleName of
                 [] ->
-                    resolveWithoutModuleName isType localName
-                        |> Result.fromMaybe (CouldNotFindLocalName localName)
+                    resolveWithoutModuleName target localName
+                        |> Result.fromMaybe (CouldNotFindLocalName target localName)
 
                 [ moduleAlias ] ->
                     moduleAliases
@@ -453,26 +531,44 @@ createModuleResolver packageResolver elmImports currenctModulePath moduleDef =
                     else
                         Err (ModuleNotImported fullModuleName)
 
-        resolveExternally : Bool -> ModuleName -> LocalName -> Result Error FQName
-        resolveExternally isType moduleName localName =
-            resolveModuleName isType moduleName localName
+        resolveExternally : ResolveTarget -> ModuleName -> LocalName -> Result Error FQName
+        resolveExternally target moduleName localName =
+            resolveModuleName target moduleName localName
                 |> Result.andThen packageResolver.decomposeModuleName
                 |> Result.map
                     (\( packagePath, modulePath ) ->
                         fQName packagePath modulePath (Name.fromString localName)
                     )
 
-        resolve : Bool -> ModuleName -> LocalName -> Result Error FQName
-        resolve isType elmModuleName elmLocalName =
+        resolve : ResolveTarget -> ModuleName -> LocalName -> Result Error FQName
+        resolve target elmModuleName elmLocalName =
             if List.isEmpty elmModuleName then
                 -- If the name is not prefixed with a module we need to look it up within the module first
                 let
                     localNames =
-                        if isType then
-                            moduleDef.types |> Dict.keys
+                        case target of
+                            Type ->
+                                moduleDef.types |> Dict.keys
 
-                        else
-                            moduleDef.values |> Dict.keys
+                            Ctor ->
+                                moduleDef.types
+                                    |> Dict.toList
+                                    |> List.concatMap
+                                        (\( _, accessControlledDocumentedTypeDef ) ->
+                                            case accessControlledDocumentedTypeDef.value.value of
+                                                Type.CustomTypeDefinition _ accessControlledCtors ->
+                                                    accessControlledCtors.value
+                                                        |> List.map
+                                                            (\(Type.Constructor name _) ->
+                                                                name
+                                                            )
+
+                                                _ ->
+                                                    []
+                                        )
+
+                            Value ->
+                                moduleDef.values |> Dict.keys
 
                     localName =
                         elmLocalName |> Name.fromString
@@ -485,20 +581,25 @@ createModuleResolver packageResolver elmImports currenctModulePath moduleDef =
                         Err (PackageNotPrefixOfModule packageResolver.packagePath currenctModulePath)
 
                 else
-                    resolveExternally isType elmModuleName elmLocalName
+                    resolveExternally target elmModuleName elmLocalName
 
             else
                 -- If the name is prefixed with a module we can skip the local resolution
-                resolveExternally isType elmModuleName elmLocalName
+                resolveExternally target elmModuleName elmLocalName
 
         resolveType : ModuleName -> LocalName -> Result Error FQName
         resolveType moduleName =
-            resolve True
+            resolve Type
+                (moduleMapping |> Dict.get moduleName |> Maybe.withDefault moduleName)
+
+        resolveCtor : ModuleName -> LocalName -> Result Error FQName
+        resolveCtor moduleName =
+            resolve Ctor
                 (moduleMapping |> Dict.get moduleName |> Maybe.withDefault moduleName)
 
         resolveValue : ModuleName -> LocalName -> Result Error FQName
         resolveValue moduleName =
-            resolve False
+            resolve Value
                 (moduleMapping |> Dict.get moduleName |> Maybe.withDefault moduleName)
     in
-    ModuleResolver resolveType resolveValue
+    ModuleResolver resolveType resolveCtor resolveValue

@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -108,6 +108,11 @@ type MemberDecl
         , typeArgs : List Type
         , tpe : Type
         }
+    | ValueDecl
+        { modifiers : List Mod
+        , pattern : Pattern
+        , value : Value
+        }
     | FunctionDecl
         { modifiers : List Mod
         , name : Name
@@ -131,7 +136,7 @@ type Type
 
 type Value
     = Literal Lit
-    | Var Name
+    | Variable Name
     | Ref Path Name
     | Select Value Name
     | Wildcard
@@ -139,11 +144,13 @@ type Value
     | UnOp String Value
     | BinOp Value String Value
     | Lambda (List Name) Value
-    | LetBlock (List ( Pattern, Value )) Value
+    | Block (List MemberDecl) Value
     | MatchCases (List ( Pattern, Value ))
     | Match Value Value
     | IfElse Value Value Value
     | Tuple (List Value)
+    | StructuralValue (List ( Name, Value ))
+    | Unit
     | CommentedValue Value String
 
 
