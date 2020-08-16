@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -25,11 +25,12 @@ import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
 import Elm.Syntax.Expression as Expression exposing (Expression, Function, FunctionImplementation)
 import Elm.Syntax.File exposing (File)
+import Elm.Syntax.Infix as Infix
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
-import Elm.Syntax.Range exposing (Range)
+import Elm.Syntax.Range as Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
 import Json.Decode as Decode
@@ -165,6 +166,7 @@ type Error
     | DuplicateNameInPattern Name SourceLocation SourceLocation
     | VariableShadowing Name SourceLocation SourceLocation
     | MissingTypeSignature SourceLocation
+    | RecordPatternNotSupported SourceLocation
 
 
 encodeDeadEnd : DeadEnd -> Encode.Value
@@ -220,6 +222,11 @@ encodeError error =
 
         MissingTypeSignature sourceLocation ->
             JsonExtra.encodeConstructor "MissingTypeSignature"
+                [ encodeSourceLocation sourceLocation
+                ]
+
+        RecordPatternNotSupported sourceLocation ->
+            JsonExtra.encodeConstructor "RecordPatternNotSupported"
                 [ encodeSourceLocation sourceLocation
                 ]
 
@@ -308,7 +315,7 @@ packageDefinitionFromSource packageInfo sourceFiles =
                         |> Morphir.Graph.topologicalSort
             in
             if Morphir.Graph.isEmpty cycles then
-                Ok sortedModules
+                Ok (sortedModules |> List.reverse)
 
             else
                 Err [ CyclicModules cycles ]
@@ -764,7 +771,7 @@ mapExpression sourceFile (Node range exp) =
         sourceLocation =
             range |> SourceLocation sourceFile
     in
-    case exp of
+    case fixAssociativity exp of
         Expression.UnitExpr ->
             Ok (Value.Unit sourceLocation)
 
@@ -988,12 +995,7 @@ mapPattern sourceFile (Node range pattern) =
                 |> Result.map (Value.TuplePattern sourceLocation)
 
         Pattern.RecordPattern fieldNameNodes ->
-            Ok
-                (Value.RecordPattern sourceLocation
-                    (fieldNameNodes
-                        |> List.map (Node.value >> Name.fromString)
-                    )
-                )
+            Err [ RecordPatternNotSupported sourceLocation ]
 
         Pattern.UnConsPattern headNode tailNode ->
             Result.map2 (Value.HeadTailPattern sourceLocation)
@@ -1467,13 +1469,6 @@ resolveVariablesAndReferences variables moduleResolver value =
                             )
                             (Ok Dict.empty)
 
-                Value.RecordPattern sourceLocation fieldNames ->
-                    Ok
-                        (fieldNames
-                            |> List.map (\fieldName -> ( fieldName, sourceLocation ))
-                            |> Dict.fromList
-                        )
-
                 Value.ConstructorPattern _ _ args ->
                     args
                         |> List.map namesBoundInPattern
@@ -1514,6 +1509,15 @@ resolveVariablesAndReferences variables moduleResolver value =
                 (resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body)
     in
     case value of
+        --Value.Constructor sourceLocation (FQName [] modulePath localName) ->
+        --    moduleResolver.resolveCtor
+        --        (modulePath |> List.map Name.toTitleCase)
+        --        (localName |> Name.toTitleCase)
+        --        |> Result.map
+        --            (\resolvedFullName ->
+        --                Value.Constructor sourceLocation resolvedFullName
+        --            )
+        --        |> Result.mapError (ResolveError sourceLocation >> List.singleton)
         Value.Reference sourceLocation (FQName [] modulePath localName) ->
             if variables |> Dict.member localName then
                 Ok (Value.Variable sourceLocation localName)
@@ -1683,3 +1687,21 @@ withAccessControl isExposed a =
 
     else
         private a
+
+
+{-| This is an incomplete fis for an associativity issue in elm-syntax.
+It only works when the operators are the same instead of relying on precedence equality.
+Consequently it also doesn't take mixed associativities into account.
+-}
+fixAssociativity : Expression -> Expression
+fixAssociativity expr =
+    case expr of
+        Expression.OperatorApplication o d (Node lr l) (Node _ (Expression.OperatorApplication ro rd (Node rlr rl) (Node rrr rr))) ->
+            if (o == ro) && d == Infix.Left then
+                Expression.OperatorApplication o d (Node (Range.combine [ lr, rlr ]) (Expression.OperatorApplication ro rd (Node lr l) (Node rlr rl))) (Node rrr rr)
+
+            else
+                expr
+
+        _ ->
+            expr

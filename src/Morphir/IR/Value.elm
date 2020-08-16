@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -19,9 +19,10 @@ module Morphir.IR.Value exposing
     ( Value(..), literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
     , tuple, variable, ifThenElse, patternMatch, update, unit
     , mapValueAttributes
-    , Pattern(..), wildcardPattern, asPattern, tuplePattern, recordPattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
+    , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
+    , uncurryApply
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -59,6 +60,11 @@ A definition is the actual data or logic as opposed to a specification
 which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.
 
 @docs Definition, mapDefinition, mapDefinitionAttributes
+
+
+# Utilities
+
+@docs uncurryApply
 
 -}
 
@@ -100,7 +106,6 @@ type Pattern a
     = WildcardPattern a
     | AsPattern a (Pattern a) Name
     | TuplePattern a (List (Pattern a))
-    | RecordPattern a (List Name)
     | ConstructorPattern a FQName (List (Pattern a))
     | EmptyListPattern a
     | HeadTailPattern a (Pattern a) (Pattern a)
@@ -271,9 +276,6 @@ mapPatternAttributes f p =
 
         TuplePattern a elementPatterns ->
             TuplePattern (f a) (elementPatterns |> List.map (mapPatternAttributes f))
-
-        RecordPattern a fieldNames ->
-            RecordPattern (f a) fieldNames
 
         ConstructorPattern a constructorName argumentPatterns ->
             ConstructorPattern (f a) constructorName (argumentPatterns |> List.map (mapPatternAttributes f))
@@ -704,16 +706,6 @@ tuplePattern attributes elementPatterns =
     TuplePattern attributes elementPatterns
 
 
-{-| Pulls out the values of some fields from a record value.
-
-    { foo, bar } -- RecordPattern [ ["foo"], ["bar"] ]
-
--}
-recordPattern : a -> List Name -> Pattern a
-recordPattern attributes fieldNames =
-    RecordPattern attributes fieldNames
-
-
 {-| Matches on a custom type's constructor.
 
 **Note**: When the custom type has a single constructor this can be used for destructuring.
@@ -788,3 +780,23 @@ since it always filters.
 literalPattern : a -> Literal -> Pattern a
 literalPattern attributes value =
     LiteralPattern attributes value
+
+
+{-| Extract the argument list from a curried apply tree. It takes the two arguments of an apply and returns a tuple of
+the function and a list of arguments.
+
+    uncurryApply (Apply () f a) b == ( f, [ a, b ] )
+
+-}
+uncurryApply : Value a -> Value a -> ( Value a, List (Value a) )
+uncurryApply fun lastArg =
+    case fun of
+        Apply _ nestedFun nestedArg ->
+            let
+                ( f, initArgs ) =
+                    uncurryApply nestedFun nestedArg
+            in
+            ( f, List.append initArgs [ lastArg ] )
+
+        _ ->
+            ( fun, [ lastArg ] )
