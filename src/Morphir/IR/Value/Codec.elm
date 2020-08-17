@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -177,7 +177,7 @@ encodeValue encodeAttributes v =
 
         UpdateRecord a valueToUpdate fieldsToUpdate ->
             Encode.list identity
-                [ Encode.string "update"
+                [ Encode.string "update_record"
                 , encodeAttributes a
                 , encodeValue encodeAttributes valueToUpdate
                 , fieldsToUpdate
@@ -324,12 +324,14 @@ decodeValue decodeAttributes =
                     "update_record" ->
                         Decode.map3 UpdateRecord
                             (Decode.index 1 decodeAttributes)
-                            (Decode.index 2 <| decodeValue decodeAttributes)
-                            (Decode.index 3 <|
-                                Decode.list <|
-                                    Decode.map2 Tuple.pair
-                                        decodeName
-                                        (decodeValue decodeAttributes)
+                            (Decode.index 2 (decodeValue decodeAttributes))
+                            (Decode.index 3
+                                (Decode.list
+                                    (Decode.map2 Tuple.pair
+                                        (Decode.index 0 decodeName)
+                                        (Decode.index 1 (decodeValue decodeAttributes))
+                                    )
+                                )
                             )
 
                     "unit" ->
@@ -363,13 +365,6 @@ encodePattern encodeAttributes pattern =
                 [ Encode.string "tuple_pattern"
                 , encodeAttributes a
                 , elementPatterns |> Encode.list (encodePattern encodeAttributes)
-                ]
-
-        RecordPattern a fieldNames ->
-            Encode.list identity
-                [ Encode.string "record_pattern"
-                , encodeAttributes a
-                , fieldNames |> Encode.list encodeName
                 ]
 
         ConstructorPattern a constructorName argumentPatterns ->
@@ -434,11 +429,6 @@ decodePattern decodeAttributes =
                         Decode.map2 TuplePattern
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 <| Decode.list lazyDecodePattern)
-
-                    "record_pattern" ->
-                        Decode.map2 RecordPattern
-                            (Decode.index 1 decodeAttributes)
-                            (Decode.index 2 <| Decode.list decodeName)
 
                     "constructor_pattern" ->
                         Decode.map3 ConstructorPattern

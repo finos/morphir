@@ -30,5 +30,5 @@ type alias Documented a =
 
 
 map : (a -> b) -> Documented a -> Documented b
-map f { doc, value } =
-    Documented doc (f value)
+map f d =
+    Documented d.doc (f d.value)

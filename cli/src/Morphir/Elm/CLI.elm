@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -39,6 +39,7 @@ port generate : (( Decode.Value, Decode.Value ) -> msg) -> Sub msg
 
 port generateResult : Encode.Value -> Cmd msg
 
+
 type Msg
     = PackageDefinitionFromSource ( Decode.Value, List SourceFile )
     | Generate ( Decode.Value, Decode.Value )
@@ -63,27 +64,28 @@ update msg model =
                         result =
                             Frontend.packageDefinitionFromSource packageInfo sourceFiles
                                 |> Result.map Package.eraseDefinitionAttributes
+                                |> Result.map (Package.Library packageInfo.name)
                     in
-                    ( model, result |> encodeResult (Encode.list encodeError) (PackageCodec.encodeDefinition (\_ -> Encode.object [])) |> packageDefinitionFromSourceResult )
+                    ( model, result |> encodeResult (Encode.list encodeError) PackageCodec.encodeDistribution |> packageDefinitionFromSourceResult )
 
                 Err errorMessage ->
                     ( model, errorMessage |> Decode.errorToString |> decodeError )
 
-        Generate ( optionsJson, packageDefJson ) ->
+        Generate ( optionsJson, packageDistJson ) ->
             let
                 targetOption =
                    Decode.decodeValue (field "target" string) optionsJson
                 optionsResult =
-                  Decode.decodeValue (decodeOptions (targetLanguage targetOption)) optionsJson
-                packageDefResult =
-                    Decode.decodeValue (PackageCodec.decodeDefinition (Decode.succeed ())) packageDefJson
+                    Decode.decodeValue decodeOptions optionsJson
+
+                packageDistroResult =
+                    Decode.decodeValue PackageCodec.decodeDistribution packageDistJson
             in
-            case Result.map2 Tuple.pair optionsResult packageDefResult of
-                Ok ( options, packageDef ) ->
+            case Result.map2 Tuple.pair optionsResult packageDistroResult of
+                Ok ( options, packageDist ) ->
                     let
                         fileMap =
-                            mapPackageDefinition options [ [ "morphir" ] ] packageDef
-                        _ = Debug.log "fileMap " fileMap
+                            Backend.mapDistribution options packageDist
                     in
                     ( model, fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult )
 
