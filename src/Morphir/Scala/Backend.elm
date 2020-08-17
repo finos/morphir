@@ -47,9 +47,6 @@ mapDistribution opt distro =
 
 mapPackageDefinition : Options -> Package.PackagePath -> Package.Definition a -> FileMap
 mapPackageDefinition opt packagePath packageDef =
-    let
-        _ = Debug.log "pakageDef" packageDef
-    in
     packageDef.modules
         |> Dict.toList
         |> List.concatMap

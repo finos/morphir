@@ -137,12 +137,16 @@ daprSource pkgPath pkgDef =
                                                             , appType = tpe
                                                             }
                                                                 |> Just
+
                                                         _ ->
                                                             Nothing
+
                                                 _ ->
                                                     Nothing
+
                                         _ ->
                                             Nothing
+
                         _ ->
                             Nothing
 

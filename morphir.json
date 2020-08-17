@@ -1,7 +1,15 @@
 {
-    "name": "Company",
+    "name": "Morphir",
     "sourceDirectory": "src",
     "exposedModules": [
-        "Operations.BooksAndRecords"
+        "IR.Name",
+        "IR.Path",
+        "IR.QName",
+        "IR.FQName",
+        "IR.AccessControlled",
+        "IR.Type",
+        "IR.Value",
+        "IR.Module",
+        "IR.Package"
     ]
 }

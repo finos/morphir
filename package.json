@@ -4,7 +4,7 @@
   "description": "Elm bindings for Morphir",
   "scripts": {
     "test": "elm-test",
-    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js",
+    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js --optimize",
     "make-cli-dev": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js",
     "build": "npm run make-cli && ncc build cli/morphir.js -o dist/morphir"
   },
