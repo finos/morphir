@@ -17,15 +17,13 @@ limitations under the License.
 
 port module Morphir.Elm.CLI exposing (main)
 
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, decodePackageInfo, encodeError)
+import Morphir.Elm.Target exposing (decodeOptions, targetLanguage, mapPackageDefinition, targetLanguage)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.IR.Package as Package
 import Morphir.IR.Package.Codec as PackageCodec
-import Morphir.Scala.Backend as Backend
-import Morphir.Scala.Backend.Codec exposing (decodeOptions)
-
 
 port packageDefinitionFromSource : (( Decode.Value, List SourceFile ) -> msg) -> Sub msg
 
@@ -40,7 +38,6 @@ port generate : (( Decode.Value, Decode.Value ) -> msg) -> Sub msg
 
 
 port generateResult : Encode.Value -> Cmd msg
-
 
 type Msg
     = PackageDefinitionFromSource ( Decode.Value, List SourceFile )
@@ -74,9 +71,10 @@ update msg model =
 
         Generate ( optionsJson, packageDefJson ) ->
             let
+                targetOption =
+                   Decode.decodeValue (field "target" string) optionsJson
                 optionsResult =
-                    Decode.decodeValue decodeOptions optionsJson
-
+                  Decode.decodeValue (decodeOptions (targetLanguage targetOption)) optionsJson
                 packageDefResult =
                     Decode.decodeValue (PackageCodec.decodeDefinition (Decode.succeed ())) packageDefJson
             in
@@ -84,7 +82,8 @@ update msg model =
                 Ok ( options, packageDef ) ->
                     let
                         fileMap =
-                            Backend.mapPackageDefinition options [ [ "morphir" ] ] packageDef
+                            mapPackageDefinition options [ [ "morphir" ] ] packageDef
+                        _ = Debug.log "fileMap " fileMap
                     in
                     ( model, fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult )
 

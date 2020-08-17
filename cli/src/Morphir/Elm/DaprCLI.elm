@@ -137,16 +137,12 @@ daprSource pkgPath pkgDef =
                                                             , appType = tpe
                                                             }
                                                                 |> Just
-
                                                         _ ->
                                                             Nothing
-
                                                 _ ->
                                                     Nothing
-
                                         _ ->
                                             Nothing
-
                         _ ->
                             Nothing
 
@@ -159,7 +155,6 @@ daprSource pkgPath pkgDef =
                                     Dict.remove (Name.fromString "app") types
                                         |> Dict.map (\_ acsCtrlTypeDef -> acsCtrlTypeDef |> AccessControlled.map (Documented.map Type.eraseAttributes))
                                         |> Dict.toList
-
                         Private ->
                             []
             in

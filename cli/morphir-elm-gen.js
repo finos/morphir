@@ -23,10 +23,11 @@ program
     .name('morphir-elm gen')
     .description('Generate code from Morphir IR')
     .option('-o, --output <path>', 'Target location where the generated code will be saved. Defaults to ./dist.', './dist')
+    .option('-t, --target <type>', 'Language to Generate (Scala | SpringBoot', 'Scala')
     .parse(process.argv)
 
 
-gen(path.resolve(program.output), { targetPackage: ["com", "foo"] })
+gen(path.resolve(program.output),  program.opts() )
     .then(() => {
         console.log("Done.")
     })

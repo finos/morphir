@@ -15,18 +15,22 @@ limitations under the License.
 -}
 
 
-module Morphir.Scala.Backend exposing (..)
+module Morphir.SpringBoot.Backend exposing (..)
 
 import Dict
+import Elm.Syntax.File exposing (File)
+import Elm.Writer as Writer
 import List.Extra as ListExtra
+import Maybe.Extra as MaybeExtra exposing (..)
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type as Type exposing (Definition(..), Type)
 import Morphir.SDK.Bool exposing (false, true)
 import Morphir.Scala.AST as Scala exposing (ArgDecl, MemberDecl(..), TypeDecl(..))
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
@@ -37,6 +41,15 @@ import Set exposing (Set)
 type alias Options =
     {}
 
+type alias AppArgs extra =
+    { appPath : Path
+    , appType : Type extra
+    }
+
+type alias StatefulAppArgs extra =
+    { app : AppArgs extra
+    , innerTypes : List ( Name, AccessControlled (Documented (Type.Definition ())) )
+    }
 
 mapDistribution : Options -> Package.Distribution -> FileMap
 mapDistribution opt distro =
@@ -44,9 +57,20 @@ mapDistribution opt distro =
         Package.Library packagePath packageDef ->
             mapPackageDefinition opt packagePath packageDef
 
-
 mapPackageDefinition : Options -> Package.PackagePath -> Package.Definition a -> FileMap
 mapPackageDefinition opt packagePath packageDef =
+     (( ["morphir","operations"], "BooksAndRecords.java" ), "Content")::[]
+     |> Dict.fromList
+
+
+
+mapPackageDefinition1 : Options -> Package.PackagePath -> Package.Definition a -> FileMap
+mapPackageDefinition1 opt packagePath packageDef =
+    let
+        _ = Debug.log "packageDef1 " packageDef
+        pepe = appSource packagePath packageDef
+        _ = Debug.log "appSource " pepe
+    in
     packageDef.modules
         |> Dict.toList
         |> List.concatMap
@@ -63,6 +87,56 @@ mapPackageDefinition opt packagePath packageDef =
                         )
             )
         |> Dict.fromList
+
+--appSource : Path -> Package.Definition extra -> String
+appSource: Path -> Package.Definition extra -> List (StatefulAppArgs extra)
+appSource pkgPath pkgDef =
+    let
+        appFiles : List (StatefulAppArgs extra)
+        appFiles =
+            pkgDef.modules
+                |> Dict.toList
+                |> List.concatMap (\( modPath, modDef ) -> createStatefulAppArgs modPath modDef)
+
+        createStatefulAppArgs : Path -> AccessControlled (Module.Definition extra) -> List (StatefulAppArgs extra)
+        createStatefulAppArgs modPath acsCtrlModDef =
+            let
+                maybeApp : Maybe (AppArgs extra)
+                maybeApp =
+                    case acsCtrlModDef.access of
+                        Public ->
+                            case acsCtrlModDef.value of
+                                { types, values } ->
+                                    case Dict.get (Name.fromString "app") types of
+                                        Just acsCtrlTypeDef ->
+                                            case acsCtrlTypeDef.access of
+                                                Public ->
+                                                    case acsCtrlTypeDef.value.value of
+                                                        TypeAliasDefinition _ tpe ->
+                                                            { appPath = pkgPath ++ modPath
+                                                            , appType = tpe
+                                                            }
+                                                                |> Just
+                                                        _ ->
+                                                            Nothing
+                                                _ ->
+                                                    Nothing
+                                        _ ->
+                                            Nothing
+                        _ ->
+                            Nothing
+
+            in
+            Maybe.map
+                (\app -> { app = app, innerTypes = [] })
+                maybeApp
+                |> MaybeExtra.toList
+
+
+
+    in
+    appFiles
+
 
 
 mapFQNameToTypeRef : FQName -> Scala.Type
@@ -98,6 +172,7 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
        -- _ = Debug.log "currentPackagePath: " currentPackagePath
         --_ = Debug.log "currentModulePath: " currentModulePath
         --_ = Debug.log "accessControlledModuleDef: " accessControlledModuleDef.value.values |> Dict.toList
+        _ = Debug.log "SPRINGBOOT " "SPRINGBOOT"
         _ = Debug.log "accessControlledModuleDefTypes: " accessControlledModuleDef.value.types |> Dict.toList
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of
@@ -170,7 +245,20 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
                     )
         _ = functionMembers |> List.tail |> Debug.log "functionMembers: "
 
-
+       {- classMembers : List Scala.MemberDecl
+        classMembers =
+            functionMembers
+            |> List.filter isFunction
+            |> List.map getArgs
+            |> List.filter (\x -> x /= [])
+            |> List.concat
+            |> List.filter (\x -> x /= [])
+            |> List.concat
+            |> List.map
+                (\{ modifiers, tpe, name, defaultValue } ->
+                    case (tpe, defaultValue) of
+                        (Scala.TypeApply (Scala.TypeRef _ "Maybe") _, Nothing ) -> MemberTypeDecl (createClass name)
+                        _ -> MemberTypeDecl (createClass name)-}
 
 
 
