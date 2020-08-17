@@ -29,8 +29,8 @@ decodeOptions gen =
         SpringBoot -> Decode.map (\(options) -> SpringBootOptions(options)) Morphir.SpringBoot.Backend.Codec.decodeOptions
         _ -> Decode.map (\(options) -> ScalaOptions(options)) Morphir.Scala.Backend.Codec.decodeOptions
 
-mapPackageDefinition : BackendOptions -> Package.PackagePath -> Package.Definition a -> FileMap
-mapPackageDefinition back =
+mapDistribution : BackendOptions -> Package.Distribution -> FileMap
+mapDistribution back =
     case back of
-            SpringBootOptions options -> Morphir.SpringBoot.Backend.mapPackageDefinition options
-            ScalaOptions options -> Morphir.Scala.Backend.mapPackageDefinition options
+            SpringBootOptions options -> Morphir.SpringBoot.Backend.mapDistribution options
+            ScalaOptions options -> Morphir.Scala.Backend.mapDistribution options

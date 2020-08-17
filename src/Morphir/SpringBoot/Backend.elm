@@ -354,6 +354,7 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
                 MemberTypeDecl _ -> []
                 TypeAlias _ -> []
                 FunctionDecl function -> function.args
+                _ -> []
 
         getStringArgs: Maybe ( List (List ArgDecl) ) -> String
         getStringArgs args =

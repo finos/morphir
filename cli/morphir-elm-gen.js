@@ -28,7 +28,7 @@ program
     .parse(process.argv)
 
 
-gen(program.input, path.resolve(program.output), {})
+gen(program.input, path.resolve(program.output), program.opts())
     .then(() => {
         console.log("Done.")
     })

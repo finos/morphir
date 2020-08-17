@@ -20,7 +20,7 @@ port module Morphir.Elm.CLI exposing (main)
 import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, decodePackageInfo, encodeError)
-import Morphir.Elm.Target exposing (decodeOptions, targetLanguage, mapPackageDefinition, targetLanguage)
+import Morphir.Elm.Target exposing (decodeOptions, mapDistribution, targetLanguage)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.IR.Package as Package
 import Morphir.IR.Package.Codec as PackageCodec
@@ -76,7 +76,7 @@ update msg model =
                 targetOption =
                    Decode.decodeValue (field "target" string) optionsJson
                 optionsResult =
-                    Decode.decodeValue decodeOptions optionsJson
+                    Decode.decodeValue (decodeOptions (targetLanguage targetOption)) optionsJson
 
                 packageDistroResult =
                     Decode.decodeValue PackageCodec.decodeDistribution packageDistJson
@@ -85,7 +85,7 @@ update msg model =
                 Ok ( options, packageDist ) ->
                     let
                         fileMap =
-                            Backend.mapDistribution options packageDist
+                            mapDistribution options packageDist
                     in
                     ( model, fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult )
 
