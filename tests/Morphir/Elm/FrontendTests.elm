@@ -1,25 +1,26 @@
 module Morphir.Elm.FrontendTests exposing (..)
 
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 import Dict
 import Expect exposing (Expectation)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
+import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName)
@@ -254,7 +255,7 @@ valueTests =
                         |> Result.map Package.eraseDefinitionAttributes
                         |> Result.mapError
                             (\errors ->
-                                Encode.encode 0 (Encode.list Frontend.encodeError errors)
+                                Encode.encode 0 (Encode.list FrontendCodec.encodeError errors)
                             )
                         |> Result.andThen
                             (\packageDef ->

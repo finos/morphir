@@ -19,7 +19,8 @@ port module Morphir.Elm.CLI exposing (main)
 
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, decodePackageInfo, encodeError)
+import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile)
+import Morphir.Elm.Frontend.Codec exposing (decodePackageInfo, encodeError)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.IR.Package as Package
 import Morphir.IR.Package.Codec as PackageCodec

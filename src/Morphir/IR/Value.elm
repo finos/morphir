@@ -43,7 +43,7 @@ Patterns are used in multiple ways in the IR: they can take apart a structured v
 can also filter values. The combination of these two features creates a very powerful method tool that can be used in two ways:
 destructuring and pattern-matching. Pattern-matching is a combination of destructuring, filtering and branching.
 
-@docs Pattern, wildcardPattern, asPattern, tuplePattern, recordPattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
+@docs Pattern, wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
 
 
 # Specification

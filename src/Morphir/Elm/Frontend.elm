@@ -15,7 +15,24 @@
 -}
 
 
-module Morphir.Elm.Frontend exposing (ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation, decodePackageInfo, encodeError, mapDeclarationsToType, packageDefinitionFromSource)
+module Morphir.Elm.Frontend exposing
+    ( packageDefinitionFromSource, mapDeclarationsToType
+    , ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation
+    )
+
+{-| The Elm frontend turns Elm source code into Morphir IR.
+
+
+# Entry points
+
+@docs packageDefinitionFromSource, mapDeclarationsToType
+
+
+# Utilities
+
+@docs ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation
+
+-}
 
 import Dict exposing (Dict)
 import Elm.Parser
@@ -33,8 +50,6 @@ import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
 import Elm.Syntax.Range as Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
-import Json.Decode as Decode
-import Json.Encode as Encode
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, PackageResolver)
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
@@ -43,7 +58,6 @@ import Morphir.IR.FQName as FQName exposing (FQName(..), fQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName as QName
@@ -59,44 +73,24 @@ import Morphir.IR.SDK.Number as Number
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.Rewrite exposing (rewriteType)
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.JsonExtra as JsonExtra
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Rewrite as Rewrite
 import Parser exposing (DeadEnd)
 import Set exposing (Set)
 
 
+{-| -}
 type alias PackageInfo =
     { name : Path
     , exposedModules : Set Path
     }
 
 
-decodePackageInfo : Decode.Decoder PackageInfo
-decodePackageInfo =
-    Decode.map2 PackageInfo
-        (Decode.field "name"
-            (Decode.string
-                |> Decode.map Path.fromString
-            )
-        )
-        (Decode.field "exposedModules"
-            (Decode.list (Decode.string |> Decode.map Path.fromString)
-                |> Decode.map Set.fromList
-            )
-        )
-
-
+{-| -}
 type alias SourceFile =
     { path : String
     , content : String
     }
-
-
-encodeSourceFile : SourceFile -> Encode.Value
-encodeSourceFile sourceFile =
-    Encode.object
-        [ ( "path", Encode.string sourceFile.path ) ]
 
 
 type alias ParsedFile =
@@ -111,52 +105,33 @@ type alias ProcessedFile =
     }
 
 
+{-| -}
 type alias SourceLocation =
     { source : SourceFile
     , range : ContentRange
     }
 
 
-encodeSourceLocation : SourceLocation -> Encode.Value
-encodeSourceLocation sourceLocation =
-    Encode.object
-        [ ( "source", encodeSourceFile sourceLocation.source )
-        , ( "range", encodeContentRange sourceLocation.range )
-        ]
-
-
+{-| -}
 type alias ContentRange =
     { start : ContentLocation
     , end : ContentLocation
     }
 
 
-encodeContentRange : ContentRange -> Encode.Value
-encodeContentRange contentRange =
-    Encode.object
-        [ ( "start", encodeContentLocation contentRange.start )
-        , ( "end", encodeContentLocation contentRange.end )
-        ]
-
-
+{-| -}
 type alias ContentLocation =
     { row : Int
     , column : Int
     }
 
 
-encodeContentLocation : ContentLocation -> Encode.Value
-encodeContentLocation contentLocation =
-    Encode.object
-        [ ( "row", Encode.int contentLocation.row )
-        , ( "column", Encode.int contentLocation.column )
-        ]
-
-
+{-| -}
 type alias Errors =
     List Error
 
 
+{-| -}
 type Error
     = ParseError String (List Parser.DeadEnd)
     | CyclicModules (Morphir.Graph.Graph () (List String))
@@ -167,68 +142,6 @@ type Error
     | VariableShadowing Name SourceLocation SourceLocation
     | MissingTypeSignature SourceLocation
     | RecordPatternNotSupported SourceLocation
-
-
-encodeDeadEnd : DeadEnd -> Encode.Value
-encodeDeadEnd deadEnd =
-    Encode.list identity
-        [ Encode.int deadEnd.row
-        , Encode.int deadEnd.col
-        ]
-
-
-encodeError : Error -> Encode.Value
-encodeError error =
-    case error of
-        ParseError sourcePath deadEnds ->
-            JsonExtra.encodeConstructor "ParseError"
-                [ Encode.string sourcePath
-                , Encode.list encodeDeadEnd deadEnds
-                ]
-
-        CyclicModules _ ->
-            JsonExtra.encodeConstructor "CyclicModules" []
-
-        ResolveError sourceLocation resolveError ->
-            JsonExtra.encodeConstructor "ResolveError"
-                [ encodeSourceLocation sourceLocation
-                , Resolve.encodeError resolveError
-                ]
-
-        EmptyApply sourceLocation ->
-            JsonExtra.encodeConstructor "EmptyApply"
-                [ encodeSourceLocation sourceLocation
-                ]
-
-        NotSupported sourceLocation message ->
-            JsonExtra.encodeConstructor "NotSupported"
-                [ encodeSourceLocation sourceLocation
-                , Encode.string message
-                ]
-
-        DuplicateNameInPattern name sourceLocation1 sourceLocation2 ->
-            JsonExtra.encodeConstructor "DuplicateNameInPattern"
-                [ encodeName name
-                , encodeSourceLocation sourceLocation1
-                , encodeSourceLocation sourceLocation2
-                ]
-
-        VariableShadowing name sourceLocation1 sourceLocation2 ->
-            JsonExtra.encodeConstructor "VariableShadowing"
-                [ encodeName name
-                , encodeSourceLocation sourceLocation1
-                , encodeSourceLocation sourceLocation2
-                ]
-
-        MissingTypeSignature sourceLocation ->
-            JsonExtra.encodeConstructor "MissingTypeSignature"
-                [ encodeSourceLocation sourceLocation
-                ]
-
-        RecordPatternNotSupported sourceLocation ->
-            JsonExtra.encodeConstructor "RecordPatternNotSupported"
-                [ encodeSourceLocation sourceLocation
-                ]
 
 
 type alias Imports =
@@ -244,6 +157,8 @@ type alias Import =
     }
 
 
+{-| Function that takes some package info and a list of sources and returns Morphir IR or errors.
+-}
 packageDefinitionFromSource : PackageInfo -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
 packageDefinitionFromSource packageInfo sourceFiles =
     let
@@ -449,6 +364,8 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
             )
 
 
+{-| Function that turns `elm-syntax` declarations to Morphir IR types.
+-}
 mapDeclarationsToType : SourceFile -> Exposing -> List Declaration -> Result Errors (List ( Name, AccessControlled (Documented (Type.Definition SourceLocation)) ))
 mapDeclarationsToType sourceFile expose decls =
     decls
