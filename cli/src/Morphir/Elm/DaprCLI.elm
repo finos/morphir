@@ -81,7 +81,7 @@ update msg model =
                     let
                         packageDefResult : Result Frontend.Errors (Package.Definition ())
                         packageDefResult =
-                            Frontend.packageDefinitionFromSource pkgInfo sourceFiles
+                            Frontend.packageDefinitionFromSource pkgInfo Dict.empty sourceFiles
                                 |> Result.map Package.eraseDefinitionAttributes
 
                         result =

@@ -17,6 +17,7 @@
 
 port module Morphir.Elm.CLI exposing (main)
 
+import Dict
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile)
@@ -65,7 +66,7 @@ update msg model =
                 Ok packageInfo ->
                     let
                         result =
-                            Frontend.packageDefinitionFromSource packageInfo sourceFiles
+                            Frontend.packageDefinitionFromSource packageInfo Dict.empty sourceFiles
                                 |> Result.map Package.eraseDefinitionAttributes
                                 |> Result.map (Package.Library packageInfo.name)
                     in
