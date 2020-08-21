@@ -446,6 +446,11 @@ decodePattern decodeAttributes =
                             (Decode.index 2 lazyDecodePattern)
                             (Decode.index 3 lazyDecodePattern)
 
+                    "literal_pattern" ->
+                        Decode.map2 LiteralPattern
+                            (Decode.index 1 decodeAttributes)
+                            (Decode.index 2 decodeLiteral)
+
                     "unit_pattern" ->
                         Decode.map UnitPattern
                             (Decode.index 1 decodeAttributes)
