@@ -16,7 +16,7 @@ module Morphir.Elm.FrontendTests exposing (..)
    limitations under the License.
 -}
 
-import Dict
+import Dict exposing (Dict)
 import Expect exposing (Expectation)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
@@ -27,16 +27,10 @@ import Morphir.IR.FQName exposing (fQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
-import Morphir.IR.Path as Path
-import Morphir.IR.SDK.Bool as Bool
-import Morphir.IR.SDK.Comparable as Comparison
-import Morphir.IR.SDK.Equality as Equality
-import Morphir.IR.SDK.Float as Float
-import Morphir.IR.SDK.Function as Function
-import Morphir.IR.SDK.Int as Int
+import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.SDK.Basics as SDKBasics
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Maybe as Maybe
-import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
 import Morphir.IR.Value exposing (Definition, Pattern(..), Value(..))
@@ -152,17 +146,17 @@ frontendTest =
                                                         , Type.Field [ "field", "2" ]
                                                             (Type.Reference () (fQName packageName [ [ "a" ] ] [ "bar" ]) [])
                                                         , Type.Field [ "field", "3" ]
-                                                            (Bool.boolType ())
+                                                            (SDKBasics.boolType ())
                                                         , Type.Field [ "field", "4" ]
-                                                            (Int.intType ())
+                                                            (SDKBasics.intType ())
                                                         , Type.Field [ "field", "5" ]
-                                                            (Float.floatType ())
+                                                            (SDKBasics.floatType ())
                                                         , Type.Field [ "field", "6" ]
                                                             (String.stringType ())
                                                         , Type.Field [ "field", "7" ]
-                                                            (Maybe.maybeType () (Int.intType ()))
+                                                            (Maybe.maybeType () (SDKBasics.intType ()))
                                                         , Type.Field [ "field", "8" ]
-                                                            (List.listType () (Float.floatType ()))
+                                                            (List.listType () (SDKBasics.floatType ()))
                                                         ]
                                                     )
                                                 )
@@ -195,7 +189,7 @@ frontendTest =
     in
     test "first" <|
         \_ ->
-            Frontend.packageDefinitionFromSource packageInfo [ sourceA, sourceB, sourceC ]
+            Frontend.packageDefinitionFromSource packageInfo Dict.empty [ sourceA, sourceB, sourceC ]
                 |> Result.map Package.eraseDefinitionAttributes
                 |> Expect.equal (Ok expected)
 
@@ -206,6 +200,40 @@ valueTests =
         packageInfo =
             { name = [ [ "my" ] ]
             , exposedModules = Set.fromList [ [ [ "test" ] ] ]
+            }
+
+        otherPackage : Package.Specification ()
+        otherPackage =
+            Package.Specification
+                (Dict.fromList
+                    [ ( [ [ "bar" ] ]
+                      , { types =
+                            Dict.empty
+                        , values =
+                            Dict.empty
+                        }
+                      )
+                    ]
+                )
+
+        deps : Dict Path (Package.Specification ())
+        deps =
+            Dict.fromList
+                [ ( [ [ "my", "pack" ] ]
+                  , otherPackage
+                  )
+                ]
+
+        barSource : SourceFile
+        barSource =
+            { path = "Bar.elm"
+            , content =
+                String.join "\n"
+                    [ "module My.Bar exposing (..)"
+                    , ""
+                    , "foo : Int"
+                    , "foo = 1"
+                    ]
             }
 
         moduleSource : String -> SourceFile
@@ -251,7 +279,7 @@ valueTests =
         checkIR valueSource expectedValueIR =
             test valueSource <|
                 \_ ->
-                    Frontend.packageDefinitionFromSource packageInfo [ moduleSource valueSource ]
+                    Frontend.packageDefinitionFromSource packageInfo deps [ barSource, moduleSource valueSource ]
                         |> Result.map Package.eraseDefinitionAttributes
                         |> Result.mapError
                             (\errors ->
@@ -303,7 +331,7 @@ valueTests =
         --, checkIR "MyPack.Bar.foo" <| Reference () (fQName [] [ [ "my", "pack" ], [ "bar" ] ] [ "foo" ])
         , checkIR "foo bar" <| Apply () (ref "foo") (ref "bar")
         , checkIR "foo bar baz" <| Apply () (Apply () (ref "foo") (ref "bar")) (ref "baz")
-        , checkIR "-1" <| Number.negate () () (Literal () (IntLiteral 1))
+        , checkIR "-1" <| SDKBasics.negate () () (Literal () (IntLiteral 1))
         , checkIR "if foo then bar else baz" <| IfThenElse () (ref "foo") (ref "bar") (ref "baz")
         , checkIR "( foo, bar, baz )" <| Tuple () [ ref "foo", ref "bar", ref "baz" ]
         , checkIR "( foo )" <| ref "foo"
@@ -329,22 +357,22 @@ valueTests =
         , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (IntLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
         , checkIR "a <| b" <| Apply () (ref "a") (ref "b")
         , checkIR "a |> b" <| Apply () (ref "b") (ref "a")
-        , checkIR "a || b" <| binary Bool.or (ref "a") (ref "b")
-        , checkIR "a && b" <| binary Bool.and (ref "a") (ref "b")
-        , checkIR "a == b" <| binary Equality.equal (ref "a") (ref "b")
-        , checkIR "a /= b" <| binary Equality.notEqual (ref "a") (ref "b")
-        , checkIR "a < b" <| binary Comparison.lessThan (ref "a") (ref "b")
-        , checkIR "a > b" <| binary Comparison.greaterThan (ref "a") (ref "b")
-        , checkIR "a <= b" <| binary Comparison.lessThanOrEqual (ref "a") (ref "b")
-        , checkIR "a >= b" <| binary Comparison.greaterThanOrEqual (ref "a") (ref "b")
-        , checkIR "a + b" <| binary Number.add (ref "a") (ref "b")
-        , checkIR "a - b" <| binary Number.subtract (ref "a") (ref "b")
-        , checkIR "a * b" <| binary Number.multiply (ref "a") (ref "b")
-        , checkIR "a / b" <| binary Float.divide (ref "a") (ref "b")
-        , checkIR "a // b" <| binary Int.divide (ref "a") (ref "b")
-        , checkIR "a ^ b" <| binary Number.power (ref "a") (ref "b")
-        , checkIR "a << b" <| binary Function.composeLeft (ref "a") (ref "b")
-        , checkIR "a >> b" <| binary Function.composeRight (ref "a") (ref "b")
+        , checkIR "a || b" <| binary SDKBasics.or (ref "a") (ref "b")
+        , checkIR "a && b" <| binary SDKBasics.and (ref "a") (ref "b")
+        , checkIR "a == b" <| binary SDKBasics.equal (ref "a") (ref "b")
+        , checkIR "a /= b" <| binary SDKBasics.notEqual (ref "a") (ref "b")
+        , checkIR "a < b" <| binary SDKBasics.lessThan (ref "a") (ref "b")
+        , checkIR "a > b" <| binary SDKBasics.greaterThan (ref "a") (ref "b")
+        , checkIR "a <= b" <| binary SDKBasics.lessThanOrEqual (ref "a") (ref "b")
+        , checkIR "a >= b" <| binary SDKBasics.greaterThanOrEqual (ref "a") (ref "b")
+        , checkIR "a + b" <| binary SDKBasics.add (ref "a") (ref "b")
+        , checkIR "a - b" <| binary SDKBasics.subtract (ref "a") (ref "b")
+        , checkIR "a * b" <| binary SDKBasics.multiply (ref "a") (ref "b")
+        , checkIR "a / b" <| binary SDKBasics.divide (ref "a") (ref "b")
+        , checkIR "a // b" <| binary SDKBasics.integerDivide (ref "a") (ref "b")
+        , checkIR "a ^ b" <| binary SDKBasics.power (ref "a") (ref "b")
+        , checkIR "a << b" <| binary SDKBasics.composeLeft (ref "a") (ref "b")
+        , checkIR "a >> b" <| binary SDKBasics.composeRight (ref "a") (ref "b")
         , checkIR "a :: b" <| binary List.construct (ref "a") (ref "b")
         , checkIR "::" <| List.construct ()
         , checkIR "foo (::)" <| Apply () (ref "foo") (List.construct ())
@@ -373,7 +401,7 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "foo")
-                (Definition [ ( Name.fromString "a", (), Int.intType () ) ] (Int.intType ()) (ref "c"))
+                (Definition [ ( Name.fromString "a", (), SDKBasics.intType () ) ] (SDKBasics.intType ()) (ref "c"))
                 (ref "d")
         , checkIR
             (String.join "\n"
@@ -425,10 +453,10 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "b")
-                (Definition [] (Int.intType ()) (ref "c"))
+                (Definition [] (SDKBasics.intType ()) (ref "c"))
                 (LetDefinition ()
                     (Name.fromString "a")
-                    (Definition [] (Int.intType ()) (var "b"))
+                    (Definition [] (SDKBasics.intType ()) (var "b"))
                     (var "a")
                 )
         , checkIR
@@ -445,10 +473,10 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "b")
-                (Definition [] (Int.intType ()) (ref "c"))
+                (Definition [] (SDKBasics.intType ()) (ref "c"))
                 (LetDefinition ()
                     (Name.fromString "a")
-                    (Definition [] (Int.intType ()) (var "b"))
+                    (Definition [] (SDKBasics.intType ()) (var "b"))
                     (var "a")
                 )
         , checkIR
@@ -465,8 +493,8 @@ valueTests =
           <|
             LetRecursion ()
                 (Dict.fromList
-                    [ ( Name.fromString "b", Definition [] (Int.intType ()) (var "a") )
-                    , ( Name.fromString "a", Definition [] (Int.intType ()) (var "b") )
+                    [ ( Name.fromString "b", Definition [] (SDKBasics.intType ()) (var "a") )
+                    , ( Name.fromString "a", Definition [] (SDKBasics.intType ()) (var "b") )
                     ]
                 )
                 (var "a")
@@ -486,11 +514,11 @@ valueTests =
           <|
             LetDefinition ()
                 (Name.fromString "c")
-                (Definition [] (Int.intType ()) (ref "d"))
+                (Definition [] (SDKBasics.intType ()) (ref "d"))
                 (LetRecursion ()
                     (Dict.fromList
-                        [ ( Name.fromString "b", Definition [] (Int.intType ()) (var "a") )
-                        , ( Name.fromString "a", Definition [] (Int.intType ()) (var "b") )
+                        [ ( Name.fromString "b", Definition [] (SDKBasics.intType ()) (var "a") )
+                        , ( Name.fromString "a", Definition [] (SDKBasics.intType ()) (var "b") )
                         ]
                     )
                     (var "a")

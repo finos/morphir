@@ -27,14 +27,24 @@ type alias Options =
     }
 
 mapHeader : (TypeDecl -> Doc) -> Header -> Doc
-mapHeader {options, typee} header =
-    concat [mapDocumented valueToDoc header.documented ,
+mapHeader valueToDoc header =
+    concat [
     case header.annotation of
         Just a ->
-            mapType _ header.annotation
+            mapAnnotation header.annotation
         Nothing ->
-            Nothing
+            ""
+    , mapDocumented valueToDoc header.documented
     ]
+
+mapAnnotation : Annotation -> Doc
+mapAnnotation anot =
+    case anot of
+        Just value ->
+            dotSep value ++ newLine
+        Nothing ->
+            ""
+
 mapDocumented : (a -> Doc) -> Documented a -> Doc
 mapDocumented valueToDoc documented =
     case documented.doc of

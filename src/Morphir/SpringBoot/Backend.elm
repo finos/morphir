@@ -48,9 +48,6 @@ mapDistribution opt distro =
 
 mapPackageDefinition : Options -> Package.PackagePath -> Package.Definition a -> FileMap
 mapPackageDefinition opt packagePath packageDef =
-     let
-            _ = Debug.log "modules" (List.length (Dict.toList packageDef.modules) )
-     in
     packageDef.modules
         |> Dict.toList
         |> List.concatMap
@@ -101,17 +98,6 @@ mapFQNameToTypeRef fQName =
             mapFQNameToPathAndName fQName
     in
     Scala.TypeRef path (name |> Name.toTitleCase)
-{--package company.operations
-
-   @org.springframework.boot.autoconfigure.SpringBootApplication
-   class BooksAndRecords
-
-   object BooksAndRecords extends App {
-     org.springframework.boot.SpringApplication.run(classOf[BooksAndRecords], args:_*)
-     System.out.println("Hello World")
-   }--}
-
-
 
 mapModuleDefinition : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition a) -> List SpringBoot.CompilationUnit
 mapModuleDefinition opt currentPackagePath currentModulePath accessControlledModuleDef =
@@ -217,43 +203,41 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
             , imports = []
             , typeDecls =
                 [
-                    { documented = (SpringBoot.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                     <|
-                    (SpringBoot.Class
-                                        { modifiers = []
-                                         , name = "BooksAndRecords"
-                                         , typeArgs = []
-                                         , ctorArgs = []
-                                         , extends = [ ]
-                                         }
-                                    ))
-                    , annotation = [""]},
-
-                    { documented = SpringBoot.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                 SpringBoot.Header (SpringBoot.Documented Nothing
                     <|
-                    (SpringBoot.Object
-                        { modifiers =
-                            case accessControlledModuleDef.access of
-                                Public ->
-                                    []
+                        (SpringBoot.Class
+                            { modifiers = []
+                            , name = "BooksAndRecords"
+                              , typeArgs = []
+                              , ctorArgs = []
+                              , extends = [ ]
+                              }
+                        )
+                    )  (Just ["@org.springframework.boot.autoconfigure.SpringBootApplication"]),
+                        SpringBoot.Header (SpringBoot.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                            <|
+                            (SpringBoot.Object
+                                { modifiers =
+                                    case accessControlledModuleDef.access of
+                                        Public ->
+                                            []
 
-                                Private ->
-                                    [ SpringBoot.Private
-                                        (currentPackagePath
-                                            |> ListExtra.last
-                                            |> Maybe.map (Name.toCamelCase >> String.toLower)
-                                        )
-                                    ]
-                        , name =
-                            moduleName |> Name.toTitleCase
-                        , members =
-                            []
-                        , extends =
-                            [SpringBoot.TypeVar "App"]
-                        , body =
-                            Just (SpringBoot.Ref ["org.springframework.boot.SpringApplication"] "run(classOf[BooksAndRecords], args:_*)")
-                        })
-                    , annotation = [""]}
+                                        Private ->
+                                            [ SpringBoot.Private
+                                                (currentPackagePath
+                                                    |> ListExtra.last
+                                                    |> Maybe.map (Name.toCamelCase >> String.toLower)
+                                                )
+                                            ]
+                                , name =
+                                    moduleName |> Name.toTitleCase
+                                , members =
+                                    []
+                                , extends =
+                                    [SpringBoot.TypeVar "App"]
+                                , body =
+                                    Just (SpringBoot.Ref ["org.springframework.boot.SpringApplication"] "run(classOf[BooksAndRecords], args:_*)")
+                                })) Nothing
                 ]
             }
     in

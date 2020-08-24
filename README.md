@@ -1,10 +1,19 @@
 # morphir-elm
 
+[Morphir](https://github.com/finos/morphir) is a multi-language system built on a data format that captures an 
+application's domain model and business logic in a technology agnostic manner. This repo contains tools that
+allow you to write your business logic in [Elm](https://elm-lang.org/), parse it into Morphir IR and transpile 
+it to other languages like [Scala](https://www.scala-lang.org/) or visualize it to your business users using Elm.
 
-morphir-elm is a set of tools to work with Morphir in Elm. It's dual published as an NPM and an Elm package:
+We publish it both as an NPM and an Elm package:
 
-- [NPM package](#npm-package)
-- [Elm package](#elm-package)
+- The [NPM package](#npm-package) contains the CLI for running the tools as part of your build.
+- The [Elm package](#elm-package) supports multiple use-cases:
+  - It includes SDK functions that you can use while writing your business logic beyond the default `elm/core` support.
+  - It provides a type-safe API to work with the Morphir IR directly. You can use this to add your own logic builder, 
+  visualization or language transpiler.
+  - It also provides access to the frontend that parses the Elm source code and returns Morphir IR. You could use this 
+  to embed a business logic editor in your web UI. 
 
 # NPM package
 
@@ -66,11 +75,28 @@ common package prefix. In the above example `Foo` refers to the Elm module `My.P
   - Target location where the Morphir IR will be sent
   - Defaults to STDOUT.
 
+### Transpile Morphir IR into Scala
+
+This command reads the JSON produced by `morphir-elm make` and generates Scala sources into the specified folder:
+
+```
+morphir-elm gen [options]
+```
+
+#### Options
+
+- `--input <path>`, `-i` 
+  - Source location where the Morphir IR will be loaded from. 
+  - Defaults to STDIN.
+- `--output <path>`, `-o`
+  - Target location where the generated code will be saved. 
+  - Defaults to `./dist`.
+  
 # Elm package
 
 [![Latest version of the Elm package](https://reiner-dolp.github.io/elm-badges/Morgan-Stanley/morphir-elm/version.svg)](https://package.elm-lang.org/packages/Morgan-Stanley/morphir-elm/latest)
 
-The [Morgan-Stanley/morphir-elm](https://package.elm-lang.org/packages/Morgan-Stanley/morphir-elm/latest) package 
+The [finos/morphir-elm](https://package.elm-lang.org/packages/finos/morphir-elm/latest) package 
 provides various tools to work with Morphir. It contains the following main components:
 
 - The [Morphir SDK](#morphir-sdk) which provides the base set of types and functions that Morphir tools support 
@@ -81,7 +107,7 @@ provides various tools to work with Morphir. It contains the following main comp
 ## Installation
 
 ```
-elm install Morgan-Stanley/morphir-elm
+elm install finos/morphir-elm
 ```
 
 ## Morphir SDK
@@ -98,13 +124,7 @@ Apart from the modules mentioned above you can use everything that's available i
 the `Morphir SDK`. The Elm frontend will simply map those to the corresponding type/function names in the Morphir SDK.
 
 The `Morphir SDK` also provides some features beyond `elm/core/1.0.5`. To use those features you have to import the 
-specific `Morphir SDK` module. Modules that extends `elm/core` will implement the same functions so in general you can 
-use an alias if you want to switch from the `elm/core` module to the `Morphir SDK` version. For example if you want to
-use extended `List` functions you can do the below an all existing code should continue to work without changes:
-
-```elm
-import Morphir.SDK.List as List
-```
+specific `Morphir SDK` module. 
 
 ## Morphir IR
 

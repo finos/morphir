@@ -22,7 +22,7 @@ module Morphir.IR.Value exposing
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
-    , uncurryApply
+    , definitionToSpecification, uncurryApply
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -64,7 +64,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 # Utilities
 
-@docs uncurryApply
+@docs definitionToSpecification, uncurryApply
 
 -}
 
@@ -132,18 +132,19 @@ type alias Definition a =
     }
 
 
-
--- definitionToSpecification : Definition extra -> Maybe (Specification extra)
--- definitionToSpecification def =
---     case def of
---         TypedDefinition valueType argNames _ ->
---             let
---                 extractArgTypes tpe names =
---                     case ( names, tpe ) of
---                         ( [], returnType ) ->
---                             ( [], returnType )
---                         ( nextArgName :: restOfArgNames,  ->
---             in
+{-| Turns a definition into a specification by removing implementation details.
+-}
+definitionToSpecification : Definition a -> Specification a
+definitionToSpecification def =
+    { inputs =
+        def.inputTypes
+            |> List.map
+                (\( name, a, tpe ) ->
+                    ( name, tpe )
+                )
+    , output =
+        def.outputType
+    }
 
 
 {-| -}

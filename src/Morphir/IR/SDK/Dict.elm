@@ -15,34 +15,28 @@
 -}
 
 
-module Morphir.IR.SDK.Maybe exposing (..)
+module Morphir.IR.SDK.Dict exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
-import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value)
 
 
 moduleName : ModulePath
 moduleName =
-    Path.fromString "Maybe"
+    Path.fromString "Dict"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Maybe"
-              , CustomTypeSpecification [ Name.fromString "a" ]
-                    [ Type.Constructor (Name.fromString "Just") [ ( [ "value" ], Type.Variable () (Name.fromString "a") ) ]
-                    , Type.Constructor (Name.fromString "Nothing") []
-                    ]
-                    |> Documented "Type that represents an optional value."
-              )
+            [ ( Name.fromString "Dict", OpaqueTypeSpecification [ [ "a" ] ] |> Documented "Type that represents a dictionary of key-value pairs." )
             ]
     , values =
         let
@@ -53,13 +47,28 @@ moduleSpec =
 
             valueNames : List String
             valueNames =
-                [ "andThen"
+                [ "empty"
+                , "singleton"
+                , "insert"
+                , "update"
+                , "remove"
+                , "isEmpty"
+                , "member"
+                , "get"
+                , "size"
+                , "keys"
+                , "values"
+                , "toList"
+                , "fromList"
                 , "map"
-                , "map2"
-                , "map3"
-                , "map4"
-                , "map5"
-                , "withDefault"
+                , "foldl"
+                , "foldr"
+                , "filter"
+                , "partition"
+                , "union"
+                , "intersect"
+                , "diff"
+                , "merge"
                 ]
         in
         valueNames
@@ -71,6 +80,11 @@ moduleSpec =
     }
 
 
-maybeType : a -> Type a -> Type a
-maybeType attributes itemType =
-    Reference attributes (toFQName moduleName "Maybe") [ itemType ]
+listType : a -> Type a -> Type a
+listType attributes itemType =
+    Type.Reference attributes (toFQName moduleName "List") [ itemType ]
+
+
+construct : a -> Value a
+construct a =
+    Value.Reference a (toFQName moduleName "construct")

@@ -15,35 +15,25 @@
 -}
 
 
-module Morphir.IR.SDK.Maybe exposing (..)
+module Morphir.IR.SDK.Tuple exposing (..)
 
 import Dict
-import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModulePath)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value
 
 
 moduleName : ModulePath
 moduleName =
-    Path.fromString "Maybe"
+    Path.fromString "Tuple"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
-        Dict.fromList
-            [ ( Name.fromString "Maybe"
-              , CustomTypeSpecification [ Name.fromString "a" ]
-                    [ Type.Constructor (Name.fromString "Just") [ ( [ "value" ], Type.Variable () (Name.fromString "a") ) ]
-                    , Type.Constructor (Name.fromString "Nothing") []
-                    ]
-                    |> Documented "Type that represents an optional value."
-              )
-            ]
+        Dict.empty
     , values =
         let
             -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
@@ -53,13 +43,12 @@ moduleSpec =
 
             valueNames : List String
             valueNames =
-                [ "andThen"
-                , "map"
-                , "map2"
-                , "map3"
-                , "map4"
-                , "map5"
-                , "withDefault"
+                [ "pair"
+                , "first"
+                , "second"
+                , "mapFirst"
+                , "mapSecond"
+                , "mapBoth"
                 ]
         in
         valueNames
@@ -69,8 +58,3 @@ moduleSpec =
                 )
             |> Dict.fromList
     }
-
-
-maybeType : a -> Type a -> Type a
-maybeType attributes itemType =
-    Reference attributes (toFQName moduleName "Maybe") [ itemType ]

@@ -17,6 +17,7 @@
 
 module Morphir.Elm.Frontend exposing
     ( packageDefinitionFromSource, mapDeclarationsToType
+    , defaultDependencies
     , ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation
     )
 
@@ -29,6 +30,8 @@ module Morphir.Elm.Frontend exposing
 
 
 # Utilities
+
+@docs defaultDependencies
 
 @docs ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation
 
@@ -50,7 +53,7 @@ import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
 import Elm.Syntax.Range as Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
-import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver, PackageResolver)
+import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
@@ -62,14 +65,8 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName as QName
 import Morphir.IR.SDK as SDK
-import Morphir.IR.SDK.Bool as Bool
-import Morphir.IR.SDK.Comparable as Comparison
-import Morphir.IR.SDK.Equality as Equality
-import Morphir.IR.SDK.Float as Float
-import Morphir.IR.SDK.Function as Function
-import Morphir.IR.SDK.Int as Int
+import Morphir.IR.SDK.Basics as SDKBasics
 import Morphir.IR.SDK.List as List
-import Morphir.IR.SDK.Number as Number
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.Rewrite exposing (rewriteType)
 import Morphir.IR.Value as Value exposing (Value)
@@ -157,10 +154,19 @@ type alias Import =
     }
 
 
+{-| Dependencies that are added by default without explicit reference.
+-}
+defaultDependencies : Dict Path (Package.Specification ())
+defaultDependencies =
+    Dict.fromList
+        [ ( SDK.packageName, SDK.packageSpec )
+        ]
+
+
 {-| Function that takes some package info and a list of sources and returns Morphir IR or errors.
 -}
-packageDefinitionFromSource : PackageInfo -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
-packageDefinitionFromSource packageInfo sourceFiles =
+packageDefinitionFromSource : PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
+packageDefinitionFromSource packageInfo dependencies sourceFiles =
     let
         parseSources : List SourceFile -> Result Errors (List ( ModuleName, ParsedFile ))
         parseSources sources =
@@ -246,7 +252,7 @@ packageDefinitionFromSource packageInfo sourceFiles =
                 parsedFiles
                     |> treeShakeModules
                     |> sortModules
-                    |> Result.andThen (mapParsedFiles packageInfo.name parsedFilesByModuleName)
+                    |> Result.andThen (mapParsedFiles dependencies packageInfo.name parsedFilesByModuleName)
             )
         |> Result.map
             (\moduleDefs ->
@@ -256,26 +262,19 @@ packageDefinitionFromSource packageInfo sourceFiles =
                         |> Dict.toList
                         |> List.map
                             (\( modulePath, m ) ->
-                                let
-                                    packageLessModulePath =
-                                        modulePath
-                                            |> Path.toList
-                                            |> List.drop (packageInfo.name |> Path.toList |> List.length)
-                                            |> Path.fromList
-                                in
-                                if packageInfo.exposedModules |> Set.member packageLessModulePath then
-                                    ( packageLessModulePath, public m )
+                                if packageInfo.exposedModules |> Set.member modulePath then
+                                    ( modulePath, public m )
 
                                 else
-                                    ( packageLessModulePath, private m )
+                                    ( modulePath, private m )
                             )
                         |> Dict.fromList
                 }
             )
 
 
-mapParsedFiles : Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation))
-mapParsedFiles currentPackagePath parsedModules sortedModuleNames =
+mapParsedFiles : Dict Path (Package.Specification ()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation))
+mapParsedFiles dependencies currentPackagePath parsedModules sortedModuleNames =
     sortedModuleNames
         |> List.filterMap
             (\moduleName ->
@@ -293,14 +292,14 @@ mapParsedFiles currentPackagePath parsedModules sortedModuleNames =
                 moduleResultsSoFar
                     |> Result.andThen
                         (\modulesSoFar ->
-                            mapProcessedFile currentPackagePath processedFile modulesSoFar
+                            mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar
                         )
             )
             (Ok Dict.empty)
 
 
-mapProcessedFile : Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation))
-mapProcessedFile currentPackagePath processedFile modulesSoFar =
+mapProcessedFile : Dict Path (Package.Specification ()) -> Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation))
+mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
     let
         modulePath =
             processedFile.file.moduleDefinition
@@ -308,12 +307,14 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                 |> ElmModule.moduleName
                 |> List.map Name.fromString
                 |> Path.fromList
+                |> List.drop (List.length currentPackagePath)
 
         moduleExpose =
             processedFile.file.moduleDefinition
                 |> Node.value
                 |> ElmModule.exposingList
 
+        moduleDeclsSoFar : Dict Path (Module.Specification ())
         moduleDeclsSoFar =
             modulesSoFar
                 |> Dict.map
@@ -321,11 +322,6 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                         Module.definitionToSpecification def
                             |> Module.eraseSpecificationAttributes
                     )
-
-        dependencies =
-            Dict.fromList
-                [ ( SDK.packageName, SDK.packageSpec )
-                ]
 
         typesResult : Result Errors (Dict Name (AccessControlled (Documented (Type.Definition SourceLocation))))
         typesResult =
@@ -350,10 +346,14 @@ mapProcessedFile currentPackagePath processedFile modulesSoFar =
                     moduleResolver : ModuleResolver
                     moduleResolver =
                         Resolve.createModuleResolver
-                            (Resolve.createPackageResolver dependencies currentPackagePath moduleDeclsSoFar)
-                            (processedFile.file.imports |> List.map Node.value)
-                            modulePath
-                            moduleDef
+                            (Resolve.Context
+                                (Dict.union defaultDependencies dependencies)
+                                currentPackagePath
+                                moduleDeclsSoFar
+                                (processedFile.file.imports |> List.map Node.value)
+                                modulePath
+                                moduleDef
+                            )
                 in
                 resolveLocalNames moduleResolver moduleDef
             )
@@ -780,7 +780,7 @@ mapExpression sourceFile (Node range exp) =
 
         Expression.Negation arg ->
             mapExpression sourceFile arg
-                |> Result.map (Number.negate sourceLocation sourceLocation)
+                |> Result.map (SDKBasics.negate sourceLocation sourceLocation)
 
         Expression.Literal value ->
             Ok (Value.Literal sourceLocation (StringLiteral value))
@@ -963,55 +963,55 @@ mapOperator : SourceLocation -> String -> Result Errors (Value.Value SourceLocat
 mapOperator sourceLocation op =
     case op of
         "||" ->
-            Ok <| Bool.or sourceLocation
+            Ok <| SDKBasics.or sourceLocation
 
         "&&" ->
-            Ok <| Bool.and sourceLocation
+            Ok <| SDKBasics.and sourceLocation
 
         "==" ->
-            Ok <| Equality.equal sourceLocation
+            Ok <| SDKBasics.equal sourceLocation
 
         "/=" ->
-            Ok <| Equality.notEqual sourceLocation
+            Ok <| SDKBasics.notEqual sourceLocation
 
         "<" ->
-            Ok <| Comparison.lessThan sourceLocation
+            Ok <| SDKBasics.lessThan sourceLocation
 
         ">" ->
-            Ok <| Comparison.greaterThan sourceLocation
+            Ok <| SDKBasics.greaterThan sourceLocation
 
         "<=" ->
-            Ok <| Comparison.lessThanOrEqual sourceLocation
+            Ok <| SDKBasics.lessThanOrEqual sourceLocation
 
         ">=" ->
-            Ok <| Comparison.greaterThanOrEqual sourceLocation
+            Ok <| SDKBasics.greaterThanOrEqual sourceLocation
 
         "++" ->
             Err [ NotSupported sourceLocation "The ++ operator is currently not supported. Please use String.append or List.append. See docs/error-append-not-supported.md" ]
 
         "+" ->
-            Ok <| Number.add sourceLocation
+            Ok <| SDKBasics.add sourceLocation
 
         "-" ->
-            Ok <| Number.subtract sourceLocation
+            Ok <| SDKBasics.subtract sourceLocation
 
         "*" ->
-            Ok <| Number.multiply sourceLocation
+            Ok <| SDKBasics.multiply sourceLocation
 
         "/" ->
-            Ok <| Float.divide sourceLocation
+            Ok <| SDKBasics.divide sourceLocation
 
         "//" ->
-            Ok <| Int.divide sourceLocation
+            Ok <| SDKBasics.integerDivide sourceLocation
 
         "^" ->
-            Ok <| Number.power sourceLocation
+            Ok <| SDKBasics.power sourceLocation
 
         "<<" ->
-            Ok <| Function.composeLeft sourceLocation
+            Ok <| SDKBasics.composeLeft sourceLocation
 
         ">>" ->
-            Ok <| Function.composeRight sourceLocation
+            Ok <| SDKBasics.composeRight sourceLocation
 
         "::" ->
             Ok <| List.construct sourceLocation
@@ -1426,15 +1426,16 @@ resolveVariablesAndReferences variables moduleResolver value =
                 (resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body)
     in
     case value of
-        --Value.Constructor sourceLocation (FQName [] modulePath localName) ->
-        --    moduleResolver.resolveCtor
-        --        (modulePath |> List.map Name.toTitleCase)
-        --        (localName |> Name.toTitleCase)
-        --        |> Result.map
-        --            (\resolvedFullName ->
-        --                Value.Constructor sourceLocation resolvedFullName
-        --            )
-        --        |> Result.mapError (ResolveError sourceLocation >> List.singleton)
+        Value.Constructor sourceLocation (FQName [] modulePath localName) ->
+            moduleResolver.resolveCtor
+                (modulePath |> List.map Name.toTitleCase)
+                (localName |> Name.toTitleCase)
+                |> Result.map
+                    (\resolvedFullName ->
+                        Value.Constructor sourceLocation resolvedFullName
+                    )
+                |> Result.mapError (ResolveError sourceLocation >> List.singleton)
+
         Value.Reference sourceLocation (FQName [] modulePath localName) ->
             if variables |> Dict.member localName then
                 Ok (Value.Variable sourceLocation localName)
