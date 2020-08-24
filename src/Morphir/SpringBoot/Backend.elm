@@ -207,7 +207,7 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
                     <|
                         (SpringBoot.Class
                             { modifiers = []
-                            , name = "BooksAndRecords"
+                            , name = moduleName |> Name.toTitleCase
                               , typeArgs = []
                               , ctorArgs = []
                               , extends = [ ]
@@ -236,7 +236,7 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
                                 , extends =
                                     [SpringBoot.TypeVar "App"]
                                 , body =
-                                    Just (SpringBoot.Ref ["org.springframework.boot.SpringApplication"] "run(classOf[BooksAndRecords], args:_*)")
+                                    Just (SpringBoot.Ref ["org.springframework.boot.SpringApplication"] ("run(classOf[" ++ (moduleName |> Name.toTitleCase) ++ "], args:_*)"))
                                 })) Nothing
                 ]
             }
