@@ -1,6 +1,6 @@
 {
     "type": "package",
-    "name": "Morgan-Stanley/morphir-elm",
+    "name": "finos/morphir-elm",
     "summary": "Morphir Elm bindings",
     "license": "Apache-2.0",
     "version": "3.0.0",
