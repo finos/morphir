@@ -24,10 +24,11 @@ program
     .description('Generate code from Morphir IR')
     .option('-i, --input <path>', 'Source location where the Morphir IR will be loaded from. Defaults to STDIN.')
     .option('-o, --output <path>', 'Target location where the generated code will be saved. Defaults to ./dist.', './dist')
+    .option('-t, --target <type>', 'Language to Generate (Scala | SpringBoot', 'Scala')
     .parse(process.argv)
 
 
-gen(program.input, path.resolve(program.output), {})
+gen(program.input, path.resolve(program.output), program.opts())
     .then(() => {
         console.log("Done.")
     })
