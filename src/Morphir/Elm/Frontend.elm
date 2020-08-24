@@ -17,8 +17,8 @@
 
 module Morphir.Elm.Frontend exposing
     ( packageDefinitionFromSource, mapDeclarationsToType
-    , ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation
     , defaultDependencies
+    , ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation
     )
 
 {-| The Elm frontend turns Elm source code into Morphir IR.
@@ -30,6 +30,8 @@ module Morphir.Elm.Frontend exposing
 
 
 # Utilities
+
+@docs defaultDependencies
 
 @docs ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation
 
@@ -152,6 +154,8 @@ type alias Import =
     }
 
 
+{-| Dependencies that are added by default without explicit reference.
+-}
 defaultDependencies : Dict Path (Package.Specification ())
 defaultDependencies =
     Dict.fromList
