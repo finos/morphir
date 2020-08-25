@@ -354,27 +354,27 @@ mapValue value =
     case value of
         Literal a literal ->
             let
-                wrap : String -> Scala.Lit -> Scala.Value
-                wrap moduleName lit =
+                wrap : List String -> String -> Scala.Lit -> Scala.Value
+                wrap modulePath moduleName lit =
                     Scala.Apply
-                        (Scala.Ref [ "morphir", "sdk" ] moduleName)
+                        (Scala.Ref modulePath moduleName)
                         [ Scala.ArgValue Nothing (Scala.Literal lit) ]
             in
             case literal of
                 BoolLiteral v ->
-                    wrap "Bool" (Scala.BooleanLit v)
+                    wrap [ "morphir", "sdk", "Basics" ] "Bool" (Scala.BooleanLit v)
 
                 CharLiteral v ->
-                    wrap "Char" (Scala.CharacterLit v)
+                    wrap [ "morphir", "sdk", "Char" ] "Char" (Scala.CharacterLit v)
 
                 StringLiteral v ->
-                    wrap "String" (Scala.StringLit v)
+                    wrap [ "morphir", "sdk", "String" ] "String" (Scala.StringLit v)
 
                 IntLiteral v ->
-                    wrap "Int" (Scala.IntegerLit v)
+                    wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
 
                 FloatLiteral v ->
-                    wrap "Float" (Scala.FloatLit v)
+                    wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
 
         Constructor a fQName ->
             let

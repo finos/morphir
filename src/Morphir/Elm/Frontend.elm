@@ -39,7 +39,7 @@ module Morphir.Elm.Frontend exposing
 
 import Dict exposing (Dict)
 import Elm.Parser
-import Elm.Processing as Processing
+import Elm.Processing as Processing exposing (ProcessContext)
 import Elm.RawFile as RawFile exposing (RawFile)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
@@ -54,6 +54,7 @@ import Elm.Syntax.Range as Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
+import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
@@ -275,27 +276,40 @@ packageDefinitionFromSource packageInfo dependencies sourceFiles =
 
 mapParsedFiles : Dict Path (Package.Specification ()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation))
 mapParsedFiles dependencies currentPackagePath parsedModules sortedModuleNames =
+    let
+        initialContext : ProcessContext
+        initialContext =
+            Processing.init
+                |> withWellKnownOperators
+    in
     sortedModuleNames
         |> List.filterMap
             (\moduleName ->
                 parsedModules
                     |> Dict.get moduleName
             )
-        |> List.map
-            (\parsedFile ->
-                parsedFile.rawFile
-                    |> Processing.process Processing.init
-                    |> ProcessedFile parsedFile
-            )
         |> List.foldl
-            (\processedFile moduleResultsSoFar ->
+            (\parsedFile moduleResultsSoFar ->
                 moduleResultsSoFar
                     |> Result.andThen
-                        (\modulesSoFar ->
-                            mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar
+                        (\( processContext, modulesSoFar ) ->
+                            let
+                                processedFile : File
+                                processedFile =
+                                    parsedFile.rawFile
+                                        |> Processing.process processContext
+
+                                newProcessContext : ProcessContext
+                                newProcessContext =
+                                    processContext
+                                        |> Processing.addFile parsedFile.rawFile
+                            in
+                            mapProcessedFile dependencies currentPackagePath (ProcessedFile parsedFile processedFile) modulesSoFar
+                                |> Result.map (Tuple.pair newProcessContext)
                         )
             )
-            (Ok Dict.empty)
+            (Ok ( initialContext, Dict.empty ))
+        |> Result.map Tuple.second
 
 
 mapProcessedFile : Dict Path (Package.Specification ()) -> Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation))
@@ -1623,3 +1637,8 @@ fixAssociativity expr =
 
         _ ->
             expr
+
+
+withWellKnownOperators : ProcessContext -> ProcessContext
+withWellKnownOperators context =
+    List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
