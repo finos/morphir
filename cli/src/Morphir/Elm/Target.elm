@@ -9,24 +9,14 @@ import Morphir.SpringBoot.Backend.Codec
 import Morphir.Scala.Backend.Codec
 
 -- languages that could be generated
-type Generator
-    = Scala
-    | SpringBoot
-
 type BackendOptions
     = ScalaOptions Morphir.Scala.Backend.Options
     | SpringBootOptions Morphir.SpringBoot.Backend.Options
 
-targetLanguage: Result Error String -> Generator
-targetLanguage s =
-    case s of
-        Ok "SpringBoot" -> SpringBoot
-        _ -> Scala
-
-decodeOptions : Generator -> Decode.Decoder BackendOptions
+decodeOptions : Result Error String -> Decode.Decoder BackendOptions
 decodeOptions gen =
     case gen of
-        SpringBoot -> Decode.map (\(options) -> SpringBootOptions(options)) Morphir.SpringBoot.Backend.Codec.decodeOptions
+        Ok "SpringBoot" -> Decode.map (\(options) -> SpringBootOptions(options)) Morphir.SpringBoot.Backend.Codec.decodeOptions
         _ -> Decode.map (\(options) -> ScalaOptions(options)) Morphir.Scala.Backend.Codec.decodeOptions
 
 mapDistribution : BackendOptions -> Package.Distribution -> FileMap

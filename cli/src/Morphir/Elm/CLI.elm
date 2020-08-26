@@ -78,7 +78,7 @@ update msg model =
                 targetOption =
                    Decode.decodeValue (field "target" string) optionsJson
                 optionsResult =
-                    Decode.decodeValue (decodeOptions (targetLanguage targetOption)) optionsJson
+                    Decode.decodeValue (decodeOptions targetOption) optionsJson
 
                 packageDistroResult =
                     Decode.decodeValue PackageCodec.decodeDistribution packageDistJson
