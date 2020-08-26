@@ -44,7 +44,7 @@ The quickest way to start is to use the Morphir Elm tooling.  You can find instr
 
 Morphir tools can be used to optimize a wide range of development tasks.  For example, Morphir can be used to define and automated development of an entire service.  The [Morphir Dapr](https://github.com/finos/morphir-dapr) project is example of this.
 
-Another good use of Morphir is to define shared rules than can be used across heterogeneous systems.  This can be useful for initiatives like open-source Reg Tech models that are shared across firms.  [Morphir LCR](https://github.com/finos/morphir-examples/src/Morphir/Sample/LCR/) presents a good example of this.
+Another good use of Morphir is to define shared rules than can be used across heterogeneous systems.  This can be useful for initiatives like open-source Reg Tech models that are shared across firms.  [Morphir LCR](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/LCR) presents a good example of this.
 
 More Morphir examples can be found at [Morphir Examples](https://github.com/finos/morphir-examples/).
 
