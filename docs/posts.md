@@ -18,7 +18,7 @@
 
 
 
-[Home](/index) | [Posts](posts) | [Examples](../morphir-examples/)
+[Home](/index) | [Posts](posts) | [Examples](https://github.com/finos/morphir-examples/)
 -----|------|------
  | | 
 

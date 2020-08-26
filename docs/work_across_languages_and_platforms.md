@@ -1,4 +1,4 @@
-[Home](/) | [Posts](posts) | [Examples](../morphir-examples/)
+[Home](/) | [Posts](posts) | [Examples](https://github.com/finos/morphir-examples/)
 -----|------|------
 
 

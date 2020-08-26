@@ -42,6 +42,6 @@ Technology is evolving ever more quickly. It is no longer feasible to stay compe
 Hopefully this gives a good background into what Morphir does and why. If you have any questions or comments, feel free to drop us a note through the [Morphir project](http://).
 
 
-[Home](/index) | [Posts](posts) | [Examples](../morphir-examples/)
+[Home](/index) | [Posts](posts) | [Examples](https://github.com/finos/morphir-examples/)
 -----|------|------
  | | 
