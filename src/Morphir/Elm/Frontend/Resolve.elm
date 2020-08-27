@@ -264,6 +264,9 @@ createModuleResolver ctx =
                                                 )
                                         )
 
+                                Type.TypeAliasDefinition _ (Type.Record _ _) ->
+                                    Just ( typeName, [ typeName ] )
+
                                 _ ->
                                     Nothing
                         )
@@ -511,6 +514,9 @@ moduleSpecToLocalNames moduleSpec =
                                         )
                                 )
 
+                        Type.TypeAliasSpecification _ (Type.Record _ _) ->
+                            Just ( typeName, [ typeName ] )
+
                         _ ->
                             Nothing
                 )
@@ -596,13 +602,33 @@ collectImportedNames getModulesExposedNames imports =
                                                             TypeOrAliasExpose sourceName ->
                                                                 explicitImportedNamesSoFar
                                                                     |> Result.map (addTypeName (sourceName |> Name.fromString))
+                                                                    |> Result.map
+                                                                        (addNames addCtorName
+                                                                            (case exposedLocalNames.ctorNames |> Dict.get (sourceName |> Name.fromString) of
+                                                                                Just [ ctorName ] ->
+                                                                                    if (sourceName |> Name.fromString) == ctorName then
+                                                                                        [ ctorName ]
+
+                                                                                    else
+                                                                                        []
+
+                                                                                _ ->
+                                                                                    []
+                                                                            )
+                                                                        )
 
                                                             TypeExpose exposedType ->
                                                                 case exposedType.open of
                                                                     Just _ ->
                                                                         explicitImportedNamesSoFar
                                                                             |> Result.map (addTypeName (exposedType.name |> Name.fromString))
-                                                                            |> Result.map (addNames addCtorName (exposedLocalNames.ctorNames |> Dict.values |> List.concat))
+                                                                            |> Result.map
+                                                                                (addNames addCtorName
+                                                                                    (exposedLocalNames.ctorNames
+                                                                                        |> Dict.get (exposedType.name |> Name.fromString)
+                                                                                        |> Maybe.withDefault []
+                                                                                    )
+                                                                                )
 
                                                                     Nothing ->
                                                                         explicitImportedNamesSoFar

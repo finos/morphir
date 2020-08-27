@@ -44,6 +44,11 @@ basicConstructor3 =
     CustomTwoArg "Baz" 12345
 
 
+basicRecordConstructor : FooBarBazRecord
+basicRecordConstructor =
+    FooBarBazRecord "foo" True 42
+
+
 basicTuple2 : ( Int, String )
 basicTuple2 =
     ( 13, "Tuple Two" )
