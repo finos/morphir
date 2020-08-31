@@ -19,20 +19,22 @@ module Morphir.SpringBoot.Backend exposing (..)
 
 import Dict
 import List.Extra as ListExtra
+import Maybe.Extra as MaybeExtra exposing (..)
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type as Type exposing (Definition(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
-import Morphir.Scala.AST as Scala
 import Morphir.SpringBoot.PrettyPrinter as PrettyPrinter
-import Morphir.SpringBoot.AST as SpringBoot
+import Morphir.SpringBoot.AST as SpringBoot exposing (ArgDecl)
 import Set exposing (Set)
+
 
 
 type alias Options =
@@ -52,7 +54,7 @@ mapPackageDefinition opt packagePath packageDef =
         |> Dict.toList
         |> List.concatMap
             (\( modulePath, moduleImpl ) ->
-                mapModuleDefinition opt packagePath modulePath moduleImpl
+                (mapMainAppDefinition opt packagePath modulePath moduleImpl
                     |> List.map
                         (\compilationUnit ->
                             let
@@ -62,11 +64,45 @@ mapPackageDefinition opt packagePath packageDef =
                             in
                             ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
                         )
+                )
+                |> List.append
+                    (mapModuleDefinition opt packagePath modulePath moduleImpl
+                        |> List.map
+                            (\compilationUnit ->
+                                let
+                                    fileContent =
+                                        compilationUnit
+                                            |> PrettyPrinter.mapCompilationUnit (PrettyPrinter.Options 2 80)
+                                in
+                                    ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
+                            )
+                    )
+                |> List.append
+                    (mapStatefulAppDefinition opt packagePath modulePath moduleImpl
+                        |> List.map
+                            (\compilationUnit ->
+                                let
+                                    fileContent =
+                                        compilationUnit
+                                            |> PrettyPrinter.mapCompilationUnit (PrettyPrinter.Options 2 80)
+                                in
+                                    ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
+                            )
+                    )
             )
         |> Dict.fromList
 
+type alias AppArgs extra =
+    { appPath : Path
+    , appType : Type extra
+    }
 
-mapFQNameToPathAndName : FQName -> ( Scala.Path, Name )
+type alias StatefulAppArgs extra =
+    { app : AppArgs extra
+    , innerTypes : List ( Name, AccessControlled (Documented (Type.Definition ())) )
+    }
+
+mapFQNameToPathAndName : FQName -> ( SpringBoot.Path, Name )
 mapFQNameToPathAndName (FQName packagePath modulePath localName) =
     let
         scalaModulePath =
@@ -91,16 +127,16 @@ mapFQNameToPathAndName (FQName packagePath modulePath localName) =
     )
 
 
-mapFQNameToTypeRef : FQName -> Scala.Type
+mapFQNameToTypeRef : FQName -> SpringBoot.Type
 mapFQNameToTypeRef fQName =
     let
         ( path, name ) =
             mapFQNameToPathAndName fQName
     in
-    Scala.TypeRef path (name |> Name.toTitleCase)
+    SpringBoot.TypeRef path (name |> Name.toTitleCase)
 
-mapModuleDefinition : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition a) -> List SpringBoot.CompilationUnit
-mapModuleDefinition opt currentPackagePath currentModulePath accessControlledModuleDef =
+mapMainAppDefinition : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition a) -> List SpringBoot.CompilationUnit
+mapMainAppDefinition opt currentPackagePath currentModulePath accessControlledModuleDef =
     let
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of
@@ -110,7 +146,224 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
                 lastName :: reverseModulePath ->
                     ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
 
-        typeMembers : List Scala.MemberDecl
+        mainUnit : SpringBoot.CompilationUnit
+        mainUnit =
+            { dirPath = scalaPackagePath
+            , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
+            , packageDecl = scalaPackagePath
+            , imports = []
+            , typeDecls =
+                [
+                 (SpringBoot.Documented Nothing (SpringBoot.Annotated (Just ["@org.springframework.boot.autoconfigure.SpringBootApplication"])
+                    <|
+                        (SpringBoot.Class
+                            { modifiers = []
+                            , name = moduleName |> Name.toTitleCase
+                              , typeArgs = []
+                              , ctorArgs = []
+                              , extends = [ ]
+                              , members = []
+                              }
+                        )
+                    )),
+                 (SpringBoot.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                    (SpringBoot.Annotated (Nothing)
+                         <|
+                         (SpringBoot.Object
+                             { modifiers =
+                                 []
+                             , name =
+                                 moduleName |> Name.toTitleCase
+                             , members =
+                                 []
+                             , extends =
+                                 [SpringBoot.TypeVar "App"]
+                             , body =
+                                 Just (SpringBoot.Ref ["org.springframework.boot.SpringApplication"] ("run(classOf[" ++ (moduleName |> Name.toTitleCase) ++ "], args:_*)"))
+                             }
+                         )
+                    )
+                 )
+                ]
+            }
+    in
+    [ mainUnit ]
+
+
+createStatefulAppArgs : Path -> AccessControlled (Module.Definition extra) -> List (StatefulAppArgs extra)
+createStatefulAppArgs modPath acsCtrlModDef =
+    let
+        maybeApp : Maybe (AppArgs extra)
+        maybeApp =
+            case acsCtrlModDef.access of
+                Public ->
+                    case acsCtrlModDef.value of
+                        { types, values } ->
+                            case Dict.get (Name.fromString "app") types of
+                                Just acsCtrlTypeDef ->
+                                    case acsCtrlTypeDef.access of
+                                        Public ->
+                                            case acsCtrlTypeDef.value.value of
+                                                TypeAliasDefinition _ tpe ->
+                                                    { appPath = modPath
+                                                    , appType = tpe
+                                                    }
+                                                        |> Just
+                                                _ ->
+                                                    Nothing
+                                        _ ->
+                                            Nothing
+                                _ ->
+                                    Nothing
+                _ ->
+                    Nothing
+
+        innerTypes : List ( Name, AccessControlled (Documented (Type.Definition ())) )
+        innerTypes =
+            case acsCtrlModDef.access of
+                Public ->
+                    case acsCtrlModDef.value of
+                        { types, values } ->
+                            Dict.remove (Name.fromString "app") types
+                                |> Dict.map (\_ acsCtrlTypeDef -> acsCtrlTypeDef |> AccessControlled.map (Documented.map Type.eraseAttributes))
+                                |> Dict.toList
+
+                Private ->
+                    []
+    in
+    Maybe.map
+        (\app -> StatefulAppArgs app innerTypes )
+             maybeApp
+        |> MaybeExtra.toList
+
+
+--Path -> AccessControlled (Module.Definition extra)
+mapStatefulAppDefinition : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition a) -> List SpringBoot.CompilationUnit
+mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControlledModuleDef =
+    let
+
+        statefulArgs = createStatefulAppArgs currentModulePath accessControlledModuleDef
+        _ = Debug.log "statefulArgs" statefulArgs
+
+        params: List (List ArgDecl)
+        params =
+                case statefulArgs of
+                    [] ->
+                        []
+                    args ->
+                        args
+                        |> List.map
+                            (\(argument) ->
+                                case argument.app.appType of
+                                    Type.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "stateful", "app" ] ] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) ->
+                                        if List.isEmpty argument.app.innerTypes then
+                                                []
+                                            else
+                                                [ argument.app.innerTypes
+                                                    |> List.map
+                                                        (\( argName, a, argType ) ->
+                                                            { modifiers = []
+                                                            , tpe = mapType argType
+                                                            , name = argName |> Name.toCamelCase
+                                                            , defaultValue = Nothing
+                                                            }
+                                                        )
+                                                ]
+                                    _ -> []
+                            )
+
+        ( scalaPackagePath, moduleName ) =
+                    case currentModulePath |> List.reverse of
+                        [] ->
+                            ( [], [] )
+
+                        lastName :: reverseModulePath ->
+                            ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
+
+        functionMembers : List SpringBoot.MemberDecl
+        functionMembers =
+            accessControlledModuleDef.value.values
+                |> Dict.toList
+                |> List.concatMap
+                    (\( valueName, accessControlledValueDef ) ->
+                        [ SpringBoot.FunctionDecl
+                            { modifiers = []
+                            , name =
+                                "statefulApp" ++ (valueName |> Name.toCamelCase)
+                            , typeArgs =
+                                []
+                            , args =
+                                if List.isEmpty accessControlledValueDef.value.inputTypes then
+                                    []
+
+                                else
+                                    [ accessControlledValueDef.value.inputTypes
+                                        |> List.map
+                                            (\( argName, a, argType ) ->
+                                                { modifiers = []
+                                                , tpe = mapType argType
+                                                , name = argName |> Name.toCamelCase
+                                                , defaultValue = Nothing
+                                                }
+                                            )
+                                    ]
+                            , returnType =
+                                Just (mapType accessControlledValueDef.value.outputType)
+                            , body =
+                                Just (mapValue accessControlledValueDef.value.body)
+                            }
+                        ]
+                    )
+
+
+        moduleUnit : SpringBoot.CompilationUnit
+        moduleUnit =
+            { dirPath = scalaPackagePath
+            , fileName = "Controller" ++ (moduleName |> Name.toTitleCase) ++ ".scala"
+            , packageDecl = scalaPackagePath
+            , imports = []
+            , typeDecls =
+                [
+                 (SpringBoot.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                    (SpringBoot.Annotated (Nothing)
+                         <|
+                         (SpringBoot.Class
+                             { modifiers =
+                                         []
+                             , name =
+                                 moduleName |> Name.toTitleCase
+                             , typeArgs =
+                                 []
+                             , ctorArgs =
+                                 []
+                             , extends =
+                                 []
+                             , members =
+                                 functionMembers
+
+                             }
+                         )
+                    )
+                 )
+                ]
+            }
+    in
+    [ moduleUnit ]
+
+
+mapModuleDefinition : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition a) -> List SpringBoot.CompilationUnit
+mapModuleDefinition opt currentPackagePath currentModulePath accessControlledModuleDef =
+    let
+        _ = Debug.log "accessControlledModuleDef" accessControlledModuleDef.value.types
+        ( scalaPackagePath, moduleName ) =
+            case currentModulePath |> List.reverse of
+                [] ->
+                    ( [], [] )
+
+                lastName :: reverseModulePath ->
+                    ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
+
+        typeMembers : List SpringBoot.MemberDecl
         typeMembers =
             accessControlledModuleDef.value.types
                 |> Dict.toList
@@ -118,33 +371,34 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
                     (\( typeName, accessControlledDocumentedTypeDef ) ->
                         case accessControlledDocumentedTypeDef.value.value of
                             Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
-                                [ Scala.MemberTypeDecl
-                                    (Scala.Class
-                                        { modifiers = [ Scala.Case ]
+                                [ SpringBoot.MemberTypeDecl
+                                    (SpringBoot.Class
+                                        { modifiers = [ SpringBoot.Case ]
                                         , name = typeName |> Name.toTitleCase
-                                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> SpringBoot.TypeVar)
                                         , ctorArgs =
                                             fields
                                                 |> List.map
                                                     (\field ->
                                                         { modifiers = []
                                                         , tpe = mapType field.tpe
-                                                        , name = field.name |> Name.toCamelCase
+                                                        , name = ""
                                                         , defaultValue = Nothing
                                                         }
                                                     )
                                                 |> List.singleton
                                         , extends = []
+                                        , members = []
                                         }
                                     )
                                 ]
 
                             Type.TypeAliasDefinition typeParams typeExp ->
-                                [ Scala.TypeAlias
+                                [ SpringBoot.TypeAlias
                                     { alias =
                                         typeName |> Name.toTitleCase
                                     , typeArgs =
-                                        typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                                        typeParams |> List.map (Name.toTitleCase >> SpringBoot.TypeVar)
                                     , tpe =
                                         mapType typeExp
                                     }
@@ -154,20 +408,20 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
                                 mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams accessControlledCtors
                     )
 
-        functionMembers : List Scala.MemberDecl
+        functionMembers : List SpringBoot.MemberDecl
         functionMembers =
             accessControlledModuleDef.value.values
                 |> Dict.toList
                 |> List.concatMap
                     (\( valueName, accessControlledValueDef ) ->
-                        [ Scala.FunctionDecl
+                        [ SpringBoot.FunctionDecl
                             { modifiers =
                                 case accessControlledValueDef.access of
                                     Public ->
                                         []
 
                                     Private ->
-                                        [ Scala.Private Nothing ]
+                                        [ SpringBoot.Private Nothing ]
                             , name =
                                 valueName |> Name.toCamelCase
                             , typeArgs =
@@ -198,60 +452,53 @@ mapModuleDefinition opt currentPackagePath currentModulePath accessControlledMod
         moduleUnit : SpringBoot.CompilationUnit
         moduleUnit =
             { dirPath = scalaPackagePath
-            , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
+            , fileName = "Modules" ++ (moduleName |> Name.toTitleCase) ++ ".scala"
             , packageDecl = scalaPackagePath
             , imports = []
             , typeDecls =
                 [
-                 SpringBoot.Header (SpringBoot.Documented Nothing
-                    <|
-                        (SpringBoot.Class
-                            { modifiers = []
-                            , name = moduleName |> Name.toTitleCase
-                              , typeArgs = []
-                              , ctorArgs = []
-                              , extends = [ ]
-                              }
-                        )
-                    )  (Just ["@org.springframework.boot.autoconfigure.SpringBootApplication"]),
-                        SpringBoot.Header (SpringBoot.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                            <|
-                            (SpringBoot.Object
-                                { modifiers =
-                                    case accessControlledModuleDef.access of
-                                        Public ->
-                                            []
+                 (SpringBoot.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                    (SpringBoot.Annotated (Nothing)
+                         <|
+                         (SpringBoot.Object
+                             { modifiers =
+                                 case accessControlledModuleDef.access of
+                                     Public ->
+                                         []
 
-                                        Private ->
-                                            [ SpringBoot.Private
-                                                (currentPackagePath
-                                                    |> ListExtra.last
-                                                    |> Maybe.map (Name.toCamelCase >> String.toLower)
-                                                )
-                                            ]
-                                , name =
-                                    moduleName |> Name.toTitleCase
-                                , members =
-                                    []
-                                , extends =
-                                    [SpringBoot.TypeVar "App"]
-                                , body =
-                                    Just (SpringBoot.Ref ["org.springframework.boot.SpringApplication"] ("run(classOf[" ++ (moduleName |> Name.toTitleCase) ++ "], args:_*)"))
-                                })) Nothing
+                                     Private ->
+                                         [ SpringBoot.Private
+                                             (currentPackagePath
+                                                 |> ListExtra.last
+                                                 |> Maybe.map (Name.toCamelCase >> String.toLower)
+                                             )
+                                         ]
+                             , name =
+                                 moduleName |> Name.toTitleCase
+                             , members =
+                                 List.append typeMembers functionMembers
+                             , extends =
+                                 [SpringBoot.TypeVar "App"]
+                             , body =
+                                 Just (SpringBoot.Ref ["org.springframework.boot.SpringApplication"] ("run(classOf[" ++ (moduleName |> Name.toTitleCase) ++ "], args:_*)"))
+                             }
+                         )
+                    )
+                 )
                 ]
             }
     in
     [ moduleUnit ]
 
 
-mapCustomTypeDefinition : Package.PackagePath -> Path -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
+mapCustomTypeDefinition : Package.PackagePath -> Path -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List SpringBoot.MemberDecl
 mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams accessControlledCtors =
     let
         caseClass name args extends =
-            Scala.Class
-                { modifiers = [ Scala.Case ]
+            SpringBoot.Class
+                { modifiers = [ SpringBoot.Case ]
                 , name = name |> Name.toTitleCase
-                , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                , typeArgs = typeParams |> List.map (Name.toTitleCase >> SpringBoot.TypeVar)
                 , ctorArgs =
                     args
                         |> List.map
@@ -264,6 +511,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams
                             )
                         |> List.singleton
                 , extends = extends
+                , members = []
                 }
 
         parentTraitRef =
@@ -271,10 +519,10 @@ mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams
 
         sealedTraitHierarchy =
             List.concat
-                [ [ Scala.Trait
-                        { modifiers = [ Scala.Sealed ]
+                [ [ SpringBoot.Trait
+                        { modifiers = [ SpringBoot.Sealed ]
                         , name = typeName |> Name.toTitleCase
-                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> SpringBoot.TypeVar)
                         , extends = []
                         , members = []
                         }
@@ -288,7 +536,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams
                                     [ parentTraitRef ]
 
                                  else
-                                    [ Scala.TypeApply parentTraitRef (typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)) ]
+                                    [ SpringBoot.TypeApply parentTraitRef (typeParams |> List.map (Name.toTitleCase >> SpringBoot.TypeVar)) ]
                                 )
                         )
                 ]
@@ -296,20 +544,20 @@ mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams
     case accessControlledCtors.value of
         [ Type.Constructor ctorName ctorArgs ] ->
             if ctorName == typeName then
-                [ Scala.MemberTypeDecl (caseClass ctorName ctorArgs []) ]
+                [ SpringBoot.MemberTypeDecl (caseClass ctorName ctorArgs []) ]
 
             else
-                sealedTraitHierarchy |> List.map Scala.MemberTypeDecl
+                sealedTraitHierarchy |> List.map SpringBoot.MemberTypeDecl
 
         _ ->
-            sealedTraitHierarchy |> List.map Scala.MemberTypeDecl
+            sealedTraitHierarchy |> List.map SpringBoot.MemberTypeDecl
 
 
-mapType : Type a -> Scala.Type
+mapType : Type a -> SpringBoot.Type
 mapType tpe =
     case tpe of
         Type.Variable a name ->
-            Scala.TypeVar (name |> Name.toTitleCase)
+            SpringBoot.TypeVar (name |> Name.toTitleCase)
 
         Type.Reference a fQName argTypes ->
             let
@@ -320,17 +568,17 @@ mapType tpe =
                 typeRef
 
             else
-                Scala.TypeApply typeRef (argTypes |> List.map mapType)
+                SpringBoot.TypeApply typeRef (argTypes |> List.map mapType)
 
         Type.Tuple a elemTypes ->
-            Scala.TupleType (elemTypes |> List.map mapType)
+            SpringBoot.TupleType (elemTypes |> List.map mapType)
 
         Type.Record a fields ->
-            Scala.StructuralType
+            SpringBoot.StructuralType
                 (fields
                     |> List.map
                         (\field ->
-                            Scala.FunctionDecl
+                            SpringBoot.FunctionDecl
                                 { modifiers = []
                                 , name = field.name |> Name.toCamelCase
                                 , typeArgs = []
@@ -342,11 +590,11 @@ mapType tpe =
                 )
 
         Type.ExtensibleRecord a argName fields ->
-            Scala.StructuralType
+            SpringBoot.StructuralType
                 (fields
                     |> List.map
                         (\field ->
-                            Scala.FunctionDecl
+                            SpringBoot.FunctionDecl
                                 { modifiers = []
                                 , name = field.name |> Name.toCamelCase
                                 , typeArgs = []
@@ -358,61 +606,61 @@ mapType tpe =
                 )
 
         Type.Function a argType returnType ->
-            Scala.FunctionType (mapType argType) (mapType returnType)
+            SpringBoot.FunctionType (mapType argType) (mapType returnType)
 
         Type.Unit a ->
-            Scala.TypeRef [ "scala" ] "Unit"
+            SpringBoot.TypeRef [ "scala" ] "Unit"
 
 
-mapValue : Value a -> Scala.Value
+mapValue : Value a -> SpringBoot.Value
 mapValue value =
     case value of
         Literal a literal ->
             let
-                wrap : String -> Scala.Lit -> Scala.Value
+                wrap : String -> SpringBoot.Lit -> SpringBoot.Value
                 wrap moduleName lit =
-                    Scala.Apply
-                        (Scala.Ref [ "morphir", "sdk" ] moduleName)
-                        [ Scala.ArgValue Nothing (Scala.Literal lit) ]
+                    SpringBoot.Apply
+                        (SpringBoot.Ref [ "morphir", "sdk" ] moduleName)
+                        [ SpringBoot.ArgValue Nothing (SpringBoot.Literal lit) ]
             in
             case literal of
                 BoolLiteral v ->
-                    wrap "Bool" (Scala.BooleanLit v)
+                    wrap "Bool" (SpringBoot.BooleanLit v)
 
                 CharLiteral v ->
-                    wrap "Char" (Scala.CharacterLit v)
+                    wrap "Char" (SpringBoot.CharacterLit v)
 
                 StringLiteral v ->
-                    wrap "String" (Scala.StringLit v)
+                    wrap "String" (SpringBoot.StringLit v)
 
                 IntLiteral v ->
-                    wrap "Int" (Scala.IntegerLit v)
+                    wrap "Int" (SpringBoot.IntegerLit v)
 
                 FloatLiteral v ->
-                    wrap "Float" (Scala.FloatLit v)
+                    wrap "Float" (SpringBoot.FloatLit v)
 
         Constructor a fQName ->
             let
                 ( path, name ) =
                     mapFQNameToPathAndName fQName
             in
-            Scala.Ref path
+            SpringBoot.Ref path
                 (name |> Name.toTitleCase)
 
         Tuple a elemValues ->
-            Scala.Tuple
+            SpringBoot.Tuple
                 (elemValues |> List.map mapValue)
 
         List a itemValues ->
-            Scala.Apply
-                (Scala.Ref [ "morphir", "sdk" ] "List")
+            SpringBoot.Apply
+                (SpringBoot.Ref [ "morphir", "sdk" ] "List")
                 (itemValues
                     |> List.map mapValue
-                    |> List.map (Scala.ArgValue Nothing)
+                    |> List.map (SpringBoot.ArgValue Nothing)
                 )
 
         Record a fieldValues ->
-            Scala.StructuralValue
+            SpringBoot.StructuralValue
                 (fieldValues
                     |> List.map
                         (\( fieldName, fieldValue ) ->
@@ -421,45 +669,45 @@ mapValue value =
                 )
 
         Variable a name ->
-            Scala.Variable (name |> Name.toCamelCase)
+            SpringBoot.Variable (name |> Name.toCamelCase)
 
         Reference a fQName ->
             let
                 ( path, name ) =
                     mapFQNameToPathAndName fQName
             in
-            Scala.Ref path (name |> Name.toCamelCase)
+            SpringBoot.Ref path (name |> Name.toCamelCase)
 
         Field a subjectValue fieldName ->
-            Scala.Select (mapValue subjectValue) (fieldName |> Name.toCamelCase)
+            SpringBoot.Select (mapValue subjectValue) (fieldName |> Name.toCamelCase)
 
         FieldFunction a fieldName ->
-            Scala.Select Scala.Wildcard (fieldName |> Name.toCamelCase)
+            SpringBoot.Select SpringBoot.Wildcard (fieldName |> Name.toCamelCase)
 
         Apply a fun arg ->
             let
                 ( bottomFun, args ) =
                     Value.uncurryApply fun arg
             in
-            Scala.Apply (mapValue bottomFun)
+            SpringBoot.Apply (mapValue bottomFun)
                 (args
                     |> List.map
                         (\argValue ->
-                            Scala.ArgValue Nothing (mapValue argValue)
+                            SpringBoot.ArgValue Nothing (mapValue argValue)
                         )
                 )
 
         Lambda a argPattern bodyValue ->
             case argPattern of
                 AsPattern _ (WildcardPattern _) alias ->
-                    Scala.Lambda [ alias |> Name.toCamelCase ] (mapValue bodyValue)
+                    SpringBoot.Lambda [ alias |> Name.toCamelCase ] (mapValue bodyValue)
 
                 _ ->
-                    Scala.MatchCases [ ( mapPattern argPattern, mapValue bodyValue ) ]
+                    SpringBoot.MatchCases [ ( mapPattern argPattern, mapValue bodyValue ) ]
 
         LetDefinition a defName def inValue ->
-            Scala.Block
-                [ Scala.FunctionDecl
+            SpringBoot.Block
+                [ SpringBoot.FunctionDecl
                     { modifiers = []
                     , name = defName |> Name.toCamelCase
                     , typeArgs = []
@@ -487,12 +735,12 @@ mapValue value =
                 (mapValue inValue)
 
         LetRecursion a defs inValue ->
-            Scala.Block
+            SpringBoot.Block
                 (defs
                     |> Dict.toList
                     |> List.map
                         (\( defName, def ) ->
-                            Scala.FunctionDecl
+                            SpringBoot.FunctionDecl
                                 { modifiers = []
                                 , name = defName |> Name.toCamelCase
                                 , typeArgs = []
@@ -521,8 +769,8 @@ mapValue value =
                 (mapValue inValue)
 
         Destructure a bindPattern bindValue inValue ->
-            Scala.Block
-                [ Scala.ValueDecl
+            SpringBoot.Block
+                [ SpringBoot.ValueDecl
                     { modifiers = []
                     , pattern = mapPattern bindPattern
                     , value = mapValue bindValue
@@ -531,65 +779,65 @@ mapValue value =
                 (mapValue inValue)
 
         IfThenElse a condValue thenValue elseValue ->
-            Scala.IfElse (mapValue condValue) (mapValue thenValue) (mapValue elseValue)
+            SpringBoot.IfElse (mapValue condValue) (mapValue thenValue) (mapValue elseValue)
 
         PatternMatch a onValue cases ->
-            Scala.Match (mapValue onValue)
+            SpringBoot.Match (mapValue onValue)
                 (cases
                     |> List.map
                         (\( casePattern, caseValue ) ->
                             ( mapPattern casePattern, mapValue caseValue )
                         )
-                    |> Scala.MatchCases
+                    |> SpringBoot.MatchCases
                 )
 
         UpdateRecord a subjectValue fieldUpdates ->
-            Scala.Apply
-                (Scala.Select (mapValue subjectValue) "copy")
+            SpringBoot.Apply
+                (SpringBoot.Select (mapValue subjectValue) "copy")
                 (fieldUpdates
                     |> List.map
                         (\( fieldName, fieldValue ) ->
-                            Scala.ArgValue
+                            SpringBoot.ArgValue
                                 (Just (fieldName |> Name.toCamelCase))
                                 (mapValue fieldValue)
                         )
                 )
 
         Unit a ->
-            Scala.Unit
+            SpringBoot.Unit
 
 
-mapPattern : Pattern a -> Scala.Pattern
+mapPattern : Pattern a -> SpringBoot.Pattern
 mapPattern pattern =
     case pattern of
         WildcardPattern a ->
-            Scala.WildcardMatch
+            SpringBoot.WildcardMatch
 
         AsPattern a (WildcardPattern _) alias ->
-            Scala.NamedMatch (alias |> Name.toCamelCase)
+            SpringBoot.NamedMatch (alias |> Name.toCamelCase)
 
         AsPattern a aliasedPattern alias ->
-            Scala.AliasedMatch (alias |> Name.toCamelCase) (mapPattern aliasedPattern)
+            SpringBoot.AliasedMatch (alias |> Name.toCamelCase) (mapPattern aliasedPattern)
 
         TuplePattern a itemPatterns ->
-            Scala.TupleMatch (itemPatterns |> List.map mapPattern)
+            SpringBoot.TupleMatch (itemPatterns |> List.map mapPattern)
 
         ConstructorPattern a fQName argPatterns ->
             let
                 ( path, name ) =
                     mapFQNameToPathAndName fQName
             in
-            Scala.UnapplyMatch path
+            SpringBoot.UnapplyMatch path
                 (name |> Name.toTitleCase)
                 (argPatterns
                     |> List.map mapPattern
                 )
 
         EmptyListPattern a ->
-            Scala.EmptyListMatch
+            SpringBoot.EmptyListMatch
 
         HeadTailPattern a headPattern tailPattern ->
-            Scala.HeadTailMatch
+            SpringBoot.HeadTailMatch
                 (mapPattern headPattern)
                 (mapPattern tailPattern)
 
@@ -598,24 +846,24 @@ mapPattern pattern =
                 map l =
                     case l of
                         BoolLiteral v ->
-                            Scala.BooleanLit v
+                            SpringBoot.BooleanLit v
 
                         CharLiteral v ->
-                            Scala.CharacterLit v
+                            SpringBoot.CharacterLit v
 
                         StringLiteral v ->
-                            Scala.StringLit v
+                            SpringBoot.StringLit v
 
                         IntLiteral v ->
-                            Scala.IntegerLit v
+                            SpringBoot.IntegerLit v
 
                         FloatLiteral v ->
-                            Scala.FloatLit v
+                            SpringBoot.FloatLit v
             in
-            Scala.LiteralMatch (map literal)
+            SpringBoot.LiteralMatch (map literal)
 
         UnitPattern a ->
-            Scala.WildcardMatch
+            SpringBoot.WildcardMatch
 
 
 reservedValueNames : Set String

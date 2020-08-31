@@ -32,31 +32,28 @@ type alias Documented a =
     }
 
 
+type alias Annotated a =
+    { annotation : Maybe Path
+    , value : a
+    }
+
 type alias CompilationUnit =
     { dirPath : List String
     , fileName : String
     , packageDecl : PackageDecl
     , imports : List ImportDecl
-    , typeDecls : List Header
+    , typeDecls : List (Documented (Annotated TypeDecl))
     }
 
 
 type alias PackageDecl =
     List String
 
-type alias Annotation =
-    Maybe Path
-
 
 type alias ImportDecl =
     { isAbsolute : Bool
     , packagePrefix : List String
     , importNames : List ImportName
-    }
-
-type alias Header =
-    { documented: Documented TypeDecl,
-      annotation: Annotation
     }
 
 
@@ -89,6 +86,7 @@ type TypeDecl
         , typeArgs : List Type
         , ctorArgs : List (List ArgDecl)
         , extends : List Type
+        , members : List MemberDecl
         }
     | Object
         { modifiers : List Mod

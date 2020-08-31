@@ -26,37 +26,36 @@ type alias Options =
     , maxWidth : Int
     }
 
-mapHeader : (TypeDecl -> Doc) -> Header -> Doc
-mapHeader valueToDoc header =
-    concat [
-    case header.annotation of
-        Just a ->
-            mapAnnotation header.annotation
-        Nothing ->
-            ""
-    , mapDocumented valueToDoc header.documented
-    ]
+--mapAnnotation : Annotation -> Doc
+--mapAnnotation anot =
+  --  case anot of
+    --    Just value ->
+      --      dotSep value ++ newLine
+       -- Nothing ->
+         --   ""
 
-mapAnnotation : Annotation -> Doc
-mapAnnotation anot =
-    case anot of
-        Just value ->
-            dotSep value ++ newLine
-        Nothing ->
-            ""
-
-mapDocumented : (a -> Doc) -> Documented a -> Doc
+mapDocumented : (a -> Doc) -> Documented (Annotated a) -> Doc
 mapDocumented valueToDoc documented =
-    case documented.doc of
-        Just doc ->
+    (case documented.doc  of
+        (Just doc) ->
             concat
                 [ concat [ "/** ", doc, newLine ]
                 , concat [ "*/", newLine ]
-                , valueToDoc documented.value
                 ]
-
         Nothing ->
-            valueToDoc documented.value
+            ""
+    ) ++
+    (case documented.value.annotation of
+         Just value ->
+            concat
+                [ dotSep value ++ newLine
+                , valueToDoc documented.value.value ++ newLine
+
+                ]
+         Nothing ->
+            valueToDoc documented.value.value
+    )
+
 
 
 mapCompilationUnit : Options -> CompilationUnit -> Doc
@@ -65,7 +64,7 @@ mapCompilationUnit opt cu =
         [ concat [ "package ", dotSep cu.packageDecl, newLine ]
         , newLine
         , cu.typeDecls
-            |> List.map (mapHeader (mapTypeDecl opt))
+            |> List.map (mapDocumented (mapTypeDecl opt))
             |> String.join (newLine ++ newLine)
         ]
 
@@ -102,8 +101,26 @@ mapTypeDecl opt typeDecl =
                             decl.ctorArgs
                                 |> List.map (mapArgDecls opt)
                                 |> concat
+                members =
+                    case decl.members of
+                        [] ->
+                            empty
+                        _ ->
+                            " { "
+                            ++ newLine
+                            ++ newLine
+                            ++ (decl.members
+                                    |> List.map (mapMemberDecl opt)
+                                    |> List.intersperse (newLine ++ newLine)
+                                    |> concat
+                                    |> indent opt.indentDepth
+                               )
+                            ++ newLine
+                            ++ newLine
+                            ++ " } "
+
             in
-            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends
+            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ members
 
         Object decl ->
             let

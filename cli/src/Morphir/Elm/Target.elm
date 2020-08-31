@@ -8,7 +8,7 @@ import Morphir.SpringBoot.Backend
 import Morphir.SpringBoot.Backend.Codec
 import Morphir.Scala.Backend.Codec
 
--- languages that could be generated
+-- possible language generation options
 type BackendOptions
     = ScalaOptions Morphir.Scala.Backend.Options
     | SpringBootOptions Morphir.SpringBoot.Backend.Options

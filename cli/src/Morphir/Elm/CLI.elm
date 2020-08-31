@@ -22,7 +22,7 @@ import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile)
 import Morphir.Elm.Frontend.Codec exposing (decodePackageInfo, encodeError)
-import Morphir.Elm.Target exposing (decodeOptions, mapDistribution, targetLanguage)
+import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.IR.Package as Package
 import Morphir.IR.Package.Codec as PackageCodec
