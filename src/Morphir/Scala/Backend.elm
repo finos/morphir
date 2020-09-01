@@ -233,23 +233,32 @@ mapCustomTypeDefinition : Package.PackagePath -> Path -> Name -> List Name -> Ac
 mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams accessControlledCtors =
     let
         caseClass name args extends =
-            Scala.Class
-                { modifiers = [ Scala.Case ]
-                , name = name |> Name.toTitleCase
-                , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
-                , ctorArgs =
-                    args
-                        |> List.map
-                            (\( argName, argType ) ->
-                                { modifiers = []
-                                , tpe = mapType argType
-                                , name = argName |> Name.toCamelCase
-                                , defaultValue = Nothing
-                                }
-                            )
-                        |> List.singleton
-                , extends = extends
-                }
+            if List.isEmpty args then
+                Scala.Object
+                    { modifiers = [ Scala.Case ]
+                    , name = name |> Name.toTitleCase
+                    , extends = extends
+                    , members = []
+                    }
+
+            else
+                Scala.Class
+                    { modifiers = [ Scala.Case ]
+                    , name = name |> Name.toTitleCase
+                    , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                    , ctorArgs =
+                        args
+                            |> List.map
+                                (\( argName, argType ) ->
+                                    { modifiers = []
+                                    , tpe = mapType argType
+                                    , name = argName |> Name.toCamelCase
+                                    , defaultValue = Nothing
+                                    }
+                                )
+                            |> List.singleton
+                    , extends = extends
+                    }
 
         parentTraitRef =
             mapFQNameToTypeRef (FQName currentPackagePath currentModulePath typeName)
