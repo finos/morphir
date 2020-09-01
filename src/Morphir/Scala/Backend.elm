@@ -451,34 +451,59 @@ mapValue value =
                 _ ->
                     Scala.MatchCases [ ( mapPattern argPattern, mapValue bodyValue ) ]
 
-        LetDefinition a defName def inValue ->
-            Scala.Block
-                [ Scala.FunctionDecl
-                    { modifiers = []
-                    , name = defName |> Name.toCamelCase
-                    , typeArgs = []
-                    , args =
-                        if List.isEmpty def.inputTypes then
-                            []
+        LetDefinition _ _ _ _ ->
+            let
+                flattenLetDef : Value a -> ( List ( Name, Value.Definition a ), Value a )
+                flattenLetDef v =
+                    case v of
+                        LetDefinition a dName d inV ->
+                            let
+                                ( nestedDefs, nestedInValue ) =
+                                    flattenLetDef inV
+                            in
+                            ( ( dName, d ) :: nestedDefs, nestedInValue )
 
-                        else
-                            [ def.inputTypes
-                                |> List.map
-                                    (\( argName, _, argType ) ->
-                                        { modifiers = []
-                                        , tpe = mapType argType
-                                        , name = argName |> Name.toCamelCase
-                                        , defaultValue = Nothing
-                                        }
-                                    )
-                            ]
-                    , returnType =
-                        Just (mapType def.outputType)
-                    , body =
-                        Just (mapValue def.body)
-                    }
-                ]
-                (mapValue inValue)
+                        _ ->
+                            ( [], v )
+
+                ( defs, finalInValue ) =
+                    flattenLetDef value
+            in
+            Scala.Block
+                (defs
+                    |> List.map
+                        (\( defName, def ) ->
+                            if List.isEmpty def.inputTypes then
+                                Scala.ValueDecl
+                                    { modifiers = []
+                                    , pattern = Scala.NamedMatch (defName |> Name.toCamelCase)
+                                    , value = mapValue def.body
+                                    }
+
+                            else
+                                Scala.FunctionDecl
+                                    { modifiers = []
+                                    , name = defName |> Name.toCamelCase
+                                    , typeArgs = []
+                                    , args =
+                                        [ def.inputTypes
+                                            |> List.map
+                                                (\( argName, _, argType ) ->
+                                                    { modifiers = []
+                                                    , tpe = mapType argType
+                                                    , name = argName |> Name.toCamelCase
+                                                    , defaultValue = Nothing
+                                                    }
+                                                )
+                                        ]
+                                    , returnType =
+                                        Just (mapType def.outputType)
+                                    , body =
+                                        Just (mapValue def.body)
+                                    }
+                        )
+                )
+                (mapValue finalInValue)
 
         LetRecursion a defs inValue ->
             Scala.Block
