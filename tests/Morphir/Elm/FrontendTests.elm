@@ -267,6 +267,9 @@ valueTests =
                     , "d : Int"
                     , "d = 4"
                     , ""
+                    , "e : Int"
+                    , "e = 4"
+                    , ""
                     , "f : Int"
                     , "f = 5"
                     , ""
@@ -357,6 +360,9 @@ valueTests =
         , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (IntLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
         , checkIR "a <| b" <| Apply () (ref "a") (ref "b")
         , checkIR "a |> b" <| Apply () (ref "b") (ref "a")
+        , checkIR "a |> b |> c" <| Apply () (ref "c") (Apply () (ref "b") (ref "a"))
+        , checkIR "a |> b |> c |> d" <| Apply () (ref "d") (Apply () (ref "c") (Apply () (ref "b") (ref "a")))
+        , checkIR "a |> b |> c |> d |> e" <| Apply () (ref "e") (Apply () (ref "d") (Apply () (ref "c") (Apply () (ref "b") (ref "a"))))
         , checkIR "a || b" <| binary SDKBasics.or (ref "a") (ref "b")
         , checkIR "a && b" <| binary SDKBasics.and (ref "a") (ref "b")
         , checkIR "a == b" <| binary SDKBasics.equal (ref "a") (ref "b")

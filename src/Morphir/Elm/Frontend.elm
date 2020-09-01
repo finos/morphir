@@ -1631,6 +1631,7 @@ fixAssociativity expr =
         Expression.OperatorApplication o d (Node lr l) (Node _ (Expression.OperatorApplication ro rd (Node rlr rl) (Node rrr rr))) ->
             if (o == ro) && d == Infix.Left then
                 Expression.OperatorApplication o d (Node (Range.combine [ lr, rlr ]) (Expression.OperatorApplication ro rd (Node lr l) (Node rlr rl))) (Node rrr rr)
+                    |> fixAssociativity
 
             else
                 expr
