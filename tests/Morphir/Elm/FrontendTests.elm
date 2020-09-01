@@ -231,6 +231,8 @@ valueTests =
                 String.join "\n"
                     [ "module My.Bar exposing (..)"
                     , ""
+                    , "type Baz = Baz"
+                    , ""
                     , "foo : Int"
                     , "foo = 1"
                     ]
@@ -245,6 +247,8 @@ valueTests =
                     , ""
                     , "import My.Bar as Bar"
                     , "import MyPack.Bar"
+                    , ""
+                    , "type Foo = Foo"
                     , ""
                     , "foo : Int"
                     , "foo = 0"
@@ -355,8 +359,8 @@ valueTests =
         , checkIR "\\[] -> foo " <| Lambda () (EmptyListPattern ()) (ref "foo")
         , checkIR "\\[ 1 ] -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (EmptyListPattern ())) (ref "foo")
         , checkIR "\\([] as bar) -> foo " <| Lambda () (AsPattern () (EmptyListPattern ()) (Name.fromString "bar")) (ref "foo")
-        , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [] [] [ "foo" ]) [ LiteralPattern () (IntLiteral 1), WildcardPattern () ]) (ref "foo")
-        , checkIR "\\Foo.Bar.Baz -> foo " <| Lambda () (ConstructorPattern () (fQName [] [ [ "foo" ], [ "bar" ] ] [ "baz" ]) []) (ref "foo")
+        , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [ [ "my" ] ] [ [ "test" ] ] [ "foo" ]) [ LiteralPattern () (IntLiteral 1), WildcardPattern () ]) (ref "foo")
+        , checkIR "\\Bar.Baz -> foo " <| Lambda () (ConstructorPattern () (fQName [ [ "my" ] ] [ [ "bar" ] ] [ "baz" ]) []) (ref "foo")
         , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (IntLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
         , checkIR "a <| b" <| Apply () (ref "a") (ref "b")
         , checkIR "a |> b" <| Apply () (ref "b") (ref "a")

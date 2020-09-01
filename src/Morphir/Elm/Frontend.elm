@@ -1465,16 +1465,18 @@ resolveVariablesAndReferences variables moduleResolver value =
                     |> Result.mapError (ResolveError sourceLocation >> List.singleton)
 
         Value.Lambda a argPattern bodyValue ->
-            namesBoundInPattern argPattern
-                |> Result.andThen
-                    (\patternNames ->
-                        unionVariableNames variables patternNames
-                    )
-                |> Result.andThen
-                    (\newVariables ->
-                        resolveVariablesAndReferences newVariables moduleResolver bodyValue
-                    )
-                |> Result.map (Value.Lambda a argPattern)
+            Result.map2 (Value.Lambda a)
+                (resolvePatternReferences moduleResolver argPattern)
+                (namesBoundInPattern argPattern
+                    |> Result.andThen
+                        (\patternNames ->
+                            unionVariableNames variables patternNames
+                        )
+                    |> Result.andThen
+                        (\newVariables ->
+                            resolveVariablesAndReferences newVariables moduleResolver bodyValue
+                        )
+                )
 
         Value.LetDefinition sourceLocation name def inValue ->
             Result.map2 (Value.LetDefinition sourceLocation name)
@@ -1521,7 +1523,8 @@ resolveVariablesAndReferences variables moduleResolver value =
                     )
 
         Value.Destructure a pattern subjectValue inValue ->
-            Result.map2 (Value.Destructure a pattern)
+            Result.map3 (Value.Destructure a)
+                (resolvePatternReferences moduleResolver pattern)
                 (resolveVariablesAndReferences variables moduleResolver subjectValue)
                 (namesBoundInPattern pattern
                     |> Result.andThen
@@ -1540,16 +1543,18 @@ resolveVariablesAndReferences variables moduleResolver value =
                 (cases
                     |> List.map
                         (\( casePattern, caseValue ) ->
-                            namesBoundInPattern casePattern
-                                |> Result.andThen
-                                    (\patternNames ->
-                                        unionVariableNames variables patternNames
-                                    )
-                                |> Result.andThen
-                                    (\newVariables ->
-                                        resolveVariablesAndReferences newVariables moduleResolver caseValue
-                                    )
-                                |> Result.map (Tuple.pair casePattern)
+                            Result.map2 Tuple.pair
+                                (resolvePatternReferences moduleResolver casePattern)
+                                (namesBoundInPattern casePattern
+                                    |> Result.andThen
+                                        (\patternNames ->
+                                            unionVariableNames variables patternNames
+                                        )
+                                    |> Result.andThen
+                                        (\newVariables ->
+                                            resolveVariablesAndReferences newVariables moduleResolver caseValue
+                                        )
+                                )
                         )
                     |> ListOfResults.liftAllErrors
                     |> Result.mapError List.concat
@@ -1610,6 +1615,49 @@ resolveVariablesAndReferences variables moduleResolver value =
 
         _ ->
             Ok value
+
+
+{-| Resolve references with local names into fully-qualified names. Currently this will only apply to
+constructor patterns as they are the only ones with a reference to other names.
+-}
+resolvePatternReferences : ModuleResolver -> Value.Pattern SourceLocation -> Result Errors (Value.Pattern SourceLocation)
+resolvePatternReferences moduleResolver pattern =
+    case pattern of
+        Value.AsPattern sourceLocation subjectPattern alias ->
+            Result.map (\resolvedSubjectPattern -> Value.AsPattern sourceLocation resolvedSubjectPattern alias)
+                (resolvePatternReferences moduleResolver subjectPattern)
+
+        Value.TuplePattern sourceLocation elems ->
+            Result.map (\resolvedElems -> Value.TuplePattern sourceLocation resolvedElems)
+                (elems
+                    |> List.map (resolvePatternReferences moduleResolver)
+                    |> ListOfResults.liftAllErrors
+                    |> Result.mapError List.concat
+                )
+
+        Value.ConstructorPattern sourceLocation (FQName [] modulePath localName) argPatterns ->
+            Result.map2
+                (\resolvedFullName resolvedArgPatterns ->
+                    Value.ConstructorPattern sourceLocation resolvedFullName resolvedArgPatterns
+                )
+                (moduleResolver.resolveCtor
+                    (modulePath |> List.map Name.toTitleCase)
+                    (localName |> Name.toTitleCase)
+                    |> Result.mapError (ResolveError sourceLocation >> List.singleton)
+                )
+                (argPatterns
+                    |> List.map (resolvePatternReferences moduleResolver)
+                    |> ListOfResults.liftAllErrors
+                    |> Result.mapError List.concat
+                )
+
+        Value.HeadTailPattern sourceLocation headPattern tailPattern ->
+            Result.map2 (Value.HeadTailPattern sourceLocation)
+                (resolvePatternReferences moduleResolver headPattern)
+                (resolvePatternReferences moduleResolver tailPattern)
+
+        _ ->
+            Ok pattern
 
 
 withAccessControl : Bool -> a -> AccessControlled a
