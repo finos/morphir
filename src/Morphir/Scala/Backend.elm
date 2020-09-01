@@ -477,6 +477,7 @@ mapValue value =
                                 Scala.ValueDecl
                                     { modifiers = []
                                     , pattern = Scala.NamedMatch (defName |> Name.toCamelCase)
+                                    , valueType = Just (mapType def.outputType)
                                     , value = mapValue def.body
                                     }
 
@@ -544,6 +545,7 @@ mapValue value =
                 [ Scala.ValueDecl
                     { modifiers = []
                     , pattern = mapPattern bindPattern
+                    , valueType = Nothing
                     , value = mapValue bindValue
                     }
                 ]
