@@ -94,7 +94,7 @@ morphir-elm gen [options]
   
 # Elm package
 
-[![Latest version of the Elm package](https://reiner-dolp.github.io/elm-badges/Morgan-Stanley/morphir-elm/version.svg)](https://package.elm-lang.org/packages/Morgan-Stanley/morphir-elm/latest)
+[![Latest version of the Elm package](https://reiner-dolp.github.io/elm-badges/finos/morphir-elm/version.svg)](https://package.elm-lang.org/packages/finos/morphir-elm/latest)
 
 The [finos/morphir-elm](https://package.elm-lang.org/packages/finos/morphir-elm/latest) package 
 provides various tools to work with Morphir. It contains the following main components:
