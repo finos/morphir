@@ -86,7 +86,7 @@ type TypeDecl
         , typeArgs : List Type
         , ctorArgs : List (List ArgDecl)
         , extends : List Type
-        , members : List MemberDecl
+        , members : List (Documented (Annotated MemberDecl))
         }
     | Object
         { modifiers : List Mod

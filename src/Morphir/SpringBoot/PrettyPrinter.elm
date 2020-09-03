@@ -26,14 +26,6 @@ type alias Options =
     , maxWidth : Int
     }
 
---mapAnnotation : Annotation -> Doc
---mapAnnotation anot =
-  --  case anot of
-    --    Just value ->
-      --      dotSep value ++ newLine
-       -- Nothing ->
-         --   ""
-
 mapDocumented : (a -> Doc) -> Documented (Annotated a) -> Doc
 mapDocumented valueToDoc documented =
     (case documented.doc  of
@@ -110,7 +102,7 @@ mapTypeDecl opt typeDecl =
                             ++ newLine
                             ++ newLine
                             ++ (decl.members
-                                    |> List.map (mapMemberDecl opt)
+                                    |> List.map (mapDocumented (mapMemberDecl opt))
                                     |> List.intersperse (newLine ++ newLine)
                                     |> concat
                                     |> indent opt.indentDepth

@@ -17,15 +17,14 @@
 
 module Morphir.SpringBoot.Backend exposing (..)
 
-import Dict
+import Dict exposing (Dict)
 import List.Extra as ListExtra
 import Maybe.Extra as MaybeExtra exposing (..)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
-import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Module as Module
+import Morphir.IR.Module as Module exposing (Specification)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
@@ -91,16 +90,6 @@ mapPackageDefinition opt packagePath packageDef =
                     )
             )
         |> Dict.fromList
-
-type alias AppArgs extra =
-    { appPath : Path
-    , appType : Type extra
-    }
-
-type alias StatefulAppArgs extra =
-    { app : AppArgs extra
-    , innerTypes : List ( Name, AccessControlled (Documented (Type.Definition ())) )
-    }
 
 mapFQNameToPathAndName : FQName -> ( SpringBoot.Path, Name )
 mapFQNameToPathAndName (FQName packagePath modulePath localName) =
@@ -190,87 +179,122 @@ mapMainAppDefinition opt currentPackagePath currentModulePath accessControlledMo
     [ mainUnit ]
 
 
-createStatefulAppArgs : Path -> AccessControlled (Module.Definition extra) -> List (StatefulAppArgs extra)
-createStatefulAppArgs modPath acsCtrlModDef =
-    let
-        maybeApp : Maybe (AppArgs extra)
-        maybeApp =
-            case acsCtrlModDef.access of
-                Public ->
-                    case acsCtrlModDef.value of
-                        { types, values } ->
-                            case Dict.get (Name.fromString "app") types of
-                                Just acsCtrlTypeDef ->
-                                    case acsCtrlTypeDef.access of
-                                        Public ->
-                                            case acsCtrlTypeDef.value.value of
-                                                TypeAliasDefinition _ tpe ->
-                                                    { appPath = modPath
-                                                    , appType = tpe
-                                                    }
-                                                        |> Just
-                                                _ ->
-                                                    Nothing
-                                        _ ->
-                                            Nothing
-                                _ ->
-                                    Nothing
-                _ ->
-                    Nothing
-
-        innerTypes : List ( Name, AccessControlled (Documented (Type.Definition ())) )
-        innerTypes =
-            case acsCtrlModDef.access of
-                Public ->
-                    case acsCtrlModDef.value of
-                        { types, values } ->
-                            Dict.remove (Name.fromString "app") types
-                                |> Dict.map (\_ acsCtrlTypeDef -> acsCtrlTypeDef |> AccessControlled.map (Documented.map Type.eraseAttributes))
-                                |> Dict.toList
-
-                Private ->
-                    []
-    in
-    Maybe.map
-        (\app -> StatefulAppArgs app innerTypes )
-             maybeApp
-        |> MaybeExtra.toList
-
-
---Path -> AccessControlled (Module.Definition extra)
 mapStatefulAppDefinition : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition a) -> List SpringBoot.CompilationUnit
 mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControlledModuleDef =
     let
+        functionName: Name
+        functionName =
+            case accessControlledModuleDef.access of
+                Public ->
+                    case accessControlledModuleDef.value of
+                        { types, values } ->
+                            case (Dict.get (Name.fromString "app") values) of
+                                Just acsCtrlValueDef ->
+                                    case acsCtrlValueDef.access of
+                                        Public ->
+                                            case acsCtrlValueDef.value.body of
+                                                Value.Apply _ (Constructor _ _) (Value.Reference _ (FQName _ _ name)) ->
+                                                    name
+                                                _ -> []
+                                        _ -> []
+                                _ -> []
+                _ -> []
+        _ = Debug.log "functionName" functionName
 
-        statefulArgs = createStatefulAppArgs currentModulePath accessControlledModuleDef
-        _ = Debug.log "statefulArgs" statefulArgs
-
-        params: List (List ArgDecl)
-        params =
-                case statefulArgs of
-                    [] ->
-                        []
-                    args ->
-                        args
-                        |> List.map
-                            (\(argument) ->
-                                case argument.app.appType of
-                                    Type.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "stateful", "app" ] ] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) ->
-                                        if List.isEmpty argument.app.innerTypes then
+        statefulAppDefinition :  List (SpringBoot.Documented (SpringBoot.Annotated SpringBoot.MemberDecl))
+        statefulAppDefinition =
+            accessControlledModuleDef.value.values
+                |> Dict.toList
+                    |> List.concatMap
+                        (\( valueName, accessControlledValueDef ) ->
+                            case (accessControlledValueDef.value.inputTypes, accessControlledValueDef.value.outputType) of
+                                ((keyVariable :: stateVariable :: commandVariable :: []) , Type.Tuple _ (keyType :: stateType :: eventType :: []) ) ->
+                                    [(SpringBoot.Documented (Nothing)
+                                       (SpringBoot.Annotated (Just ["@org.springframework.web.bind.annotation.RequestMapping(value = Array(\"/" ++ (valueName |> Name.toCamelCase) ++ "\"), method = Array(org.springframework.web.bind.annotation.RequestMethod.GET))"])
+                                       <|
+                                        (SpringBoot.FunctionDecl
+                                            { modifiers = []
+                                            , name =
+                                                (valueName |> Name.toCamelCase)
+                                            , typeArgs =
                                                 []
-                                            else
-                                                [ argument.app.innerTypes
-                                                    |> List.map
-                                                        (\( argName, a, argType ) ->
-                                                            { modifiers = []
-                                                            , tpe = mapType argType
-                                                            , name = argName |> Name.toCamelCase
-                                                            , defaultValue = Nothing
-                                                            }
-                                                        )
-                                                ]
-                                    _ -> []
-                            )
+                                            , args =
+                                                if List.isEmpty accessControlledValueDef.value.inputTypes then
+                                                    []
+                                                else
+                                                    [ accessControlledValueDef.value.inputTypes
+                                                        |> List.map
+                                                            (\( argName, a, argType ) ->
+                                                                { modifiers = []
+                                                                , tpe = mapType argType
+                                                                , name = argName |> Name.toCamelCase
+                                                                , defaultValue = Nothing
+                                                                }
+                                                            )
+                                                    ]
+                                            , returnType =
+                                                Just (mapType accessControlledValueDef.value.outputType)
+                                            , body =
+                                                Nothing
+                                               -- Just (mapValue accessControlledValueDef.value.body)
+                                            }
+                                         )
+                                        )
+                                        )]
+                                _ ->
+                                    []
+
+                        )
+
+        typeMembers : List (SpringBoot.MemberDecl)
+        typeMembers =
+            accessControlledModuleDef.value.types
+                |> Dict.toList
+                |> List.concatMap
+                    (\( typeName, accessControlledDocumentedTypeDef ) ->
+                        case accessControlledDocumentedTypeDef.value.value of
+                            Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
+                                [
+                                    SpringBoot.MemberTypeDecl
+                                    (SpringBoot.Class
+                                        { modifiers = [ SpringBoot.Case ]
+                                        , name = typeName |> Name.toTitleCase
+                                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> SpringBoot.TypeVar)
+                                        , ctorArgs =
+                                            fields
+                                                |> List.map
+                                                    (\field ->
+                                                        { modifiers = []
+                                                        , tpe = mapType field.tpe
+                                                        , name = ""
+                                                        , defaultValue = Nothing
+                                                        }
+                                                    )
+                                                |> List.singleton
+                                        , extends = []
+                                        , members = []
+                                        }
+                                    )
+                                ]
+
+                            Type.TypeAliasDefinition typeParams typeExp ->
+                                [
+                                    SpringBoot.TypeAlias
+                                    { alias =
+                                        typeName |> Name.toTitleCase
+                                    , typeArgs =
+                                        typeParams |> List.map (Name.toTitleCase >> SpringBoot.TypeVar)
+                                    , tpe =
+                                        mapType typeExp
+                                    }
+                                ]
+
+                            Type.CustomTypeDefinition typeParams accessControlledCtors ->
+
+                                    mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams accessControlledCtors
+
+
+                    )
 
         ( scalaPackagePath, moduleName ) =
                     case currentModulePath |> List.reverse of
@@ -279,42 +303,6 @@ mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControll
 
                         lastName :: reverseModulePath ->
                             ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
-
-        functionMembers : List SpringBoot.MemberDecl
-        functionMembers =
-            accessControlledModuleDef.value.values
-                |> Dict.toList
-                |> List.concatMap
-                    (\( valueName, accessControlledValueDef ) ->
-                        [ SpringBoot.FunctionDecl
-                            { modifiers = []
-                            , name =
-                                "statefulApp" ++ (valueName |> Name.toCamelCase)
-                            , typeArgs =
-                                []
-                            , args =
-                                if List.isEmpty accessControlledValueDef.value.inputTypes then
-                                    []
-
-                                else
-                                    [ accessControlledValueDef.value.inputTypes
-                                        |> List.map
-                                            (\( argName, a, argType ) ->
-                                                { modifiers = []
-                                                , tpe = mapType argType
-                                                , name = argName |> Name.toCamelCase
-                                                , defaultValue = Nothing
-                                                }
-                                            )
-                                    ]
-                            , returnType =
-                                Just (mapType accessControlledValueDef.value.outputType)
-                            , body =
-                                Just (mapValue accessControlledValueDef.value.body)
-                            }
-                        ]
-                    )
-
 
         moduleUnit : SpringBoot.CompilationUnit
         moduleUnit =
@@ -325,13 +313,13 @@ mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControll
             , typeDecls =
                 [
                  (SpringBoot.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (SpringBoot.Annotated (Nothing)
+                    (SpringBoot.Annotated (Just ["@org.springframework.web.bind.annotation.RestController"])
                          <|
                          (SpringBoot.Class
                              { modifiers =
                                          []
                              , name =
-                                 moduleName |> Name.toTitleCase
+                                 (moduleName |> Name.toTitleCase) ++ "Controller"
                              , typeArgs =
                                  []
                              , ctorArgs =
@@ -339,8 +327,16 @@ mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControll
                              , extends =
                                  []
                              , members =
-                                 functionMembers
-
+                                 typeMembers
+                                  |> List.map
+                                    (\( typed ) ->
+                                        (SpringBoot.Documented (Nothing)
+                                           (SpringBoot.Annotated (Nothing)
+                                            <| typed
+                                            )
+                                        )
+                                    )
+                                  |> List.append statefulAppDefinition
                              }
                          )
                     )
