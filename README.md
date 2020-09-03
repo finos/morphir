@@ -7,6 +7,8 @@ it to other languages like [Scala](https://www.scala-lang.org/) or visualize it 
 
 We publish it both as an NPM and an Elm package:
 
+![Package Overview](docs/assets/package-overview.png)
+
 - The [NPM package](#npm-package) contains the CLI for running the tools as part of your build.
 - The [Elm package](#elm-package) supports multiple use-cases:
   - It includes SDK functions that you can use while writing your business logic beyond the default `elm/core` support.
