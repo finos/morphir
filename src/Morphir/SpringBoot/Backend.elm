@@ -290,10 +290,7 @@ mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControll
                                 ]
 
                             Type.CustomTypeDefinition typeParams accessControlledCtors ->
-
                                     mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams accessControlledCtors
-
-
                     )
 
         ( scalaPackagePath, moduleName ) =
