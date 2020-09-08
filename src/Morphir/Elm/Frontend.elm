@@ -157,7 +157,7 @@ type alias Import =
 
 {-| Dependencies that are added by default without explicit reference.
 -}
-defaultDependencies : Dict Path (Package.Specification ())
+defaultDependencies : Dict Path (Package.Specification () ())
 defaultDependencies =
     Dict.fromList
         [ ( SDK.packageName, SDK.packageSpec )
@@ -166,7 +166,7 @@ defaultDependencies =
 
 {-| Function that takes some package info and a list of sources and returns Morphir IR or errors.
 -}
-packageDefinitionFromSource : PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
+packageDefinitionFromSource : PackageInfo -> Dict Path (Package.Specification () ()) -> List SourceFile -> Result Errors (Package.Definition SourceLocation SourceLocation)
 packageDefinitionFromSource packageInfo dependencies sourceFiles =
     let
         parseSources : List SourceFile -> Result Errors (List ( ModuleName, ParsedFile ))
@@ -274,7 +274,7 @@ packageDefinitionFromSource packageInfo dependencies sourceFiles =
             )
 
 
-mapParsedFiles : Dict Path (Package.Specification ()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation))
+mapParsedFiles : Dict Path (Package.Specification ()()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
 mapParsedFiles dependencies currentPackagePath parsedModules sortedModuleNames =
     let
         initialContext : ProcessContext
@@ -312,7 +312,7 @@ mapParsedFiles dependencies currentPackagePath parsedModules sortedModuleNames =
         |> Result.map Tuple.second
 
 
-mapProcessedFile : Dict Path (Package.Specification ()) -> Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation))
+mapProcessedFile : Dict Path (Package.Specification ()()) -> Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
 mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
     let
         modulePath =
@@ -328,7 +328,7 @@ mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
                 |> Node.value
                 |> ElmModule.exposingList
 
-        moduleDeclsSoFar : Dict Path (Module.Specification ())
+        moduleDeclsSoFar : Dict Path (Module.Specification ()())
         moduleDeclsSoFar =
             modulesSoFar
                 |> Dict.map
@@ -347,7 +347,7 @@ mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
             mapDeclarationsToValue processedFile.parsedFile.sourceFile moduleExpose processedFile.file.declarations
                 |> Result.map Dict.fromList
 
-        moduleResult : Result Errors (Module.Definition SourceLocation)
+        moduleResult : Result Errors (Module.Definition SourceLocation SourceLocation)
         moduleResult =
             Result.map2 Module.Definition
                 typesResult
@@ -1290,7 +1290,7 @@ rewriteTypes moduleResolver =
         )
 
 
-resolveLocalNames : ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
+resolveLocalNames : ModuleResolver -> Module.Definition SourceLocation SourceLocation-> Result Errors (Module.Definition SourceLocation SourceLocation)
 resolveLocalNames moduleResolver moduleDef =
     let
         rewriteValues : Dict Name SourceLocation -> Value SourceLocation -> Result Errors (Value SourceLocation)

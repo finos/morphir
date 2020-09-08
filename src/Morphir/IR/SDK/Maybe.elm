@@ -32,7 +32,7 @@ moduleName =
     Path.fromString "Maybe"
 
 
-moduleSpec : Module.Specification ()
+moduleSpec : Module.Specification () ()
 moduleSpec =
     { types =
         Dict.fromList

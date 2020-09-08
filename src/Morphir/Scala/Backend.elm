@@ -45,7 +45,7 @@ mapDistribution opt distro =
             mapPackageDefinition opt packagePath packageDef
 
 
-mapPackageDefinition : Options -> Package.PackagePath -> Package.Definition a -> FileMap
+mapPackageDefinition : Options -> Package.PackagePath -> Package.Definition ta tv -> FileMap
 mapPackageDefinition opt packagePath packageDef =
     packageDef.modules
         |> Dict.toList
@@ -99,7 +99,7 @@ mapFQNameToTypeRef fQName =
     Scala.TypeRef path (name |> Name.toTitleCase)
 
 
-mapModuleDefinition : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition a) -> List Scala.CompilationUnit
+mapModuleDefinition : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition ta tv) -> List Scala.CompilationUnit
 mapModuleDefinition opt currentPackagePath currentModulePath accessControlledModuleDef =
     let
         ( scalaPackagePath, moduleName ) =

@@ -106,7 +106,7 @@ frontendTest =
                     ]
             }
 
-        expected : Package.Definition ()
+        expected : Package.Definition () ()
         expected =
             { dependencies = Dict.empty
             , modules =
@@ -202,7 +202,7 @@ valueTests =
             , exposedModules = Set.fromList [ [ [ "test" ] ] ]
             }
 
-        otherPackage : Package.Specification ()
+        otherPackage : Package.Specification () ()
         otherPackage =
             Package.Specification
                 (Dict.fromList
@@ -216,7 +216,7 @@ valueTests =
                     ]
                 )
 
-        deps : Dict Path (Package.Specification ())
+        deps : Dict Path (Package.Specification ()())
         deps =
             Dict.fromList
                 [ ( [ [ "my", "pack" ] ]

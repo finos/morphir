@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -44,7 +44,7 @@ import Morphir.IR.Path exposing (Path)
 package.
 -}
 type Distribution
-    = Library PackagePath (Definition ())
+    = Library PackagePath (Definition () ())
 
 
 {-| -}
@@ -54,13 +54,13 @@ type alias PackagePath =
 
 {-| Type that represents a package specification.
 -}
-type alias Specification a =
-    { modules : Dict ModulePath (Module.Specification a)
+type alias Specification ta va =
+    { modules : Dict ModulePath (Module.Specification ta va)
     }
 
 
 {-| -}
-emptySpecification : Specification a
+emptySpecification : Specification ta va
 emptySpecification =
     { modules = Dict.empty
     }
@@ -68,15 +68,15 @@ emptySpecification =
 
 {-| Type that represents a package definition.
 -}
-type alias Definition a =
-    { dependencies : Dict PackagePath (Specification a)
-    , modules : Dict ModulePath (AccessControlled (Module.Definition a))
+type alias Definition ta va =
+    { dependencies : Dict PackagePath (Specification ta va)
+    , modules : Dict ModulePath (AccessControlled (Module.Definition ta va))
     }
 
 
 {-| An empty package definition.
 -}
-emptyDefinition : Definition a
+emptyDefinition : Definition ta va
 emptyDefinition =
     { dependencies = Dict.empty
     , modules = Dict.empty
@@ -84,7 +84,7 @@ emptyDefinition =
 
 
 {-| -}
-definitionToSpecification : Definition a -> Specification a
+definitionToSpecification : Definition ta va -> Specification ta va
 definitionToSpecification def =
     { modules =
         def.modules
@@ -103,45 +103,45 @@ definitionToSpecification def =
 
 
 {-| -}
-mapSpecificationAttributes : (a -> b) -> Specification a -> Specification b
-mapSpecificationAttributes f spec =
+mapSpecificationAttributes : (ta -> tb) -> (va -> vb) -> Specification ta va -> Specification tb vb
+mapSpecificationAttributes tf vf spec =
     Specification
         (spec.modules
             |> Dict.map
                 (\_ moduleSpec ->
-                    Module.mapSpecificationAttributes f moduleSpec
+                    Module.mapSpecificationAttributes tf vf moduleSpec
                 )
         )
 
 
 {-| -}
-mapDefinitionAttributes : (a -> b) -> Definition a -> Definition b
-mapDefinitionAttributes f def =
+mapDefinitionAttributes : (ta -> tb) -> (va -> vb) -> Definition ta va -> Definition tb vb
+mapDefinitionAttributes tf vf def =
     Definition
         (def.dependencies
             |> Dict.map
                 (\_ packageSpec ->
-                    mapSpecificationAttributes f packageSpec
+                    mapSpecificationAttributes tf vf packageSpec
                 )
         )
         (def.modules
             |> Dict.map
                 (\_ moduleDef ->
                     AccessControlled moduleDef.access
-                        (Module.mapDefinitionAttributes f moduleDef.value)
+                        (Module.mapDefinitionAttributes tf vf moduleDef.value)
                 )
         )
 
 
 {-| -}
-eraseSpecificationAttributes : Specification a -> Specification ()
+eraseSpecificationAttributes : Specification ta va -> Specification () ()
 eraseSpecificationAttributes spec =
     spec
-        |> mapSpecificationAttributes (\_ -> ())
+        |> mapSpecificationAttributes (\_ -> ()) (\_ -> ())
 
 
 {-| -}
-eraseDefinitionAttributes : Definition a -> Definition ()
+eraseDefinitionAttributes : Definition ta va -> Definition () ()
 eraseDefinitionAttributes def =
     def
-        |> mapDefinitionAttributes (\_ -> ())
+        |> mapDefinitionAttributes (\_ -> ()) (\_ -> ())

@@ -36,7 +36,7 @@ packageName =
     Path.fromString "Morphir.SDK"
 
 
-packageSpec : Package.Specification ()
+packageSpec : Package.Specification () ()
 packageSpec =
     { modules =
         Dict.fromList
