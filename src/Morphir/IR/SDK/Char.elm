@@ -32,7 +32,7 @@ moduleName =
     Path.fromString "Char"
 
 
-moduleSpec : Module.Specification ()
+moduleSpec : Module.Specification () ()
 moduleSpec =
     { types =
         Dict.fromList

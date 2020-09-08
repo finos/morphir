@@ -106,7 +106,7 @@ frontendTest =
                     ]
             }
 
-        expected : Package.Definition ()
+        expected : Package.Definition () ()
         expected =
             { dependencies = Dict.empty
             , modules =
@@ -202,7 +202,7 @@ valueTests =
             , exposedModules = Set.fromList [ [ [ "test" ] ] ]
             }
 
-        otherPackage : Package.Specification ()
+        otherPackage : Package.Specification () ()
         otherPackage =
             Package.Specification
                 (Dict.fromList
@@ -216,7 +216,7 @@ valueTests =
                     ]
                 )
 
-        deps : Dict Path (Package.Specification ())
+        deps : Dict Path (Package.Specification ()())
         deps =
             Dict.fromList
                 [ ( [ [ "my", "pack" ] ]
@@ -230,6 +230,8 @@ valueTests =
             , content =
                 String.join "\n"
                     [ "module My.Bar exposing (..)"
+                    , ""
+                    , "type Baz = Baz"
                     , ""
                     , "foo : Int"
                     , "foo = 1"
@@ -245,6 +247,8 @@ valueTests =
                     , ""
                     , "import My.Bar as Bar"
                     , "import MyPack.Bar"
+                    , ""
+                    , "type Foo = Foo"
                     , ""
                     , "foo : Int"
                     , "foo = 0"
@@ -266,6 +270,9 @@ valueTests =
                     , ""
                     , "d : Int"
                     , "d = 4"
+                    , ""
+                    , "e : Int"
+                    , "e = 4"
                     , ""
                     , "f : Int"
                     , "f = 5"
@@ -352,11 +359,14 @@ valueTests =
         , checkIR "\\[] -> foo " <| Lambda () (EmptyListPattern ()) (ref "foo")
         , checkIR "\\[ 1 ] -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (EmptyListPattern ())) (ref "foo")
         , checkIR "\\([] as bar) -> foo " <| Lambda () (AsPattern () (EmptyListPattern ()) (Name.fromString "bar")) (ref "foo")
-        , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [] [] [ "foo" ]) [ LiteralPattern () (IntLiteral 1), WildcardPattern () ]) (ref "foo")
-        , checkIR "\\Foo.Bar.Baz -> foo " <| Lambda () (ConstructorPattern () (fQName [] [ [ "foo" ], [ "bar" ] ] [ "baz" ]) []) (ref "foo")
+        , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [ [ "my" ] ] [ [ "test" ] ] [ "foo" ]) [ LiteralPattern () (IntLiteral 1), WildcardPattern () ]) (ref "foo")
+        , checkIR "\\Bar.Baz -> foo " <| Lambda () (ConstructorPattern () (fQName [ [ "my" ] ] [ [ "bar" ] ] [ "baz" ]) []) (ref "foo")
         , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (IntLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
         , checkIR "a <| b" <| Apply () (ref "a") (ref "b")
         , checkIR "a |> b" <| Apply () (ref "b") (ref "a")
+        , checkIR "a |> b |> c" <| Apply () (ref "c") (Apply () (ref "b") (ref "a"))
+        , checkIR "a |> b |> c |> d" <| Apply () (ref "d") (Apply () (ref "c") (Apply () (ref "b") (ref "a")))
+        , checkIR "a |> b |> c |> d |> e" <| Apply () (ref "e") (Apply () (ref "d") (Apply () (ref "c") (Apply () (ref "b") (ref "a"))))
         , checkIR "a || b" <| binary SDKBasics.or (ref "a") (ref "b")
         , checkIR "a && b" <| binary SDKBasics.and (ref "a") (ref "b")
         , checkIR "a == b" <| binary SDKBasics.equal (ref "a") (ref "b")

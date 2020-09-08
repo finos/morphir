@@ -229,17 +229,17 @@ moduleMapping =
         ]
 
 
-type alias Context a =
-    { dependencies : Dict Path (Package.Specification ())
+type alias Context ta va =
+    { dependencies : Dict Path (Package.Specification () ())
     , currentPackagePath : Path
-    , currentPackageModules : Dict Path (Module.Specification ())
+    , currentPackageModules : Dict Path (Module.Specification () ())
     , explicitImports : List Import
     , currentModulePath : Path
-    , moduleDef : Module.Definition a
+    , moduleDef : Module.Definition ta va
     }
 
 
-createModuleResolver : Context a -> ModuleResolver
+createModuleResolver : Context ta va -> ModuleResolver
 createModuleResolver ctx =
     let
         -- As we resolve names we will first have to look at local names so we collect them here.
@@ -282,10 +282,10 @@ createModuleResolver ctx =
             defaultImports ++ ctx.explicitImports
 
         -- Combine current package with dependencies to get a full dictionary of packages
-        packageSpecs : Dict Path (Package.Specification ())
+        packageSpecs : Dict Path (Package.Specification () ())
         packageSpecs =
             let
-                currentPackageSpec : Package.Specification ()
+                currentPackageSpec : Package.Specification () ()
                 currentPackageSpec =
                     Package.Specification ctx.currentPackageModules
             in
@@ -304,7 +304,7 @@ createModuleResolver ctx =
                                 )
                     )
 
-        importedModulesResult : Result Error (Dict ModuleName ( Path, Path, Module.Specification () ))
+        importedModulesResult : Result Error (Dict ModuleName ( Path, Path, Module.Specification () () ))
         importedModulesResult =
             imports
                 |> List.map
@@ -438,7 +438,7 @@ isAmongLocalNames nameType localName localNames =
 the package path and the module path within that package. This requires identifying all packages
 that match the path prefix and checking if the module is part of it.
 -}
-locateModule : Dict Path (Package.Specification ()) -> Path -> Result Error ( Path, Path, Module.Specification () )
+locateModule : Dict Path (Package.Specification () ()) -> Path -> Result Error ( Path, Path, Module.Specification () () )
 locateModule packageSpecs packageAndModulePath =
     let
         mappedPackageAndModulePath =
@@ -490,7 +490,7 @@ locateModule packageSpecs packageAndModulePath =
 
 {-| Extract exposed local names from a module specification.
 -}
-moduleSpecToLocalNames : Module.Specification () -> LocalNames
+moduleSpecToLocalNames : Module.Specification () () -> LocalNames
 moduleSpecToLocalNames moduleSpec =
     { typeNames =
         moduleSpec.types

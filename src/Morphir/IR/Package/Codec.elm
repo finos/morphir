@@ -27,8 +27,8 @@ import Morphir.IR.Package exposing (Definition, Distribution(..), Specification)
 import Morphir.IR.Path.Codec exposing (decodePath, encodePath)
 
 
-encodeSpecification : (a -> Encode.Value) -> Specification a -> Encode.Value
-encodeSpecification encodeAttributes spec =
+encodeSpecification : (ta -> Encode.Value) -> (va -> Encode.Value) -> Specification ta va -> Encode.Value
+encodeSpecification encodeAttributes encodeAttributes2 spec =
     Encode.object
         [ ( "modules"
           , spec.modules
@@ -37,15 +37,15 @@ encodeSpecification encodeAttributes spec =
                     (\( moduleName, moduleSpec ) ->
                         Encode.object
                             [ ( "name", encodePath moduleName )
-                            , ( "spec", ModuleCodec.encodeSpecification encodeAttributes moduleSpec )
+                            , ( "spec", ModuleCodec.encodeSpecification encodeAttributes encodeAttributes2 moduleSpec )
                             ]
                     )
           )
         ]
 
 
-encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
-encodeDefinition encodeAttributes def =
+encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value) -> Definition ta va -> Encode.Value
+encodeDefinition encodeAttributes encodeAttributes2 def =
     Encode.object
         [ ( "dependencies"
           , def.dependencies
@@ -54,7 +54,7 @@ encodeDefinition encodeAttributes def =
                     (\( packageName, packageSpec ) ->
                         Encode.object
                             [ ( "name", encodePath packageName )
-                            , ( "spec", encodeSpecification encodeAttributes packageSpec )
+                            , ( "spec", encodeSpecification encodeAttributes encodeAttributes2 packageSpec )
                             ]
                     )
           )
@@ -65,15 +65,15 @@ encodeDefinition encodeAttributes def =
                     (\( moduleName, moduleDef ) ->
                         Encode.object
                             [ ( "name", encodePath moduleName )
-                            , ( "def", encodeAccessControlled (ModuleCodec.encodeDefinition encodeAttributes) moduleDef )
+                            , ( "def", encodeAccessControlled (ModuleCodec.encodeDefinition encodeAttributes encodeAttributes2) moduleDef )
                             ]
                     )
           )
         ]
 
 
-decodeDefinition : Decode.Decoder a -> Decode.Decoder (Definition a)
-decodeDefinition decodeAttributes =
+decodeDefinition : Decode.Decoder ta -> Decode.Decoder va -> Decode.Decoder (Definition ta va)
+decodeDefinition decodeAttributes decodeAttributes2 =
     Decode.map2 Definition
         (Decode.field "dependencies"
             (Decode.succeed Dict.empty)
@@ -83,7 +83,7 @@ decodeDefinition decodeAttributes =
                 (Decode.list
                     (Decode.map2 Tuple.pair
                         (Decode.field "name" decodePath)
-                        (Decode.field "def" (decodeAccessControlled (ModuleCodec.decodeDefinition decodeAttributes)))
+                        (Decode.field "def" (decodeAccessControlled (ModuleCodec.decodeDefinition decodeAttributes decodeAttributes2)))
                     )
                 )
             )
@@ -97,7 +97,7 @@ encodeDistribution distro =
             Encode.list identity
                 [ Encode.string "library"
                 , encodePath packagePath
-                , encodeDefinition (\_ -> Encode.object []) def
+                , encodeDefinition (\_ -> Encode.object []) (\_ -> Encode.object []) def
                 ]
 
 
@@ -110,7 +110,7 @@ decodeDistribution =
                     "library" ->
                         Decode.map2 Library
                             (Decode.index 1 decodePath)
-                            (Decode.index 2 (decodeDefinition (Decode.succeed ())))
+                            (Decode.index 2 (decodeDefinition (Decode.succeed ()) (Decode.succeed ())))
 
                     other ->
                         Decode.fail <| "Unknown value type: " ++ other

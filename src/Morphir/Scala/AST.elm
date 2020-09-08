@@ -111,6 +111,7 @@ type MemberDecl
     | ValueDecl
         { modifiers : List Mod
         , pattern : Pattern
+        , valueType : Maybe Type
         , value : Value
         }
     | FunctionDecl

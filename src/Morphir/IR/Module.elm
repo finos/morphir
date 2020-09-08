@@ -43,14 +43,14 @@ type alias ModulePath =
 
 {-| Type that represents a module specification.
 -}
-type alias Specification a =
-    { types : Dict Name (Documented (Type.Specification a))
-    , values : Dict Name (Value.Specification a)
+type alias Specification ta va =
+    { types : Dict Name (Documented (Type.Specification ta))
+    , values : Dict Name (Value.Specification va)
     }
 
 
 {-| -}
-emptySpecification : Specification a
+emptySpecification : Specification ta va
 emptySpecification =
     { types = Dict.empty
     , values = Dict.empty
@@ -59,14 +59,14 @@ emptySpecification =
 
 {-| Type that represents a module definition. It includes types and values.
 -}
-type alias Definition a =
-    { types : Dict Name (AccessControlled (Documented (Type.Definition a)))
-    , values : Dict Name (AccessControlled (Value.Definition a))
+type alias Definition ta va =
+    { types : Dict Name (AccessControlled (Documented (Type.Definition ta)))
+    , values : Dict Name (AccessControlled (Value.Definition va))
     }
 
 
 {-| -}
-definitionToSpecification : Definition a -> Specification a
+definitionToSpecification : Definition ta va -> Specification ta va
 definitionToSpecification def =
     { types =
         def.types
@@ -98,45 +98,45 @@ definitionToSpecification def =
 
 
 {-| -}
-eraseSpecificationAttributes : Specification a -> Specification ()
+eraseSpecificationAttributes : Specification ta tv -> Specification () ()
 eraseSpecificationAttributes spec =
     spec
-        |> mapSpecificationAttributes (\_ -> ())
+        |> mapSpecificationAttributes (\_ -> ()) (\_ -> ())
 
 
 {-| -}
-mapSpecificationAttributes : (a -> b) -> Specification a -> Specification b
-mapSpecificationAttributes f spec =
+mapSpecificationAttributes : (ta -> tb) -> (va -> vb) -> Specification ta va -> Specification tb vb
+mapSpecificationAttributes tf vf spec =
     Specification
         (spec.types
             |> Dict.map
                 (\_ typeSpec ->
-                    typeSpec |> Documented.map (Type.mapSpecificationAttributes f)
+                    typeSpec |> Documented.map (Type.mapSpecificationAttributes tf)
                 )
         )
         (spec.values
             |> Dict.map
                 (\_ valueSpec ->
-                    Value.mapSpecificationAttributes f valueSpec
+                    Value.mapSpecificationAttributes vf valueSpec
                 )
         )
 
 
 {-| -}
-mapDefinitionAttributes : (a -> b) -> Definition a -> Definition b
-mapDefinitionAttributes f def =
+mapDefinitionAttributes : (ta -> tb) -> (va -> vb) -> Definition ta va -> Definition tb vb
+mapDefinitionAttributes tf vf def =
     Definition
         (def.types
             |> Dict.map
                 (\_ typeDef ->
                     AccessControlled typeDef.access
-                        (typeDef.value |> Documented.map (Type.mapDefinitionAttributes f))
+                        (typeDef.value |> Documented.map (Type.mapDefinitionAttributes tf))
                 )
         )
         (def.values
             |> Dict.map
                 (\_ valueDef ->
                     AccessControlled valueDef.access
-                        (Value.mapDefinitionAttributes f valueDef.value)
+                        (Value.mapDefinitionAttributes vf valueDef.value)
                 )
         )

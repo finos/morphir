@@ -121,6 +121,12 @@ mapMemberDecl opt memberDecl =
             concat
                 [ "val "
                 , mapPattern decl.pattern
+                , case decl.valueType of
+                    Just tpe ->
+                        concat [ ": ", mapType opt tpe ]
+
+                    Nothing ->
+                        empty
                 , " = "
                 , mapValue opt decl.value
                 ]
@@ -395,10 +401,18 @@ mapValue opt value =
                 [ "if "
                 , parens (mapValue opt condValue)
                 , " "
-                , statementBlock opt [ trueValue |> mapValue opt ]
+                , case trueValue of
+                    Block _ _ ->
+                        mapValue opt trueValue
+
+                    _ ->
+                        statementBlock opt [ mapValue opt trueValue ]
                 , " else "
                 , case falseValue of
                     IfElse _ _ _ ->
+                        mapValue opt falseValue
+
+                    Block _ _ ->
                         mapValue opt falseValue
 
                     _ ->

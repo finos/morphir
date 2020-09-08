@@ -31,8 +31,8 @@ import Morphir.IR.Value.Codec as ValueCodec
 
 
 {-| -}
-encodeSpecification : (a -> Encode.Value) -> Specification a -> Encode.Value
-encodeSpecification encodeAttributes spec =
+encodeSpecification : (ta -> Encode.Value) -> (va -> Encode.Value) -> Specification ta va-> Encode.Value
+encodeSpecification encodeAttributes encodeAttributes2 spec =
     Encode.object
         [ ( "types"
           , spec.types
@@ -52,15 +52,15 @@ encodeSpecification encodeAttributes spec =
                     (\( name, valueSpec ) ->
                         Encode.list identity
                             [ encodeName name
-                            , valueSpec |> ValueCodec.encodeSpecification encodeAttributes
+                            , valueSpec |> ValueCodec.encodeSpecification encodeAttributes2
                             ]
                     )
           )
         ]
 
 
-encodeDefinition : (a -> Encode.Value) -> Definition a -> Encode.Value
-encodeDefinition encodeAttributes def =
+encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value)-> Definition ta va-> Encode.Value
+encodeDefinition encodeAttributes encodeAttributes2 def =
     Encode.object
         [ ( "types"
           , def.types
@@ -80,15 +80,15 @@ encodeDefinition encodeAttributes def =
                     (\( name, valueDef ) ->
                         Encode.list identity
                             [ encodeName name
-                            , valueDef |> encodeAccessControlled (ValueCodec.encodeDefinition encodeAttributes)
+                            , valueDef |> encodeAccessControlled (ValueCodec.encodeDefinition encodeAttributes2)
                             ]
                     )
           )
         ]
 
 
-decodeDefinition : Decode.Decoder a -> Decode.Decoder (Definition a)
-decodeDefinition decodeAttributes =
+decodeDefinition : Decode.Decoder ta -> Decode.Decoder va -> Decode.Decoder (Definition ta va)
+decodeDefinition decodeAttributes decodeAttributes2=
     Decode.map2 Definition
         (Decode.field "types"
             (Decode.map Dict.fromList
@@ -105,7 +105,7 @@ decodeDefinition decodeAttributes =
                 (Decode.list
                     (Decode.map2 Tuple.pair
                         (Decode.index 0 decodeName)
-                        (Decode.index 1 (decodeAccessControlled (ValueCodec.decodeDefinition decodeAttributes)))
+                        (Decode.index 1 (decodeAccessControlled (ValueCodec.decodeDefinition decodeAttributes2)))
                     )
                 )
             )
