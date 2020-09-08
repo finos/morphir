@@ -17,6 +17,7 @@
     "morphir-dapr": "./cli/morphir-dapr.js"
   },
   "files": [
+    "cli/cli.js",
     "cli/morphir-elm.js",
     "cli/morphir-elm-make.js",
     "cli/morphir-elm-gen.js",
