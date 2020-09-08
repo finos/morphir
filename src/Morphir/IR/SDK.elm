@@ -27,6 +27,7 @@ import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Regex as Regex
 import Morphir.IR.SDK.Result as Result
+import Morphir.IR.SDK.StatefulApp as StatefulApp
 import Morphir.IR.SDK.String as String
 import Morphir.IR.SDK.Tuple as Tuple
 
@@ -49,5 +50,6 @@ packageSpec =
             , ( [ [ "list" ] ], List.moduleSpec )
             , ( [ [ "tuple" ] ], Tuple.moduleSpec )
             , ( [ [ "regex" ] ], Regex.moduleSpec )
+            , ( [ [ "stateful", "app" ] ], StatefulApp.moduleSpec )
             ]
     }

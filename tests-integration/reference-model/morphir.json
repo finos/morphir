@@ -3,6 +3,7 @@
     "sourceDirectory": "src",
     "exposedModules": [
         "Types",
-        "Values"
+        "Values",
+        "BooksAndRecords"
     ]
 }
