@@ -32,7 +32,7 @@ moduleName =
     Path.fromString "List"
 
 
-moduleSpec : Module.Specification () ()
+moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
@@ -100,6 +100,6 @@ listType attributes itemType =
     Type.Reference attributes (toFQName moduleName "List") [ itemType ]
 
 
-construct : a -> Value a
+construct : a -> Value ta a
 construct a =
     Value.Reference a (toFQName moduleName "construct")

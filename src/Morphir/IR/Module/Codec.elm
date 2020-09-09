@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -31,8 +31,8 @@ import Morphir.IR.Value.Codec as ValueCodec
 
 
 {-| -}
-encodeSpecification : (ta -> Encode.Value) -> (va -> Encode.Value) -> Specification ta va-> Encode.Value
-encodeSpecification encodeAttributes encodeAttributes2 spec =
+encodeSpecification : (ta -> Encode.Value) -> Specification ta -> Encode.Value
+encodeSpecification encodeTypeAttributes spec =
     Encode.object
         [ ( "types"
           , spec.types
@@ -41,7 +41,7 @@ encodeSpecification encodeAttributes encodeAttributes2 spec =
                     (\( name, typeSpec ) ->
                         Encode.list identity
                             [ encodeName name
-                            , typeSpec |> encodeDocumented (TypeCodec.encodeSpecification encodeAttributes)
+                            , typeSpec |> encodeDocumented (TypeCodec.encodeSpecification encodeTypeAttributes)
                             ]
                     )
           )
@@ -52,15 +52,15 @@ encodeSpecification encodeAttributes encodeAttributes2 spec =
                     (\( name, valueSpec ) ->
                         Encode.list identity
                             [ encodeName name
-                            , valueSpec |> ValueCodec.encodeSpecification encodeAttributes2
+                            , valueSpec |> ValueCodec.encodeSpecification encodeTypeAttributes
                             ]
                     )
           )
         ]
 
 
-encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value)-> Definition ta va-> Encode.Value
-encodeDefinition encodeAttributes encodeAttributes2 def =
+encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value) -> Definition ta va -> Encode.Value
+encodeDefinition encodeTypeAttributes encodeValueAttributes def =
     Encode.object
         [ ( "types"
           , def.types
@@ -69,7 +69,7 @@ encodeDefinition encodeAttributes encodeAttributes2 def =
                     (\( name, typeDef ) ->
                         Encode.list identity
                             [ encodeName name
-                            , typeDef |> encodeAccessControlled (encodeDocumented (TypeCodec.encodeDefinition encodeAttributes))
+                            , typeDef |> encodeAccessControlled (encodeDocumented (TypeCodec.encodeDefinition encodeTypeAttributes))
                             ]
                     )
           )
@@ -80,7 +80,7 @@ encodeDefinition encodeAttributes encodeAttributes2 def =
                     (\( name, valueDef ) ->
                         Encode.list identity
                             [ encodeName name
-                            , valueDef |> encodeAccessControlled (ValueCodec.encodeDefinition encodeAttributes2)
+                            , valueDef |> encodeAccessControlled (ValueCodec.encodeDefinition encodeTypeAttributes encodeValueAttributes)
                             ]
                     )
           )
@@ -88,14 +88,14 @@ encodeDefinition encodeAttributes encodeAttributes2 def =
 
 
 decodeDefinition : Decode.Decoder ta -> Decode.Decoder va -> Decode.Decoder (Definition ta va)
-decodeDefinition decodeAttributes decodeAttributes2=
+decodeDefinition decodeTypeAttributes decodeValueAttributes =
     Decode.map2 Definition
         (Decode.field "types"
             (Decode.map Dict.fromList
                 (Decode.list
                     (Decode.map2 Tuple.pair
                         (Decode.index 0 decodeName)
-                        (Decode.index 1 (decodeAccessControlled (decodeDocumented (TypeCodec.decodeDefinition decodeAttributes))))
+                        (Decode.index 1 (decodeAccessControlled (decodeDocumented (TypeCodec.decodeDefinition decodeTypeAttributes))))
                     )
                 )
             )
@@ -105,7 +105,7 @@ decodeDefinition decodeAttributes decodeAttributes2=
                 (Decode.list
                     (Decode.map2 Tuple.pair
                         (Decode.index 0 decodeName)
-                        (Decode.index 1 (decodeAccessControlled (ValueCodec.decodeDefinition decodeAttributes2)))
+                        (Decode.index 1 (decodeAccessControlled (ValueCodec.decodeDefinition decodeTypeAttributes decodeValueAttributes)))
                     )
                 )
             )

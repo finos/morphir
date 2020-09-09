@@ -54,13 +54,13 @@ type alias PackagePath =
 
 {-| Type that represents a package specification.
 -}
-type alias Specification ta va =
-    { modules : Dict ModulePath (Module.Specification ta va)
+type alias Specification ta =
+    { modules : Dict ModulePath (Module.Specification ta)
     }
 
 
 {-| -}
-emptySpecification : Specification ta va
+emptySpecification : Specification ta
 emptySpecification =
     { modules = Dict.empty
     }
@@ -69,7 +69,7 @@ emptySpecification =
 {-| Type that represents a package definition.
 -}
 type alias Definition ta va =
-    { dependencies : Dict PackagePath (Specification ta va)
+    { dependencies : Dict PackagePath (Specification ta)
     , modules : Dict ModulePath (AccessControlled (Module.Definition ta va))
     }
 
@@ -84,7 +84,7 @@ emptyDefinition =
 
 
 {-| -}
-definitionToSpecification : Definition ta va -> Specification ta va
+definitionToSpecification : Definition ta va -> Specification ta
 definitionToSpecification def =
     { modules =
         def.modules
@@ -103,7 +103,7 @@ definitionToSpecification def =
 
 
 {-| -}
-mapSpecificationAttributes : (ta -> tb) -> (va -> vb) -> Specification ta va -> Specification tb vb
+mapSpecificationAttributes : (ta -> tb) -> (va -> vb) -> Specification ta -> Specification tb
 mapSpecificationAttributes tf vf spec =
     Specification
         (spec.modules
@@ -134,7 +134,7 @@ mapDefinitionAttributes tf vf def =
 
 
 {-| -}
-eraseSpecificationAttributes : Specification ta va -> Specification () ()
+eraseSpecificationAttributes : Specification ta -> Specification ()
 eraseSpecificationAttributes spec =
     spec
         |> mapSpecificationAttributes (\_ -> ()) (\_ -> ())

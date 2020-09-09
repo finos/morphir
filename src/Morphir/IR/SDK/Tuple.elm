@@ -30,7 +30,7 @@ moduleName =
     Path.fromString "Tuple"
 
 
-moduleSpec : Module.Specification () ()
+moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.empty

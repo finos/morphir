@@ -27,8 +27,8 @@ import Morphir.IR.Package exposing (Definition, Distribution(..), Specification)
 import Morphir.IR.Path.Codec exposing (decodePath, encodePath)
 
 
-encodeSpecification : (ta -> Encode.Value) -> (va -> Encode.Value) -> Specification ta va -> Encode.Value
-encodeSpecification encodeAttributes encodeAttributes2 spec =
+encodeSpecification : (ta -> Encode.Value) -> Specification ta -> Encode.Value
+encodeSpecification encodeTypeAttributes spec =
     Encode.object
         [ ( "modules"
           , spec.modules
@@ -37,7 +37,7 @@ encodeSpecification encodeAttributes encodeAttributes2 spec =
                     (\( moduleName, moduleSpec ) ->
                         Encode.object
                             [ ( "name", encodePath moduleName )
-                            , ( "spec", ModuleCodec.encodeSpecification encodeAttributes encodeAttributes2 moduleSpec )
+                            , ( "spec", ModuleCodec.encodeSpecification encodeTypeAttributes moduleSpec )
                             ]
                     )
           )
@@ -45,7 +45,7 @@ encodeSpecification encodeAttributes encodeAttributes2 spec =
 
 
 encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value) -> Definition ta va -> Encode.Value
-encodeDefinition encodeAttributes encodeAttributes2 def =
+encodeDefinition encodeTypeAttributes encodeValueAttributes def =
     Encode.object
         [ ( "dependencies"
           , def.dependencies
@@ -54,7 +54,7 @@ encodeDefinition encodeAttributes encodeAttributes2 def =
                     (\( packageName, packageSpec ) ->
                         Encode.object
                             [ ( "name", encodePath packageName )
-                            , ( "spec", encodeSpecification encodeAttributes encodeAttributes2 packageSpec )
+                            , ( "spec", encodeSpecification encodeTypeAttributes packageSpec )
                             ]
                     )
           )
@@ -65,7 +65,7 @@ encodeDefinition encodeAttributes encodeAttributes2 def =
                     (\( moduleName, moduleDef ) ->
                         Encode.object
                             [ ( "name", encodePath moduleName )
-                            , ( "def", encodeAccessControlled (ModuleCodec.encodeDefinition encodeAttributes encodeAttributes2) moduleDef )
+                            , ( "def", encodeAccessControlled (ModuleCodec.encodeDefinition encodeTypeAttributes encodeValueAttributes) moduleDef )
                             ]
                     )
           )

@@ -358,7 +358,7 @@ mapType tpe =
             Scala.TypeRef [ "scala" ] "Unit"
 
 
-mapValue : Value a -> Scala.Value
+mapValue : Value ta va -> Scala.Value
 mapValue value =
     case value of
         Literal a literal ->
@@ -453,7 +453,7 @@ mapValue value =
 
         LetDefinition _ _ _ _ ->
             let
-                flattenLetDef : Value a -> ( List ( Name, Value.Definition a ), Value a )
+                flattenLetDef : Value ta va -> ( List ( Name, Value.Definition ta va ), Value ta va )
                 flattenLetDef v =
                     case v of
                         LetDefinition a dName d inV ->

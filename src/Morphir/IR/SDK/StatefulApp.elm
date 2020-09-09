@@ -31,7 +31,7 @@ moduleName =
     Path.fromString "StatefulAp"
 
 
-moduleSpec : Module.Specification () ()
+moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
