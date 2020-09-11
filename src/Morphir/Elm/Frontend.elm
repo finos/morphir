@@ -157,7 +157,7 @@ type alias Import =
 
 {-| Dependencies that are added by default without explicit reference.
 -}
-defaultDependencies : Dict Path (Package.Specification () ())
+defaultDependencies : Dict Path (Package.Specification ())
 defaultDependencies =
     Dict.fromList
         [ ( SDK.packageName, SDK.packageSpec )
@@ -166,7 +166,7 @@ defaultDependencies =
 
 {-| Function that takes some package info and a list of sources and returns Morphir IR or errors.
 -}
-packageDefinitionFromSource : PackageInfo -> Dict Path (Package.Specification () ()) -> List SourceFile -> Result Errors (Package.Definition SourceLocation SourceLocation)
+packageDefinitionFromSource : PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result Errors (Package.Definition SourceLocation SourceLocation)
 packageDefinitionFromSource packageInfo dependencies sourceFiles =
     let
         parseSources : List SourceFile -> Result Errors (List ( ModuleName, ParsedFile ))
@@ -274,7 +274,7 @@ packageDefinitionFromSource packageInfo dependencies sourceFiles =
             )
 
 
-mapParsedFiles : Dict Path (Package.Specification ()()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
+mapParsedFiles : Dict Path (Package.Specification ()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
 mapParsedFiles dependencies currentPackagePath parsedModules sortedModuleNames =
     let
         initialContext : ProcessContext
@@ -312,7 +312,7 @@ mapParsedFiles dependencies currentPackagePath parsedModules sortedModuleNames =
         |> Result.map Tuple.second
 
 
-mapProcessedFile : Dict Path (Package.Specification ()()) -> Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
+mapProcessedFile : Dict Path (Package.Specification ()) -> Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
 mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
     let
         modulePath =
@@ -328,7 +328,7 @@ mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
                 |> Node.value
                 |> ElmModule.exposingList
 
-        moduleDeclsSoFar : Dict Path (Module.Specification ()())
+        moduleDeclsSoFar : Dict Path (Module.Specification ())
         moduleDeclsSoFar =
             modulesSoFar
                 |> Dict.map
@@ -342,7 +342,7 @@ mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
             mapDeclarationsToType processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
                 |> Result.map Dict.fromList
 
-        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation)))
+        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation SourceLocation)))
         valuesResult =
             mapDeclarationsToValue processedFile.parsedFile.sourceFile moduleExpose processedFile.file.declarations
                 |> Result.map Dict.fromList
@@ -534,7 +534,7 @@ mapDeclarationsToType sourceFile expose decls =
         |> Result.mapError List.concat
 
 
-mapDeclarationsToValue : SourceFile -> Exposing -> List (Node Declaration) -> Result Errors (List ( Name, AccessControlled (Value.Definition SourceLocation) ))
+mapDeclarationsToValue : SourceFile -> Exposing -> List (Node Declaration) -> Result Errors (List ( Name, AccessControlled (Value.Definition SourceLocation SourceLocation) ))
 mapDeclarationsToValue sourceFile expose decls =
     decls
         |> List.filterMap
@@ -550,7 +550,7 @@ mapDeclarationsToValue sourceFile expose decls =
                                     |> Node.value
                                     |> Name.fromString
 
-                            valueDef : Result Errors (AccessControlled (Value.Definition SourceLocation))
+                            valueDef : Result Errors (AccessControlled (Value.Definition SourceLocation SourceLocation))
                             valueDef =
                                 Node range function
                                     |> mapFunction sourceFile
@@ -626,7 +626,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 (mapTypeAnnotation sourceFile returnTypeNode)
 
 
-mapFunction : SourceFile -> Node Function -> Result Errors (Value.Definition SourceLocation)
+mapFunction : SourceFile -> Node Function -> Result Errors (Value.Definition SourceLocation SourceLocation)
 mapFunction sourceFile (Node range function) =
     let
         valueTypeResult : Result Errors (Type SourceLocation)
@@ -649,7 +649,7 @@ mapFunction sourceFile (Node range function) =
             )
 
 
-mapFunctionImplementation : SourceFile -> Type SourceLocation -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Definition SourceLocation)
+mapFunctionImplementation : SourceFile -> Type SourceLocation -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Definition SourceLocation SourceLocation)
 mapFunctionImplementation sourceFile valueType argumentNodes expression =
     let
         sourceLocation : Range -> SourceLocation
@@ -676,10 +676,10 @@ mapFunctionImplementation sourceFile valueType argumentNodes expression =
         ( inputTypes, outputType, lambdaArgPatterns ) =
             extractNamedParams [] argumentNodes valueType
 
-        bodyResult : Result Errors (Value.Value SourceLocation)
+        bodyResult : Result Errors (Value.Value SourceLocation SourceLocation)
         bodyResult =
             let
-                lambdaWithParams : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation)
+                lambdaWithParams : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
                 lambdaWithParams params body =
                     case params of
                         [] ->
@@ -696,7 +696,7 @@ mapFunctionImplementation sourceFile valueType argumentNodes expression =
         |> Result.map (Value.Definition inputTypes outputType)
 
 
-mapExpression : SourceFile -> Node Expression -> Result Errors (Value.Value SourceLocation)
+mapExpression : SourceFile -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
 mapExpression sourceFile (Node range exp) =
     let
         sourceLocation =
@@ -708,7 +708,7 @@ mapExpression sourceFile (Node range exp) =
 
         Expression.Application expNodes ->
             let
-                toApply : List (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                toApply : List (Value.Value SourceLocation SourceLocation) -> Result Errors (Value.Value SourceLocation SourceLocation)
                 toApply valuesReversed =
                     case valuesReversed of
                         [] ->
@@ -831,7 +831,7 @@ mapExpression sourceFile (Node range exp) =
 
         Expression.LambdaExpression lambda ->
             let
-                curriedLambda : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation)
+                curriedLambda : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
                 curriedLambda argNodes bodyNode =
                     case argNodes of
                         [] ->
@@ -973,7 +973,7 @@ mapPattern sourceFile (Node range pattern) =
             mapPattern sourceFile childNode
 
 
-mapOperator : SourceLocation -> String -> Result Errors (Value.Value SourceLocation)
+mapOperator : SourceLocation -> String -> Result Errors (Value.Value SourceLocation SourceLocation)
 mapOperator sourceLocation op =
     case op of
         "||" ->
@@ -1034,7 +1034,7 @@ mapOperator sourceLocation op =
             Err [ NotSupported sourceLocation <| "OperatorApplication: " ++ op ]
 
 
-mapLetExpression : SourceFile -> SourceLocation -> Expression.LetBlock -> Result Errors (Value SourceLocation)
+mapLetExpression : SourceFile -> SourceLocation -> Expression.LetBlock -> Result Errors (Value SourceLocation SourceLocation)
 mapLetExpression sourceFile sourceLocation letBlock =
     let
         namesReferredByExpression : Expression -> List String
@@ -1100,7 +1100,7 @@ mapLetExpression sourceFile sourceLocation letBlock =
                 _ ->
                     []
 
-        letBlockToValue : List (Node Expression.LetDeclaration) -> Node Expression -> Result Errors (Value.Value SourceLocation)
+        letBlockToValue : List (Node Expression.LetDeclaration) -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
         letBlockToValue declarationNodes inNode =
             let
                 -- build a dictionary from variable name to declaration index
@@ -1167,7 +1167,7 @@ mapLetExpression sourceFile sourceLocation letBlock =
                     in
                     Graph.fromNodesAndEdges nodes edges
 
-                letDeclarationToValue : Node Expression.LetDeclaration -> Result Errors (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                letDeclarationToValue : Node Expression.LetDeclaration -> Result Errors (Value.Value SourceLocation SourceLocation) -> Result Errors (Value.Value SourceLocation SourceLocation)
                 letDeclarationToValue letDeclarationNode valueResult =
                     case letDeclarationNode of
                         Node range (Expression.LetFunction function) ->
@@ -1181,7 +1181,7 @@ mapLetExpression sourceFile sourceLocation letBlock =
                                 (mapExpression sourceFile letExpressionNode)
                                 valueResult
 
-                componentGraphToValue : Graph (Node Expression.LetDeclaration) String -> Result Errors (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                componentGraphToValue : Graph (Node Expression.LetDeclaration) String -> Result Errors (Value.Value SourceLocation SourceLocation) -> Result Errors (Value.Value SourceLocation SourceLocation)
                 componentGraphToValue componentGraph valueResult =
                     case componentGraph |> Graph.checkAcyclic of
                         Ok acyclic ->
@@ -1290,10 +1290,10 @@ rewriteTypes moduleResolver =
         )
 
 
-resolveLocalNames : ModuleResolver -> Module.Definition SourceLocation SourceLocation-> Result Errors (Module.Definition SourceLocation SourceLocation)
+resolveLocalNames : ModuleResolver -> Module.Definition SourceLocation SourceLocation -> Result Errors (Module.Definition SourceLocation SourceLocation)
 resolveLocalNames moduleResolver moduleDef =
     let
-        rewriteValues : Dict Name SourceLocation -> Value SourceLocation -> Result Errors (Value SourceLocation)
+        rewriteValues : Dict Name SourceLocation -> Value SourceLocation SourceLocation -> Result Errors (Value SourceLocation SourceLocation)
         rewriteValues variables value =
             resolveVariablesAndReferences variables moduleResolver value
 
@@ -1314,7 +1314,7 @@ resolveLocalNames moduleResolver moduleDef =
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
-        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation)))
+        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation SourceLocation)))
         valuesResult =
             moduleDef.values
                 |> Dict.toList
@@ -1342,7 +1342,7 @@ resolveLocalNames moduleResolver moduleDef =
         valuesResult
 
 
-resolveVariablesAndReferences : Dict Name SourceLocation -> ModuleResolver -> Value SourceLocation -> Result Errors (Value SourceLocation)
+resolveVariablesAndReferences : Dict Name SourceLocation -> ModuleResolver -> Value SourceLocation SourceLocation -> Result Errors (Value SourceLocation SourceLocation)
 resolveVariablesAndReferences variables moduleResolver value =
     let
         unionNames : (Name -> SourceLocation -> SourceLocation -> Error) -> Dict Name SourceLocation -> Dict Name SourceLocation -> Result Errors (Dict Name SourceLocation)

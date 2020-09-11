@@ -202,7 +202,7 @@ valueTests =
             , exposedModules = Set.fromList [ [ [ "test" ] ] ]
             }
 
-        otherPackage : Package.Specification () ()
+        otherPackage : Package.Specification ()
         otherPackage =
             Package.Specification
                 (Dict.fromList
@@ -216,7 +216,7 @@ valueTests =
                     ]
                 )
 
-        deps : Dict Path (Package.Specification ()())
+        deps : Dict Path (Package.Specification ())
         deps =
             Dict.fromList
                 [ ( [ [ "my", "pack" ] ]
@@ -282,7 +282,7 @@ valueTests =
                     ]
             }
 
-        checkIR : String -> Value () -> Test
+        checkIR : String -> Value () () -> Test
         checkIR valueSource expectedValueIR =
             test valueSource <|
                 \_ ->
@@ -307,11 +307,11 @@ valueTests =
                             )
                         |> resultToExpectation expectedValueIR
 
-        ref : String -> Value ()
+        ref : String -> Value () ()
         ref name =
             Reference () (fQName [ [ "my" ] ] [ [ "test" ] ] [ name ])
 
-        var : String -> Value ()
+        var : String -> Value () ()
         var name =
             Variable () [ name ]
 
@@ -319,7 +319,7 @@ valueTests =
         pvar name =
             AsPattern () (WildcardPattern ()) (Name.fromString name)
 
-        binary : (() -> Value ()) -> Value () -> Value () -> Value ()
+        binary : (() -> Value () ()) -> Value () () -> Value () () -> Value () ()
         binary fun arg1 arg2 =
             Apply () (Apply () (fun ()) arg1) arg2
     in

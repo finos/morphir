@@ -40,7 +40,7 @@ import Test exposing (Test, describe, test)
 moduleResolverTests : Test
 moduleResolverTests =
     let
-        otherPackage : Package.Specification ()()
+        otherPackage : Package.Specification ()
         otherPackage =
             Package.Specification
                 (Dict.fromList

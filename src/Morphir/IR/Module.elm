@@ -43,14 +43,14 @@ type alias ModulePath =
 
 {-| Type that represents a module specification.
 -}
-type alias Specification ta va =
+type alias Specification ta =
     { types : Dict Name (Documented (Type.Specification ta))
-    , values : Dict Name (Value.Specification va)
+    , values : Dict Name (Value.Specification ta)
     }
 
 
 {-| -}
-emptySpecification : Specification ta va
+emptySpecification : Specification ta
 emptySpecification =
     { types = Dict.empty
     , values = Dict.empty
@@ -61,12 +61,12 @@ emptySpecification =
 -}
 type alias Definition ta va =
     { types : Dict Name (AccessControlled (Documented (Type.Definition ta)))
-    , values : Dict Name (AccessControlled (Value.Definition va))
+    , values : Dict Name (AccessControlled (Value.Definition ta va))
     }
 
 
 {-| -}
-definitionToSpecification : Definition ta va -> Specification ta va
+definitionToSpecification : Definition ta va -> Specification ta
 definitionToSpecification def =
     { types =
         def.types
@@ -98,14 +98,14 @@ definitionToSpecification def =
 
 
 {-| -}
-eraseSpecificationAttributes : Specification ta tv -> Specification () ()
+eraseSpecificationAttributes : Specification ta -> Specification ()
 eraseSpecificationAttributes spec =
     spec
         |> mapSpecificationAttributes (\_ -> ()) (\_ -> ())
 
 
 {-| -}
-mapSpecificationAttributes : (ta -> tb) -> (va -> vb) -> Specification ta va -> Specification tb vb
+mapSpecificationAttributes : (ta -> tb) -> (va -> vb) -> Specification ta -> Specification tb
 mapSpecificationAttributes tf vf spec =
     Specification
         (spec.types
@@ -117,7 +117,7 @@ mapSpecificationAttributes tf vf spec =
         (spec.values
             |> Dict.map
                 (\_ valueSpec ->
-                    Value.mapSpecificationAttributes vf valueSpec
+                    Value.mapSpecificationAttributes tf valueSpec
                 )
         )
 
@@ -137,6 +137,6 @@ mapDefinitionAttributes tf vf def =
             |> Dict.map
                 (\_ valueDef ->
                     AccessControlled valueDef.access
-                        (Value.mapDefinitionAttributes vf valueDef.value)
+                        (Value.mapDefinitionAttributes tf vf valueDef.value)
                 )
         )
