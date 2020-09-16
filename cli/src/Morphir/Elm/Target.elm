@@ -4,14 +4,14 @@ import Json.Decode as Decode exposing (Error, Value)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.Package as Package
 import Morphir.Scala.Backend
-import Morphir.SpringBoot.Backend
+import Morphir.SpringBoot.Backend as SpringBoot
 import Morphir.SpringBoot.Backend.Codec
 import Morphir.Scala.Backend.Codec
 
 -- possible language generation options
 type BackendOptions
     = ScalaOptions Morphir.Scala.Backend.Options
-    | SpringBootOptions Morphir.SpringBoot.Backend.Options
+    | SpringBootOptions Morphir.Scala.Backend.Options
 
 decodeOptions : Result Error String -> Decode.Decoder BackendOptions
 decodeOptions gen =
@@ -22,5 +22,5 @@ decodeOptions gen =
 mapDistribution : BackendOptions -> Package.Distribution -> FileMap
 mapDistribution back =
     case back of
-            SpringBootOptions options -> Morphir.SpringBoot.Backend.mapDistribution options
+            SpringBootOptions options -> SpringBoot.mapDistribution options
             ScalaOptions options -> Morphir.Scala.Backend.mapDistribution options

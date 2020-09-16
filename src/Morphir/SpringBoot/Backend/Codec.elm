@@ -18,7 +18,7 @@ limitations under the License.
 module Morphir.SpringBoot.Backend.Codec exposing (..)
 
 import Json.Decode as Decode
-import Morphir.SpringBoot.Backend exposing (Options)
+import Morphir.Scala.Backend exposing (Options)
 
 
 decodeOptions : Decode.Decoder Options

@@ -86,6 +86,7 @@ update msg model =
             case Result.map2 Tuple.pair optionsResult packageDistroResult of
                 Ok ( options, packageDist ) ->
                     let
+                        _= Debug.log "mapDistribution" options
                         fileMap =
                             mapDistribution options packageDist
                     in

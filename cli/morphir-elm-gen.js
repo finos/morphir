@@ -17,7 +17,7 @@ program
     .parse(process.argv)
 
 
-cli.gen(program.input, path.resolve(program.output), {})
+cli.gen(program.input, path.resolve(program.output), program.opts())
     .then(() => {
         console.log("Done.")
     })

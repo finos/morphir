@@ -27,18 +27,27 @@ type alias Options =
     }
 
 
-mapDocumented : (a -> Doc) -> Documented a -> Doc
+mapDocumented : (a -> Doc) -> Documented (Annotated a) -> Doc
 mapDocumented valueToDoc documented =
-    case documented.doc of
+    (case documented.doc of
         Just doc ->
             concat
                 [ concat [ "/** ", doc, newLine ]
                 , concat [ "*/", newLine ]
-                , valueToDoc documented.value
                 ]
-
         Nothing ->
-            valueToDoc documented.value
+            ""
+    ) ++
+    (case documented.value.annotation of
+         Just value ->
+            concat
+                [ dotSep value ++ newLine
+                , valueToDoc documented.value.value ++ newLine
+
+                ]
+         Nothing ->
+            valueToDoc documented.value.value
+    )
 
 
 mapCompilationUnit : Options -> CompilationUnit -> Doc
@@ -84,8 +93,23 @@ mapTypeDecl opt typeDecl =
                             decl.ctorArgs
                                 |> List.map (mapArgDecls opt)
                                 |> concat
+                members =
+                    case decl.members of
+                        [] ->
+                            empty
+                        _ ->
+                            newLine
+                            ++ newLine
+                            ++ (decl.members
+                                    |> List.map (mapDocumented (mapMemberDecl opt))
+                                    |> List.intersperse (newLine ++ newLine)
+                                    |> concat
+                                    |> indent opt.indentDepth
+                               )
+                            ++ newLine
+                            ++ newLine
             in
-            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends
+            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ "{" ++ members ++ "}"
 
         Object decl ->
             let
@@ -325,6 +349,19 @@ mapType opt tpe =
             )
                 ++ " => "
                 ++ mapType opt returnType
+
+        TypeParametrized ctor args params->
+            mapType opt ctor
+                ++ newLine
+                ++ "["
+                ++ (args
+                        |> List.map (mapType opt)
+                        |> List.intersperse (", " ++ newLine)
+                        |> concat
+                   )
+                ++ "]("
+                ++ mapType opt params
+                ++ ")"
 
         CommentedType childType message ->
             mapType opt childType ++ " /* " ++ message ++ " */ "
