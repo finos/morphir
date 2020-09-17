@@ -210,3 +210,10 @@ sdkMaybeValues =
     , Maybe.map5 (\a b c d e -> [ a, b, c, d, e ]) (Just 1) (Just 2) (Just 3) (Just 4) (Just 5) == Just [ 1, 2, 3, 4, 5 ]
     , Maybe.withDefault 13 Nothing == 13
     ]
+
+
+fieldFunctionAsArg : List FooBarBazRecord -> List String
+fieldFunctionAsArg list =
+    list
+        |> List.filter (\x -> x.bar)
+        |> List.map .foo

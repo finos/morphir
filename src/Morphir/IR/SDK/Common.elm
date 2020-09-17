@@ -18,20 +18,20 @@
 module Morphir.IR.SDK.Common exposing (..)
 
 import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Module exposing (ModulePath)
+import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name
-import Morphir.IR.Package exposing (PackagePath)
+import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.QName as QName
 import Morphir.IR.Value as Value exposing (Value)
 
 
-packageName : PackagePath
+packageName : PackageName
 packageName =
     Path.fromString "Morphir.SDK"
 
 
-toFQName : ModulePath -> String -> FQName
+toFQName : ModuleName -> String -> FQName
 toFQName modulePath localName =
     localName
         |> Name.fromString
@@ -39,6 +39,6 @@ toFQName modulePath localName =
         |> FQName.fromQName packageName
 
 
-binaryApply : ModulePath -> String -> va -> Value ta va -> Value ta va -> Value ta va
+binaryApply : ModuleName -> String -> va -> Value ta va -> Value ta va -> Value ta va
 binaryApply moduleName localName attributes arg1 arg2 =
     Value.Apply attributes (Value.Apply attributes (Value.Reference attributes (toFQName moduleName localName)) arg1) arg2

@@ -108,8 +108,7 @@ frontendTest =
 
         expected : Package.Definition () ()
         expected =
-            { dependencies = Dict.empty
-            , modules =
+            { modules =
                 Dict.fromList
                     [ ( moduleA
                       , public

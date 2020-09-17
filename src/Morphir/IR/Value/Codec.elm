@@ -467,14 +467,28 @@ encodeSpecification encodeAttributes spec =
           , spec.inputs
                 |> Encode.list
                     (\( argName, argType ) ->
-                        Encode.object
-                            [ ( "argName", encodeName argName )
-                            , ( "argType", encodeType encodeAttributes argType )
+                        Encode.list identity
+                            [ encodeName argName
+                            , encodeType encodeAttributes argType
                             ]
                     )
           )
         , ( "output", encodeType encodeAttributes spec.output )
         ]
+
+
+decodeSpecification : Decode.Decoder ta -> Decode.Decoder (Specification ta)
+decodeSpecification decodeTypeAttributes =
+    Decode.map2 Specification
+        (Decode.field "inputs"
+            (Decode.list
+                (Decode.map2 Tuple.pair
+                    (Decode.index 0 decodeName)
+                    (Decode.index 1 (decodeType decodeTypeAttributes))
+                )
+            )
+        )
+        (Decode.field "output" (decodeType decodeTypeAttributes))
 
 
 encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value) -> Definition ta va -> Encode.Value

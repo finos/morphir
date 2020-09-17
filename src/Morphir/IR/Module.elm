@@ -17,13 +17,26 @@
 
 module Morphir.IR.Module exposing
     ( Specification, Definition
-    , ModulePath, definitionToSpecification, eraseSpecificationAttributes, mapDefinitionAttributes, mapSpecificationAttributes
+    , lookupTypeSpecification, lookupValueSpecification
+    , ModuleName, definitionToSpecification, eraseSpecificationAttributes, mapDefinitionAttributes, mapSpecificationAttributes
     )
 
 {-| Modules are groups of types and values that belong together.
 
+
+# Specification and Definition
+
 @docs Specification, Definition
-@docs ModulePath, definitionToSpecification, eraseSpecificationAttributes, mapDefinitionAttributes, mapSpecificationAttributes
+
+
+# Lookups
+
+@docs lookupTypeSpecification, lookupValueSpecification
+
+
+# Other Utilities
+
+@docs ModuleName, definitionToSpecification, eraseSpecificationAttributes, mapDefinitionAttributes, mapSpecificationAttributes
 
 -}
 
@@ -37,7 +50,7 @@ import Morphir.IR.Value as Value exposing (Value)
 
 
 {-| -}
-type alias ModulePath =
+type alias ModuleName =
     Path
 
 
@@ -63,6 +76,23 @@ type alias Definition ta va =
     { types : Dict Name (AccessControlled (Documented (Type.Definition ta)))
     , values : Dict Name (AccessControlled (Value.Definition ta va))
     }
+
+
+{-| Look up a type specification by its name in a module specification.
+-}
+lookupTypeSpecification : Name -> Specification ta -> Maybe (Type.Specification ta)
+lookupTypeSpecification localName moduleSpec =
+    moduleSpec.types
+        |> Dict.get localName
+        |> Maybe.map .value
+
+
+{-| Look up a value specification by its name in a module specification.
+-}
+lookupValueSpecification : Name -> Specification ta -> Maybe (Value.Specification ta)
+lookupValueSpecification localName moduleSpec =
+    moduleSpec.values
+        |> Dict.get localName
 
 
 {-| -}

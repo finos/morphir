@@ -22,8 +22,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.AccessControlled.Codec exposing (decodeAccessControlled, encodeAccessControlled)
 import Morphir.IR.Module.Codec as ModuleCodec
-import Morphir.IR.Name.Codec exposing (encodeName)
-import Morphir.IR.Package exposing (Definition, Distribution(..), Specification)
+import Morphir.IR.Package exposing (Definition, Specification)
 import Morphir.IR.Path.Codec exposing (decodePath, encodePath)
 
 
@@ -44,21 +43,25 @@ encodeSpecification encodeTypeAttributes spec =
         ]
 
 
+decodeSpecification : Decode.Decoder ta -> Decode.Decoder (Specification ta)
+decodeSpecification decodeAttributes =
+    Decode.map Specification
+        (Decode.field "modules"
+            (Decode.map Dict.fromList
+                (Decode.list
+                    (Decode.map2 Tuple.pair
+                        (Decode.field "name" decodePath)
+                        (Decode.field "spec" (ModuleCodec.decodeSpecification decodeAttributes))
+                    )
+                )
+            )
+        )
+
+
 encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value) -> Definition ta va -> Encode.Value
 encodeDefinition encodeTypeAttributes encodeValueAttributes def =
     Encode.object
-        [ ( "dependencies"
-          , def.dependencies
-                |> Dict.toList
-                |> Encode.list
-                    (\( packageName, packageSpec ) ->
-                        Encode.object
-                            [ ( "name", encodePath packageName )
-                            , ( "spec", encodeSpecification encodeTypeAttributes packageSpec )
-                            ]
-                    )
-          )
-        , ( "modules"
+        [ ( "modules"
           , def.modules
                 |> Dict.toList
                 |> Encode.list
@@ -74,10 +77,7 @@ encodeDefinition encodeTypeAttributes encodeValueAttributes def =
 
 decodeDefinition : Decode.Decoder ta -> Decode.Decoder va -> Decode.Decoder (Definition ta va)
 decodeDefinition decodeAttributes decodeAttributes2 =
-    Decode.map2 Definition
-        (Decode.field "dependencies"
-            (Decode.succeed Dict.empty)
-        )
+    Decode.map Definition
         (Decode.field "modules"
             (Decode.map Dict.fromList
                 (Decode.list
@@ -88,30 +88,3 @@ decodeDefinition decodeAttributes decodeAttributes2 =
                 )
             )
         )
-
-
-encodeDistribution : Distribution -> Encode.Value
-encodeDistribution distro =
-    case distro of
-        Library packagePath def ->
-            Encode.list identity
-                [ Encode.string "library"
-                , encodePath packagePath
-                , encodeDefinition (\_ -> Encode.object []) (\_ -> Encode.object []) def
-                ]
-
-
-decodeDistribution : Decode.Decoder Distribution
-decodeDistribution =
-    Decode.index 0 Decode.string
-        |> Decode.andThen
-            (\kind ->
-                case kind of
-                    "library" ->
-                        Decode.map2 Library
-                            (Decode.index 1 decodePath)
-                            (Decode.index 2 (decodeDefinition (Decode.succeed ()) (Decode.succeed ())))
-
-                    other ->
-                        Decode.fail <| "Unknown value type: " ++ other
-            )
