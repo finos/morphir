@@ -30,7 +30,7 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
-import Morphir.Scala.AST as Scala
+import Morphir.Scala.AST as Scala exposing (MemberDecl(..))
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
 
@@ -136,6 +136,17 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                                                     )
                                                 |> List.singleton
                                         , extends = []
+                                        , members =
+                                            mapFunctionsToMethods currentPackagePath
+                                                currentModulePath
+                                                typeName
+                                                (accessControlledModuleDef.value.values
+                                                    |> Dict.toList
+                                                    |> List.map
+                                                        (\( valueName, valueDef ) ->
+                                                            ( valueName, valueDef.value |> Value.definitionToSpecification )
+                                                        )
+                                                )
                                         }
                                     )
                                 ]
@@ -152,7 +163,13 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                                 ]
 
                             Type.CustomTypeDefinition typeParams accessControlledCtors ->
-                                mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams accessControlledCtors
+                                mapCustomTypeDefinition
+                                    currentPackagePath
+                                    currentModulePath
+                                    accessControlledModuleDef.value
+                                    typeName
+                                    typeParams
+                                    accessControlledCtors
                     )
 
         functionMembers : List Scala.MemberDecl
@@ -230,8 +247,8 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
     [ moduleUnit ]
 
 
-mapCustomTypeDefinition : Package.PackageName -> Path -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
-mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams accessControlledCtors =
+mapCustomTypeDefinition : Package.PackageName -> Path -> Module.Definition ta va -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
+mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
     let
         caseClass name args extends =
             if List.isEmpty args then
@@ -259,6 +276,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams
                                 )
                             |> List.singleton
                     , extends = extends
+                    , members = []
                     }
 
         parentTraitRef =
@@ -271,7 +289,17 @@ mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams
                         , name = typeName |> Name.toTitleCase
                         , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
                         , extends = []
-                        , members = []
+                        , members =
+                            mapFunctionsToMethods currentPackagePath
+                                currentModulePath
+                                typeName
+                                (moduleDef.values
+                                    |> Dict.toList
+                                    |> List.map
+                                        (\( valueName, valueDef ) ->
+                                            ( valueName, valueDef.value |> Value.definitionToSpecification )
+                                        )
+                                )
                         }
                   ]
                 , accessControlledCtors.value
@@ -298,6 +326,77 @@ mapCustomTypeDefinition currentPackagePath currentModulePath typeName typeParams
 
         _ ->
             sealedTraitHierarchy |> List.map Scala.MemberTypeDecl
+
+
+{-| Collect functions where the last input argument is this type and turn them into methods on the type.
+-}
+mapFunctionsToMethods : Path -> Path -> Name -> List ( Name, Value.Specification ta ) -> List Scala.MemberDecl
+mapFunctionsToMethods currentPackageName currentModuleName currentTypeName valueSpecifications =
+    valueSpecifications
+        |> List.filterMap
+            (\( valueName, valueSpec ) ->
+                case List.reverse valueSpec.inputs of
+                    [] ->
+                        -- if this is a value (function with no arguments) then we don't turn it into a method
+                        Nothing
+
+                    ( _, lastInputType ) :: restOfInputsReversed ->
+                        -- if the last argument type of the function is
+                        let
+                            inputs =
+                                List.reverse restOfInputsReversed
+                        in
+                        case lastInputType of
+                            Type.Reference _ fQName [] ->
+                                if fQName == FQName currentPackageName currentModuleName currentTypeName then
+                                    Just
+                                        (FunctionDecl
+                                            { modifiers = []
+                                            , name = valueName |> Name.toCamelCase
+                                            , typeArgs = []
+                                            , args =
+                                                if List.isEmpty inputs then
+                                                    []
+
+                                                else
+                                                    [ inputs
+                                                        |> List.map
+                                                            (\( argName, argType ) ->
+                                                                { modifiers = []
+                                                                , tpe = mapType argType
+                                                                , name = argName |> Name.toCamelCase
+                                                                , defaultValue = Nothing
+                                                                }
+                                                            )
+                                                    ]
+                                            , returnType =
+                                                Just (mapType valueSpec.output)
+                                            , body =
+                                                let
+                                                    ( path, name ) =
+                                                        mapFQNameToPathAndName (FQName currentPackageName currentModuleName valueName)
+                                                in
+                                                Just
+                                                    (Scala.Apply (Scala.Ref path (name |> Name.toCamelCase))
+                                                        (List.append
+                                                            (inputs
+                                                                |> List.map
+                                                                    (\( argName, _ ) ->
+                                                                        Scala.ArgValue Nothing (Scala.Variable (argName |> Name.toCamelCase))
+                                                                    )
+                                                            )
+                                                            [ Scala.ArgValue Nothing Scala.This ]
+                                                        )
+                                                    )
+                                            }
+                                        )
+
+                                else
+                                    Nothing
+
+                            _ ->
+                                Nothing
+            )
 
 
 mapType : Type a -> Scala.Type
@@ -465,15 +564,19 @@ mapFunctionBody distribution val =
                                             -- take the last arg and apply the rest of the args on it
                                             case List.reverse args of
                                                 lastArg :: restOfArgsReversed ->
-                                                    Scala.Apply
-                                                        (Scala.Select (mapValue lastArg) (localName |> Name.toCamelCase))
-                                                        (restOfArgsReversed
-                                                            |> List.reverse
-                                                            |> List.map
-                                                                (\argValue ->
-                                                                    Scala.ArgValue Nothing (mapValue argValue)
-                                                                )
-                                                        )
+                                                    if List.isEmpty restOfArgsReversed then
+                                                        Scala.Select (mapValue lastArg) (localName |> Name.toCamelCase)
+
+                                                    else
+                                                        Scala.Apply
+                                                            (Scala.Select (mapValue lastArg) (localName |> Name.toCamelCase))
+                                                            (restOfArgsReversed
+                                                                |> List.reverse
+                                                                |> List.map
+                                                                    (\argValue ->
+                                                                        Scala.ArgValue Nothing (mapValue argValue)
+                                                                    )
+                                                            )
 
                                                 _ ->
                                                     curried

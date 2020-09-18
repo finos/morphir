@@ -81,6 +81,7 @@ type TypeDecl
         , typeArgs : List Type
         , ctorArgs : List (List ArgDecl)
         , extends : List Type
+        , members : List MemberDecl
         }
     | Object
         { modifiers : List Mod
@@ -152,6 +153,7 @@ type Value
     | Tuple (List Value)
     | StructuralValue (List ( Name, Value ))
     | Unit
+    | This
     | CommentedValue Value String
 
 

@@ -1,6 +1,6 @@
 module Morphir.Reference.Model.Values exposing (..)
 
-import Morphir.Reference.Model.Types exposing (Custom(..), FooBarBazRecord)
+import Morphir.Reference.Model.Types as Types exposing (Custom(..), FooBarBazRecord)
 import String exposing (fromInt)
 
 
@@ -217,3 +217,18 @@ fieldFunctionAsArg list =
     list
         |> List.filter (\x -> x.bar)
         |> List.map .foo
+
+
+functionToMethod1 : Int
+functionToMethod1 =
+    Types.customToInt CustomNoArg
+
+
+functionToMethod2 : Int
+functionToMethod2 =
+    Types.customToInt2 False (CustomOneArg True)
+
+
+functionToMethod3 : String
+functionToMethod3 =
+    Types.fooBarBazToString (FooBarBazRecord "foo" False 43)

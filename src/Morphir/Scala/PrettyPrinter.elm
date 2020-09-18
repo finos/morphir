@@ -84,8 +84,27 @@ mapTypeDecl opt typeDecl =
                             decl.ctorArgs
                                 |> List.map (mapArgDecls opt)
                                 |> concat
+
+                bodyDoc =
+                    case decl.members of
+                        [] ->
+                            empty
+
+                        _ ->
+                            " {"
+                                ++ newLine
+                                ++ newLine
+                                ++ (decl.members
+                                        |> List.map (mapMemberDecl opt)
+                                        |> List.intersperse (newLine ++ newLine)
+                                        |> concat
+                                        |> indent opt.indentDepth
+                                   )
+                                ++ newLine
+                                ++ newLine
+                                ++ "}"
             in
-            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends
+            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ bodyDoc
 
         Object decl ->
             let
@@ -447,6 +466,9 @@ mapValue opt value =
 
         Unit ->
             "{}"
+
+        This ->
+            "this"
 
         CommentedValue childValue message ->
             mapValue opt childValue ++ " /* " ++ message ++ " */ "
