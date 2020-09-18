@@ -20,16 +20,17 @@ module Morphir.SpringBoot.Backend exposing (..)
 import Dict
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.SourceCode exposing (dotSep)
-import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.Documented as Doc exposing (Documented)
 import Morphir.IR.FQName exposing (FQName(..))
-import Morphir.IR.Module as Module
+import Morphir.IR.Module as Module exposing (Definition)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Value(..))
 import Morphir.SDK.Annotations exposing (Annotations(..), mapCustomTypeDefinition, mapType)
-import Morphir.Scala.AST exposing (Annotated, CompilationUnit, Documented, MemberDecl(..), Mod(..), Type(..), TypeDecl(..), ArgDecl)
+import Morphir.Scala.AST as Scala exposing (Annotated, ArgDecl, CompilationUnit, Documented, MemberDecl(..), Mod(..), Type(..), TypeDecl(..))
 import Morphir.Scala.Backend exposing (mapValue)
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 
@@ -84,14 +85,47 @@ mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControll
                                         _ -> []
                                 _ -> []
                 _ -> []
-        _ = Debug.log "functionName" functionName
+
+        _ = Debug.log "accessControlledModuleDef.value.types" accessControlledModuleDef.value.types
+
+
+        statefulAppTypes : List (Type.Type ta)
+        statefulAppTypes =
+            accessControlledModuleDef.value.values
+                |> Dict.toList
+                    |> List.concatMap
+                        (\( _, a ) ->
+                            case a.value.outputType of
+                                Type.Reference _ (FQName _ _ name) list ->
+                                    case (name |> Name.toTitleCase) of
+                                        "StatefulApp" -> list
+                                        _ -> []
+                                _ -> []
+                        )
+
+        _ = Debug.log "statefulAppTypes" statefulAppTypes
+
+        innerTypes : List ( Name, AccessControlled (Doc.Documented (Type.Definition ())) )
+        innerTypes =
+            case accessControlledModuleDef.access of
+                Public ->
+                    case accessControlledModuleDef.value of
+                        { types, values } ->
+                            Dict.remove (Name.fromString "app") types
+                                |> Dict.map (\_ acsCtrlTypeDef -> acsCtrlTypeDef |> AccessControlled.map (Doc.map Type.eraseAttributes))
+                                |> Dict.toList
+
+                _ ->
+                    []
+
+        _ = Debug.log "innerTypes" innerTypes
 
         statefulAppConsTypes : List Type
         statefulAppConsTypes =
             accessControlledModuleDef.value.values
                 |> Dict.toList
                     |> List.concatMap
-                        (\( valueName, accessControlledValueDef ) ->
+                        (\( _, accessControlledValueDef ) ->
                             case (accessControlledValueDef.value.inputTypes, accessControlledValueDef.value.outputType) of
                                 ((stateVariable :: commandVariable :: []) , Type.Tuple _ (stateType :: eventType :: []) ) ->
                                         [mapType eventType]
@@ -105,50 +139,56 @@ mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControll
                                 _ -> []
                         )
 
-        statefulAppDefinition :  List (Documented (Annotated MemberDecl))
-        statefulAppDefinition =
-            accessControlledModuleDef.value.values
+        ( scalaPackagePath, moduleName ) =
+                    case currentModulePath |> List.reverse of
+                        [] ->
+                            ( [], [] )
+
+                        lastName :: reverseModulePath ->
+                            ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
+
+        stateFulImplAdapter : CompilationUnit
+        stateFulImplAdapter =
+            { dirPath = scalaPackagePath
+            , fileName = (moduleName |> Name.toTitleCase) ++ "SpringBoot1" ++ ".scala"
+            , packageDecl = ["morphir.sdk"]
+            , imports = []
+            , typeDecls =
+                [
+                 (Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                    (Annotated (Just ["@org.springframework.web.bind.annotation.RestController"])
+                         <|
+                         (Class
+                             { modifiers =
+                                 []
+                             , name =
+                                 (moduleName |> Name.toTitleCase) ++ "SpringBoot"
+                             , typeArgs =
+                                 []
+                             , ctorArgs =
+                                 []
+                             , extends =
+                                 [TypeParametrized (TypeVar "SpringBootStatefulAppAdapter")
+                                    statefulAppConsTypes (TypeVar ("StatefulApp (" ++ (dotSep scalaPackagePath) ++
+                                            "." ++ (moduleName |> Name.toTitleCase) ++ "."
+                                            ++ (functionName |> Name.toList |> String.join "") ++ ")" ))]
+                             , members =
+                                 []
+                             }
+                         )
+                    )
+                 )
+                ]
+            }
+
+        typeNames : List Name
+        typeNames =
+            accessControlledModuleDef.value.types
                 |> Dict.toList
-                    |> List.concatMap
-                        (\( valueName, accessControlledValueDef ) ->
-                            case (accessControlledValueDef.value.inputTypes, accessControlledValueDef.value.outputType) of
-                                ((stateVariable :: commandVariable :: []) , Type.Tuple _ (stateType :: eventType :: []) ) ->
-                                    [(Documented (Nothing)
-                                       (Annotated (Just ["@org.springframework.web.bind.annotation.RequestMapping(value = Array(\"/" ++ (valueName |> Name.toCamelCase) ++ "\"), method = Array(org.springframework.web.bind.annotation.RequestMethod.GET))"])
-                                       <|
-                                        (FunctionDecl
-                                            { modifiers = []
-                                            , name =
-                                                (valueName |> Name.toCamelCase)
-                                            , typeArgs =
-                                                []
-                                            , args =
-                                                if List.isEmpty accessControlledValueDef.value.inputTypes then
-                                                    []
-                                                else
-                                                    [ accessControlledValueDef.value.inputTypes
-                                                        |> List.map
-                                                            (\( argName, a, argType ) ->
-                                                                { modifiers = []
-                                                                , tpe = mapType argType
-                                                                , name = argName |> Name.toCamelCase
-                                                                , defaultValue = Nothing
-                                                                }
-                                                            )
-                                                    ]
-                                            , returnType =
-                                                Just (mapType accessControlledValueDef.value.outputType)
-                                            , body =
-                                               Just (mapValue accessControlledValueDef.value.body)
-                                            }
-                                         )
-                                        )
-                                        )]
-                                _ ->
-                                    []
+                |> List.map
+                    (\(typeName, _) -> typeName)
 
-                        )
-
+        _ = Debug.log "TypeNames" typeNames
         typeMembers : List MemberDecl
         typeMembers =
             accessControlledModuleDef.value.types
@@ -193,52 +233,37 @@ mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControll
                                 ]
 
                             Type.CustomTypeDefinition typeParams accessControlledCtors ->
-                                    mapCustomTypeDefinition Nothing currentPackagePath currentModulePath typeName typeParams accessControlledCtors
+                                    mapCustomTypeDefinition (Just (JACKSON)) currentPackagePath currentModulePath typeName typeParams accessControlledCtors
                     )
 
-        ( scalaPackagePath, moduleName ) =
-                    case currentModulePath |> List.reverse of
-                        [] ->
-                            ( [], [] )
-
-                        lastName :: reverseModulePath ->
-                            ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
-
-        moduleUnit : CompilationUnit
-        moduleUnit =
-            { dirPath = scalaPackagePath
-            , fileName = (moduleName |> Name.toTitleCase) ++ "SpringBoot1" ++ ".scala"
-            , packageDecl = ["morphir.sdk"]
-            , imports = []
-            , typeDecls =
-                [
-                 (Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Annotated (Just ["@org.springframework.web.bind.annotation.RestController"])
-                         <|
-                         (Class
-                             { modifiers =
-                                 []
-                             , name =
-                                 (moduleName |> Name.toTitleCase) ++ "SpringBoot"
-                             , typeArgs =
-                                 []
-                             , ctorArgs =
-                                 []
-                             , extends =
-                                 [TypeParametrized (TypeVar "SpringBootStatefulAppAdapter")
-                                    statefulAppConsTypes (TypeVar ("StatefulApp (" ++ (dotSep scalaPackagePath) ++
-                                            "." ++ (moduleName |> Name.toTitleCase) ++ "."
-                                            ++ (functionName |> Name.toList |> String.join "") ++ ")" ))]
-                             , members =
-                                 []
-                             }
+        statefulImpl : CompilationUnit
+        statefulImpl =
+                    { dirPath = scalaPackagePath
+                    , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
+                    , packageDecl = scalaPackagePath
+                    , imports = []
+                    , typeDecls =
+                        [
+                         (Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                            (Annotated (Nothing)
+                                 <|
+                                 (Object
+                                     { modifiers =
+                                         []
+                                     , name =
+                                         (moduleName |> Name.toTitleCase)
+                                     , extends =
+                                         []
+                                     , members =
+                                         typeMembers
+                                     }
+                                 )
+                            )
                          )
-                    )
-                 )
-                ]
-            }
+                        ]
+                    }
     in
-    [ moduleUnit ]
+    [ stateFulImplAdapter, statefulImpl ]
 
 
 mapStatefulAppDefinitionOld : Options -> Package.PackagePath -> Path -> AccessControlled (Module.Definition ta tv) -> List CompilationUnit
@@ -263,7 +288,7 @@ mapStatefulAppDefinitionOld opt currentPackagePath currentModulePath accessContr
                 _ -> []
         _ = Debug.log "functionName" functionName
 
-        statefulAppDefinition :  List (Documented (Annotated MemberDecl))
+        statefulAppDefinition :  List (Scala.Documented (Annotated MemberDecl))
         statefulAppDefinition =
             accessControlledModuleDef.value.values
                 |> Dict.toList
@@ -271,7 +296,7 @@ mapStatefulAppDefinitionOld opt currentPackagePath currentModulePath accessContr
                         (\( valueName, accessControlledValueDef ) ->
                             case (accessControlledValueDef.value.inputTypes, accessControlledValueDef.value.outputType) of
                                 ((stateVariable :: commandVariable :: []) , Type.Tuple _ (stateType :: eventType :: []) ) ->
-                                    [(Documented (Nothing)
+                                    [(Scala.Documented (Nothing)
                                        (Annotated (Just ["@org.springframework.web.bind.annotation.RequestMapping(value = Array(\"/" ++ (valueName |> Name.toCamelCase) ++ "\"), method = Array(org.springframework.web.bind.annotation.RequestMethod.GET))"])
                                        <|
                                         (FunctionDecl
@@ -370,7 +395,7 @@ mapStatefulAppDefinitionOld opt currentPackagePath currentModulePath accessContr
             , imports = []
             , typeDecls =
                 [
-                 (Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                 (Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
                     (Annotated (Just ["@org.springframework.web.bind.annotation.RestController"])
                          <|
                          (Class
@@ -388,7 +413,7 @@ mapStatefulAppDefinitionOld opt currentPackagePath currentModulePath accessContr
                                  typeMembers
                                    |> List.map
                                      (\( typed ) ->
-                                         (Documented (Nothing)
+                                         (Scala.Documented (Nothing)
                                             (Annotated (Nothing)
                                              <| typed
                                              )
