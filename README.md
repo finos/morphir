@@ -74,8 +74,8 @@ common package prefix. In the above example `Foo` refers to the Elm module `My.P
   - Root directory of the project where morphir.json is located. 
   - Defaults to current directory.
 - `--output <path>`, `-o`
-  - Target location where the Morphir IR will be sent
-  - Defaults to STDOUT.
+  - Target location where the Morphir IR will be saved.
+  - Defaults to `morphir-ir.json`.
 
 ### Transpile Morphir IR into Scala
 
@@ -89,7 +89,7 @@ morphir-elm gen [options]
 
 - `--input <path>`, `-i` 
   - Source location where the Morphir IR will be loaded from. 
-  - Defaults to STDIN.
+  - Defaults to `morphir-ir.json`.
 - `--output <path>`, `-o`
   - Target location where the generated code will be saved. 
   - Defaults to `./dist`.

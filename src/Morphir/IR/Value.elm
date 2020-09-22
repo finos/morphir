@@ -22,7 +22,7 @@ module Morphir.IR.Value exposing
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
-    , definitionToSpecification, uncurryApply
+    , definitionToSpecification, uncurryApply, collectVariables
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -64,7 +64,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 # Utilities
 
-@docs definitionToSpecification, uncurryApply
+@docs definitionToSpecification, uncurryApply, collectVariables
 
 -}
 
@@ -74,6 +74,7 @@ import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.ListOfResults as ListOfResults
+import Set exposing (Set)
 import String
 
 
@@ -301,6 +302,74 @@ mapDefinitionAttributes f g d =
         (d.inputTypes |> List.map (\( name, attr, tpe ) -> ( name, g attr, Type.mapTypeAttributes f tpe )))
         (Type.mapTypeAttributes f d.outputType)
         (mapValueAttributes f g d.body)
+
+
+{-| Collect all variables in a value recursively.
+-}
+collectVariables : Value ta va -> Set Name
+collectVariables value =
+    let
+        collectUnion : List (Value ta va) -> Set Name
+        collectUnion values =
+            values
+                |> List.map collectVariables
+                |> List.foldl Set.union Set.empty
+    in
+    case value of
+        Tuple _ elements ->
+            collectUnion elements
+
+        List _ items ->
+            collectUnion items
+
+        Record _ fields ->
+            collectUnion (fields |> List.map Tuple.second)
+
+        Variable _ name ->
+            Set.singleton name
+
+        Field _ subjectValue _ ->
+            collectVariables subjectValue
+
+        Apply _ function argument ->
+            collectUnion [ function, argument ]
+
+        Lambda _ _ body ->
+            collectVariables body
+
+        LetDefinition _ valueName valueDefinition inValue ->
+            collectUnion [ valueDefinition.body, inValue ]
+                |> Set.insert valueName
+
+        LetRecursion _ valueDefinitions inValue ->
+            List.foldl Set.union
+                Set.empty
+                (valueDefinitions
+                    |> Dict.toList
+                    |> List.map
+                        (\( defName, def ) ->
+                            collectVariables def.body
+                                |> Set.insert defName
+                        )
+                    |> List.append [ collectVariables inValue ]
+                )
+
+        Destructure _ _ valueToDestruct inValue ->
+            collectUnion [ valueToDestruct, inValue ]
+
+        IfThenElse _ condition thenBranch elseBranch ->
+            collectUnion [ condition, thenBranch, elseBranch ]
+
+        PatternMatch _ branchOutOn cases ->
+            collectUnion (cases |> List.map Tuple.second)
+                |> Set.union (collectVariables branchOutOn)
+
+        UpdateRecord _ valueToUpdate fieldsToUpdate ->
+            collectUnion (fieldsToUpdate |> List.map Tuple.second)
+                |> Set.union (collectVariables valueToUpdate)
+
+        _ ->
+            Set.empty
 
 
 

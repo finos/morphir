@@ -93,6 +93,25 @@ mapTypeDecl opt typeDecl =
                             decl.ctorArgs
                                 |> List.map (mapArgDecls opt)
                                 |> concat
+
+                bodyDoc =
+                    case decl.members of
+                        [] ->
+                            empty
+
+                        _ ->
+                            " {"
+                                ++ newLine
+                                ++ newLine
+                                ++ (decl.members
+                                        |> List.map (mapMemberDecl opt)
+                                        |> List.intersperse (newLine ++ newLine)
+                                        |> concat
+                                        |> indent opt.indentDepth
+                                   )
+                                ++ newLine
+                                ++ newLine
+                                ++ "}"
                 members =
                     case decl.members of
                         [] ->
@@ -109,6 +128,7 @@ mapTypeDecl opt typeDecl =
                             ++ newLine
                             ++ newLine
             in
+            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ bodyDoc
             mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ "{" ++ members ++ "}"
 
         Object decl ->
@@ -485,6 +505,9 @@ mapValue opt value =
         Unit ->
             "{}"
 
+        This ->
+            "this"
+
         CommentedValue childValue message ->
             mapValue opt childValue ++ " /* " ++ message ++ " */ "
 
@@ -575,20 +598,37 @@ statementBlock opt statements =
 
 argValueBlock : Options -> List ArgValue -> Doc
 argValueBlock opt argValues =
-    parens
-        (argValues
-            |> List.map
-                (\(ArgValue name value) ->
-                    case name of
-                        Just argName ->
-                            argName ++ " = " ++ mapValue opt value
+    let
+        mapArgValue (ArgValue name value) =
+            case name of
+                Just argName ->
+                    argName ++ " = " ++ mapValue opt value
 
-                        Nothing ->
-                            mapValue opt value
-                )
-            |> List.intersperse ", "
-            |> concat
-        )
+                Nothing ->
+                    mapValue opt value
+    in
+    case argValues of
+        [ singleArgValue ] ->
+            parens (mapArgValue singleArgValue)
+
+        _ ->
+            concat
+                [ "("
+                , newLine
+                , indentLines opt.indentDepth
+                    (argValues
+                        |> List.indexedMap
+                            (\index argValue ->
+                                if (index + 1) == List.length argValues then
+                                    mapArgValue argValue
+
+                                else
+                                    concat [ mapArgValue argValue, "," ]
+                            )
+                    )
+                , newLine
+                , ")"
+                ]
 
 
 matchBlock : Options -> List ( String, String ) -> Doc

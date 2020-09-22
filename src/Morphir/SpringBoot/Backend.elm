@@ -23,7 +23,7 @@ import Morphir.File.SourceCode exposing (dotSep)
 import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Documented as Doc exposing (Documented)
 import Morphir.IR.FQName exposing (FQName(..))
-import Morphir.IR.Module as Module exposing (Definition)
+import Morphir.IR.Module as Module exposing (Definition, ModulePath)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
@@ -86,39 +86,27 @@ mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControll
                                 _ -> []
                 _ -> []
 
-        _ = Debug.log "accessControlledModuleDef.value.types" accessControlledModuleDef.value.types
+        _ = Debug.log "accessControlledModuleDef.value.values" accessControlledModuleDef.value.values
 
 
-        statefulAppTypes : List (Type.Type ta)
+        statefulAppTypes : List Type
         statefulAppTypes =
             accessControlledModuleDef.value.values
                 |> Dict.toList
                     |> List.concatMap
                         (\( _, a ) ->
                             case a.value.outputType of
-                                Type.Reference _ (FQName _ _ name) list ->
-                                    case (name |> Name.toTitleCase) of
-                                        "StatefulApp" -> list
+                                Type.Reference _ (FQName mod package name) list ->
+                                    case ((Path.toString Name.toTitleCase "." mod ),
+                                            (Path.toString Name.toTitleCase "." package ),
+                                            (name |> Name.toTitleCase)) of
+                                        ("Morphir.SDK", "StatefulApp", "StatefulApp") ->
+                                            List.map mapType list
                                         _ -> []
                                 _ -> []
                         )
 
         _ = Debug.log "statefulAppTypes" statefulAppTypes
-
-        innerTypes : List ( Name, AccessControlled (Doc.Documented (Type.Definition ())) )
-        innerTypes =
-            case accessControlledModuleDef.access of
-                Public ->
-                    case accessControlledModuleDef.value of
-                        { types, values } ->
-                            Dict.remove (Name.fromString "app") types
-                                |> Dict.map (\_ acsCtrlTypeDef -> acsCtrlTypeDef |> AccessControlled.map (Doc.map Type.eraseAttributes))
-                                |> Dict.toList
-
-                _ ->
-                    []
-
-        _ = Debug.log "innerTypes" innerTypes
 
         statefulAppConsTypes : List Type
         statefulAppConsTypes =
@@ -169,7 +157,7 @@ mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControll
                                  []
                              , extends =
                                  [TypeParametrized (TypeVar "SpringBootStatefulAppAdapter")
-                                    statefulAppConsTypes (TypeVar ("StatefulApp (" ++ (dotSep scalaPackagePath) ++
+                                    statefulAppTypes (TypeVar ("StatefulApp (" ++ (dotSep scalaPackagePath) ++
                                             "." ++ (moduleName |> Name.toTitleCase) ++ "."
                                             ++ (functionName |> Name.toList |> String.join "") ++ ")" ))]
                              , members =
@@ -189,51 +177,76 @@ mapStatefulAppDefinition opt currentPackagePath currentModulePath accessControll
                     (\(typeName, _) -> typeName)
 
         _ = Debug.log "TypeNames" typeNames
+
+        typeNamesStatefulApp : List Scala.Name
+        typeNamesStatefulApp =
+            case statefulAppTypes of
+                (keyType :: (TypeRef _ commandTypeName) :: (TypeRef _ stateTypeName) :: (TypeRef _ eventTypeName) :: []) ->
+                    [commandTypeName, stateTypeName, eventTypeName]
+                _ -> []
+
+
         typeMembers : List MemberDecl
         typeMembers =
             accessControlledModuleDef.value.types
                 |> Dict.toList
                 |> List.concatMap
                     (\( typeName, accessControlledDocumentedTypeDef ) ->
-                        case accessControlledDocumentedTypeDef.value.value of
-                            Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
-                                [
-                                    MemberTypeDecl
-                                    (Class
-                                        { modifiers = [ Case ]
-                                        , name = typeName |> Name.toTitleCase
-                                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> TypeVar)
-                                        , ctorArgs =
-                                            fields
-                                                |> List.map
-                                                    (\field ->
-                                                        { modifiers = []
-                                                        , tpe = mapType field.tpe
-                                                        , name = ""
-                                                        , defaultValue = Nothing
-                                                        }
-                                                    )
-                                                |> List.singleton
-                                        , extends = []
-                                        , members = []
+                        let
+                            _ = Debug.log "typeName" (typeName |> Name.toTitleCase)
+                            _ = Debug.log "typeNames" typeNamesStatefulApp
+                            _ = Debug.log "accessControlledDocumentedTypeDef.value.value" accessControlledDocumentedTypeDef.value.value
+                        in
+                        if (List.member (typeName |> Name.toTitleCase) typeNamesStatefulApp) then
+                            case accessControlledDocumentedTypeDef.value.value of
+                                Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
+                                    [
+                                        MemberTypeDecl
+                                        (Class
+                                            { modifiers = [ Case ]
+                                            , name = typeName |> Name.toTitleCase
+                                            , typeArgs = typeParams |> List.map (Name.toTitleCase >> TypeVar)
+                                            , ctorArgs =
+                                                fields
+                                                    |> List.map
+                                                        (\field ->
+                                                            { modifiers = []
+                                                            , tpe = mapType field.tpe
+                                                            , name = ""
+                                                            , defaultValue = Nothing
+                                                            }
+                                                        )
+                                                    |> List.singleton
+                                            , extends = []
+                                            , members = []
+                                            }
+                                        )
+                                    ]
+
+                                Type.TypeAliasDefinition typeParams typeExp ->
+                                    [
+                                        TypeAlias
+                                        { alias =
+                                            typeName |> Name.toTitleCase
+                                        , typeArgs =
+                                            typeParams |> List.map (Name.toTitleCase >> TypeVar)
+                                        , tpe =
+                                            mapType typeExp
                                         }
-                                    )
-                                ]
+                                    ]
 
-                            Type.TypeAliasDefinition typeParams typeExp ->
-                                [
-                                    TypeAlias
-                                    { alias =
-                                        typeName |> Name.toTitleCase
-                                    , typeArgs =
-                                        typeParams |> List.map (Name.toTitleCase >> TypeVar)
-                                    , tpe =
-                                        mapType typeExp
-                                    }
-                                ]
+                                Type.CustomTypeDefinition typeParams accessControlledCtors ->
+                                    let
+                                        _ = Debug.log "typeParams" typeParams
+                                        _ = Debug.log "accessControlledCtors" accessControlledCtors
 
-                            Type.CustomTypeDefinition typeParams accessControlledCtors ->
-                                    mapCustomTypeDefinition (Just (JACKSON)) currentPackagePath currentModulePath typeName typeParams accessControlledCtors
+                                        innerTypes: List Scala.Name
+                                    in
+                                        List.append (accessControlledCtors
+                                        |> List.map (\)
+                                        (mapCustomTypeDefinition (Just (JACKSON)) currentPackagePath currentModulePath typeName typeParams accessControlledCtors)
+                        else
+                            []
                     )
 
         statefulImpl : CompilationUnit

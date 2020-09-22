@@ -18,12 +18,14 @@
 port module Morphir.Elm.CLI exposing (main)
 
 import Dict
-import Json.Decode as Decode exposing (field, string)
+import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile)
 import Morphir.Elm.Frontend.Codec exposing (decodePackageInfo, encodeError)
 import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.Package as Package
 import Morphir.IR.Package.Codec as PackageCodec
 
@@ -66,9 +68,9 @@ update msg model =
                         result =
                             Frontend.packageDefinitionFromSource packageInfo Dict.empty sourceFiles
                                 |> Result.map Package.eraseDefinitionAttributes
-                                |> Result.map (Package.Library packageInfo.name)
+                                |> Result.map (Distribution.Library packageInfo.name Dict.empty)
                     in
-                    ( model, result |> encodeResult (Encode.list encodeError) PackageCodec.encodeDistribution |> packageDefinitionFromSourceResult )
+                    ( model, result |> encodeResult (Encode.list encodeError) DistributionCodec.encodeDistribution |> packageDefinitionFromSourceResult )
 
                 Err errorMessage ->
                     ( model, errorMessage |> Decode.errorToString |> decodeError )
@@ -81,14 +83,18 @@ update msg model =
                     Decode.decodeValue (decodeOptions targetOption) optionsJson
 
                 packageDistroResult =
-                    Decode.decodeValue PackageCodec.decodeDistribution packageDistJson
+                    Decode.decodeValue DistributionCodec.decodeDistribution packageDistJson
             in
             case Result.map2 Tuple.pair optionsResult packageDistroResult of
                 Ok ( options, packageDist ) ->
                     let
-                        _= Debug.log "mapDistribution" options
+                        enrichedDistro =
+                            case packageDist of
+                                Library packageName dependencies packageDef ->
+                                    Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
+
                         fileMap =
-                            mapDistribution options packageDist
+                            Backend.mapDistribution options enrichedDistro
                     in
                     ( model, fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult )
 

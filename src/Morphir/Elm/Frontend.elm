@@ -257,8 +257,7 @@ packageDefinitionFromSource packageInfo dependencies sourceFiles =
             )
         |> Result.map
             (\moduleDefs ->
-                { dependencies = Dict.empty
-                , modules =
+                { modules =
                     moduleDefs
                         |> Dict.toList
                         |> List.map

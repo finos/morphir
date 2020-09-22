@@ -19,14 +19,14 @@ module Morphir.IR.SDK.StatefulApp exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.Module as Module exposing (ModulePath)
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value
 
 
-moduleName : ModulePath
+moduleName : ModuleName
 moduleName =
     Path.fromString "StatefulAp"
 

@@ -159,6 +159,7 @@ type Value
     | Tuple (List Value)
     | StructuralValue (List ( Name, Value ))
     | Unit
+    | This
     | CommentedValue Value String
 
 

@@ -16,46 +16,48 @@
 
 
 module Morphir.IR.Package exposing
-    ( Distribution(..)
-    , Specification
+    ( Specification
     , Definition, emptyDefinition
-    , PackagePath, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
+    , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification
+    , PackageName, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
     )
 
 {-| Tools to work with packages.
-
-@docs Distribution
 
 @docs Specification
 
 @docs Definition, emptyDefinition
 
-@docs PackagePath, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
+
+# Lookups
+
+@docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification
+
+
+# Other utilities
+
+@docs PackageName, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
 
 -}
 
 import Dict exposing (Dict)
 import Morphir.IR.AccessControlled exposing (AccessControlled, withPublicAccess)
-import Morphir.IR.Module as Module exposing (ModulePath)
+import Morphir.IR.Module as Module exposing (ModuleName)
+import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
-
-
-{-| Type that represents a package distribution. A distribution contains all the necessary information to consume a
-package.
--}
-type Distribution
-    = Library PackagePath (Definition () ())
+import Morphir.IR.Type as Type
+import Morphir.IR.Value as Value
 
 
 {-| -}
-type alias PackagePath =
+type alias PackageName =
     Path
 
 
 {-| Type that represents a package specification.
 -}
 type alias Specification ta =
-    { modules : Dict ModulePath (Module.Specification ta)
+    { modules : Dict ModuleName (Module.Specification ta)
     }
 
 
@@ -69,8 +71,7 @@ emptySpecification =
 {-| Type that represents a package definition.
 -}
 type alias Definition ta va =
-    { dependencies : Dict PackagePath (Specification ta)
-    , modules : Dict ModulePath (AccessControlled (Module.Definition ta va))
+    { modules : Dict ModuleName (AccessControlled (Module.Definition ta va))
     }
 
 
@@ -78,9 +79,34 @@ type alias Definition ta va =
 -}
 emptyDefinition : Definition ta va
 emptyDefinition =
-    { dependencies = Dict.empty
-    , modules = Dict.empty
+    { modules = Dict.empty
     }
+
+
+{-| Look up a module specification by its path in a package specification.
+-}
+lookupModuleSpecification : Path -> Specification ta -> Maybe (Module.Specification ta)
+lookupModuleSpecification modulePath packageSpec =
+    packageSpec.modules
+        |> Dict.get modulePath
+
+
+{-| Look up a type specification by its module path and name in a package specification.
+-}
+lookupTypeSpecification : Path -> Name -> Specification ta -> Maybe (Type.Specification ta)
+lookupTypeSpecification modulePath localName packageSpec =
+    packageSpec
+        |> lookupModuleSpecification modulePath
+        |> Maybe.andThen (Module.lookupTypeSpecification localName)
+
+
+{-| Look up a value specification by its module path and name in a package specification.
+-}
+lookupValueSpecification : Path -> Name -> Specification ta -> Maybe (Value.Specification ta)
+lookupValueSpecification modulePath localName packageSpec =
+    packageSpec
+        |> lookupModuleSpecification modulePath
+        |> Maybe.andThen (Module.lookupValueSpecification localName)
 
 
 {-| -}
@@ -118,12 +144,6 @@ mapSpecificationAttributes tf vf spec =
 mapDefinitionAttributes : (ta -> tb) -> (va -> vb) -> Definition ta va -> Definition tb vb
 mapDefinitionAttributes tf vf def =
     Definition
-        (def.dependencies
-            |> Dict.map
-                (\_ packageSpec ->
-                    mapSpecificationAttributes tf vf packageSpec
-                )
-        )
         (def.modules
             |> Dict.map
                 (\_ moduleDef ->

@@ -59,6 +59,31 @@ encodeSpecification encodeTypeAttributes spec =
         ]
 
 
+decodeSpecification : Decode.Decoder ta -> Decode.Decoder (Specification ta)
+decodeSpecification decodeTypeAttributes =
+    Decode.map2 Specification
+        (Decode.field "types"
+            (Decode.map Dict.fromList
+                (Decode.list
+                    (Decode.map2 Tuple.pair
+                        (Decode.index 0 decodeName)
+                        (Decode.index 1 (decodeDocumented (TypeCodec.decodeSpecification decodeTypeAttributes)))
+                    )
+                )
+            )
+        )
+        (Decode.field "values"
+            (Decode.map Dict.fromList
+                (Decode.list
+                    (Decode.map2 Tuple.pair
+                        (Decode.index 0 decodeName)
+                        (Decode.index 1 (ValueCodec.decodeSpecification decodeTypeAttributes))
+                    )
+                )
+            )
+        )
+
+
 encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value) -> Definition ta va -> Encode.Value
 encodeDefinition encodeTypeAttributes encodeValueAttributes def =
     Encode.object

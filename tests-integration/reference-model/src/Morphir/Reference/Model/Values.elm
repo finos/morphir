@@ -1,6 +1,6 @@
 module Morphir.Reference.Model.Values exposing (..)
 
-import Morphir.Reference.Model.Types exposing (Custom(..), FooBarBazRecord)
+import Morphir.Reference.Model.Types as Types exposing (Custom(..), FooBarBazRecord)
 import String exposing (fromInt)
 
 
@@ -210,3 +210,25 @@ sdkMaybeValues =
     , Maybe.map5 (\a b c d e -> [ a, b, c, d, e ]) (Just 1) (Just 2) (Just 3) (Just 4) (Just 5) == Just [ 1, 2, 3, 4, 5 ]
     , Maybe.withDefault 13 Nothing == 13
     ]
+
+
+fieldFunctionAsArg : List FooBarBazRecord -> List String
+fieldFunctionAsArg list =
+    list
+        |> List.filter (\x -> x.bar)
+        |> List.map .foo
+
+
+functionToMethod1 : Int
+functionToMethod1 =
+    Types.customToInt CustomNoArg
+
+
+functionToMethod2 : Int
+functionToMethod2 =
+    Types.customToInt2 False (CustomOneArg True)
+
+
+functionToMethod3 : String
+functionToMethod3 =
+    Types.fooBarBazToString (FooBarBazRecord "foo" False 43)
