@@ -537,58 +537,14 @@ mapFunctionBody distribution val =
                     let
                         ( bottomFun, args ) =
                             Value.uncurryApply fun arg
-
-                        curried =
-                            Scala.Apply (mapValue fun)
-                                [ Scala.ArgValue Nothing (mapValue arg)
-                                ]
                     in
-                    case bottomFun of
-                        -- Constructor references should use multiple arguments instead of currying
-                        Constructor _ _ ->
-                            Scala.Apply (mapValue bottomFun)
-                                (args
-                                    |> List.map
-                                        (\argValue ->
-                                            Scala.ArgValue Nothing (mapValue argValue)
-                                        )
+                    Scala.Apply (mapValue bottomFun)
+                        (args
+                            |> List.map
+                                (\argValue ->
+                                    Scala.ArgValue Nothing (mapValue argValue)
                                 )
-
-                        Reference _ (FQName packageName moduleName localName) ->
-                            distribution
-                                |> Distribution.lookupValueSpecification packageName moduleName localName
-                                |> Maybe.map
-                                    (\functionSignature ->
-                                        -- if the function is fully applied
-                                        if List.length functionSignature.inputs == List.length args then
-                                            -- take the last arg and apply the rest of the args on it
-                                            case List.reverse args of
-                                                lastArg :: restOfArgsReversed ->
-                                                    if List.isEmpty restOfArgsReversed then
-                                                        Scala.Select (mapValue lastArg) (localName |> Name.toCamelCase)
-
-                                                    else
-                                                        Scala.Apply
-                                                            (Scala.Select (mapValue lastArg) (localName |> Name.toCamelCase))
-                                                            (restOfArgsReversed
-                                                                |> List.reverse
-                                                                |> List.map
-                                                                    (\argValue ->
-                                                                        Scala.ArgValue Nothing (mapValue argValue)
-                                                                    )
-                                                            )
-
-                                                _ ->
-                                                    curried
-
-                                        else
-                                            curried
-                                    )
-                                |> Maybe.withDefault curried
-
-                        -- More complex values will be curried by default
-                        _ ->
-                            curried
+                        )
 
                 Lambda a argPattern bodyValue ->
                     case argPattern of
