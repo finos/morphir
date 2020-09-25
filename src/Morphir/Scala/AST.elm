@@ -31,10 +31,12 @@ type alias Documented a =
     , value : a
     }
 
+
 type alias Annotated a =
     { annotation : Maybe Path
     , value : a
     }
+
 
 type alias CompilationUnit =
     { dirPath : List String
@@ -86,7 +88,6 @@ type TypeDecl
         , ctorArgs : List (List ArgDecl)
         , extends : List Type
         , members : List MemberDecl
-
         }
     | Object
         { modifiers : List Mod
@@ -128,7 +129,7 @@ type MemberDecl
         , returnType : Maybe Type
         , body : Maybe Value
         }
-    | MemberTypeDecl TypeDecl
+    | MemberTypeDecl (Annotated TypeDecl)
 
 
 type Type

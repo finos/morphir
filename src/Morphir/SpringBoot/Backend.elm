@@ -31,13 +31,15 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Specification(..))
 import Morphir.IR.Value as Value exposing (Value(..))
-import Morphir.SDK.Annotations exposing (Annotations(..), mapCustomTypeDefinition, mapType)
+import Morphir.SDK.Annotations exposing (Annotations(..))
 import Morphir.Scala.AST as Scala exposing (Annotated, ArgDecl, CompilationUnit, Documented, MemberDecl(..), Mod(..), Type(..), TypeDecl(..))
+import Morphir.Scala.Backend exposing (mapType, maptypeMember)
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 
 
+type alias Options =
+    {}
 
-type alias Options = {}
 
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
@@ -52,152 +54,180 @@ mapPackageDefinition opt distribution packagePath packageDef =
         |> Dict.toList
         |> List.concatMap
             (\( modulePath, moduleImpl ) ->
-                 (mapStatefulAppDefinition opt distribution packagePath modulePath moduleImpl
-                        |> List.map
-                            (\compilationUnit ->
-                                let
-                                    fileContent =
-                                        compilationUnit
-                                            |> PrettyPrinter.mapCompilationUnit (PrettyPrinter.Options 2 80)
-                                in
-                                    ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
-                            )
-                    )
+                mapStatefulAppDefinition opt distribution packagePath modulePath moduleImpl
+                    |> List.map
+                        (\compilationUnit ->
+                            let
+                                fileContent =
+                                    compilationUnit
+                                        |> PrettyPrinter.mapCompilationUnit (PrettyPrinter.Options 2 80)
+                            in
+                            ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
+                        )
             )
         |> Dict.fromList
 
-mapStatefulAppDefinition : Options ->  Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta tv) -> List CompilationUnit
+
+mapStatefulAppDefinition : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta tv) -> List CompilationUnit
 mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath accessControlledModuleDef =
     let
-        functionName: Name
+        functionName : Name
         functionName =
             case accessControlledModuleDef.access of
                 Public ->
                     case accessControlledModuleDef.value of
                         { types, values } ->
-                            case (Dict.get (Name.fromString "app") values) of
+                            case Dict.get (Name.fromString "app") values of
                                 Just acsCtrlValueDef ->
                                     case acsCtrlValueDef.access of
                                         Public ->
                                             case acsCtrlValueDef.value.body of
-                                                Value.Apply _ (Constructor  _ _) (Value.Reference _ (FQName _ _ name)) ->
+                                                Value.Apply _ (Constructor _ _) (Value.Reference _ (FQName _ _ name)) ->
                                                     name
-                                                _ -> []
-                                        _ -> []
-                                _ -> []
-                _ -> []
 
-        _ = Debug.log "accessControlledModuleDef.value.values" accessControlledModuleDef.value.values
+                                                _ ->
+                                                    []
 
+                                        _ ->
+                                            []
+
+                                _ ->
+                                    []
+
+                _ ->
+                    []
+
+        _ =
+            Debug.log "accessControlledModuleDef.value.values"
+                accessControlledModuleDef.value.values
 
         statefulAppTypes : List Type
         statefulAppTypes =
             accessControlledModuleDef.value.values
                 |> Dict.toList
-                    |> List.concatMap
-                        (\( _, a ) ->
-                            case a.value.outputType of
-                                Type.Reference _ (FQName mod package name) list ->
-                                    case ((Path.toString Name.toTitleCase "." mod ),
-                                            (Path.toString Name.toTitleCase "." package ),
-                                            (name |> Name.toTitleCase)) of
-                                        ("Morphir.SDK", "StatefulApp", "StatefulApp") ->
-                                            List.map mapType list
-                                        _ -> []
-                                _ -> []
-                        )
+                |> List.concatMap
+                    (\( _, a ) ->
+                        case a.value.outputType of
+                            Type.Reference _ (FQName mod package name) list ->
+                                case
+                                    ( Path.toString Name.toTitleCase "." mod
+                                    , Path.toString Name.toTitleCase "." package
+                                    , name |> Name.toTitleCase
+                                    )
+                                of
+                                    ( "Morphir.SDK", "StatefulApp", "StatefulApp" ) ->
+                                        List.map mapType list
 
-        _ = Debug.log "statefulAppTypes" statefulAppTypes
+                                    _ ->
+                                        []
+
+                            _ ->
+                                []
+                    )
+
+        _ =
+            Debug.log "statefulAppTypes" statefulAppTypes
 
         typeNamesStatefulApp : List Scala.Name
         typeNamesStatefulApp =
             case statefulAppTypes of
-                ((TypeRef _ keyTypeName) :: (TypeRef _ commandTypeName) :: (TypeRef _ stateTypeName) :: (TypeRef _ eventTypeName) :: []) ->
-                    [keyTypeName, commandTypeName, stateTypeName, eventTypeName]
-                _ -> []
+                (TypeRef _ keyTypeName) :: (TypeRef pathCommand commandTypeName) :: (TypeRef pathState stateTypeName) :: (TypeRef pathEvent eventTypeName) :: [] ->
+                    let
+                        _ =
+                            Debug.log "pathCommand" pathCommand
+                    in
+                    [ keyTypeName, commandTypeName, stateTypeName, eventTypeName ]
 
-        _ = Debug.log "statefulTypeNames" typeNamesStatefulApp
+                _ ->
+                    []
 
+        _ =
+            Debug.log "statefulTypeNames" typeNamesStatefulApp
 
         innerTypesNamesStatefulApp : List Scala.Name
-        innerTypesNamesStatefulApp = typeNamesStatefulApp
-            |> List.concatMap
-                (\ (name) ->
-                    case (lookupTypeSpecification currentPackagePath currentModulePath (Name.fromString name) distribution) of
+        innerTypesNamesStatefulApp =
+            typeNamesStatefulApp
+                |> List.concatMap
+                    (\name ->
+                        case lookupTypeSpecification currentPackagePath currentModulePath (Name.fromString name) distribution of
+                            Just (TypeAliasSpecification _ aliasType) ->
+                                case mapType aliasType of
+                                    TypeRef _ typeName ->
+                                        [ typeName ]
 
-                         Just (TypeAliasSpecification _ aliasType) ->
-                            case (mapType aliasType) of
-                                TypeRef _ typeName -> [typeName]
-                                _ -> []
+                                    _ ->
+                                        []
 
-                         Just (CustomTypeSpecification  _ constructors) ->
-                            constructors
-                            |> List.concatMap
-                                (\ (constructor) ->
-                                    case constructor of
-                                        Type.Constructor _ types ->
-                                            types
-                                            |> List.concatMap
-                                                (\ (_, consType ) ->
-                                                    case consType of
-                                                        Type.Reference _ (FQName _ _ consTypeName) _ ->
-                                                            [(consTypeName |> Name.toTitleCase)]
-                                                        _ -> []
-                                                )
+                            Just (CustomTypeSpecification _ constructors) ->
+                                constructors
+                                    |> List.concatMap
+                                        (\constructor ->
+                                            case constructor of
+                                                Type.Constructor _ types ->
+                                                    types
+                                                        |> List.concatMap
+                                                            (\( _, consType ) ->
+                                                                case consType of
+                                                                    Type.Reference _ (FQName _ _ consTypeName) _ ->
+                                                                        [ consTypeName |> Name.toTitleCase ]
 
-                                )
-                         _ -> []
-                )
+                                                                    _ ->
+                                                                        []
+                                                            )
+                                        )
+
+                            _ ->
+                                []
+                    )
                 |> unique
 
-        _ = Debug.log "innerTypesNamesStatefulApp" innerTypesNamesStatefulApp
-
-
-
-        getTypeSpecification: Maybe (Type.Specification ())
-        getTypeSpecification = lookupTypeSpecification currentPackagePath currentModulePath (Name.fromString "DealEvent") distribution
-
-        _ = Debug.log "getTypeSpecification" getTypeSpecification
+        _ =
+            Debug.log "innerTypesNamesStatefulApp" innerTypesNamesStatefulApp
 
         ( scalaPackagePath, moduleName ) =
-                    case currentModulePath |> List.reverse of
-                        [] ->
-                            ( [], [] )
+            case currentModulePath |> List.reverse of
+                [] ->
+                    ( [], [] )
 
-                        lastName :: reverseModulePath ->
-                            ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
+                lastName :: reverseModulePath ->
+                    ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
 
         stateFulImplAdapter : CompilationUnit
         stateFulImplAdapter =
             { dirPath = scalaPackagePath
             , fileName = (moduleName |> Name.toTitleCase) ++ "SpringBoot1" ++ ".scala"
-            , packageDecl = ["morphir.sdk"]
+            , packageDecl = [ "morphir.sdk" ]
             , imports = []
             , typeDecls =
-                [
-                 (Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Annotated (Just ["@org.springframework.web.bind.annotation.RestController"])
-                         <|
-                         (Class
-                             { modifiers =
-                                 []
-                             , name =
-                                 (moduleName |> Name.toTitleCase) ++ "SpringBoot"
-                             , typeArgs =
-                                 []
-                             , ctorArgs =
-                                 []
-                             , extends =
-                                 [TypeParametrized (TypeVar "SpringBootStatefulAppAdapter")
-                                    statefulAppTypes (TypeVar ("StatefulApp (" ++ (dotSep scalaPackagePath) ++
-                                            "." ++ (moduleName |> Name.toTitleCase) ++ "."
-                                            ++ (functionName |> Name.toList |> String.join "") ++ ")" ))]
-                             , members =
-                                 []
-                             }
-                         )
+                [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                    (Annotated Nothing <|
+                        Class
+                            { modifiers =
+                                []
+                            , name =
+                                (moduleName |> Name.toTitleCase) ++ "SpringBoot"
+                            , typeArgs =
+                                []
+                            , ctorArgs =
+                                []
+                            , extends =
+                                [ TypeParametrized (TypeVar "SpringBootStatefulAppAdapter")
+                                    statefulAppTypes
+                                    (TypeVar
+                                        ("StatefulApp ("
+                                            ++ dotSep scalaPackagePath
+                                            ++ "."
+                                            ++ (moduleName |> Name.toTitleCase)
+                                            ++ "."
+                                            ++ (functionName |> Name.toList |> String.join "")
+                                            ++ ")"
+                                        )
+                                    )
+                                ]
+                            , members =
+                                []
+                            }
                     )
-                 )
                 ]
             }
 
@@ -207,88 +237,37 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
                 |> Dict.toList
                 |> List.concatMap
                     (\( typeName, accessControlledDocumentedTypeDef ) ->
-                        let
-                            _ = Debug.log "typeName" (typeName |> Name.toTitleCase)
-                            _ = Debug.log "typeNames" typeNamesStatefulApp
-                            _ = Debug.log "accessControlledDocumentedTypeDef.value.value" accessControlledDocumentedTypeDef.value.value
-                        in
-                        if (List.member (typeName |> Name.toTitleCase) (List.append typeNamesStatefulApp innerTypesNamesStatefulApp)) then
-                            case accessControlledDocumentedTypeDef.value.value of
-                                Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
-                                    [
-                                        MemberTypeDecl
-                                        (Class
-                                            { modifiers = [ Case ]
-                                            , name = typeName |> Name.toTitleCase
-                                            , typeArgs = typeParams |> List.map (Name.toTitleCase >> TypeVar)
-                                            , ctorArgs =
-                                                fields
-                                                    |> List.map
-                                                        (\field ->
-                                                            { modifiers = []
-                                                            , tpe = mapType field.tpe
-                                                            , name = field.name |> Name.toCamelCase
-                                                            , defaultValue = Nothing
-                                                            }
-                                                        )
-                                                    |> List.singleton
-                                            , extends = []
-                                            , members = []
-                                            }
-                                        )
-                                    ]
+                        if List.member (typeName |> Name.toTitleCase) typeNamesStatefulApp then
+                            maptypeMember (Just Jackson) currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef )
 
-                                Type.TypeAliasDefinition typeParams typeExp ->
-                                    [
-                                        TypeAlias
-                                        { alias =
-                                            typeName |> Name.toTitleCase
-                                        , typeArgs =
-                                            typeParams |> List.map (Name.toTitleCase >> TypeVar)
-                                        , tpe =
-                                            mapType typeExp
-                                        }
-                                    ]
-
-                                Type.CustomTypeDefinition typeParams accessControlledCtors ->
-                                    let
-                                        _ = Debug.log "typeParams" typeParams
-                                        _ = Debug.log "accessControlledCtors" accessControlledCtors
-
-                                    in
-
-                                        (mapCustomTypeDefinition (Just (JACKSON)) currentPackagePath currentModulePath typeName typeParams accessControlledCtors)
                         else
                             []
                     )
 
+        _ =
+            Debug.log "typeMembers" typeMembers
+
         statefulImpl : CompilationUnit
         statefulImpl =
-                    { dirPath = scalaPackagePath
-                    , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
-                    , packageDecl = scalaPackagePath
-                    , imports = []
-                    , typeDecls =
-                        [
-                         (Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                            (Annotated (Nothing)
-                                 <|
-                                 (Object
-                                     { modifiers =
-                                         []
-                                     , name =
-                                         (moduleName |> Name.toTitleCase)
-                                     , extends =
-                                         []
-                                     , members =
-                                         typeMembers
-                                     }
-                                 )
-                            )
-                         )
-                        ]
-                    }
+            { dirPath = scalaPackagePath
+            , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
+            , packageDecl = scalaPackagePath
+            , imports = []
+            , typeDecls =
+                [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                    (Annotated Nothing <|
+                        Object
+                            { modifiers =
+                                []
+                            , name =
+                                moduleName |> Name.toTitleCase
+                            , extends =
+                                []
+                            , members =
+                                typeMembers
+                            }
+                    )
+                ]
+            }
     in
     [ stateFulImplAdapter, statefulImpl ]
-
-
