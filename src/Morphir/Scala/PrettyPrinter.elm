@@ -120,7 +120,7 @@ mapTypeDecl opt typeDecl =
                             newLine
                             ++ newLine
                             ++ (decl.members
-                                    |> List.map (mapDocumented (mapMemberDecl opt))
+                                    |> List.map (mapMemberDecl opt)
                                     |> List.intersperse (newLine ++ newLine)
                                     |> concat
                                     |> indent opt.indentDepth
@@ -128,8 +128,8 @@ mapTypeDecl opt typeDecl =
                             ++ newLine
                             ++ newLine
             in
-            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ bodyDoc
-            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ "{" ++ members ++ "}"
+            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ bodyDoc ++ "{" ++ members ++ "}"
+
 
         Object decl ->
             let

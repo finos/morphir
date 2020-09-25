@@ -2,6 +2,7 @@ module Morphir.Elm.Target exposing (..)
 
 import Json.Decode as Decode exposing (Error, Value)
 import Morphir.File.FileMap exposing (FileMap)
+import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Package as Package
 import Morphir.Scala.Backend
 import Morphir.SpringBoot.Backend as SpringBoot
@@ -19,8 +20,8 @@ decodeOptions gen =
         Ok "SpringBoot" -> Decode.map (\(options) -> SpringBootOptions(options)) Morphir.SpringBoot.Backend.Codec.decodeOptions
         _ -> Decode.map (\(options) -> ScalaOptions(options)) Morphir.Scala.Backend.Codec.decodeOptions
 
-mapDistribution : BackendOptions -> Package.Distribution -> FileMap
-mapDistribution back =
+mapDistribution : BackendOptions -> Distribution -> FileMap
+mapDistribution back dist =
     case back of
-            SpringBootOptions options -> SpringBoot.mapDistribution options
-            ScalaOptions options -> Morphir.Scala.Backend.mapDistribution options
+            SpringBootOptions options -> SpringBoot.mapDistribution options dist
+            ScalaOptions options -> Morphir.Scala.Backend.mapDistribution options dist

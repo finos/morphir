@@ -85,7 +85,7 @@ type TypeDecl
         , typeArgs : List Type
         , ctorArgs : List (List ArgDecl)
         , extends : List Type
-        , members : List (Documented (Annotated MemberDecl))
+        , members : List MemberDecl
 
         }
     | Object

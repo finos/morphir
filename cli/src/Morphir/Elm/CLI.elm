@@ -18,7 +18,7 @@
 port module Morphir.Elm.CLI exposing (main)
 
 import Dict
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile)
 import Morphir.Elm.Frontend.Codec exposing (decodePackageInfo, encodeError)
@@ -94,7 +94,7 @@ update msg model =
                                     Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
                         fileMap =
-                            Backend.mapDistribution options enrichedDistro
+                            mapDistribution options enrichedDistro
                     in
                     ( model, fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult )
 

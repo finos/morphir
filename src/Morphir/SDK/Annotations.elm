@@ -32,7 +32,7 @@ type Annotations =
     JACKSON
 
 
-mapCustomTypeDefinition: Maybe Annotations -> Package.PackagePath -> Path -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
+mapCustomTypeDefinition: Maybe Annotations -> Package.PackageName -> Path -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
 mapCustomTypeDefinition annot currentPackagePath currentModulePath typeName typeParams accessControlledCtors =
       let
           caseClass name args extends =
@@ -193,3 +193,4 @@ mapFQNameToPathAndName (FQName packagePath modulePath localName) =
     ( scalaModulePath
     , localName
     )
+
