@@ -17,6 +17,66 @@
 
 module Morphir.SDK.Annotations exposing (..)
 
+import Morphir.File.SourceCode exposing (newLine)
+import Morphir.Scala.AST as Scala exposing (Annotated, TypeDecl)
+
 
 type Annotations
     = Jackson
+
+
+getAnnotations : Maybe Annotations -> List Scala.Name -> TypeDecl -> Annotated TypeDecl
+getAnnotations annotations names memberTypeDecl =
+    case ( annotations, memberTypeDecl ) of
+        ( Just Jackson, Scala.Trait _ ) ->
+            Annotated
+                (Just
+                    [ "@com.fasterxml.jackson.annotation.JsonTypeInfo(use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME,"
+                        ++ newLine
+                        ++ "include = com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY, property = \"type\")"
+                        ++ newLine
+                        ++ "@com.fasterxml.jackson.annotation.JsonSubTypes(Array"
+                        ++ newLine
+                        ++ "("
+                        ++ newLine
+                        ++ (names
+                                |> List.map
+                                    (\name ->
+                                        "new com.fasterxml.jackson.annotation.JsonSubTypes.Type(value = classOf["
+                                            ++ name
+                                            ++ "], name = \""
+                                            ++ name
+                                            ++ "\"),"
+                                            ++ newLine
+                                    )
+                                |> String.concat
+                           )
+                        ++ "))"
+                    ]
+                )
+                memberTypeDecl
+
+        ( Just Jackson, Scala.Class _ ) ->
+            Annotated (Just [ "@org.springframework.context.annotation.Bean" ]) memberTypeDecl
+
+        _ ->
+            Annotated Nothing memberTypeDecl
+
+
+caseClassesToAnnotate : Maybe Annotations -> List TypeDecl -> List Scala.Name
+caseClassesToAnnotate annotations types =
+    case annotations of
+        Just Jackson ->
+            List.filterMap
+                (\member ->
+                    case member of
+                        Scala.Class a ->
+                            Just a.name
+
+                        _ ->
+                            Nothing
+                )
+                types
+
+        _ ->
+            []

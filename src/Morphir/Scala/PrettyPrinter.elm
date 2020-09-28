@@ -217,17 +217,9 @@ mapMemberDecl opt memberDecl =
         MemberTypeDecl decl ->
             case decl.annotation of
                 Just path ->
-                    let
-                        _ =
-                            Debug.log "Entre en annotation" "Entre en annotation"
-                    in
                     (path |> concat) ++ newLine ++ mapTypeDecl opt decl.value
 
                 _ ->
-                    let
-                        _ =
-                            Debug.log "NO Entre en annotation" "NO Entre en annotation"
-                    in
                     mapTypeDecl opt decl.value
 
 

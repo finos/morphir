@@ -20,6 +20,7 @@ module Morphir.Scala.Backend exposing (..)
 import Dict
 import List.Extra as ListExtra
 import Morphir.File.FileMap exposing (FileMap)
+import Morphir.File.SourceCode exposing (newLine)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
@@ -31,7 +32,7 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
-import Morphir.SDK.Annotations as Annotations exposing (Annotations(..))
+import Morphir.SDK.Annotations as Annotations exposing (Annotations(..), caseClassesToAnnotate, getAnnotations)
 import Morphir.Scala.AST as Scala exposing (Annotated, MemberDecl(..))
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
@@ -262,16 +263,8 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
 mapCustomTypeDefinition : Maybe Annotations -> Package.PackageName -> Path -> Module.Definition ta va -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
 mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
     let
-        annotation =
-            case annotations of
-                Just Jackson ->
-                    Annotated (Just [ "@org.springframework.context.annotation.Bean" ])
-
-                _ ->
-                    Annotated Nothing
-
         caseClass name args extends =
-            if List.isEmpty args then
+            if List.isEmpty args && annotations == Nothing then
                 Scala.Object
                     { modifiers = [ Scala.Case ]
                     , name = name |> Name.toTitleCase
@@ -356,7 +349,7 @@ mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleD
             sealedTraitHierarchy
                 |> List.map
                     (\sealedTrait ->
-                        Scala.MemberTypeDecl (Annotated (Just [ "@org.springframework.context.annotation.Bean" ]) sealedTrait)
+                        Scala.MemberTypeDecl (getAnnotations annotations (caseClassesToAnnotate annotations sealedTraitHierarchy) sealedTrait)
                     )
 
 

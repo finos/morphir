@@ -131,11 +131,7 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
         typeNamesStatefulApp : List Scala.Name
         typeNamesStatefulApp =
             case statefulAppTypes of
-                (TypeRef _ keyTypeName) :: (TypeRef pathCommand commandTypeName) :: (TypeRef pathState stateTypeName) :: (TypeRef pathEvent eventTypeName) :: [] ->
-                    let
-                        _ =
-                            Debug.log "pathCommand" pathCommand
-                    in
+                (TypeRef _ keyTypeName) :: (TypeRef _ commandTypeName) :: (TypeRef _ stateTypeName) :: (TypeRef _ eventTypeName) :: [] ->
                     [ keyTypeName, commandTypeName, stateTypeName, eventTypeName ]
 
                 _ ->
@@ -231,21 +227,42 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
                 ]
             }
 
-        typeMembers : List MemberDecl
-        typeMembers =
+        memberStatefulApp : Maybe Annotations -> Scala.Name -> List MemberDecl
+        memberStatefulApp annot name =
+            case Dict.get (Name.fromString name) accessControlledModuleDef.value.types of
+                Just accessControlledDocumentedTypeDef ->
+                    maptypeMember annot currentPackagePath currentModulePath accessControlledModuleDef ( Name.fromString name, accessControlledDocumentedTypeDef )
+
+                _ ->
+                    []
+
+        statefulAppMembers : List MemberDecl
+        statefulAppMembers =
+            case typeNamesStatefulApp of
+                keyTypeName :: commandTypeName :: stateTypeName :: eventTypeName :: [] ->
+                    memberStatefulApp Nothing eventTypeName
+                        |> List.append (memberStatefulApp Nothing keyTypeName)
+                        |> List.append (memberStatefulApp (Just Jackson) commandTypeName)
+                        |> List.append (memberStatefulApp Nothing stateTypeName)
+
+                _ ->
+                    []
+
+        innerMembers : List MemberDecl
+        innerMembers =
             accessControlledModuleDef.value.types
                 |> Dict.toList
                 |> List.concatMap
                     (\( typeName, accessControlledDocumentedTypeDef ) ->
-                        if List.member (typeName |> Name.toTitleCase) typeNamesStatefulApp then
-                            maptypeMember (Just Jackson) currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef )
+                        if List.member (typeName |> Name.toTitleCase) innerTypesNamesStatefulApp then
+                            maptypeMember Nothing currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef )
 
                         else
                             []
                     )
 
         _ =
-            Debug.log "typeMembers" typeMembers
+            Debug.log "statefulAppMembers" statefulAppMembers
 
         statefulImpl : CompilationUnit
         statefulImpl =
@@ -264,7 +281,7 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
                             , extends =
                                 []
                             , members =
-                                typeMembers
+                                List.append statefulAppMembers innerMembers
                             }
                     )
                 ]
