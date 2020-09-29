@@ -1,20 +1,17 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
-assignees: ''
+name: 🚀 Feature Request
+about: I have a suggestion (and may want to implement it 🙂)!
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+## Feature Request
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+### Description of Problem:
+...what *problem* are you trying to solve that the project doesn't currently solve?
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+...please resist the temptation to describe your request in terms of a solution.  Job Story form ("When [triggering condition], I want to [motivation/goal], so I can [outcome].") can help ensure you're expressing a problem statement.
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+### Potential Solutions:
+...clearly and concisely describe what you want to happen. Add any considered drawbacks.
+
+... if you've considered alternatives, clearly and concisely describe those too.
