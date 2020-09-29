@@ -240,7 +240,7 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
         statefulAppMembers =
             case typeNamesStatefulApp of
                 keyTypeName :: commandTypeName :: stateTypeName :: eventTypeName :: [] ->
-                    memberStatefulApp Nothing eventTypeName
+                    memberStatefulApp (Just Jackson) eventTypeName
                         |> List.append (memberStatefulApp Nothing keyTypeName)
                         |> List.append (memberStatefulApp (Just Jackson) commandTypeName)
                         |> List.append (memberStatefulApp Nothing stateTypeName)

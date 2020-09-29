@@ -56,8 +56,35 @@ getAnnotations annotations names memberTypeDecl =
                 )
                 memberTypeDecl
 
-        ( Just Jackson, Scala.Class _ ) ->
-            Annotated (Just [ "@org.springframework.context.annotation.Bean" ]) memberTypeDecl
+        ( Just Jackson, Scala.Class class ) ->
+            Annotated (Just [ "@org.springframework.context.annotation.Bean" ])
+                (Scala.Class
+                    { modifiers = class.modifiers
+                    , name = class.name
+                    , typeArgs = class.typeArgs
+                    , ctorArgs =
+                        class.ctorArgs
+                            |> List.map
+                                (\args ->
+                                    args
+                                        |> List.concatMap
+                                            (\cons ->
+                                                [ { modifiers = cons.modifiers
+                                                  , tpe = cons.tpe
+                                                  , name =
+                                                        "@com.fasterxml.jackson.annotation.JsonProperty(\""
+                                                            ++ cons.name
+                                                            ++ "\")"
+                                                            ++ cons.name
+                                                  , defaultValue = cons.defaultValue
+                                                  }
+                                                ]
+                                            )
+                                )
+                    , extends = class.extends
+                    , members = class.members
+                    }
+                )
 
         _ ->
             Annotated Nothing memberTypeDecl
