@@ -23,7 +23,6 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.SourceCode exposing (dotSep)
 import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution, lookupTypeSpecification)
-import Morphir.IR.Documented as Doc exposing (Documented)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Module as Module exposing (Definition)
 import Morphir.IR.Name as Name exposing (Name)
@@ -33,7 +32,7 @@ import Morphir.IR.Type as Type exposing (Specification(..))
 import Morphir.IR.Value as Value exposing (Value(..))
 import Morphir.SDK.Annotations exposing (Annotations(..))
 import Morphir.Scala.AST as Scala exposing (Annotated, ArgDecl, CompilationUnit, Documented, MemberDecl(..), Mod(..), Type(..), TypeDecl(..))
-import Morphir.Scala.Backend exposing (mapType, maptypeMember)
+import Morphir.Scala.Backend exposing (mapFunctionBody, mapType, maptypeMember)
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 
 
@@ -100,6 +99,51 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
         _ =
             Debug.log "accessControlledModuleDef.value.values"
                 accessControlledModuleDef.value.values
+
+        functionMembers : List Scala.MemberDecl
+        functionMembers =
+            accessControlledModuleDef.value.values
+                |> Dict.toList
+                |> List.concatMap
+                    (\( valueName, accessControlledValueDef ) ->
+                        if (valueName |> Name.toTitleCase) == (functionName |> Name.toTitleCase) then
+                            [ Scala.FunctionDecl
+                                { modifiers =
+                                    case accessControlledValueDef.access of
+                                        AccessControlled.Public ->
+                                            []
+
+                                        AccessControlled.Private ->
+                                            [ Scala.Private Nothing ]
+                                , name =
+                                    valueName |> Name.toCamelCase
+                                , typeArgs =
+                                    []
+                                , args =
+                                    if List.isEmpty accessControlledValueDef.value.inputTypes then
+                                        []
+
+                                    else
+                                        [ accessControlledValueDef.value.inputTypes
+                                            |> List.map
+                                                (\( argName, a, argType ) ->
+                                                    { modifiers = []
+                                                    , tpe = mapType argType
+                                                    , name = argName |> Name.toCamelCase
+                                                    , defaultValue = Nothing
+                                                    }
+                                                )
+                                        ]
+                                , returnType =
+                                    Just (mapType accessControlledValueDef.value.outputType)
+                                , body =
+                                    Just (mapFunctionBody distribution accessControlledValueDef.value.body)
+                                }
+                            ]
+
+                        else
+                            []
+                    )
 
         statefulAppTypes : List Type
         statefulAppTypes =
@@ -191,12 +235,12 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
         stateFulImplAdapter : CompilationUnit
         stateFulImplAdapter =
             { dirPath = scalaPackagePath
-            , fileName = (moduleName |> Name.toTitleCase) ++ "SpringBoot1" ++ ".scala"
-            , packageDecl = [ "morphir.sdk" ]
+            , fileName = (moduleName |> Name.toTitleCase) ++ "SpringBoot" ++ ".scala"
+            , packageDecl = scalaPackagePath
             , imports = []
             , typeDecls =
                 [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Annotated Nothing <|
+                    (Annotated (Just [ "@org.springframework.web.bind.annotation.RestController" ]) <|
                         Class
                             { modifiers =
                                 []
@@ -240,8 +284,8 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
         statefulAppMembers =
             case typeNamesStatefulApp of
                 keyTypeName :: commandTypeName :: stateTypeName :: eventTypeName :: [] ->
-                    memberStatefulApp (Just Jackson) eventTypeName
-                        |> List.append (memberStatefulApp Nothing keyTypeName)
+                    memberStatefulApp Nothing keyTypeName
+                        |> List.append (memberStatefulApp (Just Jackson) eventTypeName)
                         |> List.append (memberStatefulApp (Just Jackson) commandTypeName)
                         |> List.append (memberStatefulApp Nothing stateTypeName)
 
@@ -281,7 +325,9 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
                             , extends =
                                 []
                             , members =
-                                List.append statefulAppMembers innerMembers
+                                functionMembers
+                                    |> List.append statefulAppMembers
+                                    |> List.append innerMembers
                             }
                     )
                 ]
