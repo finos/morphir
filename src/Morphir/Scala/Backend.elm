@@ -136,17 +136,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                                                     )
                                                 |> List.singleton
                                         , extends = []
-                                        , members =
-                                            mapFunctionsToMethods currentPackagePath
-                                                currentModulePath
-                                                typeName
-                                                (accessControlledModuleDef.value.values
-                                                    |> Dict.toList
-                                                    |> List.map
-                                                        (\( valueName, valueDef ) ->
-                                                            ( valueName, valueDef.value |> Value.definitionToSpecification )
-                                                        )
-                                                )
+                                        , members = []
                                         }
                                     )
                                 ]
@@ -289,17 +279,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                         , name = typeName |> Name.toTitleCase
                         , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
                         , extends = []
-                        , members =
-                            mapFunctionsToMethods currentPackagePath
-                                currentModulePath
-                                typeName
-                                (moduleDef.values
-                                    |> Dict.toList
-                                    |> List.map
-                                        (\( valueName, valueDef ) ->
-                                            ( valueName, valueDef.value |> Value.definitionToSpecification )
-                                        )
-                                )
+                        , members = []
                         }
                   ]
                 , accessControlledCtors.value
@@ -326,77 +306,6 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
 
         _ ->
             sealedTraitHierarchy |> List.map Scala.MemberTypeDecl
-
-
-{-| Collect functions where the last input argument is this type and turn them into methods on the type.
--}
-mapFunctionsToMethods : Path -> Path -> Name -> List ( Name, Value.Specification ta ) -> List Scala.MemberDecl
-mapFunctionsToMethods currentPackageName currentModuleName currentTypeName valueSpecifications =
-    valueSpecifications
-        |> List.filterMap
-            (\( valueName, valueSpec ) ->
-                case List.reverse valueSpec.inputs of
-                    [] ->
-                        -- if this is a value (function with no arguments) then we don't turn it into a method
-                        Nothing
-
-                    ( _, lastInputType ) :: restOfInputsReversed ->
-                        -- if the last argument type of the function is
-                        let
-                            inputs =
-                                List.reverse restOfInputsReversed
-                        in
-                        case lastInputType of
-                            Type.Reference _ fQName [] ->
-                                if fQName == FQName currentPackageName currentModuleName currentTypeName then
-                                    Just
-                                        (FunctionDecl
-                                            { modifiers = []
-                                            , name = valueName |> Name.toCamelCase
-                                            , typeArgs = []
-                                            , args =
-                                                if List.isEmpty inputs then
-                                                    []
-
-                                                else
-                                                    [ inputs
-                                                        |> List.map
-                                                            (\( argName, argType ) ->
-                                                                { modifiers = []
-                                                                , tpe = mapType argType
-                                                                , name = argName |> Name.toCamelCase
-                                                                , defaultValue = Nothing
-                                                                }
-                                                            )
-                                                    ]
-                                            , returnType =
-                                                Just (mapType valueSpec.output)
-                                            , body =
-                                                let
-                                                    ( path, name ) =
-                                                        mapFQNameToPathAndName (FQName currentPackageName currentModuleName valueName)
-                                                in
-                                                Just
-                                                    (Scala.Apply (Scala.Ref path (name |> Name.toCamelCase))
-                                                        (List.append
-                                                            (inputs
-                                                                |> List.map
-                                                                    (\( argName, _ ) ->
-                                                                        Scala.ArgValue Nothing (Scala.Variable (argName |> Name.toCamelCase))
-                                                                    )
-                                                            )
-                                                            [ Scala.ArgValue Nothing Scala.This ]
-                                                        )
-                                                    )
-                                            }
-                                        )
-
-                                else
-                                    Nothing
-
-                            _ ->
-                                Nothing
-            )
 
 
 mapType : Type a -> Scala.Type
