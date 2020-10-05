@@ -20,7 +20,6 @@ module Morphir.Scala.Backend exposing (..)
 import Dict
 import List.Extra as ListExtra
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.File.SourceCode exposing (newLine)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
@@ -32,7 +31,7 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
-import Morphir.SDK.Annotations as Annotations exposing (Annotations(..), caseClassesToAnnotate, getAnnotations)
+import Morphir.SDK.Customization as Customization exposing (Customization(..), caseClassesToAnnotate, getAnnotations)
 import Morphir.Scala.AST as Scala exposing (Annotated, MemberDecl(..))
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
@@ -103,7 +102,7 @@ mapFQNameToTypeRef fQName =
     Scala.TypeRef path (name |> Name.toTitleCase)
 
 
-maptypeMember : Maybe Annotations -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta tv) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> List Scala.MemberDecl
+maptypeMember : Maybe Customization -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta tv) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> List Scala.MemberDecl
 maptypeMember annotations currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
     case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
@@ -260,11 +259,11 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
     [ moduleUnit ]
 
 
-mapCustomTypeDefinition : Maybe Annotations -> Package.PackageName -> Path -> Module.Definition ta va -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
+mapCustomTypeDefinition : Maybe Customization -> Package.PackageName -> Path -> Module.Definition ta va -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
 mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
     let
         caseClass name args extends =
-            if List.isEmpty args && annotations == Nothing then
+            if List.isEmpty args then
                 Scala.Object
                     { modifiers = [ Scala.Case ]
                     , name = name |> Name.toTitleCase

@@ -15,17 +15,21 @@
 -}
 
 
-module Morphir.SDK.Annotations exposing (..)
+module Morphir.SDK.Customization exposing (..)
 
 import Morphir.File.SourceCode exposing (newLine)
 import Morphir.Scala.AST as Scala exposing (Annotated, TypeDecl)
 
 
-type Annotations
+
+--Customization
+
+
+type Customization
     = Jackson
 
 
-getAnnotations : Maybe Annotations -> List Scala.Name -> TypeDecl -> Annotated TypeDecl
+getAnnotations : Maybe Customization -> List Scala.Name -> TypeDecl -> Annotated TypeDecl
 getAnnotations annotations names memberTypeDecl =
     case ( annotations, memberTypeDecl ) of
         ( Just Jackson, Scala.Trait _ ) ->
@@ -57,7 +61,7 @@ getAnnotations annotations names memberTypeDecl =
                 memberTypeDecl
 
         ( Just Jackson, Scala.Class class ) ->
-            Annotated (Just [ "@org.springframework.context.annotation.Bean" ])
+            Annotated Nothing
                 (Scala.Class
                     { modifiers = class.modifiers
                     , name = class.name
@@ -72,9 +76,7 @@ getAnnotations annotations names memberTypeDecl =
                                                 [ { modifiers = cons.modifiers
                                                   , tpe = cons.tpe
                                                   , name =
-                                                        "@com.fasterxml.jackson.annotation.JsonProperty(\""
-                                                            ++ cons.name
-                                                            ++ "\")"
+                                                        "@java.beans.BeanProperty "
                                                             ++ cons.name
                                                   , defaultValue = cons.defaultValue
                                                   }
@@ -90,7 +92,7 @@ getAnnotations annotations names memberTypeDecl =
             Annotated Nothing memberTypeDecl
 
 
-caseClassesToAnnotate : Maybe Annotations -> List TypeDecl -> List Scala.Name
+caseClassesToAnnotate : Maybe Customization -> List TypeDecl -> List Scala.Name
 caseClassesToAnnotate annotations types =
     case annotations of
         Just Jackson ->

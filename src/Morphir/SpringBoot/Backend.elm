@@ -30,7 +30,7 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Specification(..))
 import Morphir.IR.Value as Value exposing (Value(..))
-import Morphir.SDK.Annotations exposing (Annotations(..))
+import Morphir.SDK.Customization exposing (Customization(..))
 import Morphir.Scala.AST as Scala exposing (Annotated, ArgDecl, CompilationUnit, Documented, MemberDecl(..), Mod(..), Type(..), TypeDecl(..))
 import Morphir.Scala.Backend exposing (mapFunctionBody, mapType, maptypeMember)
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
@@ -95,10 +95,6 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
 
                 _ ->
                     []
-
-        _ =
-            Debug.log "accessControlledModuleDef.value.values"
-                accessControlledModuleDef.value.values
 
         functionMembers : List Scala.MemberDecl
         functionMembers =
@@ -169,9 +165,6 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
                                 []
                     )
 
-        _ =
-            Debug.log "statefulAppTypes" statefulAppTypes
-
         typeNamesStatefulApp : List Scala.Name
         typeNamesStatefulApp =
             case statefulAppTypes of
@@ -180,9 +173,6 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
 
                 _ ->
                     []
-
-        _ =
-            Debug.log "statefulTypeNames" typeNamesStatefulApp
 
         innerTypesNamesStatefulApp : List Scala.Name
         innerTypesNamesStatefulApp =
@@ -220,9 +210,6 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
                                 []
                     )
                 |> unique
-
-        _ =
-            Debug.log "innerTypesNamesStatefulApp" innerTypesNamesStatefulApp
 
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of
@@ -271,7 +258,7 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
                 ]
             }
 
-        memberStatefulApp : Maybe Annotations -> Scala.Name -> List MemberDecl
+        memberStatefulApp : Maybe Customization -> Scala.Name -> List MemberDecl
         memberStatefulApp annot name =
             case Dict.get (Name.fromString name) accessControlledModuleDef.value.types of
                 Just accessControlledDocumentedTypeDef ->
@@ -305,11 +292,8 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
                             []
                     )
 
-        _ =
-            Debug.log "statefulAppMembers" statefulAppMembers
-
-        statefulImpl : CompilationUnit
-        statefulImpl =
+        statefulModule : CompilationUnit
+        statefulModule =
             { dirPath = scalaPackagePath
             , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
             , packageDecl = scalaPackagePath
@@ -333,4 +317,4 @@ mapStatefulAppDefinition opt distribution currentPackagePath currentModulePath a
                 ]
             }
     in
-    [ stateFulImplAdapter, statefulImpl ]
+    [ stateFulImplAdapter, statefulModule ]

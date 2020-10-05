@@ -405,6 +405,10 @@ mapValue opt value =
             name
 
         Ref path name ->
+            let
+                _ =
+                    Debug.log "Ref" name
+            in
             dotSep (path ++ [ name ])
 
         Select targetValue name ->
@@ -414,6 +418,13 @@ mapValue opt value =
             "_"
 
         Apply funValue argValues ->
+            let
+                _ =
+                    Debug.log "Apply" funValue
+
+                _ =
+                    Debug.log "argValues" (argValueBlock opt argValues)
+            in
             mapValue opt funValue ++ argValueBlock opt argValues
 
         UnOp op right ->
@@ -454,6 +465,10 @@ mapValue opt value =
             cases
                 |> List.map
                     (\( pattern, caseValue ) ->
+                        let
+                            _ =
+                                Debug.log "caseValue" caseValue
+                        in
                         ( pattern |> mapPattern, caseValue |> mapValue opt )
                     )
                 |> matchBlock opt
