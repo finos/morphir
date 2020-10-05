@@ -2,13 +2,6 @@
 'use strict'
 
 // NPM imports
-const path = require('path')
-const util = require('util')
-const fs = require('fs')
-const readdir = util.promisify(fs.readdir)
-const lstat = util.promisify(fs.lstat)
-const readFile = util.promisify(fs.readFile)
-const writeFile = util.promisify(fs.writeFile)
 const commander = require('commander')
 const cli = require('./cli')
 
@@ -25,7 +18,7 @@ program
 cli.make(program.projectDir)
     .then((packageDef) => {
         console.log(`Writing file ${program.output}.`)
-        writeFile(program.output, JSON.stringify(packageDef, null, 4))
+        cli.writeFile(program.output, JSON.stringify(packageDef, null, 4))
             .then(() => {
                 console.log('Done.')
             })

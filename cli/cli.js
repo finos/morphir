@@ -7,7 +7,7 @@ const fs = require('fs')
 const readdir = util.promisify(fs.readdir)
 const mkdir = util.promisify(fs.mkdir)
 const readFile = util.promisify(fs.readFile)
-const writeFile = util.promisify(fs.writeFile)
+const fsWriteFile = util.promisify(fs.writeFile)
 // Elm imports
 const worker = require('./Morphir.Elm.CLI').Elm.Morphir.Elm.CLI.init()
 
@@ -82,7 +82,7 @@ async function gen(input, outputPath, options) {
                 await mkdir(fileDir, { recursive: true })
                 console.log(`INSERT - ${filePath}`)
             }
-            return writeFile(filePath, content)
+            return fsWriteFile(filePath, content)
         })
     const filesToDelete = await findFilesToDelete(outputPath, fileMap)
     const deletePromises =
@@ -153,5 +153,11 @@ async function findFilesToDelete(outputPath, fileMap) {
     return Promise.all(await readDir(outputPath, files))
 }
 
+async function writeFile(filePath, content) {
+    await mkdir(path.dirname(filePath), { recursive: true })
+    return await fsWriteFile(filePath, content)
+}
+
 exports.make = make;
 exports.gen = gen;
+exports.writeFile = writeFile;
