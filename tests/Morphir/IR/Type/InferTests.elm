@@ -10,28 +10,17 @@ import Morphir.IR.Value as Value exposing (Value)
 
 
 type alias Scenario =
-    { vars : Dict Name (Type ())
-    , vals : Dict FQName (Type ())
+    { vals : Dict FQName (Type ())
     , inferred : Value () (Type ())
     }
 
 
 scenarios : List Scenario
 scenarios =
-    [ { vars = Dict.empty
-      , vals = Dict.empty
+    [ { vals = Dict.empty
       , inferred =
             Value.Literal (Type.Reference () (fqn "Morphir.SDK" "String" "String") [])
                 (Literal.StringLiteral "foo")
-      }
-    , { vars =
-            Dict.fromList
-                [ ( [ "a" ], Type.Reference () (fqn "Morphir.SDK" "String" "String") [] )
-                ]
-      , vals = Dict.empty
-      , inferred =
-            Value.Variable (Type.Reference () (fqn "Morphir.SDK" "String" "String") [])
-                [ "a" ]
       }
     ]
 
