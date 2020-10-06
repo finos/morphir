@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK.Dict exposing (..)
+module Morphir.IR.SDK.Set exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
@@ -29,14 +29,14 @@ import Morphir.IR.Value as Value exposing (Value)
 
 moduleName : ModuleName
 moduleName =
-    Path.fromString "Dict"
+    Path.fromString "Set"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Dict", OpaqueTypeSpecification [ [ "a" ] ] |> Documented "Type that represents a dictionary of key-value pairs." )
+            [ ( Name.fromString "Set", OpaqueTypeSpecification [ [ "a" ] ] |> Documented "Type that represents a set." )
             ]
     , values =
         let
