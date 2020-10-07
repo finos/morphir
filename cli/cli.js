@@ -100,26 +100,22 @@ async function gen(input, outputPath, options) {
     return Promise.all(writePromises.concat(deletePromises))
 }
 
-async function redistributeFiles(sourceDirectory, targetDirectory){
-    if(await fileExist(sourceDirectory)){
-        await fsextra.copy(sourceDirectory, targetDirectory)
-    }
-
-}
-
 async function copyRecursiveSync(src, dest) {
     var exists = fs.existsSync(src);
-    var stats = exists && fs.statSync(src);
-    var isDirectory = exists && stats.isDirectory();
-    if (isDirectory) {
-        if(!fs.existsSync(dest))
-            fs.mkdirSync(dest);
-        fs.readdirSync(src).forEach(function(childItemName) {
-            copyRecursiveSync(path.join(src, childItemName),
-                path.join(dest, childItemName));
-        });
-    } else {
-        fs.copyFileSync(src, dest);
+    if(exists)
+    {
+        var stats = exists && fs.statSync(src);
+        var isDirectory = exists && stats.isDirectory();
+        if (isDirectory) {
+            if(!fs.existsSync(dest))
+                fs.mkdirSync(dest);
+            fs.readdirSync(src).forEach(function(childItemName) {
+                copyRecursiveSync(path.join(src, childItemName),
+                    path.join(dest, childItemName));
+            });
+        } else {
+            fs.copyFileSync(src, dest);
+        }
     }
 }
 
