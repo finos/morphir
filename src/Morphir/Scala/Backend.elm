@@ -251,6 +251,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                                 List.append typeMembers functionMembers
                             , extends =
                                 []
+                            , body = Nothing
                             }
                     )
                 ]
@@ -269,6 +270,7 @@ mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleD
                     , name = name |> Name.toTitleCase
                     , extends = extends
                     , members = []
+                    , body = Nothing
                     }
 
             else

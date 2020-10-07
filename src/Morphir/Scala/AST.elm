@@ -71,6 +71,7 @@ type Mod
     | Package
     | Implicit
     | Private (Maybe String)
+    | Abstract
 
 
 type TypeDecl
@@ -94,6 +95,7 @@ type TypeDecl
         , name : Name
         , extends : List Type
         , members : List MemberDecl
+        , body : Maybe Value
         }
 
 

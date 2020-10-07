@@ -7,15 +7,9 @@ abstract class SpringBootStatefulAppAdapter [K, C, S, E] (statefulApp: morphir.s
       var key = deserialize(command)
       return process(key, read(key), command)
   }
-  @org.springframework.beans.factory.annotation.Autowired
-  val dealRepository: morphir.sdk.DealRepository = null
-
-  def read(key: K): Option[S]
 
   def process(key: K, state: Option[S], command: C){
     statefulApp.businessLogic(key, state, command)
   }
-  def deserialize(command: C): K
 
-  def serialize(key: K, state: S, event: E)
 }

@@ -96,25 +96,6 @@ mapTypeDecl opt typeDecl =
                                 |> List.map (mapArgDecls opt)
                                 |> concat
 
-                bodyDoc =
-                    case decl.members of
-                        [] ->
-                            empty
-
-                        _ ->
-                            " {"
-                                ++ newLine
-                                ++ newLine
-                                ++ (decl.members
-                                        |> List.map (mapMemberDecl opt)
-                                        |> List.intersperse (newLine ++ newLine)
-                                        |> concat
-                                        |> indent opt.indentDepth
-                                   )
-                                ++ newLine
-                                ++ newLine
-                                ++ "}"
-
                 members =
                     case decl.members of
                         [] ->
@@ -132,18 +113,17 @@ mapTypeDecl opt typeDecl =
                                 ++ newLine
                                 ++ newLine
             in
-            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ bodyDoc ++ "{" ++ members ++ "}"
+            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ "{" ++ members ++ "}"
 
         Object decl ->
             let
-                bodyDoc =
+                memberDoc =
                     case decl.members of
                         [] ->
                             empty
 
                         _ ->
-                            " {"
-                                ++ newLine
+                            newLine
                                 ++ newLine
                                 ++ (decl.members
                                         |> List.map (mapMemberDecl opt)
@@ -153,9 +133,19 @@ mapTypeDecl opt typeDecl =
                                    )
                                 ++ newLine
                                 ++ newLine
-                                ++ "}"
+
+                bodyDoc =
+                    case decl.body of
+                        Just ((Block _ _) as value) ->
+                            mapValue opt value
+
+                        Just value ->
+                            newLine ++ indent opt.indentDepth (mapValue opt value)
+
+                        Nothing ->
+                            empty
             in
-            mapModifiers decl.modifiers ++ "object " ++ decl.name ++ mapExtends opt decl.extends ++ bodyDoc
+            mapModifiers decl.modifiers ++ "object " ++ decl.name ++ mapExtends opt decl.extends ++ "{" ++ memberDoc ++ bodyDoc ++ "}"
 
 
 mapMemberDecl : Options -> MemberDecl -> Doc
@@ -273,6 +263,9 @@ mapModifier mod =
 
         Implicit ->
             "implicit"
+
+        Abstract ->
+            "abstract"
 
         Private maybeScope ->
             case maybeScope of
@@ -405,10 +398,6 @@ mapValue opt value =
             name
 
         Ref path name ->
-            let
-                _ =
-                    Debug.log "Ref" name
-            in
             dotSep (path ++ [ name ])
 
         Select targetValue name ->
@@ -418,13 +407,6 @@ mapValue opt value =
             "_"
 
         Apply funValue argValues ->
-            let
-                _ =
-                    Debug.log "Apply" funValue
-
-                _ =
-                    Debug.log "argValues" (argValueBlock opt argValues)
-            in
             mapValue opt funValue ++ argValueBlock opt argValues
 
         UnOp op right ->
@@ -465,10 +447,6 @@ mapValue opt value =
             cases
                 |> List.map
                     (\( pattern, caseValue ) ->
-                        let
-                            _ =
-                                Debug.log "caseValue" caseValue
-                        in
                         ( pattern |> mapPattern, caseValue |> mapValue opt )
                     )
                 |> matchBlock opt
