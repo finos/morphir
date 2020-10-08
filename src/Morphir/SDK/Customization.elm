@@ -77,6 +77,9 @@ getAnnotations annotations names memberTypeDecl =
                                                   , tpe = cons.tpe
                                                   , name =
                                                         "@java.beans.BeanProperty "
+                                                            ++ "@com.fasterxml.jackson.annotation.JsonProperty (\""
+                                                            ++ cons.name
+                                                            ++ "\") "
                                                             ++ cons.name
                                                   , defaultValue = cons.defaultValue
                                                   }
