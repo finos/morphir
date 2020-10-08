@@ -73,15 +73,12 @@ async function gen(input, outputPath, options) {
     await mkdir(outputPath, { recursive: true })
     const morphirIrJson = await readFile(path.resolve(input))
     const fileMap = await generate(options, JSON.parse(morphirIrJson.toString()))
-    const sourceDirectory = `./redistributable/${options["target"]}`
+    const sourceDirectory = path.join(path.dirname(__dirname), `\\redistributable\\${options["target"]}\\`)
 
-    console.log("2")
     const writePromises =
         fileMap.map(async ([[dirPath, fileName], content]) => {
             const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)
             const filePath = path.join(fileDir, fileName)
-            console.log(filePath)
-            console.log(fileDir)
                 if (await fileExist(filePath)) {
                 console.log(`UPDATE - ${filePath}`)
             } else {
@@ -94,7 +91,7 @@ async function gen(input, outputPath, options) {
     const deletePromises =
         filesToDelete.map(async (fileToDelete) => {
             console.log(`DELETE - ${fileToDelete}`)
-            return await unlink(fileToDelete)
+            return fs.unlinkSync(fileToDelete)
         })
     const copyDirectoriesRecursive = await copyRecursiveSync(sourceDirectory, outputPath)
     return Promise.all(writePromises.concat(deletePromises))
