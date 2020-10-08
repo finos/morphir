@@ -18,7 +18,7 @@
 module Morphir.IR.SDK exposing (..)
 
 import Dict
-import Morphir.IR.Package as Package exposing (PackagePath)
+import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Char
@@ -27,11 +27,12 @@ import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Regex as Regex
 import Morphir.IR.SDK.Result as Result
+import Morphir.IR.SDK.StatefulApp as StatefulApp
 import Morphir.IR.SDK.String as String
 import Morphir.IR.SDK.Tuple as Tuple
 
 
-packageName : PackagePath
+packageName : PackageName
 packageName =
     Path.fromString "Morphir.SDK"
 
@@ -49,5 +50,6 @@ packageSpec =
             , ( [ [ "list" ] ], List.moduleSpec )
             , ( [ [ "tuple" ] ], Tuple.moduleSpec )
             , ( [ [ "regex" ] ], Regex.moduleSpec )
+            , ( [ [ "stateful", "app" ] ], StatefulApp.moduleSpec )
             ]
     }

@@ -2,7 +2,7 @@
     "name": "Morphir.Reference.Model",
     "sourceDirectory": "src",
     "exposedModules": [
-        "Types",
-        "Values"
+
+        "BooksAndRecords"
     ]
 }

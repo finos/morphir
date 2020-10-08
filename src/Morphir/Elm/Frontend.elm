@@ -39,7 +39,7 @@ module Morphir.Elm.Frontend exposing
 
 import Dict exposing (Dict)
 import Elm.Parser
-import Elm.Processing as Processing
+import Elm.Processing as Processing exposing (ProcessContext)
 import Elm.RawFile as RawFile exposing (RawFile)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
@@ -54,6 +54,7 @@ import Elm.Syntax.Range as Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
+import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
@@ -165,7 +166,7 @@ defaultDependencies =
 
 {-| Function that takes some package info and a list of sources and returns Morphir IR or errors.
 -}
-packageDefinitionFromSource : PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result Errors (Package.Definition SourceLocation)
+packageDefinitionFromSource : PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result Errors (Package.Definition SourceLocation SourceLocation)
 packageDefinitionFromSource packageInfo dependencies sourceFiles =
     let
         parseSources : List SourceFile -> Result Errors (List ( ModuleName, ParsedFile ))
@@ -256,8 +257,7 @@ packageDefinitionFromSource packageInfo dependencies sourceFiles =
             )
         |> Result.map
             (\moduleDefs ->
-                { dependencies = Dict.empty
-                , modules =
+                { modules =
                     moduleDefs
                         |> Dict.toList
                         |> List.map
@@ -273,32 +273,45 @@ packageDefinitionFromSource packageInfo dependencies sourceFiles =
             )
 
 
-mapParsedFiles : Dict Path (Package.Specification ()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation))
+mapParsedFiles : Dict Path (Package.Specification ()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
 mapParsedFiles dependencies currentPackagePath parsedModules sortedModuleNames =
+    let
+        initialContext : ProcessContext
+        initialContext =
+            Processing.init
+                |> withWellKnownOperators
+    in
     sortedModuleNames
         |> List.filterMap
             (\moduleName ->
                 parsedModules
                     |> Dict.get moduleName
             )
-        |> List.map
-            (\parsedFile ->
-                parsedFile.rawFile
-                    |> Processing.process Processing.init
-                    |> ProcessedFile parsedFile
-            )
         |> List.foldl
-            (\processedFile moduleResultsSoFar ->
+            (\parsedFile moduleResultsSoFar ->
                 moduleResultsSoFar
                     |> Result.andThen
-                        (\modulesSoFar ->
-                            mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar
+                        (\( processContext, modulesSoFar ) ->
+                            let
+                                processedFile : File
+                                processedFile =
+                                    parsedFile.rawFile
+                                        |> Processing.process processContext
+
+                                newProcessContext : ProcessContext
+                                newProcessContext =
+                                    processContext
+                                        |> Processing.addFile parsedFile.rawFile
+                            in
+                            mapProcessedFile dependencies currentPackagePath (ProcessedFile parsedFile processedFile) modulesSoFar
+                                |> Result.map (Tuple.pair newProcessContext)
                         )
             )
-            (Ok Dict.empty)
+            (Ok ( initialContext, Dict.empty ))
+        |> Result.map Tuple.second
 
 
-mapProcessedFile : Dict Path (Package.Specification ()) -> Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation))
+mapProcessedFile : Dict Path (Package.Specification ()) -> Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
 mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
     let
         modulePath =
@@ -328,12 +341,12 @@ mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
             mapDeclarationsToType processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
                 |> Result.map Dict.fromList
 
-        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation)))
+        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation SourceLocation)))
         valuesResult =
             mapDeclarationsToValue processedFile.parsedFile.sourceFile moduleExpose processedFile.file.declarations
                 |> Result.map Dict.fromList
 
-        moduleResult : Result Errors (Module.Definition SourceLocation)
+        moduleResult : Result Errors (Module.Definition SourceLocation SourceLocation)
         moduleResult =
             Result.map2 Module.Definition
                 typesResult
@@ -520,7 +533,7 @@ mapDeclarationsToType sourceFile expose decls =
         |> Result.mapError List.concat
 
 
-mapDeclarationsToValue : SourceFile -> Exposing -> List (Node Declaration) -> Result Errors (List ( Name, AccessControlled (Value.Definition SourceLocation) ))
+mapDeclarationsToValue : SourceFile -> Exposing -> List (Node Declaration) -> Result Errors (List ( Name, AccessControlled (Value.Definition SourceLocation SourceLocation) ))
 mapDeclarationsToValue sourceFile expose decls =
     decls
         |> List.filterMap
@@ -536,7 +549,7 @@ mapDeclarationsToValue sourceFile expose decls =
                                     |> Node.value
                                     |> Name.fromString
 
-                            valueDef : Result Errors (AccessControlled (Value.Definition SourceLocation))
+                            valueDef : Result Errors (AccessControlled (Value.Definition SourceLocation SourceLocation))
                             valueDef =
                                 Node range function
                                     |> mapFunction sourceFile
@@ -612,7 +625,7 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
                 (mapTypeAnnotation sourceFile returnTypeNode)
 
 
-mapFunction : SourceFile -> Node Function -> Result Errors (Value.Definition SourceLocation)
+mapFunction : SourceFile -> Node Function -> Result Errors (Value.Definition SourceLocation SourceLocation)
 mapFunction sourceFile (Node range function) =
     let
         valueTypeResult : Result Errors (Type SourceLocation)
@@ -635,7 +648,7 @@ mapFunction sourceFile (Node range function) =
             )
 
 
-mapFunctionImplementation : SourceFile -> Type SourceLocation -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Definition SourceLocation)
+mapFunctionImplementation : SourceFile -> Type SourceLocation -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Definition SourceLocation SourceLocation)
 mapFunctionImplementation sourceFile valueType argumentNodes expression =
     let
         sourceLocation : Range -> SourceLocation
@@ -662,10 +675,10 @@ mapFunctionImplementation sourceFile valueType argumentNodes expression =
         ( inputTypes, outputType, lambdaArgPatterns ) =
             extractNamedParams [] argumentNodes valueType
 
-        bodyResult : Result Errors (Value.Value SourceLocation)
+        bodyResult : Result Errors (Value.Value SourceLocation SourceLocation)
         bodyResult =
             let
-                lambdaWithParams : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation)
+                lambdaWithParams : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
                 lambdaWithParams params body =
                     case params of
                         [] ->
@@ -682,7 +695,7 @@ mapFunctionImplementation sourceFile valueType argumentNodes expression =
         |> Result.map (Value.Definition inputTypes outputType)
 
 
-mapExpression : SourceFile -> Node Expression -> Result Errors (Value.Value SourceLocation)
+mapExpression : SourceFile -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
 mapExpression sourceFile (Node range exp) =
     let
         sourceLocation =
@@ -694,7 +707,7 @@ mapExpression sourceFile (Node range exp) =
 
         Expression.Application expNodes ->
             let
-                toApply : List (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                toApply : List (Value.Value SourceLocation SourceLocation) -> Result Errors (Value.Value SourceLocation SourceLocation)
                 toApply valuesReversed =
                     case valuesReversed of
                         [] ->
@@ -817,7 +830,7 @@ mapExpression sourceFile (Node range exp) =
 
         Expression.LambdaExpression lambda ->
             let
-                curriedLambda : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation)
+                curriedLambda : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
                 curriedLambda argNodes bodyNode =
                     case argNodes of
                         [] ->
@@ -959,7 +972,7 @@ mapPattern sourceFile (Node range pattern) =
             mapPattern sourceFile childNode
 
 
-mapOperator : SourceLocation -> String -> Result Errors (Value.Value SourceLocation)
+mapOperator : SourceLocation -> String -> Result Errors (Value.Value SourceLocation SourceLocation)
 mapOperator sourceLocation op =
     case op of
         "||" ->
@@ -1020,7 +1033,7 @@ mapOperator sourceLocation op =
             Err [ NotSupported sourceLocation <| "OperatorApplication: " ++ op ]
 
 
-mapLetExpression : SourceFile -> SourceLocation -> Expression.LetBlock -> Result Errors (Value SourceLocation)
+mapLetExpression : SourceFile -> SourceLocation -> Expression.LetBlock -> Result Errors (Value SourceLocation SourceLocation)
 mapLetExpression sourceFile sourceLocation letBlock =
     let
         namesReferredByExpression : Expression -> List String
@@ -1086,7 +1099,7 @@ mapLetExpression sourceFile sourceLocation letBlock =
                 _ ->
                     []
 
-        letBlockToValue : List (Node Expression.LetDeclaration) -> Node Expression -> Result Errors (Value.Value SourceLocation)
+        letBlockToValue : List (Node Expression.LetDeclaration) -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
         letBlockToValue declarationNodes inNode =
             let
                 -- build a dictionary from variable name to declaration index
@@ -1153,7 +1166,7 @@ mapLetExpression sourceFile sourceLocation letBlock =
                     in
                     Graph.fromNodesAndEdges nodes edges
 
-                letDeclarationToValue : Node Expression.LetDeclaration -> Result Errors (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                letDeclarationToValue : Node Expression.LetDeclaration -> Result Errors (Value.Value SourceLocation SourceLocation) -> Result Errors (Value.Value SourceLocation SourceLocation)
                 letDeclarationToValue letDeclarationNode valueResult =
                     case letDeclarationNode of
                         Node range (Expression.LetFunction function) ->
@@ -1167,7 +1180,7 @@ mapLetExpression sourceFile sourceLocation letBlock =
                                 (mapExpression sourceFile letExpressionNode)
                                 valueResult
 
-                componentGraphToValue : Graph (Node Expression.LetDeclaration) String -> Result Errors (Value.Value SourceLocation) -> Result Errors (Value.Value SourceLocation)
+                componentGraphToValue : Graph (Node Expression.LetDeclaration) String -> Result Errors (Value.Value SourceLocation SourceLocation) -> Result Errors (Value.Value SourceLocation SourceLocation)
                 componentGraphToValue componentGraph valueResult =
                     case componentGraph |> Graph.checkAcyclic of
                         Ok acyclic ->
@@ -1276,10 +1289,10 @@ rewriteTypes moduleResolver =
         )
 
 
-resolveLocalNames : ModuleResolver -> Module.Definition SourceLocation -> Result Errors (Module.Definition SourceLocation)
+resolveLocalNames : ModuleResolver -> Module.Definition SourceLocation SourceLocation -> Result Errors (Module.Definition SourceLocation SourceLocation)
 resolveLocalNames moduleResolver moduleDef =
     let
-        rewriteValues : Dict Name SourceLocation -> Value SourceLocation -> Result Errors (Value SourceLocation)
+        rewriteValues : Dict Name SourceLocation -> Value SourceLocation SourceLocation -> Result Errors (Value SourceLocation SourceLocation)
         rewriteValues variables value =
             resolveVariablesAndReferences variables moduleResolver value
 
@@ -1300,7 +1313,7 @@ resolveLocalNames moduleResolver moduleDef =
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
-        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation)))
+        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation SourceLocation)))
         valuesResult =
             moduleDef.values
                 |> Dict.toList
@@ -1328,7 +1341,7 @@ resolveLocalNames moduleResolver moduleDef =
         valuesResult
 
 
-resolveVariablesAndReferences : Dict Name SourceLocation -> ModuleResolver -> Value SourceLocation -> Result Errors (Value SourceLocation)
+resolveVariablesAndReferences : Dict Name SourceLocation -> ModuleResolver -> Value SourceLocation SourceLocation -> Result Errors (Value SourceLocation SourceLocation)
 resolveVariablesAndReferences variables moduleResolver value =
     let
         unionNames : (Name -> SourceLocation -> SourceLocation -> Error) -> Dict Name SourceLocation -> Dict Name SourceLocation -> Result Errors (Dict Name SourceLocation)
@@ -1451,16 +1464,18 @@ resolveVariablesAndReferences variables moduleResolver value =
                     |> Result.mapError (ResolveError sourceLocation >> List.singleton)
 
         Value.Lambda a argPattern bodyValue ->
-            namesBoundInPattern argPattern
-                |> Result.andThen
-                    (\patternNames ->
-                        unionVariableNames variables patternNames
-                    )
-                |> Result.andThen
-                    (\newVariables ->
-                        resolveVariablesAndReferences newVariables moduleResolver bodyValue
-                    )
-                |> Result.map (Value.Lambda a argPattern)
+            Result.map2 (Value.Lambda a)
+                (resolvePatternReferences moduleResolver argPattern)
+                (namesBoundInPattern argPattern
+                    |> Result.andThen
+                        (\patternNames ->
+                            unionVariableNames variables patternNames
+                        )
+                    |> Result.andThen
+                        (\newVariables ->
+                            resolveVariablesAndReferences newVariables moduleResolver bodyValue
+                        )
+                )
 
         Value.LetDefinition sourceLocation name def inValue ->
             Result.map2 (Value.LetDefinition sourceLocation name)
@@ -1507,7 +1522,8 @@ resolveVariablesAndReferences variables moduleResolver value =
                     )
 
         Value.Destructure a pattern subjectValue inValue ->
-            Result.map2 (Value.Destructure a pattern)
+            Result.map3 (Value.Destructure a)
+                (resolvePatternReferences moduleResolver pattern)
                 (resolveVariablesAndReferences variables moduleResolver subjectValue)
                 (namesBoundInPattern pattern
                     |> Result.andThen
@@ -1526,16 +1542,18 @@ resolveVariablesAndReferences variables moduleResolver value =
                 (cases
                     |> List.map
                         (\( casePattern, caseValue ) ->
-                            namesBoundInPattern casePattern
-                                |> Result.andThen
-                                    (\patternNames ->
-                                        unionVariableNames variables patternNames
-                                    )
-                                |> Result.andThen
-                                    (\newVariables ->
-                                        resolveVariablesAndReferences newVariables moduleResolver caseValue
-                                    )
-                                |> Result.map (Tuple.pair casePattern)
+                            Result.map2 Tuple.pair
+                                (resolvePatternReferences moduleResolver casePattern)
+                                (namesBoundInPattern casePattern
+                                    |> Result.andThen
+                                        (\patternNames ->
+                                            unionVariableNames variables patternNames
+                                        )
+                                    |> Result.andThen
+                                        (\newVariables ->
+                                            resolveVariablesAndReferences newVariables moduleResolver caseValue
+                                        )
+                                )
                         )
                     |> ListOfResults.liftAllErrors
                     |> Result.mapError List.concat
@@ -1598,6 +1616,49 @@ resolveVariablesAndReferences variables moduleResolver value =
             Ok value
 
 
+{-| Resolve references with local names into fully-qualified names. Currently this will only apply to
+constructor patterns as they are the only ones with a reference to other names.
+-}
+resolvePatternReferences : ModuleResolver -> Value.Pattern SourceLocation -> Result Errors (Value.Pattern SourceLocation)
+resolvePatternReferences moduleResolver pattern =
+    case pattern of
+        Value.AsPattern sourceLocation subjectPattern alias ->
+            Result.map (\resolvedSubjectPattern -> Value.AsPattern sourceLocation resolvedSubjectPattern alias)
+                (resolvePatternReferences moduleResolver subjectPattern)
+
+        Value.TuplePattern sourceLocation elems ->
+            Result.map (\resolvedElems -> Value.TuplePattern sourceLocation resolvedElems)
+                (elems
+                    |> List.map (resolvePatternReferences moduleResolver)
+                    |> ListOfResults.liftAllErrors
+                    |> Result.mapError List.concat
+                )
+
+        Value.ConstructorPattern sourceLocation (FQName [] modulePath localName) argPatterns ->
+            Result.map2
+                (\resolvedFullName resolvedArgPatterns ->
+                    Value.ConstructorPattern sourceLocation resolvedFullName resolvedArgPatterns
+                )
+                (moduleResolver.resolveCtor
+                    (modulePath |> List.map Name.toTitleCase)
+                    (localName |> Name.toTitleCase)
+                    |> Result.mapError (ResolveError sourceLocation >> List.singleton)
+                )
+                (argPatterns
+                    |> List.map (resolvePatternReferences moduleResolver)
+                    |> ListOfResults.liftAllErrors
+                    |> Result.mapError List.concat
+                )
+
+        Value.HeadTailPattern sourceLocation headPattern tailPattern ->
+            Result.map2 (Value.HeadTailPattern sourceLocation)
+                (resolvePatternReferences moduleResolver headPattern)
+                (resolvePatternReferences moduleResolver tailPattern)
+
+        _ ->
+            Ok pattern
+
+
 withAccessControl : Bool -> a -> AccessControlled a
 withAccessControl isExposed a =
     if isExposed then
@@ -1617,9 +1678,15 @@ fixAssociativity expr =
         Expression.OperatorApplication o d (Node lr l) (Node _ (Expression.OperatorApplication ro rd (Node rlr rl) (Node rrr rr))) ->
             if (o == ro) && d == Infix.Left then
                 Expression.OperatorApplication o d (Node (Range.combine [ lr, rlr ]) (Expression.OperatorApplication ro rd (Node lr l) (Node rlr rl))) (Node rrr rr)
+                    |> fixAssociativity
 
             else
                 expr
 
         _ ->
             expr
+
+
+withWellKnownOperators : ProcessContext -> ProcessContext
+withWellKnownOperators context =
+    List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators

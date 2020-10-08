@@ -18,6 +18,7 @@
 module Morphir.Scala.PrettyPrinter exposing (..)
 
 import Morphir.File.SourceCode exposing (Doc, concat, dot, dotSep, empty, indent, indentLines, newLine, parens, space)
+import Morphir.IR.Name as Name
 import Morphir.Scala.AST exposing (..)
 
 
@@ -27,18 +28,28 @@ type alias Options =
     }
 
 
-mapDocumented : (a -> Doc) -> Documented a -> Doc
+mapDocumented : (a -> Doc) -> Documented (Annotated a) -> Doc
 mapDocumented valueToDoc documented =
-    case documented.doc of
+    (case documented.doc of
         Just doc ->
             concat
                 [ concat [ "/** ", doc, newLine ]
                 , concat [ "*/", newLine ]
-                , valueToDoc documented.value
                 ]
 
         Nothing ->
-            valueToDoc documented.value
+            ""
+    )
+        ++ (case documented.value.annotation of
+                Just value ->
+                    concat
+                        [ dotSep value ++ newLine
+                        , valueToDoc documented.value.value ++ newLine
+                        ]
+
+                Nothing ->
+                    valueToDoc documented.value.value
+           )
 
 
 mapCompilationUnit : Options -> CompilationUnit -> Doc
@@ -84,19 +95,14 @@ mapTypeDecl opt typeDecl =
                             decl.ctorArgs
                                 |> List.map (mapArgDecls opt)
                                 |> concat
-            in
-            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends
 
-        Object decl ->
-            let
-                bodyDoc =
+                members =
                     case decl.members of
                         [] ->
                             empty
 
                         _ ->
-                            " {"
-                                ++ newLine
+                            newLine
                                 ++ newLine
                                 ++ (decl.members
                                         |> List.map (mapMemberDecl opt)
@@ -106,9 +112,40 @@ mapTypeDecl opt typeDecl =
                                    )
                                 ++ newLine
                                 ++ newLine
-                                ++ "}"
             in
-            mapModifiers decl.modifiers ++ "object " ++ decl.name ++ mapExtends opt decl.extends ++ bodyDoc
+            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ "{" ++ members ++ "}"
+
+        Object decl ->
+            let
+                memberDoc =
+                    case decl.members of
+                        [] ->
+                            empty
+
+                        _ ->
+                            newLine
+                                ++ newLine
+                                ++ (decl.members
+                                        |> List.map (mapMemberDecl opt)
+                                        |> List.intersperse (newLine ++ newLine)
+                                        |> concat
+                                        |> indent opt.indentDepth
+                                   )
+                                ++ newLine
+                                ++ newLine
+
+                bodyDoc =
+                    case decl.body of
+                        Just ((Block _ _) as value) ->
+                            mapValue opt value
+
+                        Just value ->
+                            newLine ++ indent opt.indentDepth (mapValue opt value)
+
+                        Nothing ->
+                            empty
+            in
+            mapModifiers decl.modifiers ++ "object " ++ decl.name ++ mapExtends opt decl.extends ++ "{" ++ memberDoc ++ bodyDoc ++ "}"
 
 
 mapMemberDecl : Options -> MemberDecl -> Doc
@@ -121,6 +158,12 @@ mapMemberDecl opt memberDecl =
             concat
                 [ "val "
                 , mapPattern decl.pattern
+                , case decl.valueType of
+                    Just tpe ->
+                        concat [ ": ", mapType opt tpe ]
+
+                    Nothing ->
+                        empty
                 , " = "
                 , mapValue opt decl.value
                 ]
@@ -162,7 +205,12 @@ mapMemberDecl opt memberDecl =
             modifierDoc ++ "def " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ argsDoc ++ returnTypeDoc ++ bodyDoc
 
         MemberTypeDecl decl ->
-            mapTypeDecl opt decl
+            case decl.annotation of
+                Just path ->
+                    (path |> concat) ++ newLine ++ mapTypeDecl opt decl.value
+
+                _ ->
+                    mapTypeDecl opt decl.value
 
 
 mapTypeArgs : Options -> List Type -> Doc
@@ -215,6 +263,9 @@ mapModifier mod =
 
         Implicit ->
             "implicit"
+
+        Abstract ->
+            "abstract"
 
         Private maybeScope ->
             case maybeScope of
@@ -320,6 +371,19 @@ mapType opt tpe =
                 ++ " => "
                 ++ mapType opt returnType
 
+        TypeParametrized ctor args params ->
+            mapType opt ctor
+                ++ newLine
+                ++ "["
+                ++ (args
+                        |> List.map (mapType opt)
+                        |> List.intersperse (", " ++ newLine)
+                        |> concat
+                   )
+                ++ "]("
+                ++ mapType opt params
+                ++ ")"
+
         CommentedType childType message ->
             mapType opt childType ++ " /* " ++ message ++ " */ "
 
@@ -395,10 +459,18 @@ mapValue opt value =
                 [ "if "
                 , parens (mapValue opt condValue)
                 , " "
-                , statementBlock opt [ trueValue |> mapValue opt ]
+                , case trueValue of
+                    Block _ _ ->
+                        mapValue opt trueValue
+
+                    _ ->
+                        statementBlock opt [ mapValue opt trueValue ]
                 , " else "
                 , case falseValue of
                     IfElse _ _ _ ->
+                        mapValue opt falseValue
+
+                    Block _ _ ->
                         mapValue opt falseValue
 
                     _ ->
@@ -433,6 +505,9 @@ mapValue opt value =
 
         Unit ->
             "{}"
+
+        This ->
+            "this"
 
         CommentedValue childValue message ->
             mapValue opt childValue ++ " /* " ++ message ++ " */ "
@@ -524,20 +599,37 @@ statementBlock opt statements =
 
 argValueBlock : Options -> List ArgValue -> Doc
 argValueBlock opt argValues =
-    parens
-        (argValues
-            |> List.map
-                (\(ArgValue name value) ->
-                    case name of
-                        Just argName ->
-                            argName ++ " = " ++ mapValue opt value
+    let
+        mapArgValue (ArgValue name value) =
+            case name of
+                Just argName ->
+                    argName ++ " = " ++ mapValue opt value
 
-                        Nothing ->
-                            mapValue opt value
-                )
-            |> List.intersperse ", "
-            |> concat
-        )
+                Nothing ->
+                    mapValue opt value
+    in
+    case argValues of
+        [ singleArgValue ] ->
+            parens (mapArgValue singleArgValue)
+
+        _ ->
+            concat
+                [ "("
+                , newLine
+                , indentLines opt.indentDepth
+                    (argValues
+                        |> List.indexedMap
+                            (\index argValue ->
+                                if (index + 1) == List.length argValues then
+                                    mapArgValue argValue
+
+                                else
+                                    concat [ mapArgValue argValue, "," ]
+                            )
+                    )
+                , newLine
+                , ")"
+                ]
 
 
 matchBlock : Options -> List ( String, String ) -> Doc

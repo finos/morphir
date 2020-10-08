@@ -22,7 +22,7 @@ module Morphir.IR.Value exposing
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
-    , definitionToSpecification, uncurryApply
+    , definitionToSpecification, uncurryApply, collectVariables
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -64,7 +64,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 # Utilities
 
-@docs definitionToSpecification, uncurryApply
+@docs definitionToSpecification, uncurryApply, collectVariables
 
 -}
 
@@ -74,30 +74,31 @@ import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.ListOfResults as ListOfResults
+import Set exposing (Set)
 import String
 
 
 {-| Type that represents a value.
 -}
-type Value a
-    = Literal a Literal
-    | Constructor a FQName
-    | Tuple a (List (Value a))
-    | List a (List (Value a))
-    | Record a (List ( Name, Value a ))
-    | Variable a Name
-    | Reference a FQName
-    | Field a (Value a) Name
-    | FieldFunction a Name
-    | Apply a (Value a) (Value a)
-    | Lambda a (Pattern a) (Value a)
-    | LetDefinition a Name (Definition a) (Value a)
-    | LetRecursion a (Dict Name (Definition a)) (Value a)
-    | Destructure a (Pattern a) (Value a) (Value a)
-    | IfThenElse a (Value a) (Value a) (Value a)
-    | PatternMatch a (Value a) (List ( Pattern a, Value a ))
-    | UpdateRecord a (Value a) (List ( Name, Value a ))
-    | Unit a
+type Value ta va
+    = Literal va Literal
+    | Constructor va FQName
+    | Tuple va (List (Value ta va))
+    | List va (List (Value ta va))
+    | Record va (List ( Name, Value ta va ))
+    | Variable va Name
+    | Reference va FQName
+    | Field va (Value ta va) Name
+    | FieldFunction va Name
+    | Apply va (Value ta va) (Value ta va)
+    | Lambda va (Pattern va) (Value ta va)
+    | LetDefinition va Name (Definition ta va) (Value ta va)
+    | LetRecursion va (Dict Name (Definition ta va)) (Value ta va)
+    | Destructure va (Pattern va) (Value ta va) (Value ta va)
+    | IfThenElse va (Value ta va) (Value ta va) (Value ta va)
+    | PatternMatch va (Value ta va) (List ( Pattern va, Value ta va ))
+    | UpdateRecord va (Value ta va) (List ( Name, Value ta va ))
+    | Unit va
 
 
 {-| Type that represents a pattern.
@@ -116,30 +117,30 @@ type Pattern a
 {-| Type that represents a value or function specification. The specification of what the value or function
 is without the actual data or logic behind it.
 -}
-type alias Specification a =
-    { inputs : List ( Name, Type a )
-    , output : Type a
+type alias Specification ta =
+    { inputs : List ( Name, Type ta )
+    , output : Type ta
     }
 
 
 {-| Type that represents a value or function definition. A definition is the actual data or logic as opposed to a specification
 which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.
 -}
-type alias Definition a =
-    { inputTypes : List ( Name, a, Type a )
-    , outputType : Type a
-    , body : Value a
+type alias Definition ta va =
+    { inputTypes : List ( Name, va, Type ta )
+    , outputType : Type ta
+    , body : Value ta va
     }
 
 
 {-| Turns a definition into a specification by removing implementation details.
 -}
-definitionToSpecification : Definition a -> Specification a
+definitionToSpecification : Definition ta va -> Specification ta
 definitionToSpecification def =
     { inputs =
         def.inputTypes
             |> List.map
-                (\( name, a, tpe ) ->
+                (\( name, _, tpe ) ->
                     ( name, tpe )
                 )
     , output =
@@ -148,7 +149,7 @@ definitionToSpecification def =
 
 
 {-| -}
-mapDefinition : (Type a -> Result e (Type a)) -> (Value a -> Result e (Value a)) -> Definition a -> Result (List e) (Definition a)
+mapDefinition : (Type ta -> Result e (Type ta)) -> (Value ta va -> Result e (Value ta va)) -> Definition ta va -> Result (List e) (Definition ta va)
 mapDefinition mapType mapValue def =
     Result.map3 (\inputTypes outputType body -> Definition inputTypes outputType body)
         (def.inputTypes
@@ -180,89 +181,89 @@ mapSpecificationAttributes f spec =
 
 
 {-| -}
-mapValueAttributes : (a -> b) -> Value a -> Value b
-mapValueAttributes f v =
+mapValueAttributes : (ta -> tb) -> (va -> vb) -> Value ta va -> Value tb vb
+mapValueAttributes f g v =
     case v of
         Literal a value ->
-            Literal (f a) value
+            Literal (g a) value
 
         Constructor a fullyQualifiedName ->
-            Constructor (f a) fullyQualifiedName
+            Constructor (g a) fullyQualifiedName
 
         Tuple a elements ->
-            Tuple (f a) (elements |> List.map (mapValueAttributes f))
+            Tuple (g a) (elements |> List.map (mapValueAttributes f g))
 
         List a items ->
-            List (f a) (items |> List.map (mapValueAttributes f))
+            List (g a) (items |> List.map (mapValueAttributes f g))
 
         Record a fields ->
-            Record (f a)
+            Record (g a)
                 (fields
                     |> List.map
                         (\( fieldName, fieldValue ) ->
-                            ( fieldName, mapValueAttributes f fieldValue )
+                            ( fieldName, mapValueAttributes f g fieldValue )
                         )
                 )
 
         Variable a name ->
-            Variable (f a) name
+            Variable (g a) name
 
         Reference a fullyQualifiedName ->
-            Reference (f a) fullyQualifiedName
+            Reference (g a) fullyQualifiedName
 
         Field a subjectValue fieldName ->
-            Field (f a) (mapValueAttributes f subjectValue) fieldName
+            Field (g a) (mapValueAttributes f g subjectValue) fieldName
 
         FieldFunction a fieldName ->
-            FieldFunction (f a) fieldName
+            FieldFunction (g a) fieldName
 
         Apply a function argument ->
-            Apply (f a) (mapValueAttributes f function) (mapValueAttributes f argument)
+            Apply (g a) (mapValueAttributes f g function) (mapValueAttributes f g argument)
 
         Lambda a argumentPattern body ->
-            Lambda (f a) (mapPatternAttributes f argumentPattern) (mapValueAttributes f body)
+            Lambda (g a) (mapPatternAttributes g argumentPattern) (mapValueAttributes f g body)
 
         LetDefinition a valueName valueDefinition inValue ->
-            LetDefinition (f a) valueName (mapDefinitionAttributes f valueDefinition) (mapValueAttributes f inValue)
+            LetDefinition (g a) valueName (mapDefinitionAttributes f g valueDefinition) (mapValueAttributes f g inValue)
 
         LetRecursion a valueDefinitions inValue ->
-            LetRecursion (f a)
+            LetRecursion (g a)
                 (valueDefinitions
                     |> Dict.map
                         (\_ def ->
-                            mapDefinitionAttributes f def
+                            mapDefinitionAttributes f g def
                         )
                 )
-                (mapValueAttributes f inValue)
+                (mapValueAttributes f g inValue)
 
         Destructure a pattern valueToDestruct inValue ->
-            Destructure (f a) (mapPatternAttributes f pattern) (mapValueAttributes f valueToDestruct) (mapValueAttributes f inValue)
+            Destructure (g a) (mapPatternAttributes g pattern) (mapValueAttributes f g valueToDestruct) (mapValueAttributes f g inValue)
 
         IfThenElse a condition thenBranch elseBranch ->
-            IfThenElse (f a) (mapValueAttributes f condition) (mapValueAttributes f thenBranch) (mapValueAttributes f elseBranch)
+            IfThenElse (g a) (mapValueAttributes f g condition) (mapValueAttributes f g thenBranch) (mapValueAttributes f g elseBranch)
 
         PatternMatch a branchOutOn cases ->
-            PatternMatch (f a)
-                (mapValueAttributes f branchOutOn)
+            PatternMatch (g a)
+                (mapValueAttributes f g branchOutOn)
                 (cases
                     |> List.map
                         (\( pattern, body ) ->
-                            ( mapPatternAttributes f pattern, mapValueAttributes f body )
+                            ( mapPatternAttributes g pattern, mapValueAttributes f g body )
                         )
                 )
 
         UpdateRecord a valueToUpdate fieldsToUpdate ->
-            UpdateRecord (f a)
-                (mapValueAttributes f valueToUpdate)
+            UpdateRecord (g a)
+                (mapValueAttributes f g valueToUpdate)
                 (fieldsToUpdate
                     |> List.map
                         (\( fieldName, fieldValue ) ->
-                            ( fieldName, mapValueAttributes f fieldValue )
+                            ( fieldName, mapValueAttributes f g fieldValue )
                         )
                 )
 
         Unit a ->
-            Unit (f a)
+            Unit (g a)
 
 
 {-| -}
@@ -295,12 +296,80 @@ mapPatternAttributes f p =
 
 
 {-| -}
-mapDefinitionAttributes : (a -> b) -> Definition a -> Definition b
-mapDefinitionAttributes f d =
+mapDefinitionAttributes : (ta -> tb) -> (va -> vb) -> Definition ta va -> Definition tb vb
+mapDefinitionAttributes f g d =
     Definition
-        (d.inputTypes |> List.map (\( name, attr, tpe ) -> ( name, f attr, Type.mapTypeAttributes f tpe )))
+        (d.inputTypes |> List.map (\( name, attr, tpe ) -> ( name, g attr, Type.mapTypeAttributes f tpe )))
         (Type.mapTypeAttributes f d.outputType)
-        (mapValueAttributes f d.body)
+        (mapValueAttributes f g d.body)
+
+
+{-| Collect all variables in a value recursively.
+-}
+collectVariables : Value ta va -> Set Name
+collectVariables value =
+    let
+        collectUnion : List (Value ta va) -> Set Name
+        collectUnion values =
+            values
+                |> List.map collectVariables
+                |> List.foldl Set.union Set.empty
+    in
+    case value of
+        Tuple _ elements ->
+            collectUnion elements
+
+        List _ items ->
+            collectUnion items
+
+        Record _ fields ->
+            collectUnion (fields |> List.map Tuple.second)
+
+        Variable _ name ->
+            Set.singleton name
+
+        Field _ subjectValue _ ->
+            collectVariables subjectValue
+
+        Apply _ function argument ->
+            collectUnion [ function, argument ]
+
+        Lambda _ _ body ->
+            collectVariables body
+
+        LetDefinition _ valueName valueDefinition inValue ->
+            collectUnion [ valueDefinition.body, inValue ]
+                |> Set.insert valueName
+
+        LetRecursion _ valueDefinitions inValue ->
+            List.foldl Set.union
+                Set.empty
+                (valueDefinitions
+                    |> Dict.toList
+                    |> List.map
+                        (\( defName, def ) ->
+                            collectVariables def.body
+                                |> Set.insert defName
+                        )
+                    |> List.append [ collectVariables inValue ]
+                )
+
+        Destructure _ _ valueToDestruct inValue ->
+            collectUnion [ valueToDestruct, inValue ]
+
+        IfThenElse _ condition thenBranch elseBranch ->
+            collectUnion [ condition, thenBranch, elseBranch ]
+
+        PatternMatch _ branchOutOn cases ->
+            collectUnion (cases |> List.map Tuple.second)
+                |> Set.union (collectVariables branchOutOn)
+
+        UpdateRecord _ valueToUpdate fieldsToUpdate ->
+            collectUnion (fieldsToUpdate |> List.map Tuple.second)
+                |> Set.union (collectVariables valueToUpdate)
+
+        _ ->
+            Set.empty
 
 
 
@@ -402,7 +471,7 @@ mapDefinitionAttributes f d =
 [lit]: https://en.wikipedia.org/wiki/Literal_(computer_programming)
 
 -}
-literal : a -> Literal -> Value a
+literal : va -> Literal -> Value ta va
 literal attributes value =
     Literal attributes value
 
@@ -414,7 +483,7 @@ literal attributes value =
     Foo.Bar -- Constructor ( ..., [ [ "foo" ] ], [ "bar" ] )
 
 -}
-constructor : a -> FQName -> Value a
+constructor : va -> FQName -> Value ta va
 constructor attributes fullyQualifiedName =
     Constructor attributes fullyQualifiedName
 
@@ -432,7 +501,7 @@ constructor attributes fullyQualifiedName =
 [tuple]: https://en.wikipedia.org/wiki/Tuple
 
 -}
-tuple : a -> List (Value a) -> Value a
+tuple : va -> List (Value ta va) -> Value ta va
 tuple attributes elements =
     Tuple attributes elements
 
@@ -446,7 +515,7 @@ tuple attributes elements =
 [list]: https://en.wikipedia.org/wiki/List_(abstract_data_type)
 
 -}
-list : a -> List (Value a) -> Value a
+list : va -> List (Value ta va) -> Value ta va
 list attributes items =
     List attributes items
 
@@ -462,7 +531,7 @@ list attributes items =
 [record]: https://en.wikipedia.org/wiki/Record_(computer_science)
 
 -}
-record : a -> List ( Name, Value a ) -> Value a
+record : va -> List ( Name, Value ta va ) -> Value ta va
 record attributes fields =
     Record attributes fields
 
@@ -476,7 +545,7 @@ record attributes fields =
 [variable]: https://en.wikipedia.org/wiki/Variable_(computer_science)
 
 -}
-variable : a -> Name -> Value a
+variable : va -> Name -> Value ta va
 variable attributes name =
     Variable attributes name
 
@@ -486,7 +555,7 @@ variable attributes name =
     List.map -- Reference ( [ ..., [ [ "list" ] ], [ "map" ] )
 
 -}
-reference : a -> FQName -> Value a
+reference : va -> FQName -> Value ta va
 reference attributes fullyQualifiedName =
     Reference attributes fullyQualifiedName
 
@@ -496,7 +565,7 @@ reference attributes fullyQualifiedName =
     a.foo -- Field (Variable [ "a" ]) [ "foo" ]
 
 -}
-field : a -> Value a -> Name -> Value a
+field : va -> Value ta va -> Name -> Value ta va
 field attributes subjectValue fieldName =
     Field attributes subjectValue fieldName
 
@@ -506,7 +575,7 @@ field attributes subjectValue fieldName =
     .foo -- FieldFunction [ "foo" ]
 
 -}
-fieldFunction : a -> Name -> Value a
+fieldFunction : va -> Name -> Value ta va
 fieldFunction attributes fieldName =
     FieldFunction attributes fieldName
 
@@ -520,7 +589,7 @@ fieldFunction attributes fieldName =
     True || False -- Apply (Apply (Reference ( ..., [ [ "basics" ] ], [ "and" ]))) (Literal (BoolLiteral True)) (Literal (BoolLiteral True))
 
 -}
-apply : a -> Value a -> Value a -> Value a
+apply : va -> Value ta va -> Value ta va -> Value ta va
 apply attributes function argument =
     Apply attributes function argument
 
@@ -539,7 +608,7 @@ apply attributes function argument =
 ```
 
 -}
-lambda : a -> Pattern a -> Value a -> Value a
+lambda : va -> Pattern va -> Value ta va -> Value ta va
 lambda attributes argumentPattern body =
     Lambda attributes argumentPattern body
 
@@ -574,7 +643,7 @@ lambda attributes argumentPattern body =
     --     )
 
 -}
-letDef : a -> Name -> Definition a -> Value a -> Value a
+letDef : va -> Name -> Definition ta va -> Value ta va -> Value ta va
 letDef attributes valueName valueDefinition inValue =
     LetDefinition attributes valueName valueDefinition inValue
 
@@ -596,7 +665,7 @@ letDef attributes valueName valueDefinition inValue =
     --     (Variable [ "a" ])
 
 -}
-letRec : a -> Dict Name (Definition a) -> Value a -> Value a
+letRec : va -> Dict Name (Definition ta va) -> Value ta va -> Value ta va
 letRec attributes valueDefinitions inValue =
     LetRecursion attributes valueDefinitions inValue
 
@@ -613,7 +682,7 @@ letRec attributes valueDefinitions inValue =
     --     (Variable ["a"])
 
 -}
-letDestruct : a -> Pattern a -> Value a -> Value a -> Value a
+letDestruct : va -> Pattern va -> Value ta va -> Value ta va -> Value ta va
 letDestruct attributes pattern valueToDestruct inValue =
     Destructure attributes pattern valueToDestruct inValue
 
@@ -629,7 +698,7 @@ letDestruct attributes pattern valueToDestruct inValue =
     --     (Variable ["c"])
 
 -}
-ifThenElse : a -> Value a -> Value a -> Value a -> Value a
+ifThenElse : va -> Value ta va -> Value ta va -> Value ta va -> Value ta va
 ifThenElse attributes condition thenBranch elseBranch =
     IfThenElse attributes condition thenBranch elseBranch
 
@@ -648,7 +717,7 @@ ifThenElse attributes condition thenBranch elseBranch =
     --     ]
 
 -}
-patternMatch : a -> Value a -> List ( Pattern a, Value a ) -> Value a
+patternMatch : va -> Value ta va -> List ( Pattern va, Value ta va ) -> Value ta va
 patternMatch attributes branchOutOn cases =
     PatternMatch attributes branchOutOn cases
 
@@ -658,7 +727,7 @@ patternMatch attributes branchOutOn cases =
     { a | foo = 1 } -- Update (Variable ["a"]) [ ( ["foo"], Literal (IntLiteral 1) ) ]
 
 -}
-update : a -> Value a -> List ( Name, Value a ) -> Value a
+update : va -> Value ta va -> List ( Name, Value ta va ) -> Value ta va
 update attributes valueToUpdate fieldsToUpdate =
     UpdateRecord attributes valueToUpdate fieldsToUpdate
 
@@ -668,7 +737,7 @@ update attributes valueToUpdate fieldsToUpdate =
     () -- Unit
 
 -}
-unit : a -> Value a
+unit : va -> Value ta va
 unit attributes =
     Unit attributes
 
@@ -789,7 +858,7 @@ the function and a list of arguments.
     uncurryApply (Apply () f a) b == ( f, [ a, b ] )
 
 -}
-uncurryApply : Value a -> Value a -> ( Value a, List (Value a) )
+uncurryApply : Value ta va -> Value ta va -> ( Value ta va, List (Value ta va) )
 uncurryApply fun lastArg =
     case fun of
         Apply _ nestedFun nestedArg ->

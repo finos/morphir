@@ -19,15 +19,15 @@ module Morphir.IR.SDK.List exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.Module as Module exposing (ModulePath)
-import Morphir.IR.Name as Name
+import Morphir.IR.Module as Module exposing (ModuleName)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
 
-moduleName : ModulePath
+moduleName : ModuleName
 moduleName =
     Path.fromString "List"
 
@@ -51,11 +51,9 @@ moduleSpec =
                 , "repeat"
                 , "range"
                 , "construct"
-                , "map"
                 , "indexedMap"
                 , "foldl"
                 , "foldr"
-                , "filter"
                 , "filterMap"
                 , "length"
                 , "reverse"
@@ -85,12 +83,31 @@ moduleSpec =
                 , "partition"
                 , "unzip"
                 ]
+
+            realValues : List ( Name, Value.Specification () )
+            realValues =
+                [ ( Name.fromString "map"
+                  , Value.Specification
+                        [ ( Name.fromString "f", Type.Unit () )
+                        , ( Name.fromString "list", Type.Unit () )
+                        ]
+                        (Type.Unit ())
+                  )
+                , ( Name.fromString "filter"
+                  , Value.Specification
+                        [ ( Name.fromString "f", Type.Unit () )
+                        , ( Name.fromString "list", Type.Unit () )
+                        ]
+                        (Type.Unit ())
+                  )
+                ]
         in
         valueNames
             |> List.map
                 (\valueName ->
                     ( Name.fromString valueName, dummyValueSpec )
                 )
+            |> List.append realValues
             |> Dict.fromList
     }
 
@@ -100,6 +117,6 @@ listType attributes itemType =
     Type.Reference attributes (toFQName moduleName "List") [ itemType ]
 
 
-construct : a -> Value a
+construct : a -> Value ta a
 construct a =
     Value.Reference a (toFQName moduleName "construct")

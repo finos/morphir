@@ -16,8 +16,39 @@ type Custom
     | CustomTwoArg String Quantity
 
 
+customToInt : Custom -> Int
+customToInt custom =
+    case custom of
+        CustomNoArg ->
+            0
+
+        CustomOneArg bool ->
+            1
+
+        CustomTwoArg string quantity ->
+            quantity
+
+
+customToInt2 : Bool -> Custom -> Int
+customToInt2 b custom =
+    case custom of
+        CustomNoArg ->
+            0
+
+        CustomOneArg bool ->
+            1
+
+        CustomTwoArg string quantity ->
+            quantity
+
+
 type alias FooBarBazRecord =
     { foo : String
     , bar : Bool
     , baz : Int
     }
+
+
+fooBarBazToString : FooBarBazRecord -> String
+fooBarBazToString fbb =
+    fbb.foo

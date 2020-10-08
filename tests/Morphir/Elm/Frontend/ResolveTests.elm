@@ -49,6 +49,7 @@ moduleResolverTests =
                             Dict.fromList
                                 [ ( [ "one" ], Documented "" (Type.CustomTypeSpecification [] [ Type.Constructor [ "one" ] [] ]) )
                                 , ( [ "one", "one" ], Documented "" (Type.CustomTypeSpecification [] [ Type.Constructor [ "one", "two" ] [] ]) )
+                                , ( [ "rec", "one" ], Documented "" (Type.TypeAliasSpecification [] (Type.Record () [])) )
                                 ]
                         , values =
                             Dict.fromList
@@ -60,6 +61,7 @@ moduleResolverTests =
                       , { types =
                             Dict.fromList
                                 [ ( [ "two" ], Documented "" (Type.CustomTypeSpecification [] [ Type.Constructor [ "two", "one" ] [] ]) )
+                                , ( [ "rec", "two" ], Documented "" (Type.TypeAliasSpecification [] (Type.Record () [])) )
                                 ]
                         , values =
                             Dict.fromList
@@ -71,6 +73,7 @@ moduleResolverTests =
                       , { types =
                             Dict.fromList
                                 [ ( [ "three" ], Documented "" (Type.CustomTypeSpecification [] [ Type.Constructor [ "three", "four" ] [] ]) )
+                                , ( [ "rec", "three" ], Documented "" (Type.TypeAliasSpecification [] (Type.Record () [])) )
                                 ]
                         , values =
                             Dict.fromList
@@ -100,6 +103,7 @@ moduleResolverTests =
                                 (Explicit
                                     [ Node emptyRange (TypeOrAliasExpose "One")
                                     , Node emptyRange (TypeExpose (ExposedType "OneOne" (Just emptyRange)))
+                                    , Node emptyRange (TypeOrAliasExpose "RecOne")
                                     , Node emptyRange (FunctionExpose "one")
                                     ]
                                 )
@@ -118,6 +122,7 @@ moduleResolverTests =
                     Module.Definition
                         (Dict.fromList
                             [ ( [ "zero" ], AccessControlled Private (Documented "" (Type.CustomTypeDefinition [] (AccessControlled Private [ Type.Constructor [ "zero", "one" ] [] ]))) )
+                            , ( [ "rec", "zero" ], AccessControlled Private (Documented "" (Type.TypeAliasDefinition [] (Type.Record () []))) )
                             ]
                         )
                         (Dict.fromList
@@ -209,6 +214,31 @@ moduleResolverTests =
             [ "MyModule3" ]
             "three"
             (fQName [ [ "other" ] ] [ [ "module", "3" ] ] [ "three" ])
+        , assert "Resolve record ctor name defined locally"
+            moduleResolver.resolveCtor
+            []
+            "RecZero"
+            (fQName [ [ "test" ] ] [ [ "module" ] ] [ "rec", "zero" ])
+        , assert "Resolve record ctor name imported explicitly"
+            moduleResolver.resolveCtor
+            []
+            "RecOne"
+            (fQName [ [ "other" ] ] [ [ "module", "1" ] ] [ "rec", "one" ])
+        , assert "Resolve record ctor name imported using open import"
+            moduleResolver.resolveCtor
+            []
+            "RecTwo"
+            (fQName [ [ "other" ] ] [ [ "module", "2" ] ] [ "rec", "two" ])
+        , assert "Resolve record ctor name with full module name"
+            moduleResolver.resolveCtor
+            [ "Other", "Module3" ]
+            "RecThree"
+            (fQName [ [ "other" ] ] [ [ "module", "3" ] ] [ "rec", "three" ])
+        , assert "Resolve record ctor name with alias"
+            moduleResolver.resolveCtor
+            [ "MyModule3" ]
+            "RecThree"
+            (fQName [ [ "other" ] ] [ [ "module", "3" ] ] [ "rec", "three" ])
         ]
 
 

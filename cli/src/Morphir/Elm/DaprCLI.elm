@@ -58,7 +58,7 @@ type Msg
 
 
 type alias IrAndElmBackendResult =
-    { packageDef : Package.Definition ()
+    { packageDef : Package.Definition () ()
     , elmBackendResult : String
     }
 
@@ -79,7 +79,7 @@ update msg model =
             case Decode.decodeValue decodePackageInfo packageInfoJson of
                 Ok pkgInfo ->
                     let
-                        packageDefResult : Result Frontend.Errors (Package.Definition ())
+                        packageDefResult : Result Frontend.Errors (Package.Definition ()())
                         packageDefResult =
                             Frontend.packageDefinitionFromSource pkgInfo Dict.empty sourceFiles
                                 |> Result.map Package.eraseDefinitionAttributes
@@ -88,7 +88,7 @@ update msg model =
                             packageDefResult
                                 |> Result.map (\pkgDef -> IrAndElmBackendResult pkgDef (daprSource pkgInfo.name pkgDef))
                     in
-                    ( model, result |> encodeResult (Encode.list encodeError) (PackageCodec.encodeDefinition (\_ -> Encode.null)) |> packageDefAndDaprCodeFromSrcResult )
+                    ( model, result |> encodeResult (Encode.list encodeError) (PackageCodec.encodeDefinition (\_ -> Encode.null) (\_ -> Encode.null)) |> packageDefAndDaprCodeFromSrcResult )
 
                 Err errorMessage ->
                     ( model, errorMessage |> Decode.errorToString |> decodeError )
@@ -106,7 +106,7 @@ type alias StatefulAppArgs extra =
     }
 
 
-daprSource : Path -> Package.Definition () -> String
+daprSource : Path -> Package.Definition () ()-> String
 daprSource pkgPath pkgDef =
     let
         appFiles : List File
@@ -119,7 +119,7 @@ daprSource pkgPath pkgDef =
                 |> List.map MaybeExtra.toList
                 |> List.concat
 
-        createStatefulAppArgs : Path -> AccessControlled (Module.Definition extra) -> List (StatefulAppArgs extra)
+        createStatefulAppArgs : Path -> AccessControlled (Module.Definition extra extra) -> List (StatefulAppArgs extra)
         createStatefulAppArgs modPath acsCtrlModDef =
             let
                 maybeApp : Maybe (AppArgs extra)
@@ -176,7 +176,7 @@ daprSource pkgPath pkgDef =
         |> String.concat
 
 
-elmBackendResult : Package.Definition () -> String
+elmBackendResult : Package.Definition () () -> String
 elmBackendResult packageDef =
     let
         codecDecls : List (Node ElmSyn.Declaration)
@@ -228,7 +228,7 @@ mapPublic f acsCtrl =
             Nothing
 
 
-encodeResult : (Frontend.Errors -> Encode.Value) -> (Package.Definition () -> Encode.Value) -> Result Frontend.Errors IrAndElmBackendResult -> Encode.Value
+encodeResult : (Frontend.Errors -> Encode.Value) -> (Package.Definition () ()-> Encode.Value) -> Result Frontend.Errors IrAndElmBackendResult -> Encode.Value
 encodeResult encodeError encodeValue result =
     case result of
         Ok a ->
