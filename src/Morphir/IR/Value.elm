@@ -23,7 +23,7 @@ module Morphir.IR.Value exposing
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, uncurryApply, collectVariables
-    , indexedMapPattern
+    , indexedMapPattern, indexedMapValue, mapPatternAttributes
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -373,7 +373,7 @@ collectVariables value =
             Set.empty
 
 
-indexedMapValue : (Int -> a -> b) -> Int -> Value a -> ( Value b, Int )
+indexedMapValue : (Int -> a -> b) -> Int -> Value ta a -> ( Value ta b, Int )
 indexedMapValue f baseIndex value =
     case value of
         Literal a lit ->
@@ -392,7 +392,7 @@ indexedMapValue f baseIndex value =
         List a values ->
             let
                 ( mappedValues, valuesLastIndex ) =
-                    indexedMapListHelp (indexedMapValue f) (baseIndex + 1) values
+                    indexedMapListHelp (indexedMapValue f) baseIndex values
             in
             ( List (f baseIndex a) mappedValues, valuesLastIndex )
 
@@ -407,7 +407,7 @@ indexedMapValue f baseIndex value =
                             in
                             ( ( fieldName, mappedFieldValue ), lastFieldIndex )
                         )
-                        (baseIndex + 1)
+                        baseIndex
                         fields
             in
             ( Record (f baseIndex a) mappedFields, valuesLastIndex )
@@ -448,29 +448,73 @@ indexedMapValue f baseIndex value =
             in
             ( Lambda (f baseIndex a) mappedArgPattern mappedBodyValue, bodyValueLastIndex )
 
-        --LetDefinition a defName def inValue ->
-        --    let
-        --        ( mappedDef, defLastIndex ) =
-        --            let
-        --            in
-        --            { inputTypes =
-        --                def.inpuTypes
-        --                    |> List.map
-        --                        (\( inputName, inputA, inputType )  ->
-        --                            ( inputName, f inputA, inputType )
-        --                        )
-        --                , outputType : Type a
-        --                , body : Value a
-        --                }
-        --
-        --        ( mappedInValue, inValueLastIndex ) =
-        --    in
-        --    ( LetDefinition (f baseIndex a) defName mappedDef mappedInValue, inValueLastIndex )
-        --
-        --
-        --LetRecursion a dict value ->
-        --
-        --
+        LetDefinition a defName def inValue ->
+            let
+                ( mappedDefArgs, defArgsLastIndex ) =
+                    indexedMapListHelp
+                        (\inputBaseIndex ( inputName, inputA, inputType ) ->
+                            ( ( inputName, f inputBaseIndex inputA, inputType ), inputBaseIndex )
+                        )
+                        baseIndex
+                        def.inputTypes
+
+                ( mappedDefBody, defBodyLastIndex ) =
+                    indexedMapValue f (defArgsLastIndex + 1) def.body
+
+                mappedDef =
+                    { inputTypes =
+                        mappedDefArgs
+                    , outputType =
+                        def.outputType
+                    , body =
+                        mappedDefBody
+                    }
+
+                ( mappedInValue, inValueLastIndex ) =
+                    indexedMapValue f (defBodyLastIndex + 1) inValue
+            in
+            ( LetDefinition (f baseIndex a) defName mappedDef mappedInValue, inValueLastIndex )
+
+        LetRecursion a defs inValue ->
+            let
+                ( mappedDefs, defsLastIndex ) =
+                    if Dict.isEmpty defs then
+                        ( [], baseIndex )
+
+                    else
+                        indexedMapListHelp
+                            (\defBaseIndex ( defName, def ) ->
+                                let
+                                    ( mappedDefArgs, defArgsLastIndex ) =
+                                        indexedMapListHelp
+                                            (\inputBaseIndex ( inputName, inputA, inputType ) ->
+                                                ( ( inputName, f inputBaseIndex inputA, inputType ), inputBaseIndex )
+                                            )
+                                            (defBaseIndex - 1)
+                                            def.inputTypes
+
+                                    ( mappedDefBody, defBodyLastIndex ) =
+                                        indexedMapValue f (defArgsLastIndex + 1) def.body
+
+                                    mappedDef =
+                                        { inputTypes =
+                                            mappedDefArgs
+                                        , outputType =
+                                            def.outputType
+                                        , body =
+                                            mappedDefBody
+                                        }
+                                in
+                                ( ( defName, mappedDef ), defBodyLastIndex )
+                            )
+                            baseIndex
+                            (defs |> Dict.toList)
+
+                ( mappedInValue, inValueLastIndex ) =
+                    indexedMapValue f (defsLastIndex + 1) inValue
+            in
+            ( LetRecursion (f baseIndex a) (mappedDefs |> Dict.fromList) mappedInValue, inValueLastIndex )
+
         Destructure a bindPattern bindValue inValue ->
             let
                 ( mappedBindPattern, bindPatternLastIndex ) =
