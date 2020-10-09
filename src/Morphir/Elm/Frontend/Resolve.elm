@@ -207,6 +207,7 @@ defaultImports =
     , Import (en [ "String" ]) Nothing (Just (en (Explicit [ en (TypeOrAliasExpose "String") ])))
     , Import (en [ "Char" ]) Nothing (Just (en (Explicit [ en (TypeOrAliasExpose "Char") ])))
     , Import (en [ "Tuple" ]) Nothing Nothing
+    , Import (en [ "Rule" ]) Nothing (Just (en (Explicit [ en (TypeOrAliasExpose "Rule") ])))
     ]
 
 
@@ -226,6 +227,7 @@ moduleMapping =
         , ( [ [ "string" ] ], sdkModule [ "string" ] )
         , ( [ [ "char" ] ], sdkModule [ "char" ] )
         , ( [ [ "tuple" ] ], sdkModule [ "tuple" ] )
+        , ( [ [ "rule" ] ], sdkModule [ "rule" ] )
         ]
 
 
