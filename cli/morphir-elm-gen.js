@@ -13,10 +13,11 @@ program
     .description('Generate code from Morphir IR')
     .option('-i, --input <path>', 'Source location where the Morphir IR will be loaded from.', 'morphir-ir.json')
     .option('-o, --output <path>', 'Target location where the generated code will be saved.', './dist')
+    .option('-t, --target <type>', 'Language to Generate (Scala | SpringBoot', 'Scala')
     .parse(process.argv)
 
 
-cli.gen(program.input, path.resolve(program.output), {})
+cli.gen(program.input, path.resolve(program.output), program.opts())
     .then(() => {
         console.log("Done.")
     })

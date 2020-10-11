@@ -40,7 +40,7 @@ type alias Deal =
 
 type DealCmd
     = OpenDeal ProductID Price Quantity
-    | CloseDeal
+    | CloseDeal ProductID
 
 
 
@@ -49,11 +49,11 @@ type DealCmd
 
 type DealEvent
     = DealOpened ProductID Price Quantity
-    | DealClosed
+    | DealClosed ProductID
     | InvalidQuantity Quantity
     | InvalidPrice Price
-    | DuplicateDeal
-    | DealNotFound
+    | DuplicateDeal ProductID
+    | DealNotFound ProductID
 
 
 
@@ -75,11 +75,11 @@ logic dealState dealCmd =
     case dealState of
         Just _ ->
             case dealCmd of
-                CloseDeal ->
-                    ( Nothing, DealClosed )
+                CloseDeal p ->
+                    ( Nothing, DealClosed p )
 
-                OpenDeal _ _ _ ->
-                    ( dealState, DuplicateDeal )
+                OpenDeal p _ _ ->
+                    ( dealState, DuplicateDeal p )
 
         Nothing ->
             case dealCmd of
@@ -95,8 +95,8 @@ logic dealState dealCmd =
                         , DealOpened productId price qty
                         )
 
-                CloseDeal ->
-                    ( dealState, DealNotFound )
+                CloseDeal p ->
+                    ( dealState, DealNotFound p)
 
 
 app : StatefulApp ID DealCmd Deal DealEvent
