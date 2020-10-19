@@ -5,6 +5,7 @@
     "license": "Apache-2.0",
     "version": "1.0.0",
     "exposed-modules": [
+        "Morphir.SDK.Int",
         "Morphir.SDK.Rule",
         "Morphir.SDK.Key",
         "Morphir.SDK.StatefulApp",
