@@ -23,7 +23,7 @@ module Morphir.IR.Value exposing
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, uncurryApply, collectVariables
-    , indexedMapPattern, indexedMapValue, mapPatternAttributes
+    , collectDefinitionAttributes, collectPatternAttributes, collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, valueAttribute
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -182,6 +182,65 @@ mapSpecificationAttributes f spec =
 
 
 {-| -}
+valueAttribute : Value ta va -> va
+valueAttribute v =
+    case v of
+        Literal a _ ->
+            a
+
+        Constructor a _ ->
+            a
+
+        Tuple a _ ->
+            a
+
+        List a _ ->
+            a
+
+        Record a _ ->
+            a
+
+        Variable a _ ->
+            a
+
+        Reference a _ ->
+            a
+
+        Field a _ _ ->
+            a
+
+        FieldFunction a _ ->
+            a
+
+        Apply a _ _ ->
+            a
+
+        Lambda a _ _ ->
+            a
+
+        LetDefinition a _ _ _ ->
+            a
+
+        LetRecursion a _ _ ->
+            a
+
+        Destructure a _ _ _ ->
+            a
+
+        IfThenElse a _ _ _ ->
+            a
+
+        PatternMatch a _ _ ->
+            a
+
+        UpdateRecord a _ _ ->
+            a
+
+        Unit a ->
+            a
+
+
+{-| -}
 mapValueAttributes : (ta -> tb) -> (va -> vb) -> Value ta va -> Value tb vb
 mapValueAttributes f g v =
     case v of
@@ -305,6 +364,121 @@ mapDefinitionAttributes f g d =
         (mapValueAttributes f g d.body)
 
 
+{-| -}
+collectValueAttributes : Value ta va -> List va
+collectValueAttributes v =
+    case v of
+        Literal a _ ->
+            [ a ]
+
+        Constructor a _ ->
+            [ a ]
+
+        Tuple a elements ->
+            a :: (elements |> List.concatMap collectValueAttributes)
+
+        List a items ->
+            a :: (items |> List.concatMap collectValueAttributes)
+
+        Record a fields ->
+            a :: (fields |> List.concatMap (Tuple.second >> collectValueAttributes))
+
+        Variable a _ ->
+            [ a ]
+
+        Reference a _ ->
+            [ a ]
+
+        Field a subjectValue _ ->
+            a :: collectValueAttributes subjectValue
+
+        FieldFunction a _ ->
+            [ a ]
+
+        Apply a function argument ->
+            a :: (collectValueAttributes function ++ collectValueAttributes argument)
+
+        Lambda a argumentPattern body ->
+            a :: (collectPatternAttributes argumentPattern ++ collectValueAttributes body)
+
+        LetDefinition a _ valueDefinition inValue ->
+            a :: (collectDefinitionAttributes valueDefinition ++ collectValueAttributes inValue)
+
+        LetRecursion a valueDefinitions inValue ->
+            a
+                :: List.append
+                    (valueDefinitions
+                        |> Dict.toList
+                        |> List.concatMap (Tuple.second >> collectDefinitionAttributes)
+                    )
+                    (collectValueAttributes inValue)
+
+        Destructure a pattern valueToDestruct inValue ->
+            a :: (collectPatternAttributes pattern ++ collectValueAttributes valueToDestruct ++ collectValueAttributes inValue)
+
+        IfThenElse a condition thenBranch elseBranch ->
+            a :: (collectValueAttributes condition ++ collectValueAttributes thenBranch ++ collectValueAttributes elseBranch)
+
+        PatternMatch a branchOutOn cases ->
+            a
+                :: List.append
+                    (collectValueAttributes branchOutOn)
+                    (cases
+                        |> List.concatMap
+                            (\( pattern, body ) ->
+                                collectPatternAttributes pattern ++ collectValueAttributes body
+                            )
+                    )
+
+        UpdateRecord a valueToUpdate fieldsToUpdate ->
+            a
+                :: List.append
+                    (collectValueAttributes valueToUpdate)
+                    (fieldsToUpdate
+                        |> List.concatMap (Tuple.second >> collectValueAttributes)
+                    )
+
+        Unit a ->
+            [ a ]
+
+
+{-| -}
+collectPatternAttributes : Pattern a -> List a
+collectPatternAttributes p =
+    case p of
+        WildcardPattern a ->
+            [ a ]
+
+        AsPattern a p2 _ ->
+            a :: collectPatternAttributes p2
+
+        TuplePattern a elementPatterns ->
+            a :: (elementPatterns |> List.concatMap collectPatternAttributes)
+
+        ConstructorPattern a _ argumentPatterns ->
+            a :: (argumentPatterns |> List.concatMap collectPatternAttributes)
+
+        EmptyListPattern a ->
+            [ a ]
+
+        HeadTailPattern a headPattern tailPattern ->
+            a :: (collectPatternAttributes headPattern ++ collectPatternAttributes tailPattern)
+
+        LiteralPattern a _ ->
+            [ a ]
+
+        UnitPattern a ->
+            [ a ]
+
+
+{-| -}
+collectDefinitionAttributes : Definition ta va -> List va
+collectDefinitionAttributes d =
+    List.append
+        (d.inputTypes |> List.map (\( _, attr, _ ) -> attr))
+        (collectValueAttributes d.body)
+
+
 {-| Collect all variables in a value recursively.
 -}
 collectVariables : Value ta va -> Set Name
@@ -385,7 +559,7 @@ indexedMapValue f baseIndex value =
         Tuple a elems ->
             let
                 ( mappedElems, elemsLastIndex ) =
-                    indexedMapListHelp (indexedMapValue f) (baseIndex + 1) elems
+                    indexedMapListHelp (indexedMapValue f) baseIndex elems
             in
             ( Tuple (f baseIndex a) mappedElems, elemsLastIndex )
 

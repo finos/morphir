@@ -18,6 +18,7 @@ indexedMapValueTests =
             String.stringType ()
     in
     [ ( dummy 0, 0 )
+    , ( Tuple 0 [ dummy 1, dummy 2, dummy 3 ], 3 )
     , ( List 0 [ dummy 1, dummy 2 ], 2 )
     , ( Record 0 [ ( [ "field1" ], dummy 1 ), ( [ "field2" ], dummy 2 ), ( [ "field3" ], dummy 3 ) ], 3 )
     , ( LetDefinition 0 [ "foo" ] (Value.Definition [] (String.stringType ()) (dummy 1)) (dummy 2), 2 )
