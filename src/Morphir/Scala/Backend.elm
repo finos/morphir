@@ -107,36 +107,34 @@ maptypeMember annotations currentPackagePath currentModulePath accessControlledM
     case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
             [ Scala.MemberTypeDecl
-                (Annotated Nothing
-                    (Scala.Class
-                        { modifiers = [ Scala.Case ]
-                        , name = typeName |> Name.toTitleCase
-                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
-                        , ctorArgs =
-                            fields
-                                |> List.map
-                                    (\field ->
-                                        { modifiers = []
-                                        , tpe = mapType field.tpe
-                                        , name = field.name |> Name.toCamelCase
-                                        , defaultValue = Nothing
-                                        }
-                                    )
-                                |> List.singleton
-                        , extends = []
-                        , members =
-                            mapFunctionsToMethods currentPackagePath
-                                currentModulePath
-                                typeName
-                                (accessControlledModuleDef.value.values
-                                    |> Dict.toList
-                                    |> List.map
-                                        (\( valueName, valueDef ) ->
-                                            ( valueName, valueDef.value |> Value.definitionToSpecification )
-                                        )
+                (Scala.Class
+                    { modifiers = [ Scala.Case ]
+                    , name = typeName |> Name.toTitleCase
+                    , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                    , ctorArgs =
+                        fields
+                            |> List.map
+                                (\field ->
+                                    { modifiers = []
+                                    , tpe = mapType field.tpe
+                                    , name = field.name |> Name.toCamelCase
+                                    , defaultValue = Nothing
+                                    }
                                 )
-                        }
-                    )
+                            |> List.singleton
+                    , extends = []
+                    , members =
+                        mapFunctionsToMethods currentPackagePath
+                            currentModulePath
+                            typeName
+                            (accessControlledModuleDef.value.values
+                                |> Dict.toList
+                                |> List.map
+                                    (\( valueName, valueDef ) ->
+                                        ( valueName, valueDef.value |> Value.definitionToSpecification )
+                                    )
+                            )
+                    }
                 )
             ]
 
@@ -334,23 +332,21 @@ mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleD
         [ Type.Constructor ctorName ctorArgs ] ->
             if ctorName == typeName then
                 [ Scala.MemberTypeDecl
-                    (Annotated Nothing
-                        (caseClass ctorName ctorArgs [])
-                    )
+                    (caseClass ctorName ctorArgs [])
                 ]
 
             else
                 sealedTraitHierarchy
                     |> List.map
                         (\sealedTrait ->
-                            Scala.MemberTypeDecl (Annotated Nothing sealedTrait)
+                            Scala.MemberTypeDecl sealedTrait
                         )
 
         _ ->
             sealedTraitHierarchy
                 |> List.map
                     (\sealedTrait ->
-                        Scala.MemberTypeDecl (getAnnotations annotations (caseClassesToAnnotate annotations sealedTraitHierarchy) sealedTrait)
+                        Scala.AnnotatedMemberDecl (getAnnotations annotations (caseClassesToAnnotate annotations sealedTraitHierarchy) (Scala.MemberTypeDecl sealedTrait))
                     )
 
 
