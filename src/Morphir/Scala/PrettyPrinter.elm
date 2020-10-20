@@ -18,6 +18,7 @@
 module Morphir.Scala.PrettyPrinter exposing (..)
 
 import Morphir.File.SourceCode exposing (Doc, concat, dot, dotSep, empty, indent, indentLines, newLine, parens, space)
+import Morphir.IR.Name as Name
 import Morphir.Scala.AST exposing (..)
 
 
@@ -27,18 +28,28 @@ type alias Options =
     }
 
 
-mapDocumented : (a -> Doc) -> Documented a -> Doc
+mapDocumented : (a -> Doc) -> Documented (Annotated a) -> Doc
 mapDocumented valueToDoc documented =
-    case documented.doc of
+    (case documented.doc of
         Just doc ->
             concat
                 [ concat [ "/** ", doc, newLine ]
                 , concat [ "*/", newLine ]
-                , valueToDoc documented.value
                 ]
 
         Nothing ->
-            valueToDoc documented.value
+            ""
+    )
+        ++ (case documented.value.annotation of
+                Just value ->
+                    concat
+                        [ dotSep value ++ newLine
+                        , valueToDoc documented.value.value ++ newLine
+                        ]
+
+                Nothing ->
+                    valueToDoc documented.value.value
+           )
 
 
 mapCompilationUnit : Options -> CompilationUnit -> Doc
@@ -85,14 +96,13 @@ mapTypeDecl opt typeDecl =
                                 |> List.map (mapArgDecls opt)
                                 |> concat
 
-                bodyDoc =
+                members =
                     case decl.members of
                         [] ->
                             empty
 
                         _ ->
-                            " {"
-                                ++ newLine
+                            newLine
                                 ++ newLine
                                 ++ (decl.members
                                         |> List.map (mapMemberDecl opt)
@@ -102,20 +112,18 @@ mapTypeDecl opt typeDecl =
                                    )
                                 ++ newLine
                                 ++ newLine
-                                ++ "}"
             in
-            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ bodyDoc
+            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ "{" ++ members ++ "}"
 
         Object decl ->
             let
-                bodyDoc =
+                memberDoc =
                     case decl.members of
                         [] ->
                             empty
 
                         _ ->
-                            " {"
-                                ++ newLine
+                            newLine
                                 ++ newLine
                                 ++ (decl.members
                                         |> List.map (mapMemberDecl opt)
@@ -125,9 +133,19 @@ mapTypeDecl opt typeDecl =
                                    )
                                 ++ newLine
                                 ++ newLine
-                                ++ "}"
+
+                bodyDoc =
+                    case decl.body of
+                        Just ((Block _ _) as value) ->
+                            mapValue opt value
+
+                        Just value ->
+                            newLine ++ indent opt.indentDepth (mapValue opt value)
+
+                        Nothing ->
+                            empty
             in
-            mapModifiers decl.modifiers ++ "object " ++ decl.name ++ mapExtends opt decl.extends ++ bodyDoc
+            mapModifiers decl.modifiers ++ "object " ++ decl.name ++ mapExtends opt decl.extends ++ "{" ++ memberDoc ++ bodyDoc ++ "}"
 
 
 mapMemberDecl : Options -> MemberDecl -> Doc
@@ -189,6 +207,14 @@ mapMemberDecl opt memberDecl =
         MemberTypeDecl decl ->
             mapTypeDecl opt decl
 
+        AnnotatedMemberDecl decl ->
+            case decl.annotation of
+                Just path ->
+                    (path |> concat) ++ newLine ++ mapMemberDecl opt decl.value
+
+                _ ->
+                    mapMemberDecl opt decl.value
+
 
 mapTypeArgs : Options -> List Type -> Doc
 mapTypeArgs opt typeArgs =
@@ -240,6 +266,9 @@ mapModifier mod =
 
         Implicit ->
             "implicit"
+
+        Abstract ->
+            "abstract"
 
         Private maybeScope ->
             case maybeScope of
@@ -344,6 +373,19 @@ mapType opt tpe =
             )
                 ++ " => "
                 ++ mapType opt returnType
+
+        TypeParametrized ctor args params ->
+            mapType opt ctor
+                ++ newLine
+                ++ "["
+                ++ (args
+                        |> List.map (mapType opt)
+                        |> List.intersperse (", " ++ newLine)
+                        |> concat
+                   )
+                ++ "]("
+                ++ mapType opt params
+                ++ ")"
 
         CommentedType childType message ->
             mapType opt childType ++ " /* " ++ message ++ " */ "

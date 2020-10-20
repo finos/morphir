@@ -32,12 +32,18 @@ type alias Documented a =
     }
 
 
+type alias Annotated a =
+    { annotation : Maybe Path
+    , value : a
+    }
+
+
 type alias CompilationUnit =
     { dirPath : List String
     , fileName : String
     , packageDecl : PackageDecl
     , imports : List ImportDecl
-    , typeDecls : List (Documented TypeDecl)
+    , typeDecls : List (Documented (Annotated TypeDecl))
     }
 
 
@@ -65,6 +71,7 @@ type Mod
     | Package
     | Implicit
     | Private (Maybe String)
+    | Abstract
 
 
 type TypeDecl
@@ -88,6 +95,7 @@ type TypeDecl
         , name : Name
         , extends : List Type
         , members : List MemberDecl
+        , body : Maybe Value
         }
 
 
@@ -124,12 +132,14 @@ type MemberDecl
         , body : Maybe Value
         }
     | MemberTypeDecl TypeDecl
+    | AnnotatedMemberDecl (Annotated MemberDecl)
 
 
 type Type
     = TypeVar Name
     | TypeRef Path Name
     | TypeApply Type (List Type)
+    | TypeParametrized Type (List Type) Type
     | TupleType (List Type)
     | StructuralType (List MemberDecl)
     | FunctionType Type Type
