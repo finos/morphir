@@ -1,7 +1,10 @@
 module Morphir.Type.ConstraintSet exposing (..)
 
-import Morphir.Type.Constraint as Constraint exposing (Constraint)
-import Morphir.Type.MetaType as MetaType exposing (MetaType)
+import Dict
+import Morphir.Type.Constraint as Constraint exposing (Constraint(..))
+import Morphir.Type.MetaType exposing (MetaType)
+import Morphir.Type.MetaVar exposing (Variable)
+import Morphir.Type.SolutionMap exposing (SolutionMap(..))
 
 
 type ConstraintSet
@@ -11,6 +14,16 @@ type ConstraintSet
 empty : ConstraintSet
 empty =
     ConstraintSet []
+
+
+singleton : Constraint -> ConstraintSet
+singleton constraint =
+    ConstraintSet [ constraint ]
+
+
+isEmpty : ConstraintSet -> Bool
+isEmpty (ConstraintSet constraints) =
+    List.isEmpty constraints
 
 
 member : Constraint -> ConstraintSet -> Bool
@@ -32,12 +45,25 @@ fromList list =
     List.foldl insert empty list
 
 
-substitute : MetaType.Variable -> MetaType -> ConstraintSet -> ConstraintSet
-substitute var replacement (ConstraintSet constraints) =
+union : ConstraintSet -> ConstraintSet -> ConstraintSet
+union constraintSet1 (ConstraintSet constraints2) =
+    List.foldl insert constraintSet1 constraints2
+
+
+substituteVariable : Variable -> MetaType -> ConstraintSet -> ConstraintSet
+substituteVariable var replacement (ConstraintSet constraints) =
     ConstraintSet
         (constraints
             |> List.map (Constraint.substitute var replacement)
         )
 
-take : ConstraintSet -> ( ConstraintSet, Constraint )
-take (ConstraintSet constraints)
+
+applySubstitutions : SolutionMap -> ConstraintSet -> ConstraintSet
+applySubstitutions (SolutionMap substitutions) constraintSet =
+    substitutions
+        |> Dict.toList
+        |> List.foldl
+            (\( var, replacement ) soFar ->
+                soFar |> substituteVariable var replacement
+            )
+            constraintSet

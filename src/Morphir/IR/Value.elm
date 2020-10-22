@@ -23,7 +23,7 @@ module Morphir.IR.Value exposing
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, uncurryApply, collectVariables
-    , collectDefinitionAttributes, collectPatternAttributes, collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, valueAttribute
+    , collectDefinitionAttributes, collectPatternAttributes, collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -237,6 +237,35 @@ valueAttribute v =
             a
 
         Unit a ->
+            a
+
+
+{-| -}
+patternAttribute : Pattern a -> a
+patternAttribute p =
+    case p of
+        WildcardPattern a ->
+            a
+
+        AsPattern a _ _ ->
+            a
+
+        TuplePattern a _ ->
+            a
+
+        ConstructorPattern a _ _ ->
+            a
+
+        EmptyListPattern a ->
+            a
+
+        HeadTailPattern a _ _ ->
+            a
+
+        LiteralPattern a _ ->
+            a
+
+        UnitPattern a ->
             a
 
 

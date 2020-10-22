@@ -1,20 +1,7 @@
 module Morphir.Type.MetaType exposing (..)
 
-import Morphir.IR.FQName exposing (FQName)
-
-
-type alias Variable =
-    ( Int, Int )
-
-
-newMetaTypeVariable : Int -> Variable
-newMetaTypeVariable i =
-    ( i, 0 )
-
-
-subMetaTypeVariable : Int -> Variable -> Variable
-subMetaTypeVariable s ( i, _ ) =
-    ( i, s )
+import Morphir.IR.FQName exposing (FQName, fqn)
+import Morphir.Type.MetaVar exposing (Variable)
 
 
 type MetaType
@@ -22,10 +9,11 @@ type MetaType
     | MetaRef FQName
     | MetaTuple (List MetaType)
     | MetaApply MetaType MetaType
+    | MetaFun MetaType MetaType
 
 
-substitute : Variable -> MetaType -> MetaType -> MetaType
-substitute var replacement original =
+substituteVariable : Variable -> MetaType -> MetaType -> MetaType
+substituteVariable var replacement original =
     case original of
         MetaVar thisVar ->
             if thisVar == var then
@@ -35,12 +23,53 @@ substitute var replacement original =
                 original
 
         MetaTuple metaElems ->
-            MetaTuple (metaElems |> List.map (substitute var replacement))
+            MetaTuple (metaElems |> List.map (substituteVariable var replacement))
 
         MetaApply metaFun metaArg ->
             MetaApply
-                (substitute var replacement metaFun)
-                (substitute var replacement metaArg)
+                (substituteVariable var replacement metaFun)
+                (substituteVariable var replacement metaArg)
+
+        MetaFun metaFun metaArg ->
+            MetaFun
+                (substituteVariable var replacement metaFun)
+                (substituteVariable var replacement metaArg)
 
         MetaRef _ ->
             original
+
+
+substituteVariables : List ( Variable, MetaType ) -> MetaType -> MetaType
+substituteVariables replacements original =
+    replacements
+        |> List.foldl
+            (\( var, replacement ) soFar ->
+                soFar
+                    |> substituteVariable var replacement
+            )
+            original
+
+
+boolType : MetaType
+boolType =
+    MetaRef (fqn "Morphir.SDK" "Basics" "Bool")
+
+
+charType : MetaType
+charType =
+    MetaRef (fqn "Morphir.SDK" "Char" "Char")
+
+
+stringType : MetaType
+stringType =
+    MetaRef (fqn "Morphir.SDK" "String" "String")
+
+
+intType : MetaType
+intType =
+    MetaRef (fqn "Morphir.SDK" "Basics" "Int")
+
+
+floatType : MetaType
+floatType =
+    MetaRef (fqn "Morphir.SDK" "Basics" "Float")
