@@ -18,7 +18,7 @@
 module Morphir.SDK.Customization exposing (..)
 
 import Morphir.File.SourceCode exposing (newLine)
-import Morphir.Scala.AST as Scala exposing (Annotated, TypeDecl)
+import Morphir.Scala.AST as Scala exposing (Annotated, MemberDecl(..), TypeDecl)
 
 
 
@@ -29,10 +29,10 @@ type Customization
     = Jackson
 
 
-getAnnotations : Maybe Customization -> List Scala.Name -> TypeDecl -> Annotated TypeDecl
+getAnnotations : Maybe Customization -> List Scala.Name -> MemberDecl -> Annotated MemberDecl
 getAnnotations annotations names memberTypeDecl =
     case ( annotations, memberTypeDecl ) of
-        ( Just Jackson, Scala.Trait _ ) ->
+        ( Just Jackson, MemberTypeDecl (Scala.Trait _) ) ->
             Annotated
                 (Just
                     [ "@com.fasterxml.jackson.annotation.JsonTypeInfo(use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME,"
@@ -60,35 +60,37 @@ getAnnotations annotations names memberTypeDecl =
                 )
                 memberTypeDecl
 
-        ( Just Jackson, Scala.Class class ) ->
+        ( Just Jackson, MemberTypeDecl (Scala.Class class) ) ->
             Annotated Nothing
-                (Scala.Class
-                    { modifiers = class.modifiers
-                    , name = class.name
-                    , typeArgs = class.typeArgs
-                    , ctorArgs =
-                        class.ctorArgs
-                            |> List.map
-                                (\args ->
-                                    args
-                                        |> List.concatMap
-                                            (\cons ->
-                                                [ { modifiers = cons.modifiers
-                                                  , tpe = cons.tpe
-                                                  , name =
-                                                        "@java.beans.BeanProperty "
-                                                            ++ "@com.fasterxml.jackson.annotation.JsonProperty (\""
-                                                            ++ cons.name
-                                                            ++ "\") "
-                                                            ++ cons.name
-                                                  , defaultValue = cons.defaultValue
-                                                  }
-                                                ]
-                                            )
-                                )
-                    , extends = class.extends
-                    , members = class.members
-                    }
+                (MemberTypeDecl
+                    (Scala.Class
+                        { modifiers = class.modifiers
+                        , name = class.name
+                        , typeArgs = class.typeArgs
+                        , ctorArgs =
+                            class.ctorArgs
+                                |> List.map
+                                    (\args ->
+                                        args
+                                            |> List.concatMap
+                                                (\cons ->
+                                                    [ { modifiers = cons.modifiers
+                                                      , tpe = cons.tpe
+                                                      , name =
+                                                            "@java.beans.BeanProperty "
+                                                                ++ "@com.fasterxml.jackson.annotation.JsonProperty (\""
+                                                                ++ cons.name
+                                                                ++ "\") "
+                                                                ++ cons.name
+                                                      , defaultValue = cons.defaultValue
+                                                      }
+                                                    ]
+                                                )
+                                    )
+                        , extends = class.extends
+                        , members = class.members
+                        }
+                    )
                 )
 
         _ ->

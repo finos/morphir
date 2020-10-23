@@ -31,7 +31,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Specification(..))
 import Morphir.IR.Value as Value exposing (Value(..))
 import Morphir.SDK.Customization exposing (Customization(..))
-import Morphir.Scala.AST as Scala exposing (Annotated, ArgDecl, CompilationUnit, Documented, MemberDecl(..), Mod(..), Type(..), TypeDecl(..), Value(..))
+import Morphir.Scala.AST as Scala exposing (Annotated, ArgDecl, ArgValue(..), CompilationUnit, Documented, MemberDecl(..), Mod(..), Pattern(..), Type(..), TypeDecl(..), Value(..))
 import Morphir.Scala.Backend exposing (mapFunctionBody, mapType, maptypeMember)
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Tuple exposing (first, second)
@@ -365,7 +365,43 @@ mapMainApp currentPackagePath currentModulePath =
                             , extends =
                                 []
                             , members =
-                                []
+                                [ AnnotatedMemberDecl
+                                    (Annotated (Just [ "@org.springframework.beans.factory.annotation.Autowired" ]) <|
+                                        ValueDecl
+                                            { modifiers = [ Scala.Private Nothing ]
+                                            , pattern = NamedMatch "servletContext"
+                                            , valueType = Just (TypeVar "javax.servlet.ServletContext")
+                                            , value = Scala.Variable "null"
+                                            }
+                                    )
+                                , AnnotatedMemberDecl
+                                    (Annotated (Just [ "@org.springframework.context.annotation.Bean" ]) <|
+                                        FunctionDecl
+                                            { modifiers = []
+                                            , name = "adminServletRegistrationBean"
+                                            , typeArgs = []
+                                            , args = []
+                                            , returnType = Nothing
+                                            , body =
+                                                Just
+                                                    (Scala.Block []
+                                                        (Scala.BinOp
+                                                            (Scala.Apply (Scala.Ref [ "servletContext" ] "setAttribute")
+                                                                [ ArgValue Nothing (Scala.Variable "com.codahale.metrics.servlets.MetricsServlet.METRICS_REGISTRY")
+                                                                , ArgValue Nothing (Scala.Variable "morphir.reference.model.MainApplication.metricRegistry")
+                                                                ]
+                                                            )
+                                                            newLine
+                                                            (Scala.Apply (Scala.Ref [] "new org.springframework.boot.web.servlet.ServletRegistrationBean")
+                                                                [ ArgValue Nothing (Scala.Variable "new com.codahale.metrics.servlets.MetricsServlet()")
+                                                                , ArgValue Nothing (Scala.Variable "\"/metrics\"")
+                                                                ]
+                                                            )
+                                                        )
+                                                    )
+                                            }
+                                    )
+                                ]
                             }
                     )
                 , Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
@@ -378,7 +414,13 @@ mapMainApp currentPackagePath currentModulePath =
                             , extends =
                                 [ TypeVar "App" ]
                             , members =
-                                []
+                                [ ValueDecl
+                                    { modifiers = []
+                                    , pattern = NamedMatch "metricRegistry"
+                                    , valueType = Nothing
+                                    , value = Scala.Variable "new com.codahale.metrics.MetricRegistry"
+                                    }
+                                ]
                             , body =
                                 Just (Ref [ "org.springframework.boot.SpringApplication" ] "run(classOf[MainApplication], args:_*)")
                             }
@@ -406,8 +448,10 @@ mapAdapterApp currentPackagePath currentModulePath =
             , "abstract class SpringBootStatefulAppAdapter [K, C, S, E] (statefulApp: "
                 ++ dotSep scalaPackagePath
                 ++ ".StatefulApp [K, C, S, E]) {"
+            , """ val requests = morphir.reference.model.MainApplication.metricRegistry.meter("statefulAppRequests") """
             , """@org.springframework.web.bind.annotation.PostMapping(value= Array("/command"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array("application/json"))"""
             , "     def entryPoint(@org.springframework.web.bind.annotation.RequestBody command: C) : E =  {"
+            , "         requests.mark"
             , "         process(command, None)._2"
             , "     }"
             , """     def process(command: C, state: Option[S]) : (morphir.sdk.Maybe.Maybe[S], E) = {"""

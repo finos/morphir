@@ -131,7 +131,8 @@ type MemberDecl
         , returnType : Maybe Type
         , body : Maybe Value
         }
-    | MemberTypeDecl (Annotated TypeDecl)
+    | MemberTypeDecl TypeDecl
+    | AnnotatedMemberDecl (Annotated MemberDecl)
 
 
 type Type

@@ -34,6 +34,7 @@ import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
 import Morphir.IR.Value exposing (Definition, Pattern(..), Value(..))
+import Morphir.IR.SDK.Rule as Rule
 import Set
 import Test exposing (..)
 
@@ -49,6 +50,8 @@ frontendTest =
                     , ""
                     , "import My.Package.B exposing (Bee)"
                     , ""
+                    , "import Morphir.SDK.Rule exposing (Rule)"
+                    , ""
                     , "type Foo = Foo Bee"
                     , ""
                     , "type alias Bar = Foo"
@@ -63,6 +66,7 @@ frontendTest =
                     , "    , field6 : String"
                     , "    , field7 : Maybe Int"
                     , "    , field8 : List Float"
+                    , "    , field9 : Rule Int Int"
                     , "    }"
                     ]
             }
@@ -156,6 +160,8 @@ frontendTest =
                                                             (Maybe.maybeType () (SDKBasics.intType ()))
                                                         , Type.Field [ "field", "8" ]
                                                             (List.listType () (SDKBasics.floatType ()))
+                                                        , Type.Field [ "field", "9" ]
+                                                            (Rule.ruleType () (SDKBasics.intType ()) (SDKBasics.intType ()))
                                                         ]
                                                     )
                                                 )

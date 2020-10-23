@@ -205,12 +205,15 @@ mapMemberDecl opt memberDecl =
             modifierDoc ++ "def " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ argsDoc ++ returnTypeDoc ++ bodyDoc
 
         MemberTypeDecl decl ->
+            mapTypeDecl opt decl
+
+        AnnotatedMemberDecl decl ->
             case decl.annotation of
                 Just path ->
-                    (path |> concat) ++ newLine ++ mapTypeDecl opt decl.value
+                    (path |> concat) ++ newLine ++ mapMemberDecl opt decl.value
 
                 _ ->
-                    mapTypeDecl opt decl.value
+                    mapMemberDecl opt decl.value
 
 
 mapTypeArgs : Options -> List Type -> Doc
