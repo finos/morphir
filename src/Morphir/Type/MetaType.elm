@@ -1,6 +1,8 @@
 module Morphir.Type.MetaType exposing (..)
 
+import Dict exposing (Dict)
 import Morphir.IR.FQName exposing (FQName, fqn)
+import Morphir.IR.Name exposing (Name)
 import Morphir.Type.MetaVar exposing (Variable)
 
 
@@ -8,8 +10,10 @@ type MetaType
     = MetaVar Variable
     | MetaRef FQName
     | MetaTuple (List MetaType)
+    | MetaRecord (Maybe MetaType) (Dict Name MetaType)
     | MetaApply MetaType MetaType
     | MetaFun MetaType MetaType
+    | MetaUnit
 
 
 substituteVariable : Variable -> MetaType -> MetaType -> MetaType
@@ -23,7 +27,19 @@ substituteVariable var replacement original =
                 original
 
         MetaTuple metaElems ->
-            MetaTuple (metaElems |> List.map (substituteVariable var replacement))
+            MetaTuple
+                (metaElems
+                    |> List.map (substituteVariable var replacement)
+                )
+
+        MetaRecord extends metaFields ->
+            MetaRecord extends
+                (metaFields
+                    |> Dict.map
+                        (\_ fieldType ->
+                            substituteVariable var replacement fieldType
+                        )
+                )
 
         MetaApply metaFun metaArg ->
             MetaApply
@@ -36,6 +52,9 @@ substituteVariable var replacement original =
                 (substituteVariable var replacement metaArg)
 
         MetaRef _ ->
+            original
+
+        MetaUnit ->
             original
 
 
@@ -73,3 +92,8 @@ intType =
 floatType : MetaType
 floatType =
     MetaRef (fqn "Morphir.SDK" "Basics" "Float")
+
+
+listType : MetaType -> MetaType
+listType itemType =
+    MetaApply (MetaRef (fqn "Morphir.SDK" "List" "List")) itemType

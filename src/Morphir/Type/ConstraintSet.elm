@@ -50,6 +50,11 @@ union constraintSet1 (ConstraintSet constraints2) =
     List.foldl insert constraintSet1 constraints2
 
 
+concat : List ConstraintSet -> ConstraintSet
+concat constraintSets =
+    List.foldl union empty constraintSets
+
+
 substituteVariable : Variable -> MetaType -> ConstraintSet -> ConstraintSet
 substituteVariable var replacement (ConstraintSet constraints) =
     ConstraintSet

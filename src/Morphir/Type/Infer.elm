@@ -58,45 +58,81 @@ annotate untypedValue =
 
 constrainValue : Dict Name Variable -> AnnotatedValue va -> ConstraintSet
 constrainValue vars annotatedValue =
-    let
-        metaTypeVarFor : AnnotatedValue va -> MetaType
-        metaTypeVarFor value =
-            value
-                |> Value.valueAttribute
-                |> Tuple.second
-                |> MetaVar
-
-        concat : List ConstraintSet -> ConstraintSet
-        concat constraintSets =
-            List.foldl ConstraintSet.union ConstraintSet.empty constraintSets
-    in
     case annotatedValue of
         Value.Literal ( _, thisTypeVar ) literalValue ->
+            constrainLiteral thisTypeVar literalValue
+
+        --Value.Constructor ( _, thisTypeVar ) fQName ->
+        Value.Tuple ( _, thisTypeVar ) elems ->
             let
-                expectExactType : MetaType -> ConstraintSet
-                expectExactType expectedType =
+                elemsConstraints : List ConstraintSet
+                elemsConstraints =
+                    elems
+                        |> List.map (constrainValue vars)
+
+                tupleConstraint : ConstraintSet
+                tupleConstraint =
                     ConstraintSet.singleton
                         (equality
                             (MetaVar thisTypeVar)
-                            expectedType
+                            (elems
+                                |> List.map metaTypeVarForValue
+                                |> MetaTuple
+                            )
                         )
             in
-            case literalValue of
-                BoolLiteral _ ->
-                    expectExactType MetaType.boolType
+            ConstraintSet.concat (tupleConstraint :: elemsConstraints)
 
-                CharLiteral _ ->
-                    expectExactType MetaType.charType
+        Value.List ( _, thisTypeVar ) items ->
+            let
+                itemType : MetaType
+                itemType =
+                    MetaVar (thisTypeVar |> MetaVar.subVariable)
 
-                StringLiteral _ ->
-                    expectExactType MetaType.stringType
+                listConstraint : Constraint
+                listConstraint =
+                    equality (MetaVar thisTypeVar) (MetaType.listType itemType)
 
-                IntLiteral _ ->
+                itemConstraints : ConstraintSet
+                itemConstraints =
+                    items
+                        |> List.map
+                            (\item ->
+                                constrainValue vars item
+                                    |> ConstraintSet.insert (equality (metaTypeVarForValue item) itemType)
+                            )
+                        |> ConstraintSet.concat
+            in
+            itemConstraints
+                |> ConstraintSet.insert listConstraint
+
+        Value.Record ( _, thisTypeVar ) fieldValues ->
+            let
+                fieldConstraints : ConstraintSet
+                fieldConstraints =
+                    fieldValues
+                        |> List.map (Tuple.second >> constrainValue vars)
+                        |> ConstraintSet.concat
+
+                recordType : MetaType
+                recordType =
+                    fieldValues
+                        |> List.map
+                            (\( fieldName, fieldValue ) ->
+                                ( fieldName, metaTypeVarForValue fieldValue )
+                            )
+                        |> Dict.fromList
+                        |> MetaRecord Nothing
+
+                recordConstraints : ConstraintSet
+                recordConstraints =
                     ConstraintSet.singleton
-                        (class (MetaVar thisTypeVar) Class.Number)
-
-                FloatLiteral _ ->
-                    expectExactType MetaType.floatType
+                        (equality (MetaVar thisTypeVar) recordType)
+            in
+            ConstraintSet.concat
+                [ fieldConstraints
+                , recordConstraints
+                ]
 
         Value.Variable ( _, varUse ) varName ->
             case vars |> Dict.get varName of
@@ -107,20 +143,22 @@ constrainValue vars annotatedValue =
                     -- this should never happen if variables were validated earlier
                     ConstraintSet.empty
 
+        --Value.Field ( _, thisTypeVar ) subjectValue fieldName ->
+        --
         Value.Apply ( _, thisTypeVar ) funValue argValue ->
             let
                 funType : MetaType
                 funType =
                     MetaFun
-                        (metaTypeVarFor argValue)
+                        (metaTypeVarForValue argValue)
                         (MetaVar thisTypeVar)
 
                 applyConstraints : ConstraintSet
                 applyConstraints =
                     ConstraintSet.singleton
-                        (equality (metaTypeVarFor funValue) funType)
+                        (equality (metaTypeVarForValue funValue) funType)
             in
-            concat
+            ConstraintSet.concat
                 [ constrainValue vars funValue
                 , constrainValue vars argValue
                 , applyConstraints
@@ -134,18 +172,45 @@ constrainValue vars annotatedValue =
                 lambdaType : MetaType
                 lambdaType =
                     MetaFun
-                        (argPattern |> Value.patternAttribute |> Tuple.second |> MetaVar)
-                        (metaTypeVarFor bodyValue)
+                        (metaTypeVarForPattern argPattern)
+                        (metaTypeVarForValue bodyValue)
 
                 lambdaConstraints : ConstraintSet
                 lambdaConstraints =
                     ConstraintSet.singleton
                         (equality (MetaVar thisTypeVar) lambdaType)
             in
-            concat
+            ConstraintSet.concat
                 [ lambdaConstraints
                 , constrainValue (Dict.union argVariables vars) bodyValue
                 , argConstraints
+                ]
+
+        Value.Destructure ( _, thisTypeVar ) bindPattern bindValue inValue ->
+            let
+                ( bindPatternVariables, bindPatternConstraints ) =
+                    constrainPattern bindPattern
+
+                bindValueConstraints : ConstraintSet
+                bindValueConstraints =
+                    constrainValue vars bindValue
+
+                inValueConstraints : ConstraintSet
+                inValueConstraints =
+                    constrainValue (Dict.union bindPatternVariables vars) inValue
+
+                destructureConstraints : ConstraintSet
+                destructureConstraints =
+                    ConstraintSet.fromList
+                        [ equality (MetaVar thisTypeVar) (metaTypeVarForValue inValue)
+                        , equality (metaTypeVarForValue bindValue) (metaTypeVarForPattern bindPattern)
+                        ]
+            in
+            ConstraintSet.concat
+                [ bindPatternConstraints
+                , bindValueConstraints
+                , inValueConstraints
+                , destructureConstraints
                 ]
 
         Value.IfThenElse ( _, thisTypeVar ) condition thenBranch elseBranch ->
@@ -154,13 +219,13 @@ constrainValue vars annotatedValue =
                 specificConstraints =
                     ConstraintSet.fromList
                         -- the condition should always be bool
-                        [ equality (metaTypeVarFor condition) MetaType.boolType
+                        [ equality (metaTypeVarForValue condition) MetaType.boolType
 
                         -- the two branches should have the same type
-                        , equality (metaTypeVarFor elseBranch) (metaTypeVarFor thenBranch)
+                        , equality (metaTypeVarForValue elseBranch) (metaTypeVarForValue thenBranch)
 
                         -- the final type should be the same as the branches (can use any branch thanks to previous rule)
-                        , equality (MetaVar thisTypeVar) (metaTypeVarFor thenBranch)
+                        , equality (MetaVar thisTypeVar) (metaTypeVarForValue thenBranch)
                         ]
 
                 childConstraints : List ConstraintSet
@@ -170,7 +235,50 @@ constrainValue vars annotatedValue =
                     , constrainValue vars elseBranch
                     ]
             in
-            concat (specificConstraints :: childConstraints)
+            ConstraintSet.concat (specificConstraints :: childConstraints)
+
+        Value.PatternMatch ( _, thisTypeVar ) subjectValue cases ->
+            let
+                thisType : MetaType
+                thisType =
+                    MetaVar thisTypeVar
+
+                subjectType : MetaType
+                subjectType =
+                    metaTypeVarForValue subjectValue
+
+                casesConstraints : List ConstraintSet
+                casesConstraints =
+                    cases
+                        |> List.map
+                            (\( casePattern, caseValue ) ->
+                                let
+                                    ( casePatternVariables, casePatternConstraints ) =
+                                        constrainPattern casePattern
+
+                                    caseValueConstraints : ConstraintSet
+                                    caseValueConstraints =
+                                        constrainValue (Dict.union casePatternVariables vars) caseValue
+
+                                    caseConstraints : ConstraintSet
+                                    caseConstraints =
+                                        ConstraintSet.fromList
+                                            [ equality subjectType (metaTypeVarForPattern casePattern)
+                                            , equality thisType (metaTypeVarForValue caseValue)
+                                            ]
+                                in
+                                ConstraintSet.concat
+                                    [ casePatternConstraints
+                                    , caseValueConstraints
+                                    , caseConstraints
+                                    ]
+                            )
+            in
+            ConstraintSet.concat casesConstraints
+
+        Value.Unit ( _, thisTypeVar ) ->
+            ConstraintSet.singleton
+                (equality (MetaVar thisTypeVar) MetaUnit)
 
         other ->
             Debug.todo ("implement " ++ Debug.toString other)
@@ -178,14 +286,6 @@ constrainValue vars annotatedValue =
 
 constrainPattern : Pattern ( va, Variable ) -> ( Dict Name Variable, ConstraintSet )
 constrainPattern untypedPattern =
-    let
-        metaTypeVarFor : Pattern ( va, Variable ) -> MetaType
-        metaTypeVarFor pattern =
-            pattern
-                |> Value.patternAttribute
-                |> Tuple.second
-                |> MetaVar
-    in
     case untypedPattern of
         Value.WildcardPattern _ ->
             ( Dict.empty, ConstraintSet.empty )
@@ -195,17 +295,128 @@ constrainPattern untypedPattern =
                 ( nestedVariables, nestedConstraints ) =
                     constrainPattern nestedPattern
 
-                asPatternConstraints : ConstraintSet
-                asPatternConstraints =
+                thisPatternConstraints : ConstraintSet
+                thisPatternConstraints =
                     ConstraintSet.singleton
-                        (equality (MetaVar thisTypeVar) (metaTypeVarFor nestedPattern))
+                        (equality (MetaVar thisTypeVar) (metaTypeVarForPattern nestedPattern))
             in
             ( nestedVariables |> Dict.insert alias thisTypeVar
-            , ConstraintSet.union nestedConstraints asPatternConstraints
+            , ConstraintSet.union nestedConstraints thisPatternConstraints
+            )
+
+        Value.TuplePattern ( _, thisTypeVar ) elemPatterns ->
+            let
+                ( elemsVariables, elemsConstraints ) =
+                    elemPatterns
+                        |> List.map constrainPattern
+                        |> List.unzip
+
+                tupleConstraint : ConstraintSet
+                tupleConstraint =
+                    ConstraintSet.singleton
+                        (equality
+                            (MetaVar thisTypeVar)
+                            (elemPatterns
+                                |> List.map metaTypeVarForPattern
+                                |> MetaTuple
+                            )
+                        )
+            in
+            ( List.foldl Dict.union Dict.empty elemsVariables
+            , ConstraintSet.concat (tupleConstraint :: elemsConstraints)
+            )
+
+        --Value.ConstructorPattern ( _, thisTypeVar ) fQName argPatterns ->
+        --    let
+        --        ctorType : MetaType
+        --        ctorType =
+        --            MetaVar (thisTypeVar |> MetaVar.subVariable)
+        --
+        --
+        --    in
+        Value.EmptyListPattern ( _, thisTypeVar ) ->
+            let
+                itemType : MetaType
+                itemType =
+                    MetaVar (thisTypeVar |> MetaVar.subVariable)
+
+                listType : MetaType
+                listType =
+                    MetaType.listType itemType
+            in
+            ( Dict.empty
+            , ConstraintSet.singleton
+                (equality (MetaVar thisTypeVar) listType)
+            )
+
+        Value.HeadTailPattern ( _, thisTypeVar ) headPattern tailPattern ->
+            let
+                ( headVariables, headConstraints ) =
+                    constrainPattern headPattern
+
+                ( tailVariables, tailConstraints ) =
+                    constrainPattern tailPattern
+
+                itemType : MetaType
+                itemType =
+                    metaTypeVarForPattern headPattern
+
+                listType : MetaType
+                listType =
+                    MetaType.listType itemType
+
+                thisPatternConstraints : ConstraintSet
+                thisPatternConstraints =
+                    ConstraintSet.fromList
+                        [ equality (MetaVar thisTypeVar) listType
+                        , equality (metaTypeVarForPattern tailPattern) listType
+                        ]
+            in
+            ( Dict.union headVariables tailVariables
+            , ConstraintSet.concat
+                [ headConstraints, tailConstraints, thisPatternConstraints ]
+            )
+
+        Value.LiteralPattern ( _, thisTypeVar ) literalValue ->
+            ( Dict.empty, constrainLiteral thisTypeVar literalValue )
+
+        Value.UnitPattern ( _, thisTypeVar ) ->
+            ( Dict.empty
+            , ConstraintSet.singleton
+                (equality (MetaVar thisTypeVar) MetaUnit)
             )
 
         other ->
             Debug.todo ("implement " ++ Debug.toString other)
+
+
+constrainLiteral : Variable -> Literal -> ConstraintSet
+constrainLiteral thisTypeVar literalValue =
+    let
+        expectExactType : MetaType -> ConstraintSet
+        expectExactType expectedType =
+            ConstraintSet.singleton
+                (equality
+                    (MetaVar thisTypeVar)
+                    expectedType
+                )
+    in
+    case literalValue of
+        BoolLiteral _ ->
+            expectExactType MetaType.boolType
+
+        CharLiteral _ ->
+            expectExactType MetaType.charType
+
+        StringLiteral _ ->
+            expectExactType MetaType.stringType
+
+        IntLiteral _ ->
+            ConstraintSet.singleton
+                (class (MetaVar thisTypeVar) Class.Number)
+
+        FloatLiteral _ ->
+            expectExactType MetaType.floatType
 
 
 solve : ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
@@ -365,6 +576,9 @@ unifyMetaType metaType1 metaType2 =
             ( MetaRef ref1, _ ) ->
                 unifyRef ref1 metaType2
 
+            ( MetaApply fun1 arg1, _ ) ->
+                unifyApply fun1 arg1 metaType2
+
             other ->
                 Debug.todo ("implement " ++ Debug.toString other)
 
@@ -417,6 +631,20 @@ unifyRef ref1 metaType2 =
             Debug.todo "implement"
 
 
+unifyApply : MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
+unifyApply fun1 arg1 metaType2 =
+    case metaType2 of
+        MetaApply fun2 arg2 ->
+            Result.andThen identity
+                (Result.map2 mergeSolutions
+                    (unifyMetaType fun1 fun2)
+                    (unifyMetaType arg1 arg2)
+                )
+
+        _ ->
+            Debug.todo "implement"
+
+
 applySolution : AnnotatedValue va -> ( ConstraintSet, SolutionMap ) -> TypedValue va
 applySolution annotatedValue ( residualConstraints, solutionMap ) =
     annotatedValue
@@ -441,8 +669,36 @@ metaToConcreteType solutionMap metaType =
                 |> Maybe.withDefault (metaVar |> MetaVar.toName |> Type.Variable ())
 
         MetaTuple metaElems ->
-            Type.Tuple () (metaElems |> List.map (metaToConcreteType solutionMap))
+            Type.Tuple ()
+                (metaElems
+                    |> List.map (metaToConcreteType solutionMap)
+                )
 
+        MetaRecord extends metaFields ->
+            case extends of
+                Nothing ->
+                    Type.Record ()
+                        (metaFields
+                            |> Dict.toList
+                            |> List.map
+                                (\( fieldName, fieldType ) ->
+                                    Type.Field fieldName
+                                        (metaToConcreteType solutionMap fieldType)
+                                )
+                        )
+
+                Just baseType ->
+                    Debug.todo "implement extensible record"
+
+        --Type.ExtensibleRecord ()
+        --    (metaFields
+        --        |> Dict.toList
+        --        |> List.map
+        --            (\( fieldName, fieldType ) ->
+        --                Type.Field fieldName
+        --                    (metaToConcreteType solutionMap fieldType)
+        --            )
+        --    )
         MetaApply _ _ ->
             let
                 uncurry mt =
@@ -477,6 +733,9 @@ metaToConcreteType solutionMap metaType =
         MetaRef fQName ->
             Type.Reference () fQName []
 
+        MetaUnit ->
+            Type.Unit ()
+
 
 typeErrors : List TypeError -> TypeError
 typeErrors errors =
@@ -486,3 +745,19 @@ typeErrors errors =
 
         _ ->
             TypeErrors errors
+
+
+metaTypeVarForValue : AnnotatedValue va -> MetaType
+metaTypeVarForValue value =
+    value
+        |> Value.valueAttribute
+        |> Tuple.second
+        |> MetaVar
+
+
+metaTypeVarForPattern : Pattern ( va, Variable ) -> MetaType
+metaTypeVarForPattern pattern =
+    pattern
+        |> Value.patternAttribute
+        |> Tuple.second
+        |> MetaVar

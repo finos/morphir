@@ -113,11 +113,6 @@ moduleSpec =
     }
 
 
-numberClass : a -> Type a
-numberClass attributes =
-    Variable attributes [ "number" ]
-
-
 equal : a -> Value ta a
 equal a =
     Value.Reference a (toFQName moduleName "equal")

@@ -1,9 +1,10 @@
 module Morphir.Type.InferTests exposing (..)
 
 import Expect
-import Morphir.IR.FQName exposing (fQName)
+import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
+import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Type.Class as Class
@@ -23,6 +24,7 @@ positiveOutcomes =
         isZeroType =
             Type.Function () (floatType ()) (boolType ())
     in
+    -- if then else
     [ Value.IfThenElse ( 1, floatType () )
         (Value.Literal ( 2, boolType () ) (BoolLiteral False))
         (Value.Literal ( 3, floatType () ) (FloatLiteral 2))
@@ -34,6 +36,45 @@ positiveOutcomes =
         )
         (Value.Literal ( 5, floatType () ) (FloatLiteral 2))
         (Value.Literal ( 6, floatType () ) (FloatLiteral 3))
+
+    -- tuple
+    , Value.Tuple ( 1, Type.Tuple () [ boolType (), floatType () ] )
+        [ Value.Literal ( 2, boolType () ) (BoolLiteral False)
+        , Value.Literal ( 3, floatType () ) (FloatLiteral 2)
+        ]
+
+    -- record
+    , Value.Record ( 1, Type.Record () [ Type.Field [ "bar" ] (floatType ()), Type.Field [ "foo" ] (boolType ()) ] )
+        [ ( [ "foo" ], Value.Literal ( 2, boolType () ) (BoolLiteral False) )
+        , ( [ "bar" ], Value.Literal ( 3, floatType () ) (FloatLiteral 2) )
+        ]
+
+    -- lambda and patterns
+    , Value.Lambda ( 0, Type.Function () (Type.Unit ()) (floatType ()) )
+        (Value.UnitPattern ( 1, Type.Unit () ))
+        (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
+    , Value.Lambda ( 0, Type.Function () (Type.Tuple () [ boolType (), floatType () ]) (floatType ()) )
+        (Value.TuplePattern ( 1, Type.Tuple () [ boolType (), floatType () ] )
+            [ Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False)
+            , Value.LiteralPattern ( 3, floatType () ) (FloatLiteral 3)
+            ]
+        )
+        (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
+
+    --, Value.Lambda ( 0, Type.Function () (Type.Reference () (fqn "My" "Test" "CustomType") [ boolType (), floatType () ]) (floatType ()) )
+    --    (Value.ConstructorPattern ( 1, Type.Reference () (fqn "My" "Test" "CustomType") [ boolType (), floatType () ] )
+    --        (fqn "My" "Test" "CustomTypeCtor1")
+    --        [ Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False)
+    --        , Value.LiteralPattern ( 3, floatType () ) (FloatLiteral 3)
+    --        ]
+    --    )
+    --    (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
+    , Value.Lambda ( 0, Type.Function () (listType () (boolType ())) (floatType ()) )
+        (Value.HeadTailPattern ( 1, listType () (boolType ()) )
+            (Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False))
+            (Value.EmptyListPattern ( 3, listType () (boolType ()) ))
+        )
+        (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
     , Value.Lambda ( 0, Type.Function () isZeroType (floatType ()) )
         (Value.AsPattern ( 1, isZeroType ) (Value.WildcardPattern ( 2, isZeroType )) [ "is", "zero" ])
         (Value.IfThenElse ( 3, floatType () )
@@ -44,10 +85,38 @@ positiveOutcomes =
             (Value.Literal ( 7, floatType () ) (FloatLiteral 2))
             (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
         )
+
+    -- destructure
+    , Value.Destructure ( 0, listType () (boolType ()) )
+        (Value.HeadTailPattern ( 1, listType () (boolType ()) )
+            (Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False))
+            (Value.AsPattern ( 3, listType () (boolType ()) ) (Value.WildcardPattern ( 4, listType () (boolType ()) )) [ "my", "list" ])
+        )
+        (Value.List ( 5, listType () (boolType ()) ) [])
+        (Value.Variable ( 6, listType () (boolType ()) ) [ "my", "list" ])
+
+    -- pattern-match
+    , Value.PatternMatch ( 0, listType () (boolType ()) )
+        (Value.List ( 5, listType () (boolType ()) ) [])
+        [ ( Value.HeadTailPattern ( 1, listType () (boolType ()) )
+                (Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False))
+                (Value.AsPattern ( 3, listType () (boolType ()) ) (Value.WildcardPattern ( 4, listType () (boolType ()) )) [ "my", "list" ])
+          , Value.Variable ( 6, listType () (boolType ()) ) [ "my", "list" ]
+          )
+        , ( Value.EmptyListPattern ( 1, listType () (boolType ()) )
+          , Value.List ( 6, listType () (boolType ()) ) []
+          )
+        ]
+
+    -- number type class
     , Value.IfThenElse ( 1, floatType () )
         (Value.Literal ( 2, boolType () ) (BoolLiteral False))
         (Value.Literal ( 3, floatType () ) (IntLiteral 2))
         (Value.Literal ( 4, floatType () ) (FloatLiteral 3))
+    , Value.List ( 1, listType () (floatType ()) )
+        [ Value.Literal ( 2, floatType () ) (IntLiteral 2)
+        , Value.Literal ( 3, floatType () ) (FloatLiteral 3)
+        ]
     ]
 
 
@@ -58,6 +127,13 @@ negativeOutcomes =
             (Value.Literal 3 (IntLiteral 2))
             (Value.Literal 4 (IntLiteral 3))
       , TypeMismatch MetaType.boolType MetaType.floatType
+      )
+    , ( Value.List 1
+            [ Value.Literal 2 (IntLiteral 2)
+            , Value.Literal 3 (FloatLiteral 3)
+            , Value.Literal 4 (BoolLiteral False)
+            ]
+      , TypeMismatch MetaType.floatType MetaType.boolType
       )
     ]
 
@@ -222,9 +298,6 @@ solveNegativeTests =
 
         tvar i =
             MetaVar (t i)
-
-        ref n =
-            MetaRef (fQName [] [] [ n ])
 
         scenarios : List ( List Constraint, TypeError )
         scenarios =
