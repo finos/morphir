@@ -50,6 +50,8 @@ frontendTest =
                     , ""
                     , "import My.Package.B exposing (Bee)"
                     , ""
+                    , "import Morphir.SDK.Rule exposing (Rule)"
+                    , ""
                     , "type Foo = Foo Bee"
                     , ""
                     , "type alias Bar = Foo"
