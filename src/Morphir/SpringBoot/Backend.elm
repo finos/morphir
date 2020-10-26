@@ -401,6 +401,28 @@ mapMainApp currentPackagePath currentModulePath =
                                                     )
                                             }
                                     )
+                                , AnnotatedMemberDecl
+                                    (Annotated (Just [ "@org.springframework.context.annotation.Bean" ]) <|
+                                        FunctionDecl
+                                            { modifiers = []
+                                            , name = "api"
+                                            , typeArgs = []
+                                            , args = []
+                                            , returnType = Just (TypeVar "springfox.documentation.spring.web.plugins.Docket")
+                                            , body =
+                                                Just
+                                                    (Scala.Select
+                                                        (Scala.Ref
+                                                            [ "new springfox.documentation.spring.web.plugins.Docket(springfox.documentation.spi.DocumentationType.SWAGGER_2)"
+                                                            , "select"
+                                                            , "apis(springfox.documentation.builders.RequestHandlerSelectors.basePackage( \"" ++ dotSep scalaPackagePath ++ "\" ))"
+                                                            ]
+                                                            "paths(springfox.documentation.builders.PathSelectors.any)"
+                                                        )
+                                                        "build"
+                                                    )
+                                            }
+                                    )
                                 ]
                             }
                     )
@@ -449,7 +471,7 @@ mapAdapterApp currentPackagePath currentModulePath =
                 ++ dotSep scalaPackagePath
                 ++ ".StatefulApp [K, C, S, E]) {"
             , """ val requests = morphir.reference.model.MainApplication.metricRegistry.meter("statefulAppRequests") """
-            , """@org.springframework.web.bind.annotation.PostMapping(value= Array("/command"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array("application/json"))"""
+            , """@org.springframework.web.bind.annotation.PostMapping(value= Array("/v1.0/command"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array("application/json"))"""
             , "     def entryPoint(@org.springframework.web.bind.annotation.RequestBody command: C) : E =  {"
             , "         requests.mark"
             , "         process(command, None)._2"
