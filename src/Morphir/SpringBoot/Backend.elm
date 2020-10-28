@@ -62,8 +62,6 @@ mapPackageDefinition opt distribution packagePath packageDef =
                         (mapMainApp packagePath modulePath)
                     |> List.append
                         (mapStatefulAppDefinition packagePath modulePath)
-                    |> List.append
-                        (mapAdapterAbstract packagePath modulePath)
                     |> List.map
                         (\compilationUnit ->
                             let
@@ -335,8 +333,96 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                     )
                 ]
             }
+
+        adapterAbstractModule : CompilationUnit
+        adapterAbstractModule =
+            { dirPath = scalaPackagePath
+            , fileName = "SpringBootStatefulAppAdapter.scala"
+            , packageDecl = scalaPackagePath
+            , imports = []
+            , typeDecls =
+                [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                    (Annotated Nothing <|
+                        Class
+                            { modifiers =
+                                [ Abstract ]
+                            , name =
+                                "SpringBootStatefulAppAdapter"
+                            , typeArgs =
+                                [ TypeVar "K", TypeVar "C", TypeVar "S", TypeVar "E" ]
+                            , ctorArgs =
+                                [ [ ArgDecl []
+                                        (TypeApply (TypeVar (dotSep scalaPackagePath ++ ".StatefulApp"))
+                                            [ TypeVar "K", TypeVar "C", TypeVar "S", TypeVar "E" ]
+                                        )
+                                        "statefulApp"
+                                        Nothing
+                                  ]
+                                ]
+                            , extends = []
+                            , members =
+                                [ ValueDecl
+                                    { modifiers = []
+                                    , pattern = NamedMatch "requests"
+                                    , valueType = Nothing
+                                    , value = Scala.Variable (dotSep scalaPackagePath ++ ".MainApplication.metricRegistry.meter(\"statefulAppRequests\")")
+                                    }
+                                , AnnotatedMemberDecl
+                                    (Annotated
+                                        (Just
+                                            [ "@io.swagger.annotations.ApiImplicitParams(Array(new io.swagger.annotations.ApiImplicitParam(name = \"command\", example = \"{\\\"type\\\": \\\"OpenDeal\\\",\\n    \\\"arg1\\\": \\\"prod1\\\",\\n    \\\"arg2\\\": \\\"100\\\",\\n    \\\"arg3\\\": \\\"10\\\"}\", paramType = \"body\")))"
+                                            , "@org.springframework.web.bind.annotation.PostMapping(value= Array(\"/v1.0/command\"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array(\"application/json\"))"
+                                            ]
+                                        )
+                                     <|
+                                        FunctionDecl
+                                            { modifiers = []
+                                            , name = "entryPoint"
+                                            , typeArgs = []
+                                            , args =
+                                                [ [ ArgDecl []
+                                                        (TypeVar "C")
+                                                        "@org.springframework.web.bind.annotation.RequestBody command"
+                                                        Nothing
+                                                  ]
+                                                ]
+                                            , returnType = Just (TypeVar "E")
+                                            , body =
+                                                Just
+                                                    (Scala.Variable
+                                                        ("{requests.mark" ++ newLine ++ "process(command, None)._2}")
+                                                    )
+                                            }
+                                    )
+                                , FunctionDecl
+                                    { modifiers = []
+                                    , name = "process"
+                                    , typeArgs = []
+                                    , args =
+                                        [ [ ArgDecl []
+                                                (TypeVar "C")
+                                                "command"
+                                                Nothing
+                                          , ArgDecl []
+                                                (TypeApply (TypeVar "Option") [ TypeVar "S" ])
+                                                "state"
+                                                Nothing
+                                          ]
+                                        ]
+                                    , returnType = Just (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
+                                    , body =
+                                        Just
+                                            (Scala.Variable
+                                                "{statefulApp.businessLogic(state, command)}"
+                                            )
+                                    }
+                                ]
+                            }
+                    )
+                ]
+            }
     in
-    [ stateFulImplAdapter, statefulModule ]
+    [ stateFulImplAdapter, statefulModule, adapterAbstractModule ]
 
 
 mapMainApp : Package.PackageName -> Path -> List CompilationUnit
@@ -452,97 +538,6 @@ mapMainApp currentPackagePath currentModulePath =
             }
     in
     [ moduleMainApp ]
-
-
-mapAdapterAbstract : Package.PackageName -> Path -> List CompilationUnit
-mapAdapterAbstract currentPackagePath currentModulePath =
-    let
-        scalaPackagePath =
-            first (getScalaPackagePath currentPackagePath currentModulePath)
-
-        adapterAbstractModule : CompilationUnit
-        adapterAbstractModule =
-            { dirPath = scalaPackagePath
-            , fileName = "SpringBootStatefulAppAdapter.scala"
-            , packageDecl = scalaPackagePath
-            , imports = []
-            , typeDecls =
-                [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Annotated Nothing <|
-                        Class
-                            { modifiers =
-                                [ Abstract ]
-                            , name =
-                                "SpringBootStatefulAppAdapter"
-                            , typeArgs =
-                                [ TypeVar "K", TypeVar "C", TypeVar "S", TypeVar "E" ]
-                            , ctorArgs =
-                                [ [ ArgDecl []
-                                        (TypeApply (TypeVar (dotSep scalaPackagePath ++ ".StatefulApp"))
-                                            [ TypeVar "K", TypeVar "C", TypeVar "S", TypeVar "E" ]
-                                        )
-                                        "statefulApp"
-                                        Nothing
-                                  ]
-                                ]
-                            , extends = []
-                            , members =
-                                [ ValueDecl
-                                    { modifiers = []
-                                    , pattern = NamedMatch "requests"
-                                    , valueType = Nothing
-                                    , value = Scala.Variable (dotSep scalaPackagePath ++ ".MainApplication.metricRegistry.meter(\"statefulAppRequests\")")
-                                    }
-                                , AnnotatedMemberDecl
-                                    (Annotated (Just [ "@org.springframework.web.bind.annotation.PostMapping(value= Array(\"/v1.0/command\"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array(\"application/json\"))" ]) <|
-                                        FunctionDecl
-                                            { modifiers = []
-                                            , name = "entryPoint"
-                                            , typeArgs = []
-                                            , args =
-                                                [ [ ArgDecl []
-                                                        (TypeVar "C")
-                                                        "@org.springframework.web.bind.annotation.RequestBody command"
-                                                        Nothing
-                                                  ]
-                                                ]
-                                            , returnType = Just (TypeVar "E")
-                                            , body =
-                                                Just
-                                                    (Scala.Variable
-                                                        ("{requests.mark" ++ newLine ++ "process(command, None)._2}")
-                                                    )
-                                            }
-                                    )
-                                , FunctionDecl
-                                    { modifiers = []
-                                    , name = "process"
-                                    , typeArgs = []
-                                    , args =
-                                        [ [ ArgDecl []
-                                                (TypeVar "C")
-                                                "command"
-                                                Nothing
-                                          , ArgDecl []
-                                                (TypeApply (TypeVar "Option") [ TypeVar "S" ])
-                                                "state"
-                                                Nothing
-                                          ]
-                                        ]
-                                    , returnType = Just (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
-                                    , body =
-                                        Just
-                                            (Scala.Variable
-                                                "{statefulApp.businessLogic(state, command)}"
-                                            )
-                                    }
-                                ]
-                            }
-                    )
-                ]
-            }
-    in
-    [ adapterAbstractModule ]
 
 
 mapStatefulAppDefinition : Package.PackageName -> Path -> List CompilationUnit
