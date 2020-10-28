@@ -7,6 +7,8 @@
     "exposed-modules": [
         "Morphir.SDK.Int",
         "Morphir.SDK.String",
+        "Morphir.SDK.LocalDate",
+        "Morphir.SDK.Month",
         "Morphir.SDK.Rule",
         "Morphir.SDK.Key",
         "Morphir.SDK.StatefulApp",
