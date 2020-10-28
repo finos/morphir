@@ -15,13 +15,17 @@ limitations under the License.
 -}
 
 
-module Morphir.SDK.LocalDate exposing  (LocalDate)
+module Morphir.SDK.LocalDate exposing (LocalDate)
 
--- This is a temporary stub until we get into more requirements
+{-| This module adds the definition of a date without time zones. Useful in business modeling.
+@docs LocalDate
+-}
+
+{-| Concept of a date without time zones.
+-}
 type LocalDate = LocalDate
 
-
-
+    
 {-
 module Morphir.SDK.LocalDate exposing  (Date, Month, Unit, fromCalendarDate, add)
     -- ( Date

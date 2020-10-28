@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK.LocalDate exposing (..)
+module Morphir.IR.SDK.Month exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
@@ -29,14 +29,30 @@ import Morphir.IR.Value as Value
 
 moduleName : ModuleName
 moduleName =
-    Path.fromString "LocalDate"
+    Path.fromString "Month"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "LocalDate", OpaqueTypeSpecification [] |> Documented "Type that represents a date concept." )
+            [ ( Name.fromString "Month"
+              , CustomTypeSpecification []
+                    [ Type.Constructor (Name.fromString "January") []
+                    , Type.Constructor (Name.fromString "February") []
+                    , Type.Constructor (Name.fromString "March") []
+                    , Type.Constructor (Name.fromString "April") []
+                    , Type.Constructor (Name.fromString "May") []
+                    , Type.Constructor (Name.fromString "June") []
+                    , Type.Constructor (Name.fromString "July") []
+                    , Type.Constructor (Name.fromString "August") []
+                    , Type.Constructor (Name.fromString "September") []
+                    , Type.Constructor (Name.fromString "Octoboer") []
+                    , Type.Constructor (Name.fromString "November") []
+                    , Type.Constructor (Name.fromString "December") []
+                    ]
+                    |> Documented "Type that represents an month concept."
+              )
             ]
     , values =
         Dict.empty
@@ -45,4 +61,4 @@ moduleSpec =
 
 dateType : a -> Type a
 dateType attributes =
-    Reference attributes (toFQName moduleName "LocalDate") []
+    Reference attributes (toFQName moduleName "Month") []
