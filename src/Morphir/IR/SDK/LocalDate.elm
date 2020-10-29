@@ -38,8 +38,31 @@ moduleSpec =
         Dict.fromList
             [ ( Name.fromString "LocalDate", OpaqueTypeSpecification [] |> Documented "Type that represents a date concept." )
             ]
-    , values =
-        Dict.empty
+    ,  values =
+        let
+            -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
+            dummyValueSpec : Value.Specification ()
+            dummyValueSpec =
+                Value.Specification [] (Type.Unit ())
+
+            valueNames : List String
+            valueNames =
+                [ "diffInDays"
+                , "diffInWeeks"
+                , "diffInMonths"
+                , "diffInYears"
+                , "addDays"
+                , "addWeeks"
+                , "addMonths"
+                , "addYears"
+                ]
+        in
+        valueNames
+            |> List.map
+                (\valueName ->
+                    ( Name.fromString valueName, dummyValueSpec )
+                )
+            |> Dict.fromList
     }
 
 
