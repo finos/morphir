@@ -11,7 +11,7 @@ or
 git pull origin master
 ```
 2. Run `elm bump` to get the version number in your `elm.json` updated.
-  - This will calculate the new version number and ask you to confirm.
+    - This will calculate the new version number and ask you to confirm.
 3. Commit the `elm.json` change.
 ```
 git add elm.json
