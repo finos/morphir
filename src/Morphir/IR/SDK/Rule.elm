@@ -15,30 +15,30 @@
 -}
 
 
-module Morphir.IR.SDK.LocalDate exposing (..)
+module Morphir.IR.SDK.Rule exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
-import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value)
 
 
 moduleName : ModuleName
 moduleName =
-    Path.fromString "LocalDate"
+    Path.fromString "Rule"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "LocalDate", OpaqueTypeSpecification [] |> Documented "Type that represents a date concept." )
+            [ ( Name.fromString "Rule", OpaqueTypeSpecification [ [ "a", "b" ] ] |> Documented "Type that represents an rule." )
             ]
-    ,  values =
+    , values =
         let
             -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
             dummyValueSpec : Value.Specification ()
@@ -47,14 +47,11 @@ moduleSpec =
 
             valueNames : List String
             valueNames =
-                [ "diffInDays"
-                , "diffInWeeks"
-                , "diffInMonths"
-                , "diffInYears"
-                , "addDays"
-                , "addWeeks"
-                , "addMonths"
-                , "addYears"
+                [ "chain"
+                , "any"
+                , "is"
+                , "anyOf"
+                , "noneOf"
                 ]
         in
         valueNames
@@ -65,7 +62,9 @@ moduleSpec =
             |> Dict.fromList
     }
 
+ruleType : a -> Type a -> Type a -> Type a
+ruleType attributes itemType1 itemType2 =
+    Type.Reference attributes (toFQName moduleName "Rule") [ itemType1, itemType2 ]
 
-dateType : a -> Type a
-dateType attributes =
-    Reference attributes (toFQName moduleName "LocalDate") []
+
+
