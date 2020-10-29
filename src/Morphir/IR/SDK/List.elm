@@ -22,6 +22,7 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
+import Morphir.IR.SDK.Basics exposing (boolType)
 import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
@@ -88,17 +89,17 @@ moduleSpec =
             realValues =
                 [ ( Name.fromString "map"
                   , Value.Specification
-                        [ ( Name.fromString "f", Type.Unit () )
-                        , ( Name.fromString "list", Type.Unit () )
+                        [ ( Name.fromString "f", Type.Function () (Type.Variable () [ "a" ]) (Type.Variable () [ "b" ]) )
+                        , ( Name.fromString "list", listType () (Type.Variable () [ "a" ]) )
                         ]
-                        (Type.Unit ())
+                        (listType () (Type.Variable () [ "b" ]))
                   )
                 , ( Name.fromString "filter"
                   , Value.Specification
-                        [ ( Name.fromString "f", Type.Unit () )
-                        , ( Name.fromString "list", Type.Unit () )
+                        [ ( Name.fromString "f", Type.Function () (Type.Variable () [ "a" ]) (boolType ()) )
+                        , ( Name.fromString "list", listType () (Type.Variable () [ "a" ]) )
                         ]
-                        (Type.Unit ())
+                        (listType () (Type.Variable () [ "a" ]))
                   )
                 ]
         in

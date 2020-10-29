@@ -1,10 +1,15 @@
 module Morphir.Type.InferTests exposing (..)
 
+import Dict exposing (Dict)
 import Expect
 import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Name as Name
+import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
 import Morphir.IR.SDK.List exposing (listType)
+import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Type.Class as Class
@@ -17,12 +22,26 @@ import Morphir.Type.SolutionMap as SolutionMap
 import Test exposing (Test, describe, test)
 
 
+testReferences : Dict PackageName (Package.Specification ())
+testReferences =
+    Dict.fromList
+        [ ( [ [ "morphir" ], [ "s", "d", "k" ] ], SDK.packageSpec )
+        ]
+
+
 positiveOutcomes : List (Value () ( Int, Type () ))
 positiveOutcomes =
     let
         isZeroType : Type ()
         isZeroType =
             Type.Function () (floatType ()) (boolType ())
+
+        barRecordType : String -> Type ()
+        barRecordType extends =
+            Type.ExtensibleRecord ()
+                (Name.fromString extends)
+                [ Type.Field [ "bar" ] (floatType ())
+                ]
     in
     -- if then else
     [ Value.IfThenElse ( 1, floatType () )
@@ -48,6 +67,82 @@ positiveOutcomes =
         [ ( [ "foo" ], Value.Literal ( 2, boolType () ) (BoolLiteral False) )
         , ( [ "bar" ], Value.Literal ( 3, floatType () ) (FloatLiteral 2) )
         ]
+    , Value.Lambda ( 0, Type.Function () (barRecordType "t5_1") (floatType ()) )
+        (Value.AsPattern ( 1, barRecordType "t5_1" ) (Value.WildcardPattern ( 2, barRecordType "t5_1" )) [ "rec" ])
+        (Value.IfThenElse ( 3, floatType () )
+            (Value.Literal ( 4, boolType () ) (BoolLiteral False))
+            (Value.Field ( 5, floatType () )
+                (Value.Variable ( 6, barRecordType "t5_1" ) [ "rec" ])
+                [ "bar" ]
+            )
+            (Value.Literal ( 7, floatType () ) (FloatLiteral 2))
+        )
+    , Value.Lambda ( 0, Type.Function () (barRecordType "t6_1") (floatType ()) )
+        (Value.AsPattern ( 1, barRecordType "t6_1" ) (Value.WildcardPattern ( 2, barRecordType "t6_1" )) [ "rec" ])
+        (Value.IfThenElse ( 3, floatType () )
+            (Value.Literal ( 4, boolType () ) (BoolLiteral False))
+            (Value.Apply ( 5, floatType () )
+                (Value.FieldFunction ( 6, Type.Function () (barRecordType "t6_1") (floatType ()) ) [ "bar" ])
+                (Value.Variable ( 7, barRecordType "t6_1" ) [ "rec" ])
+            )
+            (Value.Literal ( 8, floatType () ) (FloatLiteral 2))
+        )
+    , Value.Lambda ( 0, Type.Function () (barRecordType "t3_1") (barRecordType "t3_1") )
+        (Value.AsPattern ( 1, barRecordType "t3_1" ) (Value.WildcardPattern ( 2, barRecordType "t3_1" )) [ "rec" ])
+        (Value.UpdateRecord ( 3, barRecordType "t3_1" )
+            (Value.Variable ( 4, barRecordType "t3_1" ) [ "rec" ])
+            [ ( [ "bar" ], Value.Literal ( 5, floatType () ) (FloatLiteral 2) )
+            ]
+        )
+
+    -- constructor
+    , Value.Constructor ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "0", "1" ] ] )
+        (fqn "Morphir.SDK" "Maybe" "Nothing")
+    , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ floatType () ] )
+        (Value.Constructor ( 1, Type.Function () (floatType ()) (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ floatType () ]) )
+            (fqn "Morphir.SDK" "Maybe" "Just")
+        )
+        (Value.Literal ( 2, floatType () ) (FloatLiteral 2))
+    , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ Type.Variable () [ "t", "1", "2" ], floatType () ] )
+        (Value.Constructor ( 1, Type.Function () (floatType ()) (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ Type.Variable () [ "t", "1", "2" ], floatType () ]) )
+            (fqn "Morphir.SDK" "Result" "Ok")
+        )
+        (Value.Literal ( 2, floatType () ) (FloatLiteral 2))
+    , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ stringType (), Type.Variable () [ "t", "1", "1" ] ] )
+        (Value.Constructor ( 1, Type.Function () (stringType ()) (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ stringType (), Type.Variable () [ "t", "1", "1" ] ]) )
+            (fqn "Morphir.SDK" "Result" "Err")
+        )
+        (Value.Literal ( 2, stringType () ) (StringLiteral "err"))
+
+    -- reference
+    , Value.Apply ( 0, listType () (floatType ()) )
+        (Value.Apply ( 1, Type.Function () (listType () (floatType ())) (listType () (floatType ())) )
+            (Value.Reference ( 2, Type.Function () (Type.Function () (floatType ()) (floatType ())) (Type.Function () (listType () (floatType ())) (listType () (floatType ()))) )
+                (fqn "Morphir.SDK" "List" "map")
+            )
+            (Value.Lambda ( 3, Type.Function () (floatType ()) (floatType ()) )
+                (Value.AsPattern ( 4, floatType () ) (Value.WildcardPattern ( 2, floatType () )) [ "a" ])
+                (Value.Variable ( 5, floatType () ) [ "a" ])
+            )
+        )
+        (Value.List ( 6, listType () (floatType ()) )
+            [ Value.Literal ( 7, floatType () ) (FloatLiteral 2)
+            ]
+        )
+    , Value.Apply ( 0, listType () (floatType ()) )
+        (Value.Apply ( 1, Type.Function () (listType () (floatType ())) (listType () (floatType ())) )
+            (Value.Reference ( 2, Type.Function () (Type.Function () (floatType ()) (boolType ())) (Type.Function () (listType () (floatType ())) (listType () (floatType ()))) )
+                (fqn "Morphir.SDK" "List" "filter")
+            )
+            (Value.Lambda ( 3, Type.Function () (floatType ()) (boolType ()) )
+                (Value.AsPattern ( 4, floatType () ) (Value.WildcardPattern ( 2, floatType () )) [ "a" ])
+                (Value.Literal ( 7, boolType () ) (BoolLiteral False))
+            )
+        )
+        (Value.List ( 6, listType () (floatType ()) )
+            [ Value.Literal ( 7, floatType () ) (FloatLiteral 2)
+            ]
+        )
 
     -- lambda and patterns
     , Value.Lambda ( 0, Type.Function () (Type.Unit ()) (floatType ()) )
@@ -60,15 +155,12 @@ positiveOutcomes =
             ]
         )
         (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
-
-    --, Value.Lambda ( 0, Type.Function () (Type.Reference () (fqn "My" "Test" "CustomType") [ boolType (), floatType () ]) (floatType ()) )
-    --    (Value.ConstructorPattern ( 1, Type.Reference () (fqn "My" "Test" "CustomType") [ boolType (), floatType () ] )
-    --        (fqn "My" "Test" "CustomTypeCtor1")
-    --        [ Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False)
-    --        , Value.LiteralPattern ( 3, floatType () ) (FloatLiteral 3)
-    --        ]
-    --    )
-    --    (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
+    , Value.Lambda ( 0, Type.Function () (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "1", "1" ] ]) (floatType ()) )
+        (Value.ConstructorPattern ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "1", "1" ] ] )
+            (fqn "Morphir.SDK" "Maybe" "Nothing")
+            []
+        )
+        (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
     , Value.Lambda ( 0, Type.Function () (listType () (boolType ())) (floatType ()) )
         (Value.HeadTailPattern ( 1, listType () (boolType ()) )
             (Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False))
@@ -84,6 +176,81 @@ positiveOutcomes =
             )
             (Value.Literal ( 7, floatType () ) (FloatLiteral 2))
             (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
+        )
+
+    -- let
+    , Value.LetDefinition ( 0, floatType () )
+        [ "foo" ]
+        (Value.Definition
+            [ ( [ "a" ], ( 1, floatType () ), floatType () )
+            ]
+            (floatType ())
+            (Value.Variable ( 2, floatType () ) [ "a" ])
+        )
+        (Value.Apply ( 3, floatType () )
+            (Value.Variable ( 4, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
+            (Value.Literal ( 5, floatType () ) (FloatLiteral 3))
+        )
+    , Value.LetRecursion ( 0, floatType () )
+        (Dict.fromList
+            [ ( [ "foo" ]
+              , Value.Definition
+                    [ ( [ "a" ], ( 1, floatType () ), floatType () )
+                    ]
+                    (floatType ())
+                    (Value.Variable ( 2, floatType () ) [ "a" ])
+              )
+            ]
+        )
+        (Value.Apply ( 3, floatType () )
+            (Value.Variable ( 4, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
+            (Value.Literal ( 5, floatType () ) (FloatLiteral 3))
+        )
+    , Value.LetRecursion ( 0, floatType () )
+        (Dict.fromList
+            [ ( [ "foo" ]
+              , Value.Definition
+                    [ ( [ "a" ], ( 1, floatType () ), floatType () )
+                    ]
+                    (floatType ())
+                    (Value.Apply ( 2, floatType () )
+                        (Value.Variable ( 3, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
+                        (Value.Variable ( 4, floatType () ) [ "a" ])
+                    )
+              )
+            ]
+        )
+        (Value.Apply ( 5, floatType () )
+            (Value.Variable ( 6, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
+            (Value.Literal ( 7, floatType () ) (FloatLiteral 3))
+        )
+    , Value.LetRecursion ( 0, floatType () )
+        (Dict.fromList
+            [ ( [ "foo" ]
+              , Value.Definition
+                    [ ( [ "a" ], ( 1, floatType () ), floatType () )
+                    ]
+                    (floatType ())
+                    (Value.Apply ( 2, floatType () )
+                        (Value.Variable ( 3, Type.Function () (floatType ()) (floatType ()) ) [ "bar" ])
+                        (Value.Variable ( 4, floatType () ) [ "a" ])
+                    )
+              )
+            , ( [ "bar" ]
+              , Value.Definition
+                    [ ( [ "a" ], ( 5, floatType () ), floatType () )
+                    ]
+                    (floatType ())
+                    (Value.Apply ( 6, floatType () )
+                        (Value.Variable ( 7, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
+                        (Value.Variable ( 8, floatType () ) [ "a" ])
+                    )
+              )
+            ]
+        )
+        (Value.Apply ( 9, floatType () )
+            (Value.Variable ( 10, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
+            (Value.Literal ( 11, floatType () ) (FloatLiteral 3))
         )
 
     -- destructure
@@ -138,6 +305,25 @@ negativeOutcomes =
     ]
 
 
+positiveDefOutcomes : List (Value.Definition () ( Int, Type () ))
+positiveDefOutcomes =
+    [ Value.Definition
+        [ ( [ "a" ], ( 0, floatType () ), floatType () )
+        ]
+        (floatType ())
+        (Value.Variable ( 1, floatType () ) [ "a" ])
+    , Value.Definition
+        [ ( [ "a" ], ( 0, floatType () ), floatType () )
+        ]
+        (floatType ())
+        (Value.IfThenElse ( 1, floatType () )
+            (Value.Literal ( 2, boolType () ) (BoolLiteral False))
+            (Value.Variable ( 3, floatType () ) [ "a" ])
+            (Value.Variable ( 4, floatType () ) [ "a" ])
+        )
+    ]
+
+
 inferPositiveTests : Test
 inferPositiveTests =
     describe "Inference should succeed"
@@ -152,7 +338,7 @@ inferPositiveTests =
                     in
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.infer untyped
+                            Infer.inferValue testReferences untyped
                                 |> Expect.equal (Ok expectedOutcome)
                         )
                 )
@@ -167,8 +353,29 @@ inferNegativeTests =
                 (\index ( untyped, expectedError ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.infer untyped
+                            Infer.inferValue testReferences untyped
                                 |> Expect.equal (Err expectedError)
+                        )
+                )
+        )
+
+
+inferDefPositiveTests : Test
+inferDefPositiveTests =
+    describe "Inference of definition should succeed"
+        (positiveDefOutcomes
+            |> List.indexedMap
+                (\index expectedOutcome ->
+                    let
+                        untyped : Value.Definition () Int
+                        untyped =
+                            expectedOutcome
+                                |> Value.mapDefinitionAttributes identity Tuple.first
+                    in
+                    test ("Scenario " ++ String.fromInt index)
+                        (\_ ->
+                            Infer.inferDefinition testReferences untyped
+                                |> Expect.equal (Ok expectedOutcome)
                         )
                 )
         )
@@ -283,7 +490,7 @@ solvePositiveTests =
                 (\index ( constraints, residualConstraints, expectedSolutionMap ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.solve (ConstraintSet.fromList constraints)
+                            Infer.solve testReferences (ConstraintSet.fromList constraints)
                                 |> Expect.equal (Ok ( ConstraintSet.fromList residualConstraints, SolutionMap.fromList expectedSolutionMap ))
                         )
                 )
@@ -314,7 +521,7 @@ solveNegativeTests =
                 (\index ( constraints, expectedError ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.solve (ConstraintSet.fromList constraints)
+                            Infer.solve testReferences (ConstraintSet.fromList constraints)
                                 |> Expect.equal (Err expectedError)
                         )
                 )

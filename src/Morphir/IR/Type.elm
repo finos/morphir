@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -22,7 +22,7 @@ module Morphir.IR.Type exposing
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
     , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification
     , Constructors, Constructor(..)
-    , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes
+    , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes, collectVariables
     )
 
 {-| This module contains the building blocks of types in the Morphir IR.
@@ -60,7 +60,7 @@ module Morphir.IR.Type exposing
 
 # Mapping
 
-@docs mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes
+@docs mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes, collectVariables
 
 -}
 
@@ -68,6 +68,7 @@ import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlle
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.ListOfResults as ListOfResults
+import Set exposing (Set)
 
 
 {-| An opaque representation of a type. Check out the docs for each building blocks
@@ -463,3 +464,38 @@ mapFieldName f field =
 mapFieldType : (Type a -> Type b) -> Field a -> Field b
 mapFieldType f field =
     Field field.name (f field.tpe)
+
+
+{-| Collect all variables in a type recursively.
+-}
+collectVariables : Type ta -> Set Name
+collectVariables tpe =
+    let
+        collectUnion : List (Type ta) -> Set Name
+        collectUnion values =
+            values
+                |> List.map collectVariables
+                |> List.foldl Set.union Set.empty
+    in
+    case tpe of
+        Variable _ name ->
+            Set.singleton name
+
+        Reference _ _ args ->
+            collectUnion args
+
+        Tuple _ elements ->
+            collectUnion elements
+
+        Record _ fields ->
+            collectUnion (fields |> List.map .tpe)
+
+        ExtensibleRecord _ subjectName fields ->
+            collectUnion (fields |> List.map .tpe)
+                |> Set.insert subjectName
+
+        Function _ argType returnType ->
+            collectUnion [ argType, returnType ]
+
+        Unit _ ->
+            Set.empty
