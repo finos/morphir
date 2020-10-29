@@ -3,13 +3,13 @@ This document describes how maintainers can push new releases of `morphir-elm` i
 # Publishing the Elm package
 
 1. Clone the `finos/morphir-elm` github repo or pull the latest from the master branch if you have a clone already.
-```
-git clone https://github.com/finos/morphir-elm.git
-```
-or
-```
-git pull origin master
-```
+    ```
+    git clone https://github.com/finos/morphir-elm.git
+    ```
+    or
+    ```
+    git pull origin master
+    ```
 2. Run `elm bump` to get the version number in your `elm.json` updated.
     - This will calculate the new version number and ask you to confirm.
 3. Commit the `elm.json` change.
