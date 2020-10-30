@@ -374,7 +374,7 @@ inferDefPositiveTests =
                     in
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.inferDefinition testReferences untyped
+                            Infer.inferValueDefinition testReferences untyped
                                 |> Expect.equal (Ok expectedOutcome)
                         )
                 )

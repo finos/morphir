@@ -10,7 +10,7 @@ type MetaType
     = MetaVar Variable
     | MetaRef FQName
     | MetaTuple (List MetaType)
-    | MetaRecord (Maybe MetaType) (Dict Name MetaType)
+    | MetaRecord (Maybe Variable) (Dict Name MetaType)
     | MetaApply MetaType MetaType
     | MetaFun MetaType MetaType
     | MetaUnit

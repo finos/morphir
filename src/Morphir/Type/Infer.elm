@@ -1,15 +1,17 @@
 module Morphir.Type.Infer exposing (..)
 
 import Dict exposing (Dict)
+import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.FQName exposing (FQName(..), fqn)
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Type.Class as Class exposing (Class)
-import Morphir.Type.Constraint as Constraint exposing (Constraint(..), Target(..), class, equality, lookupCtor, lookupValue)
+import Morphir.Type.Constraint exposing (Constraint(..), Target(..), class, equality, lookupCtor, lookupValue)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..))
 import Morphir.Type.MetaVar as MetaVar exposing (Variable)
@@ -26,15 +28,61 @@ type alias TypedValue va =
 
 
 type TypeError
-    = TypeMismatch MetaType MetaType
-    | TypeErrors (List TypeError)
+    = TypeErrors (List TypeError)
     | ClassConstraintViolation MetaType Class
     | CouldNotFindConstructor FQName
     | CouldNotFindValue FQName
+    | UnknownError String
+    | CouldNotUnify UnificationError MetaType MetaType
 
 
-inferDefinition : References -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
-inferDefinition refs def =
+type UnificationError
+    = NoUnificationRule
+    | TuplesOfDifferentSize
+    | RefMismatch
+
+
+inferPackageDefinition : References -> Package.Definition () va -> Result TypeError (Package.Definition () ( va, Type () ))
+inferPackageDefinition refs packageDef =
+    packageDef.modules
+        |> Dict.toList
+        |> List.map
+            (\( moduleName, moduleDef ) ->
+                inferModuleDefinition refs moduleDef.value
+                    |> Result.map (AccessControlled moduleDef.access)
+                    |> Result.map (Tuple.pair moduleName)
+            )
+        |> ListOfResults.liftAllErrors
+        |> Result.map
+            (\mappedModules ->
+                { modules = Dict.fromList mappedModules
+                }
+            )
+        |> Result.mapError TypeErrors
+
+
+inferModuleDefinition : References -> Module.Definition () va -> Result TypeError (Module.Definition () ( va, Type () ))
+inferModuleDefinition refs moduleDef =
+    moduleDef.values
+        |> Dict.toList
+        |> List.map
+            (\( valueName, valueDef ) ->
+                inferValueDefinition refs valueDef.value
+                    |> Result.map (AccessControlled valueDef.access)
+                    |> Result.map (Tuple.pair valueName)
+            )
+        |> ListOfResults.liftAllErrors
+        |> Result.map
+            (\mappedValues ->
+                { types = moduleDef.types
+                , values = Dict.fromList mappedValues
+                }
+            )
+        |> Result.mapError TypeErrors
+
+
+inferValueDefinition : References -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
+inferValueDefinition refs def =
     let
         annotatedDef : Value.Definition () ( va, Variable )
         annotatedDef =
@@ -263,10 +311,6 @@ constrainValue vars annotatedValue =
                     thisTypeVar
                         |> MetaVar.subVariable
 
-                extendsType : MetaType
-                extendsType =
-                    MetaVar extendsVar
-
                 fieldType : MetaType
                 fieldType =
                     extendsVar
@@ -275,7 +319,7 @@ constrainValue vars annotatedValue =
 
                 extensibleRecordType : MetaType
                 extensibleRecordType =
-                    MetaRecord (Just extendsType)
+                    MetaRecord (Just extendsVar)
                         (Dict.singleton fieldName fieldType)
 
                 fieldConstraints : ConstraintSet
@@ -297,10 +341,6 @@ constrainValue vars annotatedValue =
                     thisTypeVar
                         |> MetaVar.subVariable
 
-                extendsType : MetaType
-                extendsType =
-                    MetaVar extendsVar
-
                 fieldType : MetaType
                 fieldType =
                     extendsVar
@@ -309,7 +349,7 @@ constrainValue vars annotatedValue =
 
                 extensibleRecordType : MetaType
                 extensibleRecordType =
-                    MetaRecord (Just extendsType)
+                    MetaRecord (Just extendsVar)
                         (Dict.singleton fieldName fieldType)
             in
             ConstraintSet.singleton
@@ -572,13 +612,9 @@ constrainValue vars annotatedValue =
                     thisTypeVar
                         |> MetaVar.subVariable
 
-                extendsType : MetaType
-                extendsType =
-                    MetaVar extendsVar
-
                 extensibleRecordType : MetaType
                 extensibleRecordType =
-                    MetaRecord (Just extendsType)
+                    MetaRecord (Just extendsVar)
                         (fieldValues
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
@@ -862,28 +898,24 @@ findSubstitution refs constraints =
                     findSubstitution refs restOfConstraints
 
                 Lookup target metaType1 fQName ->
-                    let
-                        baseVar =
-                            case metaType1 of
-                                MetaVar v ->
-                                    v
+                    case metaType1 of
+                        MetaVar baseVar ->
+                            lookupMetaType baseVar refs target fQName
+                                |> Result.andThen
+                                    (\metaType2 ->
+                                        unifyMetaType metaType1 metaType2
+                                            |> Result.andThen
+                                                (\solutions ->
+                                                    if SolutionMap.isEmpty solutions then
+                                                        findSubstitution refs restOfConstraints
 
-                                other ->
-                                    Debug.todo ("baseVar cannot be derived " ++ Debug.toString other)
-                    in
-                    lookupMetaType baseVar refs target fQName
-                        |> Result.andThen
-                            (\metaType2 ->
-                                unifyMetaType metaType1 metaType2
-                                    |> Result.andThen
-                                        (\solutions ->
-                                            if SolutionMap.isEmpty solutions then
-                                                findSubstitution refs restOfConstraints
+                                                    else
+                                                        Ok (Just solutions)
+                                                )
+                                    )
 
-                                            else
-                                                Ok (Just solutions)
-                                        )
-                            )
+                        _ ->
+                            Err (UnknownError "baseVar cannot be derived")
 
 
 lookupMetaType : Variable -> References -> Target -> FQName -> Result TypeError MetaType
@@ -1060,7 +1092,6 @@ typeToMetaType baseVar varToMeta tpe =
             MetaRecord
                 (varToMeta
                     |> Dict.get subjectName
-                    |> Maybe.map MetaVar
                 )
                 (fieldTypes
                     |> List.map
@@ -1144,8 +1175,8 @@ unifyMetaType metaType1 metaType2 =
             ( MetaFun arg1 return1, _ ) ->
                 unifyFun arg1 return1 metaType2
 
-            other ->
-                Debug.todo ("implement " ++ Debug.toString other)
+            _ ->
+                Err (CouldNotUnify NoUnificationRule metaType1 metaType2)
 
 
 unifyVariable : Variable -> MetaType -> Result TypeError SolutionMap
@@ -1176,10 +1207,10 @@ unifyTuple elems1 metaType2 =
                         )
 
             else
-                Debug.todo "implement"
+                Err (CouldNotUnify TuplesOfDifferentSize (MetaTuple elems1) metaType2)
 
         _ ->
-            Debug.todo "implement"
+            Err (CouldNotUnify NoUnificationRule (MetaTuple elems1) metaType2)
 
 
 unifyRef : FQName -> MetaType -> Result TypeError SolutionMap
@@ -1190,10 +1221,10 @@ unifyRef ref1 metaType2 =
                 Ok SolutionMap.empty
 
             else
-                Err (TypeMismatch (MetaRef ref1) metaType2)
+                Err (CouldNotUnify RefMismatch (MetaRef ref1) metaType2)
 
         other ->
-            Debug.todo ("implement " ++ Debug.toString other)
+            Err (CouldNotUnify NoUnificationRule (MetaRef ref1) metaType2)
 
 
 unifyApply : MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
@@ -1207,7 +1238,7 @@ unifyApply fun1 arg1 metaType2 =
                 )
 
         _ ->
-            Debug.todo "implement"
+            Err (CouldNotUnify NoUnificationRule (MetaApply fun1 arg1) metaType2)
 
 
 unifyFun : MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
@@ -1221,7 +1252,7 @@ unifyFun arg1 return1 metaType2 =
                 )
 
         _ ->
-            Debug.todo "implement"
+            Err (CouldNotUnify NoUnificationRule (MetaFun arg1 return1) metaType2)
 
 
 applySolutionToAnnotatedDefinition : Value.Definition () ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> Value.Definition () ( va, Type () )
@@ -1281,21 +1312,16 @@ metaToConcreteType solutionMap metaType =
                         )
 
                 Just baseType ->
-                    case baseType of
-                        MetaVar metaVar ->
-                            Type.ExtensibleRecord ()
-                                (metaVar |> MetaVar.toName)
-                                (metaFields
-                                    |> Dict.toList
-                                    |> List.map
-                                        (\( fieldName, fieldType ) ->
-                                            Type.Field fieldName
-                                                (metaToConcreteType solutionMap fieldType)
-                                        )
+                    Type.ExtensibleRecord ()
+                        (baseType |> MetaVar.toName)
+                        (metaFields
+                            |> Dict.toList
+                            |> List.map
+                                (\( fieldName, fieldType ) ->
+                                    Type.Field fieldName
+                                        (metaToConcreteType solutionMap fieldType)
                                 )
-
-                        _ ->
-                            Debug.todo ("implement " ++ Debug.toString metaType)
+                        )
 
         MetaApply _ _ ->
             let
