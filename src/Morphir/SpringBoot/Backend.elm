@@ -370,8 +370,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                 , AnnotatedMemberDecl
                                     (Annotated
                                         (Just
-                                            [ "@io.swagger.annotations.ApiImplicitParams(Array(new io.swagger.annotations.ApiImplicitParam(name = \"command\", example = \"{\\\"type\\\": \\\"OpenDeal\\\",\\n    \\\"arg1\\\": \\\"prod1\\\",\\n    \\\"arg2\\\": \\\"100\\\",\\n    \\\"arg3\\\": \\\"10\\\"}\", paramType = \"body\")))"
-                                            , "@org.springframework.web.bind.annotation.PostMapping(value= Array(\"/v1.0/command\"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array(\"application/json\"))"
+                                            [ "@org.springframework.web.bind.annotation.PostMapping(value= Array(\"/v1.0/command\"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array(\"application/json\"))"
                                             ]
                                         )
                                      <|
