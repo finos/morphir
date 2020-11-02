@@ -71,7 +71,6 @@ mapPackageDefinition opt distribution packagePath packageDef =
                             in
                             ( ( List.append [ "src", "main", "java" ] compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
                         )
-                    |> List.append [ mapAdapterApp packagePath modulePath ]
             )
         |> Dict.fromList
 
@@ -334,8 +333,96 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                     )
                 ]
             }
+
+        adapterAbstractModule : CompilationUnit
+        adapterAbstractModule =
+            { dirPath = scalaPackagePath
+            , fileName = "SpringBootStatefulAppAdapter.scala"
+            , packageDecl = scalaPackagePath
+            , imports = []
+            , typeDecls =
+                [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                    (Annotated Nothing <|
+                        Class
+                            { modifiers =
+                                [ Abstract ]
+                            , name =
+                                "SpringBootStatefulAppAdapter"
+                            , typeArgs =
+                                [ TypeVar "K", TypeVar "C", TypeVar "S", TypeVar "E" ]
+                            , ctorArgs =
+                                [ [ ArgDecl []
+                                        (TypeApply (TypeVar (dotSep scalaPackagePath ++ ".StatefulApp"))
+                                            [ TypeVar "K", TypeVar "C", TypeVar "S", TypeVar "E" ]
+                                        )
+                                        "statefulApp"
+                                        Nothing
+                                  ]
+                                ]
+                            , extends = []
+                            , members =
+                                [ ValueDecl
+                                    { modifiers = []
+                                    , pattern = NamedMatch "requests"
+                                    , valueType = Nothing
+                                    , value = Scala.Variable (dotSep scalaPackagePath ++ ".MainApplication.metricRegistry.meter(\"statefulAppRequests\")")
+                                    }
+                                , AnnotatedMemberDecl
+                                    (Annotated
+                                        (Just
+                                            [ "@io.swagger.annotations.ApiImplicitParams(Array(new io.swagger.annotations.ApiImplicitParam(name = \"command\", example = \"{\\\"type\\\": \\\"OpenDeal\\\",\\n    \\\"arg1\\\": \\\"prod1\\\",\\n    \\\"arg2\\\": \\\"100\\\",\\n    \\\"arg3\\\": \\\"10\\\"}\", paramType = \"body\")))"
+                                            , "@org.springframework.web.bind.annotation.PostMapping(value= Array(\"/v1.0/command\"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array(\"application/json\"))"
+                                            ]
+                                        )
+                                     <|
+                                        FunctionDecl
+                                            { modifiers = []
+                                            , name = "entryPoint"
+                                            , typeArgs = []
+                                            , args =
+                                                [ [ ArgDecl []
+                                                        (TypeVar "C")
+                                                        "@org.springframework.web.bind.annotation.RequestBody command"
+                                                        Nothing
+                                                  ]
+                                                ]
+                                            , returnType = Just (TypeVar "E")
+                                            , body =
+                                                Just
+                                                    (Scala.Variable
+                                                        ("{requests.mark" ++ newLine ++ "process(command, None)._2}")
+                                                    )
+                                            }
+                                    )
+                                , FunctionDecl
+                                    { modifiers = []
+                                    , name = "process"
+                                    , typeArgs = []
+                                    , args =
+                                        [ [ ArgDecl []
+                                                (TypeVar "C")
+                                                "command"
+                                                Nothing
+                                          , ArgDecl []
+                                                (TypeApply (TypeVar "Option") [ TypeVar "S" ])
+                                                "state"
+                                                Nothing
+                                          ]
+                                        ]
+                                    , returnType = Just (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
+                                    , body =
+                                        Just
+                                            (Scala.Variable
+                                                "{statefulApp.businessLogic(state, command)}"
+                                            )
+                                    }
+                                ]
+                            }
+                    )
+                ]
+            }
     in
-    [ stateFulImplAdapter, statefulModule ]
+    [ stateFulImplAdapter, statefulModule, adapterAbstractModule ]
 
 
 mapMainApp : Package.PackageName -> Path -> List CompilationUnit
@@ -401,6 +488,28 @@ mapMainApp currentPackagePath currentModulePath =
                                                     )
                                             }
                                     )
+                                , AnnotatedMemberDecl
+                                    (Annotated (Just [ "@org.springframework.context.annotation.Bean" ]) <|
+                                        FunctionDecl
+                                            { modifiers = []
+                                            , name = "api"
+                                            , typeArgs = []
+                                            , args = []
+                                            , returnType = Just (TypeVar "springfox.documentation.spring.web.plugins.Docket")
+                                            , body =
+                                                Just
+                                                    (Scala.Select
+                                                        (Scala.Ref
+                                                            [ "new springfox.documentation.spring.web.plugins.Docket(springfox.documentation.spi.DocumentationType.SWAGGER_2)"
+                                                            , "select"
+                                                            , "apis(springfox.documentation.builders.RequestHandlerSelectors.basePackage( \"" ++ dotSep scalaPackagePath ++ "\" ))"
+                                                            ]
+                                                            "paths(springfox.documentation.builders.PathSelectors.any)"
+                                                        )
+                                                        "build"
+                                                    )
+                                            }
+                                    )
                                 ]
                             }
                     )
@@ -429,39 +538,6 @@ mapMainApp currentPackagePath currentModulePath =
             }
     in
     [ moduleMainApp ]
-
-
-mapAdapterApp : Package.PackageName -> Path -> ( ( List String, String ), String )
-mapAdapterApp currentPackagePath currentModulePath =
-    let
-        scalaPackagePath =
-            first (getScalaPackagePath currentPackagePath currentModulePath)
-
-        fileName =
-            "SpringBootStatefulAppAdapter.scala"
-
-        dirPath =
-            List.append [ "src", "main", "java" ] scalaPackagePath
-
-        body =
-            [ "package " ++ dotSep scalaPackagePath
-            , "abstract class SpringBootStatefulAppAdapter [K, C, S, E] (statefulApp: "
-                ++ dotSep scalaPackagePath
-                ++ ".StatefulApp [K, C, S, E]) {"
-            , """ val requests = morphir.reference.model.MainApplication.metricRegistry.meter("statefulAppRequests") """
-            , """@org.springframework.web.bind.annotation.PostMapping(value= Array("/command"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array("application/json"))"""
-            , "     def entryPoint(@org.springframework.web.bind.annotation.RequestBody command: C) : E =  {"
-            , "         requests.mark"
-            , "         process(command, None)._2"
-            , "     }"
-            , """     def process(command: C, state: Option[S]) : (morphir.sdk.Maybe.Maybe[S], E) = {"""
-            , "         statefulApp.businessLogic(state, command)"
-            , "     }"
-            , "}"
-            ]
-                |> String.join newLine
-    in
-    ( ( dirPath, fileName ), body )
 
 
 mapStatefulAppDefinition : Package.PackageName -> Path -> List CompilationUnit

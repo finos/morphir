@@ -210,7 +210,12 @@ mapMemberDecl opt memberDecl =
         AnnotatedMemberDecl decl ->
             case decl.annotation of
                 Just path ->
-                    (path |> concat) ++ newLine ++ mapMemberDecl opt decl.value
+                    (path
+                        |> List.intersperse newLine
+                        |> concat
+                    )
+                        ++ newLine
+                        ++ mapMemberDecl opt decl.value
 
                 _ ->
                     mapMemberDecl opt decl.value
