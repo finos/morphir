@@ -1,7 +1,10 @@
 module Morphir.Type.InferTests exposing (..)
 
 import Dict exposing (Dict)
+import Element
 import Expect
+import Html exposing (Html)
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
@@ -15,17 +18,52 @@ import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Type.Class as Class
 import Morphir.Type.Constraint exposing (Constraint, class, equality)
 import Morphir.Type.ConstraintSet as ConstraintSet
-import Morphir.Type.Infer as Infer exposing (TypeError(..))
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..))
-import Morphir.Type.MetaVar exposing (Variable, variable)
+import Morphir.Type.Infer as Infer exposing (TypeError(..), UnificationError(..))
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variable)
 import Morphir.Type.SolutionMap as SolutionMap
+import Morphir.Web.ViewIR as ViewIR
+import Morphir.Web.ViewType exposing (viewType)
 import Test exposing (Test, describe, test)
 
 
 testReferences : Dict PackageName (Package.Specification ())
 testReferences =
     Dict.fromList
-        [ ( [ [ "morphir" ], [ "s", "d", "k" ] ], SDK.packageSpec )
+        [ ( [ [ "morphir" ], [ "s", "d", "k" ] ]
+          , SDK.packageSpec
+          )
+        , ( [ [ "test" ] ]
+          , { modules =
+                Dict.fromList
+                    [ ( [ [ "test" ] ]
+                      , { types =
+                            Dict.fromList
+                                [ ( [ "custom" ]
+                                  , Documented ""
+                                        (Type.CustomTypeSpecification []
+                                            [ Type.Constructor [ "custom", "zero" ] []
+                                            ]
+                                        )
+                                  )
+                                , ( [ "foo", "bar", "baz", "record" ]
+                                  , Documented ""
+                                        (Type.TypeAliasSpecification []
+                                            (Type.Record ()
+                                                [ Type.Field [ "foo" ] (stringType ())
+                                                , Type.Field [ "bar" ] (boolType ())
+                                                , Type.Field [ "baz" ] (intType ())
+                                                ]
+                                            )
+                                        )
+                                  )
+                                ]
+                        , values =
+                            Dict.empty
+                        }
+                      )
+                    ]
+            }
+          )
         ]
 
 
@@ -36,11 +74,35 @@ positiveOutcomes =
         isZeroType =
             Type.Function () (floatType ()) (boolType ())
 
-        barRecordType : String -> Type ()
-        barRecordType extends =
+        extRecordType : String -> List ( String, Type () ) -> Type ()
+        extRecordType extends fields =
             Type.ExtensibleRecord ()
                 (Name.fromString extends)
+                (fields
+                    |> List.map
+                        (\( fieldName, fieldType ) ->
+                            Type.Field (Name.fromString fieldName) fieldType
+                        )
+                )
+
+        fooRecordType : String -> Type ()
+        fooRecordType extends =
+            extRecordType extends [ ( "foo", boolType () ) ]
+
+        barRecordType : String -> Type ()
+        barRecordType extends =
+            extRecordType extends [ ( "bar", floatType () ) ]
+
+        fooBarRecordType : String -> Type ()
+        fooBarRecordType extends =
+            extRecordType extends [ ( "bar", floatType () ), ( "foo", boolType () ) ]
+
+        fooBarBazRecordType : Type ()
+        fooBarBazRecordType =
+            Type.Record ()
                 [ Type.Field [ "bar" ] (floatType ())
+                , Type.Field [ "baz" ] (stringType ())
+                , Type.Field [ "foo" ] (boolType ())
                 ]
     in
     -- if then else
@@ -87,6 +149,41 @@ positiveOutcomes =
             )
             (Value.Literal ( 8, floatType () ) (FloatLiteral 2))
         )
+    , Value.Lambda ( 0, Type.Function () (fooBarRecordType "t5_1") (floatType ()) )
+        (Value.AsPattern ( 1, fooBarRecordType "t5_1" ) (Value.WildcardPattern ( 2, fooBarRecordType "t5_1" )) [ "rec" ])
+        (Value.IfThenElse ( 3, floatType () )
+            (Value.Apply ( 5, boolType () )
+                (Value.FieldFunction ( 6, Type.Function () (fooBarRecordType "t5_1") (boolType ()) ) [ "foo" ])
+                (Value.Variable ( 7, fooBarRecordType "t5_1" ) [ "rec" ])
+            )
+            (Value.Apply ( 5, floatType () )
+                (Value.FieldFunction ( 6, Type.Function () (fooBarRecordType "t5_1") (floatType ()) ) [ "bar" ])
+                (Value.Variable ( 7, fooBarRecordType "t5_1" ) [ "rec" ])
+            )
+            (Value.Literal ( 8, floatType () ) (FloatLiteral 2))
+        )
+    , Value.LetDefinition ( 0, floatType () )
+        [ "rec" ]
+        (Value.Definition []
+            fooBarBazRecordType
+            (Value.Record ( 1, fooBarBazRecordType )
+                [ ( [ "foo" ], Value.Literal ( 4, boolType () ) (BoolLiteral False) )
+                , ( [ "bar" ], Value.Literal ( 4, floatType () ) (FloatLiteral 3.14) )
+                , ( [ "baz" ], Value.Literal ( 4, stringType () ) (StringLiteral "meh") )
+                ]
+            )
+        )
+        (Value.IfThenElse ( 3, floatType () )
+            (Value.Apply ( 5, boolType () )
+                (Value.FieldFunction ( 6, Type.Function () (fooBarRecordType "t7_1") (boolType ()) ) [ "foo" ])
+                (Value.Variable ( 7, fooBarRecordType "t7_1" ) [ "rec" ])
+            )
+            (Value.Apply ( 5, floatType () )
+                (Value.FieldFunction ( 6, Type.Function () (fooBarRecordType "t7_1") (floatType ()) ) [ "bar" ])
+                (Value.Variable ( 7, fooBarRecordType "t7_1" ) [ "rec" ])
+            )
+            (Value.Literal ( 8, floatType () ) (FloatLiteral 2))
+        )
     , Value.Lambda ( 0, Type.Function () (barRecordType "t3_1") (barRecordType "t3_1") )
         (Value.AsPattern ( 1, barRecordType "t3_1" ) (Value.WildcardPattern ( 2, barRecordType "t3_1" )) [ "rec" ])
         (Value.UpdateRecord ( 3, barRecordType "t3_1" )
@@ -96,20 +193,20 @@ positiveOutcomes =
         )
 
     -- constructor
-    , Value.Constructor ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "0", "1" ] ] )
+    , Value.Constructor ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "1", "1" ] ] )
         (fqn "Morphir.SDK" "Maybe" "Nothing")
     , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ floatType () ] )
         (Value.Constructor ( 1, Type.Function () (floatType ()) (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ floatType () ]) )
             (fqn "Morphir.SDK" "Maybe" "Just")
         )
         (Value.Literal ( 2, floatType () ) (FloatLiteral 2))
-    , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ Type.Variable () [ "t", "1", "2" ], floatType () ] )
-        (Value.Constructor ( 1, Type.Function () (floatType ()) (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ Type.Variable () [ "t", "1", "2" ], floatType () ]) )
+    , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ Type.Variable () [ "t", "3", "2" ], floatType () ] )
+        (Value.Constructor ( 1, Type.Function () (floatType ()) (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ Type.Variable () [ "t", "3", "2" ], floatType () ]) )
             (fqn "Morphir.SDK" "Result" "Ok")
         )
         (Value.Literal ( 2, floatType () ) (FloatLiteral 2))
-    , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ stringType (), Type.Variable () [ "t", "1", "1" ] ] )
-        (Value.Constructor ( 1, Type.Function () (stringType ()) (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ stringType (), Type.Variable () [ "t", "1", "1" ] ]) )
+    , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ stringType (), Type.Variable () [ "t", "3", "1" ] ] )
+        (Value.Constructor ( 1, Type.Function () (stringType ()) (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ stringType (), Type.Variable () [ "t", "3", "1" ] ]) )
             (fqn "Morphir.SDK" "Result" "Err")
         )
         (Value.Literal ( 2, stringType () ) (StringLiteral "err"))
@@ -155,8 +252,8 @@ positiveOutcomes =
             ]
         )
         (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
-    , Value.Lambda ( 0, Type.Function () (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "1", "1" ] ]) (floatType ()) )
-        (Value.ConstructorPattern ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "1", "1" ] ] )
+    , Value.Lambda ( 0, Type.Function () (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "3", "1" ] ]) (floatType ()) )
+        (Value.ConstructorPattern ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "3", "1" ] ] )
             (fqn "Morphir.SDK" "Maybe" "Nothing")
             []
         )
@@ -293,20 +390,25 @@ negativeOutcomes =
             (Value.Literal 2 (FloatLiteral 1))
             (Value.Literal 3 (IntLiteral 2))
             (Value.Literal 4 (IntLiteral 3))
-      , TypeMismatch MetaType.boolType MetaType.floatType
+      , CouldNotUnify RefMismatch MetaType.boolType MetaType.floatType
       )
     , ( Value.List 1
             [ Value.Literal 2 (IntLiteral 2)
             , Value.Literal 3 (FloatLiteral 3)
             , Value.Literal 4 (BoolLiteral False)
             ]
-      , TypeMismatch MetaType.floatType MetaType.boolType
+      , CouldNotUnify RefMismatch MetaType.floatType MetaType.boolType
       )
     ]
 
 
 positiveDefOutcomes : List (Value.Definition () ( Int, Type () ))
 positiveDefOutcomes =
+    let
+        fooBarBazRecordType : Type ()
+        fooBarBazRecordType =
+            Type.Reference () (fqn "Test" "Test" "FooBarBazRecord") []
+    in
     [ Value.Definition
         [ ( [ "a" ], ( 0, floatType () ), floatType () )
         ]
@@ -321,6 +423,15 @@ positiveDefOutcomes =
             (Value.Variable ( 3, floatType () ) [ "a" ])
             (Value.Variable ( 4, floatType () ) [ "a" ])
         )
+
+    --, Value.Definition
+    --    [ ( [ "a" ], ( 0, fooBarBazRecordType ), fooBarBazRecordType )
+    --    ]
+    --    (stringType ())
+    --    (Value.Field ( 1, stringType () )
+    --        (Value.Variable ( 2, fooBarBazRecordType ) [ "a" ])
+    --        [ "foo" ]
+    --    )
     ]
 
 
@@ -407,7 +518,7 @@ addSolutionTests =
                         (\_ ->
                             solutionMap
                                 |> SolutionMap.fromList
-                                |> Infer.addSolution newVar newSolution
+                                |> Infer.addSolution (MetaType.variable 0) testReferences newVar newSolution
                                 |> Expect.equal (Ok (SolutionMap.fromList expectedSolutionMap))
                         )
                 )
@@ -490,7 +601,7 @@ solvePositiveTests =
                 (\index ( constraints, residualConstraints, expectedSolutionMap ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.solve testReferences (ConstraintSet.fromList constraints)
+                            Infer.solve (MetaType.variable 0) testReferences (ConstraintSet.fromList constraints)
                                 |> Expect.equal (Ok ( ConstraintSet.fromList residualConstraints, SolutionMap.fromList expectedSolutionMap ))
                         )
                 )
@@ -521,8 +632,43 @@ solveNegativeTests =
                 (\index ( constraints, expectedError ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.solve testReferences (ConstraintSet.fromList constraints)
+                            Infer.solve (MetaType.variable 0) testReferences (ConstraintSet.fromList constraints)
                                 |> Expect.equal (Err expectedError)
                         )
                 )
         )
+
+
+main : Html msg
+main =
+    viewPositiveOutcomes positiveOutcomes
+
+
+viewPositiveOutcomes : List (Value () ( Int, Type () )) -> Html msg
+viewPositiveOutcomes outcomes =
+    outcomes
+        |> List.indexedMap
+            (\index outcome ->
+                Html.div []
+                    [ Html.h1 []
+                        [ Html.text
+                            (String.join " "
+                                [ "Scenario"
+                                , String.fromInt index
+                                ]
+                            )
+                        ]
+                    , viewPositiveOutcome outcome
+                    ]
+            )
+        |> Html.div []
+
+
+viewPositiveOutcome : Value () ( Int, Type () ) -> Html msg
+viewPositiveOutcome value =
+    ViewIR.viewValue
+        { padding = 10
+        , indentFactor = 2
+        }
+        (\( _, tpe ) -> viewType tpe)
+        value

@@ -1,8 +1,7 @@
 module Morphir.Type.MetaTypeTests exposing (..)
 
 import Expect
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..))
-import Morphir.Type.MetaVar exposing (Variable, variable)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variable)
 import Test exposing (Test, describe, test)
 
 

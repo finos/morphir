@@ -3,7 +3,6 @@ module Morphir.Type.MetaType exposing (..)
 import Dict exposing (Dict)
 import Morphir.IR.FQName exposing (FQName, fqn)
 import Morphir.IR.Name exposing (Name)
-import Morphir.Type.MetaVar exposing (Variable)
 
 
 type MetaType
@@ -14,6 +13,25 @@ type MetaType
     | MetaApply MetaType MetaType
     | MetaFun MetaType MetaType
     | MetaUnit
+
+
+type alias Variable =
+    ( Int, Int )
+
+
+variable : Int -> Variable
+variable i =
+    ( i, 0 )
+
+
+subVariable : Variable -> Variable
+subVariable ( i, s ) =
+    ( i, s + 1 )
+
+
+toName : Variable -> Name
+toName ( i, s ) =
+    [ "t", String.fromInt i, String.fromInt s ]
 
 
 substituteVariable : Variable -> MetaType -> MetaType -> MetaType
@@ -33,13 +51,17 @@ substituteVariable var replacement original =
                 )
 
         MetaRecord extends metaFields ->
-            MetaRecord extends
-                (metaFields
-                    |> Dict.map
-                        (\_ fieldType ->
-                            substituteVariable var replacement fieldType
-                        )
-                )
+            if extends == Just var then
+                replacement
+
+            else
+                MetaRecord extends
+                    (metaFields
+                        |> Dict.map
+                            (\_ fieldType ->
+                                substituteVariable var replacement fieldType
+                            )
+                    )
 
         MetaApply metaFun metaArg ->
             MetaApply

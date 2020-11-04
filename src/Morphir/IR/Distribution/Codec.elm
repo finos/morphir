@@ -20,9 +20,11 @@ module Morphir.IR.Distribution.Codec exposing (..)
 import Dict
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Morphir.Codec exposing (decodeUnit, encodeUnit)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Package.Codec as PackageCodec
 import Morphir.IR.Path.Codec exposing (decodePath, encodePath)
+import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
 
 
 encodeDistribution : Distribution -> Encode.Value
@@ -38,10 +40,12 @@ encodeDistribution distro =
                         (\( packageName, packageSpec ) ->
                             Encode.list identity
                                 [ encodePath packageName
-                                , PackageCodec.encodeSpecification (\_ -> Encode.object []) packageSpec
+                                , PackageCodec.encodeSpecification encodeUnit packageSpec
                                 ]
                         )
-                , PackageCodec.encodeDefinition (\_ -> Encode.object []) (\_ -> Encode.object []) def
+                , def
+                    |> PackageCodec.encodeDefinition encodeUnit
+                        (encodeType encodeUnit)
                 ]
 
 
@@ -59,12 +63,12 @@ decodeDistribution =
                                     (Decode.list
                                         (Decode.map2 Tuple.pair
                                             (Decode.index 0 decodePath)
-                                            (Decode.index 1 (PackageCodec.decodeSpecification (Decode.succeed ())))
+                                            (Decode.index 1 (PackageCodec.decodeSpecification decodeUnit))
                                         )
                                     )
                                 )
                             )
-                            (Decode.index 3 (PackageCodec.decodeDefinition (Decode.succeed ()) (Decode.succeed ())))
+                            (Decode.index 3 (PackageCodec.decodeDefinition decodeUnit (decodeType decodeUnit)))
 
                     other ->
                         Decode.fail <| "Unknown value type: " ++ other

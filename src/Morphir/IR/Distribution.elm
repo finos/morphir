@@ -18,14 +18,14 @@ import Dict exposing (Dict)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
-import Morphir.IR.Type as Type
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
 
 
 {-| Type that represents a package distribution.
 -}
 type Distribution
-    = Library PackageName (Dict PackageName (Package.Specification ())) (Package.Definition () ())
+    = Library PackageName (Dict PackageName (Package.Specification ())) (Package.Definition () (Type ()))
 
 
 {-| Look up a module specification by package and module path in a distribution.

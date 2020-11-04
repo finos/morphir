@@ -1,8 +1,7 @@
 module Morphir.Type.SolutionMap exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.Type.MetaType as MetaType exposing (MetaType)
-import Morphir.Type.MetaVar exposing (Variable)
+import Morphir.Type.MetaType as MetaType exposing (MetaType, Variable)
 
 
 type SolutionMap

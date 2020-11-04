@@ -20,6 +20,7 @@ module Morphir.IR.Package exposing
     , Definition, emptyDefinition
     , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification
     , PackageName, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
+    , mapDefinitionAttributes, mapSpecificationAttributes
     )
 
 {-| Tools to work with packages.

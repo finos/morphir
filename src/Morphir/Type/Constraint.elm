@@ -2,19 +2,14 @@ module Morphir.Type.Constraint exposing (..)
 
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.Type.Class exposing (Class)
-import Morphir.Type.MetaType as MetaType exposing (MetaType)
-import Morphir.Type.MetaVar exposing (Variable)
+import Morphir.Type.MetaType as MetaType exposing (MetaType, Variable)
 
 
 type Constraint
     = Equality MetaType MetaType
     | Class MetaType Class
-    | Lookup Target MetaType FQName
-
-
-type Target
-    = Ctor
-    | Value
+    | LookupConstructor MetaType FQName
+    | LookupValue MetaType FQName
 
 
 equality : MetaType -> MetaType -> Constraint
@@ -27,14 +22,14 @@ class =
     Class
 
 
-lookupCtor : MetaType -> FQName -> Constraint
-lookupCtor =
-    Lookup Ctor
+lookupConstructor : MetaType -> FQName -> Constraint
+lookupConstructor =
+    LookupConstructor
 
 
 lookupValue : MetaType -> FQName -> Constraint
 lookupValue =
-    Lookup Value
+    LookupValue
 
 
 equivalent : Constraint -> Constraint -> Bool
@@ -64,7 +59,12 @@ substitute var replacement constraint =
                 (metaType |> MetaType.substituteVariable var replacement)
                 cls
 
-        Lookup target metaType fQName ->
-            Lookup target
+        LookupConstructor metaType fQName ->
+            LookupConstructor
+                (metaType |> MetaType.substituteVariable var replacement)
+                fQName
+
+        LookupValue metaType fQName ->
+            LookupValue
                 (metaType |> MetaType.substituteVariable var replacement)
                 fQName
