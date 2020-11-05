@@ -26,7 +26,8 @@
     "cli/Morphir.Elm.CLI.js",
     "cli/Morphir.Elm.DaprCLI.js",
     "cli/assets/*",
-    "src/Morphir/SDK/*"
+    "src/Morphir/SDK/*",
+    "redistributable/SpringBoot/*"
   ],
   "keywords": [
     "morphir",
