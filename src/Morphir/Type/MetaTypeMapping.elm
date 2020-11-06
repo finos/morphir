@@ -182,7 +182,7 @@ concreteTypeToMetaType baseVar refs varToMeta tpe =
                 resolveAliases : FQName -> MetaType
                 resolveAliases fqn =
                     lookupAliasedType baseVar refs fqn
-                        |> Result.map (concreteTypeToMetaType baseVar refs varToMeta)
+                        |> Result.map (concreteTypeToMetaType baseVar refs varToMeta >> MetaAlias fqn)
                         |> Result.withDefault (MetaRef fqn)
 
                 curry : List (Type ()) -> MetaType

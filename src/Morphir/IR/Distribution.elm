@@ -1,6 +1,6 @@
 module Morphir.IR.Distribution exposing
     ( Distribution(..)
-    , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification
+    , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName
     )
 
 {-| A distribution contains all the necessary information to consume a package.
@@ -10,11 +10,12 @@ module Morphir.IR.Distribution exposing
 
 # Lookups
 
-@docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification
+@docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName
 
 -}
 
 import Dict exposing (Dict)
+import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
@@ -52,6 +53,24 @@ lookupTypeSpecification packageName moduleName localName distribution =
     distribution
         |> lookupModuleSpecification packageName moduleName
         |> Maybe.andThen (Module.lookupTypeSpecification localName)
+
+
+{-| Look up the base type name following aliases by package, module and local name in a distribution.
+-}
+lookupBaseTypeName : FQName -> Distribution -> Maybe FQName
+lookupBaseTypeName ((FQName packageName moduleName localName) as fQName) distribution =
+    distribution
+        |> lookupModuleSpecification packageName moduleName
+        |> Maybe.andThen (Module.lookupTypeSpecification localName)
+        |> Maybe.andThen
+            (\typeSpec ->
+                case typeSpec of
+                    Type.TypeAliasSpecification _ (Type.Reference _ aliasFQName _) ->
+                        lookupBaseTypeName aliasFQName distribution
+
+                    _ ->
+                        Just fQName
+            )
 
 
 {-| Look up a value specification by package, module and local name in a distribution.

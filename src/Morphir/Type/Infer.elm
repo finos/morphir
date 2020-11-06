@@ -944,7 +944,7 @@ findSubstitution baseVar refs constraints =
         firstConstraint :: restOfConstraints ->
             case firstConstraint of
                 Equality metaType1 metaType2 ->
-                    unifyMetaType baseVar refs metaType1 metaType2
+                    unifyMetaType baseVar refs [] metaType1 metaType2
                         |> Result.andThen
                             (\solutions ->
                                 if SolutionMap.isEmpty solutions then
@@ -963,7 +963,7 @@ addSolution baseVar refs var newSolution (SolutionMap currentSolutions) =
     case Dict.get var currentSolutions of
         Just existingSolution ->
             -- Unify with the existing solution
-            unifyMetaType baseVar refs existingSolution newSolution
+            unifyMetaType baseVar refs [] existingSolution newSolution
                 |> Result.map
                     (\(SolutionMap newSubstitutions) ->
                         -- If it unifies apply the substitutions to the existing solution and add all new substitutions
@@ -1012,52 +1012,52 @@ concatSolutions baseVar refs solutionMaps =
             (Ok SolutionMap.empty)
 
 
-unifyMetaType : Variable -> References -> MetaType -> MetaType -> Result TypeError SolutionMap
-unifyMetaType baseVar refs metaType1 metaType2 =
+unifyMetaType : Variable -> References -> List FQName -> MetaType -> MetaType -> Result TypeError SolutionMap
+unifyMetaType baseVar refs aliases metaType1 metaType2 =
     if metaType1 == metaType2 then
         Ok SolutionMap.empty
 
     else
         case metaType1 of
             MetaVar var1 ->
-                unifyVariable var1 metaType2
+                unifyVariable aliases var1 metaType2
 
             MetaTuple elems1 ->
-                unifyTuple baseVar refs elems1 metaType2
+                unifyTuple baseVar refs aliases elems1 metaType2
 
             MetaRef ref1 ->
-                unifyRef baseVar refs ref1 metaType2
+                unifyRef baseVar refs aliases ref1 metaType2
 
             MetaApply fun1 arg1 ->
-                unifyApply baseVar refs fun1 arg1 metaType2
+                unifyApply baseVar refs aliases fun1 arg1 metaType2
 
             MetaFun arg1 return1 ->
-                unifyFun baseVar refs arg1 return1 metaType2
+                unifyFun baseVar refs aliases arg1 return1 metaType2
 
             MetaRecord extends1 fields1 ->
-                unifyRecord baseVar refs extends1 fields1 metaType2
+                unifyRecord baseVar refs aliases extends1 fields1 metaType2
 
             MetaUnit ->
-                unifyUnit metaType2
+                unifyUnit aliases metaType2
 
-            MetaAlias _ subject1 ->
-                unifyMetaType baseVar refs subject1 metaType2
-
-
-unifyVariable : Variable -> MetaType -> Result TypeError SolutionMap
-unifyVariable var1 metaType2 =
-    Ok (SolutionMap.singleton var1 metaType2)
+            MetaAlias alias subject1 ->
+                unifyMetaType baseVar refs (alias :: aliases) subject1 metaType2
 
 
-unifyTuple : Variable -> References -> List MetaType -> MetaType -> Result TypeError SolutionMap
-unifyTuple baseVar refs elems1 metaType2 =
+unifyVariable : List FQName -> Variable -> MetaType -> Result TypeError SolutionMap
+unifyVariable aliases var1 metaType2 =
+    Ok (SolutionMap.singleton var1 (wrapInAliases aliases metaType2))
+
+
+unifyTuple : Variable -> References -> List FQName -> List MetaType -> MetaType -> Result TypeError SolutionMap
+unifyTuple baseVar refs aliases elems1 metaType2 =
     case metaType2 of
         MetaVar var2 ->
-            unifyVariable var2 (MetaTuple elems1)
+            unifyVariable aliases var2 (MetaTuple elems1)
 
         MetaTuple elems2 ->
             if List.length elems1 == List.length elems2 then
-                List.map2 (unifyMetaType baseVar refs) elems1 elems2
+                List.map2 (unifyMetaType baseVar refs aliases) elems1 elems2
                     |> ListOfResults.liftAllErrors
                     |> Result.mapError TypeErrors
                     |> Result.andThen (concatSolutions baseVar refs)
@@ -1069,14 +1069,14 @@ unifyTuple baseVar refs elems1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (MetaTuple elems1) metaType2)
 
 
-unifyRef : Variable -> References -> FQName -> MetaType -> Result TypeError SolutionMap
-unifyRef baseVar refs ref1 metaType2 =
+unifyRef : Variable -> References -> List FQName -> FQName -> MetaType -> Result TypeError SolutionMap
+unifyRef baseVar refs aliases ref1 metaType2 =
     case metaType2 of
-        MetaAlias _ subject2 ->
-            unifyRef baseVar refs ref1 subject2
+        MetaAlias alias subject2 ->
+            unifyRef baseVar refs (alias :: aliases) ref1 subject2
 
         MetaVar var2 ->
-            unifyVariable var2 (MetaRef ref1)
+            unifyVariable aliases var2 (MetaRef ref1)
 
         MetaRef ref2 ->
             if ref1 == ref2 then
@@ -1086,60 +1086,60 @@ unifyRef baseVar refs ref1 metaType2 =
                 Err (CouldNotUnify RefMismatch (MetaRef ref1) metaType2)
 
         MetaRecord extends2 fields2 ->
-            unifyRecord baseVar refs extends2 fields2 (MetaRef ref1)
+            unifyRecord baseVar refs aliases extends2 fields2 (MetaRef ref1)
 
-        other ->
+        _ ->
             Err (CouldNotUnify NoUnificationRule (MetaRef ref1) metaType2)
 
 
-unifyApply : Variable -> References -> MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
-unifyApply baseVar refs fun1 arg1 metaType2 =
+unifyApply : Variable -> References -> List FQName -> MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
+unifyApply baseVar refs aliases fun1 arg1 metaType2 =
     case metaType2 of
-        MetaAlias _ subject2 ->
-            unifyApply baseVar refs fun1 arg1 subject2
+        MetaAlias alias subject2 ->
+            unifyApply baseVar refs (alias :: aliases) fun1 arg1 subject2
 
         MetaVar var2 ->
-            unifyVariable var2 (MetaApply fun1 arg1)
+            unifyVariable aliases var2 (MetaApply fun1 arg1)
 
         MetaApply fun2 arg2 ->
             Result.andThen identity
                 (Result.map2 (mergeSolutions baseVar refs)
-                    (unifyMetaType baseVar refs fun1 fun2)
-                    (unifyMetaType baseVar refs arg1 arg2)
+                    (unifyMetaType baseVar refs aliases fun1 fun2)
+                    (unifyMetaType baseVar refs aliases arg1 arg2)
                 )
 
         _ ->
             Err (CouldNotUnify NoUnificationRule (MetaApply fun1 arg1) metaType2)
 
 
-unifyFun : Variable -> References -> MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
-unifyFun baseVar refs arg1 return1 metaType2 =
+unifyFun : Variable -> References -> List FQName -> MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
+unifyFun baseVar refs aliases arg1 return1 metaType2 =
     case metaType2 of
-        MetaAlias _ subject2 ->
-            unifyFun baseVar refs arg1 return1 subject2
+        MetaAlias alias subject2 ->
+            unifyFun baseVar refs (alias :: aliases) arg1 return1 subject2
 
         MetaVar var2 ->
-            unifyVariable var2 (MetaFun arg1 return1)
+            unifyVariable aliases var2 (MetaFun arg1 return1)
 
         MetaFun arg2 return2 ->
             Result.andThen identity
                 (Result.map2 (mergeSolutions baseVar refs)
-                    (unifyMetaType baseVar refs arg1 arg2)
-                    (unifyMetaType baseVar refs return1 return2)
+                    (unifyMetaType baseVar refs aliases arg1 arg2)
+                    (unifyMetaType baseVar refs aliases return1 return2)
                 )
 
         _ ->
             Err (CouldNotUnify NoUnificationRule (MetaFun arg1 return1) metaType2)
 
 
-unifyRecord : Variable -> References -> Maybe Variable -> Dict Name MetaType -> MetaType -> Result TypeError SolutionMap
-unifyRecord baseVar refs extends1 fields1 metaType2 =
+unifyRecord : Variable -> References -> List FQName -> Maybe Variable -> Dict Name MetaType -> MetaType -> Result TypeError SolutionMap
+unifyRecord baseVar refs aliases extends1 fields1 metaType2 =
     case metaType2 of
-        MetaAlias _ subject2 ->
-            unifyRecord baseVar refs extends1 fields1 subject2
+        MetaAlias alias subject2 ->
+            unifyRecord baseVar refs (alias :: aliases) extends1 fields1 subject2
 
         MetaVar var2 ->
-            unifyVariable var2 (MetaRecord extends1 fields1)
+            unifyVariable aliases var2 (MetaRecord extends1 fields1)
 
         MetaRecord extends2 fields2 ->
             unifyFields baseVar refs extends1 fields1 extends2 fields2
@@ -1151,7 +1151,7 @@ unifyRecord baseVar refs extends1 fields1 metaType2 =
                                     refs
                                     fieldSolutions
                                     (SolutionMap.singleton extendsVar1
-                                        (MetaRecord extends2 newFields)
+                                        (wrapInAliases aliases (MetaRecord extends2 newFields))
                                     )
 
                             Nothing ->
@@ -1161,7 +1161,7 @@ unifyRecord baseVar refs extends1 fields1 metaType2 =
                                             refs
                                             fieldSolutions
                                             (SolutionMap.singleton extendsVar2
-                                                (MetaRecord extends1 newFields)
+                                                (wrapInAliases aliases (MetaRecord extends1 newFields))
                                             )
 
                                     Nothing ->
@@ -1197,7 +1197,7 @@ unifyFields baseVar refs oldExtends oldFields newExtends newFields =
                             |> Dict.get fieldName
                             -- this should never happen but needed for type-safety
                             |> Result.fromMaybe (UnknownError ("Could not find field " ++ Name.toCamelCase fieldName))
-                            |> Result.andThen (unifyMetaType baseVar refs originalType)
+                            |> Result.andThen (unifyMetaType baseVar refs [] originalType)
                     )
                 |> ListOfResults.liftAllErrors
                 |> Result.mapError typeErrors
@@ -1219,20 +1219,30 @@ unifyFields baseVar refs oldExtends oldFields newExtends newFields =
             |> Result.map (Tuple.pair unifiedFields)
 
 
-unifyUnit : MetaType -> Result TypeError SolutionMap
-unifyUnit metaType2 =
+unifyUnit : List FQName -> MetaType -> Result TypeError SolutionMap
+unifyUnit aliases metaType2 =
     case metaType2 of
-        MetaAlias _ subject2 ->
-            unifyUnit subject2
+        MetaAlias alias subject2 ->
+            unifyUnit (alias :: aliases) subject2
 
         MetaVar var2 ->
-            unifyVariable var2 MetaUnit
+            unifyVariable aliases var2 MetaUnit
 
         MetaUnit ->
             Ok SolutionMap.empty
 
         _ ->
             Err (CouldNotUnify NoUnificationRule MetaUnit metaType2)
+
+
+wrapInAliases : List FQName -> MetaType -> MetaType
+wrapInAliases aliases metaType =
+    case aliases of
+        [] ->
+            metaType
+
+        firstAlias :: restOfAliases ->
+            MetaAlias firstAlias (wrapInAliases restOfAliases metaType)
 
 
 applySolutionToAnnotatedDefinition : Value.Definition ta ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> Value.Definition ta ( va, Type () )

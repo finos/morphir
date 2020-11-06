@@ -410,15 +410,14 @@ positiveDefOutcomes =
             (Value.Variable ( 3, floatType () ) [ "a" ])
             (Value.Variable ( 4, floatType () ) [ "a" ])
         )
-
-    --, Value.Definition
-    --    [ ( [ "a" ], ( 0, fooBarBazRecordType ), fooBarBazRecordType )
-    --    ]
-    --    (stringType ())
-    --    (Value.Field ( 1, stringType () )
-    --        (Value.Variable ( 2, fooBarBazRecordType ) [ "a" ])
-    --        [ "foo" ]
-    --    )
+    , Value.Definition
+        [ ( [ "a" ], ( 0, fooBarBazRecordType ), fooBarBazRecordType )
+        ]
+        (stringType ())
+        (Value.Field ( 1, stringType () )
+            (Value.Variable ( 2, fooBarBazRecordType ) [ "a" ])
+            [ "foo" ]
+        )
     ]
 
 

@@ -22,7 +22,7 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Common exposing (toFQName)
+import Morphir.IR.SDK.Common exposing (tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
@@ -50,24 +50,7 @@ moduleSpec =
 
             valueNames : List String
             valueNames =
-                [ "subtract"
-                , "multiply"
-                , "divide"
-                , "integerDivide"
-                , "power"
-                , "toFloat"
-                , "round"
-                , "floor"
-                , "ceiling"
-                , "truncate"
-                , "equal"
-                , "notEqual"
-                , "greaterThan"
-                , "lessThanOrEqual"
-                , "greaterThanOrEqual"
-                , "max"
-                , "min"
-                , "compare"
+                [ "compare"
                 , "not"
                 , "and"
                 , "or"
@@ -104,20 +87,25 @@ moduleSpec =
 
             realValues : List ( Name, Value.Specification () )
             realValues =
-                [ ( Name.fromString "lessThan"
-                  , Value.Specification
-                        [ ( Name.fromString "a", Type.Variable () [ "number" ] )
-                        , ( Name.fromString "b", Type.Variable () [ "number" ] )
-                        ]
-                        (boolType ())
-                  )
-                , ( Name.fromString "add"
-                  , Value.Specification
-                        [ ( Name.fromString "a", Type.Variable () [ "number" ] )
-                        , ( Name.fromString "b", Type.Variable () [ "number" ] )
-                        ]
-                        (Type.Variable () [ "number" ])
-                  )
+                [ vSpec "add" [ ( "a", tVar "number" ), ( "b", tVar "number" ) ] (tVar "number")
+                , vSpec "subtract" [ ( "a", tVar "number" ), ( "b", tVar "number" ) ] (tVar "number")
+                , vSpec "multiply" [ ( "a", tVar "number" ), ( "b", tVar "number" ) ] (tVar "number")
+                , vSpec "divide" [ ( "a", floatType () ), ( "b", floatType () ) ] (floatType ())
+                , vSpec "integerDivide" [ ( "a", intType () ), ( "b", intType () ) ] (intType ())
+                , vSpec "power" [ ( "a", tVar "number" ), ( "b", tVar "number" ) ] (tVar "number")
+                , vSpec "toFloat" [ ( "a", intType () ) ] (floatType ())
+                , vSpec "round" [ ( "a", floatType () ) ] (intType ())
+                , vSpec "floor" [ ( "a", floatType () ) ] (intType ())
+                , vSpec "ceiling" [ ( "a", floatType () ) ] (intType ())
+                , vSpec "truncate" [ ( "a", floatType () ) ] (intType ())
+                , vSpec "equal" [ ( "a", tVar "eq" ), ( "b", tVar "eq" ) ] (boolType ())
+                , vSpec "notEqual" [ ( "a", tVar "eq" ), ( "b", tVar "eq" ) ] (boolType ())
+                , vSpec "lessThan" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (boolType ())
+                , vSpec "greaterThan" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (boolType ())
+                , vSpec "lessThanOrEqual" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (boolType ())
+                , vSpec "greaterThanOrEqual" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (boolType ())
+                , vSpec "max" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (tVar "comparable")
+                , vSpec "min" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (tVar "comparable")
                 ]
         in
         valueNames
