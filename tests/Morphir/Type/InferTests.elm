@@ -9,6 +9,7 @@ import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Path as Path
 import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
 import Morphir.IR.SDK.List exposing (listType)
@@ -19,6 +20,8 @@ import Morphir.Type.Class as Class
 import Morphir.Type.Constraint exposing (Constraint, class, equality)
 import Morphir.Type.ConstraintSet as ConstraintSet
 import Morphir.Type.Infer as Infer exposing (TypeError(..), UnificationError(..))
+import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
+import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variable)
 import Morphir.Type.SolutionMap as SolutionMap
 import Morphir.Web.ViewIR as ViewIR
@@ -64,10 +67,13 @@ testReferences =
                     ]
             }
           )
+        , ( Path.fromString "BooksAndRecords"
+          , BooksAndRecordsTests.packageSpec
+          )
         ]
 
 
-positiveOutcomes : List (Value () ( Int, Type () ))
+positiveOutcomes : List (Value () (Type ()))
 positiveOutcomes =
     let
         isZeroType : Type ()
@@ -106,280 +112,261 @@ positiveOutcomes =
                 ]
     in
     -- if then else
-    [ Value.IfThenElse ( 1, floatType () )
-        (Value.Literal ( 2, boolType () ) (BoolLiteral False))
-        (Value.Literal ( 3, floatType () ) (FloatLiteral 2))
-        (Value.Literal ( 4, floatType () ) (FloatLiteral 3))
-    , Value.IfThenElse ( 1, floatType () )
-        (Value.Apply ( 2, boolType () )
-            (Value.Variable ( 3, isZeroType ) [ "is", "zero" ])
-            (Value.Literal ( 4, floatType () ) (FloatLiteral 1))
+    [ Value.IfThenElse (floatType ())
+        (Value.Literal (boolType ()) (BoolLiteral False))
+        (Value.Literal (floatType ()) (FloatLiteral 2))
+        (Value.Literal (floatType ()) (FloatLiteral 3))
+    , Value.IfThenElse (floatType ())
+        (Value.Apply (boolType ())
+            (Value.Variable isZeroType [ "is", "zero" ])
+            (Value.Literal (floatType ()) (FloatLiteral 1))
         )
-        (Value.Literal ( 5, floatType () ) (FloatLiteral 2))
-        (Value.Literal ( 6, floatType () ) (FloatLiteral 3))
+        (Value.Literal (floatType ()) (FloatLiteral 2))
+        (Value.Literal (floatType ()) (FloatLiteral 3))
 
     -- tuple
-    , Value.Tuple ( 1, Type.Tuple () [ boolType (), floatType () ] )
-        [ Value.Literal ( 2, boolType () ) (BoolLiteral False)
-        , Value.Literal ( 3, floatType () ) (FloatLiteral 2)
+    , Value.Tuple (Type.Tuple () [ boolType (), floatType () ])
+        [ Value.Literal (boolType ()) (BoolLiteral False)
+        , Value.Literal (floatType ()) (FloatLiteral 2)
         ]
 
     -- record
-    , Value.Record ( 1, Type.Record () [ Type.Field [ "bar" ] (floatType ()), Type.Field [ "foo" ] (boolType ()) ] )
-        [ ( [ "foo" ], Value.Literal ( 2, boolType () ) (BoolLiteral False) )
-        , ( [ "bar" ], Value.Literal ( 3, floatType () ) (FloatLiteral 2) )
+    , Value.Record (Type.Record () [ Type.Field [ "bar" ] (floatType ()), Type.Field [ "foo" ] (boolType ()) ])
+        [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
+        , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
         ]
-    , Value.Lambda ( 0, Type.Function () (barRecordType "t5_1") (floatType ()) )
-        (Value.AsPattern ( 1, barRecordType "t5_1" ) (Value.WildcardPattern ( 2, barRecordType "t5_1" )) [ "rec" ])
-        (Value.IfThenElse ( 3, floatType () )
-            (Value.Literal ( 4, boolType () ) (BoolLiteral False))
-            (Value.Field ( 5, floatType () )
-                (Value.Variable ( 6, barRecordType "t5_1" ) [ "rec" ])
+    , Value.Lambda (Type.Function () (barRecordType "t5_1") (floatType ()))
+        (Value.AsPattern (barRecordType "t5_1") (Value.WildcardPattern (barRecordType "t5_1")) [ "rec" ])
+        (Value.IfThenElse (floatType ())
+            (Value.Literal (boolType ()) (BoolLiteral False))
+            (Value.Field (floatType ())
+                (Value.Variable (barRecordType "t5_1") [ "rec" ])
                 [ "bar" ]
             )
-            (Value.Literal ( 7, floatType () ) (FloatLiteral 2))
+            (Value.Literal (floatType ()) (FloatLiteral 2))
         )
-    , Value.Lambda ( 0, Type.Function () (barRecordType "t6_1") (floatType ()) )
-        (Value.AsPattern ( 1, barRecordType "t6_1" ) (Value.WildcardPattern ( 2, barRecordType "t6_1" )) [ "rec" ])
-        (Value.IfThenElse ( 3, floatType () )
-            (Value.Literal ( 4, boolType () ) (BoolLiteral False))
-            (Value.Apply ( 5, floatType () )
-                (Value.FieldFunction ( 6, Type.Function () (barRecordType "t6_1") (floatType ()) ) [ "bar" ])
-                (Value.Variable ( 7, barRecordType "t6_1" ) [ "rec" ])
+    , Value.Lambda (Type.Function () (barRecordType "t6_1") (floatType ()))
+        (Value.AsPattern (barRecordType "t6_1") (Value.WildcardPattern (barRecordType "t6_1")) [ "rec" ])
+        (Value.IfThenElse (floatType ())
+            (Value.Literal (boolType ()) (BoolLiteral False))
+            (Value.Apply (floatType ())
+                (Value.FieldFunction (Type.Function () (barRecordType "t6_1") (floatType ())) [ "bar" ])
+                (Value.Variable (barRecordType "t6_1") [ "rec" ])
             )
-            (Value.Literal ( 8, floatType () ) (FloatLiteral 2))
+            (Value.Literal (floatType ()) (FloatLiteral 2))
         )
-    , Value.Lambda ( 0, Type.Function () (fooBarRecordType "t5_1") (floatType ()) )
-        (Value.AsPattern ( 1, fooBarRecordType "t5_1" ) (Value.WildcardPattern ( 2, fooBarRecordType "t5_1" )) [ "rec" ])
-        (Value.IfThenElse ( 3, floatType () )
-            (Value.Apply ( 5, boolType () )
-                (Value.FieldFunction ( 6, Type.Function () (fooBarRecordType "t5_1") (boolType ()) ) [ "foo" ])
-                (Value.Variable ( 7, fooBarRecordType "t5_1" ) [ "rec" ])
+    , Value.Lambda (Type.Function () (fooBarRecordType "t5_1") (floatType ()))
+        (Value.AsPattern (fooBarRecordType "t5_1") (Value.WildcardPattern (fooBarRecordType "t5_1")) [ "rec" ])
+        (Value.IfThenElse (floatType ())
+            (Value.Apply (boolType ())
+                (Value.FieldFunction (Type.Function () (fooBarRecordType "t5_1") (boolType ())) [ "foo" ])
+                (Value.Variable (fooBarRecordType "t5_1") [ "rec" ])
             )
-            (Value.Apply ( 5, floatType () )
-                (Value.FieldFunction ( 6, Type.Function () (fooBarRecordType "t5_1") (floatType ()) ) [ "bar" ])
-                (Value.Variable ( 7, fooBarRecordType "t5_1" ) [ "rec" ])
+            (Value.Apply (floatType ())
+                (Value.FieldFunction (Type.Function () (fooBarRecordType "t5_1") (floatType ())) [ "bar" ])
+                (Value.Variable (fooBarRecordType "t5_1") [ "rec" ])
             )
-            (Value.Literal ( 8, floatType () ) (FloatLiteral 2))
+            (Value.Literal (floatType ()) (FloatLiteral 2))
         )
-    , Value.LetDefinition ( 0, floatType () )
+    , Value.LetDefinition (floatType ())
         [ "rec" ]
         (Value.Definition []
             fooBarBazRecordType
-            (Value.Record ( 1, fooBarBazRecordType )
-                [ ( [ "foo" ], Value.Literal ( 4, boolType () ) (BoolLiteral False) )
-                , ( [ "bar" ], Value.Literal ( 4, floatType () ) (FloatLiteral 3.14) )
-                , ( [ "baz" ], Value.Literal ( 4, stringType () ) (StringLiteral "meh") )
+            (Value.Record fooBarBazRecordType
+                [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
+                , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 3.14) )
+                , ( [ "baz" ], Value.Literal (stringType ()) (StringLiteral "meh") )
                 ]
             )
         )
-        (Value.IfThenElse ( 3, floatType () )
-            (Value.Apply ( 5, boolType () )
-                (Value.FieldFunction ( 6, Type.Function () (fooBarRecordType "t7_1") (boolType ()) ) [ "foo" ])
-                (Value.Variable ( 7, fooBarRecordType "t7_1" ) [ "rec" ])
+        (Value.IfThenElse (floatType ())
+            (Value.Apply (boolType ())
+                (Value.FieldFunction (Type.Function () (fooBarRecordType "t7_1") (boolType ())) [ "foo" ])
+                (Value.Variable (fooBarRecordType "t7_1") [ "rec" ])
             )
-            (Value.Apply ( 5, floatType () )
-                (Value.FieldFunction ( 6, Type.Function () (fooBarRecordType "t7_1") (floatType ()) ) [ "bar" ])
-                (Value.Variable ( 7, fooBarRecordType "t7_1" ) [ "rec" ])
+            (Value.Apply (floatType ())
+                (Value.FieldFunction (Type.Function () (fooBarRecordType "t7_1") (floatType ())) [ "bar" ])
+                (Value.Variable (fooBarRecordType "t7_1") [ "rec" ])
             )
-            (Value.Literal ( 8, floatType () ) (FloatLiteral 2))
+            (Value.Literal (floatType ()) (FloatLiteral 2))
         )
-    , Value.Lambda ( 0, Type.Function () (barRecordType "t3_1") (barRecordType "t3_1") )
-        (Value.AsPattern ( 1, barRecordType "t3_1" ) (Value.WildcardPattern ( 2, barRecordType "t3_1" )) [ "rec" ])
-        (Value.UpdateRecord ( 3, barRecordType "t3_1" )
-            (Value.Variable ( 4, barRecordType "t3_1" ) [ "rec" ])
-            [ ( [ "bar" ], Value.Literal ( 5, floatType () ) (FloatLiteral 2) )
+    , Value.Lambda (Type.Function () (barRecordType "t3_1") (barRecordType "t3_1"))
+        (Value.AsPattern (barRecordType "t3_1") (Value.WildcardPattern (barRecordType "t3_1")) [ "rec" ])
+        (Value.UpdateRecord (barRecordType "t3_1")
+            (Value.Variable (barRecordType "t3_1") [ "rec" ])
+            [ ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
             ]
         )
-
-    -- constructor
-    , Value.Constructor ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "1", "1" ] ] )
-        (fqn "Morphir.SDK" "Maybe" "Nothing")
-    , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ floatType () ] )
-        (Value.Constructor ( 1, Type.Function () (floatType ()) (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ floatType () ]) )
-            (fqn "Morphir.SDK" "Maybe" "Just")
-        )
-        (Value.Literal ( 2, floatType () ) (FloatLiteral 2))
-    , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ Type.Variable () [ "t", "3", "2" ], floatType () ] )
-        (Value.Constructor ( 1, Type.Function () (floatType ()) (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ Type.Variable () [ "t", "3", "2" ], floatType () ]) )
-            (fqn "Morphir.SDK" "Result" "Ok")
-        )
-        (Value.Literal ( 2, floatType () ) (FloatLiteral 2))
-    , Value.Apply ( 0, Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ stringType (), Type.Variable () [ "t", "3", "1" ] ] )
-        (Value.Constructor ( 1, Type.Function () (stringType ()) (Type.Reference () (fqn "Morphir.SDK" "Result" "Result") [ stringType (), Type.Variable () [ "t", "3", "1" ] ]) )
-            (fqn "Morphir.SDK" "Result" "Err")
-        )
-        (Value.Literal ( 2, stringType () ) (StringLiteral "err"))
 
     -- reference
-    , Value.Apply ( 0, listType () (floatType ()) )
-        (Value.Apply ( 1, Type.Function () (listType () (floatType ())) (listType () (floatType ())) )
-            (Value.Reference ( 2, Type.Function () (Type.Function () (floatType ()) (floatType ())) (Type.Function () (listType () (floatType ())) (listType () (floatType ()))) )
+    , Value.Apply (listType () (floatType ()))
+        (Value.Apply (Type.Function () (listType () (floatType ())) (listType () (floatType ())))
+            (Value.Reference (Type.Function () (Type.Function () (floatType ()) (floatType ())) (Type.Function () (listType () (floatType ())) (listType () (floatType ()))))
                 (fqn "Morphir.SDK" "List" "map")
             )
-            (Value.Lambda ( 3, Type.Function () (floatType ()) (floatType ()) )
-                (Value.AsPattern ( 4, floatType () ) (Value.WildcardPattern ( 2, floatType () )) [ "a" ])
-                (Value.Variable ( 5, floatType () ) [ "a" ])
+            (Value.Lambda (Type.Function () (floatType ()) (floatType ()))
+                (Value.AsPattern (floatType ()) (Value.WildcardPattern (floatType ())) [ "a" ])
+                (Value.Variable (floatType ()) [ "a" ])
             )
         )
-        (Value.List ( 6, listType () (floatType ()) )
-            [ Value.Literal ( 7, floatType () ) (FloatLiteral 2)
+        (Value.List (listType () (floatType ()))
+            [ Value.Literal (floatType ()) (FloatLiteral 2)
             ]
         )
-    , Value.Apply ( 0, listType () (floatType ()) )
-        (Value.Apply ( 1, Type.Function () (listType () (floatType ())) (listType () (floatType ())) )
-            (Value.Reference ( 2, Type.Function () (Type.Function () (floatType ()) (boolType ())) (Type.Function () (listType () (floatType ())) (listType () (floatType ()))) )
+    , Value.Apply (listType () (floatType ()))
+        (Value.Apply (Type.Function () (listType () (floatType ())) (listType () (floatType ())))
+            (Value.Reference (Type.Function () (Type.Function () (floatType ()) (boolType ())) (Type.Function () (listType () (floatType ())) (listType () (floatType ()))))
                 (fqn "Morphir.SDK" "List" "filter")
             )
-            (Value.Lambda ( 3, Type.Function () (floatType ()) (boolType ()) )
-                (Value.AsPattern ( 4, floatType () ) (Value.WildcardPattern ( 2, floatType () )) [ "a" ])
-                (Value.Literal ( 7, boolType () ) (BoolLiteral False))
+            (Value.Lambda (Type.Function () (floatType ()) (boolType ()))
+                (Value.AsPattern (floatType ()) (Value.WildcardPattern (floatType ())) [ "a" ])
+                (Value.Literal (boolType ()) (BoolLiteral False))
             )
         )
-        (Value.List ( 6, listType () (floatType ()) )
-            [ Value.Literal ( 7, floatType () ) (FloatLiteral 2)
+        (Value.List (listType () (floatType ()))
+            [ Value.Literal (floatType ()) (FloatLiteral 2)
             ]
         )
 
     -- lambda and patterns
-    , Value.Lambda ( 0, Type.Function () (Type.Unit ()) (floatType ()) )
-        (Value.UnitPattern ( 1, Type.Unit () ))
-        (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
-    , Value.Lambda ( 0, Type.Function () (Type.Tuple () [ boolType (), floatType () ]) (floatType ()) )
-        (Value.TuplePattern ( 1, Type.Tuple () [ boolType (), floatType () ] )
-            [ Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False)
-            , Value.LiteralPattern ( 3, floatType () ) (FloatLiteral 3)
+    , Value.Lambda (Type.Function () (Type.Unit ()) (floatType ()))
+        (Value.UnitPattern (Type.Unit ()))
+        (Value.Literal (floatType ()) (FloatLiteral 3))
+    , Value.Lambda (Type.Function () (Type.Tuple () [ boolType (), floatType () ]) (floatType ()))
+        (Value.TuplePattern (Type.Tuple () [ boolType (), floatType () ])
+            [ Value.LiteralPattern (boolType ()) (BoolLiteral False)
+            , Value.LiteralPattern (floatType ()) (FloatLiteral 3)
             ]
         )
-        (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
-    , Value.Lambda ( 0, Type.Function () (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "3", "1" ] ]) (floatType ()) )
-        (Value.ConstructorPattern ( 0, Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "3", "1" ] ] )
+        (Value.Literal (floatType ()) (FloatLiteral 3))
+    , Value.Lambda (Type.Function () (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "1", "2" ] ]) (floatType ()))
+        (Value.ConstructorPattern (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "1", "2" ] ])
             (fqn "Morphir.SDK" "Maybe" "Nothing")
             []
         )
-        (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
-    , Value.Lambda ( 0, Type.Function () (listType () (boolType ())) (floatType ()) )
-        (Value.HeadTailPattern ( 1, listType () (boolType ()) )
-            (Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False))
-            (Value.EmptyListPattern ( 3, listType () (boolType ()) ))
+        (Value.Literal (floatType ()) (FloatLiteral 3))
+    , Value.Lambda (Type.Function () (listType () (boolType ())) (floatType ()))
+        (Value.HeadTailPattern (listType () (boolType ()))
+            (Value.LiteralPattern (boolType ()) (BoolLiteral False))
+            (Value.EmptyListPattern (listType () (boolType ())))
         )
-        (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
-    , Value.Lambda ( 0, Type.Function () isZeroType (floatType ()) )
-        (Value.AsPattern ( 1, isZeroType ) (Value.WildcardPattern ( 2, isZeroType )) [ "is", "zero" ])
-        (Value.IfThenElse ( 3, floatType () )
-            (Value.Apply ( 4, boolType () )
-                (Value.Variable ( 5, isZeroType ) [ "is", "zero" ])
-                (Value.Literal ( 6, floatType () ) (FloatLiteral 1))
+        (Value.Literal (floatType ()) (FloatLiteral 3))
+    , Value.Lambda (Type.Function () isZeroType (floatType ()))
+        (Value.AsPattern isZeroType (Value.WildcardPattern isZeroType) [ "is", "zero" ])
+        (Value.IfThenElse (floatType ())
+            (Value.Apply (boolType ())
+                (Value.Variable isZeroType [ "is", "zero" ])
+                (Value.Literal (floatType ()) (FloatLiteral 1))
             )
-            (Value.Literal ( 7, floatType () ) (FloatLiteral 2))
-            (Value.Literal ( 8, floatType () ) (FloatLiteral 3))
+            (Value.Literal (floatType ()) (FloatLiteral 2))
+            (Value.Literal (floatType ()) (FloatLiteral 3))
         )
 
     -- let
-    , Value.LetDefinition ( 0, floatType () )
+    , Value.LetDefinition (floatType ())
         [ "foo" ]
         (Value.Definition
-            [ ( [ "a" ], ( 1, floatType () ), floatType () )
+            [ ( [ "a" ], floatType (), floatType () )
             ]
             (floatType ())
-            (Value.Variable ( 2, floatType () ) [ "a" ])
+            (Value.Variable (floatType ()) [ "a" ])
         )
-        (Value.Apply ( 3, floatType () )
-            (Value.Variable ( 4, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
-            (Value.Literal ( 5, floatType () ) (FloatLiteral 3))
+        (Value.Apply (floatType ())
+            (Value.Variable (Type.Function () (floatType ()) (floatType ())) [ "foo" ])
+            (Value.Literal (floatType ()) (FloatLiteral 3))
         )
-    , Value.LetRecursion ( 0, floatType () )
+    , Value.LetRecursion (floatType ())
         (Dict.fromList
             [ ( [ "foo" ]
               , Value.Definition
-                    [ ( [ "a" ], ( 1, floatType () ), floatType () )
+                    [ ( [ "a" ], floatType (), floatType () )
                     ]
                     (floatType ())
-                    (Value.Variable ( 2, floatType () ) [ "a" ])
+                    (Value.Variable (floatType ()) [ "a" ])
               )
             ]
         )
-        (Value.Apply ( 3, floatType () )
-            (Value.Variable ( 4, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
-            (Value.Literal ( 5, floatType () ) (FloatLiteral 3))
+        (Value.Apply (floatType ())
+            (Value.Variable (Type.Function () (floatType ()) (floatType ())) [ "foo" ])
+            (Value.Literal (floatType ()) (FloatLiteral 3))
         )
-    , Value.LetRecursion ( 0, floatType () )
+    , Value.LetRecursion (floatType ())
         (Dict.fromList
             [ ( [ "foo" ]
               , Value.Definition
-                    [ ( [ "a" ], ( 1, floatType () ), floatType () )
+                    [ ( [ "a" ], floatType (), floatType () )
                     ]
                     (floatType ())
-                    (Value.Apply ( 2, floatType () )
-                        (Value.Variable ( 3, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
-                        (Value.Variable ( 4, floatType () ) [ "a" ])
+                    (Value.Apply (floatType ())
+                        (Value.Variable (Type.Function () (floatType ()) (floatType ())) [ "foo" ])
+                        (Value.Variable (floatType ()) [ "a" ])
                     )
               )
             ]
         )
-        (Value.Apply ( 5, floatType () )
-            (Value.Variable ( 6, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
-            (Value.Literal ( 7, floatType () ) (FloatLiteral 3))
+        (Value.Apply (floatType ())
+            (Value.Variable (Type.Function () (floatType ()) (floatType ())) [ "foo" ])
+            (Value.Literal (floatType ()) (FloatLiteral 3))
         )
-    , Value.LetRecursion ( 0, floatType () )
+    , Value.LetRecursion (floatType ())
         (Dict.fromList
             [ ( [ "foo" ]
               , Value.Definition
-                    [ ( [ "a" ], ( 1, floatType () ), floatType () )
+                    [ ( [ "a" ], floatType (), floatType () )
                     ]
                     (floatType ())
-                    (Value.Apply ( 2, floatType () )
-                        (Value.Variable ( 3, Type.Function () (floatType ()) (floatType ()) ) [ "bar" ])
-                        (Value.Variable ( 4, floatType () ) [ "a" ])
+                    (Value.Apply (floatType ())
+                        (Value.Variable (Type.Function () (floatType ()) (floatType ())) [ "bar" ])
+                        (Value.Variable (floatType ()) [ "a" ])
                     )
               )
             , ( [ "bar" ]
               , Value.Definition
-                    [ ( [ "a" ], ( 5, floatType () ), floatType () )
+                    [ ( [ "a" ], floatType (), floatType () )
                     ]
                     (floatType ())
-                    (Value.Apply ( 6, floatType () )
-                        (Value.Variable ( 7, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
-                        (Value.Variable ( 8, floatType () ) [ "a" ])
+                    (Value.Apply (floatType ())
+                        (Value.Variable (Type.Function () (floatType ()) (floatType ())) [ "foo" ])
+                        (Value.Variable (floatType ()) [ "a" ])
                     )
               )
             ]
         )
-        (Value.Apply ( 9, floatType () )
-            (Value.Variable ( 10, Type.Function () (floatType ()) (floatType ()) ) [ "foo" ])
-            (Value.Literal ( 11, floatType () ) (FloatLiteral 3))
+        (Value.Apply (floatType ())
+            (Value.Variable (Type.Function () (floatType ()) (floatType ())) [ "foo" ])
+            (Value.Literal (floatType ()) (FloatLiteral 3))
         )
 
     -- destructure
-    , Value.Destructure ( 0, listType () (boolType ()) )
-        (Value.HeadTailPattern ( 1, listType () (boolType ()) )
-            (Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False))
-            (Value.AsPattern ( 3, listType () (boolType ()) ) (Value.WildcardPattern ( 4, listType () (boolType ()) )) [ "my", "list" ])
+    , Value.Destructure (listType () (boolType ()))
+        (Value.HeadTailPattern (listType () (boolType ()))
+            (Value.LiteralPattern (boolType ()) (BoolLiteral False))
+            (Value.AsPattern (listType () (boolType ())) (Value.WildcardPattern (listType () (boolType ()))) [ "my", "list" ])
         )
-        (Value.List ( 5, listType () (boolType ()) ) [])
-        (Value.Variable ( 6, listType () (boolType ()) ) [ "my", "list" ])
+        (Value.List (listType () (boolType ())) [])
+        (Value.Variable (listType () (boolType ())) [ "my", "list" ])
 
     -- pattern-match
-    , Value.PatternMatch ( 0, listType () (boolType ()) )
-        (Value.List ( 5, listType () (boolType ()) ) [])
-        [ ( Value.HeadTailPattern ( 1, listType () (boolType ()) )
-                (Value.LiteralPattern ( 2, boolType () ) (BoolLiteral False))
-                (Value.AsPattern ( 3, listType () (boolType ()) ) (Value.WildcardPattern ( 4, listType () (boolType ()) )) [ "my", "list" ])
-          , Value.Variable ( 6, listType () (boolType ()) ) [ "my", "list" ]
+    , Value.PatternMatch (listType () (boolType ()))
+        (Value.List (listType () (boolType ())) [])
+        [ ( Value.HeadTailPattern (listType () (boolType ()))
+                (Value.LiteralPattern (boolType ()) (BoolLiteral False))
+                (Value.AsPattern (listType () (boolType ())) (Value.WildcardPattern (listType () (boolType ()))) [ "my", "list" ])
+          , Value.Variable (listType () (boolType ())) [ "my", "list" ]
           )
-        , ( Value.EmptyListPattern ( 1, listType () (boolType ()) )
-          , Value.List ( 6, listType () (boolType ()) ) []
+        , ( Value.EmptyListPattern (listType () (boolType ()))
+          , Value.List (listType () (boolType ())) []
           )
         ]
 
     -- number type class
-    , Value.IfThenElse ( 1, floatType () )
-        (Value.Literal ( 2, boolType () ) (BoolLiteral False))
-        (Value.Literal ( 3, floatType () ) (IntLiteral 2))
-        (Value.Literal ( 4, floatType () ) (FloatLiteral 3))
-    , Value.List ( 1, listType () (floatType ()) )
-        [ Value.Literal ( 2, floatType () ) (IntLiteral 2)
-        , Value.Literal ( 3, floatType () ) (FloatLiteral 3)
+    , Value.IfThenElse (floatType ())
+        (Value.Literal (boolType ()) (BoolLiteral False))
+        (Value.Literal (floatType ()) (IntLiteral 2))
+        (Value.Literal (floatType ()) (FloatLiteral 3))
+    , Value.List (listType () (floatType ()))
+        [ Value.Literal (floatType ()) (IntLiteral 2)
+        , Value.Literal (floatType ()) (FloatLiteral 3)
         ]
     ]
 
@@ -439,18 +426,21 @@ inferPositiveTests : Test
 inferPositiveTests =
     describe "Inference should succeed"
         (positiveOutcomes
+            ++ ConstructorTests.positiveOutcomes
+            ++ BooksAndRecordsTests.positiveOutcomes
             |> List.indexedMap
-                (\index expectedOutcome ->
+                (\index expected ->
                     let
-                        untyped : Value () Int
+                        untyped : Value () ()
                         untyped =
-                            expectedOutcome
-                                |> Value.mapValueAttributes identity Tuple.first
+                            expected
+                                |> Value.mapValueAttributes identity (always ())
                     in
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
                             Infer.inferValue testReferences untyped
-                                |> Expect.equal (Ok expectedOutcome)
+                                |> Result.map (Value.mapValueAttributes identity Tuple.second)
+                                |> Expect.equal (Ok expected)
                         )
                 )
         )
@@ -644,7 +634,7 @@ main =
     viewPositiveOutcomes positiveOutcomes
 
 
-viewPositiveOutcomes : List (Value () ( Int, Type () )) -> Html msg
+viewPositiveOutcomes : List (Value () (Type ())) -> Html msg
 viewPositiveOutcomes outcomes =
     outcomes
         |> List.indexedMap
@@ -664,11 +654,11 @@ viewPositiveOutcomes outcomes =
         |> Html.div []
 
 
-viewPositiveOutcome : Value () ( Int, Type () ) -> Html msg
+viewPositiveOutcome : Value () (Type ()) -> Html msg
 viewPositiveOutcome value =
     ViewIR.viewValue
         { padding = 10
         , indentFactor = 2
         }
-        (\( _, tpe ) -> viewType tpe)
+        (\tpe -> viewType tpe)
         value

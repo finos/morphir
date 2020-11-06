@@ -23,7 +23,7 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.FQName exposing (FQName(..), fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
@@ -48,7 +48,7 @@ mapDistribution opt distro =
             mapPackageDefinition opt distro packagePath packageDef
 
 
-mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta va -> FileMap
+mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> FileMap
 mapPackageDefinition opt distribution packagePath packageDef =
     packageDef.modules
         |> Dict.toList
@@ -102,7 +102,7 @@ mapFQNameToTypeRef fQName =
     Scala.TypeRef path (name |> Name.toTitleCase)
 
 
-maptypeMember : Maybe Customization -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta tv) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> List Scala.MemberDecl
+maptypeMember : Maybe Customization -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> List Scala.MemberDecl
 maptypeMember annotations currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
     case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
@@ -160,7 +160,7 @@ maptypeMember annotations currentPackagePath currentModulePath accessControlledM
                 accessControlledCtors
 
 
-mapModuleDefinition : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta tv) -> List Scala.CompilationUnit
+mapModuleDefinition : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
 mapModuleDefinition opt distribution currentPackagePath currentModulePath accessControlledModuleDef =
     let
         ( scalaPackagePath, moduleName ) =
@@ -258,7 +258,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
     [ moduleUnit ]
 
 
-mapCustomTypeDefinition : Maybe Customization -> Package.PackageName -> Path -> Module.Definition ta va -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
+mapCustomTypeDefinition : Maybe Customization -> Package.PackageName -> Path -> Module.Definition ta (Type ()) -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
 mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
     let
         caseClass name args extends =
@@ -480,13 +480,13 @@ mapType tpe =
             Scala.TypeRef [ "scala" ] "Unit"
 
 
-mapFunctionBody : Distribution -> Value ta va -> Scala.Value
+mapFunctionBody : Distribution -> Value ta (Type ()) -> Scala.Value
 mapFunctionBody distribution val =
     let
-        mapValue : Value ta va -> Scala.Value
+        mapValue : Value ta (Type ()) -> Scala.Value
         mapValue value =
             case value of
-                Literal a literal ->
+                Literal tpe literal ->
                     let
                         wrap : List String -> String -> Scala.Lit -> Scala.Value
                         wrap modulePath moduleName lit =
@@ -505,7 +505,16 @@ mapFunctionBody distribution val =
                             wrap [ "morphir", "sdk", "String" ] "String" (Scala.StringLit v)
 
                         IntLiteral v ->
-                            wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
+                            case tpe of
+                                Type.Reference () fQName [] ->
+                                    if fQName == fqn "Morphir.SDK" "Basics" "Float" then
+                                        wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.IntegerLit v)
+
+                                    else
+                                        wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
+
+                                _ ->
+                                    wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
 
                         FloatLiteral v ->
                             wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
@@ -578,7 +587,7 @@ mapFunctionBody distribution val =
 
                 LetDefinition _ _ _ _ ->
                     let
-                        flattenLetDef : Value ta va -> ( List ( Name, Value.Definition ta va ), Value ta va )
+                        flattenLetDef : Value ta (Type ()) -> ( List ( Name, Value.Definition ta (Type ()) ), Value ta (Type ()) )
                         flattenLetDef v =
                             case v of
                                 LetDefinition a dName d inV ->

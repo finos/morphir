@@ -51,7 +51,7 @@ mapDistribution opt distro =
                 packageDef
 
 
-mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta va -> FileMap
+mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta (Type.Type ()) -> FileMap
 mapPackageDefinition opt distribution packagePath packageDef =
     packageDef.modules
         |> Dict.toList
@@ -86,7 +86,7 @@ getScalaPackagePath currentPackagePath currentModulePath =
             ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
 
 
-mapStatefulAppImplementation : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta tv) -> List CompilationUnit
+mapStatefulAppImplementation : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type.Type ())) -> List CompilationUnit
 mapStatefulAppImplementation opt distribution currentPackagePath currentModulePath accessControlledModuleDef =
     let
         functionName : Name

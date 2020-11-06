@@ -67,6 +67,13 @@ encodeMetaType metaType =
                 [ Encode.string "meta_unit"
                 ]
 
+        MetaAlias fQName subject ->
+            Encode.list identity
+                [ Encode.string "meta_alias"
+                , encodeFQName fQName
+                , encodeMetaType subject
+                ]
+
 
 encodeVariable : Variable -> Encode.Value
 encodeVariable ( i, s ) =

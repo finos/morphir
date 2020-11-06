@@ -6,6 +6,7 @@ import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.Type.Class.Codec exposing (encodeClass)
 import Morphir.Type.Infer exposing (TypeError(..), UnificationError(..), ValueTypeError(..))
 import Morphir.Type.MetaType.Codec exposing (encodeMetaType)
+import Morphir.Type.MetaTypeMapping exposing (LookupError(..))
 
 
 encodeValueTypeError : ValueTypeError -> Encode.Value
@@ -33,17 +34,31 @@ encodeTypeError typeError =
                 , encodeClass class
                 ]
 
-        CouldNotFindConstructor fQName ->
-            Encode.list identity
-                [ Encode.string "could_not_find_constructor"
-                , encodeFQName fQName
-                ]
+        LookupError lookupError ->
+            case lookupError of
+                CouldNotFindConstructor fQName ->
+                    Encode.list identity
+                        [ Encode.string "could_not_find_constructor"
+                        , encodeFQName fQName
+                        ]
 
-        CouldNotFindValue fQName ->
-            Encode.list identity
-                [ Encode.string "could_not_find_value"
-                , encodeFQName fQName
-                ]
+                CouldNotFindValue fQName ->
+                    Encode.list identity
+                        [ Encode.string "could_not_find_value"
+                        , encodeFQName fQName
+                        ]
+
+                CouldNotFindAlias fQName ->
+                    Encode.list identity
+                        [ Encode.string "could_not_find_alias"
+                        , encodeFQName fQName
+                        ]
+
+                ExpectedAlias fQName ->
+                    Encode.list identity
+                        [ Encode.string "expected_alias"
+                        , encodeFQName fQName
+                        ]
 
         UnknownError message ->
             Encode.list identity
@@ -76,4 +91,9 @@ encodeUnificationError unificationError =
         RefMismatch ->
             Encode.list identity
                 [ Encode.string "ref_mismatch"
+                ]
+
+        FieldMismatch ->
+            Encode.list identity
+                [ Encode.string "field_mismatch"
                 ]

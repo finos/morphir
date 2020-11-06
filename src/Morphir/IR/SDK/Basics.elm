@@ -20,7 +20,7 @@ module Morphir.IR.SDK.Basics exposing (..)
 import Dict
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name as Name
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
@@ -50,8 +50,7 @@ moduleSpec =
 
             valueNames : List String
             valueNames =
-                [ "add"
-                , "subtract"
+                [ "subtract"
                 , "multiply"
                 , "divide"
                 , "integerDivide"
@@ -63,7 +62,6 @@ moduleSpec =
                 , "truncate"
                 , "equal"
                 , "notEqual"
-                , "lessThan"
                 , "greaterThan"
                 , "lessThanOrEqual"
                 , "greaterThanOrEqual"
@@ -103,12 +101,31 @@ moduleSpec =
                 , "composeRight"
                 , "never"
                 ]
+
+            realValues : List ( Name, Value.Specification () )
+            realValues =
+                [ ( Name.fromString "lessThan"
+                  , Value.Specification
+                        [ ( Name.fromString "a", Type.Variable () [ "number" ] )
+                        , ( Name.fromString "b", Type.Variable () [ "number" ] )
+                        ]
+                        (boolType ())
+                  )
+                , ( Name.fromString "add"
+                  , Value.Specification
+                        [ ( Name.fromString "a", Type.Variable () [ "number" ] )
+                        , ( Name.fromString "b", Type.Variable () [ "number" ] )
+                        ]
+                        (Type.Variable () [ "number" ])
+                  )
+                ]
         in
         valueNames
             |> List.map
                 (\valueName ->
                     ( Name.fromString valueName, dummyValueSpec )
                 )
+            |> List.append realValues
             |> Dict.fromList
     }
 

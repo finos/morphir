@@ -30,6 +30,7 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Type exposing (Type)
 import Morphir.Type.Infer as Infer
 import Morphir.Type.Infer.Codec exposing (encodeTypeError, encodeValueTypeError)
+import Morphir.Type.MetaTypeMapping as MetaTypeMapping
 
 
 port packageDefinitionFromSource : (( Decode.Value, List SourceFile ) -> msg) -> Sub msg
@@ -78,7 +79,7 @@ update msg model =
                             Frontend.packageDefinitionFromSource packageInfo Dict.empty sourceFiles
                                 |> Result.mapError FrontendError
 
-                        typedResult : Result Error (Package.Definition Frontend.SourceLocation ( Frontend.SourceLocation, Type () ))
+                        typedResult : Result Error (Package.Definition () ( Frontend.SourceLocation, Type () ))
                         typedResult =
                             frontendResult
                                 |> Result.andThen
@@ -90,19 +91,20 @@ update msg model =
                                                     |> Package.definitionToSpecification
                                                     |> Package.mapSpecificationAttributes (\_ -> ()) (\_ -> ())
 
-                                            references : Infer.References
+                                            references : MetaTypeMapping.References
                                             references =
                                                 Frontend.defaultDependencies
                                                     |> Dict.insert packageInfo.name thisPackageSpec
                                         in
                                         packageDef
+                                            |> Package.mapDefinitionAttributes (\_ -> ()) identity
                                             |> Infer.inferPackageDefinition references
                                             |> Result.mapError TypeError
                                     )
                     in
                     ( model
                     , typedResult
-                        |> Result.map (Package.mapDefinitionAttributes (\_ -> ()) (\( _, tpe ) -> tpe))
+                        |> Result.map (Package.mapDefinitionAttributes identity (\( _, tpe ) -> tpe))
                         |> Result.map (Distribution.Library packageInfo.name Dict.empty)
                         |> encodeResult encodeError DistributionCodec.encodeDistribution
                         |> packageDefinitionFromSourceResult

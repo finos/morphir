@@ -39,7 +39,7 @@ lookupConstructor baseVar refs ((FQName packageName moduleName localName) as fQN
                                         |> List.filterMap
                                             (\(Type.Constructor ctorName ctorArgs) ->
                                                 if ctorName == localName then
-                                                    Just (ctorToMetaType baseVar (MetaRef (FQName packageName moduleName typeName)) paramNames (ctorArgs |> List.map Tuple.second))
+                                                    Just (ctorToMetaType baseVar refs (MetaRef (FQName packageName moduleName typeName)) paramNames (ctorArgs |> List.map Tuple.second))
 
                                                 else
                                                     Nothing
@@ -59,11 +59,11 @@ lookupValue baseVar refs ((FQName packageName moduleName localName) as fQName) =
         |> Dict.get packageName
         |> Maybe.andThen (.modules >> Dict.get moduleName)
         |> Maybe.andThen (.values >> Dict.get localName)
-        |> Maybe.map (valueSpecToMetaType baseVar)
+        |> Maybe.map (valueSpecToMetaType baseVar refs)
         |> Result.fromMaybe (CouldNotFindValue fQName)
 
 
-lookupAliasedType : Variable -> References -> FQName -> Result LookupError MetaType
+lookupAliasedType : Variable -> References -> FQName -> Result LookupError (Type ())
 lookupAliasedType baseVar refs ((FQName packageName moduleName localName) as fQName) =
     refs
         |> Dict.get packageName
@@ -74,27 +74,7 @@ lookupAliasedType baseVar refs ((FQName packageName moduleName localName) as fQN
             (\typeSpec ->
                 case typeSpec.value of
                     Type.TypeAliasSpecification paramNames tpe ->
-                        let
-                            varToMeta : Dict Name Variable
-                            varToMeta =
-                                paramNames
-                                    |> Set.fromList
-                                    |> concreteVarsToMetaVars baseVar
-
-                            metaType t =
-                                concreteTypeToMetaType baseVar varToMeta t
-                        in
-                        -- Check if the target type is also a reference to another type
-                        case tpe of
-                            -- If it is, check if it's also an alias that could be resolved
-                            Type.Reference _ secondaryFQName _ ->
-                                lookupAliasedType baseVar refs secondaryFQName
-                                    |> Result.withDefault (metaType tpe)
-                                    |> Ok
-
-                            -- If it's not a reference, return it
-                            _ ->
-                                Ok (metaType tpe)
+                        Ok tpe
 
                     _ ->
                         Err (ExpectedAlias fQName)
@@ -164,6 +144,11 @@ metaTypeToConcreteType solutionMap metaType =
                         |> List.map (metaTypeToConcreteType solutionMap)
                         |> Type.Reference () fQName
 
+                MetaAlias alias _ ->
+                    metaArgs
+                        |> List.map (metaTypeToConcreteType solutionMap)
+                        |> Type.Reference () alias
+
                 other ->
                     metaTypeToConcreteType solutionMap other
 
@@ -178,9 +163,12 @@ metaTypeToConcreteType solutionMap metaType =
         MetaUnit ->
             Type.Unit ()
 
+        MetaAlias alias _ ->
+            Type.Reference () alias []
 
-concreteTypeToMetaType : Variable -> Dict Name Variable -> Type ta -> MetaType
-concreteTypeToMetaType baseVar varToMeta tpe =
+
+concreteTypeToMetaType : Variable -> References -> Dict Name Variable -> Type () -> MetaType
+concreteTypeToMetaType baseVar refs varToMeta tpe =
     case tpe of
         Type.Variable _ varName ->
             varToMeta
@@ -191,23 +179,29 @@ concreteTypeToMetaType baseVar varToMeta tpe =
 
         Type.Reference _ fQName args ->
             let
-                curry : List (Type ta) -> MetaType
+                resolveAliases : FQName -> MetaType
+                resolveAliases fqn =
+                    lookupAliasedType baseVar refs fqn
+                        |> Result.map (concreteTypeToMetaType baseVar refs varToMeta)
+                        |> Result.withDefault (MetaRef fqn)
+
+                curry : List (Type ()) -> MetaType
                 curry argsReversed =
                     case argsReversed of
                         [] ->
-                            MetaRef fQName
+                            resolveAliases fQName
 
                         lastArg :: initArgsReversed ->
                             MetaApply
                                 (curry initArgsReversed)
-                                (concreteTypeToMetaType baseVar varToMeta lastArg)
+                                (concreteTypeToMetaType baseVar refs varToMeta lastArg)
             in
             curry (args |> List.reverse)
 
         Type.Tuple _ elemTypes ->
             MetaTuple
                 (elemTypes
-                    |> List.map (concreteTypeToMetaType baseVar varToMeta)
+                    |> List.map (concreteTypeToMetaType baseVar refs varToMeta)
                 )
 
         Type.Record _ fieldTypes ->
@@ -215,7 +209,7 @@ concreteTypeToMetaType baseVar varToMeta tpe =
                 (fieldTypes
                     |> List.map
                         (\field ->
-                            ( field.name, concreteTypeToMetaType baseVar varToMeta field.tpe )
+                            ( field.name, concreteTypeToMetaType baseVar refs varToMeta field.tpe )
                         )
                     |> Dict.fromList
                 )
@@ -228,22 +222,22 @@ concreteTypeToMetaType baseVar varToMeta tpe =
                 (fieldTypes
                     |> List.map
                         (\field ->
-                            ( field.name, concreteTypeToMetaType baseVar varToMeta field.tpe )
+                            ( field.name, concreteTypeToMetaType baseVar refs varToMeta field.tpe )
                         )
                     |> Dict.fromList
                 )
 
         Type.Function _ argType returnType ->
             MetaFun
-                (concreteTypeToMetaType baseVar varToMeta argType)
-                (concreteTypeToMetaType baseVar varToMeta returnType)
+                (concreteTypeToMetaType baseVar refs varToMeta argType)
+                (concreteTypeToMetaType baseVar refs varToMeta returnType)
 
         Type.Unit _ ->
             MetaUnit
 
 
-ctorToMetaType : Variable -> MetaType -> List Name -> List (Type ()) -> MetaType
-ctorToMetaType baseVar baseType paramNames ctorArgs =
+ctorToMetaType : Variable -> References -> MetaType -> List Name -> List (Type ()) -> MetaType
+ctorToMetaType baseVar refs baseType paramNames ctorArgs =
     let
         argVariables : Set Name
         argVariables =
@@ -280,14 +274,14 @@ ctorToMetaType baseVar baseType paramNames ctorArgs =
 
                 firstCtorArg :: restOfCtorArgs ->
                     MetaFun
-                        (concreteTypeToMetaType baseVar varToMeta firstCtorArg)
+                        (concreteTypeToMetaType baseVar refs varToMeta firstCtorArg)
                         (recurse restOfCtorArgs)
     in
     recurse ctorArgs
 
 
-valueSpecToMetaType : Variable -> Value.Specification () -> MetaType
-valueSpecToMetaType baseVar valueSpec =
+valueSpecToMetaType : Variable -> References -> Value.Specification () -> MetaType
+valueSpecToMetaType baseVar refs valueSpec =
     let
         specToFunctionType : List (Type ()) -> Type () -> Type ()
         specToFunctionType argTypes returnType =
@@ -308,7 +302,7 @@ valueSpecToMetaType baseVar valueSpec =
                 |> Type.collectVariables
                 |> concreteVarsToMetaVars baseVar
     in
-    concreteTypeToMetaType baseVar varToMeta functionType
+    concreteTypeToMetaType baseVar refs varToMeta functionType
 
 
 concreteVarsToMetaVars : Variable -> Set Name -> Dict Name Variable

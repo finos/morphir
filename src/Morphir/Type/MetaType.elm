@@ -13,6 +13,7 @@ type MetaType
     | MetaApply MetaType MetaType
     | MetaFun MetaType MetaType
     | MetaUnit
+    | MetaAlias FQName MetaType
 
 
 type alias Variable =
@@ -78,6 +79,10 @@ substituteVariable var replacement original =
 
         MetaUnit ->
             original
+
+        MetaAlias alias subject ->
+            MetaAlias alias
+                (substituteVariable var replacement subject)
 
 
 substituteVariables : List ( Variable, MetaType ) -> MetaType -> MetaType
