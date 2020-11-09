@@ -78,8 +78,6 @@ moduleSpec =
                 , "fromPolar"
                 , "isNaN"
                 , "isInfinite"
-                , "identity"
-                , "always"
                 , "composeLeft"
                 , "composeRight"
                 , "never"
@@ -106,6 +104,10 @@ moduleSpec =
                 , vSpec "greaterThanOrEqual" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (boolType ())
                 , vSpec "max" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (tVar "comparable")
                 , vSpec "min" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (tVar "comparable")
+
+                -- break
+                , vSpec "identity" [ ( "a", tVar "a" ) ] (tVar "a")
+                , vSpec "always" [ ( "a", tVar "a" ), ( "b", tVar "b" ) ] (tVar "a")
                 ]
         in
         valueNames

@@ -121,23 +121,22 @@ basicLetDefinition =
     d b
 
 
+basicLetRecursion : Int
+basicLetRecursion =
+    let
+        a : Int -> Int
+        a i =
+            b (i - 1)
 
---basicLetRecursion : Int
---basicLetRecursion =
---    let
---        a : Int -> Int
---        a i =
---            b (i - 1)
---
---        b : Int -> Int
---        b i =
---            if i < 0 then
---                0
---
---            else
---                a i
---    in
---    a 10
+        b : Int -> Int
+        b i =
+            if i < 0 then
+                0
+
+            else
+                a i
+    in
+    a 10
 
 
 basicDestructure : Int
@@ -201,17 +200,16 @@ sdkBasicsValues =
     ]
 
 
-
---sdkMaybeValues : List Bool
---sdkMaybeValues =
---    [ Maybe.andThen (always Nothing) Nothing == Nothing
---    , Maybe.map fromInt (Just 42) == Just "42"
---    , Maybe.map2 (\a b -> [ a, b ]) (Just 1) (Just 2) == Just [ 1, 2 ]
---    , Maybe.map3 (\a b c -> [ a, b, c ]) (Just 1) (Just 2) (Just 3) == Just [ 1, 2, 3 ]
---    , Maybe.map4 (\a b c d -> [ a, b, c, d ]) (Just 1) (Just 2) (Just 3) (Just 4) == Just [ 1, 2, 3, 4 ]
---    , Maybe.map5 (\a b c d e -> [ a, b, c, d, e ]) (Just 1) (Just 2) (Just 3) (Just 4) (Just 5) == Just [ 1, 2, 3, 4, 5 ]
---    , Maybe.withDefault 13 Nothing == 13
---    ]
+sdkMaybeValues : List Bool
+sdkMaybeValues =
+    [ Maybe.andThen (always Nothing) Nothing == Nothing
+    , Maybe.map fromInt (Just 42) == Just "42"
+    , Maybe.map2 (\a b -> [ a, b ]) (Just 1) (Just 2) == Just [ 1.5, 2 ]
+    , Maybe.map3 (\a b c -> [ a, b, c ]) (Just 1) (Just 2) (Just 3) == Just [ 1, 2.3, 3 ]
+    , Maybe.map4 (\a b c d -> [ a, b, c, d ]) (Just 1) (Just 2) (Just 3) (Just 4) == Just [ 1, 2, 3.4, 4 ]
+    , Maybe.map5 (\a b c d e -> [ a, b, c, d, e ]) (Just 1) (Just 2) (Just 3) (Just 4) (Just 5) == Just [ 1, 2, 3, 4.5, 5 ]
+    , Maybe.withDefault 13 Nothing == 13.2
+    ]
 
 
 fieldFunctionAsArg : List FooBarBazRecord -> List String

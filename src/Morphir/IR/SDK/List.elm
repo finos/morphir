@@ -23,7 +23,7 @@ import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics exposing (boolType)
-import Morphir.IR.SDK.Common exposing (toFQName)
+import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
@@ -87,20 +87,16 @@ moduleSpec =
 
             realValues : List ( Name, Value.Specification () )
             realValues =
-                [ ( Name.fromString "map"
-                  , Value.Specification
-                        [ ( Name.fromString "f", Type.Function () (Type.Variable () [ "a" ]) (Type.Variable () [ "b" ]) )
-                        , ( Name.fromString "list", listType () (Type.Variable () [ "a" ]) )
-                        ]
-                        (listType () (Type.Variable () [ "b" ]))
-                  )
-                , ( Name.fromString "filter"
-                  , Value.Specification
-                        [ ( Name.fromString "f", Type.Function () (Type.Variable () [ "a" ]) (boolType ()) )
-                        , ( Name.fromString "list", listType () (Type.Variable () [ "a" ]) )
-                        ]
-                        (listType () (Type.Variable () [ "a" ]))
-                  )
+                [ vSpec "map"
+                    [ ( "f", tFun [ tVar "a" ] (tVar "b") )
+                    , ( "list", listType () (tVar "a") )
+                    ]
+                    (listType () (tVar "b"))
+                , vSpec "filter"
+                    [ ( "f", tFun [ tVar "a" ] (boolType ()) )
+                    , ( "list", listType () (tVar "a") )
+                    ]
+                    (listType () (tVar "a"))
                 ]
         in
         valueNames

@@ -20,9 +20,10 @@ module Morphir.IR.SDK.String exposing (..)
 import Dict
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name as Name
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Common exposing (toFQName)
+import Morphir.IR.SDK.Basics exposing (intType)
+import Morphir.IR.SDK.Common exposing (toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value
 
@@ -69,7 +70,6 @@ moduleSpec =
                 , "indexes"
                 , "indices"
                 , "toInt"
-                , "fromInt"
                 , "toFloat"
                 , "fromFloat"
                 , "fromChar"
@@ -92,12 +92,18 @@ moduleSpec =
                 , "any"
                 , "all"
                 ]
+
+            realValues : List ( Name, Value.Specification () )
+            realValues =
+                [ vSpec "fromInt" [ ( "a", intType () ) ] (stringType ())
+                ]
         in
         valueNames
             |> List.map
                 (\valueName ->
                     ( Name.fromString valueName, dummyValueSpec )
                 )
+            |> List.append realValues
             |> Dict.fromList
     }
 

@@ -50,6 +50,20 @@ tVar varName =
     Type.Variable () (Name.fromString varName)
 
 
+tFun : List (Type ()) -> Type () -> Type ()
+tFun argTypes returnType =
+    let
+        curry args =
+            case args of
+                [] ->
+                    returnType
+
+                firstArg :: restOfArgs ->
+                    Type.Function () firstArg (curry restOfArgs)
+    in
+    curry argTypes
+
+
 vSpec : String -> List ( String, Type () ) -> Type () -> ( Name, Value.Specification () )
 vSpec name args returnType =
     ( Name.fromString name

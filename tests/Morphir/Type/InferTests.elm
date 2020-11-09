@@ -1,5 +1,8 @@
 module Morphir.Type.InferTests exposing (..)
 
+--import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
+--import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
+
 import Dict exposing (Dict)
 import Element
 import Expect
@@ -20,8 +23,6 @@ import Morphir.Type.Class as Class
 import Morphir.Type.Constraint exposing (Constraint, class, equality)
 import Morphir.Type.ConstraintSet as ConstraintSet
 import Morphir.Type.Infer as Infer exposing (TypeError(..), UnificationError(..))
-import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
-import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variable)
 import Morphir.Type.SolutionMap as SolutionMap
 import Morphir.Web.ViewIR as ViewIR
@@ -67,9 +68,10 @@ testReferences =
                     ]
             }
           )
-        , ( Path.fromString "BooksAndRecords"
-          , BooksAndRecordsTests.packageSpec
-          )
+
+        --, ( Path.fromString "BooksAndRecords"
+        --  , BooksAndRecordsTests.packageSpec
+        --  )
         ]
 
 
@@ -425,8 +427,8 @@ inferPositiveTests : Test
 inferPositiveTests =
     describe "Inference should succeed"
         (positiveOutcomes
-            ++ ConstructorTests.positiveOutcomes
-            ++ BooksAndRecordsTests.positiveOutcomes
+            --++ ConstructorTests.positiveOutcomes
+            --++ BooksAndRecordsTests.positiveOutcomes
             |> List.indexedMap
                 (\index expected ->
                     let
