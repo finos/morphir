@@ -2,7 +2,6 @@ module Morphir.Type.InferTests exposing (..)
 
 import Dict exposing (Dict)
 import Expect
-import Html exposing (Html)
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -23,8 +22,6 @@ import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
 import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variable)
 import Morphir.Type.SolutionMap as SolutionMap
-import Morphir.Web.ViewIR as ViewIR
-import Morphir.Web.ViewType exposing (viewType)
 import Test exposing (Test, describe, test)
 
 
@@ -625,38 +622,3 @@ solveNegativeTests =
                         )
                 )
         )
-
-
-main : Html msg
-main =
-    viewPositiveOutcomes positiveOutcomes
-
-
-viewPositiveOutcomes : List (Value () (Type ())) -> Html msg
-viewPositiveOutcomes outcomes =
-    outcomes
-        |> List.indexedMap
-            (\index outcome ->
-                Html.div []
-                    [ Html.h1 []
-                        [ Html.text
-                            (String.join " "
-                                [ "Scenario"
-                                , String.fromInt index
-                                ]
-                            )
-                        ]
-                    , viewPositiveOutcome outcome
-                    ]
-            )
-        |> Html.div []
-
-
-viewPositiveOutcome : Value () (Type ()) -> Html msg
-viewPositiveOutcome value =
-    ViewIR.viewValue
-        { padding = 10
-        , indentFactor = 2
-        }
-        (\tpe -> viewType tpe)
-        value
