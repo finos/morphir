@@ -22,7 +22,8 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Common exposing (toFQName)
+import Morphir.IR.SDK.Basics exposing (intType)
+import Morphir.IR.SDK.Common exposing (toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value
 
@@ -38,34 +39,20 @@ moduleSpec =
         Dict.fromList
             [ ( Name.fromString "LocalDate", OpaqueTypeSpecification [] |> Documented "Type that represents a date concept." )
             ]
-    ,  values =
-        let
-            -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
-            dummyValueSpec : Value.Specification ()
-            dummyValueSpec =
-                Value.Specification [] (Type.Unit ())
-
-            valueNames : List String
-            valueNames =
-                [ "diffInDays"
-                , "diffInWeeks"
-                , "diffInMonths"
-                , "diffInYears"
-                , "addDays"
-                , "addWeeks"
-                , "addMonths"
-                , "addYears"
-                ]
-        in
-        valueNames
-            |> List.map
-                (\valueName ->
-                    ( Name.fromString valueName, dummyValueSpec )
-                )
-            |> Dict.fromList
+    , values =
+        Dict.fromList
+            [ vSpec "diffInDays" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
+            , vSpec "diffInWeeks" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
+            , vSpec "diffInMonths" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
+            , vSpec "diffInYears" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
+            , vSpec "addDays" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
+            , vSpec "addWeeks" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
+            , vSpec "addMonths" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
+            , vSpec "addYears" [ ( "offset", intType () ), ( "startDate", localDateType () ) ] (localDateType ())
+            ]
     }
 
 
-dateType : a -> Type a
-dateType attributes =
+localDateType : a -> Type a
+localDateType attributes =
     Reference attributes (toFQName moduleName "LocalDate") []
