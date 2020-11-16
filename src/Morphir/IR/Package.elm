@@ -38,6 +38,7 @@ module Morphir.IR.Package exposing
 # Other utilities
 
 @docs PackageName, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
+@docs mapDefinitionAttributes, mapSpecificationAttributes
 
 -}
 

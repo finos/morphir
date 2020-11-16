@@ -22,7 +22,8 @@
         "Morphir.IR.Module",
         "Morphir.IR.Package",
         "Morphir.IR.Distribution",
-        "Morphir.Elm.Frontend"
+        "Morphir.Elm.Frontend",
+        "Morphir.Scala.Backend"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {

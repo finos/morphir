@@ -22,8 +22,8 @@ module Morphir.IR.Value exposing
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
-    , definitionToSpecification, uncurryApply, collectVariables
-    , collectDefinitionAttributes, collectPatternAttributes, collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
+    , definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
+    , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -65,7 +65,8 @@ which is just the specification of those. Value definitions can be typed or unty
 
 # Utilities
 
-@docs definitionToSpecification, uncurryApply, collectVariables
+@docs definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
+@docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
 
 -}
 
@@ -576,6 +577,8 @@ collectVariables value =
             Set.empty
 
 
+{-| Map attributes of a value while supplying an index to the map function. The index is incremented depth first.
+-}
 indexedMapValue : (Int -> a -> b) -> Int -> Value ta a -> ( Value ta b, Int )
 indexedMapValue f baseIndex value =
     case value of
@@ -789,6 +792,8 @@ indexedMapValue f baseIndex value =
             ( Unit (f baseIndex a), baseIndex )
 
 
+{-| Map attributes of a pattern while supplying an index to the map function. The index is incremented depth first.
+-}
 indexedMapPattern : (Int -> a -> b) -> Int -> Pattern a -> ( Pattern b, Int )
 indexedMapPattern f baseIndex pattern =
     case pattern of

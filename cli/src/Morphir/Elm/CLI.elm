@@ -29,7 +29,7 @@ import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.Package as Package
 import Morphir.IR.Type exposing (Type)
 import Morphir.Type.Infer as Infer
-import Morphir.Type.Infer.Codec exposing (encodeTypeError, encodeValueTypeError)
+import Morphir.Type.Infer.Codec exposing (encodeValueTypeError)
 import Morphir.Type.MetaTypeMapping as MetaTypeMapping
 
 

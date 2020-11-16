@@ -15,7 +15,15 @@
 -}
 
 
-module Morphir.Scala.Backend exposing (..)
+module Morphir.Scala.Backend exposing (mapDistribution)
+
+{-| This module encapsulates the Scala backend. It takes the Morphir IR as the input and returns an in-memory
+representation of files generated. The consumer is responsible for getting the input IR and saving the output
+to the file-system.
+
+@docs mapDistribution
+
+-}
 
 import Dict
 import List.Extra as ListExtra
@@ -41,6 +49,9 @@ type alias Options =
     {}
 
 
+{-| Entry point for the Scala backend. It takes the Morphir IR as the input and returns an in-memory
+representation of files generated.
+-}
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
     case distro of
