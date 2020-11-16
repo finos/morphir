@@ -221,11 +221,14 @@ moduleMapping =
     Dict.fromList
         [ ( [ [ "basics" ] ], sdkModule [ "basics" ] )
         , ( [ [ "list" ] ], sdkModule [ "list" ] )
+        , ( [ [ "dict" ] ], sdkModule [ "dict" ] )
+        , ( [ [ "set" ] ], sdkModule [ "set" ] )
         , ( [ [ "maybe" ] ], sdkModule [ "maybe" ] )
         , ( [ [ "result" ] ], sdkModule [ "result" ] )
         , ( [ [ "string" ] ], sdkModule [ "string" ] )
         , ( [ [ "char" ] ], sdkModule [ "char" ] )
         , ( [ [ "tuple" ] ], sdkModule [ "tuple" ] )
+        , ( [ [ "regex" ] ], sdkModule [ "regex" ] )
         ]
 
 

@@ -30,6 +30,7 @@ import Morphir.IR.SDK.Month as Month
 import Morphir.IR.SDK.Regex as Regex
 import Morphir.IR.SDK.Result as Result
 import Morphir.IR.SDK.Rule as Rule
+import Morphir.IR.SDK.Set as Set
 import Morphir.IR.SDK.StatefulApp as StatefulApp
 import Morphir.IR.SDK.String as String
 import Morphir.IR.SDK.Tuple as Tuple
@@ -47,6 +48,7 @@ packageSpec =
             [ ( [ [ "basics" ] ], Basics.moduleSpec )
             , ( [ [ "char" ] ], Char.moduleSpec )
             , ( [ [ "dict" ] ], Dict.moduleSpec )
+            , ( [ [ "set" ] ], Set.moduleSpec )
             , ( [ [ "string" ] ], String.moduleSpec )
             , ( [ [ "local", "date" ] ], LocalDate.moduleSpec )
             , ( [ [ "maybe" ] ], Maybe.moduleSpec )

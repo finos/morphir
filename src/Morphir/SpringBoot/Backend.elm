@@ -32,7 +32,7 @@ import Morphir.IR.Type as Type exposing (Specification(..))
 import Morphir.IR.Value as Value exposing (Value(..))
 import Morphir.SDK.Customization exposing (Customization(..))
 import Morphir.Scala.AST as Scala exposing (Annotated, ArgDecl, ArgValue(..), CompilationUnit, Documented, MemberDecl(..), Mod(..), Pattern(..), Type(..), TypeDecl(..), Value(..))
-import Morphir.Scala.Backend exposing (mapFunctionBody, mapType, maptypeMember)
+import Morphir.Scala.Backend exposing (mapFunctionBody, mapType, mapTypeMember)
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Tuple exposing (first, second)
 
@@ -51,7 +51,7 @@ mapDistribution opt distro =
                 packageDef
 
 
-mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta va -> FileMap
+mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta (Type.Type ()) -> FileMap
 mapPackageDefinition opt distribution packagePath packageDef =
     packageDef.modules
         |> Dict.toList
@@ -85,7 +85,7 @@ getScalaPackagePath currentPackagePath currentModulePath =
             ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
 
 
-mapStatefulAppImplementation : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta tv) -> List CompilationUnit
+mapStatefulAppImplementation : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type.Type ())) -> List CompilationUnit
 mapStatefulAppImplementation opt distribution currentPackagePath currentModulePath accessControlledModuleDef =
     let
         functionName : Name
@@ -138,16 +138,16 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                         []
 
                                     else
-                                        [ accessControlledValueDef.value.inputTypes
+                                        accessControlledValueDef.value.inputTypes
                                             |> List.map
                                                 (\( argName, _, argType ) ->
-                                                    { modifiers = []
-                                                    , tpe = mapType argType
-                                                    , name = argName |> Name.toCamelCase
-                                                    , defaultValue = Nothing
-                                                    }
+                                                    [ { modifiers = []
+                                                      , tpe = mapType argType
+                                                      , name = argName |> Name.toCamelCase
+                                                      , defaultValue = Nothing
+                                                      }
+                                                    ]
                                                 )
-                                        ]
                                 , returnType =
                                     Just (mapType accessControlledValueDef.value.outputType)
                                 , body =
@@ -278,7 +278,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
         memberStatefulApp annot name =
             case Dict.get (Name.fromString name) accessControlledModuleDef.value.types of
                 Just accessControlledDocumentedTypeDef ->
-                    maptypeMember annot currentPackagePath currentModulePath accessControlledModuleDef ( Name.fromString name, accessControlledDocumentedTypeDef )
+                    mapTypeMember annot currentPackagePath currentModulePath accessControlledModuleDef ( Name.fromString name, accessControlledDocumentedTypeDef )
 
                 _ ->
                     []
@@ -302,7 +302,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                 |> List.concatMap
                     (\( typeName, accessControlledDocumentedTypeDef ) ->
                         if List.member (typeName |> Name.toTitleCase) innerTypesNamesStatefulApp then
-                            maptypeMember Nothing currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef )
+                            mapTypeMember Nothing currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef )
 
                         else
                             []

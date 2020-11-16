@@ -47,7 +47,7 @@ moduleSpec =
                     , Type.Constructor (Name.fromString "July") []
                     , Type.Constructor (Name.fromString "August") []
                     , Type.Constructor (Name.fromString "September") []
-                    , Type.Constructor (Name.fromString "Octoboer") []
+                    , Type.Constructor (Name.fromString "October") []
                     , Type.Constructor (Name.fromString "November") []
                     , Type.Constructor (Name.fromString "December") []
                     ]

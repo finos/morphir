@@ -22,7 +22,9 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
-import Morphir.IR.SDK.Common exposing (toFQName)
+import Morphir.IR.SDK.Basics exposing (boolType)
+import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
+import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
@@ -39,32 +41,34 @@ moduleSpec =
             [ ( Name.fromString "Rule", OpaqueTypeSpecification [ [ "a", "b" ] ] |> Documented "Type that represents an rule." )
             ]
     , values =
-        let
-            -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
-            dummyValueSpec : Value.Specification ()
-            dummyValueSpec =
-                Value.Specification [] (Type.Unit ())
-
-            valueNames : List String
-            valueNames =
-                [ "chain"
-                , "any"
-                , "is"
-                , "anyOf"
-                , "noneOf"
+        Dict.fromList
+            [ vSpec "chain"
+                [ ( "rules", listType () (ruleType () (tVar "a") (tVar "b")) )
                 ]
-        in
-        valueNames
-            |> List.map
-                (\valueName ->
-                    ( Name.fromString valueName, dummyValueSpec )
-                )
-            |> Dict.fromList
+                (ruleType () (tVar "a") (tVar "b"))
+            , vSpec "any"
+                [ ( "value", tVar "a" )
+                ]
+                (boolType ())
+            , vSpec "is"
+                [ ( "ref", tVar "a" )
+                , ( "value", tVar "a" )
+                ]
+                (boolType ())
+            , vSpec "anyOf"
+                [ ( "ref", listType () (tVar "a") )
+                , ( "value", tVar "a" )
+                ]
+                (boolType ())
+            , vSpec "noneOf"
+                [ ( "ref", listType () (tVar "a") )
+                , ( "value", tVar "a" )
+                ]
+                (boolType ())
+            ]
     }
+
 
 ruleType : a -> Type a -> Type a -> Type a
 ruleType attributes itemType1 itemType2 =
     Type.Reference attributes (toFQName moduleName "Rule") [ itemType1, itemType2 ]
-
-
-

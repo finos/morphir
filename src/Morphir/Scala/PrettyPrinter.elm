@@ -423,15 +423,18 @@ mapValue opt value =
         BinOp left op right ->
             parens (mapValue opt left) ++ " " ++ op ++ " " ++ parens (mapValue opt right)
 
-        Lambda argNames bodyValue ->
+        Lambda args bodyValue ->
             let
-                argsDoc =
-                    case argNames of
-                        [ argName ] ->
+                argDoc ( argName, maybeArgType ) =
+                    case maybeArgType of
+                        Just argType ->
+                            concat [ argName, ": ", mapType opt argType ]
+
+                        Nothing ->
                             argName
 
-                        _ ->
-                            parens (argNames |> String.join ", ")
+                argsDoc =
+                    parens (args |> List.map argDoc |> String.join ", ")
             in
             argsDoc
                 ++ " =>"

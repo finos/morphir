@@ -22,6 +22,7 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value
 
@@ -37,7 +38,24 @@ moduleSpec =
         Dict.fromList
             [ ( Name.fromString "StatefulApp"
               , CustomTypeSpecification [ Name.fromString "k", Name.fromString "c", Name.fromString "s", Name.fromString "e" ]
-                    [ Type.Constructor (Name.fromString "StatefulApp") []
+                    -- StatefulApp (Maybe s -> c -> ( Maybe s, e ))
+                    [ Type.Constructor (Name.fromString "StatefulApp")
+                        [ ( Name.fromString "logic"
+                            -- Maybe s -> c -> ( Maybe s, e )
+                          , Type.Function ()
+                                (maybeType () (Type.Variable () (Name.fromString "s")))
+                                -- c -> ( Maybe s, e )
+                                (Type.Function ()
+                                    (Type.Variable () (Name.fromString "c"))
+                                    -- ( Maybe s, e )
+                                    (Type.Tuple ()
+                                        [ maybeType () (Type.Variable () (Name.fromString "s"))
+                                        , Type.Variable () (Name.fromString "e")
+                                        ]
+                                    )
+                                )
+                          )
+                        ]
                     ]
                     |> Documented "Type that represents a stateful app."
               )

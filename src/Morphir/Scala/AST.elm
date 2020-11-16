@@ -155,7 +155,7 @@ type Value
     | Apply Value (List ArgValue)
     | UnOp String Value
     | BinOp Value String Value
-    | Lambda (List Name) Value
+    | Lambda (List ( Name, Maybe Type )) Value
     | Block (List MemberDecl) Value
     | MatchCases (List ( Pattern, Value ))
     | Match Value Value

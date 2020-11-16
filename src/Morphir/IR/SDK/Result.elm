@@ -22,9 +22,9 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Common exposing (toFQName)
+import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
+import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
 
 
 moduleName : ModuleName
@@ -45,34 +45,70 @@ moduleSpec =
               )
             ]
     , values =
-        let
-            -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
-            dummyValueSpec : Value.Specification ()
-            dummyValueSpec =
-                Value.Specification [] (Type.Unit ())
-
-            valueNames : List String
-            valueNames =
-                [ "withdefault"
-                , "map"
-                , "map2"
-                , "map3"
-                , "map4"
-                , "map5"
-                , "toMaybe"
-                , "fromMaybe"
-                , "mapError"
+        Dict.fromList
+            [ vSpec "andThen"
+                [ ( "f", tFun [ tVar "a" ] (resultType () (tVar "x") (tVar "b")) )
+                , ( "result", resultType () (tVar "x") (tVar "a") )
                 ]
-        in
-        valueNames
-            |> List.map
-                (\valueName ->
-                    ( Name.fromString valueName, dummyValueSpec )
-                )
-            |> Dict.fromList
+                (resultType () (tVar "x") (tVar "b"))
+            , vSpec "map"
+                [ ( "f", tFun [ tVar "a" ] (tVar "b") )
+                , ( "result", resultType () (tVar "x") (tVar "a") )
+                ]
+                (resultType () (tVar "x") (tVar "b"))
+            , vSpec "map2"
+                [ ( "f", tFun [ tVar "a", tVar "b" ] (tVar "r") )
+                , ( "result1", resultType () (tVar "x") (tVar "a") )
+                , ( "result2", resultType () (tVar "x") (tVar "b") )
+                ]
+                (resultType () (tVar "x") (tVar "r"))
+            , vSpec "map3"
+                [ ( "f", tFun [ tVar "a", tVar "b", tVar "c" ] (tVar "r") )
+                , ( "result1", resultType () (tVar "x") (tVar "a") )
+                , ( "result2", resultType () (tVar "x") (tVar "b") )
+                , ( "result2", resultType () (tVar "x") (tVar "c") )
+                ]
+                (resultType () (tVar "x") (tVar "r"))
+            , vSpec "map4"
+                [ ( "f", tFun [ tVar "a", tVar "b", tVar "c", tVar "d" ] (tVar "r") )
+                , ( "result1", resultType () (tVar "x") (tVar "a") )
+                , ( "result2", resultType () (tVar "x") (tVar "b") )
+                , ( "result2", resultType () (tVar "x") (tVar "c") )
+                , ( "result2", resultType () (tVar "x") (tVar "d") )
+                ]
+                (resultType () (tVar "x") (tVar "r"))
+            , vSpec "map5"
+                [ ( "f", tFun [ tVar "a", tVar "b", tVar "c", tVar "d", tVar "e" ] (tVar "r") )
+                , ( "result1", resultType () (tVar "x") (tVar "a") )
+                , ( "result2", resultType () (tVar "x") (tVar "b") )
+                , ( "result2", resultType () (tVar "x") (tVar "c") )
+                , ( "result2", resultType () (tVar "x") (tVar "d") )
+                , ( "result2", resultType () (tVar "x") (tVar "e") )
+                ]
+                (resultType () (tVar "x") (tVar "r"))
+            , vSpec "withDefault"
+                [ ( "default", tVar "a" )
+                , ( "result", resultType () (tVar "x") (tVar "a") )
+                ]
+                (tVar "a")
+            , vSpec "toMaybe"
+                [ ( "result", resultType () (tVar "x") (tVar "a") )
+                ]
+                (maybeType () (tVar "a"))
+            , vSpec "fromMaybe"
+                [ ( "error", tVar "x" )
+                , ( "maybe", maybeType () (tVar "a") )
+                ]
+                (resultType () (tVar "x") (tVar "a"))
+            , vSpec "mapError"
+                [ ( "f", tFun [ tVar "x" ] (tVar "y") )
+                , ( "result", resultType () (tVar "x") (tVar "a") )
+                ]
+                (resultType () (tVar "y") (tVar "a"))
+            ]
     }
 
 
-resultType : a -> Type a -> Type a
-resultType attributes itemType =
-    Reference attributes (toFQName moduleName "result") [ itemType ]
+resultType : a -> Type a -> Type a -> Type a
+resultType attributes errorType itemType =
+    Reference attributes (toFQName moduleName "result") [ errorType, itemType ]

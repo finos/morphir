@@ -15,25 +15,29 @@
 -}
 
 
-module Morphir.IR.SDK.Regex exposing (..)
+module Morphir.IR.SDK.Set exposing (..)
 
 import Dict
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
-import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.Path as Path
+import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value)
 
 
 moduleName : ModuleName
 moduleName =
-    Path.fromString "Regex"
+    Path.fromString "Set"
 
 
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
-        Dict.empty
+        Dict.fromList
+            [ ( Name.fromString "Set", OpaqueTypeSpecification [ [ "a" ] ] |> Documented "Type that represents a set." )
+            ]
     , values =
         let
             -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
@@ -43,16 +47,28 @@ moduleSpec =
 
             valueNames : List String
             valueNames =
-                [ "fromString"
-                , "fromStringWith"
-                , "never"
-                , "contains"
-                , "split"
-                , "find"
-                , "replace"
-                , "splitAtMost"
-                , "findAtMost"
-                , "replaceAtMost"
+                [ "empty"
+                , "singleton"
+                , "insert"
+                , "update"
+                , "remove"
+                , "isEmpty"
+                , "member"
+                , "get"
+                , "size"
+                , "keys"
+                , "values"
+                , "toList"
+                , "fromList"
+                , "map"
+                , "foldl"
+                , "foldr"
+                , "filter"
+                , "partition"
+                , "union"
+                , "intersect"
+                , "diff"
+                , "merge"
                 ]
         in
         valueNames

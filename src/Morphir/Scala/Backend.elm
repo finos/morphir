@@ -15,7 +15,23 @@
 -}
 
 
-module Morphir.Scala.Backend exposing (..)
+module Morphir.Scala.Backend exposing
+    ( mapDistribution, mapFunctionBody, mapType, mapTypeMember
+    , Options
+    )
+
+{-| This module encapsulates the Scala backend. It takes the Morphir IR as the input and returns an in-memory
+representation of files generated. The consumer is responsible for getting the input IR and saving the output
+to the file-system.
+
+@docs mapDistribution, mapFunctionBody, mapType, mapTypeMember
+
+
+# Options
+
+@docs Options
+
+-}
 
 import Dict
 import List.Extra as ListExtra
@@ -23,7 +39,7 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.FQName exposing (FQName(..), fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
@@ -31,16 +47,21 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
-import Morphir.SDK.Customization as Customization exposing (Customization(..), caseClassesToAnnotate, getAnnotations)
+import Morphir.SDK.Customization exposing (Customization(..), caseClassesToAnnotate, getAnnotations)
 import Morphir.Scala.AST as Scala exposing (Annotated, MemberDecl(..))
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
 
 
+{-| Placeholder for code generator options. Currently empty.
+-}
 type alias Options =
     {}
 
 
+{-| Entry point for the Scala backend. It takes the Morphir IR as the input and returns an in-memory
+representation of files generated.
+-}
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
     case distro of
@@ -48,7 +69,7 @@ mapDistribution opt distro =
             mapPackageDefinition opt distro packagePath packageDef
 
 
-mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta va -> FileMap
+mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> FileMap
 mapPackageDefinition opt distribution packagePath packageDef =
     packageDef.modules
         |> Dict.toList
@@ -102,8 +123,10 @@ mapFQNameToTypeRef fQName =
     Scala.TypeRef path (name |> Name.toTitleCase)
 
 
-maptypeMember : Maybe Customization -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta tv) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> List Scala.MemberDecl
-maptypeMember annotations currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
+{-| Map a module level type declaration in Morphir to a Scala member declaration.
+-}
+mapTypeMember : Maybe Customization -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> List Scala.MemberDecl
+mapTypeMember annotations currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
     case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
             [ Scala.MemberTypeDecl
@@ -123,17 +146,7 @@ maptypeMember annotations currentPackagePath currentModulePath accessControlledM
                                 )
                             |> List.singleton
                     , extends = []
-                    , members =
-                        mapFunctionsToMethods currentPackagePath
-                            currentModulePath
-                            typeName
-                            (accessControlledModuleDef.value.values
-                                |> Dict.toList
-                                |> List.map
-                                    (\( valueName, valueDef ) ->
-                                        ( valueName, valueDef.value |> Value.definitionToSpecification )
-                                    )
-                            )
+                    , members = []
                     }
                 )
             ]
@@ -160,7 +173,7 @@ maptypeMember annotations currentPackagePath currentModulePath accessControlledM
                 accessControlledCtors
 
 
-mapModuleDefinition : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta tv) -> List Scala.CompilationUnit
+mapModuleDefinition : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
 mapModuleDefinition opt distribution currentPackagePath currentModulePath accessControlledModuleDef =
     let
         ( scalaPackagePath, moduleName ) =
@@ -177,7 +190,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                 |> Dict.toList
                 |> List.concatMap
                     (\types ->
-                        maptypeMember Nothing currentPackagePath currentModulePath accessControlledModuleDef types
+                        mapTypeMember Nothing currentPackagePath currentModulePath accessControlledModuleDef types
                     )
 
         functionMembers : List Scala.MemberDecl
@@ -203,16 +216,16 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                                     []
 
                                 else
-                                    [ accessControlledValueDef.value.inputTypes
+                                    accessControlledValueDef.value.inputTypes
                                         |> List.map
                                             (\( argName, a, argType ) ->
-                                                { modifiers = []
-                                                , tpe = mapType argType
-                                                , name = argName |> Name.toCamelCase
-                                                , defaultValue = Nothing
-                                                }
+                                                [ { modifiers = []
+                                                  , tpe = mapType argType
+                                                  , name = argName |> Name.toCamelCase
+                                                  , defaultValue = Nothing
+                                                  }
+                                                ]
                                             )
-                                    ]
                             , returnType =
                                 Just (mapType accessControlledValueDef.value.outputType)
                             , body =
@@ -258,7 +271,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
     [ moduleUnit ]
 
 
-mapCustomTypeDefinition : Maybe Customization -> Package.PackageName -> Path -> Module.Definition ta va -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
+mapCustomTypeDefinition : Maybe Customization -> Package.PackageName -> Path -> Module.Definition ta (Type ()) -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
 mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
     let
         caseClass name args extends =
@@ -301,17 +314,7 @@ mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleD
                         , name = typeName |> Name.toTitleCase
                         , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
                         , extends = []
-                        , members =
-                            mapFunctionsToMethods currentPackagePath
-                                currentModulePath
-                                typeName
-                                (moduleDef.values
-                                    |> Dict.toList
-                                    |> List.map
-                                        (\( valueName, valueDef ) ->
-                                            ( valueName, valueDef.value |> Value.definitionToSpecification )
-                                        )
-                                )
+                        , members = []
                         }
                   ]
                 , accessControlledCtors.value
@@ -350,77 +353,8 @@ mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleD
                     )
 
 
-{-| Collect functions where the last input argument is this type and turn them into methods on the type.
+{-| Map a Morphir type to a Scala type.
 -}
-mapFunctionsToMethods : Path -> Path -> Name -> List ( Name, Value.Specification ta ) -> List Scala.MemberDecl
-mapFunctionsToMethods currentPackageName currentModuleName currentTypeName valueSpecifications =
-    valueSpecifications
-        |> List.filterMap
-            (\( valueName, valueSpec ) ->
-                case List.reverse valueSpec.inputs of
-                    [] ->
-                        -- if this is a value (function with no arguments) then we don't turn it into a method
-                        Nothing
-
-                    ( _, lastInputType ) :: restOfInputsReversed ->
-                        -- if the last argument type of the function is
-                        let
-                            inputs =
-                                List.reverse restOfInputsReversed
-                        in
-                        case lastInputType of
-                            Type.Reference _ fQName [] ->
-                                if fQName == FQName currentPackageName currentModuleName currentTypeName then
-                                    Just
-                                        (FunctionDecl
-                                            { modifiers = []
-                                            , name = valueName |> Name.toCamelCase
-                                            , typeArgs = []
-                                            , args =
-                                                if List.isEmpty inputs then
-                                                    []
-
-                                                else
-                                                    [ inputs
-                                                        |> List.map
-                                                            (\( argName, argType ) ->
-                                                                { modifiers = []
-                                                                , tpe = mapType argType
-                                                                , name = argName |> Name.toCamelCase
-                                                                , defaultValue = Nothing
-                                                                }
-                                                            )
-                                                    ]
-                                            , returnType =
-                                                Just (mapType valueSpec.output)
-                                            , body =
-                                                let
-                                                    ( path, name ) =
-                                                        mapFQNameToPathAndName (FQName currentPackageName currentModuleName valueName)
-                                                in
-                                                Just
-                                                    (Scala.Apply (Scala.Ref path (name |> Name.toCamelCase))
-                                                        (List.append
-                                                            (inputs
-                                                                |> List.map
-                                                                    (\( argName, _ ) ->
-                                                                        Scala.ArgValue Nothing (Scala.Variable (argName |> Name.toCamelCase))
-                                                                    )
-                                                            )
-                                                            [ Scala.ArgValue Nothing Scala.This ]
-                                                        )
-                                                    )
-                                            }
-                                        )
-
-                                else
-                                    Nothing
-
-                            _ ->
-                                Nothing
-            )
-
-
 mapType : Type a -> Scala.Type
 mapType tpe =
     case tpe of
@@ -480,13 +414,15 @@ mapType tpe =
             Scala.TypeRef [ "scala" ] "Unit"
 
 
-mapFunctionBody : Distribution -> Value ta va -> Scala.Value
+{-| Generate Scala for a Morphir function body.
+-}
+mapFunctionBody : Distribution -> Value ta (Type ()) -> Scala.Value
 mapFunctionBody distribution val =
     let
-        mapValue : Value ta va -> Scala.Value
+        mapValue : Value ta (Type ()) -> Scala.Value
         mapValue value =
             case value of
-                Literal a literal ->
+                Literal tpe literal ->
                     let
                         wrap : List String -> String -> Scala.Lit -> Scala.Value
                         wrap modulePath moduleName lit =
@@ -496,16 +432,25 @@ mapFunctionBody distribution val =
                     in
                     case literal of
                         BoolLiteral v ->
-                            wrap [ "morphir", "sdk", "Basics" ] "Bool" (Scala.BooleanLit v)
+                            Scala.Literal (Scala.BooleanLit v)
 
                         CharLiteral v ->
-                            wrap [ "morphir", "sdk", "Char" ] "Char" (Scala.CharacterLit v)
+                            wrap [ "morphir", "sdk", "Char" ] "from" (Scala.CharacterLit v)
 
                         StringLiteral v ->
-                            wrap [ "morphir", "sdk", "String" ] "String" (Scala.StringLit v)
+                            Scala.Literal (Scala.StringLit v)
 
                         IntLiteral v ->
-                            wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
+                            case tpe of
+                                Type.Reference () fQName [] ->
+                                    if (distribution |> Distribution.lookupBaseTypeName fQName) == Just (fqn "Morphir.SDK" "Basics" "Float") then
+                                        wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.IntegerLit v)
+
+                                    else
+                                        wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
+
+                                _ ->
+                                    wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
 
                         FloatLiteral v ->
                             wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
@@ -552,33 +497,49 @@ mapFunctionBody distribution val =
                 Field a subjectValue fieldName ->
                     Scala.Select (mapValue subjectValue) (fieldName |> Name.toCamelCase)
 
-                FieldFunction a fieldName ->
-                    Scala.Select Scala.Wildcard (fieldName |> Name.toCamelCase)
+                FieldFunction tpe fieldName ->
+                    case tpe of
+                        Type.Function _ inputType _ ->
+                            Scala.Lambda
+                                [ ( "x", Just (mapType inputType) ) ]
+                                (Scala.Select (Scala.Variable "x") (fieldName |> Name.toCamelCase))
+
+                        _ ->
+                            Scala.Select Scala.Wildcard (fieldName |> Name.toCamelCase)
 
                 Apply a fun arg ->
                     let
                         ( bottomFun, args ) =
                             Value.uncurryApply fun arg
                     in
-                    Scala.Apply (mapValue bottomFun)
-                        (args
-                            |> List.map
-                                (\argValue ->
-                                    Scala.ArgValue Nothing (mapValue argValue)
+                    case bottomFun of
+                        Reference _ _ ->
+                            Scala.Apply (mapValue fun)
+                                [ Scala.ArgValue Nothing (mapValue arg)
+                                ]
+
+                        _ ->
+                            Scala.Apply (mapValue bottomFun)
+                                (args
+                                    |> List.map
+                                        (\argValue ->
+                                            Scala.ArgValue Nothing (mapValue argValue)
+                                        )
                                 )
-                        )
 
                 Lambda a argPattern bodyValue ->
                     case argPattern of
-                        AsPattern _ (WildcardPattern _) alias ->
-                            Scala.Lambda [ alias |> Name.toCamelCase ] (mapValue bodyValue)
+                        AsPattern tpe (WildcardPattern _) alias ->
+                            Scala.Lambda
+                                [ ( alias |> Name.toCamelCase, Just (mapType tpe) ) ]
+                                (mapValue bodyValue)
 
                         _ ->
                             Scala.MatchCases [ ( mapPattern argPattern, mapValue bodyValue ) ]
 
                 LetDefinition _ _ _ _ ->
                     let
-                        flattenLetDef : Value ta va -> ( List ( Name, Value.Definition ta va ), Value ta va )
+                        flattenLetDef : Value ta (Type ()) -> ( List ( Name, Value.Definition ta (Type ()) ), Value ta (Type ()) )
                         flattenLetDef v =
                             case v of
                                 LetDefinition a dName d inV ->
