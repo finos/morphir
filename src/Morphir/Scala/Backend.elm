@@ -15,13 +15,21 @@
 -}
 
 
-module Morphir.Scala.Backend exposing (mapDistribution)
+module Morphir.Scala.Backend exposing
+    ( mapDistribution, mapFunctionBody, mapType, mapTypeMember
+    , Options
+    )
 
 {-| This module encapsulates the Scala backend. It takes the Morphir IR as the input and returns an in-memory
 representation of files generated. The consumer is responsible for getting the input IR and saving the output
 to the file-system.
 
-@docs mapDistribution
+@docs mapDistribution, mapFunctionBody, mapType, mapTypeMember
+
+
+# Options
+
+@docs Options
 
 -}
 
@@ -39,12 +47,14 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
-import Morphir.SDK.Customization as Customization exposing (Customization(..), caseClassesToAnnotate, getAnnotations)
+import Morphir.SDK.Customization exposing (Customization(..), caseClassesToAnnotate, getAnnotations)
 import Morphir.Scala.AST as Scala exposing (Annotated, MemberDecl(..))
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
 
 
+{-| Placeholder for code generator options. Currently empty.
+-}
 type alias Options =
     {}
 
@@ -113,6 +123,8 @@ mapFQNameToTypeRef fQName =
     Scala.TypeRef path (name |> Name.toTitleCase)
 
 
+{-| Map a module level type declaration in Morphir to a Scala member declaration.
+-}
 mapTypeMember : Maybe Customization -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> List Scala.MemberDecl
 mapTypeMember annotations currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
     case accessControlledDocumentedTypeDef.value.value of
@@ -341,6 +353,8 @@ mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleD
                     )
 
 
+{-| Map a Morphir type to a Scala type.
+-}
 mapType : Type a -> Scala.Type
 mapType tpe =
     case tpe of
@@ -400,6 +414,8 @@ mapType tpe =
             Scala.TypeRef [ "scala" ] "Unit"
 
 
+{-| Generate Scala for a Morphir function body.
+-}
 mapFunctionBody : Distribution -> Value ta (Type ()) -> Scala.Value
 mapFunctionBody distribution val =
     let
