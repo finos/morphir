@@ -15,29 +15,70 @@
 -}
 
 
-module Morphir.Scala.AST exposing (..)
+module Morphir.Scala.AST exposing
+    ( Name, Path, Documented, Annotated, withAnnotation, withoutAnnotation, CompilationUnit, PackageDecl
+    , ImportDecl, ImportName, Mod(..), TypeDecl(..), ArgDecl, ArgValue(..), MemberDecl(..)
+    , Type(..), Value(..), Pattern(..), Lit(..)
+    , nameOfTypeDecl
+    )
+
+{-| Scala's abstract-syntax tree. This is a custom built AST that focuses on the subset of Scala features that our
+generator uses. It's a relatively large portion of the language but it's not aiming to be complete.
 
 
+# Abstract Syntax Tree
+
+@docs Name, Path, Documented, Annotated, withAnnotation, withoutAnnotation, CompilationUnit, PackageDecl
+@docs ImportDecl, ImportName, Mod, TypeDecl, ArgDecl, ArgValue, MemberDecl
+@docs Type, Value, Pattern, Lit
+
+
+# Utilities
+
+@docs nameOfTypeDecl
+
+-}
+
+
+{-| -}
 type alias Name =
     String
 
 
+{-| -}
 type alias Path =
     List Name
 
 
+{-| -}
 type alias Documented a =
     { doc : Maybe String
     , value : a
     }
 
 
+{-| -}
 type alias Annotated a =
-    { annotation : Maybe Path
+    { annotations : List String
     , value : a
     }
 
 
+{-| Wrap in Annotated without any annotation values.
+-}
+withoutAnnotation : a -> Annotated a
+withoutAnnotation a =
+    Annotated [] a
+
+
+{-| Wrap in Annotated with an annotation value.
+-}
+withAnnotation : List String -> a -> Annotated a
+withAnnotation annotations a =
+    Annotated annotations a
+
+
+{-| -}
 type alias CompilationUnit =
     { dirPath : List String
     , fileName : String
@@ -47,10 +88,12 @@ type alias CompilationUnit =
     }
 
 
+{-| -}
 type alias PackageDecl =
     List String
 
 
+{-| -}
 type alias ImportDecl =
     { isAbsolute : Bool
     , packagePrefix : List String
@@ -58,11 +101,13 @@ type alias ImportDecl =
     }
 
 
+{-| -}
 type ImportName
     = ImportName String
     | ImportRename String String
 
 
+{-| -}
 type Mod
     = Sealed
     | Final
@@ -74,13 +119,14 @@ type Mod
     | Abstract
 
 
+{-| -}
 type TypeDecl
     = Trait
         { modifiers : List Mod
         , name : Name
         , typeArgs : List Type
         , extends : List Type
-        , members : List MemberDecl
+        , members : List (Annotated MemberDecl)
         }
     | Class
         { modifiers : List Mod
@@ -88,17 +134,18 @@ type TypeDecl
         , typeArgs : List Type
         , ctorArgs : List (List ArgDecl)
         , extends : List Type
-        , members : List MemberDecl
+        , members : List (Annotated MemberDecl)
         }
     | Object
         { modifiers : List Mod
         , name : Name
         , extends : List Type
-        , members : List MemberDecl
+        , members : List (Annotated MemberDecl)
         , body : Maybe Value
         }
 
 
+{-| -}
 type alias ArgDecl =
     { modifiers : List Mod
     , tpe : Type
@@ -107,10 +154,12 @@ type alias ArgDecl =
     }
 
 
+{-| -}
 type ArgValue
     = ArgValue (Maybe Name) Value
 
 
+{-| -}
 type MemberDecl
     = TypeAlias
         { alias : Name
@@ -132,9 +181,9 @@ type MemberDecl
         , body : Maybe Value
         }
     | MemberTypeDecl TypeDecl
-    | AnnotatedMemberDecl (Annotated MemberDecl)
 
 
+{-| -}
 type Type
     = TypeVar Name
     | TypeRef Path Name
@@ -146,6 +195,7 @@ type Type
     | CommentedType Type String
 
 
+{-| -}
 type Value
     = Literal Lit
     | Variable Name
@@ -167,6 +217,7 @@ type Value
     | CommentedValue Value String
 
 
+{-| -}
 type Pattern
     = WildcardMatch
     | NamedMatch Name
@@ -179,6 +230,7 @@ type Pattern
     | CommentedPattern Pattern String
 
 
+{-| -}
 type Lit
     = BooleanLit Bool
     | CharacterLit Char
@@ -187,6 +239,7 @@ type Lit
     | FloatLit Float
 
 
+{-| -}
 nameOfTypeDecl : TypeDecl -> Name
 nameOfTypeDecl typeDecl =
     case typeDecl of

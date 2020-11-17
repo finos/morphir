@@ -47,7 +47,6 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
-import Morphir.SDK.Customization exposing (Customization(..), caseClassesToAnnotate, getAnnotations)
 import Morphir.Scala.AST as Scala exposing (Annotated, MemberDecl(..))
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
@@ -125,46 +124,49 @@ mapFQNameToTypeRef fQName =
 
 {-| Map a module level type declaration in Morphir to a Scala member declaration.
 -}
-mapTypeMember : Maybe Customization -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> List Scala.MemberDecl
-mapTypeMember annotations currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
+mapTypeMember : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> List (Scala.Annotated Scala.MemberDecl)
+mapTypeMember currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
     case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition typeParams (Type.Record _ fields) ->
-            [ Scala.MemberTypeDecl
-                (Scala.Class
-                    { modifiers = [ Scala.Case ]
-                    , name = typeName |> Name.toTitleCase
-                    , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
-                    , ctorArgs =
-                        fields
-                            |> List.map
-                                (\field ->
-                                    { modifiers = []
-                                    , tpe = mapType field.tpe
-                                    , name = field.name |> Name.toCamelCase
-                                    , defaultValue = Nothing
-                                    }
-                                )
-                            |> List.singleton
-                    , extends = []
-                    , members = []
-                    }
+            [ Scala.withoutAnnotation
+                (Scala.MemberTypeDecl
+                    (Scala.Class
+                        { modifiers = [ Scala.Case ]
+                        , name = typeName |> Name.toTitleCase
+                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                        , ctorArgs =
+                            fields
+                                |> List.map
+                                    (\field ->
+                                        { modifiers = []
+                                        , tpe = mapType field.tpe
+                                        , name = field.name |> Name.toCamelCase
+                                        , defaultValue = Nothing
+                                        }
+                                    )
+                                |> List.singleton
+                        , extends = []
+                        , members = []
+                        }
+                    )
                 )
             ]
 
         Type.TypeAliasDefinition typeParams typeExp ->
-            [ Scala.TypeAlias
-                { alias =
-                    typeName |> Name.toTitleCase
-                , typeArgs =
-                    typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
-                , tpe =
-                    mapType typeExp
-                }
+            [ Scala.withoutAnnotation
+                (Scala.TypeAlias
+                    { alias =
+                        typeName |> Name.toTitleCase
+                    , typeArgs =
+                        typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                    , tpe =
+                        mapType typeExp
+                    }
+                )
             ]
 
         Type.CustomTypeDefinition typeParams accessControlledCtors ->
             mapCustomTypeDefinition
-                annotations
                 currentPackagePath
                 currentModulePath
                 accessControlledModuleDef.value
@@ -184,16 +186,16 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                 lastName :: reverseModulePath ->
                     ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
 
-        typeMembers : List Scala.MemberDecl
+        typeMembers : List (Scala.Annotated Scala.MemberDecl)
         typeMembers =
             accessControlledModuleDef.value.types
                 |> Dict.toList
                 |> List.concatMap
                     (\types ->
-                        mapTypeMember Nothing currentPackagePath currentModulePath accessControlledModuleDef types
+                        mapTypeMember currentPackagePath currentModulePath accessControlledModuleDef types
                     )
 
-        functionMembers : List Scala.MemberDecl
+        functionMembers : List (Scala.Annotated Scala.MemberDecl)
         functionMembers =
             accessControlledModuleDef.value.values
                 |> Dict.toList
@@ -233,6 +235,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                             }
                         ]
                     )
+                |> List.map Scala.withoutAnnotation
 
         moduleUnit : Scala.CompilationUnit
         moduleUnit =
@@ -242,8 +245,8 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
             , imports = []
             , typeDecls =
                 [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Scala.Annotated Nothing <|
-                        Scala.Object
+                    (Scala.Annotated []
+                        (Scala.Object
                             { modifiers =
                                 case accessControlledModuleDef.access of
                                     Public ->
@@ -264,6 +267,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                                 []
                             , body = Nothing
                             }
+                        )
                     )
                 ]
             }
@@ -271,8 +275,8 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
     [ moduleUnit ]
 
 
-mapCustomTypeDefinition : Maybe Customization -> Package.PackageName -> Path -> Module.Definition ta (Type ()) -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List Scala.MemberDecl
-mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
+mapCustomTypeDefinition : Package.PackageName -> Path -> Module.Definition ta (Type ()) -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List (Scala.Annotated Scala.MemberDecl)
+mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
     let
         caseClass name args extends =
             if List.isEmpty args then
@@ -307,6 +311,7 @@ mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleD
         parentTraitRef =
             mapFQNameToTypeRef (FQName currentPackagePath currentModulePath typeName)
 
+        sealedTraitHierarchy : List Scala.TypeDecl
         sealedTraitHierarchy =
             List.concat
                 [ [ Scala.Trait
@@ -334,23 +339,19 @@ mapCustomTypeDefinition annotations currentPackagePath currentModulePath moduleD
     case accessControlledCtors.value of
         [ Type.Constructor ctorName ctorArgs ] ->
             if ctorName == typeName then
-                [ Scala.MemberTypeDecl
-                    (caseClass ctorName ctorArgs [])
+                [ Scala.withoutAnnotation
+                    (Scala.MemberTypeDecl
+                        (caseClass ctorName ctorArgs [])
+                    )
                 ]
 
             else
                 sealedTraitHierarchy
-                    |> List.map
-                        (\sealedTrait ->
-                            Scala.MemberTypeDecl sealedTrait
-                        )
+                    |> List.map (Scala.MemberTypeDecl >> Scala.withoutAnnotation)
 
         _ ->
             sealedTraitHierarchy
-                |> List.map
-                    (\sealedTrait ->
-                        Scala.AnnotatedMemberDecl (getAnnotations annotations (caseClassesToAnnotate annotations sealedTraitHierarchy) (Scala.MemberTypeDecl sealedTrait))
-                    )
+                |> List.map (Scala.MemberTypeDecl >> Scala.withoutAnnotation)
 
 
 {-| Map a Morphir type to a Scala type.

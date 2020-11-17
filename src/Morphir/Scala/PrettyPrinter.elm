@@ -15,50 +15,63 @@
 -}
 
 
-module Morphir.Scala.PrettyPrinter exposing (..)
+module Morphir.Scala.PrettyPrinter exposing (Options, mapCompilationUnit)
+
+{-| Pretty-printer for the Scala AST.
+
+@docs Options, mapCompilationUnit
+
+-}
 
 import Morphir.File.SourceCode exposing (Doc, concat, dot, dotSep, empty, indent, indentLines, newLine, parens, space)
 import Morphir.IR.Name as Name
 import Morphir.Scala.AST exposing (..)
 
 
+{-| -}
 type alias Options =
     { indentDepth : Int
     , maxWidth : Int
     }
 
 
-mapDocumented : (a -> Doc) -> Documented (Annotated a) -> Doc
+mapDocumented : (a -> Doc) -> Documented a -> Doc
 mapDocumented valueToDoc documented =
-    (case documented.doc of
+    case documented.doc of
         Just doc ->
             concat
                 [ concat [ "/** ", doc, newLine ]
                 , concat [ "*/", newLine ]
+                , valueToDoc documented.value
                 ]
 
         Nothing ->
-            ""
-    )
-        ++ (case documented.value.annotation of
-                Just value ->
-                    concat
-                        [ dotSep value ++ newLine
-                        , valueToDoc documented.value.value ++ newLine
-                        ]
-
-                Nothing ->
-                    valueToDoc documented.value.value
-           )
+            valueToDoc documented.value
 
 
+mapAnnotated : (a -> Doc) -> Annotated a -> Doc
+mapAnnotated valueToDoc annotated =
+    case annotated.annotations of
+        [] ->
+            valueToDoc annotated.value
+
+        annotations ->
+            concat
+                [ dotSep annotations
+                , newLine
+                , valueToDoc annotated.value
+                , newLine
+                ]
+
+
+{-| -}
 mapCompilationUnit : Options -> CompilationUnit -> Doc
 mapCompilationUnit opt cu =
     concat
         [ concat [ "package ", dotSep cu.packageDecl, newLine ]
         , newLine
         , cu.typeDecls
-            |> List.map (mapDocumented (mapTypeDecl opt))
+            |> List.map (mapDocumented (mapAnnotated (mapTypeDecl opt)))
             |> String.join (newLine ++ newLine)
         ]
 
@@ -73,7 +86,7 @@ mapTypeDecl opt typeDecl =
                         ++ newLine
                         ++ newLine
                         ++ (decl.members
-                                |> List.map (mapMemberDecl opt)
+                                |> List.map (mapAnnotated (mapMemberDecl opt))
                                 |> List.intersperse (newLine ++ newLine)
                                 |> concat
                                 |> indent opt.indentDepth
@@ -105,7 +118,7 @@ mapTypeDecl opt typeDecl =
                             newLine
                                 ++ newLine
                                 ++ (decl.members
-                                        |> List.map (mapMemberDecl opt)
+                                        |> List.map (mapAnnotated (mapMemberDecl opt))
                                         |> List.intersperse (newLine ++ newLine)
                                         |> concat
                                         |> indent opt.indentDepth
@@ -126,7 +139,7 @@ mapTypeDecl opt typeDecl =
                             newLine
                                 ++ newLine
                                 ++ (decl.members
-                                        |> List.map (mapMemberDecl opt)
+                                        |> List.map (mapAnnotated (mapMemberDecl opt))
                                         |> List.intersperse (newLine ++ newLine)
                                         |> concat
                                         |> indent opt.indentDepth
@@ -206,19 +219,6 @@ mapMemberDecl opt memberDecl =
 
         MemberTypeDecl decl ->
             mapTypeDecl opt decl
-
-        AnnotatedMemberDecl decl ->
-            case decl.annotation of
-                Just path ->
-                    (path
-                        |> List.intersperse newLine
-                        |> concat
-                    )
-                        ++ newLine
-                        ++ mapMemberDecl opt decl.value
-
-                _ ->
-                    mapMemberDecl opt decl.value
 
 
 mapTypeArgs : Options -> List Type -> Doc

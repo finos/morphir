@@ -30,7 +30,6 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Specification(..))
 import Morphir.IR.Value as Value exposing (Value(..))
-import Morphir.SDK.Customization exposing (Customization(..))
 import Morphir.Scala.AST as Scala exposing (Annotated, ArgDecl, ArgValue(..), CompilationUnit, Documented, MemberDecl(..), Mod(..), Pattern(..), Type(..), TypeDecl(..), Value(..))
 import Morphir.Scala.Backend exposing (mapFunctionBody, mapType, mapTypeMember)
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
@@ -114,7 +113,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                 _ ->
                     []
 
-        functionMembers : List Scala.MemberDecl
+        functionMembers : List (Scala.Annotated Scala.MemberDecl)
         functionMembers =
             accessControlledModuleDef.value.values
                 |> Dict.toList
@@ -158,6 +157,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                         else
                             []
                     )
+                |> List.map Scala.withoutAnnotation
 
         statefulAppTypes : List Type
         statefulAppTypes =
@@ -243,8 +243,8 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
             , imports = []
             , typeDecls =
                 [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Annotated (Just [ "@org.springframework.web.bind.annotation.RestController" ]) <|
-                        Class
+                    (Annotated [ "@org.springframework.web.bind.annotation.RestController" ]
+                        (Class
                             { modifiers =
                                 []
                             , name =
@@ -270,39 +270,42 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                             , members =
                                 []
                             }
+                        )
                     )
                 ]
             }
 
-        memberStatefulApp : Maybe Customization -> Scala.Name -> List MemberDecl
-        memberStatefulApp annot name =
+        memberStatefulApp : Scala.Name -> List (Scala.Annotated Scala.MemberDecl)
+        memberStatefulApp name =
             case Dict.get (Name.fromString name) accessControlledModuleDef.value.types of
                 Just accessControlledDocumentedTypeDef ->
-                    mapTypeMember annot currentPackagePath currentModulePath accessControlledModuleDef ( Name.fromString name, accessControlledDocumentedTypeDef )
+                    mapTypeMember currentPackagePath currentModulePath accessControlledModuleDef ( Name.fromString name, accessControlledDocumentedTypeDef )
 
                 _ ->
                     []
 
-        statefulAppMembers : List MemberDecl
+        statefulAppMembers : List (Scala.Annotated MemberDecl)
         statefulAppMembers =
             case typeNamesStatefulApp of
                 keyTypeName :: commandTypeName :: stateTypeName :: eventTypeName :: [] ->
-                    memberStatefulApp Nothing keyTypeName
-                        |> List.append (memberStatefulApp (Just Jackson) eventTypeName)
-                        |> List.append (memberStatefulApp (Just Jackson) commandTypeName)
-                        |> List.append (memberStatefulApp Nothing stateTypeName)
+                    List.concat
+                        [ memberStatefulApp keyTypeName
+                        , memberStatefulApp eventTypeName |> addJacksonAnnotations
+                        , memberStatefulApp commandTypeName |> addJacksonAnnotations
+                        , memberStatefulApp stateTypeName
+                        ]
 
                 _ ->
                     []
 
-        innerMembers : List MemberDecl
+        innerMembers : List (Annotated MemberDecl)
         innerMembers =
             accessControlledModuleDef.value.types
                 |> Dict.toList
                 |> List.concatMap
                     (\( typeName, accessControlledDocumentedTypeDef ) ->
                         if List.member (typeName |> Name.toTitleCase) innerTypesNamesStatefulApp then
-                            mapTypeMember Nothing currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef )
+                            mapTypeMember currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef )
 
                         else
                             []
@@ -316,7 +319,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
             , imports = []
             , typeDecls =
                 [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Annotated Nothing <|
+                    (Annotated [] <|
                         Object
                             { modifiers =
                                 []
@@ -342,8 +345,8 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
             , imports = []
             , typeDecls =
                 [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Annotated Nothing <|
-                        Class
+                    (Scala.withoutAnnotation
+                        (Class
                             { modifiers =
                                 [ Abstract ]
                             , name =
@@ -361,62 +364,63 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                 ]
                             , extends = []
                             , members =
-                                [ ValueDecl
-                                    { modifiers = []
-                                    , pattern = NamedMatch "requests"
-                                    , valueType = Nothing
-                                    , value = Scala.Variable (dotSep scalaPackagePath ++ ".MainApplication.metricRegistry.meter(\"statefulAppRequests\")")
-                                    }
-                                , AnnotatedMemberDecl
-                                    (Annotated
-                                        (Just
-                                            [ "@org.springframework.web.bind.annotation.PostMapping(value= Array(\"/v1.0/command\"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array(\"application/json\"))"
-                                            ]
-                                        )
-                                     <|
-                                        FunctionDecl
-                                            { modifiers = []
-                                            , name = "entryPoint"
-                                            , typeArgs = []
-                                            , args =
-                                                [ [ ArgDecl []
-                                                        (TypeVar "C")
-                                                        "@org.springframework.web.bind.annotation.RequestBody command"
-                                                        Nothing
-                                                  ]
-                                                ]
-                                            , returnType = Just (TypeVar "E")
-                                            , body =
-                                                Just
-                                                    (Scala.Variable
-                                                        ("{requests.mark" ++ newLine ++ "process(command, None)._2}")
-                                                    )
-                                            }
+                                [ Scala.withoutAnnotation
+                                    (ValueDecl
+                                        { modifiers = []
+                                        , pattern = NamedMatch "requests"
+                                        , valueType = Nothing
+                                        , value = Scala.Variable (dotSep scalaPackagePath ++ ".MainApplication.metricRegistry.meter(\"statefulAppRequests\")")
+                                        }
                                     )
-                                , FunctionDecl
-                                    { modifiers = []
-                                    , name = "process"
-                                    , typeArgs = []
-                                    , args =
-                                        [ [ ArgDecl []
-                                                (TypeVar "C")
-                                                "command"
-                                                Nothing
-                                          , ArgDecl []
-                                                (TypeApply (TypeVar "Option") [ TypeVar "S" ])
-                                                "state"
-                                                Nothing
-                                          ]
-                                        ]
-                                    , returnType = Just (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
-                                    , body =
-                                        Just
-                                            (Scala.Variable
-                                                "{statefulApp.businessLogic(state, command)}"
-                                            )
-                                    }
+                                , Annotated
+                                    [ "@org.springframework.web.bind.annotation.PostMapping(value= Array(\"/v1.0/command\"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array(\"application/json\"))"
+                                    ]
+                                    (FunctionDecl
+                                        { modifiers = []
+                                        , name = "entryPoint"
+                                        , typeArgs = []
+                                        , args =
+                                            [ [ ArgDecl []
+                                                    (TypeVar "C")
+                                                    "@org.springframework.web.bind.annotation.RequestBody command"
+                                                    Nothing
+                                              ]
+                                            ]
+                                        , returnType = Just (TypeVar "E")
+                                        , body =
+                                            Just
+                                                (Scala.Variable
+                                                    ("{requests.mark" ++ newLine ++ "process(command, None)._2}")
+                                                )
+                                        }
+                                    )
+                                , Scala.withoutAnnotation
+                                    (FunctionDecl
+                                        { modifiers = []
+                                        , name = "process"
+                                        , typeArgs = []
+                                        , args =
+                                            [ [ ArgDecl []
+                                                    (TypeVar "C")
+                                                    "command"
+                                                    Nothing
+                                              , ArgDecl []
+                                                    (TypeApply (TypeVar "Option") [ TypeVar "S" ])
+                                                    "state"
+                                                    Nothing
+                                              ]
+                                            ]
+                                        , returnType = Just (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
+                                        , body =
+                                            Just
+                                                (Scala.Variable
+                                                    "{statefulApp.businessLogic(state, command)}"
+                                                )
+                                        }
+                                    )
                                 ]
                             }
+                        )
                     )
                 ]
             }
@@ -438,8 +442,8 @@ mapMainApp currentPackagePath currentModulePath =
             , imports = []
             , typeDecls =
                 [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Annotated (Just [ "@org.springframework.boot.autoconfigure.SpringBootApplication" ]) <|
-                        Class
+                    (Annotated [ "@org.springframework.boot.autoconfigure.SpringBootApplication" ]
+                        (Class
                             { modifiers =
                                 []
                             , name =
@@ -451,70 +455,68 @@ mapMainApp currentPackagePath currentModulePath =
                             , extends =
                                 []
                             , members =
-                                [ AnnotatedMemberDecl
-                                    (Annotated (Just [ "@org.springframework.beans.factory.annotation.Autowired" ]) <|
-                                        ValueDecl
-                                            { modifiers = [ Scala.Private Nothing ]
-                                            , pattern = NamedMatch "servletContext"
-                                            , valueType = Just (TypeVar "javax.servlet.ServletContext")
-                                            , value = Scala.Variable "null"
-                                            }
+                                [ Annotated [ "@org.springframework.beans.factory.annotation.Autowired" ]
+                                    (ValueDecl
+                                        { modifiers = [ Scala.Private Nothing ]
+                                        , pattern = NamedMatch "servletContext"
+                                        , valueType = Just (TypeVar "javax.servlet.ServletContext")
+                                        , value = Scala.Variable "null"
+                                        }
                                     )
-                                , AnnotatedMemberDecl
-                                    (Annotated (Just [ "@org.springframework.context.annotation.Bean" ]) <|
-                                        FunctionDecl
-                                            { modifiers = []
-                                            , name = "adminServletRegistrationBean"
-                                            , typeArgs = []
-                                            , args = []
-                                            , returnType = Nothing
-                                            , body =
-                                                Just
-                                                    (Scala.Block []
-                                                        (Scala.BinOp
-                                                            (Scala.Apply (Scala.Ref [ "servletContext" ] "setAttribute")
-                                                                [ ArgValue Nothing (Scala.Variable "com.codahale.metrics.servlets.MetricsServlet.METRICS_REGISTRY")
-                                                                , ArgValue Nothing (Scala.Variable "morphir.reference.model.MainApplication.metricRegistry")
-                                                                ]
-                                                            )
-                                                            newLine
-                                                            (Scala.Apply (Scala.Ref [] "new org.springframework.boot.web.servlet.ServletRegistrationBean")
-                                                                [ ArgValue Nothing (Scala.Variable "new com.codahale.metrics.servlets.MetricsServlet()")
-                                                                , ArgValue Nothing (Scala.Variable "\"/metrics\"")
-                                                                ]
-                                                            )
-                                                        )
-                                                    )
-                                            }
-                                    )
-                                , AnnotatedMemberDecl
-                                    (Annotated (Just [ "@org.springframework.context.annotation.Bean" ]) <|
-                                        FunctionDecl
-                                            { modifiers = []
-                                            , name = "api"
-                                            , typeArgs = []
-                                            , args = []
-                                            , returnType = Just (TypeVar "springfox.documentation.spring.web.plugins.Docket")
-                                            , body =
-                                                Just
-                                                    (Scala.Select
-                                                        (Scala.Ref
-                                                            [ "new springfox.documentation.spring.web.plugins.Docket(springfox.documentation.spi.DocumentationType.SWAGGER_2)"
-                                                            , "select"
-                                                            , "apis(springfox.documentation.builders.RequestHandlerSelectors.basePackage( \"" ++ dotSep scalaPackagePath ++ "\" ))"
+                                , Annotated [ "@org.springframework.context.annotation.Bean" ]
+                                    (FunctionDecl
+                                        { modifiers = []
+                                        , name = "adminServletRegistrationBean"
+                                        , typeArgs = []
+                                        , args = []
+                                        , returnType = Nothing
+                                        , body =
+                                            Just
+                                                (Scala.Block []
+                                                    (Scala.BinOp
+                                                        (Scala.Apply (Scala.Ref [ "servletContext" ] "setAttribute")
+                                                            [ ArgValue Nothing (Scala.Variable "com.codahale.metrics.servlets.MetricsServlet.METRICS_REGISTRY")
+                                                            , ArgValue Nothing (Scala.Variable "morphir.reference.model.MainApplication.metricRegistry")
                                                             ]
-                                                            "paths(springfox.documentation.builders.PathSelectors.any)"
                                                         )
-                                                        "build"
+                                                        newLine
+                                                        (Scala.Apply (Scala.Ref [] "new org.springframework.boot.web.servlet.ServletRegistrationBean")
+                                                            [ ArgValue Nothing (Scala.Variable "new com.codahale.metrics.servlets.MetricsServlet()")
+                                                            , ArgValue Nothing (Scala.Variable "\"/metrics\"")
+                                                            ]
+                                                        )
                                                     )
-                                            }
+                                                )
+                                        }
+                                    )
+                                , Annotated [ "@org.springframework.context.annotation.Bean" ]
+                                    (FunctionDecl
+                                        { modifiers = []
+                                        , name = "api"
+                                        , typeArgs = []
+                                        , args = []
+                                        , returnType = Just (TypeVar "springfox.documentation.spring.web.plugins.Docket")
+                                        , body =
+                                            Just
+                                                (Scala.Select
+                                                    (Scala.Ref
+                                                        [ "new springfox.documentation.spring.web.plugins.Docket(springfox.documentation.spi.DocumentationType.SWAGGER_2)"
+                                                        , "select"
+                                                        , "apis(springfox.documentation.builders.RequestHandlerSelectors.basePackage( \"" ++ dotSep scalaPackagePath ++ "\" ))"
+                                                        ]
+                                                        "paths(springfox.documentation.builders.PathSelectors.any)"
+                                                    )
+                                                    "build"
+                                                )
+                                        }
                                     )
                                 ]
                             }
+                        )
                     )
                 , Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Annotated Nothing <|
-                        Object
+                    (Scala.withoutAnnotation
+                        (Object
                             { modifiers =
                                 []
                             , name =
@@ -522,16 +524,19 @@ mapMainApp currentPackagePath currentModulePath =
                             , extends =
                                 [ TypeVar "App" ]
                             , members =
-                                [ ValueDecl
-                                    { modifiers = []
-                                    , pattern = NamedMatch "metricRegistry"
-                                    , valueType = Nothing
-                                    , value = Scala.Variable "new com.codahale.metrics.MetricRegistry"
-                                    }
+                                [ Scala.withoutAnnotation
+                                    (ValueDecl
+                                        { modifiers = []
+                                        , pattern = NamedMatch "metricRegistry"
+                                        , valueType = Nothing
+                                        , value = Scala.Variable "new com.codahale.metrics.MetricRegistry"
+                                        }
+                                    )
                                 ]
                             , body =
                                 Just (Ref [ "org.springframework.boot.SpringApplication" ] "run(classOf[MainApplication], args:_*)")
                             }
+                        )
                     )
                 ]
             }
@@ -553,8 +558,8 @@ mapStatefulAppDefinition currentPackagePath currentModulePath =
             , imports = []
             , typeDecls =
                 [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Annotated Nothing <|
-                        Class
+                    (Scala.withoutAnnotation
+                        (Class
                             { modifiers =
                                 [ Case ]
                             , name =
@@ -575,8 +580,99 @@ mapStatefulAppDefinition currentPackagePath currentModulePath =
                             , members =
                                 []
                             }
+                        )
                     )
                 ]
             }
     in
     [ moduleMainApp ]
+
+
+addJacksonAnnotations : List (Annotated MemberDecl) -> List (Annotated MemberDecl)
+addJacksonAnnotations annotatedMembers =
+    let
+        mapMember : Annotated MemberDecl -> Annotated MemberDecl
+        mapMember annotatedMemberTypeDecl =
+            case annotatedMemberTypeDecl.value of
+                MemberTypeDecl (Scala.Trait _) ->
+                    let
+                        caseClassNames : List String
+                        caseClassNames =
+                            annotatedMembers
+                                |> List.map .value
+                                |> List.filterMap
+                                    (\member ->
+                                        case member of
+                                            Scala.MemberTypeDecl (Scala.Class class) ->
+                                                Just class.name
+
+                                            _ ->
+                                                Nothing
+                                    )
+                    in
+                    Annotated
+                        (annotatedMemberTypeDecl.annotations
+                            |> List.append
+                                [ "@com.fasterxml.jackson.annotation.JsonTypeInfo(use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME,"
+                                    ++ newLine
+                                    ++ "include = com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY, property = \"type\")"
+                                    ++ newLine
+                                    ++ "@com.fasterxml.jackson.annotation.JsonSubTypes(Array"
+                                    ++ newLine
+                                    ++ "("
+                                    ++ newLine
+                                    ++ (caseClassNames
+                                            |> List.map
+                                                (\name ->
+                                                    "new com.fasterxml.jackson.annotation.JsonSubTypes.Type(value = classOf["
+                                                        ++ name
+                                                        ++ "], name = \""
+                                                        ++ name
+                                                        ++ "\"),"
+                                                        ++ newLine
+                                                )
+                                            |> String.concat
+                                       )
+                                    ++ "))"
+                                ]
+                        )
+                        annotatedMemberTypeDecl.value
+
+                MemberTypeDecl (Scala.Class class) ->
+                    Annotated annotatedMemberTypeDecl.annotations
+                        (MemberTypeDecl
+                            (Scala.Class
+                                { modifiers = class.modifiers
+                                , name = class.name
+                                , typeArgs = class.typeArgs
+                                , ctorArgs =
+                                    class.ctorArgs
+                                        |> List.map
+                                            (\args ->
+                                                args
+                                                    |> List.concatMap
+                                                        (\cons ->
+                                                            [ { modifiers = cons.modifiers
+                                                              , tpe = cons.tpe
+                                                              , name =
+                                                                    "@java.beans.BeanProperty "
+                                                                        ++ "@com.fasterxml.jackson.annotation.JsonProperty (\""
+                                                                        ++ cons.name
+                                                                        ++ "\") "
+                                                                        ++ cons.name
+                                                              , defaultValue = cons.defaultValue
+                                                              }
+                                                            ]
+                                                        )
+                                            )
+                                , extends = class.extends
+                                , members = class.members
+                                }
+                            )
+                        )
+
+                _ ->
+                    annotatedMemberTypeDecl
+    in
+    annotatedMembers
+        |> List.map mapMember
