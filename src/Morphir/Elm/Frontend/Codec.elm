@@ -1,4 +1,51 @@
-module Morphir.Elm.Frontend.Codec exposing (..)
+module Morphir.Elm.Frontend.Codec exposing
+    ( decodePackageInfo
+    , encodeDeadEnd
+    , encodeSourceFile
+    , encodeError
+    , encodeContentLocation
+    , encodeContentRange
+    , encodeSourceLocation
+    )
+
+{-| Codecs for types in the `Morphir.Elm.Frontend` module.
+
+
+# PackageInfo
+
+@docs decodePackageInfo
+
+
+# DeadEnd
+
+@docs encodeDeadEnd
+
+
+# SourceFile
+
+@docs encodeSourceFile
+
+
+# Error
+
+@docs encodeError
+
+
+# ContentLocation
+
+@docs encodeContentLocation
+
+
+# ContentRange
+
+@docs encodeContentRange
+
+
+# SourceLocation
+
+@docs encodeSourceLocation
+
+-}
 
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -11,6 +58,8 @@ import Parser exposing (DeadEnd)
 import Set
 
 
+{-| Encode PackageInfo.
+-}
 decodePackageInfo : Decode.Decoder PackageInfo
 decodePackageInfo =
     Decode.map2 PackageInfo
@@ -26,6 +75,8 @@ decodePackageInfo =
         )
 
 
+{-| Encode DeadEnd.
+-}
 encodeDeadEnd : DeadEnd -> Encode.Value
 encodeDeadEnd deadEnd =
     Encode.list identity
@@ -34,12 +85,16 @@ encodeDeadEnd deadEnd =
         ]
 
 
+{-| Encode SourceFile.
+-}
 encodeSourceFile : SourceFile -> Encode.Value
 encodeSourceFile sourceFile =
     Encode.object
         [ ( "path", Encode.string sourceFile.path ) ]
 
 
+{-| Encode Error.
+-}
 encodeError : Error -> Encode.Value
 encodeError error =
     case error of
@@ -94,6 +149,8 @@ encodeError error =
                 ]
 
 
+{-| Encode ContentLocation.
+-}
 encodeContentLocation : ContentLocation -> Encode.Value
 encodeContentLocation contentLocation =
     Encode.object
@@ -102,6 +159,8 @@ encodeContentLocation contentLocation =
         ]
 
 
+{-| Encode ContentRange.
+-}
 encodeContentRange : ContentRange -> Encode.Value
 encodeContentRange contentRange =
     Encode.object
@@ -110,6 +169,8 @@ encodeContentRange contentRange =
         ]
 
 
+{-| Encode SourceLocation.
+-}
 encodeSourceLocation : SourceLocation -> Encode.Value
 encodeSourceLocation sourceLocation =
     Encode.object

@@ -73,7 +73,7 @@ async function gen(input, outputPath, options) {
     await mkdir(outputPath, { recursive: true })
     const morphirIrJson = await readFile(path.resolve(input))
     const fileMap = await generate(options, JSON.parse(morphirIrJson.toString()))
-    const sourceDirectory = path.join(path.dirname(__dirname), `\\redistributable\\${options["target"]}\\`)
+    const sourceDirectory = path.join(path.dirname(__dirname), 'redistributable', `${options["target"]}`)
 
     const writePromises =
         fileMap.map(async ([[dirPath, fileName], content]) => {

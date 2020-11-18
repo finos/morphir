@@ -20,9 +20,9 @@ module Morphir.IR.SDK.Basics exposing (..)
 import Dict
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name as Name
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Common exposing (toFQName)
+import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
@@ -38,84 +38,95 @@ moduleSpec =
         Dict.fromList
             [ ( Name.fromString "Int", OpaqueTypeSpecification [] |> Documented "Type that represents an integer value." )
             , ( Name.fromString "Float", OpaqueTypeSpecification [] |> Documented "Type that represents a floating-point number." )
+            , ( Name.fromString "Order"
+              , CustomTypeSpecification []
+                    [ Type.Constructor (Name.fromString "LT") []
+                    , Type.Constructor (Name.fromString "EQ") []
+                    , Type.Constructor (Name.fromString "GT") []
+                    ]
+                    |> Documented "Represents the relative ordering of two things. The relations are less than, equal to, and greater than."
+              )
             , ( Name.fromString "Bool", OpaqueTypeSpecification [] |> Documented "Type that represents a boolean value." )
             , ( Name.fromString "Never", OpaqueTypeSpecification [] |> Documented "A value that can never happen!" )
             ]
     , values =
-        let
-            -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
-            dummyValueSpec : Value.Specification ()
-            dummyValueSpec =
-                Value.Specification [] (Type.Unit ())
+        Dict.fromList
+            -- number
+            [ vSpec "add" [ ( "a", tVar "number" ), ( "b", tVar "number" ) ] (tVar "number")
+            , vSpec "subtract" [ ( "a", tVar "number" ), ( "b", tVar "number" ) ] (tVar "number")
+            , vSpec "multiply" [ ( "a", tVar "number" ), ( "b", tVar "number" ) ] (tVar "number")
+            , vSpec "divide" [ ( "a", floatType () ), ( "b", floatType () ) ] (floatType ())
+            , vSpec "integerDivide" [ ( "a", intType () ), ( "b", intType () ) ] (intType ())
+            , vSpec "power" [ ( "a", tVar "number" ), ( "b", tVar "number" ) ] (tVar "number")
+            , vSpec "toFloat" [ ( "a", intType () ) ] (floatType ())
+            , vSpec "round" [ ( "a", floatType () ) ] (intType ())
+            , vSpec "floor" [ ( "a", floatType () ) ] (intType ())
+            , vSpec "ceiling" [ ( "a", floatType () ) ] (intType ())
+            , vSpec "truncate" [ ( "a", floatType () ) ] (intType ())
+            , vSpec "modBy" [ ( "a", intType () ), ( "b", intType () ) ] (intType ())
+            , vSpec "remainderBy" [ ( "a", intType () ), ( "b", intType () ) ] (intType ())
+            , vSpec "negate" [ ( "a", tVar "number" ) ] (tVar "number")
+            , vSpec "abs" [ ( "a", tVar "number" ) ] (tVar "number")
+            , vSpec "clamp" [ ( "a", tVar "number" ), ( "b", tVar "number" ), ( "c", tVar "number" ) ] (tVar "number")
+            , vSpec "isNaN" [ ( "a", floatType () ) ] (boolType ())
+            , vSpec "isInfinite" [ ( "a", floatType () ) ] (boolType ())
+            , vSpec "sqrt" [ ( "a", floatType () ) ] (floatType ())
+            , vSpec "logBase" [ ( "a", floatType () ), ( "b", floatType () ) ] (floatType ())
+            , vSpec "e" [] (floatType ())
+            , vSpec "pi" [] (floatType ())
+            , vSpec "cos" [ ( "a", floatType () ) ] (floatType ())
+            , vSpec "sin" [ ( "a", floatType () ) ] (floatType ())
+            , vSpec "tan" [ ( "a", floatType () ) ] (floatType ())
+            , vSpec "acos" [ ( "a", floatType () ) ] (floatType ())
+            , vSpec "asin" [ ( "a", floatType () ) ] (floatType ())
+            , vSpec "atan" [ ( "a", floatType () ) ] (floatType ())
+            , vSpec "atan2" [ ( "a", floatType () ), ( "b", floatType () ) ] (floatType ())
+            , vSpec "degrees" [ ( "a", floatType () ) ] (floatType ())
+            , vSpec "radians" [ ( "a", floatType () ) ] (floatType ())
+            , vSpec "turns" [ ( "a", floatType () ) ] (floatType ())
+            , vSpec "toPolar" [ ( "a", Type.Tuple () [ floatType (), floatType () ] ) ] (Type.Tuple () [ floatType (), floatType () ])
+            , vSpec "fromPolar" [ ( "a", Type.Tuple () [ floatType (), floatType () ] ) ] (Type.Tuple () [ floatType (), floatType () ])
 
-            valueNames : List String
-            valueNames =
-                [ "add"
-                , "subtract"
-                , "multiply"
-                , "divide"
-                , "integerDivide"
-                , "power"
-                , "toFloat"
-                , "round"
-                , "floor"
-                , "ceiling"
-                , "truncate"
-                , "equal"
-                , "notEqual"
-                , "lessThan"
-                , "greaterThan"
-                , "lessThanOrEqual"
-                , "greaterThanOrEqual"
-                , "max"
-                , "min"
-                , "compare"
-                , "not"
-                , "and"
-                , "or"
-                , "xor"
-                , "modBy"
-                , "remainderBy"
-                , "negate"
-                , "abs"
-                , "clamp"
-                , "sqrt"
-                , "logBase"
-                , "e"
-                , "pi"
-                , "cos"
-                , "sin"
-                , "tan"
-                , "acos"
-                , "asin"
-                , "atan"
-                , "atan2"
-                , "degrees"
-                , "radians"
-                , "turns"
-                , "toPolar"
-                , "fromPolar"
-                , "isNaN"
-                , "isInfinite"
-                , "identity"
-                , "always"
-                , "composeLeft"
-                , "composeRight"
-                , "never"
-                ]
-        in
-        valueNames
-            |> List.map
-                (\valueName ->
-                    ( Name.fromString valueName, dummyValueSpec )
-                )
-            |> Dict.fromList
+            -- eq
+            , vSpec "equal" [ ( "a", tVar "eq" ), ( "b", tVar "eq" ) ] (boolType ())
+            , vSpec "notEqual" [ ( "a", tVar "eq" ), ( "b", tVar "eq" ) ] (boolType ())
+
+            -- comparable
+            , vSpec "lessThan" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (boolType ())
+            , vSpec "greaterThan" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (boolType ())
+            , vSpec "lessThanOrEqual" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (boolType ())
+            , vSpec "greaterThanOrEqual" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (boolType ())
+            , vSpec "max" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (tVar "comparable")
+            , vSpec "min" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (tVar "comparable")
+            , vSpec "compare" [ ( "a", tVar "comparable" ), ( "b", tVar "comparable" ) ] (orderType ())
+
+            -- Bool
+            , vSpec "not" [ ( "a", boolType () ) ] (boolType ())
+            , vSpec "and" [ ( "a", boolType () ), ( "b", boolType () ) ] (boolType ())
+            , vSpec "or" [ ( "a", boolType () ), ( "b", boolType () ) ] (boolType ())
+            , vSpec "xor" [ ( "a", boolType () ), ( "b", boolType () ) ] (boolType ())
+
+            -- appendable
+            , vSpec "append" [ ( "a", tVar "appendable" ), ( "b", tVar "appendable" ) ] (tVar "appendable")
+
+            -- break
+            , vSpec "identity" [ ( "a", tVar "a" ) ] (tVar "a")
+            , vSpec "always" [ ( "a", tVar "a" ), ( "b", tVar "b" ) ] (tVar "a")
+            , vSpec "composeLeft" [ ( "g", tFun [ tVar "b" ] (tVar "c") ), ( "f", tFun [ tVar "a" ] (tVar "b") ) ] (tFun [ tVar "a" ] (tVar "c"))
+            , vSpec "composeRight" [ ( "f", tFun [ tVar "a" ] (tVar "b") ), ( "g", tFun [ tVar "b" ] (tVar "c") ) ] (tFun [ tVar "a" ] (tVar "c"))
+            , vSpec "never" [ ( "a", neverType () ) ] (tVar "a")
+            ]
     }
 
 
-numberClass : a -> Type a
-numberClass attributes =
-    Variable attributes [ "number" ]
+orderType : a -> Type a
+orderType attributes =
+    Reference attributes (toFQName moduleName "Order") []
+
+
+neverType : a -> Type a
+neverType attributes =
+    Reference attributes (toFQName moduleName "Never") []
 
 
 equal : a -> Value ta a

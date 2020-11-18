@@ -18,12 +18,11 @@
 module Morphir.IR.SDK.Regex exposing (..)
 
 import Dict
-import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.SDK.Common exposing (toFQName)
-import Morphir.IR.Type exposing (Specification(..), Type(..))
+import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
+import Morphir.IR.Value as Value
 
 
 moduleName : ModuleName
@@ -36,5 +35,30 @@ moduleSpec =
     { types =
         Dict.empty
     , values =
-        Dict.empty
+        let
+            -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
+            dummyValueSpec : Value.Specification ()
+            dummyValueSpec =
+                Value.Specification [] (Type.Unit ())
+
+            valueNames : List String
+            valueNames =
+                [ "fromString"
+                , "fromStringWith"
+                , "never"
+                , "contains"
+                , "split"
+                , "find"
+                , "replace"
+                , "splitAtMost"
+                , "findAtMost"
+                , "replaceAtMost"
+                ]
+        in
+        valueNames
+            |> List.map
+                (\valueName ->
+                    ( Name.fromString valueName, dummyValueSpec )
+                )
+            |> Dict.fromList
     }

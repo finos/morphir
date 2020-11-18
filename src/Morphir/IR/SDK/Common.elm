@@ -19,10 +19,11 @@ module Morphir.IR.SDK.Common exposing (..)
 
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module exposing (ModuleName)
-import Morphir.IR.Name as Name
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.QName as QName
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 
 
@@ -42,3 +43,34 @@ toFQName modulePath localName =
 binaryApply : ModuleName -> String -> va -> Value ta va -> Value ta va -> Value ta va
 binaryApply moduleName localName attributes arg1 arg2 =
     Value.Apply attributes (Value.Apply attributes (Value.Reference attributes (toFQName moduleName localName)) arg1) arg2
+
+
+tVar : String -> Type ()
+tVar varName =
+    Type.Variable () (Name.fromString varName)
+
+
+tFun : List (Type ()) -> Type () -> Type ()
+tFun argTypes returnType =
+    let
+        curry args =
+            case args of
+                [] ->
+                    returnType
+
+                firstArg :: restOfArgs ->
+                    Type.Function () firstArg (curry restOfArgs)
+    in
+    curry argTypes
+
+
+vSpec : String -> List ( String, Type () ) -> Type () -> ( Name, Value.Specification () )
+vSpec name args returnType =
+    ( Name.fromString name
+    , Value.Specification
+        (args
+            |> List.map
+                (\( argName, argType ) -> ( Name.fromString argName, argType ))
+        )
+        returnType
+    )

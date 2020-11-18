@@ -22,7 +22,9 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
-import Morphir.IR.SDK.Common exposing (toFQName)
+import Morphir.IR.SDK.Basics exposing (boolType, intType, orderType)
+import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
+import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
@@ -39,76 +41,71 @@ moduleSpec =
             [ ( Name.fromString "List", OpaqueTypeSpecification [ [ "a" ] ] |> Documented "Type that represents a list of values." )
             ]
     , values =
-        let
-            -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
-            dummyValueSpec : Value.Specification ()
-            dummyValueSpec =
-                Value.Specification [] (Type.Unit ())
-
-            valueNames : List String
-            valueNames =
-                [ "singleton"
-                , "repeat"
-                , "range"
-                , "construct"
-                , "indexedMap"
-                , "foldl"
-                , "foldr"
-                , "filterMap"
-                , "length"
-                , "reverse"
-                , "member"
-                , "all"
-                , "any"
-                , "maximum"
-                , "minimum"
-                , "sum"
-                , "product"
-                , "append"
-                , "concat"
-                , "concatMap"
-                , "intersperse"
-                , "map2"
-                , "map3"
-                , "map4"
-                , "map5"
-                , "sort"
-                , "sortBy"
-                , "sortWith"
-                , "isEmpty"
-                , "head"
-                , "tail"
-                , "take"
-                , "drop"
-                , "partition"
-                , "unzip"
+        Dict.fromList
+            [ vSpec "singleton" [ ( "a", tVar "a" ) ] (listType () (tVar "a"))
+            , vSpec "repeat" [ ( "n", intType () ), ( "a", tVar "a" ) ] (listType () (tVar "a"))
+            , vSpec "range" [ ( "from", intType () ), ( "to", intType () ) ] (listType () (intType ()))
+            , vSpec "cons" [ ( "head", tVar "a" ), ( "tail", listType () (tVar "a") ) ] (listType () (tVar "a"))
+            , vSpec "map" [ ( "f", tFun [ tVar "a" ] (tVar "b") ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "b"))
+            , vSpec "indexedMap" [ ( "f", tFun [ intType (), tVar "a" ] (tVar "b") ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "b"))
+            , vSpec "foldl" [ ( "f", tFun [ tVar "a", tVar "b" ] (tVar "b") ), ( "z", tVar "b" ), ( "list", listType () (tVar "a") ) ] (tVar "b")
+            , vSpec "foldr" [ ( "f", tFun [ tVar "a", tVar "b" ] (tVar "b") ), ( "z", tVar "b" ), ( "list", listType () (tVar "a") ) ] (tVar "b")
+            , vSpec "filter" [ ( "f", tFun [ tVar "a" ] (boolType ()) ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "a"))
+            , vSpec "filterMap" [ ( "f", tFun [ tVar "a" ] (maybeType () (tVar "b")) ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "b"))
+            , vSpec "length" [ ( "list", listType () (tVar "a") ) ] (intType ())
+            , vSpec "reverse" [ ( "list", listType () (tVar "a") ) ] (listType () (tVar "a"))
+            , vSpec "member" [ ( "ref", tVar "a" ), ( "list", listType () (tVar "a") ) ] (boolType ())
+            , vSpec "all" [ ( "f", tFun [ tVar "a" ] (boolType ()) ), ( "list", listType () (tVar "a") ) ] (boolType ())
+            , vSpec "any" [ ( "f", tFun [ tVar "a" ] (boolType ()) ), ( "list", listType () (tVar "a") ) ] (boolType ())
+            , vSpec "maximum" [ ( "list", listType () (tVar "comparable") ) ] (maybeType () (tVar "comparable"))
+            , vSpec "minimum" [ ( "list", listType () (tVar "comparable") ) ] (maybeType () (tVar "comparable"))
+            , vSpec "sum" [ ( "list", listType () (tVar "number") ) ] (tVar "number")
+            , vSpec "product" [ ( "list", listType () (tVar "number") ) ] (tVar "number")
+            , vSpec "append" [ ( "l1", listType () (tVar "a") ), ( "l2", listType () (tVar "a") ) ] (listType () (tVar "a"))
+            , vSpec "concat" [ ( "lists", listType () (listType () (tVar "a")) ) ] (listType () (tVar "a"))
+            , vSpec "concatMap" [ ( "f", tFun [ tVar "a" ] (listType () (tVar "b")) ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "b"))
+            , vSpec "intersperse" [ ( "a", tVar "a" ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "a"))
+            , vSpec "map2"
+                [ ( "f", tFun [ tVar "a", tVar "b" ] (tVar "r") )
+                , ( "list1", listType () (tVar "a") )
+                , ( "list2", listType () (tVar "b") )
                 ]
-
-            realValues : List ( Name, Value.Specification () )
-            realValues =
-                [ ( Name.fromString "map"
-                  , Value.Specification
-                        [ ( Name.fromString "f", Type.Unit () )
-                        , ( Name.fromString "list", Type.Unit () )
-                        ]
-                        (Type.Unit ())
-                  )
-                , ( Name.fromString "filter"
-                  , Value.Specification
-                        [ ( Name.fromString "f", Type.Unit () )
-                        , ( Name.fromString "list", Type.Unit () )
-                        ]
-                        (Type.Unit ())
-                  )
+                (listType () (tVar "r"))
+            , vSpec "map3"
+                [ ( "f", tFun [ tVar "a", tVar "b", tVar "c" ] (tVar "r") )
+                , ( "list1", listType () (tVar "a") )
+                , ( "list2", listType () (tVar "b") )
+                , ( "list3", listType () (tVar "c") )
                 ]
-        in
-        valueNames
-            |> List.map
-                (\valueName ->
-                    ( Name.fromString valueName, dummyValueSpec )
-                )
-            |> List.append realValues
-            |> Dict.fromList
+                (listType () (tVar "r"))
+            , vSpec "map4"
+                [ ( "f", tFun [ tVar "a", tVar "b", tVar "c", tVar "d" ] (tVar "r") )
+                , ( "list1", listType () (tVar "a") )
+                , ( "list2", listType () (tVar "b") )
+                , ( "list3", listType () (tVar "c") )
+                , ( "list4", listType () (tVar "d") )
+                ]
+                (listType () (tVar "r"))
+            , vSpec "map5"
+                [ ( "f", tFun [ tVar "a", tVar "b", tVar "c", tVar "d", tVar "e" ] (tVar "r") )
+                , ( "list1", listType () (tVar "a") )
+                , ( "list2", listType () (tVar "b") )
+                , ( "list3", listType () (tVar "c") )
+                , ( "list4", listType () (tVar "d") )
+                , ( "list5", listType () (tVar "e") )
+                ]
+                (listType () (tVar "r"))
+            , vSpec "sort" [ ( "list", listType () (tVar "comparable") ) ] (listType () (tVar "comparable"))
+            , vSpec "sortBy" [ ( "f", tFun [ tVar "a" ] (tVar "comparable") ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "a"))
+            , vSpec "sortWith" [ ( "f", tFun [ tVar "a", tVar "a" ] (orderType ()) ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "a"))
+            , vSpec "isEmpty" [ ( "list", listType () (tVar "a") ) ] (boolType ())
+            , vSpec "head" [ ( "list", listType () (tVar "a") ) ] (maybeType () (tVar "a"))
+            , vSpec "tail" [ ( "list", listType () (tVar "a") ) ] (maybeType () (listType () (tVar "a")))
+            , vSpec "take" [ ( "n", intType () ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "a"))
+            , vSpec "drop" [ ( "n", intType () ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "a"))
+            , vSpec "partition" [ ( "f", tFun [ tVar "a" ] (boolType ()) ), ( "list", listType () (tVar "a") ) ] (Type.Tuple () [ listType () (tVar "a"), listType () (tVar "a") ])
+            , vSpec "unzip" [ ( "list", listType () (Type.Tuple () [ tVar "a", tVar "b" ]) ) ] (Type.Tuple () [ listType () (tVar "a"), listType () (tVar "b") ])
+            ]
     }
 
 

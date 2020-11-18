@@ -15,7 +15,24 @@
 -}
 
 
-module Morphir.IR.Package.Codec exposing (..)
+module Morphir.IR.Package.Codec exposing
+    ( encodeSpecification, decodeSpecification
+    , encodeDefinition, decodeDefinition
+    )
+
+{-| Codecs for types in the `Morphir.IR.Package` module.
+
+
+# Specification
+
+@docs encodeSpecification, decodeSpecification
+
+
+# Definition
+
+@docs encodeDefinition, decodeDefinition
+
+-}
 
 import Dict
 import Json.Decode as Decode
@@ -26,6 +43,8 @@ import Morphir.IR.Package exposing (Definition, Specification)
 import Morphir.IR.Path.Codec exposing (decodePath, encodePath)
 
 
+{-| Encode Specification.
+-}
 encodeSpecification : (ta -> Encode.Value) -> Specification ta -> Encode.Value
 encodeSpecification encodeTypeAttributes spec =
     Encode.object
@@ -43,6 +62,8 @@ encodeSpecification encodeTypeAttributes spec =
         ]
 
 
+{-| Decode Specification.
+-}
 decodeSpecification : Decode.Decoder ta -> Decode.Decoder (Specification ta)
 decodeSpecification decodeAttributes =
     Decode.map Specification
@@ -58,6 +79,8 @@ decodeSpecification decodeAttributes =
         )
 
 
+{-| Encode Definition.
+-}
 encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value) -> Definition ta va -> Encode.Value
 encodeDefinition encodeTypeAttributes encodeValueAttributes def =
     Encode.object
@@ -75,6 +98,8 @@ encodeDefinition encodeTypeAttributes encodeValueAttributes def =
         ]
 
 
+{-| Decode Definition.
+-}
 decodeDefinition : Decode.Decoder ta -> Decode.Decoder va -> Decode.Decoder (Definition ta va)
 decodeDefinition decodeAttributes decodeAttributes2 =
     Decode.map Definition

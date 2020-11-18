@@ -22,7 +22,8 @@ module Morphir.IR.Value exposing
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
-    , definitionToSpecification, uncurryApply, collectVariables
+    , definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
+    , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
     )
 
 {-| This module contains the building blocks of values in the Morphir IR.
@@ -64,7 +65,8 @@ which is just the specification of those. Value definitions can be typed or unty
 
 # Utilities
 
-@docs definitionToSpecification, uncurryApply, collectVariables
+@docs definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
+@docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
 
 -}
 
@@ -178,6 +180,94 @@ mapSpecificationAttributes f spec =
                 )
         )
         (Type.mapTypeAttributes f spec.output)
+
+
+{-| -}
+valueAttribute : Value ta va -> va
+valueAttribute v =
+    case v of
+        Literal a _ ->
+            a
+
+        Constructor a _ ->
+            a
+
+        Tuple a _ ->
+            a
+
+        List a _ ->
+            a
+
+        Record a _ ->
+            a
+
+        Variable a _ ->
+            a
+
+        Reference a _ ->
+            a
+
+        Field a _ _ ->
+            a
+
+        FieldFunction a _ ->
+            a
+
+        Apply a _ _ ->
+            a
+
+        Lambda a _ _ ->
+            a
+
+        LetDefinition a _ _ _ ->
+            a
+
+        LetRecursion a _ _ ->
+            a
+
+        Destructure a _ _ _ ->
+            a
+
+        IfThenElse a _ _ _ ->
+            a
+
+        PatternMatch a _ _ ->
+            a
+
+        UpdateRecord a _ _ ->
+            a
+
+        Unit a ->
+            a
+
+
+{-| -}
+patternAttribute : Pattern a -> a
+patternAttribute p =
+    case p of
+        WildcardPattern a ->
+            a
+
+        AsPattern a _ _ ->
+            a
+
+        TuplePattern a _ ->
+            a
+
+        ConstructorPattern a _ _ ->
+            a
+
+        EmptyListPattern a ->
+            a
+
+        HeadTailPattern a _ _ ->
+            a
+
+        LiteralPattern a _ ->
+            a
+
+        UnitPattern a ->
+            a
 
 
 {-| -}
@@ -304,6 +394,121 @@ mapDefinitionAttributes f g d =
         (mapValueAttributes f g d.body)
 
 
+{-| -}
+collectValueAttributes : Value ta va -> List va
+collectValueAttributes v =
+    case v of
+        Literal a _ ->
+            [ a ]
+
+        Constructor a _ ->
+            [ a ]
+
+        Tuple a elements ->
+            a :: (elements |> List.concatMap collectValueAttributes)
+
+        List a items ->
+            a :: (items |> List.concatMap collectValueAttributes)
+
+        Record a fields ->
+            a :: (fields |> List.concatMap (Tuple.second >> collectValueAttributes))
+
+        Variable a _ ->
+            [ a ]
+
+        Reference a _ ->
+            [ a ]
+
+        Field a subjectValue _ ->
+            a :: collectValueAttributes subjectValue
+
+        FieldFunction a _ ->
+            [ a ]
+
+        Apply a function argument ->
+            a :: (collectValueAttributes function ++ collectValueAttributes argument)
+
+        Lambda a argumentPattern body ->
+            a :: (collectPatternAttributes argumentPattern ++ collectValueAttributes body)
+
+        LetDefinition a _ valueDefinition inValue ->
+            a :: (collectDefinitionAttributes valueDefinition ++ collectValueAttributes inValue)
+
+        LetRecursion a valueDefinitions inValue ->
+            a
+                :: List.append
+                    (valueDefinitions
+                        |> Dict.toList
+                        |> List.concatMap (Tuple.second >> collectDefinitionAttributes)
+                    )
+                    (collectValueAttributes inValue)
+
+        Destructure a pattern valueToDestruct inValue ->
+            a :: (collectPatternAttributes pattern ++ collectValueAttributes valueToDestruct ++ collectValueAttributes inValue)
+
+        IfThenElse a condition thenBranch elseBranch ->
+            a :: (collectValueAttributes condition ++ collectValueAttributes thenBranch ++ collectValueAttributes elseBranch)
+
+        PatternMatch a branchOutOn cases ->
+            a
+                :: List.append
+                    (collectValueAttributes branchOutOn)
+                    (cases
+                        |> List.concatMap
+                            (\( pattern, body ) ->
+                                collectPatternAttributes pattern ++ collectValueAttributes body
+                            )
+                    )
+
+        UpdateRecord a valueToUpdate fieldsToUpdate ->
+            a
+                :: List.append
+                    (collectValueAttributes valueToUpdate)
+                    (fieldsToUpdate
+                        |> List.concatMap (Tuple.second >> collectValueAttributes)
+                    )
+
+        Unit a ->
+            [ a ]
+
+
+{-| -}
+collectPatternAttributes : Pattern a -> List a
+collectPatternAttributes p =
+    case p of
+        WildcardPattern a ->
+            [ a ]
+
+        AsPattern a p2 _ ->
+            a :: collectPatternAttributes p2
+
+        TuplePattern a elementPatterns ->
+            a :: (elementPatterns |> List.concatMap collectPatternAttributes)
+
+        ConstructorPattern a _ argumentPatterns ->
+            a :: (argumentPatterns |> List.concatMap collectPatternAttributes)
+
+        EmptyListPattern a ->
+            [ a ]
+
+        HeadTailPattern a headPattern tailPattern ->
+            a :: (collectPatternAttributes headPattern ++ collectPatternAttributes tailPattern)
+
+        LiteralPattern a _ ->
+            [ a ]
+
+        UnitPattern a ->
+            [ a ]
+
+
+{-| -}
+collectDefinitionAttributes : Definition ta va -> List va
+collectDefinitionAttributes d =
+    List.append
+        (d.inputTypes |> List.map (\( _, attr, _ ) -> attr))
+        (collectValueAttributes d.body)
+
+
 {-| Collect all variables in a value recursively.
 -}
 collectVariables : Value ta va -> Set Name
@@ -370,6 +575,286 @@ collectVariables value =
 
         _ ->
             Set.empty
+
+
+{-| Map attributes of a value while supplying an index to the map function. The index is incremented depth first.
+-}
+indexedMapValue : (Int -> a -> b) -> Int -> Value ta a -> ( Value ta b, Int )
+indexedMapValue f baseIndex value =
+    case value of
+        Literal a lit ->
+            ( Literal (f baseIndex a) lit, baseIndex )
+
+        Constructor a fullyQualifiedName ->
+            ( Constructor (f baseIndex a) fullyQualifiedName, baseIndex )
+
+        Tuple a elems ->
+            let
+                ( mappedElems, elemsLastIndex ) =
+                    indexedMapListHelp (indexedMapValue f) baseIndex elems
+            in
+            ( Tuple (f baseIndex a) mappedElems, elemsLastIndex )
+
+        List a values ->
+            let
+                ( mappedValues, valuesLastIndex ) =
+                    indexedMapListHelp (indexedMapValue f) baseIndex values
+            in
+            ( List (f baseIndex a) mappedValues, valuesLastIndex )
+
+        Record a fields ->
+            let
+                ( mappedFields, valuesLastIndex ) =
+                    indexedMapListHelp
+                        (\fieldBaseIndex ( fieldName, fieldValue ) ->
+                            let
+                                ( mappedFieldValue, lastFieldIndex ) =
+                                    indexedMapValue f fieldBaseIndex fieldValue
+                            in
+                            ( ( fieldName, mappedFieldValue ), lastFieldIndex )
+                        )
+                        baseIndex
+                        fields
+            in
+            ( Record (f baseIndex a) mappedFields, valuesLastIndex )
+
+        Variable a name ->
+            ( Variable (f baseIndex a) name, baseIndex )
+
+        Reference a fQName ->
+            ( Reference (f baseIndex a) fQName, baseIndex )
+
+        Field a subjectValue name ->
+            let
+                ( mappedSubjectValue, subjectValueLastIndex ) =
+                    indexedMapValue f (baseIndex + 1) subjectValue
+            in
+            ( Field (f baseIndex a) mappedSubjectValue name, subjectValueLastIndex )
+
+        FieldFunction a name ->
+            ( FieldFunction (f baseIndex a) name, baseIndex )
+
+        Apply a funValue argValue ->
+            let
+                ( mappedFunValue, funValueLastIndex ) =
+                    indexedMapValue f (baseIndex + 1) funValue
+
+                ( mappedArgValue, argValueLastIndex ) =
+                    indexedMapValue f (funValueLastIndex + 1) argValue
+            in
+            ( Apply (f baseIndex a) mappedFunValue mappedArgValue, argValueLastIndex )
+
+        Lambda a argPattern bodyValue ->
+            let
+                ( mappedArgPattern, argPatternLastIndex ) =
+                    indexedMapPattern f (baseIndex + 1) argPattern
+
+                ( mappedBodyValue, bodyValueLastIndex ) =
+                    indexedMapValue f (argPatternLastIndex + 1) bodyValue
+            in
+            ( Lambda (f baseIndex a) mappedArgPattern mappedBodyValue, bodyValueLastIndex )
+
+        LetDefinition a defName def inValue ->
+            let
+                ( mappedDefArgs, defArgsLastIndex ) =
+                    indexedMapListHelp
+                        (\inputBaseIndex ( inputName, inputA, inputType ) ->
+                            ( ( inputName, f inputBaseIndex inputA, inputType ), inputBaseIndex )
+                        )
+                        baseIndex
+                        def.inputTypes
+
+                ( mappedDefBody, defBodyLastIndex ) =
+                    indexedMapValue f (defArgsLastIndex + 1) def.body
+
+                mappedDef =
+                    { inputTypes =
+                        mappedDefArgs
+                    , outputType =
+                        def.outputType
+                    , body =
+                        mappedDefBody
+                    }
+
+                ( mappedInValue, inValueLastIndex ) =
+                    indexedMapValue f (defBodyLastIndex + 1) inValue
+            in
+            ( LetDefinition (f baseIndex a) defName mappedDef mappedInValue, inValueLastIndex )
+
+        LetRecursion a defs inValue ->
+            let
+                ( mappedDefs, defsLastIndex ) =
+                    if Dict.isEmpty defs then
+                        ( [], baseIndex )
+
+                    else
+                        indexedMapListHelp
+                            (\defBaseIndex ( defName, def ) ->
+                                let
+                                    ( mappedDefArgs, defArgsLastIndex ) =
+                                        indexedMapListHelp
+                                            (\inputBaseIndex ( inputName, inputA, inputType ) ->
+                                                ( ( inputName, f inputBaseIndex inputA, inputType ), inputBaseIndex )
+                                            )
+                                            (defBaseIndex - 1)
+                                            def.inputTypes
+
+                                    ( mappedDefBody, defBodyLastIndex ) =
+                                        indexedMapValue f (defArgsLastIndex + 1) def.body
+
+                                    mappedDef =
+                                        { inputTypes =
+                                            mappedDefArgs
+                                        , outputType =
+                                            def.outputType
+                                        , body =
+                                            mappedDefBody
+                                        }
+                                in
+                                ( ( defName, mappedDef ), defBodyLastIndex )
+                            )
+                            baseIndex
+                            (defs |> Dict.toList)
+
+                ( mappedInValue, inValueLastIndex ) =
+                    indexedMapValue f (defsLastIndex + 1) inValue
+            in
+            ( LetRecursion (f baseIndex a) (mappedDefs |> Dict.fromList) mappedInValue, inValueLastIndex )
+
+        Destructure a bindPattern bindValue inValue ->
+            let
+                ( mappedBindPattern, bindPatternLastIndex ) =
+                    indexedMapPattern f (baseIndex + 1) bindPattern
+
+                ( mappedBindValue, bindValueLastIndex ) =
+                    indexedMapValue f (bindPatternLastIndex + 1) bindValue
+
+                ( mappedInValue, inValueLastIndex ) =
+                    indexedMapValue f (bindValueLastIndex + 1) inValue
+            in
+            ( Destructure (f baseIndex a) mappedBindPattern mappedBindValue mappedInValue, inValueLastIndex )
+
+        IfThenElse a condValue thenValue elseValue ->
+            let
+                ( mappedCondValue, condValueLastIndex ) =
+                    indexedMapValue f (baseIndex + 1) condValue
+
+                ( mappedThenValue, thenValueLastIndex ) =
+                    indexedMapValue f (condValueLastIndex + 1) thenValue
+
+                ( mappedElseValue, elseValueLastIndex ) =
+                    indexedMapValue f (thenValueLastIndex + 1) elseValue
+            in
+            ( IfThenElse (f baseIndex a) mappedCondValue mappedThenValue mappedElseValue, elseValueLastIndex )
+
+        PatternMatch a subjectValue cases ->
+            let
+                ( mappedSubjectValue, subjectValueLastIndex ) =
+                    indexedMapValue f (baseIndex + 1) subjectValue
+
+                ( mappedCases, casesLastIndex ) =
+                    indexedMapListHelp
+                        (\fieldBaseIndex ( casePattern, caseBody ) ->
+                            let
+                                ( mappedCasePattern, casePatternLastIndex ) =
+                                    indexedMapPattern f fieldBaseIndex casePattern
+
+                                ( mappedCaseBody, caseBodyLastIndex ) =
+                                    indexedMapValue f (casePatternLastIndex + 1) caseBody
+                            in
+                            ( ( mappedCasePattern, mappedCaseBody ), caseBodyLastIndex )
+                        )
+                        (subjectValueLastIndex + 1)
+                        cases
+            in
+            ( PatternMatch (f baseIndex a) mappedSubjectValue mappedCases, casesLastIndex )
+
+        UpdateRecord a subjectValue fields ->
+            let
+                ( mappedSubjectValue, subjectValueLastIndex ) =
+                    indexedMapValue f (baseIndex + 1) subjectValue
+
+                ( mappedFields, valuesLastIndex ) =
+                    indexedMapListHelp
+                        (\fieldBaseIndex ( fieldName, fieldValue ) ->
+                            let
+                                ( mappedFieldValue, lastFieldIndex ) =
+                                    indexedMapValue f fieldBaseIndex fieldValue
+                            in
+                            ( ( fieldName, mappedFieldValue ), lastFieldIndex )
+                        )
+                        (subjectValueLastIndex + 1)
+                        fields
+            in
+            ( UpdateRecord (f baseIndex a) mappedSubjectValue mappedFields, valuesLastIndex )
+
+        Unit a ->
+            ( Unit (f baseIndex a), baseIndex )
+
+
+{-| Map attributes of a pattern while supplying an index to the map function. The index is incremented depth first.
+-}
+indexedMapPattern : (Int -> a -> b) -> Int -> Pattern a -> ( Pattern b, Int )
+indexedMapPattern f baseIndex pattern =
+    case pattern of
+        WildcardPattern a ->
+            ( WildcardPattern (f baseIndex a), baseIndex )
+
+        AsPattern a aliasedPattern alias ->
+            let
+                ( mappedAliasedPattern, lastIndex ) =
+                    indexedMapPattern f (baseIndex + 1) aliasedPattern
+            in
+            ( AsPattern (f baseIndex a) mappedAliasedPattern alias, lastIndex )
+
+        TuplePattern a elemPatterns ->
+            let
+                ( mappedElemPatterns, elemsLastIndex ) =
+                    indexedMapListHelp (indexedMapPattern f) baseIndex elemPatterns
+            in
+            ( TuplePattern (f baseIndex a) mappedElemPatterns, elemsLastIndex )
+
+        ConstructorPattern a fQName argPatterns ->
+            let
+                ( mappedArgPatterns, argPatternsLastIndex ) =
+                    indexedMapListHelp (indexedMapPattern f) baseIndex argPatterns
+            in
+            ( ConstructorPattern (f baseIndex a) fQName mappedArgPatterns, argPatternsLastIndex )
+
+        EmptyListPattern a ->
+            ( EmptyListPattern (f baseIndex a), baseIndex )
+
+        HeadTailPattern a headPattern tailPattern ->
+            let
+                ( mappedHeadPattern, lastIndexHeadPattern ) =
+                    indexedMapPattern f (baseIndex + 1) headPattern
+
+                ( mappedTailPattern, lastIndexTailPattern ) =
+                    indexedMapPattern f (lastIndexHeadPattern + 1) tailPattern
+            in
+            ( HeadTailPattern (f baseIndex a) mappedHeadPattern mappedTailPattern, lastIndexTailPattern )
+
+        LiteralPattern a lit ->
+            ( LiteralPattern (f baseIndex a) lit, baseIndex )
+
+        UnitPattern a ->
+            ( UnitPattern (f baseIndex a), baseIndex )
+
+
+{-| Helper function to `indexMap` a list of nodes in the IR.
+-}
+indexedMapListHelp : (Int -> a -> ( b, Int )) -> Int -> List a -> ( List b, Int )
+indexedMapListHelp f baseIndex elemList =
+    elemList
+        |> List.foldl
+            (\nextElem ( elemsSoFar, lastIndexSoFar ) ->
+                let
+                    ( mappedElem, lastIndex ) =
+                        f (lastIndexSoFar + 1) nextElem
+                in
+                ( elemsSoFar ++ [ mappedElem ], lastIndex )
+            )
+            ( [], baseIndex )
 
 
 

@@ -15,19 +15,23 @@
 -}
 
 
-port module Morphir.Elm.CLI exposing (main)
+port module Morphir.Elm.CLI exposing (..)
 
 import Dict
 import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
-import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile)
-import Morphir.Elm.Frontend.Codec exposing (decodePackageInfo, encodeError)
+import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
+import Morphir.Elm.Frontend.Codec as FrontendCodec exposing (decodePackageInfo)
 import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.Package as Package
-import Morphir.IR.Package.Codec as PackageCodec
+import Morphir.IR.Type exposing (Type)
+import Morphir.Type.Infer as Infer
+import Morphir.Type.Infer.Codec exposing (encodeValueTypeError)
+import Morphir.Type.MetaTypeMapping as MetaTypeMapping
+
 
 port packageDefinitionFromSource : (( Decode.Value, List SourceFile ) -> msg) -> Sub msg
 
@@ -49,6 +53,11 @@ type Msg
     | Generate ( Decode.Value, Decode.Value )
 
 
+type Error
+    = FrontendError Frontend.Errors
+    | TypeError (List Infer.ValueTypeError)
+
+
 main : Platform.Program () () Msg
 main =
     Platform.worker
@@ -65,20 +74,54 @@ update msg model =
             case Decode.decodeValue decodePackageInfo packageInfoJson of
                 Ok packageInfo ->
                     let
-                        result =
+                        frontendResult : Result Error (Package.Definition Frontend.SourceLocation Frontend.SourceLocation)
+                        frontendResult =
                             Frontend.packageDefinitionFromSource packageInfo Dict.empty sourceFiles
-                                |> Result.map Package.eraseDefinitionAttributes
-                                |> Result.map (Distribution.Library packageInfo.name Dict.empty)
+                                |> Result.mapError FrontendError
+
+                        typedResult : Result Error (Package.Definition () ( Frontend.SourceLocation, Type () ))
+                        typedResult =
+                            frontendResult
+                                |> Result.andThen
+                                    (\packageDef ->
+                                        let
+                                            thisPackageSpec : Package.Specification ()
+                                            thisPackageSpec =
+                                                packageDef
+                                                    |> Package.definitionToSpecification
+                                                    |> Package.mapSpecificationAttributes (\_ -> ()) (\_ -> ())
+
+                                            references : MetaTypeMapping.References
+                                            references =
+                                                Frontend.defaultDependencies
+                                                    |> Dict.insert packageInfo.name thisPackageSpec
+                                        in
+                                        packageDef
+                                            |> Package.mapDefinitionAttributes (\_ -> ()) identity
+                                            |> Infer.inferPackageDefinition references
+                                            |> Result.mapError TypeError
+                                    )
                     in
-                    ( model, result |> encodeResult (Encode.list encodeError) DistributionCodec.encodeDistribution |> packageDefinitionFromSourceResult )
+                    ( model
+                    , typedResult
+                        |> Result.map (Package.mapDefinitionAttributes identity (\( _, tpe ) -> tpe))
+                        |> Result.map (Distribution.Library packageInfo.name Dict.empty)
+                        |> encodeResult encodeError DistributionCodec.encodeDistribution
+                        |> packageDefinitionFromSourceResult
+                    )
 
                 Err errorMessage ->
-                    ( model, errorMessage |> Decode.errorToString |> decodeError )
+                    ( model
+                    , errorMessage
+                        |> Decode.errorToString
+                        |> decodeError
+                    )
 
         Generate ( optionsJson, packageDistJson ) ->
             let
                 targetOption =
-                   Decode.decodeValue (field "target" string) optionsJson
+                    Decode.decodeValue (field "target" string) optionsJson
+
                 optionsResult =
                     Decode.decodeValue (decodeOptions targetOption) optionsJson
 
@@ -111,7 +154,7 @@ subscriptions _ =
 
 
 encodeResult : (e -> Encode.Value) -> (a -> Encode.Value) -> Result e a -> Encode.Value
-encodeResult encodeError encodeValue result =
+encodeResult encodeErr encodeValue result =
     case result of
         Ok a ->
             Encode.list identity
@@ -121,6 +164,16 @@ encodeResult encodeError encodeValue result =
 
         Err e ->
             Encode.list identity
-                [ encodeError e
+                [ encodeErr e
                 , Encode.null
                 ]
+
+
+encodeError : Error -> Encode.Value
+encodeError error =
+    case error of
+        FrontendError frontendErrors ->
+            Encode.list FrontendCodec.encodeError frontendErrors
+
+        TypeError typeError ->
+            Encode.list encodeValueTypeError typeError
