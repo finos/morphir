@@ -15,7 +15,16 @@
 -}
 
 
-module Morphir.IR.Distribution.Codec exposing (..)
+module Morphir.IR.Distribution.Codec exposing (encodeDistribution, decodeDistribution)
+
+{-| Codecs for types in the `Morphir.IR.Distribution` module.
+
+
+# Distribution
+
+@docs encodeDistribution, decodeDistribution
+
+-}
 
 import Dict
 import Json.Decode as Decode
@@ -27,6 +36,8 @@ import Morphir.IR.Path.Codec exposing (decodePath, encodePath)
 import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
 
 
+{-| Encode Distribution.
+-}
 encodeDistribution : Distribution -> Encode.Value
 encodeDistribution distro =
     case distro of
@@ -49,6 +60,8 @@ encodeDistribution distro =
                 ]
 
 
+{-| Decode Distribution.
+-}
 decodeDistribution : Decode.Decoder Distribution
 decodeDistribution =
     Decode.index 0 Decode.string
