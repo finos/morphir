@@ -17,14 +17,17 @@
 
 module Morphir.IR.SDK.Basics exposing (..)
 
-import Dict
+import Dict exposing (Dict)
 import Morphir.IR.Documented exposing (Documented)
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Value.Error exposing (Error(..))
+import Morphir.Value.Native as Native
 
 
 moduleName : ModuleName
@@ -117,6 +120,71 @@ moduleSpec =
             , vSpec "never" [ ( "a", neverType () ) ] (tVar "a")
             ]
     }
+
+
+nativeFunctions : List ( String, Native.Function )
+nativeFunctions =
+    [ ( "not"
+      , Native.unaryStrict
+            (Native.mapLiteral
+                (\lit ->
+                    case lit of
+                        BoolLiteral v ->
+                            Ok (BoolLiteral (not v))
+
+                        _ ->
+                            Err (ExpectedBoolLiteral lit)
+                )
+            )
+      )
+    , ( "and"
+      , Native.binaryLazy
+            (\eval arg1 arg2 ->
+                eval arg1
+                    |> Result.andThen
+                        (\a1 ->
+                            case a1 of
+                                Value.Literal _ (BoolLiteral False) ->
+                                    Ok (Value.Literal () (BoolLiteral False))
+
+                                Value.Literal _ (BoolLiteral True) ->
+                                    eval arg2
+
+                                _ ->
+                                    Err (ExpectedLiteral arg1)
+                        )
+            )
+      )
+    , ( "or"
+      , Native.binaryLazy
+            (\eval arg1 arg2 ->
+                eval arg1
+                    |> Result.andThen
+                        (\a1 ->
+                            case a1 of
+                                Value.Literal _ (BoolLiteral True) ->
+                                    Ok (Value.Literal () (BoolLiteral True))
+
+                                Value.Literal _ (BoolLiteral False) ->
+                                    eval arg2
+
+                                _ ->
+                                    Err (ExpectedLiteral arg1)
+                        )
+            )
+      )
+    , ( "xor"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                case ( arg1, arg2 ) of
+                    ( Value.Literal _ (BoolLiteral v1), Value.Literal _ (BoolLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (xor v1 v2)))
+
+                    _ ->
+                        Err (UnexpectedArguments [ arg1, arg2 ])
+            )
+      )
+    ]
 
 
 orderType : a -> Type a

@@ -17,7 +17,8 @@
 
 module Morphir.IR.SDK exposing (..)
 
-import Dict
+import Dict exposing (Dict)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
@@ -34,6 +35,7 @@ import Morphir.IR.SDK.Set as Set
 import Morphir.IR.SDK.StatefulApp as StatefulApp
 import Morphir.IR.SDK.String as String
 import Morphir.IR.SDK.Tuple as Tuple
+import Morphir.Value.Native as Native
 
 
 packageName : PackageName
@@ -61,3 +63,21 @@ packageSpec =
             , ( [ [ "rule" ] ], Rule.moduleSpec )
             ]
     }
+
+
+nativeFunctions : Dict ( Path, Path, Name ) Native.Function
+nativeFunctions =
+    let
+        moduleFunctions : String -> List ( String, Native.Function ) -> Dict ( Path, Path, Name ) Native.Function
+        moduleFunctions moduleName functionsByName =
+            functionsByName
+                |> List.map
+                    (\( localName, fun ) ->
+                        ( ( packageName, Path.fromString moduleName, Name.fromString localName ), fun )
+                    )
+                |> Dict.fromList
+    in
+    List.foldl Dict.union
+        Dict.empty
+        [ moduleFunctions "Basics" Basics.nativeFunctions
+        ]
