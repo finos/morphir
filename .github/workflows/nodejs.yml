@@ -33,6 +33,7 @@ jobs:
   publish-elm-package:
     needs: [build]
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'finos'
 
     steps:
       - uses: actions/checkout@v2
