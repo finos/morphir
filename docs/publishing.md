@@ -2,30 +2,19 @@ This document describes how maintainers can push new releases of `morphir-elm` i
 
 # Publishing the Elm package
 
-1. Clone the `finos/morphir-elm` github repo or pull the latest from the master branch if you have a clone already.
-    ```
-    git clone https://github.com/finos/morphir-elm.git
-    ```
-    or
-    ```
-    git pull origin master
-    ```
-2. Run `elm bump` to get the version number in your `elm.json` updated.
+Elm package publishing is automated through a GitHub action so all you need to do is use `elm bump` to let elm calculate 
+the new version number and push it directly if you are a maintainer or get it merged through a PR as a contributor. 
+The GitHub action will take care of the rest. Here are the detailed steps:  
+
+1. Run `elm bump` to get the version number in your `elm.json` updated.
     - This will calculate the new version number and ask you to confirm.
-3. Commit the `elm.json` change.
+2. Commit the `elm.json` change.
     ```
     git add elm.json
     git commit -m "Bump Elm package version"
     ```
-4. Create and push a new tag with the release number.
-    ```
-    git tag <version>
-    git push --tags origin master
-    ```
-5. Run `elm publish` to get the new release registered in [the Elm package repo](https://package.elm-lang.org/)
-    ```
-    elm publish
-    ```
+3. Create a PR to update the version number on the `master` branch.
+4. When the PR is merged a GitHub action will publish the Elm package.
 
 # Publishing the NPM package
 
