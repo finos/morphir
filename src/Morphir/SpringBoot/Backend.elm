@@ -263,7 +263,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                             ++ (moduleName |> Name.toTitleCase)
                                             ++ "."
                                             ++ (functionName |> Name.toList |> String.join "")
-                                            ++ ")"
+                                            ++ " _ )"
                                         )
                                     )
                                 ]
@@ -414,7 +414,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                         , body =
                                             Just
                                                 (Scala.Variable
-                                                    "{statefulApp.businessLogic(state, command)}"
+                                                    "{statefulApp.businessLogic(state)(command)}"
                                                 )
                                         }
                                     )
@@ -568,8 +568,11 @@ mapStatefulAppDefinition currentPackagePath currentModulePath =
                                 [ TypeVar "K", TypeVar "C", TypeVar "S", TypeVar "E" ]
                             , ctorArgs =
                                 [ [ ArgDecl []
-                                        (FunctionType (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "C" ])
-                                            (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
+                                        (FunctionType (TypeVar "morphir.sdk.Maybe.Maybe[S]")
+                                            (FunctionType
+                                                (TypeVar "C")
+                                                (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
+                                            )
                                         )
                                         "businessLogic"
                                         Nothing

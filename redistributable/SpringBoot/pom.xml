@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.generated</groupId>
 	<artifactId>generated</artifactId>
-	<version>1.0.1-SNAPSHOT</version>
+	<version>1.0.0</version>
 	<name>generated</name>
 	<description>Generated project for Spring Boot</description>
 
@@ -27,11 +27,6 @@
 	</repositories>
 
 	<dependencies>
-		<dependency>
-			<groupId>org.scala-lang</groupId>
-			<artifactId>scala-library</artifactId>
-			<version>2.13.3</version>
-		</dependency>
 
 		<dependency>
 			<groupId>io.springfox</groupId>
@@ -53,7 +48,7 @@
 		<dependency>
 			<groupId>org.morphir</groupId>
 			<artifactId>morphir-sdk-core_2.13</artifactId>
-			<version>0.1.5</version>
+			<version>0.2.2</version>
 		</dependency>
 
 		<dependency>
@@ -96,8 +91,28 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>net.alchim31.maven</groupId>
+				<artifactId>scala-maven-plugin</artifactId>
+				<version>4.4.0</version>
+				<executions>
+					<execution>
+						<id>scala-compile-first</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>add-source</goal>
+							<goal>compile</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- This builds the fat JAR -->
+			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<mainClass>morphir.reference.model.MainApplication</mainClass>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
