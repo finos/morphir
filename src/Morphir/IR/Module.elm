@@ -16,17 +16,31 @@
 
 
 module Morphir.IR.Module exposing
-    ( Specification, Definition
+    ( ModuleName
+    , Specification, emptySpecification
+    , Definition
+    , definitionToSpecification
     , lookupTypeSpecification, lookupValueSpecification
-    , ModuleName, definitionToSpecification, eraseSpecificationAttributes, mapDefinitionAttributes, mapSpecificationAttributes
+    , eraseSpecificationAttributes, eraseDefinitionAttributes
+    , mapDefinitionAttributes, mapSpecificationAttributes
     )
 
-{-| Modules are groups of types and values that belong together.
+{-| Modules are used to group types and values together to make them easier to find. A module serves the same purpose as
+a package in Java or namespaces in other languages. A module is identified by a module name within the package. Within a
+module each type and value is identified using a local name.
+
+@docs ModuleName
 
 
-# Specification and Definition
+# Specification vs Definition
 
-@docs Specification, Definition
+Modules are available at two different levels of detail. A module specification only contains types that are exposed
+publicly and type signatures for values that are exposed publicly. A module definition contains all the details
+including implementation and private types and values.
+
+@docs Specification, emptySpecification
+@docs Definition, emptyDefinition
+@docs definitionToSpecification
 
 
 # Lookups
@@ -34,9 +48,10 @@ module Morphir.IR.Module exposing
 @docs lookupTypeSpecification, lookupValueSpecification
 
 
-# Other Utilities
+# Manage attributes
 
-@docs ModuleName, definitionToSpecification, eraseSpecificationAttributes, mapDefinitionAttributes, mapSpecificationAttributes
+@docs eraseSpecificationAttributes, eraseDefinitionAttributes
+@docs mapDefinitionAttributes, mapSpecificationAttributes
 
 -}
 
@@ -49,12 +64,21 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 
 
-{-| -}
+{-| A module name is a unique identifier for a module within a package. It is represented by a path, which is a list of
+names.
+-}
 type alias ModuleName =
     Path
 
 
-{-| Type that represents a module specification.
+{-| Type that represents a module specification. A module specification only contains types that are exposed
+publicly and type signatures for values that are exposed publicly.
+
+A module contains types and values which is represented by two field in this type:
+
+  - types: a dictionary of local name to documented type specification.
+  - values: a dictionary of local name to value specification.
+
 -}
 type alias Specification ta =
     { types : Dict Name (Documented (Type.Specification ta))
@@ -62,7 +86,8 @@ type alias Specification ta =
     }
 
 
-{-| -}
+{-| Get an empty module specification with no types or values.
+-}
 emptySpecification : Specification ta
 emptySpecification =
     { types = Dict.empty
@@ -70,11 +95,27 @@ emptySpecification =
     }
 
 
-{-| Type that represents a module definition. It includes types and values.
+{-| Type that represents a module definition. A module definition contains all the details
+including implementation and private types and values.
+
+A module contains types and values which is represented by two field in this type:
+
+  - types: a dictionary of local name to access controlled, documented type specification.
+  - values: a dictionary of local name to access controlled value specification.
+
 -}
 type alias Definition ta va =
     { types : Dict Name (AccessControlled (Documented (Type.Definition ta)))
     , values : Dict Name (AccessControlled (Value.Definition ta va))
+    }
+
+
+{-| Get an empty module definition with no types or values.
+-}
+emptyDefinition : Definition ta va
+emptyDefinition =
+    { types = Dict.empty
+    , values = Dict.empty
     }
 
 
@@ -95,7 +136,9 @@ lookupValueSpecification localName moduleSpec =
         |> Dict.get localName
 
 
-{-| -}
+{-| Turn a module definition into a module specification. Only publicly exposed types and values will be included in the
+result.
+-}
 definitionToSpecification : Definition ta va -> Specification ta
 definitionToSpecification def =
     { types =
@@ -127,16 +170,25 @@ definitionToSpecification def =
     }
 
 
-{-| -}
+{-| Remove all type attributes from a module specification.
+-}
 eraseSpecificationAttributes : Specification ta -> Specification ()
 eraseSpecificationAttributes spec =
     spec
-        |> mapSpecificationAttributes (\_ -> ()) (\_ -> ())
+        |> mapSpecificationAttributes (\_ -> ())
+
+
+{-| Remove all type attributes from a module definition.
+-}
+eraseDefinitionAttributes : Definition ta va -> Definition () ()
+eraseDefinitionAttributes def =
+    def
+        |> mapDefinitionAttributes (\_ -> ()) (\_ -> ())
 
 
 {-| -}
-mapSpecificationAttributes : (ta -> tb) -> (va -> vb) -> Specification ta -> Specification tb
-mapSpecificationAttributes tf vf spec =
+mapSpecificationAttributes : (ta -> tb) -> Specification ta -> Specification tb
+mapSpecificationAttributes tf spec =
     Specification
         (spec.types
             |> Dict.map
