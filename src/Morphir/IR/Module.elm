@@ -18,7 +18,7 @@
 module Morphir.IR.Module exposing
     ( ModuleName
     , Specification, emptySpecification
-    , Definition
+    , Definition, emptyDefinition
     , definitionToSpecification
     , lookupTypeSpecification, lookupValueSpecification
     , eraseSpecificationAttributes, eraseDefinitionAttributes
