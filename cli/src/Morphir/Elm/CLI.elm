@@ -89,7 +89,7 @@ update msg model =
                                             thisPackageSpec =
                                                 packageDef
                                                     |> Package.definitionToSpecification
-                                                    |> Package.mapSpecificationAttributes (\_ -> ()) (\_ -> ())
+                                                    |> Package.mapSpecificationAttributes (\_ -> ())
 
                                             references : MetaTypeMapping.References
                                             references =
