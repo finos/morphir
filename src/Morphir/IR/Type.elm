@@ -71,16 +71,57 @@ import Morphir.ListOfResults as ListOfResults
 import Set exposing (Set)
 
 
-{-| An opaque representation of a type. Check out the docs for each building blocks
-for more details:
+{-| Represents a type expression that can appear in various places within the IR. It can be the right-hand-side of
+a type alias declaration, input and output types of a function or as an annotation on values after type inference is
+done.
 
-  - type variable: [creation](#variable), [matching](#matchVariable)
-  - type reference: [creation](#reference), [matching](#matchReference)
-  - tuple type: [creation](#tuple), [matching](#matchTuple)
-  - record type: [creation](#record), [matching](#matchRecord)
-  - extensible record type: [creation](#extensibleRecord), [matching](#matchExtensibleRecord)
-  - function type: [creation](#function), [matching](#matchFunction)
-  - unit type: [creation](#unit), [matching](#matchUnit)
+Type are modeled as expression trees: a recursive data structure with various node types. The type argument `a` allows
+us to assign some additional attributes to each node in the tree. Here are some details on each node type in the tree:
+
+  - **Variable**
+      - Represents a type variable.
+      - It has a single argument which captures the name of the variable.
+      - [Wikipedia: Type variable](https://en.wikipedia.org/wiki/Type_variable)
+      - [creation](#variable), [matching](#matchVariable)
+  - **Reference**
+      - A fully-qualified reference to some other type or type alias within the package or one of its dependencies.
+      - References to built-in types (like `Int`, `String`, ...) don't have an associated definition.
+      - [creation](#reference), [matching](#matchReference)
+  - **Tuple**
+      - A tuple is a composition of other types (potentially other tuples).
+      - The order of types is relevant so the easiest way to think about it is as a list of types.
+      - A tuple can have any number of elements and there is no restriction on the element types.
+      - A tuple with zero elements is equivalent with `Unit`.
+      - A tuple with a single element is equivalent to the element type itself.
+      - [Wikipedia: Tuple](https://en.wikipedia.org/wiki/Tuple)
+      - [creation](#tuple), [matching](#matchTuple)
+  - **Record**
+      - A record is a composition of other types like tuples but types are identified by a field name instead of an index.
+      - The best way to think of a record is as a dictionary of types.
+      - Our representation captures the order of fields for convenience but the order should not be considered for type
+        equivalence.
+      - [Wikipedia: Record](https://en.wikipedia.org/wiki/Record_(computer_science))
+      - [Elm-lang: Records](https://elm-lang.org/docs/records)
+      - Utilities: [creation](#record), [matching](#matchRecord)
+  - **ExtensibleRecord**
+      - Similar to records but while record types declare that the underlying object has "exactly these fields" an
+        extensible record declares that the object has "at least these fields".
+      - Besides the list of fields you need to specify a variable name that will be used to abstract over the type
+        that's being extended.
+      - [Elm: Extensible records](https://ckoster22.medium.com/advanced-types-in-elm-extensible-records-67e9d804030d)
+      - [creation](#extensibleRecord), [matching](#matchExtensibleRecord)
+  - **Function**
+      - Represents the type of a function. The two arguments are the argument and the return type of the function.
+      - Multi-argument functions are represented by composing functions:
+          - `a -> b -> c` is represented as `a -> (b -> c)`
+      - [Wikipedia: Function type](https://en.wikipedia.org/wiki/Function_type)
+      - [creation](#function), [matching](#matchFunction)
+  - **Unit**
+      - Unit type is used as a placeholder in situations where a type is required but the corresponding value is unused.
+      - Semantically the unit type represents a set that has exactly one value which is often called unit.
+      - Unit corresponds to void in some other programming languages.
+      - [Wikipedia: Unit type](https://en.wikipedia.org/wiki/Unit_type)
+      - [creation](#unit), [matching](#matchUnit)
 
 -}
 type Type a
@@ -262,22 +303,22 @@ mapTypeAttributes f tpe =
 typeAttributes : Type a -> a
 typeAttributes tpe =
     case tpe of
-        Variable a name ->
+        Variable a _ ->
             a
 
-        Reference a fQName argTypes ->
+        Reference a _ _ ->
             a
 
-        Tuple a elemTypes ->
+        Tuple a _ ->
             a
 
-        Record a fields ->
+        Record a _ ->
             a
 
-        ExtensibleRecord a name fields ->
+        ExtensibleRecord a _ _ ->
             a
 
-        Function a argType returnType ->
+        Function a _ _ ->
             a
 
         Unit a ->

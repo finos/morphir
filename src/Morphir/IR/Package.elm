@@ -16,16 +16,25 @@
 
 
 module Morphir.IR.Package exposing
-    ( Specification
+    ( Specification, emptySpecification
     , Definition, emptyDefinition
     , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification
     , PackageName, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
     , mapDefinitionAttributes, mapSpecificationAttributes
     )
 
-{-| Tools to work with packages.
+{-| A package is collection of types and values that are versioned together. If this sounds abstract just think of any
+of the popular package managers you are familiar with: NPM, NuGet, Maven, pip or Cabal. What they consider a package is
+what this represents. A package contains modules which further group types and values.
 
-@docs Specification
+
+# Specification vs Definition
+
+Packages are available at two different levels of detail. A package specification only contains types that are exposed
+publicly and type signatures for values that are exposed publicly. A package definition contains all the details
+including implementation and private types and values.
+
+@docs Specification, emptySpecification
 
 @docs Definition, emptyDefinition
 
@@ -51,33 +60,39 @@ import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value
 
 
-{-| -}
+{-| A package name is a globally unique identifier for a package. It is represented by a path, which is a list of names.
+-}
 type alias PackageName =
     Path
 
 
-{-| Type that represents a package specification.
+{-| Type that represents a package specification. A package specification only contains types that are exposed publicly
+and type signatures for values that are exposed publicly.
 -}
 type alias Specification ta =
     { modules : Dict ModuleName (Module.Specification ta)
     }
 
 
-{-| -}
+{-| Get an empty package specification with no modules.
+-}
 emptySpecification : Specification ta
 emptySpecification =
     { modules = Dict.empty
     }
 
 
-{-| Type that represents a package definition.
+{-| Type that represents a package definition. A package definition contains all the details including implementation
+and private types and values. The modules field is a dictionary keyed by module name that contains access controlled
+module definitions. The `AccessControlled` adds access classifiers to each module to differentiate public and private
+modules.
 -}
 type alias Definition ta va =
     { modules : Dict ModuleName (AccessControlled (Module.Definition ta va))
     }
 
 
-{-| An empty package definition.
+{-| Get an empty package definition with no modules.
 -}
 emptyDefinition : Definition ta va
 emptyDefinition =
@@ -111,7 +126,9 @@ lookupValueSpecification modulePath localName packageSpec =
         |> Maybe.andThen (Module.lookupValueSpecification localName)
 
 
-{-| -}
+{-| Turn a package definition into a package specification. Only publicly exposed modules will be included in the
+result.
+-}
 definitionToSpecification : Definition ta va -> Specification ta
 definitionToSpecification def =
     { modules =
@@ -130,19 +147,21 @@ definitionToSpecification def =
     }
 
 
-{-| -}
-mapSpecificationAttributes : (ta -> tb) -> (va -> vb) -> Specification ta -> Specification tb
-mapSpecificationAttributes tf vf spec =
+{-| Map all type attributes of a package specification.
+-}
+mapSpecificationAttributes : (ta -> tb) -> Specification ta -> Specification tb
+mapSpecificationAttributes tf spec =
     Specification
         (spec.modules
             |> Dict.map
                 (\_ moduleSpec ->
-                    Module.mapSpecificationAttributes tf vf moduleSpec
+                    Module.mapSpecificationAttributes tf moduleSpec
                 )
         )
 
 
-{-| -}
+{-| Map all type and value attributes of a package definition.
+-}
 mapDefinitionAttributes : (ta -> tb) -> (va -> vb) -> Definition ta va -> Definition tb vb
 mapDefinitionAttributes tf vf def =
     Definition
@@ -155,14 +174,16 @@ mapDefinitionAttributes tf vf def =
         )
 
 
-{-| -}
+{-| Remove all type attributes from a package specification.
+-}
 eraseSpecificationAttributes : Specification ta -> Specification ()
 eraseSpecificationAttributes spec =
     spec
-        |> mapSpecificationAttributes (\_ -> ()) (\_ -> ())
+        |> mapSpecificationAttributes (\_ -> ())
 
 
-{-| -}
+{-| Remove all type and value attributes from a package definition.
+-}
 eraseDefinitionAttributes : Definition ta va -> Definition () ()
 eraseDefinitionAttributes def =
     def
