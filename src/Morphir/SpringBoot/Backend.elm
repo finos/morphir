@@ -658,7 +658,7 @@ addJacksonAnnotations annotatedMembers =
                                                             [ { modifiers = cons.modifiers
                                                               , tpe = cons.tpe
                                                               , name =
-                                                                    "@java.beans.BeanProperty "
+                                                                    "@scala.beans.BeanProperty "
                                                                         ++ "@com.fasterxml.jackson.annotation.JsonProperty (\""
                                                                         ++ cons.name
                                                                         ++ "\") "
