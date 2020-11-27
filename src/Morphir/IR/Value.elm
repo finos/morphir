@@ -26,7 +26,52 @@ module Morphir.IR.Value exposing
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
     )
 
-{-| This module contains the building blocks of values in the Morphir IR.
+{-| In functional programming data and logic are treated the same way and we refer to both as values. This module
+provides the building blocks for those values (data and logic) in the Morphir IR.
+
+If you use Elm as your frontend language for Morphir then you should think about all the logic and constant values that
+you can put in the body of a function. Here are a few examples:
+
+    myThreshold =
+        1000
+
+    min a b =
+        if a < b then
+            a
+
+        else
+            b
+
+    addTwo a =
+        a + 2
+
+All the above are values: the first one is just data, the second one is logic and the last one has both logic and data.
+In either case each value is represented by a [`Value`](#Value) expression. This is a recursive data structure with
+various node types representing each possible language construct. You can check out the documentation for values below
+to find more details. Here are the Morphir IR snippets for the above values as a quick reference:
+
+    myThreshold =
+        Literal () (IntLiteral 1000)
+
+    min a b =
+        IfThenElse ()
+            (Apply ()
+                (Apply ()
+                    (Reference () (fqn "Morphir.SDK" "Basics" "lessThan"))
+                    (Variable () [ "a" ])
+                )
+                (Variable () [ "b" ])
+            )
+            (Variable () [ "a" ])
+            (Variable () [ "b" ])
+
+    addTwo a =
+        Apply ()
+            (Apply ()
+                (Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                (Variable () [ "a" ])
+            )
+            (Literal () (IntLiteral 2))
 
 
 # Value
@@ -77,10 +122,75 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.ListOfResults as ListOfResults
 import Set exposing (Set)
-import String
 
 
-{-| Type that represents a value.
+{-| Type that represents a value expression. This is a recursive data structure with various node types representing
+each possible language construct.
+
+The extra type parameters `ta` and `va` allow you to add type and value attributes. Type attributes allow you to add
+extra information to each type node. Value attributes do the same for value nodes. In many cases you might not need this
+in which case you can just put a unit (`()`) type or a type variable as a placeholder.
+
+These are the supported node types:
+
+  - **Literal**
+      - Represents a literal value like 13, True or "foo".
+      - See the documentation in the [Literal](Morphir-IR-Literal) module for details on the supported literal types.
+      - See [Wikipedia: Literal](https://en.wikipedia.org/wiki/Literal_(computer_programming)) for more details on
+        literals.
+  - **Constructor**
+      - Reference to a custom type constructor name.
+      - If the type constructor has arguments this node will be wrapped into some `Apply` nodes depending on the number
+        of arguments.
+  - **Tuple**
+      - Represents a tuple value.
+      - Each element of the tuple is in turn a `Value`.
+  - **List**
+      - Represents a list of values.
+      - Each item of the list is in turn a `Value`.
+  - **Record**
+      - Represents a record value.
+      - Each field value of the record is in turn a `Value`.
+  - **Variable**
+      - Reference to a variable.
+  - **Reference**
+      - Reference to another value within or outside the module.
+      - References are always full-qualified to make resolution easier.
+  - **Field**
+      - Represents accessing a field on a record together with the target expression.
+      - This is done using the dot notation in Elm: `foo.bar`
+  - **FieldFunction**
+      - Represents accessing a field on a record without the target expression.
+      - This is a shortcut to refer to the function that extracts the field from the input.
+      - This is done using the dot notation in Elm without a target expression: `.bar`
+  - **Apply**
+      - Represents a function application.
+      - The two arguments are the target function and the argument.
+      - Multi-argument invocations are expressed by wrapping multiple `Apply` nodes in each other (currying).
+  - **Lambda**
+      - Represents a lambda abstraction.
+      - The first argument is a pattern to match on the input, the second is the lambda expression's body.
+  - **LetDefinition**
+      - Represents a single let binding.
+      - Multiple let bindings are achieved through wrapping multiple let expressions into each other.
+  - **LetRecursion**
+      - Special let binding that allows mutual recursion between the bindings.
+      - This is necessary because `LetDefinition` will not make recursion possible due to its scoping rules.
+  - **Destructure**
+      - Applies a pattern match to the first expression and passes any extracted variables to the second expression.
+      - This can be represented as a let expression with a pattern binding or a single-case pattern-match in Elm.
+  - **IfThenElse**
+      - Represents a simple if/then/else expression.
+      - The 3 arguments are: the condition, the then branch and the else branch.
+  - **PatternMatch**
+      - Represents a pattern-match.
+  - **UpdateRecord**
+      - Expression to update one or more fields of a record.
+      - As usual in FP this is a copy-on-update so no mutation is happening.
+  - **Unit**
+      - Represents the single value in the Unit type.
+      - When you find Unit in the IR it usually means: "There's nothing useful here".
+
 -}
 type Value ta va
     = Literal va Literal
@@ -103,7 +213,31 @@ type Value ta va
     | Unit va
 
 
-{-| Type that represents a pattern.
+{-| Type that represents a pattern. A pattern can do two things: match on a specific shape or exact value and extract
+parts of a value into variables. It's a recursive data structure made of of the following building blocks:
+
+  - **WildcardPattern**
+      - Matches any value and does not extract any variables.
+      - `_` in Elm
+  - **AsPattern**
+      - Assigns a variable name to the value matched by a nested pattern.
+      - `(...) as foo` in Elm
+      - Special case: when there is just a variable name in a pattern in Elm it will be represented as a
+        `WildcardPattern` wrapped in an `AsPattern`
+  - **TuplePattern**
+      - Matches on a tuple where each element matches the nested patterns.
+  - **ConstructorPattern**
+      - Matches on a type constructor and its arguments.
+  - **EmptyListPattern**
+      - Matches on an empty list.
+  - **HeadTailPattern**
+      - Matches on the head and the tail of a list.
+      - Combined with `EmptyListPattern` it can match on lists of any specific sizes.
+  - **LiteralPattern**
+      - Matches an an exact literal value.
+  - **UnitPattern**
+      - Matches the `Unit` value only.
+
 -}
 type Pattern a
     = WildcardPattern a

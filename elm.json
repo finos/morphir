@@ -19,6 +19,7 @@
         "Morphir.IR.AccessControlled",
         "Morphir.IR.Type",
         "Morphir.IR.Value",
+        "Morphir.IR.Literal",
         "Morphir.IR.Module",
         "Morphir.IR.Package",
         "Morphir.IR.Package.Codec",
