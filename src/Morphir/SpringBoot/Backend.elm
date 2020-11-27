@@ -413,8 +413,11 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                         , returnType = Just (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
                                         , body =
                                             Just
-                                                (Scala.Variable
-                                                    "{statefulApp.businessLogic(state)(command)}"
+                                                (Scala.Apply
+                                                    (Scala.Apply (Scala.Ref [ "statefulApp" ] "businessLogic")
+                                                        [ ArgValue Nothing (Scala.Variable "state") ]
+                                                    )
+                                                    [ ArgValue Nothing (Scala.Variable "command") ]
                                                 )
                                         }
                                     )
@@ -568,7 +571,7 @@ mapStatefulAppDefinition currentPackagePath currentModulePath =
                                 [ TypeVar "K", TypeVar "C", TypeVar "S", TypeVar "E" ]
                             , ctorArgs =
                                 [ [ ArgDecl []
-                                        (FunctionType (TypeVar "morphir.sdk.Maybe.Maybe[S]")
+                                        (FunctionType (Scala.TypeApply (Scala.TypeRef [ "morphir", "sdk", "Maybe" ] "Maybe") [ Scala.TypeVar "S" ])
                                             (FunctionType
                                                 (TypeVar "C")
                                                 (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
