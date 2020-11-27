@@ -3,7 +3,17 @@ module Morphir.IR.Distribution exposing
     , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName
     )
 
-{-| A distribution contains all the necessary information to consume a package.
+{-| A distribution is a complete package of Morphir types and functions with all their dependencies.
+`morphir-elm make` produces a JSON that represents a `Distribution`. We are planning to define different types of
+distributions in the future but currently the only one is `Library`. A library contains the following pieces of
+information:
+
+  - The name of the library. This is the globally unique identifier of the package like the package name in NPM or the
+    Group and Artifact ID in Maven.
+  - All the library dependencies as a dictionary of package name and package specification. The package specification
+    only contains type signatures, no implementations.
+  - The package definition which contains all the module definitions included in the library. The package definition
+    contains implementations as well, even ones that are not exposed.
 
 @docs Distribution
 
@@ -23,7 +33,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
 
 
-{-| Type that represents a package distribution.
+{-| Type that represents a package distribution. Currently the only distribution type we provide is a `Library`.
 -}
 type Distribution
     = Library PackageName (Dict PackageName (Package.Specification ())) (Package.Definition () (Type ()))
