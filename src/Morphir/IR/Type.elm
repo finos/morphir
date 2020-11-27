@@ -25,7 +25,70 @@ module Morphir.IR.Type exposing
     , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes, collectVariables
     )
 
-{-| This module contains the building blocks of types in the Morphir IR.
+{-| Like any other programming languages Morphir has a type system as well. This module defines the building blocks of
+that type system. If you want to learn more about type systems check out
+[Wikipedia: Type system](https://en.wikipedia.org/wiki/Type_system).
+
+Morphir's type system is heavily inspired by Elm's type system so the best way to understand the building blocks here is
+through some Elm examples. Let's take this bit of Elm code as a starting point:
+
+    type alias MyInteger =
+        Int
+
+    type alias MyRecord a =
+        { foo : List a
+        }
+
+    type Foo a
+        = Bar a
+        | Baz
+
+These would translate to type definitions in Morphir which is represented by the [`Definition`](#Definition) type.
+Definitions themselves don't have a name. It's the Module that contains that information in the `types` dictionary as a
+key. The type parameters and the right-hand side of the declaration is contained in the [`Definition`](#Definition) type
+itself. This is how the above would translate to the IR (some parts are omitted to reduce noise):
+
+    { types =
+        Dict.fromList
+            [ ( [ "my", "integer" ], TypeAliasDefinition [] (...) )
+            , ( [ "my", "record" ], TypeAliasDefinition [ [ "a" ] ] (...) )
+            , ( [ "foo" ], CustomTypeDefinition [ [ "a" ], [ "b" ] ] (...) )
+            ]
+    , values =
+        Dict.empty
+    }
+
+Type aliases simply assign a new name to a type expression. This type expression can be a reference to another type or
+a record type or any other type expression. Custom types are defined by a list of constructors. Each of those
+constructors have a list of arguments. Each argument is a type expression.
+
+Here is the full definition for reference:
+
+    { types =
+        Dict.fromList
+            [ ( [ "my", "integer" ]
+              , TypeAliasDefinition []
+                    (Reference (fqn "Morphir.SDK" "Basics" "Int") [])
+              )
+            , ( [ "my", "record" ]
+              , TypeAliasDefinition [ [ "a" ] ]
+                    (Record ()
+                        [ Field [ "foo" ] (Reference () (fqn "Morphir.SDK" "List" "List") [ Variable () [ "a" ] ])
+                        ]
+                    )
+              )
+            , ( [ "foo" ]
+              , CustomTypeDefinition [ [ "a" ], [ "b" ] ]
+                    (AccessControlled.public
+                        [ Constructor [ "bar" ] [ ( [ "arg", "1" ], Variable () [ "a" ] ) ]
+                        , Constructor [ "baz" ] [ ( [ "arg", "1" ], Variable () [ "b" ] ) ]
+                        ]
+                    )
+              )
+            ]
+    , values =
+        Dict.empty
+    }
 
 
 # Type Expression
