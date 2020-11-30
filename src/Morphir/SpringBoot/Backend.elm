@@ -574,7 +574,7 @@ mapStatefulAppDefinition currentPackagePath currentModulePath =
                                         (FunctionType (Scala.TypeApply (Scala.TypeRef [ "morphir", "sdk", "Maybe" ] "Maybe") [ Scala.TypeVar "S" ])
                                             (FunctionType
                                                 (TypeVar "C")
-                                                (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
+                                                (TupleType [ Scala.TypeApply (Scala.TypeRef [ "morphir", "sdk", "Maybe" ] "Maybe") [ Scala.TypeVar "S" ], TypeVar "E" ])
                                             )
                                         )
                                         "businessLogic"
