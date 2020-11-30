@@ -21,6 +21,20 @@ sampleValues =
         , Value.Literal () (IntLiteral 12)
         , Value.Literal () (IntLiteral 123)
         ]
+    , Value.List ()
+        [ Value.Record ()
+            [ ( [ "foo" ], Value.Literal () (IntLiteral 1) )
+            , ( [ "bar" ], Value.Literal () (StringLiteral "one") )
+            ]
+        , Value.Record ()
+            [ ( [ "foo" ], Value.Literal () (IntLiteral 12) )
+            , ( [ "bar" ], Value.Literal () (StringLiteral "twelve") )
+            ]
+        , Value.Record ()
+            [ ( [ "foo" ], Value.Literal () (IntLiteral 123) )
+            , ( [ "bar" ], Value.Literal () (StringLiteral "hundred and twenty-three") )
+            ]
+        ]
     ]
 
 
@@ -32,10 +46,12 @@ main =
                 |> List.map
                     (\value ->
                         Html.tr []
-                            [ Html.td []
-                                [ Html.text (Debug.toString value)
-                                ]
-                            , Html.td []
+                            [ {- Html.td []
+                                     [ Html.text (Debug.toString value)
+                                     ]
+                                 ,
+                              -}
+                              Html.td []
                                 [ case Infer.inferValue Dict.empty value of
                                     Ok typedValue ->
                                         typedValue

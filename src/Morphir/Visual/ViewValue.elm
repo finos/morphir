@@ -16,7 +16,7 @@ view value =
             ViewLiteral.view literal
 
         Value.List (Type.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "list" ] ] [ "list" ]) [ itemType ]) items ->
-            ViewList.view itemType items
+            ViewList.view view itemType items
 
         _ ->
             Html.span
