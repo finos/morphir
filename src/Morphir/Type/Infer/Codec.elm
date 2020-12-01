@@ -1,8 +1,9 @@
 module Morphir.Type.Infer.Codec exposing (..)
 
+import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.FQName.Codec exposing (encodeFQName)
-import Morphir.IR.Name.Codec exposing (encodeName)
+import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
 import Morphir.Type.Class.Codec exposing (encodeClass)
 import Morphir.Type.Infer exposing (TypeError(..), UnificationError(..), ValueTypeError(..))
 import Morphir.Type.MetaType.Codec exposing (encodeMetaType)
@@ -16,6 +17,17 @@ encodeValueTypeError (ValueTypeError valueName typeError) =
         , encodeName valueName
         , encodeTypeError typeError
         ]
+
+
+decodeValueTypeError : Decode.Decoder ValueTypeError
+decodeValueTypeError =
+    Decode.map2 ValueTypeError
+        (Decode.index 1 decodeName)
+        (Decode.succeed (TypeErrors []))
+
+
+
+-- TODO: implement
 
 
 encodeTypeError : TypeError -> Encode.Value

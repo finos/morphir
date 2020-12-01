@@ -29,7 +29,7 @@ import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.Package as Package
 import Morphir.IR.Type exposing (Type)
 import Morphir.Type.Infer as Infer
-import Morphir.Type.Infer.Codec exposing (encodeValueTypeError)
+import Morphir.Type.Infer.Codec exposing (decodeValueTypeError, encodeValueTypeError)
 import Morphir.Type.MetaTypeMapping as MetaTypeMapping
 
 
@@ -39,7 +39,7 @@ port packageDefinitionFromSource : (( Decode.Value, List SourceFile ) -> msg) ->
 port packageDefinitionFromSourceResult : Encode.Value -> Cmd msg
 
 
-port decodeError : String -> Cmd msg
+port jsonDecodeError : String -> Cmd msg
 
 
 port generate : (( Decode.Value, Decode.Value ) -> msg) -> Sub msg
@@ -114,7 +114,7 @@ update msg model =
                     ( model
                     , errorMessage
                         |> Decode.errorToString
-                        |> decodeError
+                        |> jsonDecodeError
                     )
 
         Generate ( optionsJson, packageDistJson ) ->
@@ -142,7 +142,7 @@ update msg model =
                     ( model, fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult )
 
                 Err errorMessage ->
-                    ( model, errorMessage |> Decode.errorToString |> decodeError )
+                    ( model, errorMessage |> Decode.errorToString |> jsonDecodeError )
 
 
 subscriptions : () -> Sub Msg
@@ -173,7 +173,32 @@ encodeError : Error -> Encode.Value
 encodeError error =
     case error of
         FrontendError frontendErrors ->
-            Encode.list FrontendCodec.encodeError frontendErrors
+            Encode.list identity
+                [ Encode.string "frontend_error"
+                , Encode.list FrontendCodec.encodeError frontendErrors
+                ]
 
         TypeError typeError ->
-            Encode.list encodeValueTypeError typeError
+            Encode.list identity
+                [ Encode.string "type_error"
+                , Encode.list encodeValueTypeError typeError
+                ]
+
+
+decodeError : Decode.Decoder Error
+decodeError =
+    Decode.index 0 Decode.string
+        |> Decode.andThen
+            (\tag ->
+                case tag of
+                    "frontend_error" ->
+                        Decode.index 1 (Decode.succeed [])
+                            |> Decode.map FrontendError
+
+                    "type_error" ->
+                        Decode.index 1 (Decode.succeed [])
+                            |> Decode.map TypeError
+
+                    other ->
+                        Decode.fail ("Unknown tag: " ++ other)
+            )
