@@ -30,7 +30,7 @@ cli.make(program.projectDir)
         if (err.code == 'ENOENT') {
             console.error(`Could not find file at '${err.path}'`)
         } else {
-            console.error(JSON.stringify(err))
+            console.error(`Error: ${JSON.stringify(err)}`)
         }
         process.exit(1)
     })

@@ -24,7 +24,7 @@ async function make(projectDir) {
 
 async function packageDefinitionFromSource(morphirJson, sourceFiles) {
     return new Promise((resolve, reject) => {
-        worker.ports.decodeError.subscribe(err => {
+        worker.ports.jsonDecodeError.subscribe(err => {
             reject(err)
         })
 
@@ -79,11 +79,11 @@ async function gen(input, outputPath, options) {
         fileMap.map(async ([[dirPath, fileName], content]) => {
             const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)
             const filePath = path.join(fileDir, fileName)
-                if (await fileExist(filePath)) {
+            if (await fileExist(filePath)) {
                 console.log(`UPDATE - ${filePath}`)
             } else {
-                    await mkdir(fileDir, {recursive: true})
-                    console.log(`INSERT - ${filePath}`)
+                await mkdir(fileDir, { recursive: true })
+                console.log(`INSERT - ${filePath}`)
             }
             return fsWriteFile(filePath, content)
         })
@@ -99,14 +99,13 @@ async function gen(input, outputPath, options) {
 
 async function copyRecursiveSync(src, dest) {
     var exists = fs.existsSync(src);
-    if(exists)
-    {
+    if (exists) {
         var stats = exists && fs.statSync(src);
         var isDirectory = exists && stats.isDirectory();
         if (isDirectory) {
-            if(!fs.existsSync(dest))
+            if (!fs.existsSync(dest))
                 fs.mkdirSync(dest);
-            fs.readdirSync(src).forEach(function(childItemName) {
+            fs.readdirSync(src).forEach(function (childItemName) {
                 copyRecursiveSync(path.join(src, childItemName),
                     path.join(dest, childItemName));
             });
@@ -118,7 +117,7 @@ async function copyRecursiveSync(src, dest) {
 
 async function generate(options, ir) {
     return new Promise((resolve, reject) => {
-        worker.ports.decodeError.subscribe(err => {
+        worker.ports.jsonDecodeError.subscribe(err => {
             reject(err)
         })
 

@@ -560,13 +560,13 @@ collectValueAttributes v =
             [ a ]
 
         Apply a function argument ->
-            a :: (collectValueAttributes function ++ collectValueAttributes argument)
+            a :: List.concat [ collectValueAttributes function, collectValueAttributes argument ]
 
         Lambda a argumentPattern body ->
-            a :: (collectPatternAttributes argumentPattern ++ collectValueAttributes body)
+            a :: List.concat [ collectPatternAttributes argumentPattern, collectValueAttributes body ]
 
         LetDefinition a _ valueDefinition inValue ->
-            a :: (collectDefinitionAttributes valueDefinition ++ collectValueAttributes inValue)
+            a :: List.concat [ collectDefinitionAttributes valueDefinition, collectValueAttributes inValue ]
 
         LetRecursion a valueDefinitions inValue ->
             a
@@ -578,10 +578,10 @@ collectValueAttributes v =
                     (collectValueAttributes inValue)
 
         Destructure a pattern valueToDestruct inValue ->
-            a :: (collectPatternAttributes pattern ++ collectValueAttributes valueToDestruct ++ collectValueAttributes inValue)
+            a :: List.concat [ collectPatternAttributes pattern, collectValueAttributes valueToDestruct, collectValueAttributes inValue ]
 
         IfThenElse a condition thenBranch elseBranch ->
-            a :: (collectValueAttributes condition ++ collectValueAttributes thenBranch ++ collectValueAttributes elseBranch)
+            a :: List.concat [ collectValueAttributes condition, collectValueAttributes thenBranch, collectValueAttributes elseBranch ]
 
         PatternMatch a branchOutOn cases ->
             a
@@ -590,7 +590,7 @@ collectValueAttributes v =
                     (cases
                         |> List.concatMap
                             (\( pattern, body ) ->
-                                collectPatternAttributes pattern ++ collectValueAttributes body
+                                List.concat [ collectPatternAttributes pattern, collectValueAttributes body ]
                             )
                     )
 
@@ -626,7 +626,7 @@ collectPatternAttributes p =
             [ a ]
 
         HeadTailPattern a headPattern tailPattern ->
-            a :: (collectPatternAttributes headPattern ++ collectPatternAttributes tailPattern)
+            a :: List.concat [ collectPatternAttributes headPattern, collectPatternAttributes tailPattern ]
 
         LiteralPattern a _ ->
             [ a ]
@@ -801,6 +801,7 @@ indexedMapValue f baseIndex value =
                 ( mappedDefBody, defBodyLastIndex ) =
                     indexedMapValue f (defArgsLastIndex + 1) def.body
 
+                mappedDef : Definition ta b
                 mappedDef =
                     { inputTypes =
                         mappedDefArgs
@@ -836,6 +837,7 @@ indexedMapValue f baseIndex value =
                                     ( mappedDefBody, defBodyLastIndex ) =
                                         indexedMapValue f (defArgsLastIndex + 1) def.body
 
+                                    mappedDef : Definition ta b
                                     mappedDef =
                                         { inputTypes =
                                             mappedDefArgs
@@ -986,7 +988,7 @@ indexedMapListHelp f baseIndex elemList =
                     ( mappedElem, lastIndex ) =
                         f (lastIndexSoFar + 1) nextElem
                 in
-                ( elemsSoFar ++ [ mappedElem ], lastIndex )
+                ( List.append elemsSoFar [ mappedElem ], lastIndex )
             )
             ( [], baseIndex )
 
