@@ -196,7 +196,7 @@ decodeError =
                             |> Decode.map FrontendError
 
                     "type_error" ->
-                        Decode.index 1 (Decode.succeed [])
+                        Decode.index 1 (Decode.list decodeValueTypeError)
                             |> Decode.map TypeError
 
                     other ->

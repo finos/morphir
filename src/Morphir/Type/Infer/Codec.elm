@@ -23,11 +23,8 @@ decodeValueTypeError : Decode.Decoder ValueTypeError
 decodeValueTypeError =
     Decode.map2 ValueTypeError
         (Decode.index 1 decodeName)
+        -- TODO: implement
         (Decode.succeed (TypeErrors []))
-
-
-
--- TODO: implement
 
 
 encodeTypeError : TypeError -> Encode.Value
@@ -47,30 +44,10 @@ encodeTypeError typeError =
                 ]
 
         LookupError lookupError ->
-            case lookupError of
-                CouldNotFindConstructor fQName ->
-                    Encode.list identity
-                        [ Encode.string "could_not_find_constructor"
-                        , encodeFQName fQName
-                        ]
-
-                CouldNotFindValue fQName ->
-                    Encode.list identity
-                        [ Encode.string "could_not_find_value"
-                        , encodeFQName fQName
-                        ]
-
-                CouldNotFindAlias fQName ->
-                    Encode.list identity
-                        [ Encode.string "could_not_find_alias"
-                        , encodeFQName fQName
-                        ]
-
-                ExpectedAlias fQName ->
-                    Encode.list identity
-                        [ Encode.string "expected_alias"
-                        , encodeFQName fQName
-                        ]
+            Encode.list identity
+                [ Encode.string "lookup_error"
+                , encodeLookupError lookupError
+                ]
 
         UnknownError message ->
             Encode.list identity
@@ -84,6 +61,34 @@ encodeTypeError typeError =
                 , encodeUnificationError unificationError
                 , encodeMetaType metaType1
                 , encodeMetaType metaType2
+                ]
+
+
+encodeLookupError : LookupError -> Encode.Value
+encodeLookupError lookupError =
+    case lookupError of
+        CouldNotFindConstructor fQName ->
+            Encode.list identity
+                [ Encode.string "could_not_find_constructor"
+                , encodeFQName fQName
+                ]
+
+        CouldNotFindValue fQName ->
+            Encode.list identity
+                [ Encode.string "could_not_find_value"
+                , encodeFQName fQName
+                ]
+
+        CouldNotFindAlias fQName ->
+            Encode.list identity
+                [ Encode.string "could_not_find_alias"
+                , encodeFQName fQName
+                ]
+
+        ExpectedAlias fQName ->
+            Encode.list identity
+                [ Encode.string "expected_alias"
+                , encodeFQName fQName
                 ]
 
 
