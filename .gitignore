@@ -4,4 +4,3 @@ elm-stuff
 .idea
 dist/
 morphir-ir.json
-tests/
