@@ -22,7 +22,10 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
-import Morphir.IR.SDK.Common exposing (toFQName)
+import Morphir.IR.SDK.Basics exposing (boolType, intType)
+import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
+import Morphir.IR.SDK.List exposing (listType)
+import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
@@ -39,42 +42,70 @@ moduleSpec =
             [ ( Name.fromString "Set", OpaqueTypeSpecification [ [ "a" ] ] |> Documented "Type that represents a set." )
             ]
     , values =
-        let
-            -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
-            dummyValueSpec : Value.Specification ()
-            dummyValueSpec =
-                Value.Specification [] (Type.Unit ())
-
-            valueNames : List String
-            valueNames =
-                [ "empty"
-                , "singleton"
-                , "insert"
-                , "update"
-                , "remove"
-                , "isEmpty"
-                , "member"
-                , "get"
-                , "size"
-                , "keys"
-                , "values"
-                , "toList"
-                , "fromList"
-                , "map"
-                , "foldl"
-                , "foldr"
-                , "filter"
-                , "partition"
-                , "union"
-                , "intersect"
-                , "diff"
-                , "merge"
+        Dict.fromList
+            [ vSpec "empty" [] (setType () (tVar "a"))
+            , vSpec "singleton" [ ( "a", tVar "comparable" ) ] (setType () (tVar "comparable"))
+            , vSpec "insert"
+                [ ( "a", tVar "comparable" )
+                , ( "set", setType () (tVar "comparable") )
                 ]
-        in
-        valueNames
-            |> List.map
-                (\valueName ->
-                    ( Name.fromString valueName, dummyValueSpec )
-                )
-            |> Dict.fromList
+                (setType () (tVar "comparable"))
+            , vSpec "remove"
+                [ ( "a", tVar "comparable" )
+                , ( "set", setType () (tVar "comparable") )
+                ]
+                (setType () (tVar "comparable"))
+            , vSpec "isEmpty" [ ( "set", setType () (tVar "comparable") ) ] (boolType ())
+            , vSpec "member" [ ( "a", tVar "comparable" ), ( "set", setType () (tVar "comparable") ) ] (boolType ())
+            , vSpec "size" [ ( "set", setType () (tVar "comparable") ) ] (intType ())
+            , vSpec "toList" [ ( "set", setType () (tVar "a") ) ] (listType () (tVar "a"))
+            , vSpec "fromList" [ ( "list", listType () (tVar "comparable") ) ] (setType () (tVar "comparable"))
+            , vSpec "map"
+                [ ( "f", tFun [ tVar "comparable" ] (tVar "comparable2") )
+                , ( "set", setType () (tVar "comparable") )
+                ]
+                (setType () (tVar "comparable2"))
+            , vSpec "foldl"
+                [ ( "f", tFun [ tVar "a", tVar "b" ] (tVar "b") )
+                , ( "z", tVar "b" )
+                , ( "set", setType () (tVar "a") )
+                ]
+                (tVar "b")
+            , vSpec "foldr"
+                [ ( "f", tFun [ tVar "a", tVar "b" ] (tVar "b") )
+                , ( "z", tVar "b" )
+                , ( "set", setType () (tVar "a") )
+                ]
+                (tVar "b")
+            , vSpec "filter"
+                [ ( "f", tFun [ tVar "comparable" ] (boolType ()) )
+                , ( "set", setType () (tVar "comparable") )
+                ]
+                (setType () (tVar "comparable"))
+            , vSpec "partition"
+                [ ( "f", tFun [ tVar "comparable" ] (boolType ()) )
+                , ( "set", setType () (tVar "comparable") )
+                ]
+                (Type.Tuple () [ setType () (tVar "comparable"), setType () (tVar "comparable") ])
+            , vSpec "union"
+                [ ( "set1", setType () (tVar "comparable") )
+                , ( "set2", setType () (tVar "comparable") )
+                ]
+                (setType () (tVar "comparable"))
+            , vSpec "intersect"
+                [ ( "set1", setType () (tVar "comparable") )
+                , ( "set2", setType () (tVar "comparable") )
+                ]
+                (setType () (tVar "comparable"))
+            , vSpec "diff"
+                [ ( "set1", setType () (tVar "comparable") )
+                , ( "set2", setType () (tVar "comparable") )
+                ]
+                (setType () (tVar "comparable"))
+            ]
     }
+
+
+setType : a -> Type a -> Type a
+setType attributes itemType =
+    Reference attributes (toFQName moduleName "set") [ itemType ]

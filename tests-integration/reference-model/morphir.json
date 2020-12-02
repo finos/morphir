@@ -4,6 +4,7 @@
     "exposedModules": [
         "BooksAndRecords",
         "Types",
-        "Values"
+        "Values",
+        "Issues.Issue210"
     ]
 }

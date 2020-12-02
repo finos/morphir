@@ -263,7 +263,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                             ++ (moduleName |> Name.toTitleCase)
                                             ++ "."
                                             ++ (functionName |> Name.toList |> String.join "")
-                                            ++ ")"
+                                            ++ " _ )"
                                         )
                                     )
                                 ]
@@ -413,8 +413,11 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                         , returnType = Just (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
                                         , body =
                                             Just
-                                                (Scala.Variable
-                                                    "{statefulApp.businessLogic(state, command)}"
+                                                (Scala.Apply
+                                                    (Scala.Apply (Scala.Ref [ "statefulApp" ] "businessLogic")
+                                                        [ ArgValue Nothing (Scala.Variable "state") ]
+                                                    )
+                                                    [ ArgValue Nothing (Scala.Variable "command") ]
                                                 )
                                         }
                                     )
@@ -568,8 +571,11 @@ mapStatefulAppDefinition currentPackagePath currentModulePath =
                                 [ TypeVar "K", TypeVar "C", TypeVar "S", TypeVar "E" ]
                             , ctorArgs =
                                 [ [ ArgDecl []
-                                        (FunctionType (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "C" ])
-                                            (TupleType [ TypeVar "morphir.sdk.Maybe.Maybe[S]", TypeVar "E" ])
+                                        (FunctionType (Scala.TypeApply (Scala.TypeRef [ "morphir", "sdk", "Maybe" ] "Maybe") [ Scala.TypeVar "S" ])
+                                            (FunctionType
+                                                (TypeVar "C")
+                                                (TupleType [ Scala.TypeApply (Scala.TypeRef [ "morphir", "sdk", "Maybe" ] "Maybe") [ Scala.TypeVar "S" ], TypeVar "E" ])
+                                            )
                                         )
                                         "businessLogic"
                                         Nothing
@@ -655,7 +661,7 @@ addJacksonAnnotations annotatedMembers =
                                                             [ { modifiers = cons.modifiers
                                                               , tpe = cons.tpe
                                                               , name =
-                                                                    "@java.beans.BeanProperty "
+                                                                    "@scala.beans.BeanProperty "
                                                                         ++ "@com.fasterxml.jackson.annotation.JsonProperty (\""
                                                                         ++ cons.name
                                                                         ++ "\") "
