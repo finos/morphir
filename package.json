@@ -8,7 +8,7 @@
     "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js --optimize",
     "make-cli-dev": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js",
     "make-dev-server": "cd cli && elm make src/Morphir/Web/DevelopMain.elm --output=web/main.js",
-    "dev-server-live":  "cd cli && elm-live src/Morphir/Web/DevelopMain.elm --start-page=web/index.html --dir=./web --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/main.js",
+    "dev-server-live": "cd cli && elm-live src/Morphir/Web/DevelopMain.elm --start-page=web/index.html --dir=./web --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/main.js",
     "build": "npm run clean && npm run make-cli && npm run make-dev-server && ncc build cli/morphir.js -o dist/morphir"
   },
   "repository": {
@@ -51,6 +51,7 @@
   },
   "dependencies": {
     "commander": "^4.1.1",
+    "express": "^4.17.1",
     "fs-extra": "^9.0.1",
     "get-stdin": "^8.0.0"
   }
