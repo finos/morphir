@@ -35,8 +35,8 @@ theme scaled =
     , heading =
         \level label ->
             el
-                [ Font.size (scaled (8 - level))
-                , paddingXY (scaled level) (scaled (4 - level))
+                [ Font.size (scaled (6 - level))
+                , paddingXY (scaled level) (scaled (3 - level))
                 ]
                 (text label)
     }

@@ -103,19 +103,19 @@ view model =
         (column [ width fill ]
             [ row
                 [ width fill
+                , padding 10
                 , Background.color blue
                 ]
                 [ row
-                    [ padding 10
-                    , width fill
+                    [ width fill
                     ]
                     [ image
-                        [ height (px 60)
+                        [ height (px 50)
                         ]
-                        { src = "assets/2020_Morphir_Logo_Horizontal_WHT.svg"
-                        , description = "Morphir"
+                        { src = "assets/2020_Morphir_Logo_Icon_WHT.svg"
+                        , description = "Morphir Logo"
                         }
-                    , theme.heading 3 "Development Server"
+                    , theme.heading 1 "Morphir Development Server"
                     ]
                 , case model of
                     WaitingForResponse ->
@@ -127,7 +127,10 @@ view model =
                             , label = "Reload"
                             }
                 ]
-            , viewResult model
+            , el
+                [ padding 10
+                ]
+                (viewResult model)
             ]
         )
 
