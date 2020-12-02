@@ -1,6 +1,6 @@
 module Morphir.Web.Theme.Light exposing (..)
 
-import Element exposing (el, padding, text)
+import Element exposing (el, padding, paddingXY, text)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -8,15 +8,15 @@ import Element.Input as Input
 import Morphir.Web.Theme exposing (Theme)
 
 
-theme : Theme msg
-theme =
+theme : (Int -> Int) -> Theme msg
+theme scaled =
     { button =
         \options ->
             Input.button
-                [ Background.color blue
-                , padding 10
-                , Border.rounded 5
-                , Font.size 12
+                [ Background.color orange
+                , padding (scaled 1)
+                , Border.rounded (scaled -2)
+                , Font.size (scaled 2)
                 , Font.bold
                 ]
                 { onPress = Just options.onPress
@@ -26,10 +26,17 @@ theme =
         \label ->
             el
                 [ Background.color gray
-                , padding 10
-                , Border.rounded 5
-                , Font.size 12
+                , padding (scaled 1)
+                , Border.rounded (scaled -2)
+                , Font.size (scaled 2)
                 , Font.bold
+                ]
+                (text label)
+    , heading =
+        \level label ->
+            el
+                [ Font.size (scaled (8 - level))
+                , paddingXY (scaled level) (scaled (4 - level))
                 ]
                 (text label)
     }

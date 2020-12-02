@@ -2,7 +2,8 @@ module Morphir.Web.DevelopMain exposing (..)
 
 import Browser
 import Dict
-import Element exposing (Element, column, el, fill, padding, paragraph, px, row, text, width)
+import Element exposing (Element, column, el, fill, height, image, padding, paragraph, px, row, text, width)
+import Element.Background as Background
 import Element.Font as Font
 import Html exposing (Html)
 import Http
@@ -15,7 +16,7 @@ import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
 import Morphir.Web.Theme exposing (Theme)
-import Morphir.Web.Theme.Light as Light
+import Morphir.Web.Theme.Light as Light exposing (blue)
 
 
 
@@ -89,23 +90,33 @@ view model =
         { options =
             []
         }
-        [ padding 10
-        , Font.family
+        [ Font.family
             [ Font.external
                 { name = "Poppins"
                 , url = "https://fonts.googleapis.com/css2?family=Poppins:wght@300&display=swap"
                 }
             , Font.sansSerif
             ]
+        , Font.size (scaled 2)
         , width fill
         ]
         (column [ width fill ]
-            [ row [ width fill ]
-                [ el
+            [ row
+                [ width fill
+                , Background.color blue
+                ]
+                [ row
                     [ padding 10
                     , width fill
                     ]
-                    (text "Morphir Development Server")
+                    [ image
+                        [ height (px 60)
+                        ]
+                        { src = "assets/2020_Morphir_Logo_Horizontal_WHT.svg"
+                        , description = "Morphir"
+                        }
+                    , theme.heading 3 "Development Server"
+                    ]
                 , case model of
                     WaitingForResponse ->
                         theme.disabledButton "Loading ..."
@@ -121,9 +132,14 @@ view model =
         )
 
 
+scaled : Int -> Int
+scaled =
+    Element.modular 12 1.25 >> round
+
+
 theme : Theme Msg
 theme =
-    Light.theme
+    Light.theme scaled
 
 
 viewResult : Model -> Element Msg
@@ -175,7 +191,7 @@ viewDistribution distro =
                         , packageName |> Path.toList |> List.map (Name.toHumanWords >> String.join " ") |> String.join " / "
                         ]
                     )
-                , text "Modules"
+                , theme.heading 1 "Modules"
                 , column []
                     (packageDefinition.modules
                         |> Dict.toList
