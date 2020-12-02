@@ -36,7 +36,7 @@ theme scaled =
         \level label ->
             el
                 [ Font.size (scaled (6 - level))
-                , paddingXY (scaled level) (scaled (3 - level))
+                , paddingXY 0 (scaled (3 - level))
                 ]
                 (text label)
     }

@@ -2,7 +2,7 @@ module Morphir.Web.DevelopMain exposing (..)
 
 import Browser
 import Dict
-import Element exposing (Element, column, el, fill, height, image, padding, paragraph, px, row, text, width)
+import Element exposing (Element, column, el, fill, height, image, padding, paddingXY, paragraph, px, row, spacing, text, width)
 import Element.Background as Background
 import Element.Font as Font
 import Html exposing (Html)
@@ -115,7 +115,8 @@ view model =
                         { src = "assets/2020_Morphir_Logo_Icon_WHT.svg"
                         , description = "Morphir Logo"
                         }
-                    , theme.heading 1 "Morphir Development Server"
+                    , el [ paddingXY 10 0 ]
+                        (theme.heading 1 "Morphir Development Server")
                     ]
                 , case model of
                     WaitingForResponse ->
@@ -188,14 +189,11 @@ viewDistribution distro =
     case distro of
         Distribution.Library packageName dependencies packageDefinition ->
             column []
-                [ text
-                    (String.join " "
-                        [ "Package:"
-                        , packageName |> Path.toList |> List.map (Name.toHumanWords >> String.join " ") |> String.join " / "
-                        ]
-                    )
+                [ theme.heading 1 "Package"
+                , text
+                    (packageName |> Path.toList |> List.map (Name.toHumanWords >> String.join " ") |> String.join " / ")
                 , theme.heading 1 "Modules"
-                , column []
+                , column [ spacing 10 ]
                     (packageDefinition.modules
                         |> Dict.toList
                         |> List.map
