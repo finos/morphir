@@ -15,6 +15,8 @@ import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
+import Morphir.IR.Type exposing (Type)
+import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Web.Theme exposing (Theme)
 import Morphir.Web.Theme.Light as Light exposing (blue)
 
@@ -199,7 +201,7 @@ viewDistribution distro =
                         |> List.map
                             (\( moduleName, moduleDef ) ->
                                 column []
-                                    [ text (moduleName |> Path.toList |> List.map (Name.toHumanWords >> String.join " ") |> String.join " / ")
+                                    [ theme.heading 2 (moduleName |> Path.toList |> List.map (Name.toHumanWords >> String.join " ") |> String.join " - ")
                                     , viewModule moduleDef
                                     ]
                             )
@@ -207,11 +209,19 @@ viewDistribution distro =
                 ]
 
 
-viewModule : AccessControlled (Module.Definition ta va) -> Element Msg
-viewModule moduleDef =
-    paragraph []
-        [--text (Debug.toString moduleDef)
-        ]
+viewModule : AccessControlled (Module.Definition ta (Type ta)) -> Element Msg
+viewModule accessControlledModuleDef =
+    column []
+        (accessControlledModuleDef.value.values
+            |> Dict.toList
+            |> List.map
+                (\( valueName, accessControlledValueDef ) ->
+                    column []
+                        [ theme.heading 3 (valueName |> Name.toHumanWords |> String.join " ")
+                        , ViewValue.view accessControlledValueDef.value.body |> Element.html
+                        ]
+                )
+        )
 
 
 
