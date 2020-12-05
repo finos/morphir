@@ -218,7 +218,7 @@ viewModule accessControlledModuleDef =
                 (\( valueName, accessControlledValueDef ) ->
                     column []
                         [ theme.heading 3 (valueName |> Name.toHumanWords |> String.join " ")
-                        , ViewValue.view accessControlledValueDef.value.body |> Element.html
+                        , ViewValue.view accessControlledValueDef.value.body
                         ]
                 )
         )
