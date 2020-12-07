@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewReference exposing (..)
 
 import Element exposing (Element, text)
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value exposing (Value)
 import Morphir.Visual.Common exposing (nameToText)
