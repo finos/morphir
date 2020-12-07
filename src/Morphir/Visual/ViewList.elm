@@ -1,7 +1,7 @@
-module Morphir.Visual.ViewList exposing (..)
+module Morphir.Visual.ViewList exposing (view)
 
 import Dict
-import Element exposing (Element, fill, spacing)
+import Element exposing (Element, fill, none, spacing, table, text)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
@@ -11,7 +11,7 @@ view : (Value ta (Type ta) -> Element msg) -> Type ta -> List (Value ta (Type ta
 view viewValue itemType items =
     case itemType of
         Type.Record _ fields ->
-            Element.table
+            table
                 [ spacing 10
                 ]
                 { data = items
@@ -19,7 +19,7 @@ view viewValue itemType items =
                     fields
                         |> List.map
                             (\field ->
-                                { header = Element.text (field.name |> Name.toHumanWords |> String.join " ")
+                                { header = text (field.name |> Name.toHumanWords |> String.join " ")
                                 , width = fill
                                 , view =
                                     \item ->
@@ -30,7 +30,7 @@ view viewValue itemType items =
                                                     |> Dict.fromList
                                                     |> Dict.get field.name
                                                     |> Maybe.map viewValue
-                                                    |> Maybe.withDefault (Element.text "???")
+                                                    |> Maybe.withDefault (text "???")
 
                                             _ ->
                                                 viewValue item
@@ -39,12 +39,12 @@ view viewValue itemType items =
                 }
 
         _ ->
-            Element.table
+            table
                 [ spacing 10
                 ]
                 { data = items
                 , columns =
-                    [ { header = Element.text "List of "
+                    [ { header = none
                       , width = fill
                       , view = viewValue
                       }
