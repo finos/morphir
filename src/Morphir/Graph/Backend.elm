@@ -18,19 +18,14 @@
 module Morphir.Graph.Backend exposing (..)
 
 import Dict
+import Set
 import List.Extra exposing (unique, uniqueBy)
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.File.SourceCode exposing (dotSep, newLine)
-import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution, lookupTypeSpecification)
 import Morphir.IR.FQName as FQName exposing (FQName(..))
-import Morphir.IR.Module as Module exposing (Definition)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.Type as Type exposing (Specification(..))
-import Morphir.IR.Value as Value exposing (Value(..))
-import Morphir.Graph.Tripler as Tripler exposing (Triple, Object(..), mapDistribution)
+import Morphir.Graph.Tripler as Tripler exposing (Triple, Object(..), NodeType(..), Verb(..), mapDistribution)
 
 type alias Options =
     {}
@@ -41,38 +36,68 @@ mapDistribution opt distro =
     let 
         triples : List Tripler.Triple
         triples = Tripler.mapDistribution distro
-
-        content = triples
-            |> List.map (\triple -> 
-                String.join ", " 
-                    [ (subjectToString triple.subject)
-                    , triple.verb
-                    , (objectToString triple.object)
-                    ]
-            )
-            |> String.join "\n"
+        content =
+            triples
+                |> List.concatMap
+                    (\t ->
+                        if t.verb == Tripler.IsA then
+                            case t.object of
+                                FQN fqn ->
+                                    [Triple fqn Tripler.IsA (Node Tripler.Type)]
+                                _ ->
+                                    []
+                        else
+                            []
+                    )
+                |> List.append triples
+                |> List.map tripleToString
+                |> List.sort
+                |> unique
+                |> String.join "\n"
     in
         Dict.fromList [((["dist"], "graph.txt"), content)]
+
+
+tripleToString : Triple -> String
+tripleToString triple =
+    String.join ", "
+        [ (subjectToString triple.subject)
+        , (verbToString triple.verb)
+        , (objectToString triple.object)
+        ]
 
 
 subjectToString : FQName -> String
 subjectToString fqn =
     String.join "."
-        [ (Path.toString Name.toCamelCase "." (FQName.getModulePath fqn))
-        , (Path.toString Name.toCamelCase "." (FQName.getPackagePath fqn))
+        [ (Path.toString Name.toSnakeCase "." (FQName.getPackagePath fqn))
+        , (Path.toString Name.toSnakeCase "." (FQName.getModulePath fqn))
         , (Name.toSnakeCase (FQName.getLocalName fqn))
         ]
 
 objectToString : Object -> String
 objectToString o =
     case o of 
-        FQN (FQName modulePath packagePath name) ->
+        FQN (FQName packagePath modulePath name) ->
             String.join "."
-                [ (Path.toString Name.toTitleCase "." modulePath)
-                , (Path.toString Name.toSnakeCase "." packagePath)
+                [ (Path.toString Name.toSnakeCase "." packagePath)
+                , (Path.toString Name.toSnakeCase "." modulePath)
                 , (String.join "_" name)
                 ]
+        Node node ->
+            case node of
+                Tripler.Record -> "Record"
+                Tripler.Field -> "Field"
+                Tripler.Type -> "Type"
+                Tripler.Function -> "Function"
 
         -- PathOf Path.Path ->
         Other s ->
             s
+
+
+verbToString : Tripler.Verb -> String
+verbToString verb =
+    case verb of
+        Tripler.IsA -> "isA"
+        Tripler.Contains -> "contains"
