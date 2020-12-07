@@ -1,4 +1,4 @@
-module Morphir.Elm.ExtractTypes exposing (FieldDef, mapDistribution)
+module Morphir.Graph.ExtractTypes exposing (FieldDef, mapDistribution)
 
 import Dict
 import Morphir.IR.Distribution as Distribution exposing (Distribution)

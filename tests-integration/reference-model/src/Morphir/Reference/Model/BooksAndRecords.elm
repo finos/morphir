@@ -34,7 +34,6 @@ type alias Deal =
     }
 
 
-
 {- These define the requests that can be made of this service -}
 
 
@@ -102,3 +101,11 @@ logic dealState dealCmd =
 app : StatefulApp ID DealCmd Deal DealEvent
 app =
     StatefulApp logic
+
+type alias Position =
+    { product : ProductID
+    , quantity : Quantity}
+
+position : ProductID -> Position
+position product =
+    Position "a" 1
