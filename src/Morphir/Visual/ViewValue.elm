@@ -14,6 +14,7 @@ import Morphir.Visual.ViewLetDefinition as ViewLetDefinition
 import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewReference as ViewReference
+import Morphir.Visual.ViewTuple as ViewTuple
 
 
 view : Value ta (Type ta) -> Element msg
@@ -21,6 +22,9 @@ view value =
     case value of
         Value.Literal literalType literal ->
             ViewLiteral.view literal
+
+        Value.Tuple tpe elems ->
+            ViewTuple.view view elems
 
         Value.List (Type.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "list" ] ] [ "list" ]) [ itemType ]) items ->
             ViewList.view view itemType items

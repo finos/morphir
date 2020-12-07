@@ -14,7 +14,7 @@ view viewValue subjectValue fieldName =
             String.concat
                 [ "the "
                 , nameToText variableName
-                , "'s"
+                , "'s "
                 , nameToText fieldName
                 ]
                 |> text
@@ -25,7 +25,7 @@ view viewValue subjectValue fieldName =
                 [ String.concat
                     [ "the "
                     , nameToText fieldName
-                    , " field of"
+                    , " field of "
                     ]
                     |> text
                 , viewValue subjectValue

@@ -15,12 +15,14 @@ view viewValue definitions inValue =
         , text "where"
         , column
             [ moveRight 10
+            , spacing 20
             ]
             (definitions
                 |> List.map
                     (\( defName, def ) ->
                         column
-                            []
+                            [ spacing 10
+                            ]
                             [ text (nameToText defName ++ " =")
                             , el
                                 [ moveRight 10 ]
