@@ -1,9 +1,10 @@
-module Morphir.Web.DevelopMain exposing (..)
+module Morphir.Web.DevelopMain exposing (Model(..), Msg(..), distributionDecoder, init, main, makeModel, scaled, subscriptions, theme, update, view, viewDistribution, viewModule, viewResult)
 
 import Browser
 import Dict
-import Element exposing (Element, column, el, fill, height, image, padding, paddingXY, paragraph, px, row, spacing, text, width)
+import Element exposing (Element, column, el, fill, height, image, padding, paddingXY, paragraph, px, rgb255, row, spacing, text, width)
 import Element.Background as Background
+import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
 import Http
@@ -131,7 +132,8 @@ view model =
                             }
                 ]
             , el
-                [ padding 10
+                [ width fill
+                , padding 10
                 ]
                 (viewResult model)
             ]
@@ -190,17 +192,17 @@ viewDistribution : Distribution -> Element Msg
 viewDistribution distro =
     case distro of
         Distribution.Library packageName dependencies packageDefinition ->
-            column []
+            column [ width fill ]
                 [ theme.heading 1 "Package"
                 , text
                     (packageName |> Path.toList |> List.map (Name.toHumanWords >> String.join " ") |> String.join " / ")
                 , theme.heading 1 "Modules"
-                , column [ spacing 10 ]
+                , column [ width fill, spacing 10 ]
                     (packageDefinition.modules
                         |> Dict.toList
                         |> List.map
                             (\( moduleName, moduleDef ) ->
-                                column []
+                                column [ width fill ]
                                     [ theme.heading 2 (moduleName |> Path.toList |> List.map (Name.toHumanWords >> String.join " ") |> String.join " - ")
                                     , viewModule moduleDef
                                     ]
@@ -211,15 +213,34 @@ viewDistribution distro =
 
 viewModule : AccessControlled (Module.Definition ta (Type ta)) -> Element Msg
 viewModule accessControlledModuleDef =
-    column []
+    column
+        [ width fill
+        , spacing 20
+        ]
         (accessControlledModuleDef.value.values
             |> Dict.toList
             |> List.map
                 (\( valueName, accessControlledValueDef ) ->
-                    column []
-                        [ theme.heading 3 (valueName |> Name.toHumanWords |> String.join " ")
-                        , ViewValue.view accessControlledValueDef.value.body |> Element.html
+                    el
+                        [ width fill
+                        , padding 10
+                        , Border.width 1
+                        , Border.rounded 5
+                        , Border.color (rgb255 150 150 150)
                         ]
+                        (column
+                            [ width fill
+                            ]
+                            [ el
+                                [ width fill
+                                , Border.widthEach { top = 0, bottom = 1, left = 0, right = 0 }
+                                ]
+                                (theme.heading 3 (valueName |> Name.toHumanWords |> String.join " "))
+                            , el
+                                [ padding 10 ]
+                                (ViewValue.view accessControlledValueDef.value.body)
+                            ]
+                        )
                 )
         )
 
