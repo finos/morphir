@@ -1,6 +1,7 @@
-module Morphir.Visual.Main exposing (..)
+module Morphir.Visual.Main exposing (main, sampleValues)
 
 import Dict
+import Element
 import Html
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Type exposing (Type)
@@ -57,6 +58,10 @@ main =
                                         typedValue
                                             |> Value.mapValueAttributes identity Tuple.second
                                             |> ViewValue.view
+                                            |> Element.layoutWith
+                                                { options = [ Element.noStaticStyleSheet ]
+                                                }
+                                                []
 
                                     Err error ->
                                         Html.text (Debug.toString error)
