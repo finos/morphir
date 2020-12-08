@@ -56,7 +56,14 @@ evaluateValue state value =
                     (\reference ->
                         case reference of
                             NativeReference nativeFunction ->
-                                nativeFunction (evaluateValue state) (List.reverse state.argumentsReversed)
+                                nativeFunction
+                                    (evaluateValue
+                                        -- This is the state that will be used when native functions call "eval".
+                                        -- We need to retain most of the current state but clear out the argument since
+                                        -- the native function will evaluate completely new expressions.
+                                        { state | argumentsReversed = [] }
+                                    )
+                                    (List.reverse state.argumentsReversed)
 
                             ValueReference referredValue ->
                                 evaluateValue state referredValue
