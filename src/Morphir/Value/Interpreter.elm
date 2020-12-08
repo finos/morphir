@@ -1,4 +1,20 @@
-module Morphir.Value.Interpreter exposing (..)
+module Morphir.Value.Interpreter exposing
+    ( evaluate
+    , FQN, Reference(..)
+    )
+
+{-| This module contains an interpreter for Morphir expressions. The interpreter takes a piece of logic as input,
+evaluates it and returns the resulting data. In Morphir both logic and data is captured as a `Value` so the interpreter
+takes a `Value` and returns a `Value` (or an error for invalid expressions):
+
+@docs evaluate
+
+
+# Utilities
+
+@docs FQN, Reference
+
+-}
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName exposing (FQName(..))
@@ -10,10 +26,19 @@ import Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
 import Morphir.Value.Native as Native
 
 
+{-| Represents a fully-qualified name. Same as [FQName](Morphir-IR-FQName#FQName) but comparable.
+-}
 type alias FQN =
     ( Path, Path, Name )
 
 
+{-| Type used to keep track of the state of the evaluation. It contains:
+
+  - References to other Morphir values or native functions.
+  - The in-scope variables.
+  - The arguments when we are processing an `Apply`. The arguments are in reverse order for efficiency.
+
+-}
 type alias State =
     { references : Dict FQN Reference
     , variables : Variables
@@ -21,15 +46,31 @@ type alias State =
     }
 
 
+{-| Dictionary of variable name to value.
+-}
 type alias Variables =
     Dict Name (Value () ())
 
 
+{-| Reference to an other value. The other value can either be another Morphir `Value` or a native function.
+-}
 type Reference
     = NativeReference Native.Function
     | ValueReference (Value () ())
 
 
+{-| Evaluates a value expression and returns another value expression or an error. You can also pass in other values
+by fully-qualified name that will be used for lookup if the expression contains references.
+
+    evaluate
+        SDK.nativeFunctions
+        (Value.Apply ()
+            (Value.Reference () (fqn "Morphir.SDK" "Basics" "not"))
+            (Value.Literal () (BoolLiteral True))
+        )
+        -- (Value.Literal () (BoolLiteral False))
+
+-}
 evaluate : Dict FQN Reference -> Value () () -> Result Error (Value () ())
 evaluate references value =
     let
