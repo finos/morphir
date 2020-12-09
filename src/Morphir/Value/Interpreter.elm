@@ -81,21 +81,31 @@ evaluate references value =
     evaluateValue initialState value
 
 
+{-| Evaluates a value expression recursively in a single pass while keeping track of variables and arguments along the
+evaluation.
+-}
 evaluateValue : State -> Value () () -> Result Error (Value () ())
 evaluateValue state value =
     case value of
         Value.Variable _ varName ->
+            -- When we run into a variable we simply look up the value of the variable in the state.
             state.variables
                 |> Dict.get varName
+                -- If we cannot find the variable ion the state we return an error.
                 |> Result.fromMaybe (VariableNotFound varName)
 
         Value.Reference _ ((FQName packageName moduleName localName) as fQName) ->
+            -- For references we first need to find what they point to.
             state.references
                 |> Dict.get ( packageName, moduleName, localName )
+                -- If the reference is not found we return an error.
                 |> Result.fromMaybe (ReferenceNotFound fQName)
+                -- If the reference is found we need to evaluate them.
                 |> Result.andThen
                     (\reference ->
+                        -- A reference can either point to a native function or another Morphir value.
                         case reference of
+                            -- If it's a native function we invoke it directly.
                             NativeReference nativeFunction ->
                                 nativeFunction
                                     (evaluateValue
@@ -104,13 +114,20 @@ evaluateValue state value =
                                         -- the native function will evaluate completely new expressions.
                                         { state | argumentsReversed = [] }
                                     )
+                                    -- Arguments are stored in reverse order in the state for efficiency so we need to
+                                    -- flip them back to the original order.
                                     (List.reverse state.argumentsReversed)
 
+                            -- If this is a reference to another Morphir value we need to recursively evaluate those.
                             ValueReference referredValue ->
                                 evaluateValue state referredValue
                     )
 
         Value.Apply _ function argument ->
+            -- When we run into an Apply we simply add the argument to the state and recursively evaluate the function.
+            -- When there are multiple arguments there will be another Apply within the function so arguments will be
+            -- repeatedly collected until we hit another node (lambda, reference or variable) where the arguments will
+            -- be used to execute the calculation.
             evaluateValue
                 { state
                     | argumentsReversed =
@@ -119,14 +136,25 @@ evaluateValue state value =
                 function
 
         Value.Lambda _ argumentPattern body ->
+            -- By the time we run into a lambda we expect arguments to be available in the state.
             state.argumentsReversed
+                -- So we start by taking the last argument in the state (We use head because the arguments are reversed).
                 |> List.head
+                -- If there are no arguments then our expression was invalid so we return an error.
                 |> Result.fromMaybe NoArgumentToPass
+                -- If the argument is available we first need to match it against the argument pattern.
+                -- In Morhpir (just like in Elm) you can opattern-match on the argument of a lambda.
                 |> Result.andThen
                     (\argumentValue ->
+                        -- To match the pattern we call a helper function that both matches and extracts variables out
+                        -- of the pattern.
                         evaluatePattern argumentPattern argumentValue
+                            -- If the pattern does not match we error out. This should never happen with valid
+                            -- expressions as lamdba argument patterns should only be used for decomposition not
+                            -- filtering.
                             |> Result.mapError LambdaArgumentDidNotMatch
                     )
+                -- Finally we evaluate the body of the lambda using the variables extracted by the pattern.
                 |> Result.andThen
                     (\argumentVariables ->
                         evaluateValue
