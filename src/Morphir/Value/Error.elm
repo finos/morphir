@@ -3,7 +3,7 @@ module Morphir.Value.Error exposing (..)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name exposing (Name)
-import Morphir.IR.Value exposing (Value)
+import Morphir.IR.Value exposing (Pattern, Value)
 
 
 type Error
@@ -14,18 +14,10 @@ type Error
     | UnexpectedArguments (List (Value () ()))
     | ExpectedLiteral (Value () ())
     | ExpectedBoolLiteral Literal
+    | IfThenElseConditionShouldEvaluateToBool (Value () ()) (Value () ())
+    | FieldNotFound (Value () ()) Name
+    | RecordExpected (Value () ()) (Value () ())
 
 
 type PatternMismatch
-    = TupleElemCountMismatch Int Int
-    | TupleExpected (Value () ())
-    | TupleMismatch (List PatternMismatch)
-    | ConstructorArgCountMismatch Int Int
-    | ConstructorNameMismatch FQName FQName
-    | ConstructorExpected (Value () ())
-    | ConstructorMismatch (List PatternMismatch)
-    | EmptyListExpected (Value () ())
-    | NonEmptyListExpected (Value () ())
-    | LiteralMismatch Literal Literal
-    | LiteralExpected (Value () ())
-    | UnitExpected (Value () ())
+    = PatternMismatch (Pattern ()) (Value () ())

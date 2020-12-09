@@ -24,6 +24,7 @@ module Morphir.IR.Value exposing
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
+    , definitionToValue
     )
 
 {-| In functional programming data and logic are treated the same way and we refer to both as values. This module
@@ -112,6 +113,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 @docs definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
+@docs definitionToValue
 
 -}
 
@@ -282,6 +284,44 @@ definitionToSpecification def =
     , output =
         def.outputType
     }
+
+
+{-| Turn a value definition into a value by wrapping the body value as needed based on the number of arguments the
+definition has. For example, if the definition specifies 2 inputs it will wrap the body into 2 lambdas each taking one
+argument:
+
+    definitionToValue
+        (Definition
+            { inputTypes =
+                [ ( [ "foo" ], (), intType () )
+                , ( [ "bar" ], (), intType () )
+                ]
+            , outputType =
+                intType ()
+            , body =
+                Tuple () [ Variable () [ "foo" ], Variable () [ "bar" ] ]
+            }
+        )
+    -- Lambda (AsPattern () (WildcardPattern ()) [ "foo" ])
+    --     (Lambda (AsPattern () (WildcardPattern ()) [ "bar" ])
+    --         (Tuple () [ Variable () [ "foo" ], Variable () [ "bar" ] ])
+    --     )
+
+-}
+definitionToValue : Definition ta () -> Value ta ()
+definitionToValue def =
+    case def.inputTypes of
+        [] ->
+            def.body
+
+        ( firstArgName, _, _ ) :: restOfArgs ->
+            Lambda ()
+                (AsPattern () (WildcardPattern ()) firstArgName)
+                (definitionToValue
+                    { def
+                        | inputTypes = restOfArgs
+                    }
+                )
 
 
 {-| -}

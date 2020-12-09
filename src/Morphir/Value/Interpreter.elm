@@ -18,6 +18,7 @@ takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Value as Value exposing (Pattern, Value)
@@ -81,21 +82,45 @@ evaluate references value =
     evaluateValue initialState value
 
 
+{-| Evaluates a value expression recursively in a single pass while keeping track of variables and arguments along the
+evaluation.
+-}
 evaluateValue : State -> Value () () -> Result Error (Value () ())
 evaluateValue state value =
     case value of
+        Value.Literal _ _ ->
+            -- Literals cannot be evaluated any further
+            Ok value
+
+        Value.Tuple _ elems ->
+            -- For a tuple we need to evaluate each element and return them wrapped back into a tuple
+            elems
+                -- We evaluate each element separately.
+                |> List.map (evaluateValue state)
+                -- If any of those fails we return the first failure.
+                |> ListOfResults.liftFirstError
+                -- If nothing fails we wrap the result in a tuple.
+                |> Result.map (Value.Tuple ())
+
         Value.Variable _ varName ->
+            -- When we run into a variable we simply look up the value of the variable in the state.
             state.variables
                 |> Dict.get varName
+                -- If we cannot find the variable ion the state we return an error.
                 |> Result.fromMaybe (VariableNotFound varName)
 
         Value.Reference _ ((FQName packageName moduleName localName) as fQName) ->
+            -- For references we first need to find what they point to.
             state.references
                 |> Dict.get ( packageName, moduleName, localName )
+                -- If the reference is not found we return an error.
                 |> Result.fromMaybe (ReferenceNotFound fQName)
+                -- If the reference is found we need to evaluate them.
                 |> Result.andThen
                     (\reference ->
+                        -- A reference can either point to a native function or another Morphir value.
                         case reference of
+                            -- If it's a native function we invoke it directly.
                             NativeReference nativeFunction ->
                                 nativeFunction
                                     (evaluateValue
@@ -104,13 +129,37 @@ evaluateValue state value =
                                         -- the native function will evaluate completely new expressions.
                                         { state | argumentsReversed = [] }
                                     )
+                                    -- Arguments are stored in reverse order in the state for efficiency so we need to
+                                    -- flip them back to the original order.
                                     (List.reverse state.argumentsReversed)
 
+                            -- If this is a reference to another Morphir value we need to recursively evaluate those.
                             ValueReference referredValue ->
                                 evaluateValue state referredValue
                     )
 
+        Value.Field _ subjectValue fieldName ->
+            -- Field selection is evaluated by evaluating the subject first then matching on the resulting record and
+            -- getting the field with the specified name.
+            evaluateValue state subjectValue
+                |> Result.andThen
+                    (\evaluatedSubjectValue ->
+                        case evaluatedSubjectValue of
+                            Value.Record _ fields ->
+                                fields
+                                    |> Dict.fromList
+                                    |> Dict.get fieldName
+                                    |> Result.fromMaybe (FieldNotFound subjectValue fieldName)
+
+                            _ ->
+                                Err (RecordExpected subjectValue evaluatedSubjectValue)
+                    )
+
         Value.Apply _ function argument ->
+            -- When we run into an Apply we simply add the argument to the state and recursively evaluate the function.
+            -- When there are multiple arguments there will be another Apply within the function so arguments will be
+            -- repeatedly collected until we hit another node (lambda, reference or variable) where the arguments will
+            -- be used to execute the calculation.
             evaluateValue
                 { state
                     | argumentsReversed =
@@ -119,14 +168,25 @@ evaluateValue state value =
                 function
 
         Value.Lambda _ argumentPattern body ->
+            -- By the time we run into a lambda we expect arguments to be available in the state.
             state.argumentsReversed
+                -- So we start by taking the last argument in the state (We use head because the arguments are reversed).
                 |> List.head
+                -- If there are no arguments then our expression was invalid so we return an error.
                 |> Result.fromMaybe NoArgumentToPass
+                -- If the argument is available we first need to match it against the argument pattern.
+                -- In Morhpir (just like in Elm) you can opattern-match on the argument of a lambda.
                 |> Result.andThen
                     (\argumentValue ->
-                        evaluatePattern argumentPattern argumentValue
+                        -- To match the pattern we call a helper function that both matches and extracts variables out
+                        -- of the pattern.
+                        matchPattern argumentPattern argumentValue
+                            -- If the pattern does not match we error out. This should never happen with valid
+                            -- expressions as lamdba argument patterns should only be used for decomposition not
+                            -- filtering.
                             |> Result.mapError LambdaArgumentDidNotMatch
                     )
+                -- Finally we evaluate the body of the lambda using the variables extracted by the pattern.
                 |> Result.andThen
                     (\argumentVariables ->
                         evaluateValue
@@ -137,18 +197,66 @@ evaluateValue state value =
                             body
                     )
 
+        Value.LetDefinition _ defName def inValue ->
+            -- We evaluate a let definition by first evaluating the definition, then assigning it to the variable name
+            -- given in `defName`. Finally we evaluate the `inValue` passing in the new variable in the state.
+            evaluateValue state (Value.definitionToValue def)
+                |> Result.andThen
+                    (\defValue ->
+                        evaluateValue
+                            { state
+                                | variables =
+                                    state.variables
+                                        |> Dict.insert defName defValue
+                            }
+                            inValue
+                    )
+
+        Value.IfThenElse _ condition thenBranch elseBranch ->
+            -- If then else evaluation is trivial: you evaluate the condition and depending on the result you evaluate
+            -- one of the branches
+            evaluateValue state condition
+                |> Result.andThen
+                    (\conditionValue ->
+                        case conditionValue of
+                            Value.Literal _ (BoolLiteral conditionTrue) ->
+                                let
+                                    branchToFollow : Value () ()
+                                    branchToFollow =
+                                        if conditionTrue then
+                                            thenBranch
+
+                                        else
+                                            elseBranch
+                                in
+                                evaluateValue state branchToFollow
+
+                            _ ->
+                                Err (IfThenElseConditionShouldEvaluateToBool condition conditionValue)
+                    )
+
         _ ->
-            Ok value
+            Debug.todo "not implemented yet"
 
 
-evaluatePattern : Pattern () -> Value () () -> Result PatternMismatch Variables
-evaluatePattern pattern value =
+{-| Matches a value against a pattern recursively. It either returns an error if there is a mismatch or a dictionary of
+variable names to values extracted out of the pattern.
+-}
+matchPattern : Pattern () -> Value () () -> Result PatternMismatch Variables
+matchPattern pattern value =
+    let
+        error : Result PatternMismatch Variables
+        error =
+            Err (PatternMismatch pattern value)
+    in
     case pattern of
         Value.WildcardPattern _ ->
+            -- Wildcard patterns will always succeed and produce any variables
             Ok Dict.empty
 
         Value.AsPattern _ subjectPattern alias ->
-            evaluatePattern subjectPattern value
+            -- As patterns always succeed and will assign the alias as variable name to the value passed in
+            matchPattern subjectPattern value
                 |> Result.map
                     (\subjectVariables ->
                         subjectVariables
@@ -157,6 +265,7 @@ evaluatePattern pattern value =
 
         Value.TuplePattern _ elemPatterns ->
             case value of
+                -- A tuple pattern only matches on tuples
                 Value.Tuple _ elemValues ->
                     let
                         patternLength =
@@ -165,20 +274,27 @@ evaluatePattern pattern value =
                         valueLength =
                             List.length elemValues
                     in
+                    -- The number of elements in the pattern and the value have to match
                     if patternLength == valueLength then
-                        List.map2 evaluatePattern elemPatterns elemValues
-                            |> ListOfResults.liftAllErrors
-                            |> Result.mapError TupleMismatch
+                        -- We recursively match each element
+                        List.map2 matchPattern elemPatterns elemValues
+                            -- If there is a mismatch we return the first error
+                            |> ListOfResults.liftFirstError
+                            -- If the match is successful we union the variables returned
                             |> Result.map (List.foldl Dict.union Dict.empty)
 
                     else
-                        Err (TupleElemCountMismatch patternLength valueLength)
+                        error
 
                 _ ->
-                    Err (TupleExpected value)
+                    error
 
         Value.ConstructorPattern _ ctorPatternFQName argPatterns ->
+            -- When we match on a constructor pattern we need to match the constructor name and all the arguments
             let
+                -- Constructor invocations are curried (wrapped into Apply as many times as many arguments there are)
+                -- so we need to uncurry them before matching. Constructor matches on the other hand are not curried
+                -- since it's not allowed to partially apply them in a pattern.
                 uncurry : Value ta va -> ( Value ta va, List (Value ta va) )
                 uncurry v =
                     case v of
@@ -197,6 +313,7 @@ evaluatePattern pattern value =
             in
             case ctorValue of
                 Value.Constructor _ ctorFQName ->
+                    -- We first check the constructor name
                     if ctorPatternFQName == ctorFQName then
                         let
                             patternLength =
@@ -205,55 +322,60 @@ evaluatePattern pattern value =
                             valueLength =
                                 List.length argValues
                         in
+                        -- Then the arguments
                         if patternLength == valueLength then
-                            List.map2 evaluatePattern argPatterns argValues
-                                |> ListOfResults.liftAllErrors
-                                |> Result.mapError ConstructorMismatch
+                            List.map2 matchPattern argPatterns argValues
+                                |> ListOfResults.liftFirstError
                                 |> Result.map (List.foldl Dict.union Dict.empty)
 
                         else
-                            Err (ConstructorArgCountMismatch patternLength valueLength)
+                            error
 
                     else
-                        Err (ConstructorNameMismatch ctorPatternFQName ctorFQName)
+                        error
 
                 _ ->
-                    Err (ConstructorExpected value)
+                    error
 
         Value.EmptyListPattern _ ->
+            -- Empty list pattern only matches on empty lists and does not produce variables
             case value of
                 Value.List _ [] ->
                     Ok Dict.empty
 
                 _ ->
-                    Err (EmptyListExpected value)
+                    error
 
         Value.HeadTailPattern _ headPattern tailPattern ->
+            -- Head-tail pattern matches on any list with at least one element
             case value of
                 Value.List a (headValue :: tailValue) ->
+                    -- We recursively apply the head and tail patterns and union the resulting variables
                     Result.map2 Dict.union
-                        (evaluatePattern headPattern headValue)
-                        (evaluatePattern tailPattern (Value.List a tailValue))
+                        (matchPattern headPattern headValue)
+                        (matchPattern tailPattern (Value.List a tailValue))
 
                 _ ->
-                    Err (NonEmptyListExpected value)
+                    error
 
         Value.LiteralPattern _ matchLiteral ->
+            -- Literal matches simply do an exact match on the value and don't produce any variables
             case value of
                 Value.Literal _ valueLiteral ->
                     if matchLiteral == valueLiteral then
                         Ok Dict.empty
 
                     else
-                        Err (LiteralMismatch matchLiteral valueLiteral)
+                        error
 
                 _ ->
-                    Err (LiteralExpected value)
+                    error
 
         Value.UnitPattern _ ->
+            -- Unit pattern only matches on unit and does not produce any variables
             case value of
                 Value.Unit _ ->
                     Ok Dict.empty
 
                 _ ->
-                    Err (UnitExpected value)
+                    error
