@@ -18,6 +18,7 @@ takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Value as Value exposing (Pattern, Value)
@@ -137,6 +138,23 @@ evaluateValue state value =
                                 evaluateValue state referredValue
                     )
 
+        Value.Field _ subjectValue fieldName ->
+            -- Field selection is evaluated by evaluating the subject first then matching on the resulting record and
+            -- getting the field with the specified name.
+            evaluateValue state subjectValue
+                |> Result.andThen
+                    (\evaluatedSubjectValue ->
+                        case evaluatedSubjectValue of
+                            Value.Record _ fields ->
+                                fields
+                                    |> Dict.fromList
+                                    |> Dict.get fieldName
+                                    |> Result.fromMaybe (FieldNotFound subjectValue fieldName)
+
+                            _ ->
+                                Err (RecordExpected subjectValue evaluatedSubjectValue)
+                    )
+
         Value.Apply _ function argument ->
             -- When we run into an Apply we simply add the argument to the state and recursively evaluate the function.
             -- When there are multiple arguments there will be another Apply within the function so arguments will be
@@ -177,6 +195,44 @@ evaluateValue state value =
                                     Dict.union argumentVariables state.variables
                             }
                             body
+                    )
+
+        Value.LetDefinition _ defName def inValue ->
+            -- We evaluate a let definition by first evaluating the definition, then assigning it to the variable name
+            -- given in `defName`. Finally we evaluate the `inValue` passing in the new variable in the state.
+            evaluateValue state (Value.definitionToValue def)
+                |> Result.andThen
+                    (\defValue ->
+                        evaluateValue
+                            { state
+                                | variables =
+                                    state.variables
+                                        |> Dict.insert defName defValue
+                            }
+                            inValue
+                    )
+
+        Value.IfThenElse _ condition thenBranch elseBranch ->
+            -- If then else evaluation is trivial: you evaluate the condition and depending on the result you evaluate
+            -- one of the branches
+            evaluateValue state condition
+                |> Result.andThen
+                    (\conditionValue ->
+                        case conditionValue of
+                            Value.Literal _ (BoolLiteral conditionTrue) ->
+                                let
+                                    branchToFollow : Value () ()
+                                    branchToFollow =
+                                        if conditionTrue then
+                                            thenBranch
+
+                                        else
+                                            elseBranch
+                                in
+                                evaluateValue state branchToFollow
+
+                            _ ->
+                                Err (IfThenElseConditionShouldEvaluateToBool condition conditionValue)
                     )
 
         _ ->

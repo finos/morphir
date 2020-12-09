@@ -14,6 +14,9 @@ type Error
     | UnexpectedArguments (List (Value () ()))
     | ExpectedLiteral (Value () ())
     | ExpectedBoolLiteral Literal
+    | IfThenElseConditionShouldEvaluateToBool (Value () ()) (Value () ())
+    | FieldNotFound (Value () ()) Name
+    | RecordExpected (Value () ()) (Value () ())
 
 
 type PatternMismatch
