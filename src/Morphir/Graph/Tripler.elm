@@ -66,40 +66,50 @@ mapModuleDefinition packageName moduleName moduleDef =
 mapTypeDefinition : Package.PackageName -> Module.ModuleName -> Name -> Type.Definition ta -> List Triple
 mapTypeDefinition packageName moduleName typeName typeDef =
     let
-        recordFqn =
+        fqn =
             FQName packageName moduleName typeName
 
-        recordTriple =
-            Triple recordFqn IsA (Node Record)
-
-        recordTypeTriple =
-            Triple recordFqn IsA (Node Type)
-
-        fieldTriples =
+        triples =
             case typeDef of
                 Type.TypeAliasDefinition _ (Type.Record _ fields) ->
-                      fields
-                        |> List.map
-                            (\field ->
-                                let
-                                    subjectFqn =
-                                        (FQName packageName (List.append moduleName [typeName]) field.name)
+                    let
+                        recordTriple =
+                            Triple fqn IsA (Node Record)
 
-                                    fieldTriple =
-                                        case field.tpe of
-                                            Reference _ typeFqn _->
-                                                Triple subjectFqn IsA (FQN typeFqn)
-                                            _ ->
-                                                Triple subjectFqn IsA (Other "Anonymous")
+                        recordTypeTriple =
+                            Triple fqn IsA (Node Type)
 
-                                in
-                                    [ Triple subjectFqn IsA (Other "Field")
-                                    , Triple recordTriple.subject Contains (FQN subjectFqn)
-                                    , fieldTriple
-                                    ]
-                            )
+                        fieldTriples =
+                            fields
+                                |> List.map
+                                    (\field ->
+                                        let
+                                            subjectFqn =
+                                                (FQName packageName (List.append moduleName [typeName]) field.name)
+
+                                            fieldTriple =
+                                                case field.tpe of
+                                                    Reference _ typeFqn _->
+                                                        Triple subjectFqn IsA (FQN typeFqn)
+                                                    _ ->
+                                                        Triple subjectFqn IsA (Other "Anonymous")
+
+                                        in
+                                            [ Triple subjectFqn IsA (Node Field)
+                                            , Triple recordTriple.subject Contains (FQN subjectFqn)
+                                            , fieldTriple
+                                            ]
+                                    )
+                    in
+                        recordTriple :: recordTypeTriple :: (List.concat fieldTriples)
+
+                Type.TypeAliasDefinition _ (Type.Reference _ aliasFQN _) ->
+                    Triple fqn IsA (Node Type) :: Triple fqn IsA (FQN aliasFQN) ::  []
+
+                Type.CustomTypeDefinition name _ ->
+                    [Triple fqn IsA (Node Type)]
 
                 _ ->
                     []
     in
-        recordTriple :: recordTypeTriple :: (List.concat fieldTriples)
+        triples
