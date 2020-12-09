@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.Graph.Backend exposing (..)
+module Morphir.Graph.TriplesBackend exposing (..)
 
 import Dict
 import Set
@@ -25,7 +25,7 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution, lookupTyp
 import Morphir.IR.FQName as FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.Graph.Tripler as Tripler exposing (Triple, Object(..), NodeType(..), Verb(..), mapDistribution)
+import Morphir.Graph.Tripler as Tripler exposing (Triple, Object(..), NodeType(..), Verb(..), verbToString, nodeTypeToString, mapDistribution)
 
 type alias Options =
     {}
@@ -85,19 +85,8 @@ objectToString o =
                 , (String.join "_" name)
                 ]
         Node node ->
-            case node of
-                Tripler.Record -> "Record"
-                Tripler.Field -> "Field"
-                Tripler.Type -> "Type"
-                Tripler.Function -> "Function"
+            nodeTypeToString node
 
         -- PathOf Path.Path ->
         Other s ->
             s
-
-
-verbToString : Tripler.Verb -> String
-verbToString verb =
-    case verb of
-        Tripler.IsA -> "isA"
-        Tripler.Contains -> "contains"

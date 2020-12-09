@@ -1,4 +1,11 @@
-module Morphir.Graph.Tripler exposing (Triple, Object(..), NodeType(..), Verb(..), mapDistribution)
+module Morphir.Graph.Tripler exposing (
+    Triple,
+    Object(..),
+    NodeType(..),
+    Verb(..),
+    nodeTypeToString,
+    verbToString,
+    mapDistribution)
 
 import Dict
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
@@ -76,8 +83,8 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                         recordTriple =
                             Triple fqn IsA (Node Record)
 
-                        recordTypeTriple =
-                            Triple fqn IsA (Node Type)
+                        --recordTypeTriple =
+                        --    Triple fqn IsA (Node Type)
 
                         fieldTriples =
                             fields
@@ -95,13 +102,14 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                                         Triple subjectFqn IsA (Other "Anonymous")
 
                                         in
-                                            [ Triple subjectFqn IsA (Node Field)
-                                            , Triple recordTriple.subject Contains (FQN subjectFqn)
+                                            [ Triple recordTriple.subject Contains (FQN subjectFqn)
+                                            , Triple subjectFqn IsA (Node Field)
                                             , fieldTriple
                                             ]
                                     )
                     in
-                        recordTriple :: recordTypeTriple :: (List.concat fieldTriples)
+                        recordTriple :: (List.concat fieldTriples)
+                        --recordTriple :: recordTypeTriple :: (List.concat fieldTriples)
 
                 Type.TypeAliasDefinition _ (Type.Reference _ aliasFQN _) ->
                     Triple fqn IsA (Node Type) :: Triple fqn IsA (FQN aliasFQN) ::  []
@@ -113,3 +121,20 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                     []
     in
         triples
+
+
+
+nodeTypeToString : NodeType -> String
+nodeTypeToString node =
+    case node of
+        Record -> "Record"
+        Field -> "Field"
+        Type -> "Type"
+        Function -> "Function"
+
+
+verbToString : Verb -> String
+verbToString verb =
+    case verb of
+        IsA -> "isA"
+        Contains -> "contains"
