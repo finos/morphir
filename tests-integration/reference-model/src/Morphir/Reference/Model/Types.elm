@@ -52,3 +52,12 @@ type alias FooBarBazRecord =
 fooBarBazToString : FooBarBazRecord -> String
 fooBarBazToString fbb =
     fbb.foo
+
+type alias FooRecord =
+    { foo : String
+    }
+
+
+fooToString : FooRecord -> String
+fooToString foo =
+    foo.foo
