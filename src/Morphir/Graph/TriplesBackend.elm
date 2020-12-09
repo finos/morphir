@@ -18,14 +18,15 @@
 module Morphir.Graph.TriplesBackend exposing (..)
 
 import Dict
-import Set
 import List.Extra exposing (unique, uniqueBy)
 import Morphir.File.FileMap exposing (FileMap)
+import Morphir.Graph.Tripler as Tripler exposing (NodeType(..), Object(..), Triple, Verb(..), mapDistribution, nodeTypeToString, verbToString)
 import Morphir.IR.Distribution as Distribution exposing (Distribution, lookupTypeSpecification)
 import Morphir.IR.FQName as FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.Graph.Tripler as Tripler exposing (Triple, Object(..), NodeType(..), Verb(..), verbToString, nodeTypeToString, mapDistribution)
+import Set
+
 
 type alias Options =
     {}
@@ -33,9 +34,11 @@ type alias Options =
 
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
-    let 
+    let
         triples : List Tripler.Triple
-        triples = Tripler.mapDistribution distro
+        triples =
+            Tripler.mapDistribution distro
+
         content =
             triples
                 |> List.concatMap
@@ -43,9 +46,11 @@ mapDistribution opt distro =
                         if t.verb == Tripler.IsA then
                             case t.object of
                                 FQN fqn ->
-                                    [Triple fqn Tripler.IsA (Node Tripler.Type)]
+                                    [ Triple fqn Tripler.IsA (Node Tripler.Type) ]
+
                                 _ ->
                                     []
+
                         else
                             []
                     )
@@ -55,35 +60,37 @@ mapDistribution opt distro =
                 |> unique
                 |> String.join "\n"
     in
-        Dict.fromList [((["dist"], "graph.txt"), content)]
+    Dict.fromList [ ( ( [ "dist" ], "graph.txt" ), content ) ]
 
 
 tripleToString : Triple -> String
 tripleToString triple =
     String.join ", "
-        [ (subjectToString triple.subject)
-        , (verbToString triple.verb)
-        , (objectToString triple.object)
+        [ subjectToString triple.subject
+        , verbToString triple.verb
+        , objectToString triple.object
         ]
 
 
 subjectToString : FQName -> String
 subjectToString fqn =
     String.join "."
-        [ (Path.toString Name.toSnakeCase "." (FQName.getPackagePath fqn))
-        , (Path.toString Name.toSnakeCase "." (FQName.getModulePath fqn))
-        , (Name.toSnakeCase (FQName.getLocalName fqn))
+        [ Path.toString Name.toSnakeCase "." (FQName.getPackagePath fqn)
+        , Path.toString Name.toSnakeCase "." (FQName.getModulePath fqn)
+        , Name.toSnakeCase (FQName.getLocalName fqn)
         ]
+
 
 objectToString : Object -> String
 objectToString o =
-    case o of 
+    case o of
         FQN (FQName packagePath modulePath name) ->
             String.join "."
-                [ (Path.toString Name.toSnakeCase "." packagePath)
-                , (Path.toString Name.toSnakeCase "." modulePath)
-                , (String.join "_" name)
+                [ Path.toString Name.toSnakeCase "." packagePath
+                , Path.toString Name.toSnakeCase "." modulePath
+                , String.join "_" name
                 ]
+
         Node node ->
             nodeTypeToString node
 

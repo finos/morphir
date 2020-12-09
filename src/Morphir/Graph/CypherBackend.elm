@@ -18,14 +18,15 @@
 module Morphir.Graph.CypherBackend exposing (..)
 
 import Dict
-import Set
 import List.Extra exposing (unique, uniqueBy)
 import Morphir.File.FileMap exposing (FileMap)
+import Morphir.Graph.Tripler as Tripler exposing (NodeType(..), Object(..), Triple, Verb(..), mapDistribution, nodeTypeToString, verbToString)
 import Morphir.IR.Distribution as Distribution exposing (Distribution, lookupTypeSpecification)
 import Morphir.IR.FQName as FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.Graph.Tripler as Tripler exposing (Triple, Object(..), NodeType(..), Verb(..), verbToString, nodeTypeToString, mapDistribution)
+import Set
+
 
 type alias Options =
     {}
@@ -33,85 +34,104 @@ type alias Options =
 
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
-    let 
+    let
         triples : List Tripler.Triple
-        triples = Tripler.mapDistribution distro
+        triples =
+            Tripler.mapDistribution distro
 
         createTypes =
             triples
-                |> List.filterMap (\t ->
-                    case t.object of
-                        Node tipe ->
-                            Just ("CREATE (n:" ++ (nodeTypeToString tipe) ++ " {name:'" ++ (fqnToString t.subject) ++ "'});")
-                        _ ->
-                            Nothing
-                )
+                |> List.filterMap
+                    (\t ->
+                        case t.object of
+                            Node tipe ->
+                                Just ("CREATE (n:" ++ nodeTypeToString tipe ++ " {name:'" ++ fqnToString t.subject ++ "'});")
+
+                            _ ->
+                                Nothing
+                    )
 
         isARelationships =
             triples
-                |> List.filterMap (\t ->
-                    case (t.verb, t.object) of
-                        (IsA, FQN object) ->
-                            let
-                                matchs = "MATCH (s {name:'" ++ (fqnToString t.subject) ++ "'})"
-                                matcho = "MATCH (o:Type {name:'" ++ (fqnToString object) ++ "'})"
-                                create = "CREATE (s)-[:" ++ (verbToString t.verb) ++ "]->(o)"
-                            in
-                            Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
-                        _ ->
-                            Nothing
-                )
+                |> List.filterMap
+                    (\t ->
+                        case ( t.verb, t.object ) of
+                            ( IsA, FQN object ) ->
+                                let
+                                    matchs =
+                                        "MATCH (s {name:'" ++ fqnToString t.subject ++ "'})"
+
+                                    matcho =
+                                        "MATCH (o:Type {name:'" ++ fqnToString object ++ "'})"
+
+                                    create =
+                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
+                                in
+                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+
+                            _ ->
+                                Nothing
+                    )
 
         containsRelationships =
             triples
-                |> List.filterMap (\t ->
-                    case (t.verb, t.object) of
-                        (Contains, FQN object) ->
-                            let
-                                matchs = "MATCH (s:Record {name:'" ++ (fqnToString t.subject) ++ "'})"
-                                matcho = "MATCH (o:Field {name:'" ++ (fqnToString object) ++ "'})"
-                                create = "CREATE (s)-[:" ++ (verbToString t.verb) ++ "]->(o)"
-                            in
-                            Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
-                        _ ->
-                            Nothing
-                )
+                |> List.filterMap
+                    (\t ->
+                        case ( t.verb, t.object ) of
+                            ( Contains, FQN object ) ->
+                                let
+                                    matchs =
+                                        "MATCH (s:Record {name:'" ++ fqnToString t.subject ++ "'})"
+
+                                    matcho =
+                                        "MATCH (o:Field {name:'" ++ fqnToString object ++ "'})"
+
+                                    create =
+                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
+                                in
+                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+
+                            _ ->
+                                Nothing
+                    )
 
         content =
             (createTypes ++ isARelationships ++ containsRelationships)
                 |> String.join "\n"
     in
-        Dict.fromList [((["dist"], "graph.cypher"), content)]
+    Dict.fromList [ ( ( [ "dist" ], "graph.cypher" ), content ) ]
 
 
 tripleToString : Triple -> String
 tripleToString triple =
     String.join ", "
-        [ (fqnToString triple.subject)
-        , (verbToString triple.verb)
-        , (objectToString triple.object)
+        [ fqnToString triple.subject
+        , verbToString triple.verb
+        , objectToString triple.object
         ]
 
 
 fqnToString : FQName -> String
 fqnToString fqn =
     String.join "."
-        [ (Path.toString Name.toSnakeCase "." (FQName.getPackagePath fqn))
-        , (Path.toString Name.toSnakeCase "." (FQName.getModulePath fqn))
-        , (Name.toSnakeCase (FQName.getLocalName fqn))
+        [ Path.toString Name.toSnakeCase "." (FQName.getPackagePath fqn)
+        , Path.toString Name.toSnakeCase "." (FQName.getModulePath fqn)
+        , Name.toSnakeCase (FQName.getLocalName fqn)
         ]
 
 
 objectToString : Object -> String
 objectToString o =
-    case o of 
+    case o of
         FQN (FQName packagePath modulePath name) ->
             String.join "."
-                [ (Path.toString Name.toSnakeCase "." packagePath)
-                , (Path.toString Name.toSnakeCase "." modulePath)
-                , (String.join "_" name)
+                [ Path.toString Name.toSnakeCase "." packagePath
+                , Path.toString Name.toSnakeCase "." modulePath
+                , String.join "_" name
                 ]
+
         Node node ->
             nodeTypeToString node
+
         Other s ->
             s

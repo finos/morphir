@@ -1,11 +1,12 @@
-module Morphir.Graph.Tripler exposing (
-    Triple,
-    Object(..),
-    NodeType(..),
-    Verb(..),
-    nodeTypeToString,
-    verbToString,
-    mapDistribution)
+module Morphir.Graph.Tripler exposing
+    ( NodeType(..)
+    , Object(..)
+    , Triple
+    , Verb(..)
+    , mapDistribution
+    , nodeTypeToString
+    , verbToString
+    )
 
 import Dict
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
@@ -28,7 +29,10 @@ type Object
     = Other String
     | FQN FQName
     | Node NodeType
-    -- | PathOf Path.Path
+
+
+
+-- | PathOf Path.Path
 
 
 type Verb
@@ -85,56 +89,64 @@ mapTypeDefinition packageName moduleName typeName typeDef =
 
                         --recordTypeTriple =
                         --    Triple fqn IsA (Node Type)
-
                         fieldTriples =
                             fields
                                 |> List.map
                                     (\field ->
                                         let
                                             subjectFqn =
-                                                (FQName packageName (List.append moduleName [typeName]) field.name)
+                                                FQName packageName (List.append moduleName [ typeName ]) field.name
 
                                             fieldTriple =
                                                 case field.tpe of
-                                                    Reference _ typeFqn _->
+                                                    Reference _ typeFqn _ ->
                                                         Triple subjectFqn IsA (FQN typeFqn)
+
                                                     _ ->
                                                         Triple subjectFqn IsA (Other "Anonymous")
-
                                         in
-                                            [ Triple recordTriple.subject Contains (FQN subjectFqn)
-                                            , Triple subjectFqn IsA (Node Field)
-                                            , fieldTriple
-                                            ]
+                                        [ Triple recordTriple.subject Contains (FQN subjectFqn)
+                                        , Triple subjectFqn IsA (Node Field)
+                                        , fieldTriple
+                                        ]
                                     )
                     in
-                        recordTriple :: (List.concat fieldTriples)
-                        --recordTriple :: recordTypeTriple :: (List.concat fieldTriples)
+                    recordTriple :: List.concat fieldTriples
 
+                --recordTriple :: recordTypeTriple :: (List.concat fieldTriples)
                 Type.TypeAliasDefinition _ (Type.Reference _ aliasFQN _) ->
-                    Triple fqn IsA (Node Type) :: Triple fqn IsA (FQN aliasFQN) ::  []
+                    Triple fqn IsA (Node Type) :: Triple fqn IsA (FQN aliasFQN) :: []
 
                 Type.CustomTypeDefinition name _ ->
-                    [Triple fqn IsA (Node Type)]
+                    [ Triple fqn IsA (Node Type) ]
 
                 _ ->
                     []
     in
-        triples
-
+    triples
 
 
 nodeTypeToString : NodeType -> String
 nodeTypeToString node =
     case node of
-        Record -> "Record"
-        Field -> "Field"
-        Type -> "Type"
-        Function -> "Function"
+        Record ->
+            "Record"
+
+        Field ->
+            "Field"
+
+        Type ->
+            "Type"
+
+        Function ->
+            "Function"
 
 
 verbToString : Verb -> String
 verbToString verb =
     case verb of
-        IsA -> "isA"
-        Contains -> "contains"
+        IsA ->
+            "isA"
+
+        Contains ->
+            "contains"
