@@ -183,7 +183,8 @@ evaluateValue state value =
             Debug.todo "not implemented yet"
 
 
-{-| Matches a value against a pattern
+{-| Matches a value against a pattern recursively. It either returns an error if there is a mismatch or a dictionary of
+variable names to values extracted out of the pattern.
 -}
 matchPattern : Pattern () -> Value () () -> Result PatternMismatch Variables
 matchPattern pattern value =
@@ -194,9 +195,11 @@ matchPattern pattern value =
     in
     case pattern of
         Value.WildcardPattern _ ->
+            -- Wildcard patterns will always succeed and produce any variables
             Ok Dict.empty
 
         Value.AsPattern _ subjectPattern alias ->
+            -- As patterns always succeed and will assign the alias as variable name to the value passed in
             matchPattern subjectPattern value
                 |> Result.map
                     (\subjectVariables ->
@@ -206,6 +209,7 @@ matchPattern pattern value =
 
         Value.TuplePattern _ elemPatterns ->
             case value of
+                -- A tuple pattern only matches on tuples
                 Value.Tuple _ elemValues ->
                     let
                         patternLength =
@@ -214,9 +218,13 @@ matchPattern pattern value =
                         valueLength =
                             List.length elemValues
                     in
+                    -- The number of elements in the pattern and the value have to match
                     if patternLength == valueLength then
+                        -- We recursively match each element
                         List.map2 matchPattern elemPatterns elemValues
+                            -- If there is a mismatch we return the first error
                             |> ListOfResults.liftFirstError
+                            -- If the match is successful we union the variables returned
                             |> Result.map (List.foldl Dict.union Dict.empty)
 
                     else
@@ -226,7 +234,11 @@ matchPattern pattern value =
                     error
 
         Value.ConstructorPattern _ ctorPatternFQName argPatterns ->
+            -- When we match on a constructor pattern we need to match the constructor name and all the arguments
             let
+                -- Constructor invocations are curried (wrapped into Apply as many times as many arguments there are)
+                -- so we need to uncurry them before matching. Constructor matches on the other hand are not curried
+                -- since it's not allowed to partially apply them in a pattern.
                 uncurry : Value ta va -> ( Value ta va, List (Value ta va) )
                 uncurry v =
                     case v of
@@ -245,6 +257,7 @@ matchPattern pattern value =
             in
             case ctorValue of
                 Value.Constructor _ ctorFQName ->
+                    -- We first check the constructor name
                     if ctorPatternFQName == ctorFQName then
                         let
                             patternLength =
@@ -253,6 +266,7 @@ matchPattern pattern value =
                             valueLength =
                                 List.length argValues
                         in
+                        -- Then the arguments
                         if patternLength == valueLength then
                             List.map2 matchPattern argPatterns argValues
                                 |> ListOfResults.liftFirstError
@@ -268,6 +282,7 @@ matchPattern pattern value =
                     error
 
         Value.EmptyListPattern _ ->
+            -- Empty list pattern only matches on empty lists and does not produce variables
             case value of
                 Value.List _ [] ->
                     Ok Dict.empty
@@ -276,8 +291,10 @@ matchPattern pattern value =
                     error
 
         Value.HeadTailPattern _ headPattern tailPattern ->
+            -- Head-tail pattern matches on any list with at least one element
             case value of
                 Value.List a (headValue :: tailValue) ->
+                    -- We recursively apply the head and tail patterns and union the resulting variables
                     Result.map2 Dict.union
                         (matchPattern headPattern headValue)
                         (matchPattern tailPattern (Value.List a tailValue))
@@ -286,6 +303,7 @@ matchPattern pattern value =
                     error
 
         Value.LiteralPattern _ matchLiteral ->
+            -- Literal matches simply do an exact match on the value and don't produce any variables
             case value of
                 Value.Literal _ valueLiteral ->
                     if matchLiteral == valueLiteral then
@@ -298,6 +316,7 @@ matchPattern pattern value =
                     error
 
         Value.UnitPattern _ ->
+            -- Unit pattern only matches on unit and does not produce any variables
             case value of
                 Value.Unit _ ->
                     Ok Dict.empty
