@@ -162,7 +162,7 @@ evaluateValue state value =
                     (\argumentValue ->
                         -- To match the pattern we call a helper function that both matches and extracts variables out
                         -- of the pattern.
-                        evaluatePattern argumentPattern argumentValue
+                        matchPattern argumentPattern argumentValue
                             -- If the pattern does not match we error out. This should never happen with valid
                             -- expressions as lamdba argument patterns should only be used for decomposition not
                             -- filtering.
@@ -183,14 +183,21 @@ evaluateValue state value =
             Debug.todo "not implemented yet"
 
 
-evaluatePattern : Pattern () -> Value () () -> Result PatternMismatch Variables
-evaluatePattern pattern value =
+{-| Matches a value against a pattern
+-}
+matchPattern : Pattern () -> Value () () -> Result PatternMismatch Variables
+matchPattern pattern value =
+    let
+        error : Result PatternMismatch Variables
+        error =
+            Err (PatternMismatch pattern value)
+    in
     case pattern of
         Value.WildcardPattern _ ->
             Ok Dict.empty
 
         Value.AsPattern _ subjectPattern alias ->
-            evaluatePattern subjectPattern value
+            matchPattern subjectPattern value
                 |> Result.map
                     (\subjectVariables ->
                         subjectVariables
@@ -208,16 +215,15 @@ evaluatePattern pattern value =
                             List.length elemValues
                     in
                     if patternLength == valueLength then
-                        List.map2 evaluatePattern elemPatterns elemValues
-                            |> ListOfResults.liftAllErrors
-                            |> Result.mapError TupleMismatch
+                        List.map2 matchPattern elemPatterns elemValues
+                            |> ListOfResults.liftFirstError
                             |> Result.map (List.foldl Dict.union Dict.empty)
 
                     else
-                        Err (TupleElemCountMismatch patternLength valueLength)
+                        error
 
                 _ ->
-                    Err (TupleExpected value)
+                    error
 
         Value.ConstructorPattern _ ctorPatternFQName argPatterns ->
             let
@@ -248,19 +254,18 @@ evaluatePattern pattern value =
                                 List.length argValues
                         in
                         if patternLength == valueLength then
-                            List.map2 evaluatePattern argPatterns argValues
-                                |> ListOfResults.liftAllErrors
-                                |> Result.mapError ConstructorMismatch
+                            List.map2 matchPattern argPatterns argValues
+                                |> ListOfResults.liftFirstError
                                 |> Result.map (List.foldl Dict.union Dict.empty)
 
                         else
-                            Err (ConstructorArgCountMismatch patternLength valueLength)
+                            error
 
                     else
-                        Err (ConstructorNameMismatch ctorPatternFQName ctorFQName)
+                        error
 
                 _ ->
-                    Err (ConstructorExpected value)
+                    error
 
         Value.EmptyListPattern _ ->
             case value of
@@ -268,17 +273,17 @@ evaluatePattern pattern value =
                     Ok Dict.empty
 
                 _ ->
-                    Err (EmptyListExpected value)
+                    error
 
         Value.HeadTailPattern _ headPattern tailPattern ->
             case value of
                 Value.List a (headValue :: tailValue) ->
                     Result.map2 Dict.union
-                        (evaluatePattern headPattern headValue)
-                        (evaluatePattern tailPattern (Value.List a tailValue))
+                        (matchPattern headPattern headValue)
+                        (matchPattern tailPattern (Value.List a tailValue))
 
                 _ ->
-                    Err (NonEmptyListExpected value)
+                    error
 
         Value.LiteralPattern _ matchLiteral ->
             case value of
@@ -287,10 +292,10 @@ evaluatePattern pattern value =
                         Ok Dict.empty
 
                     else
-                        Err (LiteralMismatch matchLiteral valueLiteral)
+                        error
 
                 _ ->
-                    Err (LiteralExpected value)
+                    error
 
         Value.UnitPattern _ ->
             case value of
@@ -298,4 +303,4 @@ evaluatePattern pattern value =
                     Ok Dict.empty
 
                 _ ->
-                    Err (UnitExpected value)
+                    error
