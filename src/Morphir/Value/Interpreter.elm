@@ -87,6 +87,20 @@ evaluation.
 evaluateValue : State -> Value () () -> Result Error (Value () ())
 evaluateValue state value =
     case value of
+        Value.Literal _ _ ->
+            -- Literals cannot be evaluated any further
+            Ok value
+
+        Value.Tuple _ elems ->
+            -- For a tuple we need to evaluate each element and return them wrapped back into a tuple
+            elems
+                -- We evaluate each element separately.
+                |> List.map (evaluateValue state)
+                -- If any of those fails we return the first failure.
+                |> ListOfResults.liftFirstError
+                -- If nothing fails we wrap the result in a tuple.
+                |> Result.map (Value.Tuple ())
+
         Value.Variable _ varName ->
             -- When we run into a variable we simply look up the value of the variable in the state.
             state.variables
@@ -166,7 +180,7 @@ evaluateValue state value =
                     )
 
         _ ->
-            Ok value
+            Debug.todo "not implemented yet"
 
 
 evaluatePattern : Pattern () -> Value () () -> Result PatternMismatch Variables
