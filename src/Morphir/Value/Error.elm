@@ -9,7 +9,7 @@ import Morphir.IR.Value exposing (Pattern, Value)
 type Error
     = VariableNotFound Name
     | ReferenceNotFound FQName
-    | NoArgumentToPass
+    | NoArgumentToPassToLambda
     | LambdaArgumentDidNotMatch PatternMismatch
     | BindPatternDidNotMatch (Value () ()) PatternMismatch
     | UnexpectedArguments (List (Value () ()))
@@ -20,6 +20,8 @@ type Error
     | RecordExpected (Value () ()) (Value () ())
     | NoPatternsMatch (Value () ()) (List (Pattern ()))
     | ExactlyOneArgumentExpected (List (Value () ()))
+    | ErrorWhileEvaluatingReference FQName Error
+    | ErrorWhileEvaluatingVariable Name Error
 
 
 type PatternMismatch
