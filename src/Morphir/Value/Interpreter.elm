@@ -282,8 +282,7 @@ evaluateValue state value =
             -- A destructure can be evaluated by evaluating the bind value, matching it against the bind pattern and
             -- finally evaluating the in value using the variables from the bind pattern.
             evaluateValue state bindValue
-                |> Result.andThen (matchPattern bindPattern)
-                |> Result.mapError (BindPatternDidNotMatch bindValue)
+                |> Result.andThen (matchPattern bindPattern >> Result.mapError (BindPatternDidNotMatch bindValue))
                 |> Result.andThen
                     (\bindVariables ->
                         evaluateValue
@@ -364,7 +363,7 @@ evaluateValue state value =
                                                                 (\_ ->
                                                                     -- Before we replace the field value we need to
                                                                     -- evaluate the updated value.
-                                                                    evaluateValue newFieldValue
+                                                                    evaluateValue state newFieldValue
                                                                         |> Result.map
                                                                             (\evaluatedNewFieldValue ->
                                                                                 fieldsSoFar
