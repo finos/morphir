@@ -109,3 +109,11 @@ type alias Position =
 position : ProductID -> Position
 position product =
     Position "a" 1
+
+type alias SupplierID = String
+
+type alias Inventory =
+    { supplier : SupplierID
+    , product : ProductID
+    , quantity : Quantity
+    }

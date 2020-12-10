@@ -45,7 +45,7 @@ mapDistribution opt distro =
                     (\t ->
                         case t.object of
                             Node tipe ->
-                                Just ("CREATE (n:" ++ nodeTypeToString tipe ++ " {name:'" ++ fqnToString t.subject ++ "'});")
+                                Just ("CREATE (n:" ++ nodeTypeToString tipe ++ " {id:'" ++ fqnToString t.subject ++ "', name:'" ++ Name.toSnakeCase (FQName.getLocalName t.subject) ++ "'});")
 
                             _ ->
                                 Nothing
@@ -59,10 +59,10 @@ mapDistribution opt distro =
                             ( IsA, FQN object ) ->
                                 let
                                     matchs =
-                                        "MATCH (s {name:'" ++ fqnToString t.subject ++ "'})"
+                                        "MATCH (s {id:'" ++ fqnToString t.subject ++ "'})"
 
                                     matcho =
-                                        "MATCH (o:Type {name:'" ++ fqnToString object ++ "'})"
+                                        "MATCH (o:Type {id:'" ++ fqnToString object ++ "'})"
 
                                     create =
                                         "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
@@ -81,10 +81,10 @@ mapDistribution opt distro =
                             ( Contains, FQN object ) ->
                                 let
                                     matchs =
-                                        "MATCH (s:Record {name:'" ++ fqnToString t.subject ++ "'})"
+                                        "MATCH (s:Record {id:'" ++ fqnToString t.subject ++ "'})"
 
                                     matcho =
-                                        "MATCH (o:Field {name:'" ++ fqnToString object ++ "'})"
+                                        "MATCH (o:Field {id:'" ++ fqnToString object ++ "'})"
 
                                     create =
                                         "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
