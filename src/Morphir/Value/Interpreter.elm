@@ -92,6 +92,10 @@ evaluateValue state value =
             -- Literals cannot be evaluated any further
             Ok value
 
+        Value.Constructor _ _ ->
+            -- Constructor cannot be evaluated any further
+            Ok value
+
         Value.Tuple _ elems ->
             -- For a tuple we need to evaluate each element and return them wrapped back into a tuple
             elems
@@ -101,6 +105,30 @@ evaluateValue state value =
                 |> ListOfResults.liftFirstError
                 -- If nothing fails we wrap the result in a tuple.
                 |> Result.map (Value.Tuple ())
+
+        Value.List _ items ->
+            -- For a list we need to evaluate each element and return them wrapped back into a list
+            items
+                -- We evaluate each element separately.
+                |> List.map (evaluateValue state)
+                -- If any of those fails we return the first failure.
+                |> ListOfResults.liftFirstError
+                -- If nothing fails we wrap the result in a list.
+                |> Result.map (Value.List ())
+
+        Value.Record _ fields ->
+            -- For a record we need to evaluate each element and return them wrapped back into a record
+            fields
+                -- We evaluate each field separately.
+                |> List.map
+                    (\( fieldName, fieldValue ) ->
+                        evaluateValue state fieldValue
+                            |> Result.map (Tuple.pair fieldName)
+                    )
+                -- If any of those fails we return the first failure.
+                |> ListOfResults.liftFirstError
+                -- If nothing fails we wrap the result in a record.
+                |> Result.map (Value.Record ())
 
         Value.Variable _ varName ->
             -- When we run into a variable we simply look up the value of the variable in the state.
@@ -155,6 +183,28 @@ evaluateValue state value =
                                 Err (RecordExpected subjectValue evaluatedSubjectValue)
                     )
 
+        Value.FieldFunction _ fieldName ->
+            -- A field function expects exactly one argument to be passed through the state as subject value. Otherwise
+            -- it behaves exactly like a `Field` expression.
+            case state.argumentsReversed of
+                [ subjectValue ] ->
+                    evaluateValue { state | argumentsReversed = [] } subjectValue
+                        |> Result.andThen
+                            (\evaluatedSubjectValue ->
+                                case evaluatedSubjectValue of
+                                    Value.Record _ fields ->
+                                        fields
+                                            |> Dict.fromList
+                                            |> Dict.get fieldName
+                                            |> Result.fromMaybe (FieldNotFound subjectValue fieldName)
+
+                                    _ ->
+                                        Err (RecordExpected subjectValue evaluatedSubjectValue)
+                            )
+
+                other ->
+                    Err (ExactlyOneArgumentExpected other)
+
         Value.Apply _ function argument ->
             -- When we run into an Apply we simply add the argument to the state and recursively evaluate the function.
             -- When there are multiple arguments there will be another Apply within the function so arguments will be
@@ -182,7 +232,7 @@ evaluateValue state value =
                         -- of the pattern.
                         matchPattern argumentPattern argumentValue
                             -- If the pattern does not match we error out. This should never happen with valid
-                            -- expressions as lamdba argument patterns should only be used for decomposition not
+                            -- expressions as lambda argument patterns should only be used for decomposition not
                             -- filtering.
                             |> Result.mapError LambdaArgumentDidNotMatch
                     )
@@ -212,6 +262,24 @@ evaluateValue state value =
                             inValue
                     )
 
+        Value.LetRecursion va defs inValue ->
+            Debug.todo "implement"
+
+        Value.Destructure _ bindPattern bindValue inValue ->
+            -- A destructure can be evaluated by evaluating the bind value, matching it against the bind pattern and
+            -- finally evaluating the in value using the variables from the bind pattern.
+            evaluateValue state bindValue
+                |> Result.andThen (matchPattern bindPattern)
+                |> Result.mapError (BindPatternDidNotMatch bindValue)
+                |> Result.andThen
+                    (\bindVariables ->
+                        evaluateValue
+                            { state
+                                | variables = Dict.union bindVariables state.variables
+                            }
+                            inValue
+                    )
+
         Value.IfThenElse _ condition thenBranch elseBranch ->
             -- If then else evaluation is trivial: you evaluate the condition and depending on the result you evaluate
             -- one of the branches
@@ -235,8 +303,76 @@ evaluateValue state value =
                                 Err (IfThenElseConditionShouldEvaluateToBool condition conditionValue)
                     )
 
-        _ ->
-            Debug.todo "not implemented yet"
+        Value.PatternMatch _ subjectValue cases ->
+            -- For a pattern match we first need to evaluate the subject value then step through th cases, match
+            -- each pattern until we find a matching case and when we do evaluate the body
+            let
+                findMatch : List ( Pattern (), Value () () ) -> Value () () -> Result Error (Value () ())
+                findMatch remainingCases evaluatedSubject =
+                    case remainingCases of
+                        ( nextPattern, nextBody ) :: restOfCases ->
+                            case matchPattern nextPattern evaluatedSubject of
+                                Ok patternVariables ->
+                                    evaluateValue
+                                        { state | variables = Dict.union patternVariables state.variables }
+                                        nextBody
+
+                                Err _ ->
+                                    findMatch restOfCases evaluatedSubject
+
+                        [] ->
+                            Err (NoPatternsMatch evaluatedSubject (cases |> List.map Tuple.first))
+            in
+            evaluateValue state subjectValue
+                |> Result.andThen (findMatch cases)
+
+        Value.UpdateRecord _ subjectValue fieldUpdates ->
+            -- To update a record first we need to evaluate the subject value, then extract the record fields and
+            -- finally replace all updated fields with the new values
+            evaluateValue state subjectValue
+                |> Result.andThen
+                    (\evaluatedSubjectValue ->
+                        case evaluatedSubjectValue of
+                            Value.Record _ fields ->
+                                -- Once we hve the fields we fold through the field updates
+                                fieldUpdates
+                                    |> List.foldl
+                                        -- For each field update we update a single field and return the new field dictionary
+                                        (\( fieldName, newFieldValue ) fieldsResultSoFar ->
+                                            fieldsResultSoFar
+                                                |> Result.andThen
+                                                    (\fieldsSoFar ->
+                                                        -- Before we update the field we check if it exists. We do not
+                                                        -- want to create new fields as part of an update.
+                                                        fieldsSoFar
+                                                            |> Dict.get fieldName
+                                                            |> Result.fromMaybe (FieldNotFound subjectValue fieldName)
+                                                            |> Result.andThen
+                                                                (\_ ->
+                                                                    -- Before we replace the field value we need to
+                                                                    -- evaluate the updated value.
+                                                                    evaluateValue newFieldValue
+                                                                        |> Result.map
+                                                                            (\evaluatedNewFieldValue ->
+                                                                                fieldsSoFar
+                                                                                    |> Dict.insert
+                                                                                        fieldName
+                                                                                        evaluatedNewFieldValue
+                                                                            )
+                                                                )
+                                                    )
+                                        )
+                                        -- We start with the original fields
+                                        (Ok (fields |> Dict.fromList))
+                                    |> Result.map (Dict.toList >> Value.Record ())
+
+                            _ ->
+                                Err (RecordExpected subjectValue evaluatedSubjectValue)
+                    )
+
+        Value.Unit _ ->
+            -- Unit cannot be evaluated any further
+            Ok value
 
 
 {-| Matches a value against a pattern recursively. It either returns an error if there is a mismatch or a dictionary of
