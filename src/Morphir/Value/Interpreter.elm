@@ -134,8 +134,10 @@ evaluateValue state value =
             -- When we run into a variable we simply look up the value of the variable in the state.
             state.variables
                 |> Dict.get varName
-                -- If we cannot find the variable ion the state we return an error.
+                -- If we cannot find the variable in the state we return an error.
                 |> Result.fromMaybe (VariableNotFound varName)
+                -- Do another round of evaluation in case there are unevaluated values in the variable (lazy evaluation)
+                |> Result.andThen (evaluateValue state)
 
         Value.Reference _ ((FQName packageName moduleName localName) as fQName) ->
             -- For references we first need to find what they point to.
@@ -262,8 +264,19 @@ evaluateValue state value =
                             inValue
                     )
 
-        Value.LetRecursion va defs inValue ->
-            Debug.todo "implement"
+        Value.LetRecursion _ defs inValue ->
+            -- Recursive let bindings will be evaluated simply by assigning them to variable names and evaluating the
+            -- in value using them. The in value evaluation will evaluate the recursive definitions.
+            let
+                defVariables : Dict Name (Value () ())
+                defVariables =
+                    defs |> Dict.map (\_ def -> Value.definitionToValue def)
+            in
+            evaluateValue
+                { state
+                    | variables = Dict.union defVariables state.variables
+                }
+                inValue
 
         Value.Destructure _ bindPattern bindValue inValue ->
             -- A destructure can be evaluated by evaluating the bind value, matching it against the bind pattern and
