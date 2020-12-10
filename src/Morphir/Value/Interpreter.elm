@@ -138,6 +138,8 @@ evaluateValue state value =
                 |> Result.fromMaybe (VariableNotFound varName)
                 -- Do another round of evaluation in case there are unevaluated values in the variable (lazy evaluation)
                 |> Result.andThen (evaluateValue state)
+                -- Wrap the error to make it easier to understand where it happened
+                |> Result.mapError (ErrorWhileEvaluatingVariable varName)
 
         Value.Reference _ ((FQName packageName moduleName localName) as fQName) ->
             -- For references we first need to find what they point to.
@@ -162,10 +164,14 @@ evaluateValue state value =
                                     -- Arguments are stored in reverse order in the state for efficiency so we need to
                                     -- flip them back to the original order.
                                     (List.reverse state.argumentsReversed)
+                                    -- Wrap the error to make it easier to understand where it happened
+                                    |> Result.mapError (ErrorWhileEvaluatingReference fQName)
 
                             -- If this is a reference to another Morphir value we need to recursively evaluate those.
                             ValueReference referredValue ->
                                 evaluateValue state referredValue
+                                    -- Wrap the error to make it easier to understand where it happened
+                                    |> Result.mapError (ErrorWhileEvaluatingReference fQName)
                     )
 
         Value.Field _ subjectValue fieldName ->
@@ -225,7 +231,7 @@ evaluateValue state value =
                 -- So we start by taking the last argument in the state (We use head because the arguments are reversed).
                 |> List.head
                 -- If there are no arguments then our expression was invalid so we return an error.
-                |> Result.fromMaybe NoArgumentToPass
+                |> Result.fromMaybe NoArgumentToPassToLambda
                 -- If the argument is available we first need to match it against the argument pattern.
                 -- In Morhpir (just like in Elm) you can opattern-match on the argument of a lambda.
                 |> Result.andThen
