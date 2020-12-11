@@ -35,9 +35,26 @@ type alias Options =
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
     let
-        triples : List Tripler.Triple
-        triples =
+        trimTriples =
             Tripler.mapDistribution distro
+
+        triples =
+            trimTriples
+                |> List.concatMap
+                    (\t ->
+                        if t.verb == Tripler.IsA then
+                            case t.object of
+                                FQN fqn ->
+                                    [ Triple fqn Tripler.IsA (Node Tripler.Type) ]
+
+                                _ ->
+                                    []
+
+                        else
+                            []
+                    )
+                |> List.append trimTriples
+                |> uniqueBy tripleToString
 
         createTypes =
             triples
@@ -95,8 +112,32 @@ mapDistribution opt distro =
                                 Nothing
                     )
 
+        usesRelationships =
+            triples
+                |> List.filterMap
+                    (\t ->
+                        case ( t.verb, t.object ) of
+                            ( Uses, FQN object ) ->
+                                let
+                                    matchs =
+                                        "MATCH (s:Type {id:'" ++ fqnToString t.subject ++ "'})"
+
+                                    matcho =
+                                        "MATCH (o:Type {id:'" ++ fqnToString object ++ "'})"
+
+                                    create =
+                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
+                                in
+                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+
+                            _ ->
+                                Nothing
+                    )
+                |> unique
+
         content =
-            (createTypes ++ isARelationships ++ containsRelationships)
+            (createTypes ++ isARelationships ++ containsRelationships ++ usesRelationships)
+                |> unique
                 |> String.join "\n"
     in
     Dict.fromList [ ( ( [ "dist" ], "graph.cypher" ), content ) ]

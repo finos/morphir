@@ -9,13 +9,14 @@ module Morphir.Graph.Tripler exposing
     )
 
 import Dict
+import Morphir.IR.AccessControlled exposing (withPublicAccess)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
-import Morphir.IR.Type as Type exposing (Type(..))
+import Morphir.IR.Type as Type exposing (Constructor(..), Specification(..), Type(..))
 
 
 type NodeType
@@ -38,6 +39,7 @@ type Object
 type Verb
     = IsA
     | Contains
+    | Uses
 
 
 type alias Triple =
@@ -111,14 +113,41 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                         ]
                                     )
                     in
+                    --recordTriple :: recordTypeTriple :: (List.concat fieldTriples)
                     recordTriple :: List.concat fieldTriples
 
-                --recordTriple :: recordTypeTriple :: (List.concat fieldTriples)
                 Type.TypeAliasDefinition _ (Type.Reference _ aliasFQN _) ->
-                    Triple fqn IsA (Node Type) :: Triple fqn IsA (FQN aliasFQN) :: []
+                    [ Triple fqn IsA (Node Type)
+                    , Triple fqn IsA (FQN aliasFQN)
+                    ]
 
-                Type.CustomTypeDefinition name _ ->
-                    [ Triple fqn IsA (Node Type) ]
+                Type.CustomTypeDefinition _ accessControlledCtors ->
+                    let
+                        constructorTriples =
+                            case accessControlledCtors |> withPublicAccess of
+                                Just ctors ->
+                                    ctors
+                                        |> List.map
+                                            (\constructor ->
+                                                case constructor of
+                                                    Constructor _ namesAndTypes ->
+                                                        namesAndTypes
+                                                            |> List.filterMap
+                                                                (\( _, tipe ) ->
+                                                                    case tipe of
+                                                                        Reference _ tipeFQN _ ->
+                                                                            Just (Triple fqn Uses (FQN tipeFQN))
+
+                                                                        _ ->
+                                                                            Nothing
+                                                                )
+                                            )
+                                        |> List.concat
+
+                                Nothing ->
+                                    []
+                    in
+                    Triple fqn IsA (Node Type) :: constructorTriples
 
                 _ ->
                     []
@@ -150,3 +179,6 @@ verbToString verb =
 
         Contains ->
             "contains"
+
+        Uses ->
+            "uses"
