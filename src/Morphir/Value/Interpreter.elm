@@ -33,20 +33,6 @@ type alias FQN =
     ( Path, Path, Name )
 
 
-{-| Type used to keep track of the state of the evaluation. It contains:
-
-  - References to other Morphir values or native functions.
-  - The in-scope variables.
-  - The arguments when we are processing an `Apply`. The arguments are in reverse order for efficiency.
-
--}
-type alias State =
-    { references : Dict FQN Reference
-    , variables : Variables
-    , argumentsReversed : List (Value () ())
-    }
-
-
 {-| Dictionary of variable name to value.
 -}
 type alias Variables =
@@ -74,19 +60,14 @@ by fully-qualified name that will be used for lookup if the expression contains 
 -}
 evaluate : Dict FQN Reference -> Value () () -> Result Error (Value () ())
 evaluate references value =
-    let
-        initialState : State
-        initialState =
-            State references Dict.empty []
-    in
-    evaluateValue initialState value
+    evaluateValue references Dict.empty [] value
 
 
 {-| Evaluates a value expression recursively in a single pass while keeping track of variables and arguments along the
 evaluation.
 -}
-evaluateValue : State -> Value () () -> Result Error (Value () ())
-evaluateValue state value =
+evaluateValue : Dict FQN Reference -> Variables -> List (Value () ()) -> Value () () -> Result Error (Value () ())
+evaluateValue references variables arguments value =
     case value of
         Value.Literal _ _ ->
             -- Literals cannot be evaluated any further
@@ -100,7 +81,7 @@ evaluateValue state value =
             -- For a tuple we need to evaluate each element and return them wrapped back into a tuple
             elems
                 -- We evaluate each element separately.
-                |> List.map (evaluateValue state)
+                |> List.map (evaluateValue references variables [])
                 -- If any of those fails we return the first failure.
                 |> ListOfResults.liftFirstError
                 -- If nothing fails we wrap the result in a tuple.
@@ -110,7 +91,7 @@ evaluateValue state value =
             -- For a list we need to evaluate each element and return them wrapped back into a list
             items
                 -- We evaluate each element separately.
-                |> List.map (evaluateValue state)
+                |> List.map (evaluateValue references variables [])
                 -- If any of those fails we return the first failure.
                 |> ListOfResults.liftFirstError
                 -- If nothing fails we wrap the result in a list.
@@ -122,7 +103,7 @@ evaluateValue state value =
                 -- We evaluate each field separately.
                 |> List.map
                     (\( fieldName, fieldValue ) ->
-                        evaluateValue state fieldValue
+                        evaluateValue references variables [] fieldValue
                             |> Result.map (Tuple.pair fieldName)
                     )
                 -- If any of those fails we return the first failure.
@@ -132,18 +113,18 @@ evaluateValue state value =
 
         Value.Variable _ varName ->
             -- When we run into a variable we simply look up the value of the variable in the state.
-            state.variables
+            variables
                 |> Dict.get varName
                 -- If we cannot find the variable in the state we return an error.
                 |> Result.fromMaybe (VariableNotFound varName)
                 -- Do another round of evaluation in case there are unevaluated values in the variable (lazy evaluation)
-                |> Result.andThen (evaluateValue state)
+                |> Result.andThen (evaluateValue references variables [])
                 -- Wrap the error to make it easier to understand where it happened
                 |> Result.mapError (ErrorWhileEvaluatingVariable varName)
 
         Value.Reference _ ((FQName packageName moduleName localName) as fQName) ->
             -- For references we first need to find what they point to.
-            state.references
+            references
                 |> Dict.get ( packageName, moduleName, localName )
                 -- If the reference is not found we return an error.
                 |> Result.fromMaybe (ReferenceNotFound fQName)
@@ -159,17 +140,18 @@ evaluateValue state value =
                                         -- This is the state that will be used when native functions call "eval".
                                         -- We need to retain most of the current state but clear out the argument since
                                         -- the native function will evaluate completely new expressions.
-                                        { state | argumentsReversed = [] }
+                                        references
+                                        variables
+                                        []
                                     )
-                                    -- Arguments are stored in reverse order in the state for efficiency so we need to
-                                    -- flip them back to the original order.
-                                    (List.reverse state.argumentsReversed)
+                                    -- Pass down the arguments we collected before we got here (if we are inside an apply).
+                                    arguments
                                     -- Wrap the error to make it easier to understand where it happened
                                     |> Result.mapError (ErrorWhileEvaluatingReference fQName)
 
                             -- If this is a reference to another Morphir value we need to recursively evaluate those.
                             ValueReference referredValue ->
-                                evaluateValue state referredValue
+                                evaluateValue references Dict.empty arguments referredValue
                                     -- Wrap the error to make it easier to understand where it happened
                                     |> Result.mapError (ErrorWhileEvaluatingReference fQName)
                     )
@@ -177,7 +159,7 @@ evaluateValue state value =
         Value.Field _ subjectValue fieldName ->
             -- Field selection is evaluated by evaluating the subject first then matching on the resulting record and
             -- getting the field with the specified name.
-            evaluateValue state subjectValue
+            evaluateValue references variables [] subjectValue
                 |> Result.andThen
                     (\evaluatedSubjectValue ->
                         case evaluatedSubjectValue of
@@ -194,9 +176,9 @@ evaluateValue state value =
         Value.FieldFunction _ fieldName ->
             -- A field function expects exactly one argument to be passed through the state as subject value. Otherwise
             -- it behaves exactly like a `Field` expression.
-            case state.argumentsReversed of
+            case arguments of
                 [ subjectValue ] ->
-                    evaluateValue { state | argumentsReversed = [] } subjectValue
+                    evaluateValue references variables [] subjectValue
                         |> Result.andThen
                             (\evaluatedSubjectValue ->
                                 case evaluatedSubjectValue of
@@ -219,15 +201,14 @@ evaluateValue state value =
             -- repeatedly collected until we hit another node (lambda, reference or variable) where the arguments will
             -- be used to execute the calculation.
             evaluateValue
-                { state
-                    | argumentsReversed =
-                        argument :: state.argumentsReversed
-                }
+                references
+                variables
+                (argument :: arguments)
                 function
 
         Value.Lambda _ argumentPattern body ->
             -- By the time we run into a lambda we expect arguments to be available in the state.
-            state.argumentsReversed
+            arguments
                 -- So we start by taking the last argument in the state (We use head because the arguments are reversed).
                 |> List.head
                 -- If there are no arguments then our expression was invalid so we return an error.
@@ -248,25 +229,22 @@ evaluateValue state value =
                 |> Result.andThen
                     (\argumentVariables ->
                         evaluateValue
-                            { state
-                                | variables =
-                                    Dict.union argumentVariables state.variables
-                            }
+                            references
+                            (Dict.union argumentVariables variables)
+                            []
                             body
                     )
 
         Value.LetDefinition _ defName def inValue ->
             -- We evaluate a let definition by first evaluating the definition, then assigning it to the variable name
             -- given in `defName`. Finally we evaluate the `inValue` passing in the new variable in the state.
-            evaluateValue state (Value.definitionToValue def)
+            evaluateValue references variables [] (Value.definitionToValue def)
                 |> Result.andThen
                     (\defValue ->
                         evaluateValue
-                            { state
-                                | variables =
-                                    state.variables
-                                        |> Dict.insert defName defValue
-                            }
+                            references
+                            (variables |> Dict.insert defName defValue)
+                            []
                             inValue
                     )
 
@@ -279,29 +257,29 @@ evaluateValue state value =
                     defs |> Dict.map (\_ def -> Value.definitionToValue def)
             in
             evaluateValue
-                { state
-                    | variables = Dict.union defVariables state.variables
-                }
+                references
+                (Dict.union defVariables variables)
+                []
                 inValue
 
         Value.Destructure _ bindPattern bindValue inValue ->
             -- A destructure can be evaluated by evaluating the bind value, matching it against the bind pattern and
             -- finally evaluating the in value using the variables from the bind pattern.
-            evaluateValue state bindValue
+            evaluateValue references variables [] bindValue
                 |> Result.andThen (matchPattern bindPattern >> Result.mapError (BindPatternDidNotMatch bindValue))
                 |> Result.andThen
                     (\bindVariables ->
                         evaluateValue
-                            { state
-                                | variables = Dict.union bindVariables state.variables
-                            }
+                            references
+                            (Dict.union bindVariables variables)
+                            []
                             inValue
                     )
 
         Value.IfThenElse _ condition thenBranch elseBranch ->
             -- If then else evaluation is trivial: you evaluate the condition and depending on the result you evaluate
             -- one of the branches
-            evaluateValue state condition
+            evaluateValue references variables [] condition
                 |> Result.andThen
                     (\conditionValue ->
                         case conditionValue of
@@ -315,7 +293,7 @@ evaluateValue state value =
                                         else
                                             elseBranch
                                 in
-                                evaluateValue state branchToFollow
+                                evaluateValue references variables [] branchToFollow
 
                             _ ->
                                 Err (IfThenElseConditionShouldEvaluateToBool condition conditionValue)
@@ -332,7 +310,9 @@ evaluateValue state value =
                             case matchPattern nextPattern evaluatedSubject of
                                 Ok patternVariables ->
                                     evaluateValue
-                                        { state | variables = Dict.union patternVariables state.variables }
+                                        references
+                                        (Dict.union patternVariables variables)
+                                        []
                                         nextBody
 
                                 Err _ ->
@@ -341,13 +321,13 @@ evaluateValue state value =
                         [] ->
                             Err (NoPatternsMatch evaluatedSubject (cases |> List.map Tuple.first))
             in
-            evaluateValue state subjectValue
+            evaluateValue references variables [] subjectValue
                 |> Result.andThen (findMatch cases)
 
         Value.UpdateRecord _ subjectValue fieldUpdates ->
             -- To update a record first we need to evaluate the subject value, then extract the record fields and
             -- finally replace all updated fields with the new values
-            evaluateValue state subjectValue
+            evaluateValue references variables [] subjectValue
                 |> Result.andThen
                     (\evaluatedSubjectValue ->
                         case evaluatedSubjectValue of
@@ -369,7 +349,7 @@ evaluateValue state value =
                                                                 (\_ ->
                                                                     -- Before we replace the field value we need to
                                                                     -- evaluate the updated value.
-                                                                    evaluateValue state newFieldValue
+                                                                    evaluateValue references variables [] newFieldValue
                                                                         |> Result.map
                                                                             (\evaluatedNewFieldValue ->
                                                                                 fieldsSoFar
