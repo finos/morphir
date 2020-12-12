@@ -42,7 +42,7 @@ mapDistribution opt distro =
             trimTriples
                 |> List.concatMap
                     (\t ->
-                        if t.verb == Tripler.IsA then
+                        if t.verb == Tripler.Aliases then
                             case t.object of
                                 FQN fqn ->
                                     [ Triple fqn Tripler.IsA (Node Tripler.Type) ]
@@ -90,6 +90,28 @@ mapDistribution opt distro =
                                 Nothing
                     )
 
+        aliasRelationships =
+            triples
+                |> List.filterMap
+                    (\t ->
+                        case ( t.verb, t.object ) of
+                            ( Aliases, FQN object ) ->
+                                let
+                                    matchs =
+                                        "MATCH (s {id:'" ++ fqnToString t.subject ++ "'})"
+
+                                    matcho =
+                                        "MATCH (o:Type {id:'" ++ fqnToString object ++ "'})"
+
+                                    create =
+                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
+                                in
+                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+
+                            _ ->
+                                Nothing
+                    )
+
         containsRelationships =
             triples
                 |> List.filterMap
@@ -112,12 +134,12 @@ mapDistribution opt distro =
                                 Nothing
                     )
 
-        usesRelationships =
+        unionsRelationships =
             triples
                 |> List.filterMap
                     (\t ->
                         case ( t.verb, t.object ) of
-                            ( Uses, FQN object ) ->
+                            ( Unions, FQN object ) ->
                                 let
                                     matchs =
                                         "MATCH (s:Type {id:'" ++ fqnToString t.subject ++ "'})"
@@ -135,8 +157,62 @@ mapDistribution opt distro =
                     )
                 |> unique
 
+        usesRelationships =
+            triples
+                |> List.filterMap
+                    (\t ->
+                        case ( t.verb, t.object ) of
+                            ( Uses, FQN object ) ->
+                                let
+                                    matchs =
+                                        "MATCH (s:Function {id:'" ++ fqnToString t.subject ++ "'})"
+
+                                    matcho =
+                                        "MATCH (o:Type {id:'" ++ fqnToString object ++ "'})"
+
+                                    create =
+                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
+                                in
+                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+
+                            _ ->
+                                Nothing
+                    )
+                |> unique
+
+        producesRelationships =
+            triples
+                |> List.filterMap
+                    (\t ->
+                        case ( t.verb, t.object ) of
+                            ( Produces, FQN object ) ->
+                                let
+                                    matchs =
+                                        "MATCH (s:Function {id:'" ++ fqnToString t.subject ++ "'})"
+
+                                    matcho =
+                                        "MATCH (o:Type {id:'" ++ fqnToString object ++ "'})"
+
+                                    create =
+                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
+                                in
+                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+
+                            _ ->
+                                Nothing
+                    )
+                |> unique
+
         content =
-            (createTypes ++ isARelationships ++ containsRelationships ++ usesRelationships)
+            [ createTypes
+            , isARelationships
+            , aliasRelationships
+            , unionsRelationships
+            , containsRelationships
+            , usesRelationships
+            , producesRelationships
+            ]
+                |> List.concat
                 |> unique
                 |> String.join "\n"
     in

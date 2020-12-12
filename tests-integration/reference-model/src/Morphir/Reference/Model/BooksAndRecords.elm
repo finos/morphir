@@ -34,6 +34,7 @@ type alias Deal =
     }
 
 
+
 {- These define the requests that can be made of this service -}
 
 
@@ -95,22 +96,28 @@ logic dealState dealCmd =
                         )
 
                 CloseDeal p ->
-                    ( dealState, DealNotFound p)
+                    ( dealState, DealNotFound p )
 
 
 app : StatefulApp ID DealCmd Deal DealEvent
 app =
     StatefulApp logic
 
+
 type alias Position =
     { product : ProductID
-    , quantity : Quantity}
+    , quantity : Quantity
+    }
 
-position : ProductID -> Position
-position product =
+
+productPosition : ProductID -> Position
+productPosition product =
     Position "a" 1
 
-type alias SupplierID = String
+
+type alias SupplierID =
+    String
+
 
 type alias Inventory =
     { supplier : SupplierID

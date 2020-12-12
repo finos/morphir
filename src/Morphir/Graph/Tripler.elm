@@ -17,6 +17,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Constructor(..), Specification(..), Type(..))
+import Morphir.IR.Value as Value
 
 
 type NodeType
@@ -38,8 +39,12 @@ type Object
 
 type Verb
     = IsA
+    | Aliases
     | Contains
     | Uses
+    | Produces
+    | Parameterizes
+    | Unions
 
 
 type alias Triple =
@@ -68,12 +73,24 @@ mapPackageDefinition packageName packageDef =
 
 mapModuleDefinition : Package.PackageName -> Module.ModuleName -> Module.Definition ta va -> List Triple
 mapModuleDefinition packageName moduleName moduleDef =
-    moduleDef.types
-        |> Dict.toList
-        |> List.concatMap
-            (\( typeName, accessControlledDocumentedTypeDef ) ->
-                mapTypeDefinition packageName moduleName typeName accessControlledDocumentedTypeDef.value.value
-            )
+    let
+        typeTriples =
+            moduleDef.types
+                |> Dict.toList
+                |> List.concatMap
+                    (\( typeName, accessControlledDocumentedTypeDef ) ->
+                        mapTypeDefinition packageName moduleName typeName accessControlledDocumentedTypeDef.value.value
+                    )
+
+        valueTriples =
+            moduleDef.values
+                |> Dict.toList
+                |> List.concatMap
+                    (\( valueName, accessControlledDocumentedValueDef ) ->
+                        mapValueDefinition packageName moduleName valueName accessControlledDocumentedValueDef.value
+                    )
+    in
+    typeTriples ++ valueTriples
 
 
 mapTypeDefinition : Package.PackageName -> Module.ModuleName -> Name -> Type.Definition ta -> List Triple
@@ -89,8 +106,6 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                         recordTriple =
                             Triple fqn IsA (Node Record)
 
-                        --recordTypeTriple =
-                        --    Triple fqn IsA (Node Type)
                         fieldTriples =
                             fields
                                 |> List.map
@@ -113,17 +128,19 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                         ]
                                     )
                     in
-                    --recordTriple :: recordTypeTriple :: (List.concat fieldTriples)
                     recordTriple :: List.concat fieldTriples
 
                 Type.TypeAliasDefinition _ (Type.Reference _ aliasFQN _) ->
                     [ Triple fqn IsA (Node Type)
-                    , Triple fqn IsA (FQN aliasFQN)
+                    , Triple fqn Aliases (FQN aliasFQN)
                     ]
 
                 Type.CustomTypeDefinition _ accessControlledCtors ->
                     let
-                        constructorTriples =
+                        typeTriple =
+                            Triple fqn IsA (Node Type)
+
+                        childrenTriples =
                             case accessControlledCtors |> withPublicAccess of
                                 Just ctors ->
                                     ctors
@@ -132,14 +149,13 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                                 case constructor of
                                                     Constructor _ namesAndTypes ->
                                                         namesAndTypes
-                                                            |> List.filterMap
+                                                            |> List.concatMap
                                                                 (\( _, tipe ) ->
-                                                                    case tipe of
-                                                                        Reference _ tipeFQN _ ->
-                                                                            Just (Triple fqn Uses (FQN tipeFQN))
-
-                                                                        _ ->
-                                                                            Nothing
+                                                                    leafType tipe
+                                                                        |> List.map
+                                                                            (\leafFqn ->
+                                                                                Triple fqn Unions (FQN leafFqn)
+                                                                            )
                                                                 )
                                             )
                                         |> List.concat
@@ -147,12 +163,69 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                 Nothing ->
                                     []
                     in
-                    Triple fqn IsA (Node Type) :: constructorTriples
+                    typeTriple :: childrenTriples
 
                 _ ->
                     []
     in
     triples
+
+
+mapValueDefinition : Package.PackageName -> Module.ModuleName -> Name -> Value.Definition ta va -> List Triple
+mapValueDefinition packageName moduleName valueName valueDef =
+    let
+        functionTriple =
+            Triple (FQName packageName moduleName valueName) IsA (Node Function)
+
+        outputTriples =
+            case ( valueDef.body, valueDef.outputType ) of
+                ( _, Reference _ outputFQN _ ) ->
+                    Triple functionTriple.subject Produces (FQN outputFQN) :: []
+
+                ( _, Tuple _ tupleTypes ) ->
+                    tupleTypes
+                        |> List.concatMap leafType
+                        |> List.map (\leafFQN -> Triple functionTriple.subject Produces (FQN leafFQN))
+
+                _ ->
+                    []
+
+        inputTriples =
+            valueDef.inputTypes
+                |> List.filterMap
+                    (\inputType ->
+                        case inputType of
+                            ( _, _, Reference _ inputFqn _ ) ->
+                                Just inputFqn
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.map (\leafFQN -> Triple functionTriple.subject Uses (FQN leafFQN))
+
+        -- temp
+    in
+    functionTriple :: (inputTriples ++ outputTriples)
+
+
+leafType : Type a -> List FQName
+leafType tipe =
+    case tipe of
+        Reference _ tipeFQN paramTypes ->
+            case paramTypes of
+                [] ->
+                    tipeFQN :: []
+
+                _ ->
+                    paramTypes
+                        |> List.concatMap leafType
+
+        _ ->
+            []
+
+
+
+-- TODO
 
 
 nodeTypeToString : NodeType -> String
@@ -177,8 +250,20 @@ verbToString verb =
         IsA ->
             "isA"
 
+        Aliases ->
+            "aliases"
+
         Contains ->
             "contains"
 
         Uses ->
             "uses"
+
+        Produces ->
+            "produces"
+
+        Parameterizes ->
+            "parameterizes"
+
+        Unions ->
+            "unions"
