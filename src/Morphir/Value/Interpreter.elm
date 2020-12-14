@@ -163,7 +163,7 @@ evaluateValue state value =
                                     )
                                     -- Arguments are stored in reverse order in the state for efficiency so we need to
                                     -- flip them back to the original order.
-                                    (List.reverse state.argumentsReversed)
+                                    state.argumentsReversed
                                     -- Wrap the error to make it easier to understand where it happened
                                     |> Result.mapError (ErrorWhileEvaluatingReference fQName)
 
@@ -251,6 +251,7 @@ evaluateValue state value =
                             { state
                                 | variables =
                                     Dict.union argumentVariables state.variables
+                                , argumentsReversed = []
                             }
                             body
                     )
