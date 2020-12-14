@@ -95,9 +95,9 @@ function.
             )
 
 -}
-unaryStrict : (Value () () -> Result Error (Value () ())) -> Function
+unaryStrict : (Eval -> Value () () -> Result Error (Value () ())) -> Function
 unaryStrict f =
-    unaryLazy (\eval arg -> eval arg |> Result.andThen f)
+    unaryLazy (\eval arg -> eval arg |> Result.andThen (f eval))
 
 
 {-| Create a native function that takes exactly two arguments. Let the implementor decide when to evaluate the arguments.
@@ -155,8 +155,8 @@ binaryStrict f =
 
 {-| Create a native function that maps one literal value to another literal value.
 -}
-mapLiteral : (Literal -> Result Error Literal) -> Value () () -> Result Error (Value () ())
-mapLiteral f value =
+mapLiteral : (Literal -> Result Error Literal) -> Eval -> Value () () -> Result Error (Value () ())
+mapLiteral f eval value =
     case value of
         Value.Literal a lit ->
             f lit
