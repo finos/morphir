@@ -17,7 +17,8 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Constructor(..), Specification(..), Type(..))
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value(..))
+import Set exposing (Set)
 
 
 type NodeType
@@ -42,6 +43,7 @@ type Verb
     | Aliases
     | Contains
     | Uses
+    | Calls
     | Produces
     | Parameterizes
     | Unions
@@ -116,7 +118,7 @@ mapTypeDefinition packageName moduleName typeName typeDef =
 
                                             fieldTriple =
                                                 case field.tpe of
-                                                    Reference _ typeFqn _ ->
+                                                    Type.Reference _ typeFqn _ ->
                                                         Triple subjectFqn IsA (FQN typeFqn)
 
                                                     _ ->
@@ -147,7 +149,7 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                         |> List.map
                                             (\constructor ->
                                                 case constructor of
-                                                    Constructor _ namesAndTypes ->
+                                                    Type.Constructor _ namesAndTypes ->
                                                         namesAndTypes
                                                             |> List.concatMap
                                                                 (\( _, tipe ) ->
@@ -177,6 +179,52 @@ mapValueDefinition packageName moduleName valueName valueDef =
         functionTriple =
             Triple (FQName packageName moduleName valueName) IsA (Node Function)
 
+        subFunctionTriples =
+            let
+                collectFunctions : Value ta va -> List Triple
+                collectFunctions value =
+                    case value of
+                        Value.Reference _ functionFQN ->
+                            Triple functionTriple.subject Calls (FQN functionFQN) :: []
+
+                        Value.Tuple _ values ->
+                            values |> List.concatMap collectFunctions
+
+                        Value.List _ values ->
+                            values |> List.concatMap collectFunctions
+
+                        Value.Field _ v name ->
+                            collectFunctions v
+
+                        Value.Apply _ value1 value2 ->
+                            [ value1, value2 ] |> List.concatMap collectFunctions
+
+                        Value.Lambda _ _ v ->
+                            collectFunctions v
+
+                        Value.LetDefinition _ _ _ v ->
+                            collectFunctions v
+
+                        Value.LetRecursion _ _ v ->
+                            collectFunctions v
+
+                        Value.Destructure _ _ value1 value2 ->
+                            [ value1, value2 ] |> List.concatMap collectFunctions
+
+                        Value.IfThenElse _ value1 value2 value3 ->
+                            [ value1, value2, value3 ] |> List.concatMap collectFunctions
+
+                        Value.PatternMatch _ v tuples ->
+                            collectFunctions v ++ (tuples |> List.map (\( tk, tv ) -> tv) |> List.concatMap collectFunctions)
+
+                        Value.UpdateRecord _ v tuples ->
+                            collectFunctions v ++ (tuples |> List.map (\( tk, tv ) -> tv) |> List.concatMap collectFunctions)
+
+                        _ ->
+                            []
+            in
+            collectFunctions valueDef.body
+
         outputTriples =
             case valueDef.outputType of
                 Type.Reference _ outputFQN _ ->
@@ -198,7 +246,7 @@ mapValueDefinition packageName moduleName valueName valueDef =
                 |> List.filterMap
                     (\inputType ->
                         case inputType of
-                            ( _, _, Reference _ inputFqn _ ) ->
+                            ( _, _, Type.Reference _ inputFqn _ ) ->
                                 Just inputFqn
 
                             _ ->
@@ -208,20 +256,19 @@ mapValueDefinition packageName moduleName valueName valueDef =
 
         -- temp
     in
-    functionTriple :: (inputTriples ++ outputTriples)
+    functionTriple :: (subFunctionTriples ++ inputTriples ++ outputTriples)
 
 
 leafType : Type a -> List FQName
 leafType tipe =
     case tipe of
-        Reference _ tipeFQN paramTypes ->
+        Type.Reference _ tipeFQN paramTypes ->
             case paramTypes of
                 [] ->
                     tipeFQN :: []
 
                 _ ->
-                    paramTypes
-                        |> List.concatMap leafType
+                    List.concatMap leafType paramTypes
 
         _ ->
             []
@@ -261,6 +308,9 @@ verbToString verb =
 
         Uses ->
             "uses"
+
+        Calls ->
+            "calls"
 
         Produces ->
             "produces"

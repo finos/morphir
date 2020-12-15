@@ -37,24 +37,28 @@ mapDistribution opt distro =
     let
         triples =
             Tripler.mapDistribution distro
-                |> List.concatMap
-                    (\t ->
-                        case t.object of
-                            FQN fqn ->
-                                [ Triple fqn Tripler.IsA (Node Tripler.Type) ]
-
-                            _ ->
-                                []
-                    )
-                |> List.append (Tripler.mapDistribution distro)
-                |> uniqueBy tripleToString
 
         createTypes =
             triples
                 |> List.filterMap
                     (\t ->
                         case t.object of
-                            Node tipe ->
+                            FQN fqn ->
+                                if List.member t.verb [ IsA, Aliases, Contains, Uses, Parameterizes, Unions ] then
+                                    Just (Triple fqn Tripler.IsA (Node Tripler.Type))
+
+                                else
+                                    Nothing
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.append triples
+                |> uniqueBy tripleToString
+                |> List.filterMap
+                    (\t ->
+                        case ( t.verb, t.object ) of
+                            ( IsA, Node tipe ) ->
                                 Just ("CREATE (n:" ++ nodeTypeToString tipe ++ " {id:'" ++ fqnToString t.subject ++ "', name:'" ++ Name.toSnakeCase (FQName.getLocalName t.subject) ++ "'});")
 
                             _ ->
@@ -67,17 +71,7 @@ mapDistribution opt distro =
                     (\t ->
                         case ( t.verb, t.object ) of
                             ( IsA, FQN object ) ->
-                                let
-                                    matchs =
-                                        "MATCH (s {id:'" ++ fqnToString t.subject ++ "'})"
-
-                                    matcho =
-                                        "MATCH (o:Type {id:'" ++ fqnToString object ++ "'})"
-
-                                    create =
-                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
-                                in
-                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+                                Just (toRelationship Nothing (Just "Type") t.subject t.verb t.object)
 
                             _ ->
                                 Nothing
@@ -89,17 +83,7 @@ mapDistribution opt distro =
                     (\t ->
                         case ( t.verb, t.object ) of
                             ( Aliases, FQN object ) ->
-                                let
-                                    matchs =
-                                        "MATCH (s {id:'" ++ fqnToString t.subject ++ "'})"
-
-                                    matcho =
-                                        "MATCH (o:Type {id:'" ++ fqnToString object ++ "'})"
-
-                                    create =
-                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
-                                in
-                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+                                Just (toRelationship Nothing (Just "Type") t.subject t.verb t.object)
 
                             _ ->
                                 Nothing
@@ -111,17 +95,7 @@ mapDistribution opt distro =
                     (\t ->
                         case ( t.verb, t.object ) of
                             ( Contains, FQN object ) ->
-                                let
-                                    matchs =
-                                        "MATCH (s:Record {id:'" ++ fqnToString t.subject ++ "'})"
-
-                                    matcho =
-                                        "MATCH (o:Field {id:'" ++ fqnToString object ++ "'})"
-
-                                    create =
-                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
-                                in
-                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+                                Just (toRelationship (Just "Record") (Just "Field") t.subject t.verb t.object)
 
                             _ ->
                                 Nothing
@@ -133,17 +107,7 @@ mapDistribution opt distro =
                     (\t ->
                         case ( t.verb, t.object ) of
                             ( Unions, FQN object ) ->
-                                let
-                                    matchs =
-                                        "MATCH (s:Type {id:'" ++ fqnToString t.subject ++ "'})"
-
-                                    matcho =
-                                        "MATCH (o:Type {id:'" ++ fqnToString object ++ "'})"
-
-                                    create =
-                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
-                                in
-                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+                                Just (toRelationship (Just "Type") (Just "Type") t.subject t.verb t.object)
 
                             _ ->
                                 Nothing
@@ -156,17 +120,24 @@ mapDistribution opt distro =
                     (\t ->
                         case ( t.verb, t.object ) of
                             ( Uses, FQN object ) ->
-                                let
-                                    matchs =
-                                        "MATCH (s:Function {id:'" ++ fqnToString t.subject ++ "'})"
+                                Just (toRelationship (Just "Function") Nothing t.subject t.verb t.object)
 
-                                    matcho =
-                                        "MATCH (o {id:'" ++ fqnToString object ++ "'})"
+                            _ ->
+                                Nothing
+                    )
+                |> unique
 
-                                    create =
-                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
-                                in
-                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+        callsRelationships =
+            triples
+                |> List.filterMap
+                    (\t ->
+                        case ( t.verb, t.object ) of
+                            ( Calls, FQN objectFQN ) ->
+                                if String.startsWith "morphir.SDK" (fqnToString objectFQN) then
+                                    Nothing
+
+                                else
+                                    Just (toRelationship (Just "Function") (Just "Function") t.subject t.verb t.object)
 
                             _ ->
                                 Nothing
@@ -178,18 +149,8 @@ mapDistribution opt distro =
                 |> List.filterMap
                     (\t ->
                         case ( t.verb, t.object ) of
-                            ( Produces, FQN object ) ->
-                                let
-                                    matchs =
-                                        "MATCH (s:Function {id:'" ++ fqnToString t.subject ++ "'})"
-
-                                    matcho =
-                                        "MATCH (o {id:'" ++ fqnToString object ++ "'})"
-
-                                    create =
-                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
-                                in
-                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+                            ( Produces, object ) ->
+                                Just (toRelationship (Just "Function") Nothing t.subject t.verb t.object)
 
                             _ ->
                                 Nothing
@@ -203,6 +164,7 @@ mapDistribution opt distro =
             , unionsRelationships
             , containsRelationships
             , usesRelationships
+            , callsRelationships
             , producesRelationships
             ]
                 |> List.concat
@@ -210,6 +172,27 @@ mapDistribution opt distro =
                 |> String.join "\n"
     in
     Dict.fromList [ ( ( [ "dist" ], "graph.cypher" ), content ) ]
+
+
+toRelationship : Maybe String -> Maybe String -> FQName -> Verb -> Object -> String
+toRelationship subjectNode objectNode subject verb object =
+    let
+        sn =
+            subjectNode |> Maybe.map (\s -> ":" ++ s) |> Maybe.withDefault ""
+
+        on =
+            objectNode |> Maybe.map (\s -> ":" ++ s) |> Maybe.withDefault ""
+
+        matchs =
+            "MATCH (s" ++ sn ++ " {id:'" ++ fqnToString subject ++ "'})"
+
+        matcho =
+            "MATCH (o" ++ on ++ " {id:'" ++ objectToString object ++ "'})"
+
+        create =
+            "CREATE (s)-[:" ++ verbToString verb ++ "]->(o)"
+    in
+    matchs ++ " " ++ matcho ++ " " ++ create ++ ";"
 
 
 tripleToString : Triple -> String
@@ -233,12 +216,14 @@ fqnToString fqn =
 objectToString : Object -> String
 objectToString o =
     case o of
-        FQN (FQName packagePath modulePath name) ->
-            String.join "."
-                [ Path.toString Name.toSnakeCase "." packagePath
-                , Path.toString Name.toSnakeCase "." modulePath
-                , String.join "_" name
-                ]
+        --FQN (FQName packagePath modulePath name) ->
+        --    String.join "."
+        --        [ Path.toString Name.toSnakeCase "." packagePath
+        --        , Path.toString Name.toSnakeCase "." modulePath
+        --        , String.join "_" name
+        --        ]
+        FQN fqn ->
+            fqnToString fqn
 
         Node node ->
             nodeTypeToString node
