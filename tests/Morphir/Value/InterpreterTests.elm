@@ -386,23 +386,4 @@ evaluateValueTests =
                 (Value.List () [ Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 4), Value.Literal () (IntLiteral 6) ])
             )
             (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 3) ])
-
-        --, negativeCheck " sum [\"a\",\"b\"]  == UnexpectedArguments [\"a\",\"b\"]"
-        --    (Value.Apply ()
-        --        (Value.Reference () (fqn "Morphir.SDK" "List" "sum"))
-        --        (Value.List () [ Value.Literal () (StringLiteral "a"), Value.Literal () (StringLiteral "b") ])
-        --    )
-        --    (UnexpectedArguments [ Value.List () [ Value.Literal () (StringLiteral "a"), Value.Literal () (StringLiteral "b") ] ])
-        --, negativeCheck " sum [1,\"a\",\"b\"]  == UnexpectedArguments [1,\"a\",\"b\"]"
-        --    (Value.Apply ()
-        --        (Value.Reference () (fqn "Morphir.SDK" "List" "sum"))
-        --        (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (StringLiteral "a"), Value.Literal () (StringLiteral "b") ])
-        --    )
-        --    (UnexpectedArguments [ Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (StringLiteral "a"), Value.Literal () (StringLiteral "b") ] ])
-        --, negativeCheck " sum [1,3,\"a\",2,\"b\"]  == UnexpectedArguments [1,3,\"a\",2,\"b\"]"
-        --    (Value.Apply ()
-        --        (Value.Reference () (fqn "Morphir.SDK" "List" "sum"))
-        --        (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 3), Value.Literal () (StringLiteral "a"), Value.Literal () (IntLiteral 2), Value.Literal () (StringLiteral "b") ])
-        --    )
-        --    (UnexpectedArguments [ Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 3), Value.Literal () (StringLiteral "a"), Value.Literal () (IntLiteral 2), Value.Literal () (StringLiteral "b") ] ])
         ]
