@@ -178,14 +178,17 @@ mapValueDefinition packageName moduleName valueName valueDef =
             Triple (FQName packageName moduleName valueName) IsA (Node Function)
 
         outputTriples =
-            case ( valueDef.body, valueDef.outputType ) of
-                ( _, Reference _ outputFQN _ ) ->
+            case valueDef.outputType of
+                Type.Reference _ outputFQN _ ->
                     Triple functionTriple.subject Produces (FQN outputFQN) :: []
 
-                ( _, Tuple _ tupleTypes ) ->
+                Type.Tuple _ tupleTypes ->
                     tupleTypes
                         |> List.concatMap leafType
                         |> List.map (\leafFQN -> Triple functionTriple.subject Produces (FQN leafFQN))
+
+                Type.Variable _ name ->
+                    Triple functionTriple.subject Produces (FQN (FQName packageName moduleName name)) :: []
 
                 _ ->
                     []

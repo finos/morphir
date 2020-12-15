@@ -35,25 +35,18 @@ type alias Options =
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
     let
-        trimTriples =
-            Tripler.mapDistribution distro
-
         triples =
-            trimTriples
+            Tripler.mapDistribution distro
                 |> List.concatMap
                     (\t ->
-                        if t.verb == Tripler.Aliases then
-                            case t.object of
-                                FQN fqn ->
-                                    [ Triple fqn Tripler.IsA (Node Tripler.Type) ]
+                        case t.object of
+                            FQN fqn ->
+                                [ Triple fqn Tripler.IsA (Node Tripler.Type) ]
 
-                                _ ->
-                                    []
-
-                        else
-                            []
+                            _ ->
+                                []
                     )
-                |> List.append trimTriples
+                |> List.append (Tripler.mapDistribution distro)
                 |> uniqueBy tripleToString
 
         createTypes =
@@ -168,7 +161,7 @@ mapDistribution opt distro =
                                         "MATCH (s:Function {id:'" ++ fqnToString t.subject ++ "'})"
 
                                     matcho =
-                                        "MATCH (o:Type {id:'" ++ fqnToString object ++ "'})"
+                                        "MATCH (o {id:'" ++ fqnToString object ++ "'})"
 
                                     create =
                                         "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
@@ -191,7 +184,7 @@ mapDistribution opt distro =
                                         "MATCH (s:Function {id:'" ++ fqnToString t.subject ++ "'})"
 
                                     matcho =
-                                        "MATCH (o:Type {id:'" ++ fqnToString object ++ "'})"
+                                        "MATCH (o {id:'" ++ fqnToString object ++ "'})"
 
                                     create =
                                         "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
