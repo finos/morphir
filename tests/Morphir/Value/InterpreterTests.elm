@@ -92,6 +92,24 @@ evaluateValueTests =
                 (Value.Literal () (IntLiteral 2000000000000))
             )
             (Value.Literal () (IntLiteral 3000000000000))
+        , positiveCheck "2 + 4.2 == 6.2"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                    (Value.Literal () (FloatLiteral (toFloat 2)))
+                )
+                (Value.Literal () (FloatLiteral 4.2))
+            )
+            (Value.Literal () (FloatLiteral 6.2))
+        , positiveCheck "10.5 + 3 == 13.5"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                    (Value.Literal () (FloatLiteral 10.5))
+                )
+                (Value.Literal () (FloatLiteral (toFloat 3)))
+            )
+            (Value.Literal () (FloatLiteral 13.5))
         , positiveCheck "1000000000000 - 1000000000000 == 0"
             (Value.Apply ()
                 (Value.Apply ()
@@ -110,7 +128,25 @@ evaluateValueTests =
                 (Value.Literal () (FloatLiteral 0.4))
             )
             (Value.Literal () (FloatLiteral 99.6))
-        , positiveCheck " 0.4 \\* 5 == 2"
+        , positiveCheck " 17 - 0.8 == 16.2"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "subtract"))
+                    (Value.Literal () (FloatLiteral (toFloat 17)))
+                )
+                (Value.Literal () (FloatLiteral 0.8))
+            )
+            (Value.Literal () (FloatLiteral 16.2))
+        , positiveCheck " 30.6 - 2 == 28.6"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "subtract"))
+                    (Value.Literal () (FloatLiteral 30.6))
+                )
+                (Value.Literal () (FloatLiteral (toFloat 2)))
+            )
+            (Value.Literal () (FloatLiteral 28.6))
+        , positiveCheck " 0.4 mul 5.0 == 2.0"
             (Value.Apply ()
                 (Value.Apply ()
                     (Value.Reference () (fqn "Morphir.SDK" "Basics" "multiply"))
@@ -119,7 +155,7 @@ evaluateValueTests =
                 (Value.Literal () (FloatLiteral 5))
             )
             (Value.Literal () (FloatLiteral 2))
-        , positiveCheck " 3 \\* 5 == 15"
+        , positiveCheck " 3 mul 5 == 15"
             (Value.Apply ()
                 (Value.Apply ()
                     (Value.Reference () (fqn "Morphir.SDK" "Basics" "multiply"))
@@ -128,7 +164,25 @@ evaluateValueTests =
                 (Value.Literal () (IntLiteral 5))
             )
             (Value.Literal () (IntLiteral 15))
-        , positiveCheck "4 / 2 == 2"
+        , positiveCheck " 10 mul 5.0 == 50.0"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "multiply"))
+                    (Value.Literal () (FloatLiteral (toFloat 10)))
+                )
+                (Value.Literal () (FloatLiteral 5))
+            )
+            (Value.Literal () (FloatLiteral 50))
+        , positiveCheck " 30.2 mul 5 == 151.0"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "multiply"))
+                    (Value.Literal () (FloatLiteral 30.2))
+                )
+                (Value.Literal () (FloatLiteral (toFloat 5)))
+            )
+            (Value.Literal () (FloatLiteral 151))
+        , positiveCheck "4.0 / 2.0 == 2.0"
             (Value.Apply ()
                 (Value.Apply ()
                     (Value.Reference () (fqn "Morphir.SDK" "Basics" "divide"))
@@ -137,7 +191,7 @@ evaluateValueTests =
                 (Value.Literal () (FloatLiteral 2))
             )
             (Value.Literal () (FloatLiteral 2))
-        , positiveCheck "2 / 5 == 0.4"
+        , positiveCheck "2.0 / 5.0 == 0.4"
             (Value.Apply ()
                 (Value.Apply ()
                     (Value.Reference () (fqn "Morphir.SDK" "Basics" "divide"))
@@ -146,7 +200,7 @@ evaluateValueTests =
                 (Value.Literal () (FloatLiteral 5))
             )
             (Value.Literal () (FloatLiteral 0.4))
-        , positiveCheck "7.5 / 0 == Infinite"
+        , positiveCheck "7.5 / 0.0 == Infinite"
             (Value.Apply ()
                 (Value.Apply ()
                     (Value.Reference () (fqn "Morphir.SDK" "Basics" "divide"))
@@ -173,7 +227,7 @@ evaluateValueTests =
                 (Value.Literal () (IntLiteral 100))
             )
             (Value.Literal () (BoolLiteral False))
-        , positiveCheck " -10 < -100 == False"
+        , positiveCheck " -10.0 < -100.0 == False"
             (Value.Apply ()
                 (Value.Apply ()
                     (Value.Reference () (fqn "Morphir.SDK" "Basics" "lessThan"))
@@ -207,6 +261,24 @@ evaluateValueTests =
                     (Value.Literal () (FloatLiteral 10.111))
                 )
                 (Value.Literal () (FloatLiteral 10.112))
+            )
+            (Value.Literal () (BoolLiteral True))
+        , positiveCheck " 5 < 2.5 == False"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "lessThan"))
+                    (Value.Literal () (FloatLiteral (toFloat 5)))
+                )
+                (Value.Literal () (FloatLiteral 2.5))
+            )
+            (Value.Literal () (BoolLiteral False))
+        , positiveCheck " 10.111 < 12  == True"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "lessThan"))
+                    (Value.Literal () (FloatLiteral 10.111))
+                )
+                (Value.Literal () (FloatLiteral (toFloat 12)))
             )
             (Value.Literal () (BoolLiteral True))
         , positiveCheck " 'a' < 'c'  == True"

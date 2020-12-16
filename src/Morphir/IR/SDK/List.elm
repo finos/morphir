@@ -124,8 +124,8 @@ construct a =
     Value.Reference a (toFQName moduleName "construct")
 
 
-myMap : Native.Function
-myMap eval args =
+nativeMap : Native.Function
+nativeMap eval args =
     case args of
         [ arg1, arg2 ] ->
             eval arg2
@@ -206,6 +206,6 @@ nativeFunctions =
                         Err (UnexpectedArguments [ arg ])
             )
       )
-    , ( "map", myMap )
+    , ( "map", nativeMap )
     , ( "append", append )
     ]
