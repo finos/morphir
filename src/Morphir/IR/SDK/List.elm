@@ -149,8 +149,8 @@ nativeMap eval args =
             Err (UnexpectedArguments args)
 
 
-append : Native.Function
-append eval args =
+nativeAppend : Native.Function
+nativeAppend eval args =
     case args of
         [ arg1, arg2 ] ->
             eval arg1
@@ -207,5 +207,5 @@ nativeFunctions =
             )
       )
     , ( "map", nativeMap )
-    , ( "append", append )
+    , ( "append", nativeAppend )
     ]
