@@ -18,9 +18,10 @@
 module Morphir.Graph.CypherBackend exposing (..)
 
 import Dict
-import List.Extra exposing (unique, uniqueBy)
+import Graph
+import List.Extra exposing (unique)
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.Graph.Tripler as Tripler exposing (NodeType(..), Object(..), Triple, Verb(..), mapDistribution, nodeTypeToString, verbToString)
+import Morphir.Graph.Grapher as Grapher exposing (Edge, GraphEntry(..), Node(..), nodeType, verbToString)
 import Morphir.IR.Distribution as Distribution exposing (Distribution, lookupTypeSpecification)
 import Morphir.IR.FQName as FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
@@ -35,137 +36,37 @@ type alias Options =
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
     let
-        triples =
-            Tripler.mapDistribution distro
+        graphEntries =
+            Grapher.mapDistribution distro
 
-        createTypes =
-            triples
+        -- Splitting the nodes from the edges because we want to create them first
+        nodes =
+            graphEntries
                 |> List.filterMap
-                    (\t ->
-                        case t.object of
-                            FQN fqn ->
-                                if List.member t.verb [ IsA, Aliases, Contains, Uses, Parameterizes, Unions ] then
-                                    Just (Triple fqn Tripler.IsA (Node Tripler.Type))
-
-                                else
-                                    Nothing
-
-                            _ ->
-                                Nothing
-                    )
-                |> List.append triples
-                |> uniqueBy tripleToString
-                |> List.filterMap
-                    (\t ->
-                        case ( t.verb, t.object ) of
-                            ( IsA, Node tipe ) ->
-                                Just ("CREATE (n:" ++ nodeTypeToString tipe ++ " {id:'" ++ fqnToString t.subject ++ "', name:'" ++ Name.toSnakeCase (FQName.getLocalName t.subject) ++ "'});")
+                    (\entry ->
+                        case entry of
+                            NodeEntry node ->
+                                Just (nodeToCreate node)
 
                             _ ->
                                 Nothing
                     )
 
-        isARelationships =
-            triples
+        edges =
+            graphEntries
                 |> List.filterMap
-                    (\t ->
-                        case ( t.verb, t.object ) of
-                            ( IsA, FQN object ) ->
-                                Just (toRelationship Nothing (Just "Type") t.subject t.verb t.object)
+                    (\entry ->
+                        case entry of
+                            EdgeEntry edge ->
+                                Just (toRelationship edge)
 
                             _ ->
                                 Nothing
                     )
-
-        aliasRelationships =
-            triples
-                |> List.filterMap
-                    (\t ->
-                        case ( t.verb, t.object ) of
-                            ( Aliases, FQN object ) ->
-                                Just (toRelationship Nothing (Just "Type") t.subject t.verb t.object)
-
-                            _ ->
-                                Nothing
-                    )
-
-        containsRelationships =
-            triples
-                |> List.filterMap
-                    (\t ->
-                        case ( t.verb, t.object ) of
-                            ( Contains, FQN object ) ->
-                                Just (toRelationship (Just "Record") (Just "Field") t.subject t.verb t.object)
-
-                            _ ->
-                                Nothing
-                    )
-
-        unionsRelationships =
-            triples
-                |> List.filterMap
-                    (\t ->
-                        case ( t.verb, t.object ) of
-                            ( Unions, FQN object ) ->
-                                Just (toRelationship (Just "Type") (Just "Type") t.subject t.verb t.object)
-
-                            _ ->
-                                Nothing
-                    )
-                |> unique
-
-        usesRelationships =
-            triples
-                |> List.filterMap
-                    (\t ->
-                        case ( t.verb, t.object ) of
-                            ( Uses, FQN object ) ->
-                                Just (toRelationship (Just "Function") Nothing t.subject t.verb t.object)
-
-                            _ ->
-                                Nothing
-                    )
-                |> unique
-
-        callsRelationships =
-            triples
-                |> List.filterMap
-                    (\t ->
-                        case ( t.verb, t.object ) of
-                            ( Calls, FQN objectFQN ) ->
-                                if String.startsWith "morphir.SDK" (fqnToString objectFQN) then
-                                    Nothing
-
-                                else
-                                    Just (toRelationship (Just "Function") (Just "Function") t.subject t.verb t.object)
-
-                            _ ->
-                                Nothing
-                    )
-                |> unique
-
-        producesRelationships =
-            triples
-                |> List.filterMap
-                    (\t ->
-                        case ( t.verb, t.object ) of
-                            ( Produces, object ) ->
-                                Just (toRelationship (Just "Function") Nothing t.subject t.verb t.object)
-
-                            _ ->
-                                Nothing
-                    )
-                |> unique
 
         content =
-            [ createTypes
-            , isARelationships
-            , aliasRelationships
-            , unionsRelationships
-            , containsRelationships
-            , usesRelationships
-            , callsRelationships
-            , producesRelationships
+            [ nodes
+            , edges
             ]
                 |> List.concat
                 |> unique
@@ -174,34 +75,59 @@ mapDistribution opt distro =
     Dict.fromList [ ( ( [ "dist" ], "graph.cypher" ), content ) ]
 
 
-toRelationship : Maybe String -> Maybe String -> FQName -> Verb -> Object -> String
-toRelationship subjectNode objectNode subject verb object =
+toRelationship : Edge -> String
+toRelationship edge =
     let
-        sn =
-            subjectNode |> Maybe.map (\s -> ":" ++ s) |> Maybe.withDefault ""
+        ( subjectType, subjectId, _ ) =
+            splitNode edge.subject
 
-        on =
-            objectNode |> Maybe.map (\s -> ":" ++ s) |> Maybe.withDefault ""
+        ( objectType, objectId, _ ) =
+            splitNode edge.object
 
         matchs =
-            "MATCH (s" ++ sn ++ " {id:'" ++ fqnToString subject ++ "'})"
+            "MATCH (s:" ++ subjectType ++ " {id:'" ++ subjectId ++ "'})"
 
         matcho =
-            "MATCH (o" ++ on ++ " {id:'" ++ objectToString object ++ "'})"
+            "MATCH (o:" ++ objectType ++ " {id:'" ++ objectId ++ "'})"
 
         create =
-            "CREATE (s)-[:" ++ verbToString verb ++ "]->(o)"
+            "CREATE (s)-[:" ++ verbToString edge.verb ++ "]->(o)"
     in
     matchs ++ " " ++ matcho ++ " " ++ create ++ ";"
 
 
-tripleToString : Triple -> String
-tripleToString triple =
-    String.join ", "
-        [ fqnToString triple.subject
-        , verbToString triple.verb
-        , objectToString triple.object
-        ]
+splitNode : Grapher.Node -> ( String, String, String )
+splitNode node =
+    let
+        humanize : Name -> String
+        humanize name =
+            Name.toHumanWords name
+                |> String.join " "
+    in
+    case node of
+        Record fqn ->
+            ( nodeType node, fqnToString fqn, humanize (FQName.getLocalName fqn) )
+
+        Field fqn name ->
+            ( nodeType node, fqnToString fqn ++ "#" ++ Name.toSnakeCase name, humanize name )
+
+        Type fqn ->
+            ( nodeType node, fqnToString fqn, humanize (FQName.getLocalName fqn) )
+
+        Function fqn ->
+            ( nodeType node, fqnToString fqn, humanize (FQName.getLocalName fqn) )
+
+        Unknown ->
+            ( "Unknown", "unknown", "unknown" )
+
+
+nodeToCreate : Grapher.Node -> String
+nodeToCreate node =
+    let
+        ( tipe, id, name ) =
+            splitNode node
+    in
+    "CREATE (n:" ++ tipe ++ " {id:'" ++ id ++ "', name:'" ++ name ++ "'});"
 
 
 fqnToString : FQName -> String
@@ -211,22 +137,3 @@ fqnToString fqn =
         , Path.toString Name.toSnakeCase "." (FQName.getModulePath fqn)
         , Name.toSnakeCase (FQName.getLocalName fqn)
         ]
-
-
-objectToString : Object -> String
-objectToString o =
-    case o of
-        --FQN (FQName packagePath modulePath name) ->
-        --    String.join "."
-        --        [ Path.toString Name.toSnakeCase "." packagePath
-        --        , Path.toString Name.toSnakeCase "." modulePath
-        --        , String.join "_" name
-        --        ]
-        FQN fqn ->
-            fqnToString fqn
-
-        Node node ->
-            nodeTypeToString node
-
-        Other s ->
-            s
