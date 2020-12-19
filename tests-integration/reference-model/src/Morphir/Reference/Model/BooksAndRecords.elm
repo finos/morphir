@@ -124,3 +124,13 @@ type alias Inventory =
     , product : ProductID
     , quantity : Quantity
     }
+
+
+quantityof : Inventory -> Quantity
+quantityof inv =
+    inv.quantity
+
+
+roundUp : Inventory -> Quantity
+roundUp inv =
+    quantityof inv + 1000
