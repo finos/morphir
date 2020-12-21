@@ -80,4 +80,6 @@ nativeFunctions =
     List.foldl Dict.union
         Dict.empty
         [ moduleFunctions "Basics" Basics.nativeFunctions
+        , moduleFunctions "String" String.nativeFunctions
+        , moduleFunctions "List" List.nativeFunctions
         ]

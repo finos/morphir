@@ -184,6 +184,90 @@ nativeFunctions =
                         Err (UnexpectedArguments [ arg1, arg2 ])
             )
       )
+    , ( "add"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                case ( arg1, arg2 ) of
+                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
+                        Ok (Value.Literal () (FloatLiteral (v1 + v2)))
+
+                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
+                        Ok (Value.Literal () (IntLiteral (v1 + v2)))
+
+                    _ ->
+                        Err (ExpectedNumberTypeArguments [ arg1, arg2 ])
+            )
+      )
+    , ( "subtract"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                case ( arg1, arg2 ) of
+                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
+                        Ok (Value.Literal () (FloatLiteral (v1 - v2)))
+
+                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
+                        Ok (Value.Literal () (IntLiteral (v1 - v2)))
+
+                    _ ->
+                        Err (UnexpectedArguments [ arg1, arg2 ])
+            )
+      )
+    , ( "multiply"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                case ( arg1, arg2 ) of
+                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
+                        Ok (Value.Literal () (FloatLiteral (v1 * v2)))
+
+                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
+                        Ok (Value.Literal () (IntLiteral (v1 * v2)))
+
+                    _ ->
+                        Err (UnexpectedArguments [ arg1, arg2 ])
+            )
+      )
+    , ( "divide"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                case ( arg1, arg2 ) of
+                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
+                        Ok (Value.Literal () (FloatLiteral (v1 / v2)))
+
+                    _ ->
+                        Err (UnexpectedArguments [ arg1, arg2 ])
+            )
+      )
+    , ( "integerDivide"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                case ( arg1, arg2 ) of
+                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
+                        Ok (Value.Literal () (IntLiteral (v1 // v2)))
+
+                    _ ->
+                        Err (UnexpectedArguments [ arg1, arg2 ])
+            )
+      )
+    , ( "lessThan"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                case ( arg1, arg2 ) of
+                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 < v2)))
+
+                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 < v2)))
+
+                    ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 < v2)))
+
+                    ( Value.Literal _ (StringLiteral v1), Value.Literal _ (StringLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 < v2)))
+
+                    _ ->
+                        Err (UnexpectedArguments [ arg1, arg2 ])
+            )
+      )
     ]
 
 

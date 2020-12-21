@@ -22,6 +22,7 @@ type Error
     | ExactlyOneArgumentExpected (List (Value () ()))
     | ErrorWhileEvaluatingReference FQName Error
     | ErrorWhileEvaluatingVariable Name Error
+    | ExpectedNumberTypeArguments (List (Value () ()))
 
 
 type PatternMismatch
