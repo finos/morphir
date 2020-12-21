@@ -26,8 +26,8 @@ mapStatement stmnt =
         NodeStatement nodeId attributes ->
             concat [ nodeId, mapAttributes attributes ]
 
-        EdgeStatement fromNode toNode ->
-            concat [ fromNode, " -> ", toNode ]
+        EdgeStatement fromNode toNode attributes ->
+            concat [ fromNode, " -> ", toNode, mapAttributes attributes ]
 
 
 mapAttributes : List Attribute -> Doc

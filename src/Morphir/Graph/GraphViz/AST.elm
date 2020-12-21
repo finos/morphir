@@ -18,7 +18,7 @@ type alias NodeID =
 
 type Statement
     = NodeStatement NodeID (List Attribute)
-    | EdgeStatement NodeID NodeID
+    | EdgeStatement NodeID NodeID (List Attribute)
 
 
 type Attribute
