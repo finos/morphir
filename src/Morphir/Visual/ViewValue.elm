@@ -19,6 +19,17 @@ import Morphir.Visual.ViewTuple as ViewTuple
 
 view : Value ta (Type ta) -> Element msg
 view value =
+    let
+        indexedValue : Value ta ( Int, Type ta )
+        indexedValue =
+            value
+                |> Value.indexedMapValue
+                    (\index va ->
+                        ( index, va )
+                    )
+                    0
+                |> Tuple.first
+    in
     case value of
         Value.Literal literalType literal ->
             ViewLiteral.view literal
@@ -79,8 +90,8 @@ view value =
             in
             ViewLetDefinition.view view definitions inValue
 
-        Value.IfThenElse tpe condition thenBranch elseBranch ->
-            ViewIfThenElse.view view condition thenBranch elseBranch
+        Value.IfThenElse _ _ _ _ ->
+            ViewIfThenElse.view view indexedValue
 
         _ ->
             Element.paragraph
