@@ -20,7 +20,6 @@ module Morphir.Graph.TriplesBackend exposing (..)
 import Dict
 import List.Extra exposing (unique, uniqueBy)
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.Graph.Tripler as Tripler exposing (NodeType(..), Object(..), Triple, Verb(..), mapDistribution, nodeTypeToString, verbToString)
 import Morphir.IR.Distribution as Distribution exposing (Distribution, lookupTypeSpecification)
 import Morphir.IR.FQName as FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
@@ -32,68 +31,10 @@ type alias Options =
     {}
 
 
+
+-- TODO: implement RDF
+
+
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
-    let
-        triples : List Tripler.Triple
-        triples =
-            Tripler.mapDistribution distro
-
-        content =
-            triples
-                |> List.concatMap
-                    (\t ->
-                        if t.verb == Tripler.IsA then
-                            case t.object of
-                                FQN fqn ->
-                                    [ Triple fqn Tripler.IsA (Node Tripler.Type) ]
-
-                                _ ->
-                                    []
-
-                        else
-                            []
-                    )
-                |> List.append triples
-                |> List.map tripleToString
-                |> List.sort
-                |> unique
-                |> String.join "\n"
-    in
-    Dict.fromList [ ( ( [ "dist" ], "graph.txt" ), content ) ]
-
-
-tripleToString : Triple -> String
-tripleToString triple =
-    String.join ", "
-        [ subjectToString triple.subject
-        , verbToString triple.verb
-        , objectToString triple.object
-        ]
-
-
-subjectToString : FQName -> String
-subjectToString fqn =
-    String.join "."
-        [ Path.toString Name.toSnakeCase "." (FQName.getPackagePath fqn)
-        , Path.toString Name.toSnakeCase "." (FQName.getModulePath fqn)
-        , Name.toSnakeCase (FQName.getLocalName fqn)
-        ]
-
-
-objectToString : Object -> String
-objectToString o =
-    case o of
-        FQN (FQName packagePath modulePath name) ->
-            String.join "."
-                [ Path.toString Name.toSnakeCase "." packagePath
-                , Path.toString Name.toSnakeCase "." modulePath
-                , String.join "_" name
-                ]
-
-        Node node ->
-            nodeTypeToString node
-
-        -- PathOf Path.Path ->
-        Other s ->
-            s
+    Dict.empty
