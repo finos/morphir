@@ -18,9 +18,10 @@
 module Morphir.Graph.CypherBackend exposing (..)
 
 import Dict
-import List.Extra exposing (unique, uniqueBy)
+import Graph
+import List.Extra exposing (unique)
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.Graph.Tripler as Tripler exposing (NodeType(..), Object(..), Triple, Verb(..), mapDistribution, nodeTypeToString, verbToString)
+import Morphir.Graph.Grapher as Grapher exposing (Edge, GraphEntry(..), Node(..), nodeType, verbToString)
 import Morphir.IR.Distribution as Distribution exposing (Distribution, lookupTypeSpecification)
 import Morphir.IR.FQName as FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
@@ -35,80 +36,98 @@ type alias Options =
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
     let
-        triples : List Tripler.Triple
-        triples =
-            Tripler.mapDistribution distro
+        graphEntries =
+            Grapher.mapDistribution distro
 
-        createTypes =
-            triples
+        -- Splitting the nodes from the edges because we want to create them first
+        nodes =
+            graphEntries
                 |> List.filterMap
-                    (\t ->
-                        case t.object of
-                            Node tipe ->
-                                Just ("CREATE (n:" ++ nodeTypeToString tipe ++ " {name:'" ++ fqnToString t.subject ++ "'});")
+                    (\entry ->
+                        case entry of
+                            NodeEntry node ->
+                                Just (nodeToCreate node)
 
                             _ ->
                                 Nothing
                     )
 
-        isARelationships =
-            triples
+        edges =
+            graphEntries
                 |> List.filterMap
-                    (\t ->
-                        case ( t.verb, t.object ) of
-                            ( IsA, FQN object ) ->
-                                let
-                                    matchs =
-                                        "MATCH (s {name:'" ++ fqnToString t.subject ++ "'})"
-
-                                    matcho =
-                                        "MATCH (o:Type {name:'" ++ fqnToString object ++ "'})"
-
-                                    create =
-                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
-                                in
-                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
-
-                            _ ->
-                                Nothing
-                    )
-
-        containsRelationships =
-            triples
-                |> List.filterMap
-                    (\t ->
-                        case ( t.verb, t.object ) of
-                            ( Contains, FQN object ) ->
-                                let
-                                    matchs =
-                                        "MATCH (s:Record {name:'" ++ fqnToString t.subject ++ "'})"
-
-                                    matcho =
-                                        "MATCH (o:Field {name:'" ++ fqnToString object ++ "'})"
-
-                                    create =
-                                        "CREATE (s)-[:" ++ verbToString t.verb ++ "]->(o)"
-                                in
-                                Just (matchs ++ " " ++ matcho ++ " " ++ create ++ ";")
+                    (\entry ->
+                        case entry of
+                            EdgeEntry edge ->
+                                Just (toRelationship edge)
 
                             _ ->
                                 Nothing
                     )
 
         content =
-            (createTypes ++ isARelationships ++ containsRelationships)
+            [ nodes
+            , edges
+            ]
+                |> List.concat
+                |> unique
                 |> String.join "\n"
     in
     Dict.fromList [ ( ( [ "dist" ], "graph.cypher" ), content ) ]
 
 
-tripleToString : Triple -> String
-tripleToString triple =
-    String.join ", "
-        [ fqnToString triple.subject
-        , verbToString triple.verb
-        , objectToString triple.object
-        ]
+toRelationship : Edge -> String
+toRelationship edge =
+    let
+        ( subjectType, subjectId, _ ) =
+            splitNode edge.subject
+
+        ( objectType, objectId, _ ) =
+            splitNode edge.object
+
+        matchs =
+            "MATCH (s:" ++ subjectType ++ " {id:'" ++ subjectId ++ "'})"
+
+        matcho =
+            "MATCH (o:" ++ objectType ++ " {id:'" ++ objectId ++ "'})"
+
+        create =
+            "CREATE (s)-[:" ++ verbToString edge.verb ++ "]->(o)"
+    in
+    matchs ++ " " ++ matcho ++ " " ++ create ++ ";"
+
+
+splitNode : Grapher.Node -> ( String, String, String )
+splitNode node =
+    let
+        humanize : Name -> String
+        humanize name =
+            Name.toHumanWords name
+                |> String.join " "
+    in
+    case node of
+        Record fqn ->
+            ( nodeType node, fqnToString fqn, humanize (FQName.getLocalName fqn) )
+
+        Field fqn name ->
+            ( nodeType node, fqnToString fqn ++ "#" ++ Name.toSnakeCase name, humanize name )
+
+        Type fqn ->
+            ( nodeType node, fqnToString fqn, humanize (FQName.getLocalName fqn) )
+
+        Function fqn ->
+            ( nodeType node, fqnToString fqn, humanize (FQName.getLocalName fqn) )
+
+        Unknown s ->
+            ( "Unknown", "unknown", s )
+
+
+nodeToCreate : Grapher.Node -> String
+nodeToCreate node =
+    let
+        ( tipe, id, name ) =
+            splitNode node
+    in
+    "CREATE (n:" ++ tipe ++ " {id:'" ++ id ++ "', name:'" ++ name ++ "'});"
 
 
 fqnToString : FQName -> String
@@ -118,20 +137,3 @@ fqnToString fqn =
         , Path.toString Name.toSnakeCase "." (FQName.getModulePath fqn)
         , Name.toSnakeCase (FQName.getLocalName fqn)
         ]
-
-
-objectToString : Object -> String
-objectToString o =
-    case o of
-        FQN (FQName packagePath modulePath name) ->
-            String.join "."
-                [ Path.toString Name.toSnakeCase "." packagePath
-                , Path.toString Name.toSnakeCase "." modulePath
-                , String.join "_" name
-                ]
-
-        Node node ->
-            nodeTypeToString node
-
-        Other s ->
-            s
