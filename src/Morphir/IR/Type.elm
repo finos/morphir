@@ -25,7 +25,70 @@ module Morphir.IR.Type exposing
     , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes, collectVariables
     )
 
-{-| This module contains the building blocks of types in the Morphir IR.
+{-| Like any other programming languages Morphir has a type system as well. This module defines the building blocks of
+that type system. If you want to learn more about type systems check out
+[Wikipedia: Type system](https://en.wikipedia.org/wiki/Type_system).
+
+Morphir's type system is heavily inspired by Elm's type system so the best way to understand the building blocks here is
+through some Elm examples. Let's take this bit of Elm code as a starting point:
+
+    type alias MyInteger =
+        Int
+
+    type alias MyRecord a =
+        { foo : List a
+        }
+
+    type Foo a
+        = Bar a
+        | Baz
+
+These would translate to type definitions in Morphir which is represented by the [`Definition`](#Definition) type.
+Definitions themselves don't have a name. It's the Module that contains that information in the `types` dictionary as a
+key. The type parameters and the right-hand side of the declaration is contained in the [`Definition`](#Definition) type
+itself. This is how the above would translate to the IR (some parts are omitted to reduce noise):
+
+    { types =
+        Dict.fromList
+            [ ( [ "my", "integer" ], TypeAliasDefinition [] (...) )
+            , ( [ "my", "record" ], TypeAliasDefinition [ [ "a" ] ] (...) )
+            , ( [ "foo" ], CustomTypeDefinition [ [ "a" ], [ "b" ] ] (...) )
+            ]
+    , values =
+        Dict.empty
+    }
+
+Type aliases simply assign a new name to a type expression. This type expression can be a reference to another type or
+a record type or any other type expression. Custom types are defined by a list of constructors. Each of those
+constructors have a list of arguments. Each argument is a type expression.
+
+Here is the full definition for reference:
+
+    { types =
+        Dict.fromList
+            [ ( [ "my", "integer" ]
+              , TypeAliasDefinition []
+                    (Reference (fqn "Morphir.SDK" "Basics" "Int") [])
+              )
+            , ( [ "my", "record" ]
+              , TypeAliasDefinition [ [ "a" ] ]
+                    (Record ()
+                        [ Field [ "foo" ] (Reference () (fqn "Morphir.SDK" "List" "List") [ Variable () [ "a" ] ])
+                        ]
+                    )
+              )
+            , ( [ "foo" ]
+              , CustomTypeDefinition [ [ "a" ], [ "b" ] ]
+                    (AccessControlled.public
+                        [ Constructor [ "bar" ] [ ( [ "arg", "1" ], Variable () [ "a" ] ) ]
+                        , Constructor [ "baz" ] [ ( [ "arg", "1" ], Variable () [ "b" ] ) ]
+                        ]
+                    )
+              )
+            ]
+    , values =
+        Dict.empty
+    }
 
 
 # Type Expression
@@ -71,16 +134,57 @@ import Morphir.ListOfResults as ListOfResults
 import Set exposing (Set)
 
 
-{-| An opaque representation of a type. Check out the docs for each building blocks
-for more details:
+{-| Represents a type expression that can appear in various places within the IR. It can be the right-hand-side of
+a type alias declaration, input and output types of a function or as an annotation on values after type inference is
+done.
 
-  - type variable: [creation](#variable), [matching](#matchVariable)
-  - type reference: [creation](#reference), [matching](#matchReference)
-  - tuple type: [creation](#tuple), [matching](#matchTuple)
-  - record type: [creation](#record), [matching](#matchRecord)
-  - extensible record type: [creation](#extensibleRecord), [matching](#matchExtensibleRecord)
-  - function type: [creation](#function), [matching](#matchFunction)
-  - unit type: [creation](#unit), [matching](#matchUnit)
+Type are modeled as expression trees: a recursive data structure with various node types. The type argument `a` allows
+us to assign some additional attributes to each node in the tree. Here are some details on each node type in the tree:
+
+  - **Variable**
+      - Represents a type variable.
+      - It has a single argument which captures the name of the variable.
+      - [Wikipedia: Type variable](https://en.wikipedia.org/wiki/Type_variable)
+      - [creation](#variable), [matching](#matchVariable)
+  - **Reference**
+      - A fully-qualified reference to some other type or type alias within the package or one of its dependencies.
+      - References to built-in types (like `Int`, `String`, ...) don't have an associated definition.
+      - [creation](#reference), [matching](#matchReference)
+  - **Tuple**
+      - A tuple is a composition of other types (potentially other tuples).
+      - The order of types is relevant so the easiest way to think about it is as a list of types.
+      - A tuple can have any number of elements and there is no restriction on the element types.
+      - A tuple with zero elements is equivalent with `Unit`.
+      - A tuple with a single element is equivalent to the element type itself.
+      - [Wikipedia: Tuple](https://en.wikipedia.org/wiki/Tuple)
+      - [creation](#tuple), [matching](#matchTuple)
+  - **Record**
+      - A record is a composition of other types like tuples but types are identified by a field name instead of an index.
+      - The best way to think of a record is as a dictionary of types.
+      - Our representation captures the order of fields for convenience but the order should not be considered for type
+        equivalence.
+      - [Wikipedia: Record](https://en.wikipedia.org/wiki/Record_(computer_science))
+      - [Elm-lang: Records](https://elm-lang.org/docs/records)
+      - Utilities: [creation](#record), [matching](#matchRecord)
+  - **ExtensibleRecord**
+      - Similar to records but while record types declare that the underlying object has "exactly these fields" an
+        extensible record declares that the object has "at least these fields".
+      - Besides the list of fields you need to specify a variable name that will be used to abstract over the type
+        that's being extended.
+      - [Elm: Extensible records](https://ckoster22.medium.com/advanced-types-in-elm-extensible-records-67e9d804030d)
+      - [creation](#extensibleRecord), [matching](#matchExtensibleRecord)
+  - **Function**
+      - Represents the type of a function. The two arguments are the argument and the return type of the function.
+      - Multi-argument functions are represented by composing functions:
+          - `a -> b -> c` is represented as `a -> (b -> c)`
+      - [Wikipedia: Function type](https://en.wikipedia.org/wiki/Function_type)
+      - [creation](#function), [matching](#matchFunction)
+  - **Unit**
+      - Unit type is used as a placeholder in situations where a type is required but the corresponding value is unused.
+      - Semantically the unit type represents a set that has exactly one value which is often called unit.
+      - Unit corresponds to void in some other programming languages.
+      - [Wikipedia: Unit type](https://en.wikipedia.org/wiki/Unit_type)
+      - [creation](#unit), [matching](#matchUnit)
 
 -}
 type Type a
@@ -262,22 +366,22 @@ mapTypeAttributes f tpe =
 typeAttributes : Type a -> a
 typeAttributes tpe =
     case tpe of
-        Variable a name ->
+        Variable a _ ->
             a
 
-        Reference a fQName argTypes ->
+        Reference a _ _ ->
             a
 
-        Tuple a elemTypes ->
+        Tuple a _ ->
             a
 
-        Record a fields ->
+        Record a _ ->
             a
 
-        ExtensibleRecord a name fields ->
+        ExtensibleRecord a _ _ ->
             a
 
-        Function a argType returnType ->
+        Function a _ _ ->
             a
 
         Unit a ->

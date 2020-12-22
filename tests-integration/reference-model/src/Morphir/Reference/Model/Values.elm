@@ -93,6 +93,23 @@ basicRecordMany =
     }
 
 
+listOfRecords : List { foo : String, bar : Bool, baz : Int }
+listOfRecords =
+    [ { foo = "bar"
+      , bar = False
+      , baz = 15
+      }
+    , { foo = "foo"
+      , bar = True
+      , baz = 437
+      }
+    , { foo = "much longer"
+      , bar = False
+      , baz = -1500
+      }
+    ]
+
+
 basicField : { foo : String } -> String
 basicField rec =
     rec.foo

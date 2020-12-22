@@ -29,6 +29,7 @@ import Morphir.IR.QName as QName exposing (QName)
 
 
 {-| Type that represents a fully-qualified name.
+    The parameters are PackagePath ModulePath Name
 -}
 type FQName
     = FQName Path Path Name

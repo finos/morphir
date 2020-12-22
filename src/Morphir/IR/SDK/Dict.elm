@@ -126,5 +126,5 @@ moduleSpec =
 
 
 dictType : a -> Type a -> Type a -> Type a
-dictType attributes errorType itemType =
-    Reference attributes (toFQName moduleName "dict") [ errorType, itemType ]
+dictType attributes keyType valueType =
+    Reference attributes (toFQName moduleName "dict") [ keyType, valueType ]
