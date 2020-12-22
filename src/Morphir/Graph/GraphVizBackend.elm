@@ -57,15 +57,19 @@ valueEdges indexedValue =
                         |> Tuple.first
                         |> indexToNodeID
             in
-            [ EdgeStatement conditionID
-                (valueToID thenBranch)
-                [ Attribute "label" "Yes"
+            List.concat
+                [ [ EdgeStatement conditionID
+                        (valueToID thenBranch)
+                        [ Attribute "label" "Yes"
+                        ]
+                  , EdgeStatement conditionID
+                        (valueToID elseBranch)
+                        [ Attribute "label" "No"
+                        ]
+                  ]
+                , valueEdges thenBranch
+                , valueEdges elseBranch
                 ]
-            , EdgeStatement conditionID
-                (valueToID elseBranch)
-                [ Attribute "label" "No"
-                ]
-            ]
 
         _ ->
             []
