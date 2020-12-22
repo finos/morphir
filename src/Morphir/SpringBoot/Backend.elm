@@ -421,6 +421,25 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                                 )
                                         }
                                     )
+                                , Annotated
+                                    [ "@springfox.documentation.annotations.ApiIgnore"
+                                        ++ newLine
+                                        ++ "@org.springframework.web.bind.annotation.RequestMapping(value = Array(\"/\"))"
+                                    ]
+                                    (FunctionDecl
+                                        { modifiers = []
+                                        , name = "home"
+                                        , typeArgs = []
+                                        , args =
+                                            []
+                                        , returnType = Nothing
+                                        , body =
+                                            Just
+                                                (Scala.Variable
+                                                    "new org.springframework.web.servlet.ModelAndView(\"redirect:/swagger-ui/index.html\")"
+                                                )
+                                        }
+                                    )
                                 ]
                             }
                         )
