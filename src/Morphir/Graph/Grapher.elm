@@ -28,7 +28,7 @@ type Node
     | Field FQName Name
     | Type FQName
     | Function FQName
-    | Unknown
+    | Unknown String
 
 
 type Verb
@@ -68,40 +68,50 @@ mapDistribution distro =
 
 mapPackageDefinition : Package.PackageName -> Package.Definition ta va -> Graph
 mapPackageDefinition packageName packageDef =
-    packageDef.modules
-        |> Dict.toList
-        |> List.concatMap
-            (\( moduleName, accessControlledModuleDef ) ->
-                mapModuleDefinition packageName moduleName accessControlledModuleDef.value
-            )
-
-
-mapModuleDefinition : Package.PackageName -> Module.ModuleName -> Module.Definition ta va -> Graph
-mapModuleDefinition packageName moduleName moduleDef =
     let
-        typeTriples =
-            moduleDef.types
+        types =
+            packageDef.modules
                 |> Dict.toList
                 |> List.concatMap
-                    (\( typeName, accessControlledDocumentedTypeDef ) ->
-                        mapTypeDefinition packageName moduleName typeName accessControlledDocumentedTypeDef.value.value
+                    (\( moduleName, accessControlledModuleDef ) ->
+                        mapModuleTypes packageName moduleName accessControlledModuleDef.value
                     )
 
         typeRegistry =
-            typeTriples
+            types
                 |> List.filterMap asNode
                 |> List.map (\node -> ( nodeToKey node, node ))
                 |> Dict.fromList
 
-        valueTriples =
-            moduleDef.values
+        values =
+            packageDef.modules
                 |> Dict.toList
                 |> List.concatMap
-                    (\( valueName, accessControlledDocumentedValueDef ) ->
-                        mapValueDefinition packageName moduleName valueName accessControlledDocumentedValueDef.value typeRegistry
+                    (\( moduleName, accessControlledModuleDef ) ->
+                        mapModuleValues packageName moduleName accessControlledModuleDef.value typeRegistry
                     )
     in
-    typeTriples ++ valueTriples
+    values ++ types
+
+
+mapModuleTypes : Package.PackageName -> Module.ModuleName -> Module.Definition ta va -> Graph
+mapModuleTypes packageName moduleName moduleDef =
+    moduleDef.types
+        |> Dict.toList
+        |> List.concatMap
+            (\( typeName, accessControlledDocumentedTypeDef ) ->
+                mapTypeDefinition packageName moduleName typeName accessControlledDocumentedTypeDef.value.value
+            )
+
+
+mapModuleValues : Package.PackageName -> Module.ModuleName -> Module.Definition ta va -> Dict String Node -> Graph
+mapModuleValues packageName moduleName moduleDef typeRegistry =
+    moduleDef.values
+        |> Dict.toList
+        |> List.concatMap
+            (\( valueName, accessControlledDocumentedValueDef ) ->
+                mapValueDefinition packageName moduleName valueName accessControlledDocumentedValueDef.value typeRegistry
+            )
 
 
 mapTypeDefinition : Package.PackageName -> Module.ModuleName -> Name -> Type.Definition ta -> Graph
@@ -132,7 +142,7 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                                         Type typeFqn
 
                                                     _ ->
-                                                        Unknown
+                                                        Unknown "Alias"
                                         in
                                         [ NodeEntry fieldNode
                                         , NodeEntry fieldType -- This might result in duplicates, thus the uniqueBy at top
@@ -208,11 +218,11 @@ mapValueDefinition packageName moduleName valueName valueDef nodeRegistry =
             nodeRegistry
                 |> Dict.get key
 
-        makeRefEdge : Node -> Verb -> String -> Node -> List GraphEntry
+        makeRefEdge : Node -> Verb -> FQName -> Node -> List GraphEntry
         makeRefEdge subject verb key default =
             let
                 node =
-                    lookupNode key
+                    lookupNode (fqnToString key)
             in
             node
                 |> Maybe.map (\object -> [ EdgeEntry (Edge subject verb object) ])
@@ -227,20 +237,20 @@ mapValueDefinition packageName moduleName valueName valueDef nodeRegistry =
         functionNode =
             Function functionFqn
 
-        -- Find out what input parameters this function uses
+        -- Traverse the list of input parameters to find out what types this function uses
         inputTriples =
             valueDef.inputTypes
                 |> List.concatMap
                     (\inputType ->
                         case inputType of
                             ( _, _, Type.Reference _ inputFqn children ) ->
-                                collectReferenceNodes inputFqn children
+                                collectReferences inputFqn children
 
                             _ ->
                                 []
                     )
                 |> List.concatMap
-                    (\leafNode -> makeRefEdge functionNode Uses (nodeToKey leafNode) leafNode)
+                    (\fqn -> makeRefEdge functionNode Uses fqn (Type fqn))
 
         -- This looks for function calls through the tree
         subFunctionTriples =
@@ -251,7 +261,7 @@ mapValueDefinition packageName moduleName valueName valueDef nodeRegistry =
                     case value of
                         -- Reference means we've found a function call
                         Value.Reference _ calledFQN ->
-                            makeRefEdge functionNode Calls (referenceToKey calledFQN) (Function calledFQN)
+                            makeRefEdge functionNode Calls calledFQN (Function calledFQN)
 
                         --
                         -- The rest is calling back recursively on subtrees to collect all function calls throughout
@@ -299,14 +309,14 @@ mapValueDefinition packageName moduleName valueName valueDef nodeRegistry =
             case valueDef.outputType of
                 -- Returns a single type reference
                 Type.Reference _ outputFQN _ ->
-                    makeRefEdge functionNode Produces (referenceToKey outputFQN) (Type outputFQN)
+                    makeRefEdge functionNode Produces outputFQN (Type outputFQN)
 
                 -- If returning a tuple, look inside of it
                 Type.Tuple _ tupleTypes ->
                     tupleTypes
                         |> List.concatMap leafType
                         |> List.concatMap
-                            (\leafFQN -> makeRefEdge functionNode Produces (referenceToKey leafFQN) (Type leafFQN))
+                            (\leafFQN -> makeRefEdge functionNode Produces leafFQN (Type leafFQN))
 
                 _ ->
                     []
@@ -314,11 +324,11 @@ mapValueDefinition packageName moduleName valueName valueDef nodeRegistry =
     NodeEntry functionNode :: (subFunctionTriples ++ inputTriples ++ outputTriples)
 
 
-collectReferenceNodes : FQName -> List (Type ta) -> List Node
-collectReferenceNodes referenceFQN children =
+collectReferences : FQName -> List (Type ta) -> List FQName
+collectReferences referenceFQN children =
     case children of
         [] ->
-            Type referenceFQN :: []
+            referenceFQN :: []
 
         _ ->
             children
@@ -326,7 +336,7 @@ collectReferenceNodes referenceFQN children =
                     (\child ->
                         case child of
                             Type.Reference _ childFQN grandChildren ->
-                                collectReferenceNodes childFQN grandChildren
+                                collectReferences childFQN grandChildren
 
                             _ ->
                                 []
@@ -383,7 +393,7 @@ nodeType node =
         Function _ ->
             "Function"
 
-        Unknown ->
+        Unknown _ ->
             "Unknown"
 
 
@@ -402,8 +412,8 @@ nodeFQN node =
         Function fqn ->
             fqn
 
-        Unknown ->
-            FQName [] [] [ "Unknown" ]
+        Unknown s ->
+            FQName [] [] [ s ]
 
 
 nodeToKey : Node -> String
@@ -487,8 +497,8 @@ graphEntryToComparable entry =
                         Function fqn ->
                             fqnToString fqn
 
-                        Unknown ->
-                            "unknown"
+                        Unknown s ->
+                            "unknown:" ++ s
                    )
     in
     case entry of

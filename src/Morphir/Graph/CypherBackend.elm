@@ -117,8 +117,8 @@ splitNode node =
         Function fqn ->
             ( nodeType node, fqnToString fqn, humanize (FQName.getLocalName fqn) )
 
-        Unknown ->
-            ( "Unknown", "unknown", "unknown" )
+        Unknown s ->
+            ( "Unknown", "unknown", s )
 
 
 nodeToCreate : Grapher.Node -> String
