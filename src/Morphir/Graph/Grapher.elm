@@ -1,14 +1,29 @@
 module Morphir.Graph.Grapher exposing
-    ( Edge
-    , Graph
-    , GraphEntry(..)
-    , Node(..)
-    , Verb(..)
-    , graphEntryToComparable
-    , mapDistribution
-    , nodeType
-    , verbToString
+    ( Node(..), Verb(..), Edge, GraphEntry(..), Graph
+    , mapDistribution, mapPackageDefinition, mapModuleTypes, mapModuleValues, mapTypeDefinition, mapValueDefinition
+    , graphEntryToComparable, nodeType, verbToString, nodeFQN
     )
+
+{-| The Grapher module analyses a distribution to build a graph for dependency and lineage tracking purposes.
+The goal is to understand data flow and to automate contribution to the types of products that are commonly used in
+enterprises. The result of processing is a [Graph](#Graph), which is a collection of [Nodes](#Node) and [Edges](#Edge).
+
+
+# Types
+
+@docs Node, Verb, Edge, GraphEntry, Graph
+
+
+# Processing
+
+@docs mapDistribution, mapPackageDefinition, mapModuleTypes, mapModuleValues, mapTypeDefinition, mapValueDefinition
+
+
+# Utilities
+
+@docs graphEntryToComparable, nodeType, verbToString, nodeFQN
+
+-}
 
 import Dict exposing (Dict)
 import List.Extra exposing (uniqueBy)
@@ -23,6 +38,16 @@ import Morphir.IR.Type as Type exposing (Constructor(..), Specification(..), Typ
 import Morphir.IR.Value as Value exposing (Value(..))
 
 
+{-| Node defines a node in the graph. We capture specific node types for this purpose.
+The types of constructs that we're interested in tracking are:
+
+  - **Record** - Represents collection of fields. Corresponds to [Morphir.IR.Type.Record](/src/Morphir/IR/Type/Record)
+  - **Field** - Represents a field within a Record.
+  - **Type** - Represents a Type or Type Alias, which we want to track aliases through their hierarchies.
+  - **Function** - Represents a Function.
+  - **Unknown** - Questionable practice, but it's useful to identify relationships we might want to track in the future.
+
+-}
 type Node
     = Record FQName
     | Field FQName Name
@@ -31,6 +56,19 @@ type Node
     | Unknown String
 
 
+{-| Verb defines the possible relationships that we're interested in tracking. These are used to define the relationships
+in the edges of our graph.
+
+  - **IsA** - Denotes an implementation of a [Type](#Node) by fields, function parameters, and the such.
+  - **Aliases** - Denotes a type alias, for which we want to track the full hierarchy.
+  - **Contains** - Denotes [Fields](#Field) contained in a [Record](#Node)
+  - **Uses** - Denotes use of a type by a [Function](#Node).
+  - **Calls** - Denotes a [Function](#Node) call within another Function.
+  - **Produces** - Denotes the output of a [Function](#Node).
+  - **Parameterizes** - Denotes type variable usage.
+  - **Unions** - Denotes the [Types](#Node) utilized in a union type.
+
+-}
 type Verb
     = IsA
     | Aliases
@@ -42,6 +80,8 @@ type Verb
     | Unions
 
 
+{-| Defines an edge in the graph as a triple of the subject node, the relationship, and the object node.
+-}
 type alias Edge =
     { subject : Node
     , verb : Verb
@@ -49,15 +89,21 @@ type alias Edge =
     }
 
 
+{-| Defines the possible graph entries of [Node](#Node) and [Edge](#Edge).
+-}
 type GraphEntry
     = NodeEntry Node
     | EdgeEntry Edge
 
 
+{-| Defines a graph as a collection of nodes and edges.
+-}
 type alias Graph =
     List GraphEntry
 
 
+{-| Process this distribution into a Graph of its packages.
+-}
 mapDistribution : Distribution -> Graph
 mapDistribution distro =
     case distro of
@@ -66,6 +112,9 @@ mapDistribution distro =
                 |> uniqueBy graphEntryToComparable
 
 
+{-| Process this package into a Graph of its modules. We take two passes to the IR. The first collects all of the
+types and the second processes the functions and their relationships to those types.
+-}
 mapPackageDefinition : Package.PackageName -> Package.Definition ta va -> Graph
 mapPackageDefinition packageName packageDef =
     let
@@ -94,6 +143,8 @@ mapPackageDefinition packageName packageDef =
     values ++ types
 
 
+{-| Process this module to collect the types used and produced by it.
+-}
 mapModuleTypes : Package.PackageName -> Module.ModuleName -> Module.Definition ta va -> Graph
 mapModuleTypes packageName moduleName moduleDef =
     moduleDef.types
@@ -104,6 +155,8 @@ mapModuleTypes packageName moduleName moduleDef =
             )
 
 
+{-| Process this module to collect the functions and relationships to types.
+-}
 mapModuleValues : Package.PackageName -> Module.ModuleName -> Module.Definition ta va -> Dict String Node -> Graph
 mapModuleValues packageName moduleName moduleDef typeRegistry =
     moduleDef.values
@@ -114,6 +167,8 @@ mapModuleValues packageName moduleName moduleDef typeRegistry =
             )
 
 
+{-| Process a type since there are a lot of variations.
+-}
 mapTypeDefinition : Package.PackageName -> Module.ModuleName -> Name -> Type.Definition ta -> Graph
 mapTypeDefinition packageName moduleName typeName typeDef =
     let
@@ -210,6 +265,8 @@ mapTypeDefinition packageName moduleName typeName typeDef =
     triples
 
 
+{-| Process [Functions](#Type) specifically and ignore the rest.
+-}
 mapValueDefinition : Package.PackageName -> Module.ModuleName -> Name -> Value.Definition ta va -> Dict String Node -> Graph
 mapValueDefinition packageName moduleName valueName valueDef nodeRegistry =
     let
@@ -324,6 +381,9 @@ mapValueDefinition packageName moduleName valueName valueDef nodeRegistry =
     NodeEntry functionNode :: (subFunctionTriples ++ inputTriples ++ outputTriples)
 
 
+{-| Process a [Reference](/src/Morphir/IR/Type). We're basically differentiating straight references versus union types,
+for which we want to drill in deeper.
+-}
 collectReferences : FQName -> List (Type ta) -> List FQName
 collectReferences referenceFQN children =
     case children of
@@ -343,6 +403,9 @@ collectReferences referenceFQN children =
                     )
 
 
+{-| Process a [Reference](/src/Morphir/IR/Type). We're basically differentiating straight references versus union types,
+for which we want to drill in deeper.
+-}
 leafType : Type a -> List FQName
 leafType tipe =
     case tipe of
@@ -358,6 +421,8 @@ leafType tipe =
             []
 
 
+{-| Utility to filter out just the [Nodes](#Node) from a [Graph](#Graph).
+-}
 asNode : GraphEntry -> Maybe Node
 asNode entry =
     case entry of
@@ -368,6 +433,8 @@ asNode entry =
             Nothing
 
 
+{-| Utility to filter out just the [Edges](#Edge) from a [Graph](#Graph).
+-}
 asEdge : GraphEntry -> Maybe Edge
 asEdge entry =
     case entry of
@@ -378,6 +445,8 @@ asEdge entry =
             Nothing
 
 
+{-| Utility to extract the [Node](#Node) type as a String.
+-}
 nodeType : Node -> String
 nodeType node =
     case node of
@@ -397,6 +466,9 @@ nodeType node =
             "Unknown"
 
 
+{-| Utility to extract the [Fully Qualified Name](/src/Morphir/IR/FQName) from a [Node](#Node). This is required
+because a Field contains both an FQN and field name.
+-}
 nodeFQN : Node -> FQName
 nodeFQN node =
     case node of
@@ -416,6 +488,8 @@ nodeFQN node =
             FQName [] [] [ s ]
 
 
+{-| Utility for dealing with comparable.
+-}
 nodeToKey : Node -> String
 nodeToKey node =
     case node of
@@ -426,16 +500,22 @@ nodeToKey node =
             referenceToKey (nodeFQN node)
 
 
+{-| Utility for dealing with comparable.
+-}
 referenceToKey : FQName -> String
 referenceToKey =
     fqnToString
 
 
+{-| Utility for dealing with comparable.
+-}
 fieldToKey : FQName -> Name -> String
 fieldToKey fqn name =
     fqnToString fqn ++ "#" ++ Name.toSnakeCase name
 
 
+{-| Utility for dealing with comparable.
+-}
 verbToString : Verb -> String
 verbToString verb =
     case verb of
@@ -464,6 +544,8 @@ verbToString verb =
             "unions"
 
 
+{-| Utility for dealing with comparable.
+-}
 fqnToString : FQName -> String
 fqnToString fqn =
     String.join "."
@@ -473,6 +555,8 @@ fqnToString fqn =
         ]
 
 
+{-| Utility for dealing with comparable.
+-}
 graphEntryToComparable : GraphEntry -> String
 graphEntryToComparable entry =
     let
