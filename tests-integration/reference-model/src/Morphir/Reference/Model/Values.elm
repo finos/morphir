@@ -150,11 +150,29 @@ basicDestructure =
 
 basicIfThenElse : Int -> Int -> String
 basicIfThenElse a b =
-    if a < b then
+    if a == b then
         "Less"
 
     else
         "Greater or equal"
+
+
+basicIfThenElse2 : String -> String
+basicIfThenElse2 ball =
+    if True then
+        ball
+
+    else
+        "Bye"
+
+
+basicIfThenElse3 : Bool -> String
+basicIfThenElse3 boolValueVariable =
+    if boolValueVariable then
+        "bool"
+
+    else
+        "Bye"
 
 
 basicPatternMatchWildcard : String -> Int

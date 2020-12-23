@@ -1,6 +1,9 @@
 module Morphir.Visual.ViewIfThenElse exposing (view)
 
-import Element exposing (Element, column, el, moveRight, spacing, text, wrappedRow)
+import Element exposing (Element, column, el, html, moveRight, spacing, text, wrappedRow)
+import Html
+import Html.Attributes exposing (attribute)
+import Morphir.File.SourceCode exposing (Doc)
 import Morphir.Graph.GraphViz.PrettyPrint as PrettyPrint
 import Morphir.Graph.GraphVizBackend as GraphVizBackend
 import Morphir.IR.Type exposing (Type)
@@ -13,8 +16,16 @@ view viewValue value =
         Just graph ->
             graph
                 |> PrettyPrint.mapGraph
-                -- TODO: integrate GraphViz custom element
-                |> text
+                |> graphToNode
 
         Nothing ->
             text "Cannot display value as decision tree!"
+
+
+graphToNode : Doc -> Element msg
+graphToNode dotStructure =
+    Html.node "if-then-else"
+        [ attribute "dotStructure" dotStructure
+        ]
+        []
+        |> html
