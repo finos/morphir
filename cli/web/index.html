@@ -7,10 +7,36 @@
 
 <body>
 <div id="app"></div>
+</body>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js"></script>
+<script src="https://unpkg.com/d3-graphviz@3.0.5/build/d3-graphviz.js"></script>
+<div id="graph" style="text-align: left;"></div>
 <script>
+
+    customElements.define('if-then-else',
+        class extends HTMLElement {
+            // things required by Custom Elements
+
+            constructor() { super(); }
+            connectedCallback() {
+                this.setTextContent(); }
+            attributeChangedCallback() { this.setTextContent(); }
+            static get observedAttributes() { return ['dotStructure']; }
+
+            // Our function to set the textContent based on attributes.
+            setTextContent()
+            {
+                const shadow = this.attachShadow({mode: 'open'});
+                const dotStructure  = this.getAttribute('dotStructure');
+                console.log(dotStructure);
+                d3.select(shadow).graphviz().renderDot(dotStructure);
+            }
+
+        }
+    );
   var app = Elm.Morphir.Web.DevelopMain.init({
     node: document.getElementById('app')
   });
   </script>
-</body>
 </html>

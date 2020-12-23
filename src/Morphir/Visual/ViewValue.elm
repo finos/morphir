@@ -1,9 +1,8 @@
 module Morphir.Visual.ViewValue exposing (view)
 
-import Element exposing (Element, el, spacing, text)
+import Element exposing (Element, el, text)
 import Morphir.IR.FQName exposing (FQName(..))
-import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Path as Path
+import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Visual.Common exposing (cssClass, nameToText)
@@ -50,23 +49,10 @@ view value =
         Value.Field tpe subjectValue fieldName ->
             ViewField.view view subjectValue fieldName
 
-        Value.Apply _ _ _ ->
+        Value.Apply _ fun arg ->
             let
-                uncurry : Value ta (Type ta) -> ( Value ta (Type ta), List (Value ta (Type ta)) )
-                uncurry v =
-                    case v of
-                        Value.Apply _ fun arg ->
-                            let
-                                ( bottomFun, initArgs ) =
-                                    uncurry fun
-                            in
-                            ( bottomFun, arg :: initArgs )
-
-                        notApply ->
-                            ( notApply, [] )
-
                 ( function, argsReversed ) =
-                    uncurry value
+                    Value.uncurryApply fun arg
             in
             ViewApply.view view function (argsReversed |> List.reverse)
 

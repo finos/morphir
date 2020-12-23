@@ -41,7 +41,7 @@ mapAttributes attributes =
                 attributes
                     |> List.map
                         (\(Attribute key value) ->
-                            concat [ key, "=", value ]
+                            concat [ key, "=\"", value, "\"" ]
                         )
                     |> List.intersperse ", "
                     |> concat

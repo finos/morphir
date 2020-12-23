@@ -23,13 +23,13 @@ scenarios =
             { givenState = Nothing
             , whenCommandsReceived =
                 [ OpenDeal id price qty
-                , CloseDeal
+                , CloseDeal id
                 ]
             , thenExpect =
                 { state = Nothing
                 , events =
                     [ DealOpened id price qty
-                    , DealClosed
+                    , DealClosed id
                     ]
                 }
             }
