@@ -80,10 +80,26 @@ where
 - Run the application 
 - Check that the server starts up without problems. If it has some errors, check if there are dependencies that should be added or changed.
 
+## Running using command line
+
+The project has the dependencies and configuration to be used with Maven (at least 3.6.2) and Java 8. The code is compatible with gradle but you should provide the gradle configuration files in order to run it.
+- Install Maven
+- Go to the generated project root directory
+- Run ```mvn clean install```
+
+It should create a target directory with a file with extension jar.
+- Install java (tested with version 8)
+- Go to the generated project root directory
+- Run ```java -jar target\<filename>.jar```
+
 
 ## Connect to the Spring Boot application
+### Swagger
+Navigate to the base url ```http://localhost:8081``` and the swagger home page should appear
+
+### Postman
 - Open a REST API client (example: POSTMAN)
-- Execute a POST operation ```http://localhost:8081/commandhttp```
+- Execute a POST operation ```http://localhost:8081/v1.0/command```
 
 The code generator currently supports Jackson, the body of the POST operation should be
 ``` 
@@ -94,7 +110,26 @@ The code generator currently supports Jackson, the body of the POST operation sh
    ....}
 ```
 ```[commandsubtype]``` is a command sub class. Depending on the application how many arguments should be passed.
- 
+
+## Configuration
+###Port
+
+The port used with Maven is 8081, if you want to change it, modify the property
+``` server.port = 8081 ``` in the application.properties file 
+
+
+```
+<generated root folder>
+|   src
+|   |main
+|   |   |java
+|   |   |resources
+|   |   |   |application.properties
+```
+
+## Metrics
+Metrics are available at the url ```http://localhost:8081/metrics ``` .
+You can check ```https://www.dropwizard.io``` for more information
 
 ## License
 
