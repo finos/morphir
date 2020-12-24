@@ -24,9 +24,21 @@ module Morphir.SDK.LocalDate exposing
 
 {-| This module adds the definition of a date without time zones. Useful in business modeling.
 
+
+# Types
+
 @docs LocalDate
+
+
+# Date Math
+
 @docs diffInDays, diffInWeeks, diffInMonths, diffInYears
 @docs addDays, addWeeks, addMonths, addYears
+
+
+# Constructors
+
+@docs fromISO fromParts
 
 -}
 
