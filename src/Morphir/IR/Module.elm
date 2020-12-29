@@ -19,7 +19,7 @@ module Morphir.IR.Module exposing
     ( ModuleName
     , Specification, emptySpecification
     , Definition, emptyDefinition
-    , definitionToSpecification
+    , definitionToSpecification, definitionToSpecificationWithPrivate
     , lookupTypeSpecification, lookupValueSpecification
     , eraseSpecificationAttributes, eraseDefinitionAttributes
     , mapDefinitionAttributes, mapSpecificationAttributes
@@ -40,7 +40,7 @@ including implementation and private types and values.
 
 @docs Specification, emptySpecification
 @docs Definition, emptyDefinition
-@docs definitionToSpecification
+@docs definitionToSpecification, definitionToSpecificationWithPrivate
 
 
 # Lookups
@@ -56,7 +56,7 @@ including implementation and private types and values.
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR.AccessControlled exposing (AccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled exposing (AccessControlled, withPrivateAccess, withPublicAccess)
 import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
@@ -165,6 +165,38 @@ definitionToSpecification def =
                             (\valueDef ->
                                 ( path, Value.definitionToSpecification valueDef )
                             )
+                )
+            |> Dict.fromList
+    }
+
+
+{-| Turn a module definition into a module specification. Non-exposed types and values will also be included in the
+result.
+-}
+definitionToSpecificationWithPrivate : Definition ta va -> Specification ta
+definitionToSpecificationWithPrivate def =
+    { types =
+        def.types
+            |> Dict.toList
+            |> List.map
+                (\( path, accessControlledType ) ->
+                    ( path
+                    , accessControlledType
+                        |> withPrivateAccess
+                        |> Documented.map Type.definitionToSpecification
+                    )
+                )
+            |> Dict.fromList
+    , values =
+        def.values
+            |> Dict.toList
+            |> List.map
+                (\( path, accessControlledValue ) ->
+                    ( path
+                    , accessControlledValue
+                        |> withPrivateAccess
+                        |> Value.definitionToSpecification
+                    )
                 )
             |> Dict.fromList
     }
