@@ -1,7 +1,7 @@
 module Morphir.Graph.Grapher exposing
     ( Node(..), Verb(..), Edge, GraphEntry(..), Graph
     , mapDistribution, mapPackageDefinition, mapModuleTypes, mapModuleValues, mapTypeDefinition, mapValueDefinition
-    , graphEntryToComparable, nodeType, verbToString, nodeFQN
+    , graphEntryToComparable, nodeType, verbToString, nodeFQN, getNodeType
     )
 
 {-| The Grapher module analyses a distribution to build a graph for dependency and lineage tracking purposes.
@@ -193,6 +193,10 @@ mapTypeDefinition packageName moduleName typeName typeDef =
 
                                             fieldType =
                                                 case field.tpe of
+                                                    -- Catches Maybes
+                                                    Type.Reference _ typeFqn [Type.Reference _ child _] ->
+                                                        Type child
+
                                                     Type.Reference _ typeFqn _ ->
                                                         Type typeFqn
 
@@ -591,3 +595,25 @@ graphEntryToComparable entry =
 
         EdgeEntry edge ->
             "EdgeEntry: " ++ edgeToString edge
+
+{-| Finds the IsA relation to a Type for a given Node
+-}
+getNodeType : Node -> Graph -> Maybe FQName
+getNodeType node graph =
+    graph
+        |> List.filterMap
+            (\e ->
+                case e of
+                    EdgeEntry edge ->
+                        if edge.subject == node && edge.verb == IsA then
+                            Just (nodeFQN edge.object)
+
+                        else
+                            Nothing
+
+                    _ ->
+                        Nothing
+            )
+        |> List.head
+
+
