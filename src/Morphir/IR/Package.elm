@@ -158,7 +158,7 @@ definitionToSpecificationWithPrivate def =
             |> List.map
                 (\( path, accessControlledModule ) ->
                     ( path
-                    , Module.definitionToSpecification
+                    , Module.definitionToSpecificationWithPrivate
                         (accessControlledModule
                             |> withPrivateAccess
                         )
