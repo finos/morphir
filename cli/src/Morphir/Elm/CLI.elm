@@ -88,7 +88,7 @@ update msg model =
                                             thisPackageSpec : Package.Specification ()
                                             thisPackageSpec =
                                                 packageDef
-                                                    |> Package.definitionToSpecification
+                                                    |> Package.definitionToSpecificationWithPrivate
                                                     |> Package.mapSpecificationAttributes (\_ -> ())
 
                                             references : MetaTypeMapping.References
