@@ -1,8 +1,6 @@
 module Morphir.Reference.Model.Issues.Issue227 exposing (..)
 
-
-type alias FloatAlias =
-    Float
+import Morphir.Reference.Model.Issues.Common exposing (FloatAlias)
 
 
 fun : FloatAlias -> FloatAlias
