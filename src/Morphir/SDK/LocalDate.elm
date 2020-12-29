@@ -38,7 +38,7 @@ module Morphir.SDK.LocalDate exposing
 
 # Constructors
 
-@docs fromISO fromParts
+@docs fromISO, fromParts
 
 -}
 

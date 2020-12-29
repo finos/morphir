@@ -19,7 +19,7 @@ module Morphir.IR.Package exposing
     ( Specification, emptySpecification
     , Definition, emptyDefinition
     , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification
-    , PackageName, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
+    , PackageName, definitionToSpecification, definitionToSpecificationWithPrivate, eraseDefinitionAttributes, eraseSpecificationAttributes
     , mapDefinitionAttributes, mapSpecificationAttributes
     )
 
@@ -46,13 +46,13 @@ including implementation and private types and values.
 
 # Other utilities
 
-@docs PackageName, definitionToSpecification, eraseDefinitionAttributes, eraseSpecificationAttributes
+@docs PackageName, definitionToSpecification, definitionToSpecificationWithPrivate, eraseDefinitionAttributes, eraseSpecificationAttributes
 @docs mapDefinitionAttributes, mapSpecificationAttributes
 
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR.AccessControlled exposing (AccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled exposing (AccessControlled, withPrivateAccess, withPublicAccess)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
@@ -142,6 +142,27 @@ definitionToSpecification def =
                             (\moduleDef ->
                                 ( path, Module.definitionToSpecification moduleDef )
                             )
+                )
+            |> Dict.fromList
+    }
+
+
+{-| Turn a package definition into a package specification. Non-exposed modules will also be included in the
+result.
+-}
+definitionToSpecificationWithPrivate : Definition ta va -> Specification ta
+definitionToSpecificationWithPrivate def =
+    { modules =
+        def.modules
+            |> Dict.toList
+            |> List.map
+                (\( path, accessControlledModule ) ->
+                    ( path
+                    , Module.definitionToSpecificationWithPrivate
+                        (accessControlledModule
+                            |> withPrivateAccess
+                        )
+                    )
                 )
             |> Dict.fromList
     }
