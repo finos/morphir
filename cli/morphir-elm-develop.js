@@ -3,6 +3,9 @@
 
 // NPM imports
 const path = require('path')
+const util = require('util')
+const fs = require('fs')
+const readFile = util.promisify(fs.readFile)
 const commander = require('commander')
 const express = require('express')
 const cli = require('./cli')
@@ -18,11 +21,20 @@ program
 const app = express()
 const port = 3000
 
+const wrap = fn => (...args) => fn(...args).catch(args[2])
+
 app.get('/', (req, res) => {
   res.redirect('index.html')
 })
 
 app.use(express.static(path.join(__dirname, 'web')))
+
+app.get('/server/morphir.json', wrap(async (req, res, next) => {
+  const morphirJsonPath = path.join(program.projectDir, 'morphir.json')
+  const morphirJsonContent = await readFile(morphirJsonPath)
+  const morphirJson = JSON.parse(morphirJsonContent.toString())
+  res.send(morphirJson)
+}))
 
 app.get('/server/make', (req, res) => {
   cli.make(program.projectDir)
@@ -37,4 +49,3 @@ app.get('/server/make', (req, res) => {
 app.listen(port, () => {
   console.log(`Developer server listening at http://localhost:${port}`)
 })
-
