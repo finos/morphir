@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.Elm.Frontend.Resolve exposing (Context, Error(..), ImportedNames, LocalNames, ModuleResolver, collectImportedNames, createModuleResolver, encodeError)
+module Morphir.Elm.Frontend.Resolve exposing (Context, Error(..), ImportedNames, LocalNames, ModuleResolver, collectImportedNames, createModuleResolver, encodeError, errorToMessage)
 
 {-| This module contains tools to resolve local names in the Elm source code to [fully-qualified names](../../../IR/FQName) in the IR.
 -}
@@ -53,6 +53,62 @@ type Error
     | CouldNotFindModule Path
     | AmbiguousImports LocalName (List ( Path, Path ))
     | AmbiguousModulePath Path (List ( Path, Path ))
+
+
+errorToMessage : Error -> String
+errorToMessage error =
+    case error of
+        CouldNotFindLocalName trace target localName ->
+            String.concat [ "Could not find local name '", localName, "'" ]
+
+        CouldNotFindNameInModule nameType packagePath modulePath localName ->
+            String.concat
+                [ "Could not find name '"
+                , Name.toCamelCase localName
+                , "' in module '"
+                , Path.toString Name.toCamelCase "." modulePath
+                , "' in package '"
+                , Path.toString Name.toCamelCase "." packagePath
+                , "'"
+                ]
+
+        CouldNotFindModule packageAndModulePath ->
+            String.concat
+                [ "Could not find module '"
+                , Path.toString Name.toCamelCase "." packageAndModulePath
+                ]
+
+        AmbiguousImports localName modulePaths ->
+            String.concat
+                [ "Ambiguous local name imports. The local name `"
+                , localName
+                , "' is imported from multiple modules: "
+                , modulePaths
+                    |> List.map
+                        (\( packagePath, modulePath ) ->
+                            String.join "."
+                                [ Path.toString Name.toCamelCase "." packagePath
+                                , Path.toString Name.toCamelCase "." modulePath
+                                ]
+                        )
+                    |> String.join ", "
+                ]
+
+        AmbiguousModulePath packageAndModulePath matchingPaths ->
+            String.concat
+                [ "Ambiguous module imports. The module name `"
+                , Path.toString Name.toCamelCase "." packageAndModulePath
+                , "' matches multiple modules: "
+                , matchingPaths
+                    |> List.map
+                        (\( packagePath, modulePath ) ->
+                            String.join "."
+                                [ Path.toString Name.toCamelCase "." packagePath
+                                , Path.toString Name.toCamelCase "." modulePath
+                                ]
+                        )
+                    |> String.join ", "
+                ]
 
 
 encodeError : Error -> Encode.Value

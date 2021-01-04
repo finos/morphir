@@ -15,7 +15,10 @@
 -}
 
 
-module Morphir.IR.FQName exposing (FQName(..), fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn)
+module Morphir.IR.FQName exposing
+    ( FQName(..), fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn
+    , toString
+    )
 
 {-| Module to work with fully-qualified names. A qualified name is a combination of a package path, a module path and a local name.
 
@@ -29,7 +32,7 @@ import Morphir.IR.QName as QName exposing (QName)
 
 
 {-| Type that represents a fully-qualified name.
-    The parameters are PackagePath ModulePath Name
+The parameters are PackagePath ModulePath Name
 -}
 type FQName
     = FQName Path Path Name
@@ -78,3 +81,12 @@ fqn packageName moduleName localName =
         (Path.fromString packageName)
         (Path.fromString moduleName)
         (Name.fromString localName)
+
+
+toString : FQName -> String
+toString (FQName p m l) =
+    String.join ":"
+        [ Path.toString Name.toTitleCase "." p
+        , Path.toString Name.toTitleCase "." m
+        , Name.toCamelCase l
+        ]

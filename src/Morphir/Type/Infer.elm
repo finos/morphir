@@ -1,12 +1,14 @@
 module Morphir.Type.Infer exposing (..)
 
 import Dict exposing (Dict)
+import Morphir.Compiler as Compiler
 import Morphir.IR.AccessControlled exposing (AccessControlled)
-import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.FQName as FQName exposing (FQName(..))
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Specification(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.ListOfResults as ListOfResults
@@ -14,7 +16,7 @@ import Morphir.Type.Class as Class exposing (Class)
 import Morphir.Type.Constraint exposing (Constraint(..), class, equality)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
-import Morphir.Type.MetaTypeMapping exposing (LookupError, References, concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
+import Morphir.Type.MetaTypeMapping exposing (LookupError(..), References, concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.SolutionMap as SolutionMap exposing (SolutionMap(..))
 import Set exposing (Set)
 
@@ -42,13 +44,13 @@ type UnificationError
     | FieldMismatch
 
 
-inferPackageDefinition : References -> Package.Definition () va -> Result (List ValueTypeError) (Package.Definition () ( va, Type () ))
+inferPackageDefinition : References -> Package.Definition () va -> Result (List Compiler.Error) (Package.Definition () ( va, Type () ))
 inferPackageDefinition refs packageDef =
     packageDef.modules
         |> Dict.toList
         |> List.map
             (\( moduleName, moduleDef ) ->
-                inferModuleDefinition refs moduleDef.value
+                inferModuleDefinition refs moduleName moduleDef.value
                     |> Result.map (AccessControlled moduleDef.access)
                     |> Result.map (Tuple.pair moduleName)
             )
@@ -58,11 +60,10 @@ inferPackageDefinition refs packageDef =
                 { modules = Dict.fromList mappedModules
                 }
             )
-        |> Result.mapError List.concat
 
 
-inferModuleDefinition : References -> Module.Definition () va -> Result (List ValueTypeError) (Module.Definition () ( va, Type () ))
-inferModuleDefinition refs moduleDef =
+inferModuleDefinition : References -> ModuleName -> Module.Definition () va -> Result Compiler.Error (Module.Definition () ( va, Type () ))
+inferModuleDefinition refs moduleName moduleDef =
     moduleDef.values
         |> Dict.toList
         |> List.map
@@ -70,7 +71,12 @@ inferModuleDefinition refs moduleDef =
                 inferValueDefinition refs valueDef.value
                     |> Result.map (AccessControlled valueDef.access)
                     |> Result.map (Tuple.pair valueName)
-                    |> Result.mapError (ValueTypeError valueName)
+                    |> Result.mapError
+                        (\typeError ->
+                            Compiler.ErrorInSourceFile
+                                (String.concat [ "Type error in value '", Name.toCamelCase valueName, "': ", typeErrorToMessage typeError ])
+                                []
+                        )
             )
         |> ListOfResults.liftAllErrors
         |> Result.map
@@ -79,6 +85,53 @@ inferModuleDefinition refs moduleDef =
                 , values = Dict.fromList mappedValues
                 }
             )
+        |> Result.mapError (Compiler.ErrorsInSourceFile (moduleName |> Path.toString Name.toTitleCase "."))
+
+
+typeErrorToMessage : TypeError -> String
+typeErrorToMessage typeError =
+    case typeError of
+        TypeErrors errors ->
+            String.concat [ "Multiple errors: ", errors |> List.map typeErrorToMessage |> String.join ", " ]
+
+        ClassConstraintViolation metaType class ->
+            String.concat [ "Type '", MetaType.toString metaType, "' is not a ", Class.toString class ]
+
+        LookupError lookupError ->
+            case lookupError of
+                CouldNotFindConstructor fQName ->
+                    String.concat [ "Could not find constructor: ", FQName.toString fQName ]
+
+                CouldNotFindValue fQName ->
+                    String.concat [ "Could not find value: ", FQName.toString fQName ]
+
+                CouldNotFindAlias fQName ->
+                    String.concat [ "Could not find alias: ", FQName.toString fQName ]
+
+                ExpectedAlias fQName ->
+                    String.concat [ "Expected alias at: ", FQName.toString fQName ]
+
+        UnknownError message ->
+            String.concat [ "Unknown error: ", message ]
+
+        CouldNotUnify unificationError metaType1 metaType2 ->
+            let
+                cause =
+                    case unificationError of
+                        NoUnificationRule ->
+                            "there are no unification rules to apply"
+
+                        TuplesOfDifferentSize ->
+                            "they are tuples of different sizes"
+
+                        RefMismatch ->
+                            "the references do not match"
+
+                        FieldMismatch ->
+                            "the fields don't match"
+            in
+            String.concat
+                [ "Could not unify '", MetaType.toString metaType1, "' with '", MetaType.toString metaType2, "' because ", cause ]
 
 
 inferValueDefinition : References -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
