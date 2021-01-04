@@ -1,8 +1,8 @@
 module Morphir.Type.MetaType exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.IR.FQName exposing (FQName, fqn)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.FQName as FQName exposing (FQName, fqn)
+import Morphir.IR.Name as Name exposing (Name)
 
 
 type MetaType
@@ -14,6 +14,56 @@ type MetaType
     | MetaFun MetaType MetaType
     | MetaUnit
     | MetaAlias FQName MetaType
+
+
+toString : MetaType -> String
+toString metaType =
+    case metaType of
+        MetaVar ( i, j ) ->
+            "var_" ++ String.fromInt i ++ "_" ++ String.fromInt j
+
+        MetaRef fQName ->
+            FQName.toString fQName
+
+        MetaTuple metaTypes ->
+            String.concat [ "( ", metaTypes |> List.map toString |> String.join ", ", " )" ]
+
+        MetaRecord extends fields ->
+            let
+                prefix =
+                    case extends of
+                        Just ( i, j ) ->
+                            "var_" ++ String.fromInt i ++ "_" ++ String.fromInt j ++ " | "
+
+                        Nothing ->
+                            ""
+
+                fieldStrings =
+                    fields
+                        |> Dict.toList
+                        |> List.map
+                            (\( fieldName, fieldType ) ->
+                                String.concat [ Name.toCamelCase fieldName, " : ", toString fieldType ]
+                            )
+            in
+            String.concat [ "{ ", prefix, fieldStrings |> String.join ", ", " }" ]
+
+        MetaApply funType argType ->
+            case argType of
+                MetaApply _ _ ->
+                    String.concat [ toString funType, " (", toString argType, ")" ]
+
+                _ ->
+                    String.concat [ toString funType, " ", toString argType ]
+
+        MetaFun argType returnType ->
+            String.concat [ toString argType, " -> ", toString returnType ]
+
+        MetaUnit ->
+            "()"
+
+        MetaAlias alias targetType ->
+            String.concat [ toString targetType, " as ", FQName.toString alias ]
 
 
 type alias Variable =

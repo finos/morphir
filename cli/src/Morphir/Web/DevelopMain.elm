@@ -9,6 +9,7 @@ import Element.Font as Font
 import Html exposing (Html)
 import Http
 import Json.Decode as Decode exposing (Decoder, field, string)
+import Morphir.Compiler as Compiler
 import Morphir.Elm.CLI as CLI
 import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
@@ -42,7 +43,7 @@ main =
 type Model
     = HttpFailure Http.Error
     | WaitingForResponse
-    | MakeComplete (Result CLI.Error Distribution)
+    | MakeComplete (Result (List Compiler.Error) Distribution)
 
 
 init : () -> ( Model, Cmd Msg )
@@ -56,7 +57,7 @@ init _ =
 
 type Msg
     = Make
-    | MakeResult (Result Http.Error (Result CLI.Error Distribution))
+    | MakeResult (Result Http.Error (Result (List Compiler.Error) Distribution))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -257,7 +258,7 @@ makeModel =
         }
 
 
-distributionDecoder : Decoder (Result CLI.Error Distribution)
+distributionDecoder : Decoder (Result (List Compiler.Error) Distribution)
 distributionDecoder =
     Decode.index 0 Decode.string
         |> Decode.andThen
@@ -268,7 +269,7 @@ distributionDecoder =
                             |> Decode.map Ok
 
                     "err" ->
-                        Decode.index 1 CLI.decodeError
+                        Decode.index 1 (Decode.succeed [])
                             |> Decode.map Err
 
                     other ->

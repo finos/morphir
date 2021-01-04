@@ -28,3 +28,10 @@ member metaType class =
 numberTypes : List MetaType
 numberTypes =
     [ MetaType.intType, MetaType.floatType ]
+
+
+toString : Class -> String
+toString class =
+    case class of
+        Number ->
+            "number"
