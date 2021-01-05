@@ -1,21 +1,22 @@
 module Morphir.Graph.GraphVizBackend exposing (..)
 
+import Dict exposing (Dict)
 import Morphir.Graph.GraphViz.AST exposing (Attribute(..), Graph(..), NodeID, Statement(..))
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Name as Name
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.Value as Value exposing (Value(..))
 
 
-mapValue : Value ta ( Int, va ) -> Maybe Graph
-mapValue indexedValue =
+mapValue : Value ta ( Int, va ) -> Dict Name (Value () ()) -> Maybe Graph
+mapValue indexedValue variables =
     case indexedValue of
         Value.IfThenElse ( index, _ ) _ _ _ ->
             Just
                 (Digraph (String.concat [ "graph_", String.fromInt index ])
                     (List.concat
-                        [ valueNodes indexedValue
+                        [ valueNodes indexedValue variables
                         , valueEdges indexedValue
                         ]
                     )
@@ -25,27 +26,27 @@ mapValue indexedValue =
             Nothing
 
 
-valueNodes : Value ta ( Int, va ) -> List Statement
-valueNodes indexedValue =
+valueNodes : Value ta ( Int, va ) -> Dict Name (Value () ()) -> List Statement
+valueNodes indexedValue variables =
     case indexedValue of
         Value.IfThenElse ( index, _ ) condition thenBranch elseBranch ->
             let
                 conditionNode : Statement
                 conditionNode =
                     NodeStatement (indexToNodeID index)
-                        [ Attribute "label" (valueToLabel condition)
+                        [ Attribute "label" (valueToLabel (condition |> Value.mapValueAttributes (always ()) (always ())) variables)
                         , Attribute "shape" "diamond"
                         ]
             in
             List.concat
                 [ [ conditionNode ]
-                , valueNodes thenBranch
-                , valueNodes elseBranch
+                , valueNodes thenBranch variables
+                , valueNodes elseBranch variables
                 ]
 
         _ ->
             [ NodeStatement (valueToID indexedValue)
-                [ Attribute "label" (valueToLabel indexedValue)
+                [ Attribute "label" (valueToLabel (indexedValue |> Value.mapValueAttributes (always ()) (always ())) variables)
                 , Attribute "shape" "box"
                 ]
             ]
@@ -93,8 +94,8 @@ indexToNodeID index =
         ]
 
 
-valueToLabel : Value ta ( Int, va ) -> String
-valueToLabel indexedValue =
+valueToLabel : Value () () -> Dict Name (Value () ()) -> String
+valueToLabel indexedValue variables =
     case indexedValue of
         Value.Literal _ literal ->
             case literal of
@@ -118,7 +119,16 @@ valueToLabel indexedValue =
                     String.fromFloat float
 
         Value.Variable _ name ->
-            String.concat name
+            let
+                suffix =
+                    case variables |> Dict.get name |> Debug.log "var" of
+                        Just varValue ->
+                            String.concat [ " (", valueToLabel varValue variables, ")" ]
+
+                        Nothing ->
+                            ""
+            in
+            String.concat [ name |> Name.toHumanWords |> String.join " ", suffix ]
 
         Value.Apply _ fun arg ->
             case Value.uncurryApply fun arg of
@@ -140,7 +150,7 @@ valueToLabel indexedValue =
                                 _ ->
                                     localName |> Name.toHumanWords |> String.join " "
                     in
-                    String.concat [ valueToLabel argValue1, " ", operatorName, " ", valueToLabel argValue2 ]
+                    String.concat [ valueToLabel argValue1 variables, " ", operatorName, " ", valueToLabel argValue2 variables ]
 
                 _ ->
                     "?"
