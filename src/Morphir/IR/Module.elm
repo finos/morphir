@@ -20,7 +20,7 @@ module Morphir.IR.Module exposing
     , Specification, emptySpecification
     , Definition, emptyDefinition
     , definitionToSpecification, definitionToSpecificationWithPrivate
-    , lookupTypeSpecification, lookupValueSpecification
+    , lookupTypeSpecification, lookupValueSpecification, lookupValueDefinition
     , eraseSpecificationAttributes, eraseDefinitionAttributes
     , mapDefinitionAttributes, mapSpecificationAttributes
     )
@@ -45,7 +45,7 @@ including implementation and private types and values.
 
 # Lookups
 
-@docs lookupTypeSpecification, lookupValueSpecification
+@docs lookupTypeSpecification, lookupValueSpecification, lookupValueDefinition
 
 
 # Manage attributes
@@ -134,6 +134,15 @@ lookupValueSpecification : Name -> Specification ta -> Maybe (Value.Specificatio
 lookupValueSpecification localName moduleSpec =
     moduleSpec.values
         |> Dict.get localName
+
+
+{-| Look up a value definition by its name in a module specification.
+-}
+lookupValueDefinition : Name -> Definition ta va -> Maybe (Value.Definition ta va)
+lookupValueDefinition localName moduleDef =
+    moduleDef.values
+        |> Dict.get localName
+        |> Maybe.map withPrivateAccess
 
 
 {-| Turn a module definition into a module specification. Only publicly exposed types and values will be included in the

@@ -18,7 +18,7 @@
 module Morphir.IR.Package exposing
     ( Specification, emptySpecification
     , Definition, emptyDefinition
-    , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification
+    , lookupModuleSpecification, lookupModuleDefinition, lookupTypeSpecification, lookupValueSpecification, lookupValueDefinition
     , PackageName, definitionToSpecification, definitionToSpecificationWithPrivate, eraseDefinitionAttributes, eraseSpecificationAttributes
     , mapDefinitionAttributes, mapSpecificationAttributes
     )
@@ -41,7 +41,7 @@ including implementation and private types and values.
 
 # Lookups
 
-@docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification
+@docs lookupModuleSpecification, lookupModuleDefinition, lookupTypeSpecification, lookupValueSpecification, lookupValueDefinition
 
 
 # Other utilities
@@ -108,6 +108,15 @@ lookupModuleSpecification modulePath packageSpec =
         |> Dict.get modulePath
 
 
+{-| Look up a module definition by its path in a package specification.
+-}
+lookupModuleDefinition : Path -> Definition ta va -> Maybe (Module.Definition ta va)
+lookupModuleDefinition modulePath packageDef =
+    packageDef.modules
+        |> Dict.get modulePath
+        |> Maybe.map withPrivateAccess
+
+
 {-| Look up a type specification by its module path and name in a package specification.
 -}
 lookupTypeSpecification : Path -> Name -> Specification ta -> Maybe (Type.Specification ta)
@@ -124,6 +133,15 @@ lookupValueSpecification modulePath localName packageSpec =
     packageSpec
         |> lookupModuleSpecification modulePath
         |> Maybe.andThen (Module.lookupValueSpecification localName)
+
+
+{-| Look up a value definition by its module path and name in a package specification.
+-}
+lookupValueDefinition : Path -> Name -> Definition ta va -> Maybe (Value.Definition ta va)
+lookupValueDefinition modulePath localName packageDef =
+    packageDef
+        |> lookupModuleDefinition modulePath
+        |> Maybe.andThen (Module.lookupValueDefinition localName)
 
 
 {-| Turn a package definition into a package specification. Only publicly exposed modules will be included in the
