@@ -57,10 +57,10 @@ init distributionJson =
 --port sendErrorReport : String -> Cmd msg
 
 
-port receiveFunctionName : (String -> Msg) -> Sub Msg
+port receiveFunctionName : (String -> msg) -> Sub msg
 
 
-port receiveFunctionArguments : (Decode.Value -> Msg) -> Sub Msg
+port receiveFunctionArguments : (Decode.Value -> msg) -> Sub msg
 
 
 
