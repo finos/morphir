@@ -121,7 +121,7 @@ valueToLabel indexedValue variables =
         Value.Variable _ name ->
             let
                 suffix =
-                    case variables |> Dict.get name |> Debug.log "var" of
+                    case variables |> Dict.get name of
                         Just varValue ->
                             String.concat [ " (", valueToLabel varValue variables, ")" ]
 
