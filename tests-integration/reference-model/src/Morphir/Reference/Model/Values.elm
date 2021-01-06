@@ -150,7 +150,7 @@ basicDestructure =
 
 basicIfThenElse : Int -> Int -> String
 basicIfThenElse a b =
-    if a == b then
+    if a < b then
         "Less"
 
     else
@@ -159,7 +159,12 @@ basicIfThenElse a b =
 
 basicIfThenElse2 : String -> String
 basicIfThenElse2 ball =
-    if True then
+    let
+        a : Int
+        a =
+            1
+    in
+    if ball /= "ball" then
         ball
 
     else

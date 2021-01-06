@@ -110,7 +110,7 @@ valueToLabel indexedValue variables =
                     String.fromChar char
 
                 StringLiteral string ->
-                    string
+                    String.concat [ "'", string, "'" ]
 
                 IntLiteral int ->
                     String.fromInt int
@@ -132,6 +132,26 @@ valueToLabel indexedValue variables =
 
         Value.Apply _ fun arg ->
             case Value.uncurryApply fun arg of
+                ( Value.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] moduleName localName), [ argValue1 ] ) ->
+                    let
+                        functionName : String
+                        functionName =
+                            String.join "."
+                                [ moduleName |> Path.toString Name.toTitleCase "."
+                                , localName |> Name.toCamelCase
+                                ]
+
+                        operatorName : String
+                        operatorName =
+                            case unaryFunctionSymbols |> Dict.get functionName of
+                                Just symbol ->
+                                    symbol
+
+                                _ ->
+                                    localName |> Name.toHumanWords |> String.join " "
+                    in
+                    String.join " " [ operatorName, valueToLabel argValue1 variables ]
+
                 ( Value.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] moduleName localName), [ argValue1, argValue2 ] ) ->
                     let
                         functionName : String
@@ -143,17 +163,44 @@ valueToLabel indexedValue variables =
 
                         operatorName : String
                         operatorName =
-                            case functionName of
-                                "Basics.equal" ->
-                                    "="
+                            case binaryFunctionSymbols |> Dict.get functionName of
+                                Just symbol ->
+                                    symbol
 
                                 _ ->
                                     localName |> Name.toHumanWords |> String.join " "
                     in
-                    String.concat [ valueToLabel argValue1 variables, " ", operatorName, " ", valueToLabel argValue2 variables ]
+                    String.join " " [ valueToLabel argValue1 variables, operatorName, valueToLabel argValue2 variables ]
 
                 _ ->
                     "?"
 
+        Value.LetDefinition _ _ _ inValue ->
+            valueToLabel inValue variables
+
         _ ->
             "?"
+
+
+unaryFunctionSymbols : Dict String String
+unaryFunctionSymbols =
+    Dict.fromList
+        [ ( "Basics.negate", "-" )
+        ]
+
+
+binaryFunctionSymbols : Dict String String
+binaryFunctionSymbols =
+    Dict.fromList
+        [ ( "Basics.add", "+" )
+        , ( "Basics.subtract", "-" )
+        , ( "Basics.multiply", "*" )
+        , ( "Basics.divide", "/" )
+        , ( "Basics.integerDivide", "/" )
+        , ( "Basics.equal", "=" )
+        , ( "Basics.notEqual", "≠" )
+        , ( "Basics.lessThan", "<" )
+        , ( "Basics.greaterThan", ">" )
+        , ( "Basics.lessThanOrEqual", "≤" )
+        , ( "Basics.greaterThanOrEqual", "≥" )
+        ]
