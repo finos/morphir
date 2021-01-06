@@ -14,7 +14,7 @@ import Morphir.IR.Value exposing (Value)
 
 view : (Value ta (Type ta) -> Element msg) -> Value ta ( Int, Type ta ) -> Dict Name (Value () ()) -> Element msg
 view viewValue value variables =
-    case GraphVizBackend.mapValue value variables |> Debug.log "graph" of
+    case GraphVizBackend.mapValue value variables of
         Just graph ->
             graph
                 |> PrettyPrint.mapGraph
@@ -27,7 +27,7 @@ view viewValue value variables =
 graphToNode : Doc -> Element msg
 graphToNode dotStructure =
     Html.node "if-then-else"
-        [ attribute "dotStructure" dotStructure
+        [ attribute "dotstructure" dotStructure
         ]
         []
         |> html
