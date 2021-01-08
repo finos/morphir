@@ -1,33 +1,52 @@
 module Morphir.Visual.ViewIfThenElse exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, html, moveRight, spacing, text, wrappedRow)
-import Html
-import Html.Attributes exposing (attribute)
-import Morphir.File.SourceCode exposing (Doc)
-import Morphir.Graph.GraphViz.PrettyPrint as PrettyPrint
-import Morphir.Graph.GraphVizBackend as GraphVizBackend
+import Element exposing (Element)
+import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
+import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value exposing (Value)
+import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Visual.Components.DecisionTree as DecisionTree
 
 
-view : (Value ta (Type ta) -> Element msg) -> Value ta ( Int, Type ta ) -> Dict Name (Value () ()) -> Element msg
+view : (Value () (Type ()) -> Element msg) -> Value () (Type ()) -> Dict Name (Value () ()) -> Element msg
 view viewValue value variables =
-    case GraphVizBackend.mapValue value variables of
-        Just graph ->
-            graph
-                |> PrettyPrint.mapGraph
-                |> graphToNode
-
-        Nothing ->
-            text "Cannot display value as decision tree!"
+    DecisionTree.layout viewValue (valueToTree value)
 
 
-graphToNode : Doc -> Element msg
-graphToNode dotStructure =
-    Html.node "if-then-else"
-        [ attribute "dotstructure" dotStructure
-        ]
-        []
-        |> html
+valueToTree : Value () (Type ()) -> DecisionTree.Node (Value () (Type ()))
+valueToTree value =
+    case value of
+        Value.IfThenElse _ condition thenBranch elseBranch ->
+            let
+                withCondition : Value () (Type ()) -> Value () (Type ()) -> Value () (Type ()) -> DecisionTree.Node (Value () (Type ()))
+                withCondition cond left right =
+                    case cond of
+                        Value.Apply _ (Value.Apply _ (Value.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "basics" ] ] [ "or" ])) arg1) arg2 ->
+                            DecisionTree.Branch
+                                { nodeLabel = arg1
+                                , leftBranchLabel = Value.Literal (Basics.boolType ()) (BoolLiteral True)
+                                , leftBranch = valueToTree left
+                                , rightBranchLabel = Value.Literal (Basics.boolType ()) (BoolLiteral False)
+                                , rightBranch =
+                                    withCondition arg2 left right
+                                }
+
+                        _ ->
+                            DecisionTree.Branch
+                                { nodeLabel = cond
+                                , leftBranchLabel = Value.Literal (Basics.boolType ()) (BoolLiteral True)
+                                , leftBranch = valueToTree left
+                                , rightBranchLabel = Value.Literal (Basics.boolType ()) (BoolLiteral False)
+                                , rightBranch = valueToTree right
+                                }
+            in
+            withCondition condition thenBranch elseBranch
+
+        Value.LetDefinition _ _ _ inValue ->
+            valueToTree inValue
+
+        _ ->
+            DecisionTree.Leaf value

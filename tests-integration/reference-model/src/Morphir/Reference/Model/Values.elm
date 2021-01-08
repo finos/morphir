@@ -180,10 +180,21 @@ basicIfThenElse3 boolValueVariable =
         "Bye"
 
 
-basicIfThenElse4 : Float -> Float -> Float -> Float -> Float -> String
+type alias FruitAction =
+    { fruitType : String
+    , amount : Float
+    }
+
+
+noHarvest : List FruitAction
+noHarvest =
+    []
+
+
+basicIfThenElse4 : Float -> Float -> Float -> Float -> Float -> List FruitAction
 basicIfThenElse4 greenApple redApple amberApple greenPear redPear =
     if greenApple == 0 || redApple == 0 || greenApple == redApple then
-        "no harvest"
+        noHarvest
 
     else
         let
@@ -192,10 +203,15 @@ basicIfThenElse4 greenApple redApple amberApple greenPear redPear =
                 redApple + greenApple
         in
         if redGreenApple > 0 then
-            "case 1"
+            [ { fruitType = "apple", amount = 10 }
+            , { fruitType = "pear", amount = 5 }
+            ]
 
         else
-            "case 2"
+            [ { fruitType = "apple", amount = 10 }
+            , { fruitType = "pear", amount = 5 }
+            , { fruitType = "banana", amount = 15.3 }
+            ]
 
 
 basicPatternMatchWildcard : String -> Int
