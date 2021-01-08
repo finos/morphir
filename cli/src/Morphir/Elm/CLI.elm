@@ -20,6 +20,8 @@ port module Morphir.Elm.CLI exposing (..)
 import Dict
 import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
+import Morphir.Compiler as Compiler
+import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec exposing (decodePackageInfo)
 import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
@@ -53,11 +55,6 @@ type Msg
     | Generate ( Decode.Value, Decode.Value )
 
 
-type Error
-    = FrontendError Frontend.Errors
-    | TypeError (List Infer.ValueTypeError)
-
-
 main : Platform.Program () () Msg
 main =
     Platform.worker
@@ -74,12 +71,11 @@ update msg model =
             case Decode.decodeValue decodePackageInfo packageInfoJson of
                 Ok packageInfo ->
                     let
-                        frontendResult : Result Error (Package.Definition Frontend.SourceLocation Frontend.SourceLocation)
+                        frontendResult : Result (List Compiler.Error) (Package.Definition Frontend.SourceLocation Frontend.SourceLocation)
                         frontendResult =
-                            Frontend.packageDefinitionFromSource packageInfo Dict.empty sourceFiles
-                                |> Result.mapError FrontendError
+                            Frontend.mapSource packageInfo Dict.empty sourceFiles
 
-                        typedResult : Result Error (Package.Definition () ( Frontend.SourceLocation, Type () ))
+                        typedResult : Result (List Compiler.Error) (Package.Definition () ( Frontend.SourceLocation, Type () ))
                         typedResult =
                             frontendResult
                                 |> Result.andThen
@@ -99,14 +95,13 @@ update msg model =
                                         packageDef
                                             |> Package.mapDefinitionAttributes (\_ -> ()) identity
                                             |> Infer.inferPackageDefinition references
-                                            |> Result.mapError TypeError
                                     )
                     in
                     ( model
                     , typedResult
                         |> Result.map (Package.mapDefinitionAttributes identity (\( _, tpe ) -> tpe))
                         |> Result.map (Distribution.Library packageInfo.name Dict.empty)
-                        |> encodeResult encodeError DistributionCodec.encodeDistribution
+                        |> encodeResult (Encode.list CompilerCodec.encodeError) DistributionCodec.encodeDistribution
                         |> packageDefinitionFromSourceResult
                     )
 
@@ -167,38 +162,3 @@ encodeResult encodeErr encodeValue result =
                 [ encodeErr e
                 , Encode.null
                 ]
-
-
-encodeError : Error -> Encode.Value
-encodeError error =
-    case error of
-        FrontendError frontendErrors ->
-            Encode.list identity
-                [ Encode.string "frontend_error"
-                , Encode.list FrontendCodec.encodeError frontendErrors
-                ]
-
-        TypeError typeError ->
-            Encode.list identity
-                [ Encode.string "type_error"
-                , Encode.list encodeValueTypeError typeError
-                ]
-
-
-decodeError : Decode.Decoder Error
-decodeError =
-    Decode.index 0 Decode.string
-        |> Decode.andThen
-            (\tag ->
-                case tag of
-                    "frontend_error" ->
-                        Decode.index 1 (Decode.succeed [])
-                            |> Decode.map FrontendError
-
-                    "type_error" ->
-                        Decode.index 1 (Decode.list decodeValueTypeError)
-                            |> Decode.map TypeError
-
-                    other ->
-                        Decode.fail ("Unknown tag: " ++ other)
-            )

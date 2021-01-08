@@ -1,6 +1,6 @@
 module Morphir.IR.Distribution exposing
     ( Distribution(..)
-    , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName
+    , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
     )
 
 {-| A distribution is a complete package of Morphir types and functions with all their dependencies.
@@ -20,7 +20,7 @@ information:
 
 # Lookups
 
-@docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName
+@docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
 
 -}
 
@@ -28,7 +28,8 @@ import Dict exposing (Dict)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
-import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Package as Package exposing (PackageName, lookupModuleDefinition)
+import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
 
@@ -90,3 +91,15 @@ lookupValueSpecification packageName moduleName localName distribution =
     distribution
         |> lookupModuleSpecification packageName moduleName
         |> Maybe.andThen (Module.lookupValueSpecification localName)
+
+
+{-| Look up a value definition by qualified name in a distribution. The value will only be searched in the current
+package.
+-}
+lookupValueDefinition : QName -> Distribution -> Maybe (Value.Definition () (Type ()))
+lookupValueDefinition (QName moduleName localName) distribution =
+    case distribution of
+        Library _ _ packageDef ->
+            packageDef
+                |> lookupModuleDefinition moduleName
+                |> Maybe.andThen (Module.lookupValueDefinition localName)

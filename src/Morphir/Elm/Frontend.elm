@@ -19,6 +19,7 @@ module Morphir.Elm.Frontend exposing
     ( packageDefinitionFromSource, mapDeclarationsToType
     , defaultDependencies
     , ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation
+    , mapSource
     )
 
 {-| The Elm frontend turns Elm source code into Morphir IR.
@@ -53,6 +54,7 @@ import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
 import Elm.Syntax.Range as Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
+import Morphir.Compiler as Compiler
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
@@ -162,6 +164,190 @@ defaultDependencies =
     Dict.fromList
         [ ( SDK.packageName, SDK.packageSpec )
         ]
+
+
+mapSource : PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result (List Compiler.Error) (Package.Definition SourceLocation SourceLocation)
+mapSource packageInfo dependencies sourceFiles =
+    let
+        mapSourceLocations : String -> SourceLocation -> List SourceLocation -> List ( String, Compiler.ErrorInSourceFile )
+        mapSourceLocations message sourceLocation moreSourceLocations =
+            [ ( sourceLocation.source.path
+              , { errorMessage = message
+                , sourceLocations =
+                    (sourceLocation :: moreSourceLocations)
+                        |> List.map (.range >> mapContentRange)
+                }
+              )
+            ]
+
+        mapContentRange : ContentRange -> Compiler.SourceRange
+        mapContentRange contentRange =
+            contentRange
+
+        mapParserProblem : Parser.Problem -> String
+        mapParserProblem problem =
+            case problem of
+                Parser.Expecting something ->
+                    "Expecting " ++ something
+
+                Parser.ExpectingInt ->
+                    "Expecting integer"
+
+                Parser.ExpectingHex ->
+                    "Expecting hexadecimal"
+
+                Parser.ExpectingOctal ->
+                    "Expecting octal"
+
+                Parser.ExpectingBinary ->
+                    "Expecting binary"
+
+                Parser.ExpectingFloat ->
+                    "Expecting float"
+
+                Parser.ExpectingNumber ->
+                    "Expecting number"
+
+                Parser.ExpectingVariable ->
+                    "Expecting variable"
+
+                Parser.ExpectingSymbol symbol ->
+                    "Expecting symbol: " ++ symbol
+
+                Parser.ExpectingKeyword keyword ->
+                    "Expecting keyword: " ++ keyword
+
+                Parser.ExpectingEnd ->
+                    "Expecting end"
+
+                Parser.UnexpectedChar ->
+                    "Unexpected character"
+
+                Parser.Problem message ->
+                    "Problem: " ++ message
+
+                Parser.BadRepeat ->
+                    "Bad repeat"
+
+        mapParserDeadEnd : Parser.DeadEnd -> Compiler.ErrorInSourceFile
+        mapParserDeadEnd deadEnd =
+            let
+                location =
+                    { row = deadEnd.row
+                    , column = deadEnd.col
+                    }
+            in
+            { errorMessage = "Parse error: " ++ mapParserProblem deadEnd.problem
+            , sourceLocations =
+                [ { start = location
+                  , end = location
+                  }
+                ]
+            }
+    in
+    packageDefinitionFromSource packageInfo dependencies sourceFiles
+        |> Result.mapError
+            (\errors ->
+                let
+                    fileSpecificErrors : List Compiler.Error
+                    fileSpecificErrors =
+                        errors
+                            |> List.concatMap
+                                (\error ->
+                                    case error of
+                                        ParseError filePath deadEnds ->
+                                            deadEnds
+                                                |> List.map (mapParserDeadEnd >> Tuple.pair filePath)
+
+                                        CyclicModules _ ->
+                                            []
+
+                                        ResolveError sourceLocation message ->
+                                            mapSourceLocations
+                                                ("Resolve error: " ++ Resolve.errorToMessage message)
+                                                sourceLocation
+                                                []
+
+                                        EmptyApply sourceLocation ->
+                                            mapSourceLocations
+                                                "Empty apply"
+                                                sourceLocation
+                                                []
+
+                                        NotSupported sourceLocation string ->
+                                            mapSourceLocations
+                                                ("Not supported: " ++ string)
+                                                sourceLocation
+                                                []
+
+                                        DuplicateNameInPattern name sourceLocation sourceLocation2 ->
+                                            mapSourceLocations
+                                                ("Duplicate name in pattern: " ++ Name.toCamelCase name)
+                                                sourceLocation
+                                                [ sourceLocation2 ]
+
+                                        VariableShadowing name sourceLocation sourceLocation2 ->
+                                            mapSourceLocations
+                                                ("Variable shadowing: " ++ Name.toCamelCase name)
+                                                sourceLocation
+                                                [ sourceLocation2 ]
+
+                                        MissingTypeSignature sourceLocation ->
+                                            mapSourceLocations
+                                                "Missing type signature"
+                                                sourceLocation
+                                                []
+
+                                        RecordPatternNotSupported sourceLocation ->
+                                            mapSourceLocations
+                                                "Record pattern not supported"
+                                                sourceLocation
+                                                []
+                                )
+                            |> List.foldl
+                                (\( filePath, fileError ) soFar ->
+                                    soFar
+                                        |> Dict.update filePath
+                                            (\maybeErrorsSoFar ->
+                                                case maybeErrorsSoFar of
+                                                    Just errorsSoFar ->
+                                                        Just (fileError :: errorsSoFar)
+
+                                                    Nothing ->
+                                                        Just [ fileError ]
+                                            )
+                                )
+                                Dict.empty
+                            |> Dict.toList
+                            |> List.map
+                                (\( filePath, fileErrors ) ->
+                                    Compiler.ErrorsInSourceFile filePath fileErrors
+                                )
+
+                    globalErrors : List Compiler.Error
+                    globalErrors =
+                        errors
+                            |> List.filterMap
+                                (\error ->
+                                    case error of
+                                        CyclicModules graph ->
+                                            Just
+                                                (Compiler.ErrorAcrossSourceFiles
+                                                    { errorMessage = "Module imports form a cycle"
+                                                    , files =
+                                                        graph
+                                                            |> Morphir.Graph.nodeLabels
+                                                            |> Set.toList
+                                                            |> List.map (String.join "/")
+                                                    }
+                                                )
+
+                                        _ ->
+                                            Nothing
+                                )
+                in
+                fileSpecificErrors ++ globalErrors
+            )
 
 
 {-| Function that takes some package info and a list of sources and returns Morphir IR or errors.

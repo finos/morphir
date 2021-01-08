@@ -1,22 +1,28 @@
-module Morphir.Web.DevelopMain exposing (Model(..), Msg(..), distributionDecoder, init, main, makeModel, scaled, subscriptions, theme, update, view, viewDistribution, viewModule, viewResult)
+module Morphir.Web.DevelopMain exposing (Model(..), Msg(..), distributionDecoder, init, main, makeModel, scaled, subscriptions, theme, update, view, viewResult, viewValueSelection)
 
 import Browser
-import Dict
-import Element exposing (Element, column, el, fill, height, image, padding, paddingXY, paragraph, px, rgb255, row, spacing, text, width)
+import Dict exposing (Dict)
+import Element exposing (Element, column, el, fill, height, html, image, none, padding, paddingXY, paragraph, px, rgb255, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
+import Html.Attributes
+import Html.Events
 import Http
 import Json.Decode as Decode exposing (Decoder, field, string)
+import Morphir.Compiler as Compiler
 import Morphir.Elm.CLI as CLI
 import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.Module as Module
-import Morphir.IR.Name as Name
+import Morphir.IR.Module as Module exposing (ModuleName)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
+import Morphir.IR.QName as QName exposing (QName)
 import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Visual.Edit as Edit
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Web.Theme exposing (Theme)
 import Morphir.Web.Theme.Light as Light exposing (blue)
@@ -42,7 +48,8 @@ main =
 type Model
     = HttpFailure Http.Error
     | WaitingForResponse
-    | MakeComplete (Result CLI.Error Distribution)
+    | MakeComplete (Result (List Compiler.Error) Distribution)
+    | FunctionSelected Distribution QName (Value.Definition () (Type ())) (Dict Name (Result String (Value () ())))
 
 
 init : () -> ( Model, Cmd Msg )
@@ -56,11 +63,27 @@ init _ =
 
 type Msg
     = Make
-    | MakeResult (Result Http.Error (Result CLI.Error Distribution))
+    | MakeResult (Result Http.Error (Result (List Compiler.Error) Distribution))
+    | SelectFunction String
+    | UpdateArgumentValue Name (Value () ())
+    | InvalidArgumentValue Name String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        getDistribution : Maybe Distribution
+        getDistribution =
+            case model of
+                MakeComplete result ->
+                    result |> Result.toMaybe
+
+                FunctionSelected distribution _ _ _ ->
+                    Just distribution
+
+                _ ->
+                    Nothing
+    in
     case msg of
         Make ->
             ( WaitingForResponse, makeModel )
@@ -72,6 +95,42 @@ update msg model =
 
                 Err error ->
                     ( HttpFailure error, Cmd.none )
+
+        SelectFunction valueID ->
+            valueID
+                |> QName.fromString
+                |> Maybe.andThen
+                    (\qName ->
+                        getDistribution
+                            |> Maybe.andThen
+                                (\distribution ->
+                                    distribution
+                                        |> Distribution.lookupValueDefinition qName
+                                        |> Maybe.map (\valueDef -> FunctionSelected distribution qName valueDef Dict.empty)
+                                )
+                            |> Maybe.map (\m -> ( m, Cmd.none ))
+                    )
+                |> Maybe.withDefault ( model, Cmd.none )
+
+        UpdateArgumentValue argName argValue ->
+            case model of
+                FunctionSelected distribution qName valueDef argValues ->
+                    ( FunctionSelected distribution qName valueDef (argValues |> Dict.insert argName (Ok argValue))
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        InvalidArgumentValue argName message ->
+            case model of
+                FunctionSelected distribution qName valueDef argValues ->
+                    ( FunctionSelected distribution qName valueDef (argValues |> Dict.insert argName (Err message))
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 
@@ -182,67 +241,108 @@ viewResult model =
         MakeComplete distributionResult ->
             case distributionResult of
                 Ok distribution ->
-                    viewDistribution distribution
+                    viewValueSelection distribution
 
                 Err error ->
                     text ("Error: " ++ Debug.toString error)
 
+        FunctionSelected distribution qName valueDef argValues ->
+            column [ spacing 20 ]
+                [ viewValueSelection distribution
+                , viewArgumentEditors valueDef argValues
+                , viewValue distribution valueDef argValues
+                ]
 
-viewDistribution : Distribution -> Element Msg
-viewDistribution distro =
+
+viewValueSelection : Distribution -> Element Msg
+viewValueSelection distro =
     case distro of
         Distribution.Library packageName dependencies packageDefinition ->
-            column [ width fill ]
-                [ theme.heading 1 "Package"
-                , text
-                    (packageName |> Path.toList |> List.map (Name.toHumanWords >> String.join " ") |> String.join " / ")
-                , theme.heading 1 "Modules"
-                , column [ width fill, spacing 10 ]
-                    (packageDefinition.modules
+            let
+                options : List (Html Msg)
+                options =
+                    packageDefinition.modules
                         |> Dict.toList
-                        |> List.map
-                            (\( moduleName, moduleDef ) ->
-                                column [ width fill ]
-                                    [ theme.heading 2 (moduleName |> Path.toList |> List.map (Name.toHumanWords >> String.join " ") |> String.join " - ")
-                                    , viewModule moduleDef
-                                    ]
+                        |> List.concatMap
+                            (\( moduleName, accessControlledModuleDef ) ->
+                                accessControlledModuleDef.value.values
+                                    |> Dict.toList
+                                    |> List.map
+                                        (\( valueName, valueDef ) ->
+                                            let
+                                                valueID =
+                                                    QName.fromName moduleName valueName
+                                                        |> QName.toString
+
+                                                valueNameText =
+                                                    String.join "."
+                                                        [ Path.toString Name.toTitleCase "." moduleName
+                                                        , Name.toCamelCase valueName
+                                                        ]
+                                            in
+                                            Html.option
+                                                [ Html.Attributes.value valueID
+                                                ]
+                                                [ Html.text valueNameText
+                                                ]
+                                        )
                             )
+            in
+            column [ width fill ]
+                [ html
+                    (Html.select
+                        [ Html.Events.on "change" (Decode.field "target" (Decode.field "value" Decode.string) |> Decode.map SelectFunction)
+                        ]
+                        options
                     )
                 ]
 
 
-viewModule : AccessControlled (Module.Definition ta (Type ta)) -> Element Msg
-viewModule accessControlledModuleDef =
-    column
-        [ width fill
-        , spacing 20
-        ]
-        (accessControlledModuleDef.value.values
-            |> Dict.toList
+viewArgumentEditors : Value.Definition () (Type ()) -> Dict Name (Result String (Value () ())) -> Element Msg
+viewArgumentEditors valueDef argValues =
+    column [ spacing 10 ]
+        (valueDef.inputTypes
             |> List.map
-                (\( valueName, accessControlledValueDef ) ->
-                    el
-                        [ width fill
-                        , padding 10
-                        , Border.width 1
-                        , Border.rounded 5
-                        , Border.color (rgb255 150 150 150)
+                (\( argName, va, argType ) ->
+                    column
+                        [ spacing 3 ]
+                        [ text (String.concat [ argName |> Name.toCamelCase, " : " ])
+                        , html
+                            (Edit.editValue argType
+                                (UpdateArgumentValue argName)
+                                (InvalidArgumentValue argName)
+                            )
+                        , text
+                            (argValues
+                                |> Dict.get argName
+                                |> Maybe.map Debug.toString
+                                |> Maybe.withDefault "not set"
+                            )
                         ]
-                        (column
-                            [ width fill
-                            ]
-                            [ el
-                                [ width fill
-                                , Border.widthEach { top = 0, bottom = 1, left = 0, right = 0 }
-                                ]
-                                (theme.heading 3 (valueName |> Name.toHumanWords |> String.join " "))
-                            , el
-                                [ padding 10 ]
-                                (ViewValue.view accessControlledValueDef.value.body)
-                            ]
-                        )
                 )
         )
+
+
+viewValue : Distribution -> Value.Definition () (Type ()) -> Dict Name (Result String (Value () ())) -> Element Msg
+viewValue distribution valueDef argValues =
+    let
+        validArgValues : Dict Name (Value () ())
+        validArgValues =
+            argValues
+                |> Dict.toList
+                |> List.filterMap
+                    (\( argName, argValueResult ) ->
+                        argValueResult
+                            |> Result.toMaybe
+                            |> Maybe.map (Tuple.pair argName)
+                    )
+                |> Dict.fromList
+    in
+    if Dict.size argValues == List.length valueDef.inputTypes && Dict.size argValues == Dict.size validArgValues then
+        ViewValue.viewWithData distribution valueDef validArgValues
+
+    else
+        ViewValue.view valueDef.body
 
 
 
@@ -257,7 +357,7 @@ makeModel =
         }
 
 
-distributionDecoder : Decoder (Result CLI.Error Distribution)
+distributionDecoder : Decoder (Result (List Compiler.Error) Distribution)
 distributionDecoder =
     Decode.index 0 Decode.string
         |> Decode.andThen
@@ -268,7 +368,7 @@ distributionDecoder =
                             |> Decode.map Ok
 
                     "err" ->
-                        Decode.index 1 CLI.decodeError
+                        Decode.index 1 (Decode.succeed [])
                             |> Decode.map Err
 
                     other ->

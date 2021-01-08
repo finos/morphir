@@ -150,7 +150,7 @@ basicDestructure =
 
 basicIfThenElse : Int -> Int -> String
 basicIfThenElse a b =
-    if a == b then
+    if a < b then
         "Less"
 
     else
@@ -159,7 +159,12 @@ basicIfThenElse a b =
 
 basicIfThenElse2 : String -> String
 basicIfThenElse2 ball =
-    if True then
+    let
+        a : Int
+        a =
+            1
+    in
+    if ball /= "ball" then
         ball
 
     else
@@ -173,6 +178,24 @@ basicIfThenElse3 boolValueVariable =
 
     else
         "Bye"
+
+
+basicIfThenElse4 : Float -> Float -> Float -> Float -> Float -> String
+basicIfThenElse4 greenApple redApple amberApple greenPear redPear =
+    if greenApple == 0 || redApple == 0 || greenApple == redApple then
+        "no harvest"
+
+    else
+        let
+            redGreenApple : Float
+            redGreenApple =
+                redApple + greenApple
+        in
+        if redGreenApple > 0 then
+            "case 1"
+
+        else
+            "case 2"
 
 
 basicPatternMatchWildcard : String -> Int
