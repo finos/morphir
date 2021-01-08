@@ -11,7 +11,7 @@ import Morphir.IR.Value as Value exposing (Value(..))
 
 mapValue : Value ta ( Int, va ) -> Dict Name (Value () ()) -> Maybe Graph
 mapValue indexedValue variables =
-    case indexedValue of
+    case ignoreWrapperValues indexedValue of
         Value.IfThenElse ( index, _ ) _ _ _ ->
             Just
                 (Digraph (String.concat [ "graph_", String.fromInt index ])
@@ -28,7 +28,7 @@ mapValue indexedValue variables =
 
 valueNodes : Value ta ( Int, va ) -> Dict Name (Value () ()) -> List Statement
 valueNodes indexedValue variables =
-    case indexedValue of
+    case ignoreWrapperValues indexedValue of
         Value.IfThenElse ( index, _ ) condition thenBranch elseBranch ->
             let
                 conditionNode : Statement
@@ -54,7 +54,7 @@ valueNodes indexedValue variables =
 
 valueEdges : Value ta ( Int, va ) -> List Statement
 valueEdges indexedValue =
-    case indexedValue of
+    case ignoreWrapperValues indexedValue of
         Value.IfThenElse ( index, _ ) _ thenBranch elseBranch ->
             let
                 conditionID =
@@ -78,9 +78,19 @@ valueEdges indexedValue =
             []
 
 
+ignoreWrapperValues : Value ta va -> Value ta va
+ignoreWrapperValues value =
+    case value of
+        Value.LetDefinition _ _ _ inValue ->
+            ignoreWrapperValues inValue
+
+        _ ->
+            value
+
+
 valueToID : Value ta ( Int, va ) -> String
 valueToID value =
-    value
+    ignoreWrapperValues value
         |> Value.valueAttribute
         |> Tuple.first
         |> indexToNodeID
@@ -96,7 +106,7 @@ indexToNodeID index =
 
 valueToLabel : Value () () -> Dict Name (Value () ()) -> String
 valueToLabel indexedValue variables =
-    case indexedValue of
+    case ignoreWrapperValues indexedValue of
         Value.Literal _ literal ->
             case literal of
                 BoolLiteral bool ->
@@ -174,9 +184,6 @@ valueToLabel indexedValue variables =
 
                 _ ->
                     "?"
-
-        Value.LetDefinition _ _ _ inValue ->
-            valueToLabel inValue variables
 
         _ ->
             "?"

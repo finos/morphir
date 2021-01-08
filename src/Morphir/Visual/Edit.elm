@@ -14,6 +14,9 @@ editValue valueType valueUpdated invalidValue =
     if valueType == Basics.intType () then
         editInt valueUpdated invalidValue
 
+    else if valueType == Basics.floatType () then
+        editFloat valueUpdated invalidValue
+
     else
         Html.text "Unknown value type"
 
@@ -26,7 +29,21 @@ editInt valueUpdated invalidValue =
             (\updatedText ->
                 String.toInt updatedText
                     |> Maybe.map (\int -> valueUpdated (Value.Literal () (IntLiteral int)))
-                    |> Maybe.withDefault (invalidValue "needs to be an integer")
+                    |> Maybe.withDefault (invalidValue "needs to be an integer value")
+            )
+        ]
+        []
+
+
+editFloat : (Value () () -> msg) -> (String -> msg) -> Html msg
+editFloat valueUpdated invalidValue =
+    Html.input
+        [ Html.Attributes.placeholder "Start typing a floating-point value ..."
+        , Html.Events.onInput
+            (\updatedText ->
+                String.toFloat updatedText
+                    |> Maybe.map (\float -> valueUpdated (Value.Literal () (FloatLiteral float)))
+                    |> Maybe.withDefault (invalidValue "needs to be a a floating-point value")
             )
         ]
         []
