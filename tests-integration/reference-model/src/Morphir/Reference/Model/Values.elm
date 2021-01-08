@@ -180,6 +180,24 @@ basicIfThenElse3 boolValueVariable =
         "Bye"
 
 
+basicIfThenElse4 : Float -> Float -> Float -> Float -> Float -> String
+basicIfThenElse4 greenApple redApple amberApple greenPear redPear =
+    if greenApple == 0 || redApple == 0 || greenApple == redApple then
+        "no harvest"
+
+    else
+        let
+            redGreenApple : Float
+            redGreenApple =
+                redApple + greenApple
+        in
+        if redGreenApple > 0 then
+            "case 1"
+
+        else
+            "case 2"
+
+
 basicPatternMatchWildcard : String -> Int
 basicPatternMatchWildcard s =
     case s of
