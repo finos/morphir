@@ -84,6 +84,9 @@ update msg model =
                 FunctionNameSet distribution _ _ ->
                     Just distribution
 
+                FunctionArgumentsSet distribution _ _ _ ->
+                    Just distribution
+
                 _ ->
                     Nothing
     in
