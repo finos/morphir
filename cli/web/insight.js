@@ -6655,6 +6655,9 @@ var $author$project$Morphir$Web$Insight$update = F2(
 				case 'FunctionNameSet':
 					var distribution = model.a;
 					return $elm$core$Maybe$Just(distribution);
+				case 'FunctionArgumentsSet':
+					var distribution = model.a;
+					return $elm$core$Maybe$Just(distribution);
 				default:
 					return $elm$core$Maybe$Nothing;
 			}

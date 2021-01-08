@@ -43811,19 +43811,15 @@
     }
 ]
   });
-  //var argsList = {"arg1" :"Value.Literal () (IntLiteral 5)", "arg2" : "Value.Literal () (IntLiteral 4)"};
-  //var argsList = ["Value.Literal () (IntLiteral 5)","Value.Literal () (IntLiteral 4)"];
+  //var argsList = [["literal",{},["int_literal", 5]],["literal",{},["int_literal", 4]]];
+  var argsList = [["literal",{},["string_literal","ball"]]];
+  //var argsList = [["literal",{},["bool_literal",true]]];
 
-  <!--  If someone clicks any row of the netting calculations we need to send this string to elm architecture-->
-  app.ports.receiveFunctionName.send("Values:basicIfThenElse");
-  //app.ports.receiveFunctionName.send("Values:basicIfThenElse2");
+  //app.ports.receiveFunctionName.send("Values:basicIfThenElse");
+  app.ports.receiveFunctionName.send("Values:basicIfThenElse2");
   //app.ports.receiveFunctionName.send("Values:basicIfThenElse3");
   //app.ports.receiveFunctionName.send("Issues.Issue227:fun");
-  //app.ports.receiveFunctionArguments.send(argsList);
+  app.ports.receiveFunctionArguments.send(argsList);
 
-  <!--    After parsing the value expressions we need to receive an acknowledgement(Like Error reporting) from elm architecture -->
-<!--  app.ports.sendErrorReport.subscribe( function (errorMessage) {-->
-<!--    console.log(errorMessage);-->
-<!--  });-->
 </script>
 </html>
