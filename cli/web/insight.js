@@ -13403,7 +13403,45 @@ var $author$project$Morphir$Visual$ViewField$view = F3(
 					]));
 		}
 	});
-var $elm$html$Html$Attributes$attribute = $elm$virtual_dom$VirtualDom$attribute;
+var $mdgriffith$elm_ui$Internal$Model$AlignX = function (a) {
+	return {$: 'AlignX', a: a};
+};
+var $mdgriffith$elm_ui$Internal$Model$Left = {$: 'Left'};
+var $mdgriffith$elm_ui$Element$alignLeft = $mdgriffith$elm_ui$Internal$Model$AlignX($mdgriffith$elm_ui$Internal$Model$Left);
+var $mdgriffith$elm_ui$Internal$Model$AlignY = function (a) {
+	return {$: 'AlignY', a: a};
+};
+var $mdgriffith$elm_ui$Internal$Model$Top = {$: 'Top'};
+var $mdgriffith$elm_ui$Element$alignTop = $mdgriffith$elm_ui$Internal$Model$AlignY($mdgriffith$elm_ui$Internal$Model$Top);
+var $mdgriffith$elm_ui$Internal$Model$CenterX = {$: 'CenterX'};
+var $mdgriffith$elm_ui$Element$centerX = $mdgriffith$elm_ui$Internal$Model$AlignX($mdgriffith$elm_ui$Internal$Model$CenterX);
+var $mdgriffith$elm_ui$Internal$Model$CenterY = {$: 'CenterY'};
+var $mdgriffith$elm_ui$Element$centerY = $mdgriffith$elm_ui$Internal$Model$AlignY($mdgriffith$elm_ui$Internal$Model$CenterY);
+var $elm$html$Html$Attributes$colspan = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'colspan',
+		$elm$core$String$fromInt(n));
+};
+var $mdgriffith$elm_ui$Internal$Model$NoStaticStyleSheet = {$: 'NoStaticStyleSheet'};
+var $mdgriffith$elm_ui$Internal$Model$RenderModeOption = function (a) {
+	return {$: 'RenderModeOption', a: a};
+};
+var $mdgriffith$elm_ui$Element$noStaticStyleSheet = $mdgriffith$elm_ui$Internal$Model$RenderModeOption($mdgriffith$elm_ui$Internal$Model$NoStaticStyleSheet);
+var $author$project$Morphir$Visual$Components$DecisionTree$element = function (elem) {
+	return A3(
+		$mdgriffith$elm_ui$Element$layoutWith,
+		{
+			options: _List_fromArray(
+				[$mdgriffith$elm_ui$Element$noStaticStyleSheet])
+		},
+		_List_fromArray(
+			[
+				$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$shrink),
+				$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$shrink)
+			]),
+		elem);
+};
 var $elm$core$Basics$always = F2(
 	function (a, _v0) {
 		return a;
@@ -13415,926 +13453,515 @@ var $elm$core$Basics$composeL = F3(
 	});
 var $mdgriffith$elm_ui$Internal$Model$unstyled = A2($elm$core$Basics$composeL, $mdgriffith$elm_ui$Internal$Model$Unstyled, $elm$core$Basics$always);
 var $mdgriffith$elm_ui$Element$html = $mdgriffith$elm_ui$Internal$Model$unstyled;
-var $elm$html$Html$node = $elm$virtual_dom$VirtualDom$node;
-var $author$project$Morphir$Visual$ViewIfThenElse$graphToNode = function (dotStructure) {
-	return $mdgriffith$elm_ui$Element$html(
-		A3(
-			$elm$html$Html$node,
-			'if-then-else',
+var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
+var $elm$html$Html$table = _VirtualDom_node('table');
+var $elm$html$Html$td = _VirtualDom_node('td');
+var $elm$html$Html$tr = _VirtualDom_node('tr');
+var $author$project$Morphir$Visual$Components$DecisionTree$downArrow = A2(
+	$mdgriffith$elm_ui$Element$el,
+	_List_fromArray(
+		[
+			$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill),
+			$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$fill)
+		]),
+	$mdgriffith$elm_ui$Element$html(
+		A2(
+			$elm$html$Html$table,
 			_List_fromArray(
 				[
-					A2($elm$html$Html$Attributes$attribute, 'dotstructure', dotStructure)
+					A2($elm$html$Html$Attributes$style, 'border-collapse', 'collapse'),
+					A2($elm$html$Html$Attributes$style, 'height', '100%')
 				]),
-			_List_Nil));
-};
-var $author$project$Morphir$File$SourceCode$concat = $elm$core$String$concat;
-var $elm$core$String$append = _String_append;
-var $elm$core$String$lines = _String_lines;
-var $author$project$Morphir$File$SourceCode$newLine = '\n';
-var $elm$core$Bitwise$shiftRightBy = _Bitwise_shiftRightBy;
-var $elm$core$String$repeatHelp = F3(
-	function (n, chunk, result) {
-		return (n <= 0) ? result : A3(
-			$elm$core$String$repeatHelp,
-			n >> 1,
-			_Utils_ap(chunk, chunk),
-			(!(n & 1)) ? result : _Utils_ap(result, chunk));
-	});
-var $elm$core$String$repeat = F2(
-	function (n, chunk) {
-		return A3($elm$core$String$repeatHelp, n, chunk, '');
-	});
-var $author$project$Morphir$File$SourceCode$space = ' ';
-var $author$project$Morphir$File$SourceCode$indentLines = F2(
-	function (depth, lines) {
-		return A2(
-			$elm$core$String$join,
-			$author$project$Morphir$File$SourceCode$newLine,
-			A2(
-				$elm$core$List$map,
-				function (line) {
-					return A2(
-						$elm$core$String$append,
-						A2($elm$core$String$repeat, depth, $author$project$Morphir$File$SourceCode$space),
-						line);
-				},
-				A2($elm$core$List$concatMap, $elm$core$String$lines, lines)));
-	});
-var $author$project$Morphir$File$SourceCode$empty = '';
-var $elm$core$List$intersperse = F2(
-	function (sep, xs) {
-		if (!xs.b) {
-			return _List_Nil;
-		} else {
-			var hd = xs.a;
-			var tl = xs.b;
-			var step = F2(
-				function (x, rest) {
-					return A2(
-						$elm$core$List$cons,
-						sep,
-						A2($elm$core$List$cons, x, rest));
-				});
-			var spersed = A3($elm$core$List$foldr, step, _List_Nil, tl);
-			return A2($elm$core$List$cons, hd, spersed);
-		}
-	});
-var $author$project$Morphir$Graph$GraphViz$PrettyPrint$mapAttributes = function (attributes) {
-	if ($elm$core$List$isEmpty(attributes)) {
-		return $author$project$Morphir$File$SourceCode$empty;
-	} else {
-		var attrDoc = $author$project$Morphir$File$SourceCode$concat(
-			A2(
-				$elm$core$List$intersperse,
-				', ',
-				A2(
-					$elm$core$List$map,
-					function (_v0) {
-						var key = _v0.a;
-						var value = _v0.b;
-						return $author$project$Morphir$File$SourceCode$concat(
-							_List_fromArray(
-								[key, '=\"', value, '\"']));
-					},
-					attributes)));
-		return $author$project$Morphir$File$SourceCode$concat(
-			_List_fromArray(
-				['[', attrDoc, ']']));
-	}
-};
-var $author$project$Morphir$Graph$GraphViz$PrettyPrint$mapStatement = function (stmnt) {
-	if (stmnt.$ === 'NodeStatement') {
-		var nodeId = stmnt.a;
-		var attributes = stmnt.b;
-		return $author$project$Morphir$File$SourceCode$concat(
 			_List_fromArray(
 				[
-					nodeId,
-					$author$project$Morphir$Graph$GraphViz$PrettyPrint$mapAttributes(attributes)
-				]));
-	} else {
-		var fromNode = stmnt.a;
-		var toNode = stmnt.b;
-		var attributes = stmnt.c;
-		return $author$project$Morphir$File$SourceCode$concat(
-			_List_fromArray(
-				[
-					fromNode,
-					' -> ',
-					toNode,
-					$author$project$Morphir$Graph$GraphViz$PrettyPrint$mapAttributes(attributes)
-				]));
-	}
-};
-var $author$project$Morphir$Graph$GraphViz$PrettyPrint$mapGraph = function (graph) {
-	var id = graph.a;
-	var statements = graph.b;
-	return $author$project$Morphir$File$SourceCode$concat(
-		_List_fromArray(
-			[
-				$author$project$Morphir$File$SourceCode$concat(
-				_List_fromArray(
-					['digraph ', id, ' {', $author$project$Morphir$File$SourceCode$newLine])),
-				A2(
-				$author$project$Morphir$File$SourceCode$indentLines,
-				2,
-				A2(
-					$elm$core$List$map,
-					function (stmnt) {
-						return $author$project$Morphir$File$SourceCode$concat(
-							_List_fromArray(
-								[
-									$author$project$Morphir$Graph$GraphViz$PrettyPrint$mapStatement(stmnt),
-									';',
-									$author$project$Morphir$File$SourceCode$newLine
-								]));
-					},
-					statements)),
-				'}'
-			]));
-};
-var $author$project$Morphir$Graph$GraphViz$AST$Digraph = F2(
-	function (a, b) {
-		return {$: 'Digraph', a: a, b: b};
-	});
-var $author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues = function (value) {
-	ignoreWrapperValues:
-	while (true) {
-		if (value.$ === 'LetDefinition') {
-			var inValue = value.d;
-			var $temp$value = inValue;
-			value = $temp$value;
-			continue ignoreWrapperValues;
-		} else {
-			return value;
-		}
-	}
-};
-var $author$project$Morphir$Graph$GraphViz$AST$Attribute = F2(
-	function (a, b) {
-		return {$: 'Attribute', a: a, b: b};
-	});
-var $author$project$Morphir$Graph$GraphViz$AST$EdgeStatement = F3(
-	function (a, b, c) {
-		return {$: 'EdgeStatement', a: a, b: b, c: c};
-	});
-var $author$project$Morphir$Graph$GraphVizBackend$indexToNodeID = function (index) {
-	return $elm$core$String$concat(
-		_List_fromArray(
-			[
-				'node_',
-				$elm$core$String$fromInt(index)
-			]));
-};
-var $author$project$Morphir$IR$Value$valueAttribute = function (v) {
-	switch (v.$) {
-		case 'Literal':
-			var a = v.a;
-			return a;
-		case 'Constructor':
-			var a = v.a;
-			return a;
-		case 'Tuple':
-			var a = v.a;
-			return a;
-		case 'List':
-			var a = v.a;
-			return a;
-		case 'Record':
-			var a = v.a;
-			return a;
-		case 'Variable':
-			var a = v.a;
-			return a;
-		case 'Reference':
-			var a = v.a;
-			return a;
-		case 'Field':
-			var a = v.a;
-			return a;
-		case 'FieldFunction':
-			var a = v.a;
-			return a;
-		case 'Apply':
-			var a = v.a;
-			return a;
-		case 'Lambda':
-			var a = v.a;
-			return a;
-		case 'LetDefinition':
-			var a = v.a;
-			return a;
-		case 'LetRecursion':
-			var a = v.a;
-			return a;
-		case 'Destructure':
-			var a = v.a;
-			return a;
-		case 'IfThenElse':
-			var a = v.a;
-			return a;
-		case 'PatternMatch':
-			var a = v.a;
-			return a;
-		case 'UpdateRecord':
-			var a = v.a;
-			return a;
-		default:
-			var a = v.a;
-			return a;
-	}
-};
-var $author$project$Morphir$Graph$GraphVizBackend$valueToID = function (value) {
-	return $author$project$Morphir$Graph$GraphVizBackend$indexToNodeID(
-		$author$project$Morphir$IR$Value$valueAttribute(
-			$author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues(value)).a);
-};
-var $author$project$Morphir$Graph$GraphVizBackend$valueEdges = function (indexedValue) {
-	var _v0 = $author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues(indexedValue);
-	if (_v0.$ === 'IfThenElse') {
-		var _v1 = _v0.a;
-		var index = _v1.a;
-		var thenBranch = _v0.c;
-		var elseBranch = _v0.d;
-		var conditionID = $author$project$Morphir$Graph$GraphVizBackend$indexToNodeID(index);
-		return $elm$core$List$concat(
-			_List_fromArray(
-				[
+					A2(
+					$elm$html$Html$tr,
 					_List_fromArray(
-					[
-						A3(
-						$author$project$Morphir$Graph$GraphViz$AST$EdgeStatement,
-						conditionID,
-						$author$project$Morphir$Graph$GraphVizBackend$valueToID(thenBranch),
-						_List_fromArray(
-							[
-								A2($author$project$Morphir$Graph$GraphViz$AST$Attribute, 'label', 'Yes')
-							])),
-						A3(
-						$author$project$Morphir$Graph$GraphViz$AST$EdgeStatement,
-						conditionID,
-						$author$project$Morphir$Graph$GraphVizBackend$valueToID(elseBranch),
-						_List_fromArray(
-							[
-								A2($author$project$Morphir$Graph$GraphViz$AST$Attribute, 'label', 'No')
-							]))
-					]),
-					$author$project$Morphir$Graph$GraphVizBackend$valueEdges(thenBranch),
-					$author$project$Morphir$Graph$GraphVizBackend$valueEdges(elseBranch)
-				]));
-	} else {
-		return _List_Nil;
-	}
-};
-var $author$project$Morphir$Graph$GraphViz$AST$NodeStatement = F2(
-	function (a, b) {
-		return {$: 'NodeStatement', a: a, b: b};
-	});
-var $elm$core$Dict$map = F2(
-	function (func, dict) {
-		if (dict.$ === 'RBEmpty_elm_builtin') {
-			return $elm$core$Dict$RBEmpty_elm_builtin;
-		} else {
-			var color = dict.a;
-			var key = dict.b;
-			var value = dict.c;
-			var left = dict.d;
-			var right = dict.e;
-			return A5(
-				$elm$core$Dict$RBNode_elm_builtin,
-				color,
-				key,
-				A2(func, key, value),
-				A2($elm$core$Dict$map, func, left),
-				A2($elm$core$Dict$map, func, right));
-		}
-	});
-var $author$project$Morphir$IR$Value$mapPatternAttributes = F2(
-	function (f, p) {
-		switch (p.$) {
-			case 'WildcardPattern':
-				var a = p.a;
-				return $author$project$Morphir$IR$Value$WildcardPattern(
-					f(a));
-			case 'AsPattern':
-				var a = p.a;
-				var p2 = p.b;
-				var name = p.c;
-				return A3(
-					$author$project$Morphir$IR$Value$AsPattern,
-					f(a),
-					A2($author$project$Morphir$IR$Value$mapPatternAttributes, f, p2),
-					name);
-			case 'TuplePattern':
-				var a = p.a;
-				var elementPatterns = p.b;
-				return A2(
-					$author$project$Morphir$IR$Value$TuplePattern,
-					f(a),
-					A2(
-						$elm$core$List$map,
-						$author$project$Morphir$IR$Value$mapPatternAttributes(f),
-						elementPatterns));
-			case 'ConstructorPattern':
-				var a = p.a;
-				var constructorName = p.b;
-				var argumentPatterns = p.c;
-				return A3(
-					$author$project$Morphir$IR$Value$ConstructorPattern,
-					f(a),
-					constructorName,
-					A2(
-						$elm$core$List$map,
-						$author$project$Morphir$IR$Value$mapPatternAttributes(f),
-						argumentPatterns));
-			case 'EmptyListPattern':
-				var a = p.a;
-				return $author$project$Morphir$IR$Value$EmptyListPattern(
-					f(a));
-			case 'HeadTailPattern':
-				var a = p.a;
-				var headPattern = p.b;
-				var tailPattern = p.c;
-				return A3(
-					$author$project$Morphir$IR$Value$HeadTailPattern,
-					f(a),
-					A2($author$project$Morphir$IR$Value$mapPatternAttributes, f, headPattern),
-					A2($author$project$Morphir$IR$Value$mapPatternAttributes, f, tailPattern));
-			case 'LiteralPattern':
-				var a = p.a;
-				var value = p.b;
-				return A2(
-					$author$project$Morphir$IR$Value$LiteralPattern,
-					f(a),
-					value);
-			default:
-				var a = p.a;
-				return $author$project$Morphir$IR$Value$UnitPattern(
-					f(a));
-		}
-	});
-var $author$project$Morphir$IR$Type$mapFieldType = F2(
-	function (f, field) {
-		return A2(
-			$author$project$Morphir$IR$Type$Field,
-			field.name,
-			f(field.tpe));
-	});
-var $author$project$Morphir$IR$Type$mapTypeAttributes = F2(
-	function (f, tpe) {
-		switch (tpe.$) {
-			case 'Variable':
-				var a = tpe.a;
-				var name = tpe.b;
-				return A2(
-					$author$project$Morphir$IR$Type$Variable,
-					f(a),
-					name);
-			case 'Reference':
-				var a = tpe.a;
-				var fQName = tpe.b;
-				var argTypes = tpe.c;
-				return A3(
-					$author$project$Morphir$IR$Type$Reference,
-					f(a),
-					fQName,
-					A2(
-						$elm$core$List$map,
-						$author$project$Morphir$IR$Type$mapTypeAttributes(f),
-						argTypes));
-			case 'Tuple':
-				var a = tpe.a;
-				var elemTypes = tpe.b;
-				return A2(
-					$author$project$Morphir$IR$Type$Tuple,
-					f(a),
-					A2(
-						$elm$core$List$map,
-						$author$project$Morphir$IR$Type$mapTypeAttributes(f),
-						elemTypes));
-			case 'Record':
-				var a = tpe.a;
-				var fields = tpe.b;
-				return A2(
-					$author$project$Morphir$IR$Type$Record,
-					f(a),
-					A2(
-						$elm$core$List$map,
-						$author$project$Morphir$IR$Type$mapFieldType(
-							$author$project$Morphir$IR$Type$mapTypeAttributes(f)),
-						fields));
-			case 'ExtensibleRecord':
-				var a = tpe.a;
-				var name = tpe.b;
-				var fields = tpe.c;
-				return A3(
-					$author$project$Morphir$IR$Type$ExtensibleRecord,
-					f(a),
-					name,
-					A2(
-						$elm$core$List$map,
-						$author$project$Morphir$IR$Type$mapFieldType(
-							$author$project$Morphir$IR$Type$mapTypeAttributes(f)),
-						fields));
-			case 'Function':
-				var a = tpe.a;
-				var argType = tpe.b;
-				var returnType = tpe.c;
-				return A3(
-					$author$project$Morphir$IR$Type$Function,
-					f(a),
-					A2($author$project$Morphir$IR$Type$mapTypeAttributes, f, argType),
-					A2($author$project$Morphir$IR$Type$mapTypeAttributes, f, returnType));
-			default:
-				var a = tpe.a;
-				return $author$project$Morphir$IR$Type$Unit(
-					f(a));
-		}
-	});
-var $author$project$Morphir$IR$Value$mapDefinitionAttributes = F3(
-	function (f, g, d) {
-		return A3(
-			$author$project$Morphir$IR$Value$Definition,
-			A2(
-				$elm$core$List$map,
-				function (_v5) {
-					var name = _v5.a;
-					var attr = _v5.b;
-					var tpe = _v5.c;
-					return _Utils_Tuple3(
-						name,
-						g(attr),
-						A2($author$project$Morphir$IR$Type$mapTypeAttributes, f, tpe));
-				},
-				d.inputTypes),
-			A2($author$project$Morphir$IR$Type$mapTypeAttributes, f, d.outputType),
-			A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, d.body));
-	});
-var $author$project$Morphir$IR$Value$mapValueAttributes = F3(
-	function (f, g, v) {
-		switch (v.$) {
-			case 'Literal':
-				var a = v.a;
-				var value = v.b;
-				return A2(
-					$author$project$Morphir$IR$Value$Literal,
-					g(a),
-					value);
-			case 'Constructor':
-				var a = v.a;
-				var fullyQualifiedName = v.b;
-				return A2(
-					$author$project$Morphir$IR$Value$Constructor,
-					g(a),
-					fullyQualifiedName);
-			case 'Tuple':
-				var a = v.a;
-				var elements = v.b;
-				return A2(
-					$author$project$Morphir$IR$Value$Tuple,
-					g(a),
-					A2(
-						$elm$core$List$map,
-						A2($author$project$Morphir$IR$Value$mapValueAttributes, f, g),
-						elements));
-			case 'List':
-				var a = v.a;
-				var items = v.b;
-				return A2(
-					$author$project$Morphir$IR$Value$List,
-					g(a),
-					A2(
-						$elm$core$List$map,
-						A2($author$project$Morphir$IR$Value$mapValueAttributes, f, g),
-						items));
-			case 'Record':
-				var a = v.a;
-				var fields = v.b;
-				return A2(
-					$author$project$Morphir$IR$Value$Record,
-					g(a),
-					A2(
-						$elm$core$List$map,
-						function (_v1) {
-							var fieldName = _v1.a;
-							var fieldValue = _v1.b;
-							return _Utils_Tuple2(
-								fieldName,
-								A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, fieldValue));
-						},
-						fields));
-			case 'Variable':
-				var a = v.a;
-				var name = v.b;
-				return A2(
-					$author$project$Morphir$IR$Value$Variable,
-					g(a),
-					name);
-			case 'Reference':
-				var a = v.a;
-				var fullyQualifiedName = v.b;
-				return A2(
-					$author$project$Morphir$IR$Value$Reference,
-					g(a),
-					fullyQualifiedName);
-			case 'Field':
-				var a = v.a;
-				var subjectValue = v.b;
-				var fieldName = v.c;
-				return A3(
-					$author$project$Morphir$IR$Value$Field,
-					g(a),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, subjectValue),
-					fieldName);
-			case 'FieldFunction':
-				var a = v.a;
-				var fieldName = v.b;
-				return A2(
-					$author$project$Morphir$IR$Value$FieldFunction,
-					g(a),
-					fieldName);
-			case 'Apply':
-				var a = v.a;
-				var _function = v.b;
-				var argument = v.c;
-				return A3(
-					$author$project$Morphir$IR$Value$Apply,
-					g(a),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, _function),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, argument));
-			case 'Lambda':
-				var a = v.a;
-				var argumentPattern = v.b;
-				var body = v.c;
-				return A3(
-					$author$project$Morphir$IR$Value$Lambda,
-					g(a),
-					A2($author$project$Morphir$IR$Value$mapPatternAttributes, g, argumentPattern),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, body));
-			case 'LetDefinition':
-				var a = v.a;
-				var valueName = v.b;
-				var valueDefinition = v.c;
-				var inValue = v.d;
-				return A4(
-					$author$project$Morphir$IR$Value$LetDefinition,
-					g(a),
-					valueName,
-					A3($author$project$Morphir$IR$Value$mapDefinitionAttributes, f, g, valueDefinition),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, inValue));
-			case 'LetRecursion':
-				var a = v.a;
-				var valueDefinitions = v.b;
-				var inValue = v.c;
-				return A3(
-					$author$project$Morphir$IR$Value$LetRecursion,
-					g(a),
-					A2(
-						$elm$core$Dict$map,
-						F2(
-							function (_v2, def) {
-								return A3($author$project$Morphir$IR$Value$mapDefinitionAttributes, f, g, def);
-							}),
-						valueDefinitions),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, inValue));
-			case 'Destructure':
-				var a = v.a;
-				var pattern = v.b;
-				var valueToDestruct = v.c;
-				var inValue = v.d;
-				return A4(
-					$author$project$Morphir$IR$Value$Destructure,
-					g(a),
-					A2($author$project$Morphir$IR$Value$mapPatternAttributes, g, pattern),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, valueToDestruct),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, inValue));
-			case 'IfThenElse':
-				var a = v.a;
-				var condition = v.b;
-				var thenBranch = v.c;
-				var elseBranch = v.d;
-				return A4(
-					$author$project$Morphir$IR$Value$IfThenElse,
-					g(a),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, condition),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, thenBranch),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, elseBranch));
-			case 'PatternMatch':
-				var a = v.a;
-				var branchOutOn = v.b;
-				var cases = v.c;
-				return A3(
-					$author$project$Morphir$IR$Value$PatternMatch,
-					g(a),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, branchOutOn),
-					A2(
-						$elm$core$List$map,
-						function (_v3) {
-							var pattern = _v3.a;
-							var body = _v3.b;
-							return _Utils_Tuple2(
-								A2($author$project$Morphir$IR$Value$mapPatternAttributes, g, pattern),
-								A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, body));
-						},
-						cases));
-			case 'UpdateRecord':
-				var a = v.a;
-				var valueToUpdate = v.b;
-				var fieldsToUpdate = v.c;
-				return A3(
-					$author$project$Morphir$IR$Value$UpdateRecord,
-					g(a),
-					A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, valueToUpdate),
-					A2(
-						$elm$core$List$map,
-						function (_v4) {
-							var fieldName = _v4.a;
-							var fieldValue = _v4.b;
-							return _Utils_Tuple2(
-								fieldName,
-								A3($author$project$Morphir$IR$Value$mapValueAttributes, f, g, fieldValue));
-						},
-						fieldsToUpdate));
-			default:
-				var a = v.a;
-				return $author$project$Morphir$IR$Value$Unit(
-					g(a));
-		}
-	});
-var $author$project$Morphir$Graph$GraphVizBackend$binaryFunctionSymbols = $elm$core$Dict$fromList(
-	_List_fromArray(
-		[
-			_Utils_Tuple2('Basics.add', '+'),
-			_Utils_Tuple2('Basics.subtract', '-'),
-			_Utils_Tuple2('Basics.multiply', '*'),
-			_Utils_Tuple2('Basics.divide', '/'),
-			_Utils_Tuple2('Basics.integerDivide', '/'),
-			_Utils_Tuple2('Basics.equal', '='),
-			_Utils_Tuple2('Basics.notEqual', '≠'),
-			_Utils_Tuple2('Basics.lessThan', '<'),
-			_Utils_Tuple2('Basics.greaterThan', '>'),
-			_Utils_Tuple2('Basics.lessThanOrEqual', '≤'),
-			_Utils_Tuple2('Basics.greaterThanOrEqual', '≥')
-		]));
-var $elm$core$String$fromChar = function (_char) {
-	return A2($elm$core$String$cons, _char, '');
-};
-var $author$project$Morphir$Graph$GraphVizBackend$unaryFunctionSymbols = $elm$core$Dict$fromList(
-	_List_fromArray(
-		[
-			_Utils_Tuple2('Basics.negate', '-')
-		]));
-var $author$project$Morphir$Graph$GraphVizBackend$valueToLabel = F2(
-	function (indexedValue, variables) {
-		var _v0 = $author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues(indexedValue);
-		switch (_v0.$) {
-			case 'Literal':
-				var literal = _v0.b;
-				switch (literal.$) {
-					case 'BoolLiteral':
-						var bool = literal.a;
-						return bool ? 'True' : 'False';
-					case 'CharLiteral':
-						var _char = literal.a;
-						return $elm$core$String$fromChar(_char);
-					case 'StringLiteral':
-						var string = literal.a;
-						return $elm$core$String$concat(
-							_List_fromArray(
-								['\'', string, '\'']));
-					case 'IntLiteral':
-						var _int = literal.a;
-						return $elm$core$String$fromInt(_int);
-					default:
-						var _float = literal.a;
-						return $elm$core$String$fromFloat(_float);
-				}
-			case 'Variable':
-				var name = _v0.b;
-				var suffix = function () {
-					var _v2 = A2($elm$core$Dict$get, name, variables);
-					if (_v2.$ === 'Just') {
-						var varValue = _v2.a;
-						return $elm$core$String$concat(
-							_List_fromArray(
-								[
-									' (',
-									A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, varValue, variables),
-									')'
-								]));
-					} else {
-						return '';
-					}
-				}();
-				return $elm$core$String$concat(
+						[
+							A2($elm$html$Html$Attributes$style, 'height', '100%')
+						]),
 					_List_fromArray(
 						[
 							A2(
-							$elm$core$String$join,
-							' ',
-							$author$project$Morphir$IR$Name$toHumanWords(name)),
-							suffix
-						]));
-			case 'Apply':
-				var fun = _v0.b;
-				var arg = _v0.c;
-				var _v3 = A2($author$project$Morphir$IR$Value$uncurryApply, fun, arg);
-				_v3$2:
-				while (true) {
-					if (((((((((((((((_v3.a.$ === 'Reference') && _v3.a.b.a.b) && _v3.a.b.a.a.b) && (_v3.a.b.a.a.a === 'morphir')) && (!_v3.a.b.a.a.b.b)) && _v3.a.b.a.b.b) && _v3.a.b.a.b.a.b) && (_v3.a.b.a.b.a.a === 's')) && _v3.a.b.a.b.a.b.b) && (_v3.a.b.a.b.a.b.a === 'd')) && _v3.a.b.a.b.a.b.b.b) && (_v3.a.b.a.b.a.b.b.a === 'k')) && (!_v3.a.b.a.b.a.b.b.b.b)) && (!_v3.a.b.a.b.b.b)) && _v3.b.b) {
-						if (!_v3.b.b.b) {
-							var _v4 = _v3.a;
-							var _v5 = _v4.b;
-							var _v6 = _v5.a;
-							var _v7 = _v6.a;
-							var _v8 = _v6.b;
-							var _v9 = _v8.a;
-							var _v10 = _v9.b;
-							var _v11 = _v10.b;
-							var moduleName = _v5.b;
-							var localName = _v5.c;
-							var _v12 = _v3.b;
-							var argValue1 = _v12.a;
-							var functionName = A2(
-								$elm$core$String$join,
-								'.',
-								_List_fromArray(
-									[
-										A3($author$project$Morphir$IR$Path$toString, $author$project$Morphir$IR$Name$toTitleCase, '.', moduleName),
-										$author$project$Morphir$IR$Name$toCamelCase(localName)
-									]));
-							var operatorName = function () {
-								var _v13 = A2($elm$core$Dict$get, functionName, $author$project$Morphir$Graph$GraphVizBackend$unaryFunctionSymbols);
-								if (_v13.$ === 'Just') {
-									var symbol = _v13.a;
-									return symbol;
-								} else {
-									return A2(
-										$elm$core$String$join,
-										' ',
-										$author$project$Morphir$IR$Name$toHumanWords(localName));
-								}
-							}();
-							return A2(
-								$elm$core$String$join,
-								' ',
-								_List_fromArray(
-									[
-										operatorName,
-										A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, argValue1, variables)
-									]));
-						} else {
-							if (!_v3.b.b.b.b) {
-								var _v14 = _v3.a;
-								var _v15 = _v14.b;
-								var _v16 = _v15.a;
-								var _v17 = _v16.a;
-								var _v18 = _v16.b;
-								var _v19 = _v18.a;
-								var _v20 = _v19.b;
-								var _v21 = _v20.b;
-								var moduleName = _v15.b;
-								var localName = _v15.c;
-								var _v22 = _v3.b;
-								var argValue1 = _v22.a;
-								var _v23 = _v22.b;
-								var argValue2 = _v23.a;
-								var functionName = A2(
-									$elm$core$String$join,
-									'.',
-									_List_fromArray(
-										[
-											A3($author$project$Morphir$IR$Path$toString, $author$project$Morphir$IR$Name$toTitleCase, '.', moduleName),
-											$author$project$Morphir$IR$Name$toCamelCase(localName)
-										]));
-								var operatorName = function () {
-									var _v24 = A2($elm$core$Dict$get, functionName, $author$project$Morphir$Graph$GraphVizBackend$binaryFunctionSymbols);
-									if (_v24.$ === 'Just') {
-										var symbol = _v24.a;
-										return symbol;
-									} else {
-										return A2(
-											$elm$core$String$join,
-											' ',
-											$author$project$Morphir$IR$Name$toHumanWords(localName));
-									}
-								}();
-								return A2(
-									$elm$core$String$join,
-									' ',
-									_List_fromArray(
-										[
-											A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, argValue1, variables),
-											operatorName,
-											A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, argValue2, variables)
-										]));
-							} else {
-								break _v3$2;
-							}
-						}
-					} else {
-						break _v3$2;
-					}
-				}
-				return '?';
-			default:
-				return '?';
-		}
-	});
-var $author$project$Morphir$Graph$GraphVizBackend$valueNodes = F2(
-	function (indexedValue, variables) {
-		var _v0 = $author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues(indexedValue);
-		if (_v0.$ === 'IfThenElse') {
-			var _v1 = _v0.a;
-			var index = _v1.a;
-			var condition = _v0.b;
-			var thenBranch = _v0.c;
-			var elseBranch = _v0.d;
-			var conditionNode = A2(
-				$author$project$Morphir$Graph$GraphViz$AST$NodeStatement,
-				$author$project$Morphir$Graph$GraphVizBackend$indexToNodeID(index),
-				_List_fromArray(
-					[
-						A2(
-						$author$project$Morphir$Graph$GraphViz$AST$Attribute,
-						'label',
-						A2(
-							$author$project$Morphir$Graph$GraphVizBackend$valueToLabel,
-							A3(
-								$author$project$Morphir$IR$Value$mapValueAttributes,
-								$elm$core$Basics$always(_Utils_Tuple0),
-								$elm$core$Basics$always(_Utils_Tuple0),
-								condition),
-							variables)),
-						A2($author$project$Morphir$Graph$GraphViz$AST$Attribute, 'shape', 'diamond')
-					]));
-			return $elm$core$List$concat(
-				_List_fromArray(
-					[
-						_List_fromArray(
-						[conditionNode]),
-						A2($author$project$Morphir$Graph$GraphVizBackend$valueNodes, thenBranch, variables),
-						A2($author$project$Morphir$Graph$GraphVizBackend$valueNodes, elseBranch, variables)
-					]));
-		} else {
-			return _List_fromArray(
-				[
+							$elm$html$Html$td,
+							_List_fromArray(
+								[
+									A2($elm$html$Html$Attributes$style, 'border-right', 'solid 2px black')
+								]),
+							_List_Nil),
+							A2($elm$html$Html$td, _List_Nil, _List_Nil)
+						])),
 					A2(
-					$author$project$Morphir$Graph$GraphViz$AST$NodeStatement,
-					$author$project$Morphir$Graph$GraphVizBackend$valueToID(indexedValue),
+					$elm$html$Html$tr,
+					_List_Nil,
 					_List_fromArray(
 						[
 							A2(
-							$author$project$Morphir$Graph$GraphViz$AST$Attribute,
-							'label',
-							A2(
-								$author$project$Morphir$Graph$GraphVizBackend$valueToLabel,
-								A3(
-									$author$project$Morphir$IR$Value$mapValueAttributes,
-									$elm$core$Basics$always(_Utils_Tuple0),
-									$elm$core$Basics$always(_Utils_Tuple0),
-									indexedValue),
-								variables)),
-							A2($author$project$Morphir$Graph$GraphViz$AST$Attribute, 'shape', 'box')
+							$elm$html$Html$td,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$colspan(2)
+								]),
+							_List_fromArray(
+								[
+									$author$project$Morphir$Visual$Components$DecisionTree$element(
+									A2(
+										$mdgriffith$elm_ui$Element$el,
+										_List_fromArray(
+											[$mdgriffith$elm_ui$Element$centerX]),
+										$mdgriffith$elm_ui$Element$text('V')))
+								]))
 						]))
-				]);
-		}
+				]))));
+var $author$project$Morphir$Visual$Components$DecisionTree$noPadding = {bottom: 0, left: 0, right: 0, top: 0};
+var $mdgriffith$elm_ui$Internal$Model$PaddingStyle = F5(
+	function (a, b, c, d, e) {
+		return {$: 'PaddingStyle', a: a, b: b, c: c, d: d, e: e};
 	});
-var $author$project$Morphir$Graph$GraphVizBackend$mapValue = F2(
-	function (indexedValue, variables) {
-		var _v0 = $author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues(indexedValue);
-		if (_v0.$ === 'IfThenElse') {
-			var _v1 = _v0.a;
-			var index = _v1.a;
-			return $elm$core$Maybe$Just(
-				A2(
-					$author$project$Morphir$Graph$GraphViz$AST$Digraph,
-					$elm$core$String$concat(
-						_List_fromArray(
-							[
-								'graph_',
-								$elm$core$String$fromInt(index)
-							])),
-					$elm$core$List$concat(
-						_List_fromArray(
-							[
-								A2($author$project$Morphir$Graph$GraphVizBackend$valueNodes, indexedValue, variables),
-								$author$project$Morphir$Graph$GraphVizBackend$valueEdges(indexedValue)
-							]))));
+var $mdgriffith$elm_ui$Internal$Flag$padding = $mdgriffith$elm_ui$Internal$Flag$flag(2);
+var $mdgriffith$elm_ui$Internal$Model$paddingName = F4(
+	function (top, right, bottom, left) {
+		return 'pad-' + ($elm$core$String$fromInt(top) + ('-' + ($elm$core$String$fromInt(right) + ('-' + ($elm$core$String$fromInt(bottom) + ('-' + $elm$core$String$fromInt(left)))))));
+	});
+var $mdgriffith$elm_ui$Element$paddingEach = function (_v0) {
+	var top = _v0.top;
+	var right = _v0.right;
+	var bottom = _v0.bottom;
+	var left = _v0.left;
+	if (_Utils_eq(top, right) && (_Utils_eq(top, bottom) && _Utils_eq(top, left))) {
+		var topFloat = top;
+		return A2(
+			$mdgriffith$elm_ui$Internal$Model$StyleClass,
+			$mdgriffith$elm_ui$Internal$Flag$padding,
+			A5(
+				$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+				'p-' + $elm$core$String$fromInt(top),
+				topFloat,
+				topFloat,
+				topFloat,
+				topFloat));
+	} else {
+		return A2(
+			$mdgriffith$elm_ui$Internal$Model$StyleClass,
+			$mdgriffith$elm_ui$Internal$Flag$padding,
+			A5(
+				$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+				A4($mdgriffith$elm_ui$Internal$Model$paddingName, top, right, bottom, left),
+				top,
+				right,
+				bottom,
+				left));
+	}
+};
+var $mdgriffith$elm_ui$Element$paddingXY = F2(
+	function (x, y) {
+		if (_Utils_eq(x, y)) {
+			var f = x;
+			return A2(
+				$mdgriffith$elm_ui$Internal$Model$StyleClass,
+				$mdgriffith$elm_ui$Internal$Flag$padding,
+				A5(
+					$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+					'p-' + $elm$core$String$fromInt(x),
+					f,
+					f,
+					f,
+					f));
 		} else {
-			return $elm$core$Maybe$Nothing;
+			var yFloat = y;
+			var xFloat = x;
+			return A2(
+				$mdgriffith$elm_ui$Internal$Model$StyleClass,
+				$mdgriffith$elm_ui$Internal$Flag$padding,
+				A5(
+					$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+					'p-' + ($elm$core$String$fromInt(x) + ('-' + $elm$core$String$fromInt(y))),
+					yFloat,
+					xFloat,
+					yFloat,
+					xFloat));
 		}
 	});
+var $elm$html$Html$Attributes$rowspan = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'rowspan',
+		$elm$core$String$fromInt(n));
+};
+var $author$project$Morphir$Visual$Components$DecisionTree$rightArrow = A2(
+	$mdgriffith$elm_ui$Element$el,
+	_List_fromArray(
+		[
+			$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill),
+			$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$fill)
+		]),
+	$mdgriffith$elm_ui$Element$html(
+		A2(
+			$elm$html$Html$table,
+			_List_fromArray(
+				[
+					A2($elm$html$Html$Attributes$style, 'border-collapse', 'collapse'),
+					A2($elm$html$Html$Attributes$style, 'width', '100%')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$tr,
+					_List_Nil,
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$td,
+							_List_fromArray(
+								[
+									A2($elm$html$Html$Attributes$style, 'border-bottom', 'solid 2px black'),
+									A2($elm$html$Html$Attributes$style, 'width', '100%')
+								]),
+							_List_Nil),
+							A2(
+							$elm$html$Html$td,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$rowspan(2)
+								]),
+							_List_fromArray(
+								[
+									$author$project$Morphir$Visual$Components$DecisionTree$element(
+									A2(
+										$mdgriffith$elm_ui$Element$el,
+										_List_fromArray(
+											[$mdgriffith$elm_ui$Element$centerY]),
+										$mdgriffith$elm_ui$Element$text('>')))
+								]))
+						])),
+					A2(
+					$elm$html$Html$tr,
+					_List_Nil,
+					_List_fromArray(
+						[
+							A2($elm$html$Html$td, _List_Nil, _List_Nil)
+						]))
+				]))));
+var $author$project$Morphir$Visual$Components$DecisionTree$horizontalLayout = F5(
+	function (condition, branch1Label, branch1, branch2Label, branch2) {
+		return A2(
+			$mdgriffith$elm_ui$Element$row,
+			_List_Nil,
+			_List_fromArray(
+				[
+					A2(
+					$mdgriffith$elm_ui$Element$column,
+					_List_fromArray(
+						[$mdgriffith$elm_ui$Element$alignTop]),
+					_List_fromArray(
+						[
+							A2(
+							$mdgriffith$elm_ui$Element$row,
+							_List_fromArray(
+								[
+									$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
+								]),
+							_List_fromArray(
+								[
+									A2(
+									$mdgriffith$elm_ui$Element$column,
+									_List_fromArray(
+										[
+											$mdgriffith$elm_ui$Element$alignTop,
+											$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$shrink)
+										]),
+									_List_fromArray(
+										[
+											A2(
+											$mdgriffith$elm_ui$Element$el,
+											_List_fromArray(
+												[
+													$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$shrink)
+												]),
+											condition),
+											A2(
+											$mdgriffith$elm_ui$Element$row,
+											_List_fromArray(
+												[
+													$mdgriffith$elm_ui$Element$alignLeft,
+													$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$fill),
+													$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill),
+													$mdgriffith$elm_ui$Element$spacing(10)
+												]),
+											_List_fromArray(
+												[
+													A2(
+													$mdgriffith$elm_ui$Element$el,
+													_List_fromArray(
+														[
+															$mdgriffith$elm_ui$Element$paddingEach(
+															_Utils_update(
+																$author$project$Morphir$Visual$Components$DecisionTree$noPadding,
+																{left: 10})),
+															$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$fill)
+														]),
+													$author$project$Morphir$Visual$Components$DecisionTree$downArrow),
+													A2(
+													$mdgriffith$elm_ui$Element$el,
+													_List_fromArray(
+														[
+															$mdgriffith$elm_ui$Element$centerY,
+															A2($mdgriffith$elm_ui$Element$paddingXY, 0, 10)
+														]),
+													branch1Label)
+												]))
+										])),
+									A2(
+									$mdgriffith$elm_ui$Element$column,
+									_List_fromArray(
+										[
+											$mdgriffith$elm_ui$Element$alignTop,
+											$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
+										]),
+									_List_fromArray(
+										[
+											A2(
+											$mdgriffith$elm_ui$Element$el,
+											_List_fromArray(
+												[
+													$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill),
+													$mdgriffith$elm_ui$Element$paddingEach(
+													_Utils_update(
+														$author$project$Morphir$Visual$Components$DecisionTree$noPadding,
+														{top: 5}))
+												]),
+											$author$project$Morphir$Visual$Components$DecisionTree$rightArrow),
+											A2(
+											$mdgriffith$elm_ui$Element$el,
+											_List_fromArray(
+												[
+													$mdgriffith$elm_ui$Element$centerX,
+													A2($mdgriffith$elm_ui$Element$paddingXY, 10, 0)
+												]),
+											branch2Label)
+										]))
+								])),
+							A2(
+							$mdgriffith$elm_ui$Element$el,
+							_List_fromArray(
+								[
+									$mdgriffith$elm_ui$Element$paddingEach(
+									_Utils_update(
+										$author$project$Morphir$Visual$Components$DecisionTree$noPadding,
+										{right: 40}))
+								]),
+							branch1)
+						])),
+					A2(
+					$mdgriffith$elm_ui$Element$el,
+					_List_fromArray(
+						[$mdgriffith$elm_ui$Element$alignTop]),
+					branch2)
+				]));
+	});
+var $mdgriffith$elm_ui$Element$padding = function (x) {
+	var f = x;
+	return A2(
+		$mdgriffith$elm_ui$Internal$Model$StyleClass,
+		$mdgriffith$elm_ui$Internal$Flag$padding,
+		A5(
+			$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+			'p-' + $elm$core$String$fromInt(x),
+			f,
+			f,
+			f,
+			f));
+};
+var $mdgriffith$elm_ui$Internal$Flag$borderRound = $mdgriffith$elm_ui$Internal$Flag$flag(17);
+var $mdgriffith$elm_ui$Element$Border$rounded = function (radius) {
+	return A2(
+		$mdgriffith$elm_ui$Internal$Model$StyleClass,
+		$mdgriffith$elm_ui$Internal$Flag$borderRound,
+		A3(
+			$mdgriffith$elm_ui$Internal$Model$Single,
+			'br-' + $elm$core$String$fromInt(radius),
+			'border-radius',
+			$elm$core$String$fromInt(radius) + 'px'));
+};
+var $mdgriffith$elm_ui$Internal$Model$BorderWidth = F5(
+	function (a, b, c, d, e) {
+		return {$: 'BorderWidth', a: a, b: b, c: c, d: d, e: e};
+	});
+var $mdgriffith$elm_ui$Element$Border$width = function (v) {
+	return A2(
+		$mdgriffith$elm_ui$Internal$Model$StyleClass,
+		$mdgriffith$elm_ui$Internal$Flag$borderWidth,
+		A5(
+			$mdgriffith$elm_ui$Internal$Model$BorderWidth,
+			'b-' + $elm$core$String$fromInt(v),
+			v,
+			v,
+			v,
+			v));
+};
+var $author$project$Morphir$Visual$Components$DecisionTree$layout = F2(
+	function (viewA, rootNode) {
+		var depthOf = F2(
+			function (f, node) {
+				if (node.$ === 'Branch') {
+					var branch = node.a;
+					return A2(
+						depthOf,
+						f,
+						f(branch)) + 1;
+				} else {
+					return 1;
+				}
+			});
+		if (rootNode.$ === 'Branch') {
+			var branch = rootNode.a;
+			return A5(
+				$author$project$Morphir$Visual$Components$DecisionTree$horizontalLayout,
+				A2(
+					$mdgriffith$elm_ui$Element$el,
+					_List_fromArray(
+						[
+							$mdgriffith$elm_ui$Element$Border$width(1),
+							$mdgriffith$elm_ui$Element$Border$rounded(7),
+							$mdgriffith$elm_ui$Element$padding(10)
+						]),
+					viewA(branch.nodeLabel)),
+				viewA(branch.leftBranchLabel),
+				A2($author$project$Morphir$Visual$Components$DecisionTree$layout, viewA, branch.leftBranch),
+				viewA(branch.rightBranchLabel),
+				A2($author$project$Morphir$Visual$Components$DecisionTree$layout, viewA, branch.rightBranch));
+		} else {
+			var label = rootNode.a;
+			return A2(
+				$mdgriffith$elm_ui$Element$el,
+				_List_fromArray(
+					[
+						$mdgriffith$elm_ui$Element$Border$width(1),
+						$mdgriffith$elm_ui$Element$Border$rounded(7),
+						$mdgriffith$elm_ui$Element$padding(10)
+					]),
+				viewA(label));
+		}
+	});
+var $author$project$Morphir$Visual$Components$DecisionTree$Branch = function (a) {
+	return {$: 'Branch', a: a};
+};
+var $author$project$Morphir$Visual$Components$DecisionTree$Leaf = function (a) {
+	return {$: 'Leaf', a: a};
+};
+var $author$project$Morphir$IR$SDK$Basics$moduleName = $author$project$Morphir$IR$Path$fromString('Basics');
+var $author$project$Morphir$IR$QName$fromName = F2(
+	function (modulePath, localName) {
+		return A2($author$project$Morphir$IR$QName$QName, modulePath, localName);
+	});
+var $author$project$Morphir$IR$QName$getLocalName = function (_v0) {
+	var localName = _v0.b;
+	return localName;
+};
+var $author$project$Morphir$IR$QName$getModulePath = function (_v0) {
+	var modulePath = _v0.a;
+	return modulePath;
+};
+var $author$project$Morphir$IR$FQName$fromQName = F2(
+	function (packagePath, qName) {
+		return A3(
+			$author$project$Morphir$IR$FQName$FQName,
+			packagePath,
+			$author$project$Morphir$IR$QName$getModulePath(qName),
+			$author$project$Morphir$IR$QName$getLocalName(qName));
+	});
+var $author$project$Morphir$IR$SDK$Common$packageName = $author$project$Morphir$IR$Path$fromString('Morphir.SDK');
+var $author$project$Morphir$IR$SDK$Common$toFQName = F2(
+	function (modulePath, localName) {
+		return A2(
+			$author$project$Morphir$IR$FQName$fromQName,
+			$author$project$Morphir$IR$SDK$Common$packageName,
+			A2(
+				$author$project$Morphir$IR$QName$fromName,
+				modulePath,
+				$author$project$Morphir$IR$Name$fromString(localName)));
+	});
+var $author$project$Morphir$IR$SDK$Basics$boolType = function (attributes) {
+	return A3(
+		$author$project$Morphir$IR$Type$Reference,
+		attributes,
+		A2($author$project$Morphir$IR$SDK$Common$toFQName, $author$project$Morphir$IR$SDK$Basics$moduleName, 'Bool'),
+		_List_Nil);
+};
+var $author$project$Morphir$Visual$ViewIfThenElse$valueToTree = function (value) {
+	valueToTree:
+	while (true) {
+		switch (value.$) {
+			case 'IfThenElse':
+				var condition = value.b;
+				var thenBranch = value.c;
+				var elseBranch = value.d;
+				var withCondition = F3(
+					function (cond, left, right) {
+						if ((((((((((((((((((((((((cond.$ === 'Apply') && (cond.b.$ === 'Apply')) && (cond.b.b.$ === 'Reference')) && cond.b.b.b.a.b) && cond.b.b.b.a.a.b) && (cond.b.b.b.a.a.a === 'morphir')) && (!cond.b.b.b.a.a.b.b)) && cond.b.b.b.a.b.b) && cond.b.b.b.a.b.a.b) && (cond.b.b.b.a.b.a.a === 's')) && cond.b.b.b.a.b.a.b.b) && (cond.b.b.b.a.b.a.b.a === 'd')) && cond.b.b.b.a.b.a.b.b.b) && (cond.b.b.b.a.b.a.b.b.a === 'k')) && (!cond.b.b.b.a.b.a.b.b.b.b)) && (!cond.b.b.b.a.b.b.b)) && cond.b.b.b.b.b) && cond.b.b.b.b.a.b) && (cond.b.b.b.b.a.a === 'basics')) && (!cond.b.b.b.b.a.b.b)) && (!cond.b.b.b.b.b.b)) && cond.b.b.b.c.b) && (cond.b.b.b.c.a === 'or')) && (!cond.b.b.b.c.b.b)) {
+							var _v2 = cond.b;
+							var _v3 = _v2.b;
+							var _v4 = _v3.b;
+							var _v5 = _v4.a;
+							var _v6 = _v5.a;
+							var _v7 = _v5.b;
+							var _v8 = _v7.a;
+							var _v9 = _v8.b;
+							var _v10 = _v9.b;
+							var _v11 = _v4.b;
+							var _v12 = _v11.a;
+							var _v13 = _v4.c;
+							var arg1 = _v2.c;
+							var arg2 = cond.c;
+							return $author$project$Morphir$Visual$Components$DecisionTree$Branch(
+								{
+									leftBranch: $author$project$Morphir$Visual$ViewIfThenElse$valueToTree(left),
+									leftBranchLabel: A2(
+										$author$project$Morphir$IR$Value$Literal,
+										$author$project$Morphir$IR$SDK$Basics$boolType(_Utils_Tuple0),
+										$author$project$Morphir$IR$Literal$BoolLiteral(true)),
+									nodeLabel: arg1,
+									rightBranch: A3(withCondition, arg2, left, right),
+									rightBranchLabel: A2(
+										$author$project$Morphir$IR$Value$Literal,
+										$author$project$Morphir$IR$SDK$Basics$boolType(_Utils_Tuple0),
+										$author$project$Morphir$IR$Literal$BoolLiteral(false))
+								});
+						} else {
+							return $author$project$Morphir$Visual$Components$DecisionTree$Branch(
+								{
+									leftBranch: $author$project$Morphir$Visual$ViewIfThenElse$valueToTree(left),
+									leftBranchLabel: A2(
+										$author$project$Morphir$IR$Value$Literal,
+										$author$project$Morphir$IR$SDK$Basics$boolType(_Utils_Tuple0),
+										$author$project$Morphir$IR$Literal$BoolLiteral(true)),
+									nodeLabel: cond,
+									rightBranch: $author$project$Morphir$Visual$ViewIfThenElse$valueToTree(right),
+									rightBranchLabel: A2(
+										$author$project$Morphir$IR$Value$Literal,
+										$author$project$Morphir$IR$SDK$Basics$boolType(_Utils_Tuple0),
+										$author$project$Morphir$IR$Literal$BoolLiteral(false))
+								});
+						}
+					});
+				return A3(withCondition, condition, thenBranch, elseBranch);
+			case 'LetDefinition':
+				var inValue = value.d;
+				var $temp$value = inValue;
+				value = $temp$value;
+				continue valueToTree;
+			default:
+				return $author$project$Morphir$Visual$Components$DecisionTree$Leaf(value);
+		}
+	}
+};
 var $author$project$Morphir$Visual$ViewIfThenElse$view = F3(
 	function (viewValue, value, variables) {
-		var _v0 = A2($author$project$Morphir$Graph$GraphVizBackend$mapValue, value, variables);
-		if (_v0.$ === 'Just') {
-			var graph = _v0.a;
-			return $author$project$Morphir$Visual$ViewIfThenElse$graphToNode(
-				$author$project$Morphir$Graph$GraphViz$PrettyPrint$mapGraph(graph));
-		} else {
-			return $mdgriffith$elm_ui$Element$text('Cannot display value as decision tree!');
-		}
+		return A2(
+			$author$project$Morphir$Visual$Components$DecisionTree$layout,
+			viewValue,
+			$author$project$Morphir$Visual$ViewIfThenElse$valueToTree(value));
 	});
 var $author$project$Morphir$Visual$ViewLetDefinition$view = F3(
 	function (viewValue, definitions, inValue) {
@@ -14671,6 +14298,9 @@ var $author$project$Morphir$Visual$ViewList$view = F3(
 				});
 		}
 	});
+var $elm$core$String$fromChar = function (_char) {
+	return A2($elm$core$String$cons, _char, '');
+};
 var $author$project$Morphir$Visual$ViewLiteral$viewLiteralText = F2(
 	function (className, text) {
 		return A2(
@@ -14866,7 +14496,7 @@ var $author$project$Morphir$Visual$ViewValue$view = function (value) {
 				var inValue = _v16.b;
 				return A3($author$project$Morphir$Visual$ViewLetDefinition$view, $author$project$Morphir$Visual$ViewValue$view, definitions, inValue);
 			case 'IfThenElse':
-				return A3($author$project$Morphir$Visual$ViewIfThenElse$view, $author$project$Morphir$Visual$ViewValue$view, indexedValue, $elm$core$Dict$empty);
+				return A3($author$project$Morphir$Visual$ViewIfThenElse$view, $author$project$Morphir$Visual$ViewValue$view, value, $elm$core$Dict$empty);
 			default:
 				break _v0$9;
 		}
@@ -14894,7 +14524,7 @@ var $author$project$Morphir$Visual$ViewValue$viewWithData = F3(
 			valueDef.body).a;
 		var _v0 = valueDef.body;
 		if (_v0.$ === 'IfThenElse') {
-			return A3($author$project$Morphir$Visual$ViewIfThenElse$view, $author$project$Morphir$Visual$ViewValue$view, indexedValue, argumentValues);
+			return A3($author$project$Morphir$Visual$ViewIfThenElse$view, $author$project$Morphir$Visual$ViewValue$view, valueDef.body, argumentValues);
 		} else {
 			return $mdgriffith$elm_ui$Element$text('view with data');
 		}
