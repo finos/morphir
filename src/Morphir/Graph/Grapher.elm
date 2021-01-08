@@ -2,6 +2,7 @@ module Morphir.Graph.Grapher exposing
     ( Node(..), Verb(..), Edge, GraphEntry(..), Graph
     , mapDistribution, mapPackageDefinition, mapModuleTypes, mapModuleValues, mapTypeDefinition, mapValueDefinition
     , graphEntryToComparable, nodeType, verbToString, nodeFQN
+    , fqnToString
     )
 
 {-| The Grapher module analyses a distribution to build a graph for dependency and lineage tracking purposes.
