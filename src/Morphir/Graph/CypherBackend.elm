@@ -117,6 +117,9 @@ splitNode node =
         Function fqn ->
             ( nodeType node, fqnToString fqn, humanize (FQName.getLocalName fqn) )
 
+        Enum fqn ->
+            ( nodeType node, fqnToString fqn, humanize (FQName.getLocalName fqn) )
+
         Unknown s ->
             ( "Unknown", "unknown", s )
 

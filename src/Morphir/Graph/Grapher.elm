@@ -1,7 +1,7 @@
 module Morphir.Graph.Grapher exposing
     ( Node(..), Verb(..), Edge, GraphEntry(..), Graph
     , mapDistribution, mapPackageDefinition, mapModuleTypes, mapModuleValues, mapTypeDefinition, mapValueDefinition
-    , graphEntryToComparable, nodeType, verbToString, nodeFQN, getNodeType
+    , graphEntryToComparable, nodeType, verbToString, nodeFQN
     )
 
 {-| The Grapher module analyses a distribution to build a graph for dependency and lineage tracking purposes.
@@ -53,6 +53,7 @@ type Node
     | Field FQName Name
     | Type FQName
     | Function FQName
+    | Enum FQName
     | Unknown String
 
 
@@ -78,6 +79,7 @@ type Verb
     | Produces
     | Parameterizes
     | Unions
+    | Enumerates
 
 
 {-| Defines an edge in the graph as a triple of the subject node, the relationship, and the object node.
@@ -175,7 +177,7 @@ mapTypeDefinition packageName moduleName typeName typeDef =
         fqn =
             FQName packageName moduleName typeName
 
-        triples =
+        edges =
             case typeDef of
                 -- This is a definition of a record, so we want to collect that and its fields.
                 Type.TypeAliasDefinition _ (Type.Record _ fields) ->
@@ -194,7 +196,7 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                             fieldType =
                                                 case field.tpe of
                                                     -- Catches Maybes
-                                                    Type.Reference _ typeFqn [Type.Reference _ child _] ->
+                                                    Type.Reference _ typeFqn [ Type.Reference _ child _ ] ->
                                                         Type child
 
                                                     Type.Reference _ typeFqn _ ->
@@ -232,14 +234,23 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                         typeNode =
                             Type fqn
 
-                        leafEntries =
+                        enums =
+                            asEnum typeDef
+                                |> List.map
+                                    (\name ->
+                                        EdgeEntry (Edge typeNode Enumerates (Enum (FQName (FQName.getPackagePath fqn) (FQName.getModulePath fqn) name)))
+                                    )
+
+                        unions =
                             case accessControlledCtors |> withPublicAccess of
-                                Just ctors ->
-                                    ctors
+                                Just constructors ->
+                                    constructors
                                         |> List.map
                                             (\constructor ->
                                                 case constructor of
                                                     Type.Constructor _ namesAndTypes ->
+                                                        -- If this is a simple enum, extract the values
+                                                        -- Otherwise, it's a complex union
                                                         namesAndTypes
                                                             |> List.concatMap
                                                                 (\( _, tipe ) ->
@@ -261,12 +272,44 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                 Nothing ->
                                     []
                     in
-                    NodeEntry typeNode :: leafEntries
+                    NodeEntry typeNode :: (unions ++ enums)
 
                 _ ->
                     []
     in
-    triples
+    edges
+
+
+asEnum : Type.Definition ta -> List Name
+asEnum typeDef =
+    case typeDef of
+        Type.CustomTypeDefinition _ accessControlledCtors ->
+            case accessControlledCtors |> withPublicAccess of
+                Just constructors ->
+                    let
+                        enumOptions =
+                            constructors
+                                |> List.filterMap
+                                    (\constructor ->
+                                        case constructor of
+                                            Type.Constructor name [] ->
+                                                Just name
+
+                                            _ ->
+                                                Nothing
+                                    )
+                    in
+                    if List.length enumOptions == List.length constructors then
+                        enumOptions
+
+                    else
+                        []
+
+                _ ->
+                    []
+
+        _ ->
+            []
 
 
 {-| Process [Functions](#Type) specifically and ignore the rest.
@@ -466,6 +509,9 @@ nodeType node =
         Function _ ->
             "Function"
 
+        Enum _ ->
+            "Enum"
+
         Unknown _ ->
             "Unknown"
 
@@ -486,6 +532,9 @@ nodeFQN node =
             fqn
 
         Function fqn ->
+            fqn
+
+        Enum fqn ->
             fqn
 
         Unknown s ->
@@ -547,6 +596,9 @@ verbToString verb =
         Unions ->
             "unions"
 
+        Enumerates ->
+            "enumerates"
+
 
 {-| Utility for dealing with comparable.
 -}
@@ -585,6 +637,9 @@ graphEntryToComparable entry =
                         Function fqn ->
                             fqnToString fqn
 
+                        Enum fqn ->
+                            fqnToString fqn
+
                         Unknown s ->
                             "unknown:" ++ s
                    )
@@ -595,25 +650,3 @@ graphEntryToComparable entry =
 
         EdgeEntry edge ->
             "EdgeEntry: " ++ edgeToString edge
-
-{-| Finds the IsA relation to a Type for a given Node
--}
-getNodeType : Node -> Graph -> Maybe FQName
-getNodeType node graph =
-    graph
-        |> List.filterMap
-            (\e ->
-                case e of
-                    EdgeEntry edge ->
-                        if edge.subject == node && edge.verb == IsA then
-                            Just (nodeFQN edge.object)
-
-                        else
-                            Nothing
-
-                    _ ->
-                        Nothing
-            )
-        |> List.head
-
-
