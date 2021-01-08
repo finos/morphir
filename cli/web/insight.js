@@ -13557,6 +13557,19 @@ var $author$project$Morphir$Graph$GraphViz$AST$Digraph = F2(
 	function (a, b) {
 		return {$: 'Digraph', a: a, b: b};
 	});
+var $author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues = function (value) {
+	ignoreWrapperValues:
+	while (true) {
+		if (value.$ === 'LetDefinition') {
+			var inValue = value.d;
+			var $temp$value = inValue;
+			value = $temp$value;
+			continue ignoreWrapperValues;
+		} else {
+			return value;
+		}
+	}
+};
 var $author$project$Morphir$Graph$GraphViz$AST$Attribute = F2(
 	function (a, b) {
 		return {$: 'Attribute', a: a, b: b};
@@ -13633,14 +13646,16 @@ var $author$project$Morphir$IR$Value$valueAttribute = function (v) {
 };
 var $author$project$Morphir$Graph$GraphVizBackend$valueToID = function (value) {
 	return $author$project$Morphir$Graph$GraphVizBackend$indexToNodeID(
-		$author$project$Morphir$IR$Value$valueAttribute(value).a);
+		$author$project$Morphir$IR$Value$valueAttribute(
+			$author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues(value)).a);
 };
 var $author$project$Morphir$Graph$GraphVizBackend$valueEdges = function (indexedValue) {
-	if (indexedValue.$ === 'IfThenElse') {
-		var _v1 = indexedValue.a;
+	var _v0 = $author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues(indexedValue);
+	if (_v0.$ === 'IfThenElse') {
+		var _v1 = _v0.a;
 		var index = _v1.a;
-		var thenBranch = indexedValue.c;
-		var elseBranch = indexedValue.d;
+		var thenBranch = _v0.c;
+		var elseBranch = _v0.d;
 		var conditionID = $author$project$Morphir$Graph$GraphVizBackend$indexToNodeID(index);
 		return $elm$core$List$concat(
 			_List_fromArray(
@@ -14071,76 +14086,119 @@ var $author$project$Morphir$Graph$GraphVizBackend$unaryFunctionSymbols = $elm$co
 		]));
 var $author$project$Morphir$Graph$GraphVizBackend$valueToLabel = F2(
 	function (indexedValue, variables) {
-		valueToLabel:
-		while (true) {
-			switch (indexedValue.$) {
-				case 'Literal':
-					var literal = indexedValue.b;
-					switch (literal.$) {
-						case 'BoolLiteral':
-							var bool = literal.a;
-							return bool ? 'True' : 'False';
-						case 'CharLiteral':
-							var _char = literal.a;
-							return $elm$core$String$fromChar(_char);
-						case 'StringLiteral':
-							var string = literal.a;
-							return $elm$core$String$concat(
-								_List_fromArray(
-									['\'', string, '\'']));
-						case 'IntLiteral':
-							var _int = literal.a;
-							return $elm$core$String$fromInt(_int);
-						default:
-							var _float = literal.a;
-							return $elm$core$String$fromFloat(_float);
+		var _v0 = $author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues(indexedValue);
+		switch (_v0.$) {
+			case 'Literal':
+				var literal = _v0.b;
+				switch (literal.$) {
+					case 'BoolLiteral':
+						var bool = literal.a;
+						return bool ? 'True' : 'False';
+					case 'CharLiteral':
+						var _char = literal.a;
+						return $elm$core$String$fromChar(_char);
+					case 'StringLiteral':
+						var string = literal.a;
+						return $elm$core$String$concat(
+							_List_fromArray(
+								['\'', string, '\'']));
+					case 'IntLiteral':
+						var _int = literal.a;
+						return $elm$core$String$fromInt(_int);
+					default:
+						var _float = literal.a;
+						return $elm$core$String$fromFloat(_float);
+				}
+			case 'Variable':
+				var name = _v0.b;
+				var suffix = function () {
+					var _v2 = A2($elm$core$Dict$get, name, variables);
+					if (_v2.$ === 'Just') {
+						var varValue = _v2.a;
+						return $elm$core$String$concat(
+							_List_fromArray(
+								[
+									' (',
+									A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, varValue, variables),
+									')'
+								]));
+					} else {
+						return '';
 					}
-				case 'Variable':
-					var name = indexedValue.b;
-					var suffix = function () {
-						var _v2 = A2($elm$core$Dict$get, name, variables);
-						if (_v2.$ === 'Just') {
-							var varValue = _v2.a;
-							return $elm$core$String$concat(
+				}();
+				return $elm$core$String$concat(
+					_List_fromArray(
+						[
+							A2(
+							$elm$core$String$join,
+							' ',
+							$author$project$Morphir$IR$Name$toHumanWords(name)),
+							suffix
+						]));
+			case 'Apply':
+				var fun = _v0.b;
+				var arg = _v0.c;
+				var _v3 = A2($author$project$Morphir$IR$Value$uncurryApply, fun, arg);
+				_v3$2:
+				while (true) {
+					if (((((((((((((((_v3.a.$ === 'Reference') && _v3.a.b.a.b) && _v3.a.b.a.a.b) && (_v3.a.b.a.a.a === 'morphir')) && (!_v3.a.b.a.a.b.b)) && _v3.a.b.a.b.b) && _v3.a.b.a.b.a.b) && (_v3.a.b.a.b.a.a === 's')) && _v3.a.b.a.b.a.b.b) && (_v3.a.b.a.b.a.b.a === 'd')) && _v3.a.b.a.b.a.b.b.b) && (_v3.a.b.a.b.a.b.b.a === 'k')) && (!_v3.a.b.a.b.a.b.b.b.b)) && (!_v3.a.b.a.b.b.b)) && _v3.b.b) {
+						if (!_v3.b.b.b) {
+							var _v4 = _v3.a;
+							var _v5 = _v4.b;
+							var _v6 = _v5.a;
+							var _v7 = _v6.a;
+							var _v8 = _v6.b;
+							var _v9 = _v8.a;
+							var _v10 = _v9.b;
+							var _v11 = _v10.b;
+							var moduleName = _v5.b;
+							var localName = _v5.c;
+							var _v12 = _v3.b;
+							var argValue1 = _v12.a;
+							var functionName = A2(
+								$elm$core$String$join,
+								'.',
 								_List_fromArray(
 									[
-										' (',
-										A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, varValue, variables),
-										')'
+										A3($author$project$Morphir$IR$Path$toString, $author$project$Morphir$IR$Name$toTitleCase, '.', moduleName),
+										$author$project$Morphir$IR$Name$toCamelCase(localName)
 									]));
-						} else {
-							return '';
-						}
-					}();
-					return $elm$core$String$concat(
-						_List_fromArray(
-							[
-								A2(
+							var operatorName = function () {
+								var _v13 = A2($elm$core$Dict$get, functionName, $author$project$Morphir$Graph$GraphVizBackend$unaryFunctionSymbols);
+								if (_v13.$ === 'Just') {
+									var symbol = _v13.a;
+									return symbol;
+								} else {
+									return A2(
+										$elm$core$String$join,
+										' ',
+										$author$project$Morphir$IR$Name$toHumanWords(localName));
+								}
+							}();
+							return A2(
 								$elm$core$String$join,
 								' ',
-								$author$project$Morphir$IR$Name$toHumanWords(name)),
-								suffix
-							]));
-				case 'Apply':
-					var fun = indexedValue.b;
-					var arg = indexedValue.c;
-					var _v3 = A2($author$project$Morphir$IR$Value$uncurryApply, fun, arg);
-					_v3$2:
-					while (true) {
-						if (((((((((((((((_v3.a.$ === 'Reference') && _v3.a.b.a.b) && _v3.a.b.a.a.b) && (_v3.a.b.a.a.a === 'morphir')) && (!_v3.a.b.a.a.b.b)) && _v3.a.b.a.b.b) && _v3.a.b.a.b.a.b) && (_v3.a.b.a.b.a.a === 's')) && _v3.a.b.a.b.a.b.b) && (_v3.a.b.a.b.a.b.a === 'd')) && _v3.a.b.a.b.a.b.b.b) && (_v3.a.b.a.b.a.b.b.a === 'k')) && (!_v3.a.b.a.b.a.b.b.b.b)) && (!_v3.a.b.a.b.b.b)) && _v3.b.b) {
-							if (!_v3.b.b.b) {
-								var _v4 = _v3.a;
-								var _v5 = _v4.b;
-								var _v6 = _v5.a;
-								var _v7 = _v6.a;
-								var _v8 = _v6.b;
-								var _v9 = _v8.a;
-								var _v10 = _v9.b;
-								var _v11 = _v10.b;
-								var moduleName = _v5.b;
-								var localName = _v5.c;
-								var _v12 = _v3.b;
-								var argValue1 = _v12.a;
+								_List_fromArray(
+									[
+										operatorName,
+										A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, argValue1, variables)
+									]));
+						} else {
+							if (!_v3.b.b.b.b) {
+								var _v14 = _v3.a;
+								var _v15 = _v14.b;
+								var _v16 = _v15.a;
+								var _v17 = _v16.a;
+								var _v18 = _v16.b;
+								var _v19 = _v18.a;
+								var _v20 = _v19.b;
+								var _v21 = _v20.b;
+								var moduleName = _v15.b;
+								var localName = _v15.c;
+								var _v22 = _v3.b;
+								var argValue1 = _v22.a;
+								var _v23 = _v22.b;
+								var argValue2 = _v23.a;
 								var functionName = A2(
 									$elm$core$String$join,
 									'.',
@@ -14150,9 +14208,9 @@ var $author$project$Morphir$Graph$GraphVizBackend$valueToLabel = F2(
 											$author$project$Morphir$IR$Name$toCamelCase(localName)
 										]));
 								var operatorName = function () {
-									var _v13 = A2($elm$core$Dict$get, functionName, $author$project$Morphir$Graph$GraphVizBackend$unaryFunctionSymbols);
-									if (_v13.$ === 'Just') {
-										var symbol = _v13.a;
+									var _v24 = A2($elm$core$Dict$get, functionName, $author$project$Morphir$Graph$GraphVizBackend$binaryFunctionSymbols);
+									if (_v24.$ === 'Just') {
+										var symbol = _v24.a;
 										return symbol;
 									} else {
 										return A2(
@@ -14166,83 +14224,32 @@ var $author$project$Morphir$Graph$GraphVizBackend$valueToLabel = F2(
 									' ',
 									_List_fromArray(
 										[
+											A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, argValue1, variables),
 											operatorName,
-											A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, argValue1, variables)
+											A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, argValue2, variables)
 										]));
 							} else {
-								if (!_v3.b.b.b.b) {
-									var _v14 = _v3.a;
-									var _v15 = _v14.b;
-									var _v16 = _v15.a;
-									var _v17 = _v16.a;
-									var _v18 = _v16.b;
-									var _v19 = _v18.a;
-									var _v20 = _v19.b;
-									var _v21 = _v20.b;
-									var moduleName = _v15.b;
-									var localName = _v15.c;
-									var _v22 = _v3.b;
-									var argValue1 = _v22.a;
-									var _v23 = _v22.b;
-									var argValue2 = _v23.a;
-									var functionName = A2(
-										$elm$core$String$join,
-										'.',
-										_List_fromArray(
-											[
-												A3($author$project$Morphir$IR$Path$toString, $author$project$Morphir$IR$Name$toTitleCase, '.', moduleName),
-												$author$project$Morphir$IR$Name$toCamelCase(localName)
-											]));
-									var operatorName = function () {
-										var _v24 = A2($elm$core$Dict$get, functionName, $author$project$Morphir$Graph$GraphVizBackend$binaryFunctionSymbols);
-										if (_v24.$ === 'Just') {
-											var symbol = _v24.a;
-											return symbol;
-										} else {
-											return A2(
-												$elm$core$String$join,
-												' ',
-												$author$project$Morphir$IR$Name$toHumanWords(localName));
-										}
-									}();
-									return A2(
-										$elm$core$String$join,
-										' ',
-										_List_fromArray(
-											[
-												A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, argValue1, variables),
-												operatorName,
-												A2($author$project$Morphir$Graph$GraphVizBackend$valueToLabel, argValue2, variables)
-											]));
-								} else {
-									break _v3$2;
-								}
+								break _v3$2;
 							}
-						} else {
-							break _v3$2;
 						}
+					} else {
+						break _v3$2;
 					}
-					return '?';
-				case 'LetDefinition':
-					var inValue = indexedValue.d;
-					var $temp$indexedValue = inValue,
-						$temp$variables = variables;
-					indexedValue = $temp$indexedValue;
-					variables = $temp$variables;
-					continue valueToLabel;
-				default:
-					return '?';
-			}
+				}
+				return '?';
+			default:
+				return '?';
 		}
 	});
 var $author$project$Morphir$Graph$GraphVizBackend$valueNodes = F2(
 	function (indexedValue, variables) {
-		if (indexedValue.$ === 'IfThenElse') {
-			var _v1 = indexedValue.a;
+		var _v0 = $author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues(indexedValue);
+		if (_v0.$ === 'IfThenElse') {
+			var _v1 = _v0.a;
 			var index = _v1.a;
-			var condition = indexedValue.b;
-			var thenBranch = indexedValue.c;
-			var elseBranch = indexedValue.d;
+			var condition = _v0.b;
+			var thenBranch = _v0.c;
+			var elseBranch = _v0.d;
 			var conditionNode = A2(
 				$author$project$Morphir$Graph$GraphViz$AST$NodeStatement,
 				$author$project$Morphir$Graph$GraphVizBackend$indexToNodeID(index),
@@ -14295,8 +14302,9 @@ var $author$project$Morphir$Graph$GraphVizBackend$valueNodes = F2(
 	});
 var $author$project$Morphir$Graph$GraphVizBackend$mapValue = F2(
 	function (indexedValue, variables) {
-		if (indexedValue.$ === 'IfThenElse') {
-			var _v1 = indexedValue.a;
+		var _v0 = $author$project$Morphir$Graph$GraphVizBackend$ignoreWrapperValues(indexedValue);
+		if (_v0.$ === 'IfThenElse') {
+			var _v1 = _v0.a;
 			var index = _v1.a;
 			return $elm$core$Maybe$Just(
 				A2(
