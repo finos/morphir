@@ -18,10 +18,10 @@ import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 
 
-view : Value ta (Type ta) -> Element msg
+view : Value () (Type ()) -> Element msg
 view value =
     let
-        indexedValue : Value ta ( Int, Type ta )
+        indexedValue : Value () ( Int, Type () )
         indexedValue =
             value
                 |> Value.indexedMapValue
@@ -79,7 +79,7 @@ view value =
             ViewLetDefinition.view view definitions inValue
 
         Value.IfThenElse _ _ _ _ ->
-            ViewIfThenElse.view view indexedValue Dict.empty
+            ViewIfThenElse.view view value Dict.empty
 
         _ ->
             Element.paragraph
@@ -103,7 +103,7 @@ viewWithData distribution valueDef argumentValues =
     in
     case valueDef.body of
         Value.IfThenElse _ _ _ _ ->
-            ViewIfThenElse.view view indexedValue argumentValues
+            ViewIfThenElse.view view valueDef.body argumentValues
 
         _ ->
             Element.text "view with data"
