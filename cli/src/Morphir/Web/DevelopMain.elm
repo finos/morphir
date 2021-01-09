@@ -342,7 +342,7 @@ viewValue distribution valueDef argValues =
         ViewValue.viewWithData distribution valueDef validArgValues
 
     else
-        ViewValue.view valueDef.body
+        ViewValue.view distribution valueDef.body
 
 
 

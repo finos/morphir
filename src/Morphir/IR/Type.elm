@@ -22,7 +22,8 @@ module Morphir.IR.Type exposing
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
     , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification
     , Constructors, Constructor(..)
-    , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes, collectVariables
+    , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition
+    , eraseAttributes, collectVariables, substituteTypeVariables
     )
 
 {-| Like any other programming languages Morphir has a type system as well. This module defines the building blocks of
@@ -123,10 +124,15 @@ Here is the full definition for reference:
 
 # Mapping
 
-@docs mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes, collectVariables
+@docs mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition
+
+#Utilities
+
+@docs eraseAttributes, collectVariables, substituteTypeVariables
 
 -}
 
+import Dict exposing (Dict)
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, withPublicAccess)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
@@ -603,3 +609,54 @@ collectVariables tpe =
 
         Unit _ ->
             Set.empty
+
+
+{-| Substitute type variables recursively.
+-}
+substituteTypeVariables : Dict Name (Type ta) -> Type ta -> Type ta
+substituteTypeVariables mapping original =
+    case original of
+        Variable a varName ->
+            mapping
+                |> Dict.get varName
+                |> Maybe.withDefault original
+
+        Reference a fQName typeArgs ->
+            Reference a
+                fQName
+                (typeArgs
+                    |> List.map (substituteTypeVariables mapping)
+                )
+
+        Tuple a elemTypes ->
+            Tuple a
+                (elemTypes
+                    |> List.map (substituteTypeVariables mapping)
+                )
+
+        Record a fields ->
+            Record a
+                (fields
+                    |> List.map
+                        (\field ->
+                            Field field.name (substituteTypeVariables mapping field.tpe)
+                        )
+                )
+
+        ExtensibleRecord a name fields ->
+            ExtensibleRecord a
+                name
+                (fields
+                    |> List.map
+                        (\field ->
+                            Field field.name (substituteTypeVariables mapping field.tpe)
+                        )
+                )
+
+        Function a argType returnType ->
+            Function a
+                (substituteTypeVariables mapping argType)
+                (substituteTypeVariables mapping returnType)
+
+        Unit a ->
+            Unit a

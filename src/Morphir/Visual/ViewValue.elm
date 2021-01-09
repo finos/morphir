@@ -18,8 +18,8 @@ import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 
 
-view : Value () (Type ()) -> Element msg
-view value =
+view : Distribution -> Value () (Type ()) -> Element msg
+view distribution value =
     let
         indexedValue : Value () ( Int, Type () )
         indexedValue =
@@ -36,27 +36,27 @@ view value =
             ViewLiteral.view literal
 
         Value.Tuple tpe elems ->
-            ViewTuple.view view elems
+            ViewTuple.view (view distribution) elems
 
         Value.List (Type.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "list" ] ] [ "list" ]) [ itemType ]) items ->
-            ViewList.view view itemType items
+            ViewList.view distribution (view distribution) itemType items
 
         Value.Variable tpe name ->
             el []
                 (text (nameToText name))
 
         Value.Reference tpe fQName ->
-            ViewReference.view view fQName
+            ViewReference.view (view distribution) fQName
 
         Value.Field tpe subjectValue fieldName ->
-            ViewField.view view subjectValue fieldName
+            ViewField.view (view distribution) subjectValue fieldName
 
         Value.Apply _ fun arg ->
             let
                 ( function, argsReversed ) =
                     Value.uncurryApply fun arg
             in
-            ViewApply.view view function (argsReversed |> List.reverse)
+            ViewApply.view (view distribution) function (argsReversed |> List.reverse)
 
         Value.LetDefinition tpe _ _ _ ->
             let
@@ -76,10 +76,10 @@ view value =
                 ( definitions, inValue ) =
                     unnest value
             in
-            ViewLetDefinition.view view definitions inValue
+            ViewLetDefinition.view (view distribution) definitions inValue
 
         Value.IfThenElse _ _ _ _ ->
-            ViewIfThenElse.view view value Dict.empty
+            ViewIfThenElse.view (view distribution) value Dict.empty
 
         _ ->
             Element.paragraph
@@ -103,7 +103,7 @@ viewWithData distribution valueDef argumentValues =
     in
     case valueDef.body of
         Value.IfThenElse _ _ _ _ ->
-            ViewIfThenElse.view view valueDef.body argumentValues
+            ViewIfThenElse.view (view distribution) valueDef.body argumentValues
 
         _ ->
             Element.text "view with data"

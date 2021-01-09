@@ -203,14 +203,28 @@ basicIfThenElse4 greenApple redApple amberApple greenPear redPear =
                 redApple + greenApple
         in
         if redGreenApple > 0 then
-            [ { fruitType = "apple", amount = 10 }
+            let
+                appleAmount : Float
+                appleAmount =
+                    10
+            in
+            [ { fruitType = "apple", amount = appleAmount }
             , { fruitType = "pear", amount = 5 }
             ]
 
         else
-            [ { fruitType = "apple", amount = 10 }
+            let
+                appleAmount : Float
+                appleAmount =
+                    15
+
+                bananaAmount : Float
+                bananaAmount =
+                    158.3
+            in
+            [ { fruitType = "apple", amount = appleAmount }
             , { fruitType = "pear", amount = 5 }
-            , { fruitType = "banana", amount = 15.3 }
+            , FruitAction "banana" bananaAmount
             ]
 
 

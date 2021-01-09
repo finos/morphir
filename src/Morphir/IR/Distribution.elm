@@ -1,6 +1,6 @@
 module Morphir.IR.Distribution exposing
     ( Distribution(..)
-    , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
+    , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition, resolveTypeReference
     )
 
 {-| A distribution is a complete package of Morphir types and functions with all their dependencies.
@@ -20,12 +20,12 @@ information:
 
 # Lookups
 
-@docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
+@docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition, resolveTypeReference
 
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.FQName as FQName exposing (FQName(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName, lookupModuleDefinition)
@@ -82,6 +82,34 @@ lookupBaseTypeName ((FQName packageName moduleName localName) as fQName) distrib
                     _ ->
                         Just fQName
             )
+
+
+{-| Resolve a type reference by looking up its specification and resolving type variables.
+-}
+resolveTypeReference : FQName -> List (Type ()) -> Distribution -> Result String (Type ())
+resolveTypeReference ((FQName packageName moduleName localName) as fQName) typeArgs distribution =
+    case lookupTypeSpecification packageName moduleName localName distribution of
+        Just typeSpec ->
+            case typeSpec of
+                Type.TypeAliasSpecification paramNames tpe ->
+                    let
+                        paramMapping : Dict Name (Type ())
+                        paramMapping =
+                            List.map2 Tuple.pair paramNames typeArgs
+                                |> Dict.fromList
+                    in
+                    tpe
+                        |> Type.substituteTypeVariables paramMapping
+                        |> Ok
+
+                Type.OpaqueTypeSpecification _ ->
+                    Ok (Type.Reference () fQName typeArgs)
+
+                Type.CustomTypeSpecification _ _ ->
+                    Ok (Type.Reference () fQName typeArgs)
+
+        Nothing ->
+            Err (String.concat [ "Type specification not found: ", fQName |> FQName.toString ])
 
 
 {-| Look up a value specification by package, module and local name in a distribution.
