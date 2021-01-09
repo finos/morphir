@@ -15,7 +15,12 @@ view distribution viewValue itemType items =
             table
                 [ spacing 10
                 ]
-                { data = items
+                { data =
+                    items
+                        |> List.map
+                            (\item ->
+                                distribution |> Distribution.resolveRecordConstructors item
+                            )
                 , columns =
                     fields
                         |> List.map

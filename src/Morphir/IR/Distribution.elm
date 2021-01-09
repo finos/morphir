@@ -1,6 +1,7 @@
 module Morphir.IR.Distribution exposing
     ( Distribution(..)
-    , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition, resolveTypeReference
+    , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
+    , resolveTypeReference, resolveRecordConstructors
     )
 
 {-| A distribution is a complete package of Morphir types and functions with all their dependencies.
@@ -20,7 +21,12 @@ information:
 
 # Lookups
 
-@docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition, resolveTypeReference
+@docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
+
+
+# Utilities
+
+@docs resolveTypeReference, resolveRecordConstructors
 
 -}
 
@@ -31,7 +37,7 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName, lookupModuleDefinition)
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value)
 
 
 {-| Type that represents a package distribution. Currently the only distribution type we provide is a `Library`.
@@ -110,6 +116,43 @@ resolveTypeReference ((FQName packageName moduleName localName) as fQName) typeA
 
         Nothing ->
             Err (String.concat [ "Type specification not found: ", fQName |> FQName.toString ])
+
+
+{-| Replace record constructors with the corresponding record value.
+-}
+resolveRecordConstructors : Value ta va -> Distribution -> Value ta va
+resolveRecordConstructors value distribution =
+    value
+        |> Value.rewriteValue
+            (\v ->
+                case v of
+                    Value.Apply _ fun lastArg ->
+                        let
+                            ( bottomFun, args ) =
+                                Value.uncurryApply fun lastArg
+                        in
+                        case bottomFun of
+                            Value.Constructor va (FQName packageName moduleName localName) ->
+                                lookupTypeSpecification packageName moduleName localName distribution
+                                    |> Maybe.andThen
+                                        (\typeSpec ->
+                                            case typeSpec of
+                                                Type.TypeAliasSpecification _ (Type.Record _ fields) ->
+                                                    Just
+                                                        (Value.Record va
+                                                            (List.map2 Tuple.pair (fields |> List.map .name) args)
+                                                        )
+
+                                                _ ->
+                                                    Nothing
+                                        )
+
+                            _ ->
+                                Nothing
+
+                    _ ->
+                        Nothing
+            )
 
 
 {-| Look up a value specification by package, module and local name in a distribution.

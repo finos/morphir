@@ -24,7 +24,7 @@ module Morphir.IR.Value exposing
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-    , definitionToValue
+    , definitionToValue, rewriteValue
     )
 
 {-| In functional programming data and logic are treated the same way and we refer to both as values. This module
@@ -113,7 +113,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 @docs definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-@docs definitionToValue
+@docs definitionToValue, rewriteValue
 
 -}
 
@@ -1031,6 +1031,71 @@ indexedMapListHelp f baseIndex elemList =
                 ( List.append elemsSoFar [ mappedElem ], lastIndex )
             )
             ( [], baseIndex )
+
+
+{-| Recursively rewrite a value using the supplied mapping function.
+-}
+rewriteValue : (Value ta va -> Maybe (Value ta va)) -> Value ta va -> Value ta va
+rewriteValue f value =
+    case f value of
+        Just newValue ->
+            newValue
+
+        Nothing ->
+            case value of
+                Tuple va elems ->
+                    Tuple va (elems |> List.map (rewriteValue f))
+
+                List va items ->
+                    List va (items |> List.map (rewriteValue f))
+
+                Record va fields ->
+                    Record va (fields |> List.map (\( n, v ) -> ( n, rewriteValue f v )))
+
+                Field va subject name ->
+                    Field va (rewriteValue f subject) name
+
+                Apply va fun arg ->
+                    Apply va (rewriteValue f fun) (rewriteValue f arg)
+
+                Lambda va pattern body ->
+                    Lambda va pattern (rewriteValue f body)
+
+                LetDefinition va defName def inValue ->
+                    LetDefinition va
+                        defName
+                        { def | body = rewriteValue f def.body }
+                        (rewriteValue f inValue)
+
+                LetRecursion va defs inValue ->
+                    LetRecursion va
+                        (defs |> Dict.map (\_ v -> rewriteValue f v))
+                        (rewriteValue f inValue)
+
+                Destructure va bindPattern bindValue inValue ->
+                    Destructure va
+                        bindPattern
+                        (rewriteValue f bindValue)
+                        (rewriteValue f inValue)
+
+                IfThenElse va condition thenBranch elseBranch ->
+                    IfThenElse va
+                        (rewriteValue f condition)
+                        (rewriteValue f thenBranch)
+                        (rewriteValue f elseBranch)
+
+                PatternMatch va subject cases ->
+                    PatternMatch va
+                        (rewriteValue f subject)
+                        (cases |> List.map (\( p, v ) -> ( p, rewriteValue f v )))
+
+                UpdateRecord va subject fields ->
+                    UpdateRecord va
+                        (rewriteValue f subject)
+                        (fields |> List.map (\( n, v ) -> ( n, rewriteValue f v )))
+
+                _ ->
+                    value
 
 
 
