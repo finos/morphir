@@ -53,10 +53,10 @@ view distribution value =
 
         Value.Apply _ fun arg ->
             let
-                ( function, argsReversed ) =
+                ( function, args ) =
                     Value.uncurryApply fun arg
             in
-            ViewApply.view (view distribution) function (argsReversed |> List.reverse)
+            ViewApply.view (view distribution) function args
 
         Value.LetDefinition tpe _ _ _ ->
             let

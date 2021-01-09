@@ -1,4 +1,4 @@
-port module Morphir.Web.Insight exposing (..)
+port module Morphir.Web.Insight exposing (Model(..), Msg(..), init, main, receiveFunctionArguments, receiveFunctionName, subscriptions, update, view)
 
 import Browser
 import Dict
@@ -151,7 +151,7 @@ view model =
             Html.div [] [ Html.text string ]
 
         FunctionNameSet distribution qName valueDef ->
-            Morphir.Visual.ViewValue.view valueDef.body |> Element.layout []
+            Morphir.Visual.ViewValue.view distribution valueDef.body |> Element.layout []
 
         FunctionArgumentsSet distribution qName valueDef argValues ->
             List.map2
