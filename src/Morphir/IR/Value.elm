@@ -1069,7 +1069,7 @@ rewriteValue f value =
 
                 LetRecursion va defs inValue ->
                     LetRecursion va
-                        (defs |> Dict.map (\_ v -> rewriteValue f v))
+                        (defs |> Dict.map (\_ def -> { def | body = rewriteValue f def.body }))
                         (rewriteValue f inValue)
 
                 Destructure va bindPattern bindValue inValue ->

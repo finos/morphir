@@ -4,6 +4,9 @@ import Element exposing (Element, alignLeft, alignTop, centerX, centerY, column,
 import Element.Border as Border
 import Html exposing (Html)
 import Html.Attributes
+import Morphir.Visual.Common exposing (element)
+import Svg exposing (svg)
+import Svg.Attributes
 
 
 type Node a
@@ -162,19 +165,6 @@ verticalLayout condition branch1Label branch1 branch2Label branch2 =
         ]
 
 
-element : Element msg -> Html msg
-element elem =
-    Element.layoutWith
-        { options =
-            [ Element.noStaticStyleSheet
-            ]
-        }
-        [ width shrink
-        , height shrink
-        ]
-        elem
-
-
 rightArrow : Element msg
 rightArrow =
     el
@@ -193,7 +183,7 @@ rightArrow =
                         [ element
                             (el
                                 [ centerY ]
-                                (text ">")
+                                (html rightArrowHead)
                             )
                         ]
                     ]
@@ -226,13 +216,43 @@ downArrow =
                         [ element
                             (el
                                 [ centerX ]
-                                (text "V")
+                                (html downArrowHead)
                             )
                         ]
                     ]
                 ]
             )
         )
+
+
+rightArrowHead : Html msg
+rightArrowHead =
+    Svg.svg
+        [ Svg.Attributes.width "10"
+        , Svg.Attributes.height "10"
+        , Svg.Attributes.viewBox "0 0 200 200"
+        ]
+        [ Svg.polygon
+            [ Svg.Attributes.points "0,0 200,100 0,200"
+            , Svg.Attributes.style "fill:black"
+            ]
+            []
+        ]
+
+
+downArrowHead : Html msg
+downArrowHead =
+    Svg.svg
+        [ Svg.Attributes.width "10"
+        , Svg.Attributes.height "10"
+        , Svg.Attributes.viewBox "0 0 200 200"
+        ]
+        [ Svg.polygon
+            [ Svg.Attributes.points "0,0 100,200 200,0"
+            , Svg.Attributes.style "fill:black"
+            ]
+            []
+        ]
 
 
 noPadding =

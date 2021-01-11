@@ -1,11 +1,14 @@
 module Morphir.Visual.ViewList exposing (view)
 
 import Dict
-import Element exposing (Element, fill, none, spacing, table, text)
+import Element exposing (Element, el, fill, html, none, paddingXY, spacing, table, text)
+import Element.Border as Border
+import Html
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Visual.Common exposing (element)
 
 
 view : Distribution -> (Value () (Type ()) -> Element msg) -> Type () -> List (Value () (Type ())) -> Element msg
@@ -13,8 +16,7 @@ view distribution viewValue itemType items =
     case itemType of
         Type.Record _ fields ->
             table
-                [ spacing 10
-                ]
+                []
                 { data =
                     items
                         |> List.map
@@ -25,21 +27,30 @@ view distribution viewValue itemType items =
                     fields
                         |> List.map
                             (\field ->
-                                { header = text (field.name |> Name.toHumanWords |> String.join " ")
+                                { header =
+                                    el
+                                        [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
+                                        , paddingXY 10 5
+                                        ]
+                                        (text (field.name |> Name.toHumanWords |> String.join " "))
                                 , width = fill
                                 , view =
                                     \item ->
-                                        -- TODO: Use interpreter to get field values
-                                        case item of
-                                            Value.Record _ fieldValues ->
-                                                fieldValues
-                                                    |> Dict.fromList
-                                                    |> Dict.get field.name
-                                                    |> Maybe.map viewValue
-                                                    |> Maybe.withDefault (text "???")
+                                        el
+                                            [ paddingXY 10 5
+                                            ]
+                                            -- TODO: Use interpreter to get field values
+                                            (case item of
+                                                Value.Record _ fieldValues ->
+                                                    fieldValues
+                                                        |> Dict.fromList
+                                                        |> Dict.get field.name
+                                                        |> Maybe.map viewValue
+                                                        |> Maybe.withDefault (text "???")
 
-                                            _ ->
-                                                viewValue item
+                                                _ ->
+                                                    viewValue item
+                                            )
                                 }
                             )
                 }
