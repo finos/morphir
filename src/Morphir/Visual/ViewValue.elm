@@ -1,4 +1,4 @@
-module Morphir.Visual.ViewValue exposing (view, viewWithData)
+module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
 import Element exposing (Element, el, text)
@@ -6,8 +6,10 @@ import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
+import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.Common exposing (cssClass, nameToText)
+import Morphir.Visual.Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewField as ViewField
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
@@ -18,45 +20,56 @@ import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 
 
-view : Distribution -> Value () (Type ()) -> Element msg
-view distribution value =
+type alias Eval =
+    RawValue -> Result String RawValue
+
+
+viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> Element msg
+viewDefinition distribution valueDef argumentValues =
     let
-        indexedValue : Value () ( Int, Type () )
-        indexedValue =
-            value
-                |> Value.indexedMapValue
-                    (\index va ->
-                        ( index, va )
-                    )
-                    0
-                |> Tuple.first
+        references =
+            Interpreter.referencesForDistribution distribution
+
+        eval : Eval
+        eval val =
+            Interpreter.evaluateValue references argumentValues [] val
+                |> Result.mapError Debug.toString
+
+        ctx : Context
+        ctx =
+            Context distribution
     in
+    viewValue ctx argumentValues valueDef.body
+
+
+viewValue : Context -> Dict Name RawValue -> TypedValue -> Element msg
+viewValue ctx argumentValues value =
     case value of
         Value.Literal literalType literal ->
             ViewLiteral.view literal
 
         Value.Tuple tpe elems ->
-            ViewTuple.view (view distribution) elems
+            ViewTuple.view (viewValue ctx argumentValues) elems
 
         Value.List (Type.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "list" ] ] [ "list" ]) [ itemType ]) items ->
-            ViewList.view distribution (view distribution) itemType items
+            ViewList.view ctx.distribution (viewValue ctx argumentValues) itemType items
 
         Value.Variable tpe name ->
             el []
                 (text (nameToText name))
 
         Value.Reference tpe fQName ->
-            ViewReference.view (view distribution) fQName
+            ViewReference.view (viewValue ctx argumentValues) fQName
 
         Value.Field tpe subjectValue fieldName ->
-            ViewField.view (view distribution) subjectValue fieldName
+            ViewField.view (viewValue ctx argumentValues) subjectValue fieldName
 
         Value.Apply _ fun arg ->
             let
                 ( function, args ) =
                     Value.uncurryApply fun arg
             in
-            ViewApply.view (view distribution) function args
+            ViewApply.view (viewValue ctx argumentValues) function args
 
         Value.LetDefinition tpe _ _ _ ->
             let
@@ -76,34 +89,13 @@ view distribution value =
                 ( definitions, inValue ) =
                     unnest value
             in
-            ViewLetDefinition.view (view distribution) definitions inValue
+            ViewLetDefinition.view (viewValue ctx argumentValues) definitions inValue
 
         Value.IfThenElse _ _ _ _ ->
-            ViewIfThenElse.view (view distribution) value Dict.empty
+            ViewIfThenElse.view ctx (viewValue ctx argumentValues) value Dict.empty
 
         _ ->
             Element.paragraph
                 [ cssClass "todo"
                 ]
                 [ Element.text "???" ]
-
-
-viewWithData : Distribution -> Value.Definition () (Type ()) -> Dict Name (Value () ()) -> Element msg
-viewWithData distribution valueDef argumentValues =
-    let
-        indexedValue : Value () ( Int, Type () )
-        indexedValue =
-            valueDef.body
-                |> Value.indexedMapValue
-                    (\index va ->
-                        ( index, va )
-                    )
-                    0
-                |> Tuple.first
-    in
-    case valueDef.body of
-        Value.IfThenElse _ _ _ _ ->
-            ViewIfThenElse.view (view distribution) valueDef.body argumentValues
-
-        _ ->
-            Element.text "view with data"

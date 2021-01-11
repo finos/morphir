@@ -1,6 +1,7 @@
 module Morphir.Value.Interpreter exposing
     ( evaluate
     , FQN, Reference(..)
+    , evaluateValue, referencesForDistribution
     )
 
 {-| This module contains an interpreter for Morphir expressions. The interpreter takes a piece of logic as input,
@@ -17,10 +18,12 @@ takes a `Value` and returns a `Value` (or an error for invalid expressions):
 -}
 
 import Dict exposing (Dict)
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
+import Morphir.IR.SDK as SDK
 import Morphir.IR.Value as Value exposing (Pattern, Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
@@ -44,6 +47,44 @@ type alias Variables =
 type Reference
     = NativeReference Native.Function
     | ValueReference (Value () ())
+
+
+{-| Translate a distribution into references that can be fed into the interpreter to be used during evaluation.
+-}
+referencesForDistribution : Distribution -> Dict FQN Reference
+referencesForDistribution distribution =
+    case distribution of
+        Library packageName dependencies packageDef ->
+            let
+                packageReferences : Dict FQN Reference
+                packageReferences =
+                    packageDef.modules
+                        |> Dict.toList
+                        |> List.concatMap
+                            (\( moduleName, accessControlledModuleDef ) ->
+                                accessControlledModuleDef.value.values
+                                    |> Dict.toList
+                                    |> List.map
+                                        (\( valueName, accessControlledValueDef ) ->
+                                            ( ( packageName, moduleName, valueName )
+                                            , accessControlledValueDef.value
+                                                |> Value.mapDefinitionAttributes (always ()) (always ())
+                                                |> Value.definitionToValue
+                                                |> ValueReference
+                                            )
+                                        )
+                            )
+                        |> Dict.fromList
+
+                sdkReferences : Dict FQN Reference
+                sdkReferences =
+                    SDK.nativeFunctions
+                        |> Dict.map
+                            (\_ fun ->
+                                NativeReference fun
+                            )
+            in
+            Dict.union packageReferences sdkReferences
 
 
 {-| Evaluates a value expression and returns another value expression or an error. You can also pass in other values

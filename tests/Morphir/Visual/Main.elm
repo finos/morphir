@@ -57,7 +57,7 @@ main =
                                     Ok typedValue ->
                                         typedValue
                                             |> Value.mapValueAttributes identity Tuple.second
-                                            |> ViewValue.view
+                                            |> ViewValue.viewValue
                                             |> Element.layoutWith
                                                 { options = [ Element.noStaticStyleSheet ]
                                                 }

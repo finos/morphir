@@ -151,7 +151,7 @@ view model =
             Html.div [] [ Html.text string ]
 
         FunctionNameSet distribution qName valueDef ->
-            Morphir.Visual.ViewValue.view distribution valueDef.body |> Element.layout []
+            Morphir.Visual.ViewValue.viewDefinition distribution valueDef Dict.empty |> Element.layout []
 
         FunctionArgumentsSet distribution qName valueDef argValues ->
             List.map2
@@ -161,5 +161,5 @@ view model =
                 valueDef.inputTypes
                 argValues
                 |> Dict.fromList
-                |> Morphir.Visual.ViewValue.viewWithData distribution valueDef
+                |> Morphir.Visual.ViewValue.viewDefinition distribution valueDef
                 |> Element.layout []

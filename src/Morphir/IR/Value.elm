@@ -16,7 +16,7 @@
 
 
 module Morphir.IR.Value exposing
-    ( Value(..), literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
+    ( Value(..), RawValue, TypedValue, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
     , tuple, variable, ifThenElse, patternMatch, update, unit
     , mapValueAttributes
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
@@ -79,7 +79,7 @@ to find more details. Here are the Morphir IR snippets for the above values as a
 
 Value is the top level building block for data and logic. See the constructor functions below for details on each node type.
 
-@docs Value, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
+@docs Value, RawValue, TypedValue, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
 @docs tuple, variable, ifThenElse, patternMatch, update, unit
 @docs mapValueAttributes
 
@@ -213,6 +213,18 @@ type Value ta va
     | PatternMatch va (Value ta va) (List ( Pattern va, Value ta va ))
     | UpdateRecord va (Value ta va) (List ( Name, Value ta va ))
     | Unit va
+
+
+{-| A value without any additional information.
+-}
+type alias RawValue =
+    Value () ()
+
+
+{-| A value with type information.
+-}
+type alias TypedValue =
+    Value () (Type ())
 
 
 {-| Type that represents a pattern. A pattern can do two things: match on a specific shape or exact value and extract
