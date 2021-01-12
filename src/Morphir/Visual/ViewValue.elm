@@ -11,7 +11,7 @@ import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (cssClass, nameToText)
-import Morphir.Visual.Context exposing (Context)
+import Morphir.Visual.Context as Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
 import Morphir.Visual.ViewField as ViewField
@@ -26,17 +26,9 @@ import Morphir.Visual.ViewTuple as ViewTuple
 viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> Element msg
 viewDefinition distribution valueDef variables =
     let
-        references =
-            Interpreter.referencesForDistribution distribution
-
-        eval : RawValue -> Result String RawValue
-        eval val =
-            Interpreter.evaluateValue references variables [] val
-                |> Result.mapError Debug.toString
-
         ctx : Context
         ctx =
-            Context distribution eval
+            Context.fromDistributionAndVariables distribution variables
     in
     viewValue ctx variables valueDef.body
 
