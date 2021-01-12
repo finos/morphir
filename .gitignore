@@ -1,0 +1,6 @@
+node_modules	
+elm-stuff	
+.vscode	
+.idea	
+dist/	
+morphir-ir.json
