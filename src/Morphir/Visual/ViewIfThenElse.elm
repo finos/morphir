@@ -2,50 +2,50 @@ module Morphir.Visual.ViewIfThenElse exposing (view)
 
 import Dict exposing (Dict)
 import Element exposing (Element)
-import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
-import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (TypedValue, Value)
 import Morphir.Visual.Components.DecisionTree as DecisionTree exposing (LeftOrRight(..))
-import Morphir.Visual.Context exposing (Context)
+import Morphir.Visual.Context as Context exposing (Context)
 
 
 view : Context -> (TypedValue -> Element msg) -> Value () (Type ()) -> Dict Name (Value () ()) -> Element msg
 view ctx viewValue value variables =
-    DecisionTree.layout ctx viewValue (valueToTree ctx value)
+    DecisionTree.layout viewValue (valueToTree ctx value)
 
 
 valueToTree : Context -> TypedValue -> DecisionTree.Node
 valueToTree ctx value =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
-            let
-                withCondition : TypedValue -> TypedValue -> TypedValue -> DecisionTree.Node
-                withCondition cond left right =
-                    case cond of
-                        --Value.Apply _ (Value.Apply _ (Value.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "basics" ] ] [ "or" ])) arg1) arg2 ->
-                        --    DecisionTree.Branch
-                        --        { nodeLabel = arg1
-                        --        , leftBranchLabel = Value.Literal (Basics.boolType ()) (BoolLiteral True)
-                        --        , leftBranch = valueToTree left
-                        --        , rightBranchLabel = Value.Literal (Basics.boolType ()) (BoolLiteral False)
-                        --        , rightBranch =
-                        --            withCondition arg2 left right
-                        --        , executionPath = Just Left
-                        --        }
-                        --
-                        _ ->
-                            DecisionTree.Branch
-                                { condition = cond
-                                , thenBranch = valueToTree ctx left
-                                , elseBranch = valueToTree ctx right
-                                }
-            in
-            withCondition condition thenBranch elseBranch
+            DecisionTree.Branch
+                { condition = condition
+                , conditionValue =
+                    ctx
+                        |> Context.evaluate (Value.toRawValue condition)
+                        |> Result.toMaybe
+                , thenBranch = valueToTree ctx thenBranch
+                , elseBranch = valueToTree ctx elseBranch
+                }
 
-        Value.LetDefinition _ _ _ inValue ->
-            valueToTree ctx inValue
+        Value.LetDefinition _ defName defValue inValue ->
+            valueToTree
+                { ctx
+                    | variables =
+                        ctx
+                            |> Context.evaluate
+                                (defValue
+                                    |> Value.mapDefinitionAttributes identity (always ())
+                                    |> Value.definitionToValue
+                                )
+                            |> Result.map
+                                (\evaluatedDefValue ->
+                                    ctx.variables
+                                        |> Dict.insert defName evaluatedDefValue
+                                )
+                            |> Result.withDefault ctx.variables
+                }
+                inValue
 
         _ ->
             DecisionTree.Leaf value

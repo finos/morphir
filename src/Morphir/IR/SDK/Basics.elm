@@ -270,6 +270,12 @@ nativeFunctions =
                     ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
                         Ok (Value.Literal () (BoolLiteral (v1 < v2)))
 
+                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 < toFloat v2)))
+
+                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (toFloat v1 < v2)))
+
                     ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
                         Ok (Value.Literal () (BoolLiteral (v1 < v2)))
 
@@ -289,6 +295,12 @@ nativeFunctions =
 
                     ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
                         Ok (Value.Literal () (BoolLiteral (v1 > v2)))
+
+                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 > toFloat v2)))
+
+                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (toFloat v1 > v2)))
 
                     ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
                         Ok (Value.Literal () (BoolLiteral (v1 > v2)))
