@@ -1,6 +1,7 @@
 module Morphir.IR.Distribution exposing
     ( Distribution(..)
     , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
+    , resolveTypeReference, resolveRecordConstructors
     )
 
 {-| A distribution is a complete package of Morphir types and functions with all their dependencies.
@@ -22,16 +23,21 @@ information:
 
 @docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
 
+
+# Utilities
+
+@docs resolveTypeReference, resolveRecordConstructors
+
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.FQName as FQName exposing (FQName(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName, lookupModuleDefinition)
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value)
 
 
 {-| Type that represents a package distribution. Currently the only distribution type we provide is a `Library`.
@@ -81,6 +87,71 @@ lookupBaseTypeName ((FQName packageName moduleName localName) as fQName) distrib
 
                     _ ->
                         Just fQName
+            )
+
+
+{-| Resolve a type reference by looking up its specification and resolving type variables.
+-}
+resolveTypeReference : FQName -> List (Type ()) -> Distribution -> Result String (Type ())
+resolveTypeReference ((FQName packageName moduleName localName) as fQName) typeArgs distribution =
+    case lookupTypeSpecification packageName moduleName localName distribution of
+        Just typeSpec ->
+            case typeSpec of
+                Type.TypeAliasSpecification paramNames tpe ->
+                    let
+                        paramMapping : Dict Name (Type ())
+                        paramMapping =
+                            List.map2 Tuple.pair paramNames typeArgs
+                                |> Dict.fromList
+                    in
+                    tpe
+                        |> Type.substituteTypeVariables paramMapping
+                        |> Ok
+
+                Type.OpaqueTypeSpecification _ ->
+                    Ok (Type.Reference () fQName typeArgs)
+
+                Type.CustomTypeSpecification _ _ ->
+                    Ok (Type.Reference () fQName typeArgs)
+
+        Nothing ->
+            Err (String.concat [ "Type specification not found: ", fQName |> FQName.toString ])
+
+
+{-| Replace record constructors with the corresponding record value.
+-}
+resolveRecordConstructors : Value ta va -> Distribution -> Value ta va
+resolveRecordConstructors value distribution =
+    value
+        |> Value.rewriteValue
+            (\v ->
+                case v of
+                    Value.Apply _ fun lastArg ->
+                        let
+                            ( bottomFun, args ) =
+                                Value.uncurryApply fun lastArg
+                        in
+                        case bottomFun of
+                            Value.Constructor va (FQName packageName moduleName localName) ->
+                                lookupTypeSpecification packageName moduleName localName distribution
+                                    |> Maybe.andThen
+                                        (\typeSpec ->
+                                            case typeSpec of
+                                                Type.TypeAliasSpecification _ (Type.Record _ fields) ->
+                                                    Just
+                                                        (Value.Record va
+                                                            (List.map2 Tuple.pair (fields |> List.map .name) args)
+                                                        )
+
+                                                _ ->
+                                                    Nothing
+                                        )
+
+                            _ ->
+                                Nothing
+
+                    _ ->
+                        Nothing
             )
 
 

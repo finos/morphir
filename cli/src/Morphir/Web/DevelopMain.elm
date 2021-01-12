@@ -338,11 +338,7 @@ viewValue distribution valueDef argValues =
                     )
                 |> Dict.fromList
     in
-    if Dict.size argValues == List.length valueDef.inputTypes && Dict.size argValues == Dict.size validArgValues then
-        ViewValue.viewWithData distribution valueDef validArgValues
-
-    else
-        ViewValue.view valueDef.body
+    ViewValue.viewDefinition distribution valueDef validArgValues
 
 
 

@@ -1,29 +1,46 @@
-module Morphir.Visual.Components.DecisionTree exposing (..)
+module Morphir.Visual.Components.DecisionTree exposing (BranchNode, LeftOrRight(..), Node(..), defaultColor, downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
 
-import Element exposing (Element, alignLeft, alignTop, centerX, centerY, column, el, explain, fill, height, html, padding, paddingEach, paddingXY, row, shrink, spacing, text, width)
+import Element exposing (Color, Element, alignLeft, alignTop, centerX, centerY, column, el, explain, fill, height, html, padding, paddingEach, paddingXY, rgb, row, shrink, spacing, text, width)
 import Element.Border as Border
 import Html exposing (Html)
 import Html.Attributes
+import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Value as Value exposing (TypedValue)
+import Morphir.Visual.Common exposing (element)
+import Morphir.Visual.Context exposing (Context)
+import Svg
+import Svg.Attributes
 
 
-type Node a
-    = Branch (BranchNode a)
-    | Leaf a
+type Node
+    = Branch BranchNode
+    | Leaf TypedValue
 
 
-type alias BranchNode a =
-    { nodeLabel : a
-    , leftBranchLabel : a
-    , leftBranch : Node a
-    , rightBranchLabel : a
-    , rightBranch : Node a
+type alias BranchNode =
+    { condition : TypedValue
+    , thenBranch : Node
+    , elseBranch : Node
     }
 
 
-layout : (a -> Element msg) -> Node a -> Element msg
-layout viewA rootNode =
+type LeftOrRight
+    = Left
+    | Right
+
+
+defaultColor =
+    "black"
+
+
+highlightColor =
+    "green"
+
+
+layout : Context -> (TypedValue -> Element msg) -> Node -> Element msg
+layout ctx viewValue rootNode =
     let
-        depthOf : (BranchNode a -> Node a) -> Node a -> Int
+        depthOf : (BranchNode -> Node) -> Node -> Int
         depthOf f node =
             case node of
                 Branch branch ->
@@ -34,27 +51,42 @@ layout viewA rootNode =
     in
     case rootNode of
         Branch branch ->
+            let
+                borderColor : Color
+                borderColor =
+                    case ctx.evaluate (Value.toRawValue branch.condition) |> Debug.log "eval" of
+                        Ok (Value.Literal _ (BoolLiteral v)) ->
+                            if v then
+                                rgb 0 1 0
+
+                            else
+                                rgb 1 0 0
+
+                        _ ->
+                            rgb 0.4 0.4 0.4
+            in
             -- TODO: choose vertical/horizontal left/right layout based on some heuristics
             horizontalLayout
                 (el
-                    [ Border.width 1
+                    [ Border.width 2
                     , Border.rounded 7
+                    , Border.color borderColor
                     , padding 10
                     ]
-                    (viewA branch.nodeLabel)
+                    (viewValue branch.condition)
                 )
-                (viewA branch.leftBranchLabel)
-                (layout viewA branch.leftBranch)
-                (viewA branch.rightBranchLabel)
-                (layout viewA branch.rightBranch)
+                (text "Yes")
+                (layout ctx viewValue branch.thenBranch)
+                (text "No")
+                (layout ctx viewValue branch.elseBranch)
 
-        Leaf label ->
+        Leaf value ->
             el
                 [ Border.width 1
                 , Border.rounded 7
                 , padding 10
                 ]
-                (viewA label)
+                (viewValue value)
 
 
 horizontalLayout : Element msg -> Element msg -> Element msg -> Element msg -> Element msg -> Element msg
@@ -83,10 +115,10 @@ horizontalLayout condition branch1Label branch1 branch2Label branch2 =
                             [ paddingEach { noPadding | left = 10 }
                             , height fill
                             ]
-                            downArrow
+                            (downArrow defaultColor)
                         , el
                             [ centerY
-                            , paddingXY 0 10
+                            , paddingXY 0 15
                             ]
                             branch1Label
                         ]
@@ -97,12 +129,12 @@ horizontalLayout condition branch1Label branch1 branch2Label branch2 =
                     ]
                     [ el
                         [ width fill
-                        , paddingEach { noPadding | top = 5 }
+                        , paddingEach { noPadding | top = 10 }
                         ]
-                        rightArrow
+                        (rightArrow defaultColor)
                     , el
                         [ centerX
-                        , paddingXY 10 0
+                        , paddingXY 20 5
                         ]
                         branch2Label
                     ]
@@ -139,7 +171,7 @@ verticalLayout condition branch1Label branch1 branch2Label branch2 =
                         [ paddingEach { noPadding | left = 10 }
                         , height fill
                         ]
-                        downArrow
+                        (downArrow defaultColor)
                     , el
                         [ centerY
                         , paddingXY 0 10
@@ -152,7 +184,7 @@ verticalLayout condition branch1Label branch1 branch2Label branch2 =
                     [ width fill
                     , paddingEach { noPadding | top = 5 }
                     ]
-                    rightArrow
+                    (rightArrow defaultColor)
                 , el [ centerX, paddingXY 10 0 ]
                     branch2Label
                 ]
@@ -162,21 +194,8 @@ verticalLayout condition branch1Label branch1 branch2Label branch2 =
         ]
 
 
-element : Element msg -> Html msg
-element elem =
-    Element.layoutWith
-        { options =
-            [ Element.noStaticStyleSheet
-            ]
-        }
-        [ width shrink
-        , height shrink
-        ]
-        elem
-
-
-rightArrow : Element msg
-rightArrow =
+rightArrow : String -> Element msg
+rightArrow color =
     el
         [ width fill
         , height fill
@@ -187,13 +206,13 @@ rightArrow =
                 , Html.Attributes.style "width" "100%"
                 ]
                 [ Html.tr []
-                    [ Html.td [ Html.Attributes.style "border-bottom" "solid 2px black", Html.Attributes.style "width" "100%" ] []
+                    [ Html.td [ Html.Attributes.style "border-bottom" ("solid 2px " ++ color), Html.Attributes.style "width" "100%" ] []
                     , Html.td
                         [ Html.Attributes.rowspan 2 ]
                         [ element
                             (el
                                 [ centerY ]
-                                (text ">")
+                                (html (rightArrowHead color))
                             )
                         ]
                     ]
@@ -205,8 +224,8 @@ rightArrow =
         )
 
 
-downArrow : Element msg
-downArrow =
+downArrow : String -> Element msg
+downArrow color =
     el
         [ width fill
         , height fill
@@ -217,7 +236,7 @@ downArrow =
                 , Html.Attributes.style "height" "100%"
                 ]
                 [ Html.tr [ Html.Attributes.style "height" "100%" ]
-                    [ Html.td [ Html.Attributes.style "border-right" "solid 2px black" ] []
+                    [ Html.td [ Html.Attributes.style "border-right" ("solid 2px " ++ color) ] []
                     , Html.td [] []
                     ]
                 , Html.tr []
@@ -226,13 +245,43 @@ downArrow =
                         [ element
                             (el
                                 [ centerX ]
-                                (text "V")
+                                (html (downArrowHead color))
                             )
                         ]
                     ]
                 ]
             )
         )
+
+
+rightArrowHead : String -> Html msg
+rightArrowHead color =
+    Svg.svg
+        [ Svg.Attributes.width "10"
+        , Svg.Attributes.height "10"
+        , Svg.Attributes.viewBox "0 0 200 200"
+        ]
+        [ Svg.polygon
+            [ Svg.Attributes.points "0,0 200,100 0,200"
+            , Svg.Attributes.style ("fill:" ++ color)
+            ]
+            []
+        ]
+
+
+downArrowHead : String -> Html msg
+downArrowHead color =
+    Svg.svg
+        [ Svg.Attributes.width "10"
+        , Svg.Attributes.height "10"
+        , Svg.Attributes.viewBox "0 0 200 200"
+        ]
+        [ Svg.polygon
+            [ Svg.Attributes.points "0,0 100,200 200,0"
+            , Svg.Attributes.style ("fill:" ++ color)
+            ]
+            []
+        ]
 
 
 noPadding =

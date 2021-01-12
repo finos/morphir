@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, column, fill, moveRight, row, spacing, text, width, wrappedRow)
+import Element exposing (Element, column, fill, moveRight, paddingEach, row, spacing, text, width, wrappedRow)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
@@ -38,10 +38,10 @@ view viewValue functionValue argValues =
                     (\functionText ->
                         row
                             [ width fill
-                            , spacing 10
+                            , spacing 5
                             ]
                             [ viewValue argValue1
-                            , text (" " ++ functionText ++ " ")
+                            , text functionText
                             , viewValue argValue2
                             ]
                     )
@@ -50,7 +50,7 @@ view viewValue functionValue argValues =
                         [ spacing 10 ]
                         [ viewValue functionValue
                         , column
-                            [ moveRight 10
+                            [ paddingEach { left = 10, right = 0, top = 0, bottom = 0 }
                             , spacing 10
                             ]
                             (argValues
