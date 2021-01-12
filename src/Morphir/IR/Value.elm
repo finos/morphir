@@ -24,7 +24,7 @@ module Morphir.IR.Value exposing
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-    , definitionToValue, rewriteValue
+    , definitionToValue, rewriteValue, toRawValue
     )
 
 {-| In functional programming data and logic are treated the same way and we refer to both as values. This module
@@ -113,7 +113,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 @docs definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-@docs definitionToValue, rewriteValue
+@docs definitionToValue, rewriteValue, toRawValue
 
 -}
 
@@ -219,6 +219,13 @@ type Value ta va
 -}
 type alias RawValue =
     Value () ()
+
+
+{-| Clear all type and value annotations to get a raw value.
+-}
+toRawValue : Value ta va -> RawValue
+toRawValue value =
+    value |> mapValueAttributes (always ()) (always ())
 
 
 {-| A value with type information.

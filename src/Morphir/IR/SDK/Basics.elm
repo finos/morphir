@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK.Basics exposing (..)
+module Morphir.IR.SDK.Basics exposing (add, and, boolType, composeLeft, composeRight, divide, equal, floatType, greaterThan, greaterThanOrEqual, intType, integerDivide, lessThan, lessThanOrEqual, moduleName, moduleSpec, multiply, nativeFunctions, negate, neverType, notEqual, or, orderType, power, subtract)
 
 import Dict exposing (Dict)
 import Morphir.IR.Documented exposing (Documented)
@@ -248,6 +248,18 @@ nativeFunctions =
                         Err (UnexpectedArguments [ arg1, arg2 ])
             )
       )
+    , ( "equal"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                Ok (Value.Literal () (BoolLiteral (arg1 == arg2)))
+            )
+      )
+    , ( "notEqual"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                Ok (Value.Literal () (BoolLiteral (arg1 /= arg2)))
+            )
+      )
     , ( "lessThan"
       , Native.binaryStrict
             (\arg1 arg2 ->
@@ -263,6 +275,26 @@ nativeFunctions =
 
                     ( Value.Literal _ (StringLiteral v1), Value.Literal _ (StringLiteral v2) ) ->
                         Ok (Value.Literal () (BoolLiteral (v1 < v2)))
+
+                    _ ->
+                        Err (UnexpectedArguments [ arg1, arg2 ])
+            )
+      )
+    , ( "greaterThan"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                case ( arg1, arg2 ) of
+                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 > v2)))
+
+                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 > v2)))
+
+                    ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 > v2)))
+
+                    ( Value.Literal _ (StringLiteral v1), Value.Literal _ (StringLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 > v2)))
 
                     _ ->
                         Err (UnexpectedArguments [ arg1, arg2 ])

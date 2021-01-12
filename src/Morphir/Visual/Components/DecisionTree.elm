@@ -1,26 +1,26 @@
-module Morphir.Visual.Components.DecisionTree exposing (..)
+module Morphir.Visual.Components.DecisionTree exposing (BranchNode, LeftOrRight(..), Node(..), defaultColor, downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
 
-import Element exposing (Element, alignLeft, alignTop, centerX, centerY, column, el, explain, fill, height, html, padding, paddingEach, paddingXY, rgb, row, shrink, spacing, text, width)
+import Element exposing (Color, Element, alignLeft, alignTop, centerX, centerY, column, el, explain, fill, height, html, padding, paddingEach, paddingXY, rgb, row, shrink, spacing, text, width)
 import Element.Border as Border
 import Html exposing (Html)
 import Html.Attributes
+import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.Visual.Common exposing (element)
+import Morphir.Visual.Context exposing (Context)
 import Svg
 import Svg.Attributes
 
 
-type Node a
-    = Branch (BranchNode a)
-    | Leaf a
+type Node
+    = Branch BranchNode
+    | Leaf TypedValue
 
 
-type alias BranchNode a =
-    { nodeLabel : a
-    , leftBranchLabel : a
-    , leftBranch : Node a
-    , rightBranchLabel : a
-    , rightBranch : Node a
-    , executionPath : Maybe LeftOrRight
+type alias BranchNode =
+    { condition : TypedValue
+    , thenBranch : Node
+    , elseBranch : Node
     }
 
 
@@ -37,10 +37,10 @@ highlightColor =
     "green"
 
 
-layout : Bool -> (a -> Element msg) -> Node a -> Element msg
-layout highlight viewA rootNode =
+layout : Context -> (TypedValue -> Element msg) -> Node -> Element msg
+layout ctx viewValue rootNode =
     let
-        depthOf : (BranchNode a -> Node a) -> Node a -> Int
+        depthOf : (BranchNode -> Node) -> Node -> Int
         depthOf f node =
             case node of
                 Branch branch ->
@@ -51,41 +51,42 @@ layout highlight viewA rootNode =
     in
     case rootNode of
         Branch branch ->
+            let
+                borderColor : Color
+                borderColor =
+                    case ctx.evaluate (Value.toRawValue branch.condition) |> Debug.log "eval" of
+                        Ok (Value.Literal _ (BoolLiteral v)) ->
+                            if v then
+                                rgb 0 1 0
+
+                            else
+                                rgb 1 0 0
+
+                        _ ->
+                            rgb 0.4 0.4 0.4
+            in
             -- TODO: choose vertical/horizontal left/right layout based on some heuristics
             horizontalLayout
                 (el
-                    [ Border.width 1
+                    [ Border.width 2
                     , Border.rounded 7
-                    , Border.color
-                        (if highlight then
-                            rgb 0 0.5 0
-
-                         else
-                            rgb 0 0 0
-                        )
+                    , Border.color borderColor
                     , padding 10
                     ]
-                    (viewA branch.nodeLabel)
+                    (viewValue branch.condition)
                 )
-                (viewA branch.leftBranchLabel)
-                (layout (branch.executionPath == Just Left) viewA branch.leftBranch)
-                (viewA branch.rightBranchLabel)
-                (layout (branch.executionPath == Just Right) viewA branch.rightBranch)
+                (text "Yes")
+                (layout ctx viewValue branch.thenBranch)
+                (text "No")
+                (layout ctx viewValue branch.elseBranch)
 
-        Leaf label ->
+        Leaf value ->
             el
                 [ Border.width 1
                 , Border.rounded 7
-                , Border.color
-                    (if highlight then
-                        rgb 0 0.5 0
-
-                     else
-                        rgb 0 0 0
-                    )
                 , padding 10
                 ]
-                (viewA label)
+                (viewValue value)
 
 
 horizontalLayout : Element msg -> Element msg -> Element msg -> Element msg -> Element msg -> Element msg
@@ -117,7 +118,7 @@ horizontalLayout condition branch1Label branch1 branch2Label branch2 =
                             (downArrow defaultColor)
                         , el
                             [ centerY
-                            , paddingXY 0 10
+                            , paddingXY 0 15
                             ]
                             branch1Label
                         ]
@@ -128,12 +129,12 @@ horizontalLayout condition branch1Label branch1 branch2Label branch2 =
                     ]
                     [ el
                         [ width fill
-                        , paddingEach { noPadding | top = 5 }
+                        , paddingEach { noPadding | top = 10 }
                         ]
                         (rightArrow defaultColor)
                     , el
                         [ centerX
-                        , paddingXY 10 0
+                        , paddingXY 20 5
                         ]
                         branch2Label
                     ]

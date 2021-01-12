@@ -13,15 +13,15 @@ import Morphir.Visual.Context exposing (Context)
 
 view : Context -> (TypedValue -> Element msg) -> Value () (Type ()) -> Dict Name (Value () ()) -> Element msg
 view ctx viewValue value variables =
-    DecisionTree.layout False viewValue (valueToTree value)
+    DecisionTree.layout ctx viewValue (valueToTree ctx value)
 
 
-valueToTree : Value () (Type ()) -> DecisionTree.Node (Value () (Type ()))
-valueToTree value =
+valueToTree : Context -> TypedValue -> DecisionTree.Node
+valueToTree ctx value =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
             let
-                withCondition : Value () (Type ()) -> Value () (Type ()) -> Value () (Type ()) -> DecisionTree.Node (Value () (Type ()))
+                withCondition : TypedValue -> TypedValue -> TypedValue -> DecisionTree.Node
                 withCondition cond left right =
                     case cond of
                         --Value.Apply _ (Value.Apply _ (Value.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "basics" ] ] [ "or" ])) arg1) arg2 ->
@@ -37,18 +37,15 @@ valueToTree value =
                         --
                         _ ->
                             DecisionTree.Branch
-                                { nodeLabel = cond
-                                , leftBranchLabel = Value.Literal (Basics.boolType ()) (BoolLiteral True)
-                                , leftBranch = valueToTree left
-                                , rightBranchLabel = Value.Literal (Basics.boolType ()) (BoolLiteral False)
-                                , rightBranch = valueToTree right
-                                , executionPath = Just Right
+                                { condition = cond
+                                , thenBranch = valueToTree ctx left
+                                , elseBranch = valueToTree ctx right
                                 }
             in
             withCondition condition thenBranch elseBranch
 
         Value.LetDefinition _ _ _ inValue ->
-            valueToTree inValue
+            valueToTree ctx inValue
 
         _ ->
             DecisionTree.Leaf value

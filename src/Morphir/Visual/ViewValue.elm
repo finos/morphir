@@ -20,26 +20,22 @@ import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 
 
-type alias Eval =
-    RawValue -> Result String RawValue
-
-
 viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> Element msg
-viewDefinition distribution valueDef argumentValues =
+viewDefinition distribution valueDef variables =
     let
         references =
             Interpreter.referencesForDistribution distribution
 
-        eval : Eval
+        eval : RawValue -> Result String RawValue
         eval val =
-            Interpreter.evaluateValue references argumentValues [] val
+            Interpreter.evaluateValue references variables [] val
                 |> Result.mapError Debug.toString
 
         ctx : Context
         ctx =
-            Context distribution
+            Context distribution eval
     in
-    viewValue ctx argumentValues valueDef.body
+    viewValue ctx variables valueDef.body
 
 
 viewValue : Context -> Dict Name RawValue -> TypedValue -> Element msg
