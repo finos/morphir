@@ -5,12 +5,15 @@ import Element exposing (Element, el, text)
 import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name exposing (Name)
+import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Value.Interpreter as Interpreter
+import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (cssClass, nameToText)
 import Morphir.Visual.Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
+import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
 import Morphir.Visual.ViewField as ViewField
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
 import Morphir.Visual.ViewLetDefinition as ViewLetDefinition
@@ -40,6 +43,30 @@ viewDefinition distribution valueDef variables =
 
 viewValue : Context -> Dict Name RawValue -> TypedValue -> Element msg
 viewValue ctx argumentValues value =
+    viewValueByValueType ctx argumentValues value
+
+
+viewValueByValueType : Context -> Dict Name RawValue -> TypedValue -> Element msg
+viewValueByValueType ctx argumentValues typedValue =
+    let
+        valueType : Type ()
+        valueType =
+            Value.valueAttribute typedValue
+    in
+    if valueType == Basics.boolType () then
+        let
+            boolOperatorTree : BoolOperatorTree
+            boolOperatorTree =
+                BoolOperatorTree.fromTypedValue typedValue
+        in
+        ViewBoolOperatorTree.view (viewValueByLanguageFeature ctx argumentValues) boolOperatorTree
+
+    else
+        viewValueByLanguageFeature ctx argumentValues typedValue
+
+
+viewValueByLanguageFeature : Context -> Dict Name RawValue -> TypedValue -> Element msg
+viewValueByLanguageFeature ctx argumentValues value =
     case value of
         Value.Literal literalType literal ->
             ViewLiteral.view literal
