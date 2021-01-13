@@ -1,4 +1,4 @@
-module Morphir.Visual.Context exposing (..)
+module Morphir.Visual.Context exposing (Context, evaluate, fromDistributionAndVariables)
 
 import Dict exposing (Dict)
 import Morphir.IR.Distribution exposing (Distribution)
@@ -26,4 +26,9 @@ fromDistributionAndVariables distribution variables =
 evaluate : RawValue -> Context -> Result String RawValue
 evaluate value ctx =
     Interpreter.evaluateValue ctx.references ctx.variables [] value
-        |> Result.mapError Debug.toString
+        |> Result.mapError
+            (\error ->
+                error
+                    |> Debug.log (String.concat [ "Error while evaluating '", Debug.toString value, "'" ])
+                    |> Debug.toString
+            )
