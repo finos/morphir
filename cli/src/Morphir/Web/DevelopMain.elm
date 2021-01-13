@@ -2,7 +2,7 @@ module Morphir.Web.DevelopMain exposing (Model(..), Msg(..), distributionDecoder
 
 import Browser
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, height, html, image, none, padding, paddingXY, paragraph, px, rgb255, row, spacing, text, width)
+import Element exposing (Element, column, el, fill, height, html, image, none, padding, paddingXY, paragraph, px, rgb255, row, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -241,15 +241,21 @@ viewResult model =
         MakeComplete distributionResult ->
             case distributionResult of
                 Ok distribution ->
-                    viewValueSelection distribution
+                    column [ spacing 20 ]
+                        [ el [ Font.size 18 ] (text "Function to visualize: ")
+                        , viewValueSelection distribution
+                        ]
 
                 Err error ->
                     text ("Error: " ++ Debug.toString error)
 
         FunctionSelected distribution qName valueDef argValues ->
             column [ spacing 20 ]
-                [ viewValueSelection distribution
+                [ el [ Font.size 18 ] (text "Function to visualize: ")
+                , viewValueSelection distribution
+                , el [ Font.size 18 ] (text "Arguments: ")
                 , viewArgumentEditors valueDef argValues
+                , el [ Font.size 18 ] (text "Visualization: ")
                 , viewValue distribution valueDef argValues
                 ]
 
@@ -300,23 +306,31 @@ viewValueSelection distro =
 
 viewArgumentEditors : Value.Definition () (Type ()) -> Dict Name (Result String (Value () ())) -> Element Msg
 viewArgumentEditors valueDef argValues =
-    column [ spacing 10 ]
+    wrappedRow [ spacing 20 ]
         (valueDef.inputTypes
             |> List.map
                 (\( argName, va, argType ) ->
                     column
-                        [ spacing 3 ]
-                        [ text (String.concat [ argName |> Name.toCamelCase, " : " ])
-                        , html
-                            (Edit.editValue argType
-                                (UpdateArgumentValue argName)
-                                (InvalidArgumentValue argName)
+                        [ spacing 5
+                        , padding 5
+                        , Border.width 1
+                        , Border.color (rgb255 100 100 100)
+                        ]
+                        [ el [] (text (String.concat [ argName |> Name.toHumanWords |> String.join " ", ": " ]))
+                        , el []
+                            (html
+                                (Edit.editValue argType
+                                    (UpdateArgumentValue argName)
+                                    (InvalidArgumentValue argName)
+                                )
                             )
-                        , text
-                            (argValues
-                                |> Dict.get argName
-                                |> Maybe.map Debug.toString
-                                |> Maybe.withDefault "not set"
+                        , el []
+                            (text
+                                (argValues
+                                    |> Dict.get argName
+                                    |> Maybe.map Debug.toString
+                                    |> Maybe.withDefault "not set"
+                                )
                             )
                         ]
                 )
