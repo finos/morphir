@@ -348,6 +348,43 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                     (Scala.withoutAnnotation
                         (Class
                             { modifiers =
+                                [ Case ]
+                            , name =
+                                "TupleKeyCommand"
+                            , typeArgs =
+                                [ TypeVar "K", TypeVar "C" ]
+                            , ctorArgs =
+                                [ [ { modifiers = []
+                                    , tpe = TypeVar "K"
+                                    , name =
+                                        "@scala.beans.BeanProperty "
+                                            ++ "@com.fasterxml.jackson.annotation.JsonProperty (\""
+                                            ++ "key"
+                                            ++ "\") "
+                                            ++ "key"
+                                    , defaultValue = Nothing
+                                    }
+                                  , { modifiers = []
+                                    , tpe = TypeVar "C"
+                                    , name =
+                                        "@scala.beans.BeanProperty "
+                                            ++ "@com.fasterxml.jackson.annotation.JsonProperty (\""
+                                            ++ "command"
+                                            ++ "\") "
+                                            ++ "command"
+                                    , defaultValue = Nothing
+                                    }
+                                  ]
+                                ]
+                            , extends = []
+                            , members = []
+                            }
+                        )
+                    )
+                , Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                    (Scala.withoutAnnotation
+                        (Class
+                            { modifiers =
                                 [ Abstract ]
                             , name =
                                 "SpringBootStatefulAppAdapter"
@@ -372,6 +409,14 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                         , value = Scala.Variable (dotSep scalaPackagePath ++ ".MainApplication.metricRegistry.meter(\"statefulAppRequests\")")
                                         }
                                     )
+                                , Scala.withoutAnnotation
+                                    (ValueDecl
+                                        { modifiers = []
+                                        , pattern = NamedMatch "table"
+                                        , valueType = Nothing
+                                        , value = Scala.Variable "new scala.collection.mutable.HashMap[K, S]"
+                                        }
+                                    )
                                 , Annotated
                                     [ "@org.springframework.web.bind.annotation.PostMapping(value= Array(\"/v1.0/command\"), consumes = Array(org.springframework.http.MediaType.APPLICATION_JSON_VALUE), produces = Array(\"application/json\"))"
                                     ]
@@ -381,8 +426,10 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                         , typeArgs = []
                                         , args =
                                             [ [ ArgDecl []
-                                                    (TypeVar "C")
-                                                    "@org.springframework.web.bind.annotation.RequestBody command"
+                                                    (TypeApply (TypeVar "TupleKeyCommand")
+                                                        [ TypeVar "K", TypeVar "C" ]
+                                                    )
+                                                    "@org.springframework.web.bind.annotation.RequestBody input"
                                                     Nothing
                                               ]
                                             ]
@@ -390,7 +437,62 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                         , body =
                                             Just
                                                 (Scala.Variable
-                                                    ("{requests.mark" ++ newLine ++ "process(command, None)._2}")
+                                                    ("{requests.mark"
+                                                        ++ newLine
+                                                        ++ "val state = table.get(input.key)"
+                                                        ++ newLine
+                                                        ++ "val result = process(input.command, state)"
+                                                        ++ newLine
+                                                        ++ "update(input.key, state, result)"
+                                                        ++ newLine
+                                                        ++ "result._2}"
+                                                    )
+                                                )
+                                        }
+                                    )
+                                , Scala.withoutAnnotation
+                                    (FunctionDecl
+                                        { modifiers = []
+                                        , name = "update"
+                                        , typeArgs = []
+                                        , args =
+                                            [ [ ArgDecl []
+                                                    (TypeVar "K")
+                                                    "key"
+                                                    Nothing
+                                              , ArgDecl []
+                                                    (TypeApply (TypeVar "Option") [ TypeVar "S" ])
+                                                    "state"
+                                                    Nothing
+                                              , ArgDecl []
+                                                    (TupleType [ TypeApply (TypeRef [ "morphir.sdk.Maybe" ] "Maybe") [ TypeVar "S" ], TypeVar "E" ])
+                                                    "result"
+                                                    Nothing
+                                              ]
+                                            ]
+                                        , returnType = Nothing
+                                        , body =
+                                            Just
+                                                (Match
+                                                    (Scala.Tuple [ Scala.Variable "state", Scala.Variable "result" ])
+                                                    (Scala.MatchCases
+                                                        [ ( TupleMatch
+                                                                [ NamedMatch "None"
+                                                                , TupleMatch [ UnapplyMatch [ "morphir.sdk.Maybe" ] "Just(a)" [], WildcardMatch ]
+                                                                ]
+                                                          , Scala.Apply (Scala.Ref [ "table" ] "addOne") [ ArgValue Nothing (Scala.Tuple [ Scala.Variable "key", Scala.Variable "a" ]) ]
+                                                          )
+                                                        , ( TupleMatch
+                                                                [ NamedMatch "Some(_)"
+                                                                , TupleMatch [ UnapplyMatch [ "morphir.sdk.Maybe" ] "Nothing" [], WildcardMatch ]
+                                                                ]
+                                                          , Scala.Apply (Scala.Ref [ "table" ] "remove") [ ArgValue Nothing (Scala.Variable "key") ]
+                                                          )
+                                                        , ( WildcardMatch
+                                                          , Scala.Variable "None"
+                                                          )
+                                                        ]
+                                                    )
                                                 )
                                         }
                                     )
@@ -437,6 +539,26 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                             Just
                                                 (Scala.Variable
                                                     "new org.springframework.web.servlet.ModelAndView(\"redirect:/swagger-ui/index.html\")"
+                                                )
+                                        }
+                                    )
+                                , Annotated
+                                    [ "@org.springframework.web.bind.annotation.RequestMapping(value = Array(\"/v1.0/list\"))"
+                                    ]
+                                    (FunctionDecl
+                                        { modifiers = []
+                                        , name = "list"
+                                        , typeArgs = []
+                                        , args =
+                                            []
+                                        , returnType = Nothing
+                                        , body =
+                                            Just
+                                                (Scala.Variable
+                                                    ("{implicit val formats = org.json4s.DefaultFormats"
+                                                        ++ newLine
+                                                        ++ "org.json4s.jackson.Serialization.write(table)}"
+                                                    )
                                                 )
                                         }
                                     )
