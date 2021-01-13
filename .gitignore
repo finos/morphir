@@ -1,6 +1,6 @@
-node_modules	
-elm-stuff	
-.vscode	
-.idea	
-dist/	
+elm-stuff
+node_modules
+dist
+.vscode
+.idea
 morphir-ir.json
