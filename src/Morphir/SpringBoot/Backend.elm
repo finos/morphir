@@ -543,7 +543,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                         }
                                     )
                                 , Annotated
-                                    [ "@org.springframework.web.bind.annotation.RequestMapping(value = Array(\"/v1.0/list\"))"
+                                    [ "@org.springframework.web.bind.annotation.GetMapping(value = Array(\"/v1.0/list\"))"
                                     ]
                                     (FunctionDecl
                                         { modifiers = []
