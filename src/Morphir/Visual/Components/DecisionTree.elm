@@ -20,7 +20,7 @@ type Node
 
 type alias BranchNode =
     { condition : TypedValue
-    , conditionValue : Maybe RawValue
+    , conditionValue : Maybe Bool
     , thenBranch : Node
     , elseBranch : Node
     }
@@ -75,7 +75,7 @@ layoutHelp color viewValue rootNode =
                 borderColor : Color
                 borderColor =
                     case branch.conditionValue of
-                        Just (Value.Literal _ (BoolLiteral v)) ->
+                        Just v ->
                             if v then
                                 highlightColor.true
 
@@ -88,7 +88,7 @@ layoutHelp color viewValue rootNode =
                 thenColor : Color
                 thenColor =
                     case branch.conditionValue of
-                        Just (Value.Literal _ (BoolLiteral v)) ->
+                        Just v ->
                             if v then
                                 highlightColor.true
 
@@ -101,7 +101,7 @@ layoutHelp color viewValue rootNode =
                 elseColor : Color
                 elseColor =
                     case branch.conditionValue of
-                        Just (Value.Literal _ (BoolLiteral v)) ->
+                        Just v ->
                             if v then
                                 highlightColor.default
 

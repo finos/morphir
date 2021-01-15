@@ -63,6 +63,9 @@ viewValueByLanguageFeature ctx argumentValues value =
         Value.Literal literalType literal ->
             ViewLiteral.view literal
 
+        Value.Constructor tpe fQName ->
+            ViewReference.view (viewValue ctx argumentValues) fQName
+
         Value.Tuple tpe elems ->
             ViewTuple.view (viewValue ctx argumentValues) elems
 
