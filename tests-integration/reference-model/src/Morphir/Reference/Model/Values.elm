@@ -180,6 +180,16 @@ basicIfThenElse3 boolValueVariable =
         "Bye"
 
 
+booleanExpressions : String -> Bool -> Bool -> Bool -> Bool -> Bool -> Bool -> Bool -> Bool
+booleanExpressions apple ball cat dog egg frame green hen =
+    apple == "apple" && (ball == cat) && dog && egg || frame && green || hen
+
+
+booleanExpressions2 : Bool -> Bool -> Bool -> Bool -> Bool -> Bool -> Bool -> Bool
+booleanExpressions2 a b c d e f g =
+    a && b && d && e && f && g
+
+
 type alias FruitAction =
     { fruitType : String
     , amount : Float
