@@ -166,6 +166,8 @@ bps n =
     D.fromIntWithExponent n -4
 
 
+{-| Converts an Int to a Decimal that represents n millionth.
+-}
 millionth : Int -> Decimal
 millionth n =
     D.fromIntWithExponent n -6
