@@ -29,12 +29,13 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as SDKBasics
+import Morphir.IR.SDK.Decimal as Decimal
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Maybe as Maybe
+import Morphir.IR.SDK.Rule as Rule
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
 import Morphir.IR.Value exposing (Definition, Pattern(..), Value(..))
-import Morphir.IR.SDK.Rule as Rule
 import Set
 import Test exposing (..)
 
@@ -52,6 +53,8 @@ frontendTest =
                     , ""
                     , "import Morphir.SDK.Rule exposing (Rule)"
                     , ""
+                    , "import Morphir.SDK.Decimal exposing (Decimal)"
+                    , ""
                     , "type Foo = Foo Bee"
                     , ""
                     , "type alias Bar = Foo"
@@ -67,6 +70,7 @@ frontendTest =
                     , "    , field7 : Maybe Int"
                     , "    , field8 : List Float"
                     , "    , field9 : Rule Int Int"
+                    , "    , field10 : Decimal"
                     , "    }"
                     ]
             }
@@ -162,6 +166,8 @@ frontendTest =
                                                             (List.listType () (SDKBasics.floatType ()))
                                                         , Type.Field [ "field", "9" ]
                                                             (Rule.ruleType () (SDKBasics.intType ()) (SDKBasics.intType ()))
+                                                        , Type.Field [ "field", "10" ]
+                                                            (Decimal.decimalType ())
                                                         ]
                                                     )
                                                 )
