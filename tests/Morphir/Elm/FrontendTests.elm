@@ -30,6 +30,7 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as SDKBasics
 import Morphir.IR.SDK.Decimal as Decimal
+import Morphir.IR.SDK.Int as SDKInt
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Rule as Rule
@@ -55,6 +56,8 @@ frontendTest =
                     , ""
                     , "import Morphir.SDK.Decimal exposing (Decimal)"
                     , ""
+                    , "import Morphir.SDK.Int exposing (Int8, Int16, Int32, Int64)"
+                    , ""
                     , "type Foo = Foo Bee"
                     , ""
                     , "type alias Bar = Foo"
@@ -71,6 +74,10 @@ frontendTest =
                     , "    , field8 : List Float"
                     , "    , field9 : Rule Int Int"
                     , "    , field10 : Decimal"
+                    , "    , field11 : Int8"
+                    , "    , field12 : Int16"
+                    , "    , field13 : Int32"
+                    , "    , field14 : Int64"
                     , "    }"
                     ]
             }
@@ -168,6 +175,14 @@ frontendTest =
                                                             (Rule.ruleType () (SDKBasics.intType ()) (SDKBasics.intType ()))
                                                         , Type.Field [ "field", "10" ]
                                                             (Decimal.decimalType ())
+                                                        , Type.Field [ "field", "11" ]
+                                                            (SDKInt.int8Type ())
+                                                        , Type.Field [ "field", "12" ]
+                                                            (SDKInt.int16Type ())
+                                                        , Type.Field [ "field", "13" ]
+                                                            (SDKInt.int32Type ())
+                                                        , Type.Field [ "field", "14" ]
+                                                            (SDKInt.int64Type ())
                                                         ]
                                                     )
                                                 )
