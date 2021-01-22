@@ -1,6 +1,6 @@
 module Morphir.Visual.ViewBoolOperatorTree exposing (..)
 
-import Element exposing (Attribute, Element, alignBottom, alignLeft, alignRight, alignTop, alpha, centerX, centerY, explain, fill, height, moveUp, none, padding, scale, spacing, width)
+import Element exposing (Attribute, Element, centerX, centerY, fill, height, none, padding, spacing, width)
 import Element.Border
 import Element.Font as Font
 import Morphir.IR.Value exposing (TypedValue)
@@ -16,7 +16,6 @@ viewTreeNode : (TypedValue -> Element msg) -> LayoutDirection -> BoolOperatorTre
 viewTreeNode viewValue direction boolOperatorTree =
     case boolOperatorTree of
         BoolOperatorBranch operator values ->
-            -- TODO: add AND or OR separator between values base on the operator passed in
             let
                 separator : Element msg
                 separator =
@@ -71,10 +70,10 @@ viewTreeNode viewValue direction boolOperatorTree =
                 layout elems =
                     case direction of
                         Horizontal ->
-                            Element.row [] elems
+                            Element.row [ centerX ] elems
 
                         Vertical ->
-                            Element.column [] elems
+                            Element.column [ centerY ] elems
             in
             values
                 |> List.map
@@ -85,6 +84,7 @@ viewTreeNode viewValue direction boolOperatorTree =
                     (Element.el
                         [ padding 8
                         , spacing 8
+                        , centerX
                         ]
                     )
                 |> List.intersperse separator

@@ -2,7 +2,7 @@ module Morphir.Web.DevelopMain exposing (Model(..), Msg(..), distributionDecoder
 
 import Browser
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, height, html, image, none, padding, paddingXY, paragraph, px, rgb255, row, spacing, text, width, wrappedRow)
+import Element exposing (Color, Element, column, el, fill, height, html, image, padding, paddingXY, px, rgb255, row, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -10,18 +10,18 @@ import Html exposing (Html)
 import Html.Attributes
 import Html.Events
 import Http
-import Json.Decode as Decode exposing (Decoder, field, string)
+import Json.Decode as Decode exposing (Decoder, string)
 import Morphir.Compiler as Compiler
-import Morphir.Elm.CLI as CLI
 import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.Module as Module exposing (ModuleName)
+import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
-import Morphir.IR.QName as QName exposing (QName)
+import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.Edit as Edit
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Web.Theme exposing (Theme)
@@ -41,6 +41,15 @@ main =
         }
 
 
+type alias VisualizationState =
+    { distribution : Distribution
+    , selectedFunction : QName
+    , functionDefinition : Value.Definition () (Type ())
+    , functionArguments : Dict Name (Result String (Value () ()))
+    , expandedFunctions : Dict FQN (Value.Definition () (Type ()))
+    }
+
+
 
 -- MODEL
 
@@ -49,7 +58,7 @@ type Model
     = HttpFailure Http.Error
     | WaitingForResponse
     | MakeComplete (Result (List Compiler.Error) Distribution)
-    | FunctionSelected Distribution QName (Value.Definition () (Type ())) (Dict Name (Result String (Value () ())))
+    | FunctionSelected VisualizationState
 
 
 init : () -> ( Model, Cmd Msg )
@@ -67,6 +76,7 @@ type Msg
     | SelectFunction String
     | UpdateArgumentValue Name (Value () ())
     | InvalidArgumentValue Name String
+    | ExpandReference FQN Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -78,8 +88,8 @@ update msg model =
                 MakeComplete result ->
                     result |> Result.toMaybe
 
-                FunctionSelected distribution _ _ _ ->
-                    Just distribution
+                FunctionSelected visualizationState ->
+                    Just visualizationState.distribution
 
                 _ ->
                     Nothing
@@ -106,7 +116,16 @@ update msg model =
                                 (\distribution ->
                                     distribution
                                         |> Distribution.lookupValueDefinition qName
-                                        |> Maybe.map (\valueDef -> FunctionSelected distribution qName valueDef Dict.empty)
+                                        |> Maybe.map
+                                            (\valueDef ->
+                                                FunctionSelected
+                                                    { distribution = distribution
+                                                    , selectedFunction = qName
+                                                    , functionDefinition = valueDef
+                                                    , functionArguments = Dict.empty
+                                                    , expandedFunctions = Dict.empty
+                                                    }
+                                            )
                                 )
                             |> Maybe.map (\m -> ( m, Cmd.none ))
                     )
@@ -114,8 +133,8 @@ update msg model =
 
         UpdateArgumentValue argName argValue ->
             case model of
-                FunctionSelected distribution qName valueDef argValues ->
-                    ( FunctionSelected distribution qName valueDef (argValues |> Dict.insert argName (Ok argValue))
+                FunctionSelected visualizationState ->
+                    ( FunctionSelected { visualizationState | functionArguments = visualizationState.functionArguments |> Dict.insert argName (Ok argValue) }
                     , Cmd.none
                     )
 
@@ -124,10 +143,35 @@ update msg model =
 
         InvalidArgumentValue argName message ->
             case model of
-                FunctionSelected distribution qName valueDef argValues ->
-                    ( FunctionSelected distribution qName valueDef (argValues |> Dict.insert argName (Err message))
+                FunctionSelected visualizationState ->
+                    ( FunctionSelected { visualizationState | functionArguments = visualizationState.functionArguments |> Dict.insert argName (Err message) }
                     , Cmd.none
                     )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ExpandReference (( packageName, moduleName, localName ) as fqName) bool ->
+            case model of
+                FunctionSelected visualizationState ->
+                    if visualizationState.expandedFunctions |> Dict.member fqName then
+                        case bool of
+                            True ->
+                                ( FunctionSelected { visualizationState | expandedFunctions = visualizationState.expandedFunctions |> Dict.remove fqName }, Cmd.none )
+
+                            False ->
+                                ( model, Cmd.none )
+
+                    else
+                        ( FunctionSelected
+                            { visualizationState
+                                | expandedFunctions =
+                                    Distribution.lookupValueDefinition (QName moduleName localName) visualizationState.distribution
+                                        |> Maybe.map (\valueDef -> visualizationState.expandedFunctions |> Dict.insert fqName valueDef)
+                                        |> Maybe.withDefault visualizationState.expandedFunctions
+                            }
+                        , Cmd.none
+                        )
 
                 _ ->
                     ( model, Cmd.none )
@@ -249,14 +293,14 @@ viewResult model =
                 Err error ->
                     text ("Error: " ++ Debug.toString error)
 
-        FunctionSelected distribution qName valueDef argValues ->
+        FunctionSelected visualizationState ->
             column [ spacing 20 ]
                 [ el [ Font.size 18 ] (text "Function to visualize: ")
-                , viewValueSelection distribution
+                , viewValueSelection visualizationState.distribution
                 , el [ Font.size 18 ] (text "Arguments: ")
-                , viewArgumentEditors valueDef argValues
+                , viewArgumentEditors visualizationState.functionDefinition visualizationState.functionArguments
                 , el [ Font.size 18 ] (text "Visualization: ")
-                , viewValue distribution valueDef argValues
+                , viewValue visualizationState.distribution visualizationState.functionDefinition visualizationState.functionArguments visualizationState.expandedFunctions
                 ]
 
 
@@ -337,8 +381,8 @@ viewArgumentEditors valueDef argValues =
         )
 
 
-viewValue : Distribution -> Value.Definition () (Type ()) -> Dict Name (Result String (Value () ())) -> Element Msg
-viewValue distribution valueDef argValues =
+viewValue : Distribution -> Value.Definition () (Type ()) -> Dict Name (Result String (Value () ())) -> Dict FQN (Value.Definition () (Type ())) -> Element Msg
+viewValue distribution valueDef argValues state =
     let
         validArgValues : Dict Name (Value () ())
         validArgValues =
@@ -352,7 +396,7 @@ viewValue distribution valueDef argValues =
                     )
                 |> Dict.fromList
     in
-    ViewValue.viewDefinition distribution valueDef validArgValues
+    ViewValue.viewDefinition distribution valueDef validArgValues ExpandReference state
 
 
 
