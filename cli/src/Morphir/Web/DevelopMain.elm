@@ -22,6 +22,7 @@ import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Value.Interpreter exposing (FQN)
+import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
 import Morphir.Visual.Edit as Edit
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Web.Theme exposing (Theme)
@@ -41,15 +42,6 @@ main =
         }
 
 
-type alias VisualizationState =
-    { distribution : Distribution
-    , selectedFunction : QName
-    , functionDefinition : Value.Definition () (Type ())
-    , functionArguments : Dict Name (Result String (Value () ()))
-    , expandedFunctions : Dict FQN (Value.Definition () (Type ()))
-    }
-
-
 
 -- MODEL
 
@@ -58,7 +50,7 @@ type Model
     = HttpFailure Http.Error
     | WaitingForResponse
     | MakeComplete (Result (List Compiler.Error) Distribution)
-    | FunctionSelected VisualizationState
+    | FunctionSelected VisualizationState (Dict Name (Result String (Value () ())))
 
 
 init : () -> ( Model, Cmd Msg )
@@ -88,7 +80,7 @@ update msg model =
                 MakeComplete result ->
                     result |> Result.toMaybe
 
-                FunctionSelected visualizationState ->
+                FunctionSelected visualizationState _ ->
                     Just visualizationState.distribution
 
                 _ ->
@@ -122,9 +114,10 @@ update msg model =
                                                     { distribution = distribution
                                                     , selectedFunction = qName
                                                     , functionDefinition = valueDef
-                                                    , functionArguments = Dict.empty
+                                                    , functionArguments = []
                                                     , expandedFunctions = Dict.empty
                                                     }
+                                                    Dict.empty
                                             )
                                 )
                             |> Maybe.map (\m -> ( m, Cmd.none ))
@@ -133,18 +126,21 @@ update msg model =
 
         UpdateArgumentValue argName argValue ->
             case model of
-                FunctionSelected visualizationState ->
-                    ( FunctionSelected { visualizationState | functionArguments = visualizationState.functionArguments |> Dict.insert argName (Ok argValue) }
+                FunctionSelected visualizationState funArgs ->
+                    ( FunctionSelected visualizationState (funArgs |> Dict.insert argName (Ok argValue))
                     , Cmd.none
                     )
 
+                --( FunctionSelected { visualizationState | functionArguments = visualizationState.functionArguments |> Dict.insert argName (Ok argValue) }
+                --, Cmd.none
+                --)
                 _ ->
                     ( model, Cmd.none )
 
         InvalidArgumentValue argName message ->
             case model of
-                FunctionSelected visualizationState ->
-                    ( FunctionSelected { visualizationState | functionArguments = visualizationState.functionArguments |> Dict.insert argName (Err message) }
+                FunctionSelected visualizationState funArgs ->
+                    ( FunctionSelected visualizationState (funArgs |> Dict.insert argName (Err message))
                     , Cmd.none
                     )
 
@@ -153,11 +149,11 @@ update msg model =
 
         ExpandReference (( packageName, moduleName, localName ) as fqName) bool ->
             case model of
-                FunctionSelected visualizationState ->
+                FunctionSelected visualizationState funArgs ->
                     if visualizationState.expandedFunctions |> Dict.member fqName then
                         case bool of
                             True ->
-                                ( FunctionSelected { visualizationState | expandedFunctions = visualizationState.expandedFunctions |> Dict.remove fqName }, Cmd.none )
+                                ( FunctionSelected { visualizationState | expandedFunctions = visualizationState.expandedFunctions |> Dict.remove fqName } funArgs, Cmd.none )
 
                             False ->
                                 ( model, Cmd.none )
@@ -170,6 +166,7 @@ update msg model =
                                         |> Maybe.map (\valueDef -> visualizationState.expandedFunctions |> Dict.insert fqName valueDef)
                                         |> Maybe.withDefault visualizationState.expandedFunctions
                             }
+                            funArgs
                         , Cmd.none
                         )
 
@@ -293,14 +290,14 @@ viewResult model =
                 Err error ->
                     text ("Error: " ++ Debug.toString error)
 
-        FunctionSelected visualizationState ->
+        FunctionSelected visualizationState funArgs ->
             column [ spacing 20 ]
                 [ el [ Font.size 18 ] (text "Function to visualize: ")
                 , viewValueSelection visualizationState.distribution
                 , el [ Font.size 18 ] (text "Arguments: ")
-                , viewArgumentEditors visualizationState.functionDefinition visualizationState.functionArguments
+                , viewArgumentEditors visualizationState.functionDefinition funArgs
                 , el [ Font.size 18 ] (text "Visualization: ")
-                , viewValue visualizationState.distribution visualizationState.functionDefinition visualizationState.functionArguments visualizationState.expandedFunctions
+                , viewValue visualizationState.distribution visualizationState.functionDefinition funArgs visualizationState.expandedFunctions
                 ]
 
 

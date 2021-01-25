@@ -25,7 +25,7 @@ import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
-import Morphir.Web.Theme.Light exposing (blue)
+import Morphir.Web.Theme.Light exposing (gray)
 
 
 viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> (FQN -> Bool -> msg) -> Dict FQN (Value.Definition () (Type ())) -> Element msg
@@ -37,37 +37,41 @@ viewDefinition distribution valueDef variables onReferenceClicked expandedFuncti
     in
     Element.column [ spacing 8 ]
         [ viewValue ctx variables valueDef.body
-        , Element.column
-            [ spacing 10 ]
-            [ text "where"
-            , Element.column
-                [ spacing 20
-                ]
-                (expandedFunctions
-                    |> Dict.toList
-                    |> List.reverse
-                    |> List.map
-                        (\( ( _, _, localName ) as fqName, valDef ) ->
-                            Element.column
-                                [ spacing 10
-                                ]
-                                [ text (nameToText localName ++ " =")
-                                , el
-                                    []
-                                    (viewValue ctx Dict.empty valDef.body)
-                                , Element.column
-                                    [ Font.bold
-                                    , Element.Border.solid
-                                    , Element.Border.width 10
-                                    , Element.Border.rounded 5
-                                    , Element.Background.color blue
-                                    , onClick (ctx.onReferenceClicked fqName True)
+        , if Dict.isEmpty expandedFunctions then
+            Element.none
+
+          else
+            Element.column
+                [ spacing 10 ]
+                [ Element.el [ Font.bold ] (Element.text "where")
+                , Element.column
+                    [ spacing 20
+                    ]
+                    (expandedFunctions
+                        |> Dict.toList
+                        |> List.reverse
+                        |> List.map
+                            (\( ( _, _, localName ) as fqName, valDef ) ->
+                                Element.column
+                                    [ spacing 10
                                     ]
-                                    [ Element.text "RollBack" ]
-                                ]
-                        )
-                )
-            ]
+                                    [ Element.el [ Font.bold ] (text (nameToText localName ++ " ="))
+                                    , el
+                                        []
+                                        (viewValue ctx Dict.empty valDef.body)
+                                    , Element.column
+                                        [ Font.bold
+                                        , Element.Border.solid
+                                        , Element.Border.rounded 5
+                                        , Element.Background.color gray
+                                        , Element.padding 10
+                                        , onClick (ctx.onReferenceClicked fqName True)
+                                        ]
+                                        [ Element.text "Close" ]
+                                    ]
+                            )
+                    )
+                ]
         ]
 
 
