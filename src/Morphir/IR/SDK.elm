@@ -63,6 +63,7 @@ packageSpec =
             , ( [ [ "stateful", "app" ] ], StatefulApp.moduleSpec )
             , ( [ [ "rule" ] ], Rule.moduleSpec )
             , ( [ [ "decimal" ] ], Decimal.moduleSpec )
+            , ( [ [ "int" ] ], Decimal.moduleSpec )
             ]
     }
 
