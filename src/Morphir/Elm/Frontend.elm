@@ -18,8 +18,7 @@
 module Morphir.Elm.Frontend exposing
     ( packageDefinitionFromSource, mapDeclarationsToType
     , defaultDependencies
-    , ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation
-    , mapSource
+    , ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation, mapSource
     )
 
 {-| The Elm frontend turns Elm source code into Morphir IR.
@@ -34,7 +33,7 @@ module Morphir.Elm.Frontend exposing
 
 @docs defaultDependencies
 
-@docs ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation
+@docs ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation, mapSource
 
 -}
 
@@ -166,6 +165,7 @@ defaultDependencies =
         ]
 
 
+{-| -}
 mapSource : PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result (List Compiler.Error) (Package.Definition SourceLocation SourceLocation)
 mapSource packageInfo dependencies sourceFiles =
     let
