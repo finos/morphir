@@ -23,6 +23,7 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Char
+import Morphir.IR.SDK.Decimal as Decimal
 import Morphir.IR.SDK.Dict as Dict
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.LocalDate as LocalDate
@@ -61,6 +62,8 @@ packageSpec =
             , ( [ [ "regex" ] ], Regex.moduleSpec )
             , ( [ [ "stateful", "app" ] ], StatefulApp.moduleSpec )
             , ( [ [ "rule" ] ], Rule.moduleSpec )
+            , ( [ [ "decimal" ] ], Decimal.moduleSpec )
+            , ( [ [ "int" ] ], Decimal.moduleSpec )
             ]
     }
 

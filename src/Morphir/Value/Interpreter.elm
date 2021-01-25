@@ -1,14 +1,13 @@
 module Morphir.Value.Interpreter exposing
-    ( evaluate
+    ( evaluate, evaluateValue, referencesForDistribution
     , FQN, Reference(..)
-    , evaluateValue, referencesForDistribution
     )
 
 {-| This module contains an interpreter for Morphir expressions. The interpreter takes a piece of logic as input,
 evaluates it and returns the resulting data. In Morphir both logic and data is captured as a `Value` so the interpreter
 takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
-@docs evaluate
+@docs evaluate, evaluateValue, referencesForDistribution
 
 
 # Utilities
