@@ -1,138 +1,173 @@
-{-
-Copyright 2020 Morgan Stanley
+module Morphir.SDK.Number exposing
+    ( Number(..)
+    , equal, notEqual
+    , add, divide, fromInt, zero
+    )
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+{-| This module provides a way to represent a number without the risk of rounding issues or division by zero for any of
+the basic operations: `+`, `-`, `*`, `/`. More accurately a `Number` represents an arbitrary-precision rational number.
+If you need irrational numbers please use a `Float`.
 
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--}
+@docs Number
 
 
-module Morphir.SDK.Number exposing (..)
+# Comparison
 
-{-| Basic operations on numbers.
--}
-
-
-{-| Add two numbers. The `number` type variable means this operation can be
-specialized to `Int -> Int -> Int` or to `Float -> Float -> Float`. So you
-can do things like this:
-
-    3002 + 4004 == 7006 -- all ints
-
-    3.14 + 3.14 == 6.28 -- all floats
-
-You _cannot_ add an `Int` and a `Float` directly though. Use functions like
-[toFloat](#toFloat) or [round](#round) to convert both values to the same type.
-So if you needed to add a list length to a `Float` for some reason, you
-could say one of these:
-
-    3.14 + toFloat (List.length [ 1, 2, 3 ]) == 6.14
-
-    round 3.14 + List.length [ 1, 2, 3 ] == 6
-
-**Note:** Languages like Java and JavaScript automatically convert `Int` values
-to `Float` values when you mix and match. This can make it difficult to be sure
-exactly what type of number you are dealing with. When you try to _infer_ these
-conversions (as Scala does) it can be even more confusing. Elm has opted for a
-design that makes all conversions explicit.
+@docs equal, notEqual
 
 -}
-add : number -> number -> number
-add =
-    (+)
+
+import BigInt exposing (BigInt)
+import Decimal as D
+import Morphir.SDK.Decimal exposing (Decimal)
 
 
-{-| Subtract numbers like `4 - 3 == 1`.
+{-| Represents an arbitrary-precision rational number.
+-}
+type Number
+    = Rational BigInt BigInt
 
-See [`add`](#+) for docs on the `number` type variable.
+
+type DivisionByZero
+    = DivisionByZero
+
+
+fromInt : Int -> Number
+fromInt int =
+    Rational (BigInt.fromInt int) (BigInt.fromInt 1)
+
+
+{-| Turn a number into a decimal.
+-}
+toDecimal : Number -> Decimal
+toDecimal (Rational nominator denominator) =
+    Maybe.map2
+        (/)
+        (nominator |> BigInt.toString |> String.toFloat)
+        (denominator |> BigInt.toString |> String.toFloat)
+        |> Maybe.andThen Morphir.SDK.Decimal.fromFloat
+        |> Maybe.withDefault (Morphir.SDK.Decimal.fromInt 0)
+
+
+{-| Checks if two numbers are equal.
+
+    equal one one == True
+
+    equal one (divide ten ten) == True
+
+    equal one zero == False
 
 -}
-subtract : number -> number -> number
-subtract =
-    (-)
+equal : Number -> Number -> Bool
+equal =
+    compareWith (==)
 
 
-{-| Multiply numbers like `2 * 3 == 6`.
-
-See [`add`](#+) for docs on the `number` type variable.
-
--}
-multiply : number -> number -> number
-multiply =
-    (*)
+notEqual : Number -> Number -> Bool
+notEqual =
+    compareWith (/=)
 
 
-{-| Exponentiation
-
-    3 ^ 2 == 9
-
-    3 ^ 3 == 27
-
--}
-pow : number -> number -> number
-pow =
-    (^)
+lessThan : Number -> Number -> Bool
+lessThan =
+    compareWith BigInt.lt
 
 
-{-| Negate a number.
-
-    negate 42 == -42
-
-    negate -42 == 42
-
-    negate 0 == 0
-
--}
-negate : number -> number
-negate n =
-    -n
+lessThanOrEqual : Number -> Number -> Bool
+lessThanOrEqual =
+    compareWith BigInt.lte
 
 
-{-| Get the [absolute value][abs] of a number.
-
-    abs 16 == 16
-
-    abs -4 == 4
-
-    abs -8.5 == 8.5
-
-    abs 3.14 == 3.14
-
-[abs]: https://en.wikipedia.org/wiki/Absolute_value
-
--}
-abs : number -> number
-abs n =
-    if lt n 0 then
-        -n
-
-    else
-        n
+greaterThan : Number -> Number -> Bool
+greaterThan =
+    compareWith BigInt.gt
 
 
-{-| Clamps a number within a given range. With the expression
-`clamp 100 200 x` the results are as follows:
+greaterThanOrEqual : Number -> Number -> Bool
+greaterThanOrEqual =
+    compareWith BigInt.gte
 
-    100     if x < 100
-     x      if 100 <= x < 200
-    200     if 200 <= x
 
--}
-clamp : number -> number -> number -> number
-clamp low high number =
-    if lt number low then
-        low
+compareWith : (BigInt -> BigInt -> a) -> Number -> Number -> a
+compareWith f (Rational a b) (Rational c d) =
+    f
+        (BigInt.mul a d)
+        (BigInt.mul b c)
 
-    else if gt number high then
-        high
 
-    else
+negate : Number -> Number
+negate (Rational a b) =
+    Rational
+        (BigInt.negate a)
+        b
+
+
+reciprocal : Number -> Number
+reciprocal ((Rational nominator denominator) as number) =
+    if isZero number then
         number
+
+    else
+        Rational
+            denominator
+            nominator
+
+
+add : Number -> Number -> Number
+add (Rational a b) (Rational c d) =
+    Rational
+        (BigInt.add
+            (BigInt.mul a d)
+            (BigInt.mul b c)
+        )
+        (BigInt.mul b d)
+
+
+subtract : Number -> Number -> Number
+subtract (Rational a b) (Rational c d) =
+    Rational
+        (BigInt.sub
+            (BigInt.mul a d)
+            (BigInt.mul b c)
+        )
+        (BigInt.mul b d)
+
+
+multiply : Number -> Number -> Number
+multiply (Rational a b) (Rational c d) =
+    Rational
+        (BigInt.mul a c)
+        (BigInt.mul b d)
+
+
+divide : Number -> Number -> Result DivisionByZero Number
+divide (Rational a b) ((Rational c d) as denominator) =
+    if isZero denominator then
+        Err DivisionByZero
+
+    else
+        Ok
+            (Rational
+                (BigInt.mul a d)
+                (BigInt.mul b c)
+            )
+
+
+isZero : Number -> Bool
+isZero (Rational nominator _) =
+    nominator == BigInt.fromInt 0
+
+
+zero : Number
+zero =
+    Rational (BigInt.fromInt 0) (BigInt.fromInt 1)
+
+
+one : Number
+one =
+    Rational (BigInt.fromInt 1) (BigInt.fromInt 1)
+
+
+ten : Number
+ten =
+    Rational (BigInt.fromInt 10) (BigInt.fromInt 1)
