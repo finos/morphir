@@ -36,6 +36,13 @@ app.get('/server/morphir.json', wrap(async (req, res, next) => {
   res.send(morphirJson)
 }))
 
+app.get('/server/morphir-ir.json', wrap(async (req, res, next) => {
+  const morphirJsonPath = path.join(program.projectDir, 'morphir-ir.json')
+  const morphirJsonContent = await readFile(morphirJsonPath)
+  const morphirJson = JSON.parse(morphirJsonContent.toString())
+  res.send(morphirJson)
+}))
+
 app.get('/server/make', (req, res) => {
   cli.make(program.projectDir)
     .then((packageDef) => {
