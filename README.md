@@ -154,6 +154,8 @@ structure follows the structure of the IR. Here's a list of concepts in a top-do
 
 ## Contributing
 
+[Contribution Guide](docs/contribution-guide.md)
+
 1. Fork it (<https://github.com/finos/morphir-elm/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
 3. Read our [contribution guidelines](CONTRIBUTING.md) and [Community Code of Conduct](https://www.finos.org/code-of-conduct)
