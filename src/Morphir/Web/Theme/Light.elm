@@ -39,6 +39,8 @@ theme scaled =
                 , paddingXY 0 (scaled (3 - level))
                 ]
                 (text label)
+    , highlightColor =
+        blue
     }
 
 
