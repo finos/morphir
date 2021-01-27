@@ -61,6 +61,8 @@ type DivisionByZero
     = DivisionByZero
 
 
+{-| Create a Number by converting it from an Int
+-}
 fromInt : Int -> Number
 fromInt int =
     Rational (BigInt.fromInt int) (BigInt.fromInt 1)
