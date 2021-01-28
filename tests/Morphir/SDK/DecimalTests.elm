@@ -19,13 +19,14 @@ module Morphir.SDK.DecimalTests exposing (..)
 import Decimal as D
 import Expect
 import Fuzz exposing (..)
+import Morphir.FuzzEx exposing (..)
 import Morphir.SDK.Decimal as Decimal exposing (..)
 import Test exposing (..)
 
 
 decimal : Fuzzer Decimal
 decimal =
-    Fuzz.map2 D.fromIntWithExponent int (intRange -20 20)
+    float |> Fuzz.map Decimal.fromFloat
 
 
 absTests : Test
@@ -115,13 +116,9 @@ fromStringTests =
         , test "non-number" <|
             \_ ->
                 Expect.equal (Decimal.fromString "esdf") Nothing
-        , fuzz2 int int "exponent" <|
-            \a b ->
-                Expect.equal (Decimal.fromString <| String.fromInt a ++ "e" ++ String.fromInt b)
-                    (Just <| D.fromIntWithExponent a b)
         , test "decimal" <|
             \_ ->
-                Expect.equal (Decimal.fromString "1.1") (Just <| D.fromIntWithExponent 11 -1)
+                Expect.equal (Decimal.fromString "1.1") (Just <| D.fromFloat 1.1)
         ]
 
 
@@ -130,22 +127,22 @@ fromFloatTests =
     describe "Decimal.fromFloat"
         [ test "positive float" <|
             \_ ->
-                Expect.equal (Decimal.fromFloat 1) (Just <| Decimal.fromInt 1)
+                Expect.equal (Decimal.fromFloat 1) (Decimal.fromInt 1)
         , test "negative float" <|
             \_ ->
-                Expect.equal (Decimal.fromFloat -1) (Just <| Decimal.fromInt -1)
+                Expect.equal (Decimal.fromFloat -1) (Decimal.fromInt -1)
         , test "zero" <|
             \_ ->
-                Expect.equal (Decimal.fromFloat 0) (Just <| Decimal.fromInt 0)
+                Expect.equal (Decimal.fromFloat 0) (Decimal.fromInt 0)
         , test "decimal" <|
             \_ ->
-                Expect.equal (Decimal.fromFloat 3.3) (Decimal.fromString "3.3")
+                Expect.equal (Decimal.fromFloat 3.3) (Decimal.fromInt 33 |> Decimal.shiftDecimalLeft 1)
         , test "exponent" <|
             \_ ->
-                Expect.equal (Decimal.fromFloat 1.1e0) (Decimal.fromString "1.1e0")
+                Expect.equal (Decimal.fromFloat 1.1e0) (Decimal.fromInt 11 |> Decimal.shiftDecimalLeft 1)
         , fuzz float "equivalent to fromString" <|
             \a ->
-                Expect.equal (Decimal.fromFloat a) (Decimal.fromString <| String.fromFloat a)
+                Expect.equal (Decimal.fromFloat a) ((Decimal.fromString <| String.fromFloat a) |> Maybe.withDefault Decimal.zero)
         ]
 
 
@@ -190,16 +187,16 @@ tenthTests =
     describe "Decimal.tenth"
         [ test "positive integer" <|
             \_ ->
-                Decimal.tenth 1000 |> Decimal.toString |> Expect.equal "100.0"
+                Decimal.tenth 1000 |> Expect.equal (Decimal.fromInt 100)
         , test "small positive integer" <|
             \_ ->
-                Decimal.tenth 10 |> Decimal.toString |> Expect.equal "1.0"
+                Decimal.tenth 10 |> Expect.equal (Decimal.fromFloat 1.0)
         , test "negative integer" <|
             \_ ->
-                Decimal.tenth -1000 |> Decimal.toString |> Expect.equal "-100.0"
+                Decimal.tenth -1000 |> Expect.equal (Decimal.fromFloat -100.0)
         , test "small negative integer" <|
             \_ ->
-                Decimal.tenth -50 |> Decimal.toString |> Expect.equal "-5.0"
+                Decimal.tenth -50 |> Expect.equal (Decimal.fromFloat -5.0)
         ]
 
 
@@ -208,16 +205,16 @@ hundredthTests =
     describe "Decimal.hundredth"
         [ test "positive integer" <|
             \_ ->
-                Decimal.hundredth 100 |> Decimal.toString |> Expect.equal "1.00"
+                Decimal.hundredth 100 |> Expect.equal (Decimal.fromFloat 1.0)
         , test "small positive integer" <|
             \_ ->
-                Decimal.hundredth 10 |> Decimal.toString |> Expect.equal "0.10"
+                Decimal.hundredth 10 |> Expect.equal (Decimal.fromFloat 0.1)
         , test "negative integer" <|
             \_ ->
-                Decimal.hundredth -1000 |> Decimal.toString |> Expect.equal "-10.00"
+                Decimal.hundredth -1000 |> Expect.equal (Decimal.fromFloat -10.0)
         , test "small negative integer" <|
             \_ ->
-                Decimal.hundredth -50 |> Decimal.toString |> Expect.equal "-0.50"
+                Decimal.hundredth -50 |> Expect.equal (Decimal.fromFloat -0.5)
         ]
 
 
@@ -226,16 +223,16 @@ bpsTests =
     describe "Decimal.bps"
         [ test "positive integer" <|
             \_ ->
-                Decimal.bps 10000 |> Decimal.toString |> Expect.equal "1.0000"
+                Decimal.bps 10001 |> Expect.equal (Decimal.fromFloat 1.0001)
         , test "small positive integer" <|
             \_ ->
                 Decimal.bps 2 |> Decimal.toString |> Expect.equal "0.0002"
         , test "negative integer" <|
             \_ ->
-                Decimal.bps -100000 |> Decimal.toString |> Expect.equal "-10.0000"
+                Decimal.bps -100001 |> Expect.equal (Decimal.fromFloat -10.0001)
         , test "small negative integer" <|
             \_ ->
-                Decimal.bps -5 |> Decimal.toString |> Expect.equal "-0.0005"
+                Decimal.bps -5 |> Expect.equal (Decimal.fromFloat -0.0005)
         ]
 
 
@@ -244,10 +241,10 @@ millionthTests =
     describe "Decimal.millionth"
         [ test "positive integer" <|
             \_ ->
-                Decimal.millionth 1000000 |> Decimal.toString |> Expect.equal "1.000000"
+                Decimal.millionth 1000000 |> Expect.equal (Decimal.fromFloat 1.0)
         , test "negative integer" <|
             \_ ->
-                Decimal.millionth -10000000 |> Decimal.toString |> Expect.equal "-10.000000"
+                Decimal.millionth -10000000 |> Expect.equal (Decimal.fromFloat -10.0)
         ]
 
 
@@ -265,7 +262,7 @@ toStringTests =
                 Expect.equal "-1" (Decimal.toString <| Decimal.fromInt -1)
         , test "decimal" <|
             \_ ->
-                Expect.equal "-1234.5678" (Decimal.toString <| D.fromIntWithExponent -12345678 -4)
+                Expect.equal "-1234.5678" (Decimal.toString <| D.fromFloat -1234.5678)
         ]
 
 
@@ -296,3 +293,44 @@ notEqualTests =
                 Expect.false "Expected the same value to be equal" <|
                     Decimal.neq a a
         ]
+
+
+shiftDecimalLeftTests : Test
+shiftDecimalLeftTests =
+    describe "Decimal.shiftDecimalLeft"
+        [ test "shift left for a whole number" <|
+            \_ ->
+                Decimal.fromInt 314
+                    |> Decimal.shiftDecimalLeft 2
+                    |> expectEqual (Decimal.fromFloat 3.14)
+        , test "shift left for a decimal number" <|
+            \_ ->
+                Decimal.fromFloat 199.95
+                    |> Decimal.shiftDecimalLeft 2
+                    |> expectEqual (Decimal.fromFloat 1.9995)
+        ]
+
+
+shiftDecimalRightTests : Test
+shiftDecimalRightTests =
+    describe "Decimal.shiftDecimalRightTests"
+        [ test "shift left for a whole number" <|
+            \_ ->
+                Decimal.fromInt 314
+                    |> Decimal.shiftDecimalRight 3
+                    |> expectEqual (Decimal.fromFloat 314000)
+        , test "shift left for a decimal number" <|
+            \_ ->
+                Decimal.fromFloat 199.95
+                    |> Decimal.shiftDecimalRight 1
+                    |> expectEqual (Decimal.fromFloat 1999.5)
+        ]
+
+
+expectEqual : Decimal -> Decimal -> Expect.Expectation
+expectEqual a b =
+    if Decimal.eq a b then
+        Expect.pass
+
+    else
+        [ Decimal.toString a, Decimal.toString b ] |> String.join " Expect.equal " |> Expect.fail

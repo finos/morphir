@@ -3,7 +3,7 @@ module Morphir.SDK.Number exposing
     , fromInt
     , equal, notEqual, lessThan, lessThanOrEqual, greaterThan, greaterThanOrEqual
     , add, subtract, multiply, divide, abs, negate, reciprocal
-    , toFractionalString, toDecimal
+    , toFractionalString, toDecimal, coerceToDecimal
     , simplify, isSimplified
     , zero, one
     )
@@ -32,7 +32,7 @@ If you need irrational numbers please use a `Float`.
 
 # Convert to
 
-@docs toFractionalString, toDecimal
+@docs toFractionalString, toDecimal, coerceToDecimal
 
 
 # Misc
@@ -47,8 +47,7 @@ If you need irrational numbers please use a `Float`.
 -}
 
 import BigInt as BigInt exposing (BigInt)
-import Decimal as D
-import Morphir.SDK.Decimal exposing (Decimal)
+import Morphir.SDK.Decimal as Decimal exposing (Decimal)
 
 
 {-| Represents an arbitrary-precision rational number.
@@ -69,15 +68,30 @@ fromInt int =
 
 
 {-| Turn a number into a decimal.
+NOTE: it is possible for this operation to fail if the Number is a rational number for 0.
 -}
-toDecimal : Number -> Decimal
+toDecimal : Number -> Maybe Decimal
 toDecimal (Rational nominator denominator) =
+    let
+        div_ ( n, d ) =
+            Decimal.div n d
+    in
     Maybe.map2
-        (/)
-        (nominator |> BigInt.toString |> String.toFloat)
-        (denominator |> BigInt.toString |> String.toFloat)
-        |> Maybe.andThen Morphir.SDK.Decimal.fromFloat
-        |> Maybe.withDefault (Morphir.SDK.Decimal.fromInt 0)
+        Tuple.pair
+        (nominator |> BigInt.toString |> Decimal.fromString)
+        (denominator |> BigInt.toString |> Decimal.fromString)
+        |> Maybe.andThen div_
+
+
+{-| Turn a number into a decimal, by providing a default value in the case things go awry.
+-}
+coerceToDecimal : Decimal -> Number -> Decimal
+coerceToDecimal default (Rational nominator denominator) =
+    Maybe.map2
+        (Decimal.divWithDefault default)
+        (nominator |> BigInt.toString |> Decimal.fromString)
+        (denominator |> BigInt.toString |> Decimal.fromString)
+        |> Maybe.withDefault default
 
 
 {-| Checks if two numbers are equal.
