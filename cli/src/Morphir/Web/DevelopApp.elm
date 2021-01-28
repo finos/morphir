@@ -12,6 +12,7 @@ import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Web.Theme exposing (Theme)
 import Morphir.Web.Theme.Light as Light
@@ -79,6 +80,7 @@ type Msg
     | UrlChanged Url.Url
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
+    | ExpandReference FQN Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -106,6 +108,9 @@ update msg model =
             ( { model | irState = IRLoaded distribution }
             , Cmd.none
             )
+
+        ExpandReference fqn bool ->
+            ( model, Cmd.none )
 
 
 
@@ -330,4 +335,4 @@ viewValue distribution valueDef argValues =
                     )
                 |> Dict.fromList
     in
-    ViewValue.viewDefinition distribution valueDef validArgValues
+    ViewValue.viewDefinition distribution valueDef validArgValues ExpandReference Dict.empty
