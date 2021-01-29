@@ -17,7 +17,7 @@ import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Web.Theme exposing (Theme)
 import Morphir.Web.Theme.Light as Light
 import Url exposing (Url)
-import Url.Parser as UrlParser
+import Url.Parser as UrlParser exposing ((</>))
 
 
 
@@ -136,7 +136,8 @@ routeParser : UrlParser.Parser (Route -> a) a
 routeParser =
     UrlParser.oneOf
         [ UrlParser.map Home UrlParser.top
-        , UrlParser.map Module (UrlParser.string |> UrlParser.map (String.split "."))
+        , UrlParser.map Module (UrlParser.s "module" </> (UrlParser.string |> UrlParser.map (String.split ".")))
+        , UrlParser.map (always Home) UrlParser.string
         ]
 
 
@@ -205,7 +206,7 @@ viewHeader model =
                 [ image
                     [ height (px 50)
                     ]
-                    { src = "assets/2020_Morphir_Logo_Icon_WHT.svg"
+                    { src = "/assets/2020_Morphir_Logo_Icon_WHT.svg"
                     , description = "Morphir Logo"
                     }
                 , el [ paddingXY 10 0 ]
@@ -240,7 +241,7 @@ viewBody model =
                                 (\( moduleName, accessControlledModuleDef ) ->
                                     link [ Font.size 18 ]
                                         { url =
-                                            "/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
+                                            "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
                                         , label =
                                             moduleName
                                                 |> List.map (Name.toHumanWords >> String.join " ")
