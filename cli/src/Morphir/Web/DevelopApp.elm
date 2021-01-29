@@ -14,6 +14,7 @@ import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme exposing (Theme)
@@ -83,6 +84,7 @@ type Msg
     | UrlChanged Url.Url
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
+    | ExpandReference FQN Bool
     | ValueFilterChanged String
 
 
@@ -134,6 +136,9 @@ update msg model =
             ( { model | route = newRoute }
             , cmd
             )
+
+        ExpandReference fqn bool ->
+            ( model, Cmd.none )
 
 
 
@@ -469,7 +474,7 @@ viewValue distribution valueDef argValues =
                     )
                 |> Dict.fromList
     in
-    ViewValue.viewDefinition distribution valueDef validArgValues
+    ViewValue.viewDefinition distribution valueDef validArgValues ExpandReference Dict.empty
 
 
 viewAsCard : String -> Element msg -> Element msg

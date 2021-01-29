@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewLetDefinition exposing (..)
 
 import Element exposing (Element, column, el, moveRight, spacing, text)
-import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Visual.Common exposing (nameToText)
