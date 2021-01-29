@@ -1,9 +1,9 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, spacing, text)
-import Element.Background
-import Element.Border
+import Element exposing (Element, el, fill, rgb, spacing, text, width)
+import Element.Background as Background
+import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font exposing (..)
 import Morphir.IR.Distribution exposing (Distribution)
@@ -14,7 +14,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
-import Morphir.Visual.Common exposing (cssClass, nameToText)
+import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Context as Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -25,6 +25,7 @@ import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
+import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme.Light exposing (gray)
 
 
@@ -61,9 +62,9 @@ viewDefinition distribution valueDef variables onReferenceClicked expandedFuncti
                                         (viewValue ctx Dict.empty valDef.body)
                                     , Element.column
                                         [ Font.bold
-                                        , Element.Border.solid
-                                        , Element.Border.rounded 5
-                                        , Element.Background.color gray
+                                        , Border.solid
+                                        , Border.rounded 5
+                                        , Background.color gray
                                         , Element.padding 10
                                         , onClick (ctx.onReferenceClicked fqName True)
                                         ]
@@ -154,8 +155,24 @@ viewValueByLanguageFeature ctx argumentValues value =
         Value.IfThenElse _ _ _ _ ->
             ViewIfThenElse.view ctx (viewValue ctx argumentValues) value Dict.empty
 
-        _ ->
-            Element.paragraph
-                [ cssClass "todo"
+        other ->
+            Element.column
+                [ Background.color (rgb 1 0.6 0.6)
+                , Element.padding 5
+                , Border.rounded 3
                 ]
-                [ Element.text "???" ]
+                [ Element.el
+                    [ Element.padding 5
+                    , Font.bold
+
+                    --, Font.color (rgb 1 1 1)
+                    ]
+                    (Element.text "No visual mapping found for:")
+                , Element.el
+                    [ Background.color (rgb 1 1 1)
+                    , Element.padding 5
+                    , Border.rounded 3
+                    , width fill
+                    ]
+                    (XRayView.viewValue other)
+                ]

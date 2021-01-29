@@ -3,9 +3,11 @@ module Morphir.Web.DevelopApp exposing (..)
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, height, image, layout, link, padding, paddingEach, paddingXY, px, row, spacing, text, width)
+import Element exposing (Element, alignTop, column, el, fill, height, image, layout, link, minimum, padding, paddingEach, paddingXY, paragraph, px, rgb, row, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
-import Element.Font as Font
+import Element.Border as Border
+import Element.Font as Font exposing (center)
+import Element.Input as Input exposing (labelHidden, labelLeft)
 import Http
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -14,10 +16,12 @@ import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.ViewValue as ViewValue
+import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme exposing (Theme)
 import Morphir.Web.Theme.Light as Light
 import Url exposing (Url)
-import Url.Parser as UrlParser exposing ((</>))
+import Url.Parser as UrlParser exposing ((</>), (<?>))
+import Url.Parser.Query as Query
 
 
 
@@ -81,6 +85,7 @@ type Msg
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
     | ExpandReference FQN Bool
+    | ValueFilterChanged String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -109,6 +114,29 @@ update msg model =
             , Cmd.none
             )
 
+        ValueFilterChanged filterString ->
+            let
+                newRoute =
+                    case model.route of
+                        Module moduleName _ viewType ->
+                            Module moduleName (Just filterString) viewType
+
+                        _ ->
+                            model.route
+
+                cmd =
+                    case model.route of
+                        Module moduleName filter viewType ->
+                            Nav.pushUrl model.key
+                                (makeURL moduleName (Just filterString) viewType)
+
+                        _ ->
+                            Cmd.none
+            in
+            ( { model | route = newRoute }
+            , cmd
+            )
+
         ExpandReference fqn bool ->
             ( model, Cmd.none )
 
@@ -128,15 +156,49 @@ subscriptions _ =
 
 type Route
     = Home
-    | Module (List String)
+    | Module (List String) (Maybe String) ViewType
     | NotFound
+
+
+type ViewType
+    = RawIRView
+    | InsightView
+
+
+viewTypeFromString : String -> ViewType
+viewTypeFromString string =
+    case string of
+        "insight" ->
+            InsightView
+
+        _ ->
+            RawIRView
 
 
 routeParser : UrlParser.Parser (Route -> a) a
 routeParser =
     UrlParser.oneOf
         [ UrlParser.map Home UrlParser.top
-        , UrlParser.map Module (UrlParser.s "module" </> (UrlParser.string |> UrlParser.map (String.split ".")))
+        , UrlParser.map
+            (\moduleName filter viewType ->
+                Module moduleName
+                    (filter
+                        |> Maybe.map
+                            (\filterString ->
+                                if String.endsWith "*" filterString then
+                                    filterString |> String.dropRight 1
+
+                                else
+                                    filterString
+                            )
+                    )
+                    viewType
+            )
+            (UrlParser.s "module"
+                </> (UrlParser.string |> UrlParser.map (String.split "."))
+                <?> Query.string "filter"
+                <?> (Query.string "view" |> Query.map (Maybe.map viewTypeFromString >> Maybe.withDefault RawIRView))
+            )
         , UrlParser.map (always Home) UrlParser.string
         ]
 
@@ -170,7 +232,7 @@ view model =
                 [ width fill
                 ]
                 [ viewHeader model
-                , viewBody model
+                , el [ padding 5 ] (viewBody model)
                 ]
             )
         ]
@@ -183,7 +245,7 @@ viewTitle model =
         Home ->
             "Morphir - Home"
 
-        Module moduleName ->
+        Module moduleName _ _ ->
             "Morphir - " ++ (moduleName |> String.join " / ")
 
         NotFound ->
@@ -231,58 +293,78 @@ viewBody model =
             in
             case model.route of
                 Home ->
-                    column
-                        [ padding 10
-                        , spacing 10
-                        ]
-                        (packageDef.modules
-                            |> Dict.toList
-                            |> List.map
-                                (\( moduleName, accessControlledModuleDef ) ->
-                                    link [ Font.size 18 ]
-                                        { url =
-                                            "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
-                                        , label =
-                                            moduleName
-                                                |> List.map (Name.toHumanWords >> String.join " ")
-                                                |> String.join " / "
-                                                |> text
-                                        }
-                                )
+                    viewAsCard "Modules"
+                        (column
+                            [ padding 10
+                            , spacing 10
+                            ]
+                            (packageDef.modules
+                                |> Dict.toList
+                                |> List.map
+                                    (\( moduleName, accessControlledModuleDef ) ->
+                                        link []
+                                            { url =
+                                                "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
+                                            , label =
+                                                moduleName
+                                                    |> List.map (Name.toHumanWords >> String.join " ")
+                                                    |> String.join " / "
+                                                    |> text
+                                            }
+                                    )
+                            )
                         )
 
-                Module moduleName ->
+                Module moduleName filterString viewType ->
                     case packageDef.modules |> Dict.get (moduleName |> List.map Name.fromString) of
                         Just accessControlledModuleDef ->
                             column
-                                [ padding 10
-                                , spacing 30
+                                [ spacing (scaled 4)
                                 ]
-                                [ link [ Font.size 18 ]
-                                    { url =
-                                        "/"
-                                    , label = text "< Back to modules"
-                                    }
-                                , column [ spacing 30 ]
+                                [ viewModuleControls moduleName filterString viewType
+                                , wrappedRow [ spacing (scaled 4) ]
                                     (accessControlledModuleDef.value.values
                                         |> Dict.toList
-                                        |> List.concatMap
+                                        |> List.filterMap
                                             (\( valueName, accessControlledValueDef ) ->
-                                                [ el [ Font.size 18 ]
-                                                    (valueName
-                                                        |> Name.toHumanWords
-                                                        |> String.join " "
-                                                        |> text
-                                                    )
-                                                , el
-                                                    [ paddingEach { left = 20, right = 0, top = 0, bottom = 0 }
-                                                    ]
-                                                    (viewValue
-                                                        distribution
-                                                        accessControlledValueDef.value
-                                                        Dict.empty
-                                                    )
-                                                ]
+                                                let
+                                                    matchesFilter =
+                                                        case filterString of
+                                                            Just filter ->
+                                                                String.contains
+                                                                    (filter |> String.toLower)
+                                                                    (valueName
+                                                                        |> Name.toHumanWords
+                                                                        |> List.map String.toLower
+                                                                        |> String.join " "
+                                                                    )
+
+                                                            Nothing ->
+                                                                True
+                                                in
+                                                if matchesFilter then
+                                                    Just
+                                                        (el [ alignTop ]
+                                                            (viewAsCard
+                                                                (valueName
+                                                                    |> Name.toHumanWords
+                                                                    |> String.join " "
+                                                                )
+                                                                (case viewType of
+                                                                    InsightView ->
+                                                                        viewValue
+                                                                            distribution
+                                                                            accessControlledValueDef.value
+                                                                            Dict.empty
+
+                                                                    RawIRView ->
+                                                                        XRayView.viewValueDefinition accessControlledValueDef
+                                                                )
+                                                            )
+                                                        )
+
+                                                else
+                                                    Nothing
                                             )
                                     )
                                 ]
@@ -321,6 +403,62 @@ httpMakeModel =
         }
 
 
+viewModuleControls : List String -> Maybe String -> ViewType -> Element Msg
+viewModuleControls moduleName filterString viewType =
+    let
+        viewTypeBackground expectedType =
+            if viewType == expectedType then
+                Background.color (rgb 0.8 0.8 0.8)
+
+            else
+                Background.color (rgb 1 1 1)
+    in
+    row
+        [ width fill
+        , spacing (scaled 2)
+        , height shrink
+        ]
+        [ Input.text
+            [ padding 4
+            ]
+            { onChange = ValueFilterChanged
+            , text = filterString |> Maybe.withDefault ""
+            , placeholder = Just (Input.placeholder [] (text "start typing to filter values ..."))
+            , label = labelHidden "filter values"
+            }
+        , el []
+            (row [ spacing 5 ]
+                [ link [ paddingXY 6 4, Border.rounded 3, viewTypeBackground RawIRView ]
+                    { url = makeURL moduleName filterString RawIRView
+                    , label = text "x-ray"
+                    }
+                , text "|"
+                , link [ paddingXY 6 4, Border.rounded 3, viewTypeBackground InsightView ]
+                    { url = makeURL moduleName filterString InsightView
+                    , label = text "insight"
+                    }
+                ]
+            )
+        ]
+
+
+makeURL : List String -> Maybe String -> ViewType -> String
+makeURL moduleName filterString viewType =
+    String.concat
+        [ "/module/"
+        , moduleName |> String.join "."
+        , "?filter="
+        , filterString |> Maybe.withDefault ""
+        , "&view="
+        , case viewType of
+            InsightView ->
+                "insight"
+
+            _ ->
+                "raw"
+        ]
+
+
 viewValue : Distribution -> Value.Definition () (Type ()) -> Dict Name (Result String (Value () ())) -> Element Msg
 viewValue distribution valueDef argValues =
     let
@@ -337,3 +475,35 @@ viewValue distribution valueDef argValues =
                 |> Dict.fromList
     in
     ViewValue.viewDefinition distribution valueDef validArgValues ExpandReference Dict.empty
+
+
+viewAsCard : String -> Element msg -> Element msg
+viewAsCard title content =
+    let
+        gray =
+            rgb 0.9 0.9 0.9
+    in
+    column
+        [ Border.width 3
+        , Border.color gray
+        , Border.rounded 3
+        , height (shrink |> minimum 200)
+        , width (shrink |> minimum 200)
+        ]
+        [ el
+            [ width fill
+            , padding 5
+            , Background.color gray
+            , Font.size (scaled 3)
+            ]
+            (text title)
+        , el [ padding 5 ] content
+        ]
+
+
+noBorderWidth =
+    { top = 0
+    , right = 0
+    , bottom = 0
+    , left = 0
+    }

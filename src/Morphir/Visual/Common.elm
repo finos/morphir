@@ -1,6 +1,6 @@
-module Morphir.Visual.Common exposing (cssClass, element, nameToText)
+module Morphir.Visual.Common exposing (cssClass, element, grayScale, nameToText)
 
-import Element exposing (Attribute, Element, height, shrink, width)
+import Element exposing (Attribute, Color, Element, height, rgb, shrink, width)
 import Html exposing (Html)
 import Html.Attributes exposing (class)
 import Morphir.IR.Name as Name exposing (Name)
@@ -29,3 +29,8 @@ element elem =
         , height shrink
         ]
         elem
+
+
+grayScale : Float -> Color
+grayScale v =
+    rgb v v v
