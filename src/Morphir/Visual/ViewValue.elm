@@ -14,7 +14,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
-import Morphir.Visual.Common exposing (cssClass, nameToText)
+import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Context as Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -62,9 +62,9 @@ viewDefinition distribution valueDef variables onReferenceClicked expandedFuncti
                                         (viewValue ctx Dict.empty valDef.body)
                                     , Element.column
                                         [ Font.bold
-                                        , Element.Border.solid
-                                        , Element.Border.rounded 5
-                                        , Element.Background.color gray
+                                        , Border.solid
+                                        , Border.rounded 5
+                                        , Background.color gray
                                         , Element.padding 10
                                         , onClick (ctx.onReferenceClicked fqName True)
                                         ]
