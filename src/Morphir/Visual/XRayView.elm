@@ -1,4 +1,4 @@
-module Morphir.Visual.XRayView exposing (..)
+module Morphir.Visual.XRayView exposing (NodeType(..), TreeNode(..), childNodes, noPadding, patternToNode, valueToNode, viewConstructorName, viewLiteral, viewPatternAsHeader, viewReferenceName, viewTreeNode, viewValueAsHeader, viewValueDefinition)
 
 import Dict
 import Element exposing (Element, column, el, padding, paddingEach, paddingXY, rgb, row, spacing, text)
@@ -103,7 +103,7 @@ viewValueAsHeader value =
         Value.Constructor _ fQName ->
             header
                 [ nodeLabel "Constructor"
-                , viewFQName fQName
+                , viewConstructorName fQName
                 ]
 
         Value.Tuple _ items ->
@@ -133,7 +133,7 @@ viewValueAsHeader value =
         Value.Reference _ fQName ->
             header
                 [ nodeLabel "Reference"
-                , viewFQName fQName
+                , viewReferenceName fQName
                 ]
 
         Value.Field _ _ fieldName ->
@@ -193,7 +193,7 @@ viewPatternAsHeader pattern =
         Value.ConstructorPattern a fQName _ ->
             header
                 [ nodeLabel "ConstructorPattern"
-                , viewFQName fQName
+                , viewConstructorName fQName
                 ]
 
         Value.EmptyListPattern a ->
@@ -375,7 +375,17 @@ patternToNode maybeTag pattern =
                 []
 
 
-viewFQName (FQName packageName moduleName localName) =
+viewReferenceName (FQName packageName moduleName localName) =
+    text
+        (String.join " "
+            [ packageName |> Path.toString Name.toTitleCase "."
+            , moduleName |> Path.toString Name.toTitleCase "."
+            , localName |> Name.toCamelCase
+            ]
+        )
+
+
+viewConstructorName (FQName packageName moduleName localName) =
     text
         (String.join " "
             [ packageName |> Path.toString Name.toTitleCase "."
