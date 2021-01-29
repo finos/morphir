@@ -1,4 +1,4 @@
-module Morphir.Visual.XRayView exposing (NodeType(..), TreeNode(..), childNodes, noPadding, patternToNode, valueToNode, viewConstructorName, viewLiteral, viewPatternAsHeader, viewReferenceName, viewTreeNode, viewValueAsHeader, viewValueDefinition)
+module Morphir.Visual.XRayView exposing (NodeType(..), TreeNode(..), childNodes, noPadding, patternToNode, valueToNode, viewConstructorName, viewLiteral, viewPatternAsHeader, viewReferenceName, viewTreeNode, viewValue, viewValueAsHeader, viewValueDefinition)
 
 import Dict
 import Element exposing (Element, column, el, padding, paddingEach, paddingXY, rgb, row, spacing, text)
@@ -14,11 +14,16 @@ import Morphir.Visual.Common exposing (grayScale)
 
 
 viewValueDefinition accessControlledValueDef =
+    viewValue accessControlledValueDef.value.body
+
+
+viewValue : Value ta va -> Element msg
+viewValue value =
     el
         [ Font.family [ Font.monospace ]
         , Font.color (grayScale 0.3)
         ]
-        (accessControlledValueDef.value.body
+        (value
             |> valueToNode Nothing
             |> viewTreeNode
         )
@@ -145,6 +150,9 @@ viewValueAsHeader value =
         Value.Apply _ _ _ ->
             header [ nodeLabel "Apply" ]
 
+        Value.Lambda _ _ _ ->
+            header [ nodeLabel "Lambda" ]
+
         Value.LetDefinition _ _ _ _ ->
             header [ nodeLabel "LetDefinition" ]
 
@@ -160,8 +168,11 @@ viewValueAsHeader value =
         Value.PatternMatch _ _ _ ->
             header [ nodeLabel "PatternMatch" ]
 
-        _ ->
-            text "value"
+        Value.UpdateRecord _ _ _ ->
+            header [ nodeLabel "UpdateRecord" ]
+
+        Value.Unit _ ->
+            header [ nodeLabel "Unit" ]
 
 
 viewPatternAsHeader : Pattern va -> Element msg
@@ -258,6 +269,15 @@ valueToNode tag value =
                 (ValueNode value)
                 (funChild :: argsChild)
 
+        Value.Lambda _ arg body ->
+            TreeNode tag
+                (ValueNode value)
+                [ patternToNode
+                    (Just "\\")
+                    arg
+                , valueToNode (Just "->") body
+                ]
+
         Value.LetDefinition _ _ _ _ ->
             let
                 flattenLet : Value ta va -> ( Value ta va, List ( Name, Value.Definition ta va ) )
@@ -308,8 +328,7 @@ valueToNode tag value =
                 [ patternToNode
                     Nothing
                     pattern
-
-                --(valueToNode (Just "=") subject)
+                , valueToNode (Just "=") subject
                 , valueToNode (Just "in") inValue
                 ]
 
@@ -325,14 +344,31 @@ valueToNode tag value =
             TreeNode tag
                 (ValueNode value)
                 (List.concat
-                    [ [ valueToNode Nothing subject ]
+                    [ [ valueToNode (Just "case") subject ]
                     , cases
                         |> List.indexedMap
                             (\index ( casePattern, caseValue ) ->
-                                patternToNode
-                                    (Just (String.join " " [ "case", String.fromInt (index + 1) ]))
+                                [ patternToNode
+                                    Nothing
                                     casePattern
-                             --(valueToNode (Just "->") caseValue)
+                                , valueToNode
+                                    (Just "->")
+                                    caseValue
+                                ]
+                            )
+                        |> List.concat
+                    ]
+                )
+
+        Value.UpdateRecord _ subject fields ->
+            TreeNode tag
+                (ValueNode value)
+                (List.concat
+                    [ [ valueToNode Nothing subject ]
+                    , fields
+                        |> List.map
+                            (\( fieldName, fieldValue ) ->
+                                valueToNode (Just (fieldName |> Name.toCamelCase)) fieldValue
                             )
                     ]
                 )
@@ -350,17 +386,17 @@ patternToNode maybeTag pattern =
                 [ patternToNode Nothing target
                 ]
 
-        Value.ConstructorPattern _ _ args ->
-            TreeNode maybeTag
-                (PatternNode pattern)
-                (args |> List.map (patternToNode Nothing))
-
         Value.TuplePattern _ elems ->
             TreeNode maybeTag
                 (PatternNode pattern)
                 (elems
                     |> List.map (patternToNode Nothing)
                 )
+
+        Value.ConstructorPattern _ _ args ->
+            TreeNode maybeTag
+                (PatternNode pattern)
+                (args |> List.map (patternToNode Nothing))
 
         Value.HeadTailPattern _ head tail ->
             TreeNode maybeTag

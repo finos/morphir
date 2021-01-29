@@ -1,7 +1,9 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, text)
+import Element exposing (Element, el, fill, rgb, text, width)
+import Element.Background as Background
+import Element.Border as Border
 import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name exposing (Name)
@@ -21,6 +23,7 @@ import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
+import Morphir.Visual.XRayView as XRayView
 
 
 viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> Element msg
@@ -112,8 +115,18 @@ viewValueByLanguageFeature ctx argumentValues value =
         Value.IfThenElse _ _ _ _ ->
             ViewIfThenElse.view ctx (viewValue ctx argumentValues) value Dict.empty
 
-        _ ->
-            Element.paragraph
-                [ cssClass "todo"
+        other ->
+            Element.column
+                [ Background.color (rgb 1 0.6 0.6)
+                , Element.padding 5
+                , Border.rounded 3
                 ]
-                [ Element.text "???" ]
+                [ Element.el [ Element.padding 5 ] (Element.text "No visual mapping found:")
+                , Element.el
+                    [ Background.color (rgb 1 1 1)
+                    , Element.padding 5
+                    , Border.rounded 3
+                    , width fill
+                    ]
+                    (XRayView.viewValue other)
+                ]
