@@ -4,6 +4,7 @@ import Dict exposing (Dict)
 import Element exposing (Element, el, fill, rgb, text, width)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name exposing (Name)
@@ -121,7 +122,13 @@ viewValueByLanguageFeature ctx argumentValues value =
                 , Element.padding 5
                 , Border.rounded 3
                 ]
-                [ Element.el [ Element.padding 5 ] (Element.text "No visual mapping found:")
+                [ Element.el
+                    [ Element.padding 5
+                    , Font.bold
+
+                    --, Font.color (rgb 1 1 1)
+                    ]
+                    (Element.text "No visual mapping found for:")
                 , Element.el
                     [ Background.color (rgb 1 1 1)
                     , Element.padding 5

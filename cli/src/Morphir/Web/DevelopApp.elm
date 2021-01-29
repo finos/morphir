@@ -124,9 +124,9 @@ update msg model =
 
                 cmd =
                     case model.route of
-                        Module moduleName _ _ ->
+                        Module moduleName filter viewType ->
                             Nav.pushUrl model.key
-                                (String.concat [ "/module/", moduleName |> String.join ".", "?filter=", filterString, "*" ])
+                                (makeURL moduleName (Just filterString) viewType)
 
                         _ ->
                             Cmd.none
