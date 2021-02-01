@@ -38,9 +38,11 @@ moduleSpec =
         Dict.fromList
             [ ( Name.fromString "Result"
               , CustomTypeSpecification [ Name.fromString "e", Name.fromString "a" ]
-                    [ Type.Constructor (Name.fromString "Ok") [ ( Name.fromString "value", Type.Variable () (Name.fromString "a") ) ]
-                    , Type.Constructor (Name.fromString "Err") [ ( Name.fromString "error", Type.Variable () (Name.fromString "e") ) ]
-                    ]
+                    (Dict.fromList
+                        [ ( Name.fromString "Ok", [ ( Name.fromString "value", Type.Variable () (Name.fromString "a") ) ] )
+                        , ( Name.fromString "Err", [ ( Name.fromString "error", Type.Variable () (Name.fromString "e") ) ] )
+                        ]
+                    )
                     |> Documented "Type that represents the result of a computation that can either succeed or fail."
               )
             ]

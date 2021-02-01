@@ -694,10 +694,11 @@ mapDeclarationsToType sourceFile expose decls =
                                             ctorArgsResult
                                                 |> Result.map
                                                     (\ctorArgs ->
-                                                        Type.Constructor ctorName ctorArgs
+                                                        ( ctorName, ctorArgs )
                                                     )
                                         )
                                     |> ListOfResults.liftAllErrors
+                                    |> Result.map Dict.fromList
                                     |> Result.mapError List.concat
 
                             doc =

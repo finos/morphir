@@ -38,9 +38,11 @@ moduleSpec =
         Dict.fromList
             [ ( Name.fromString "Maybe"
               , CustomTypeSpecification [ Name.fromString "a" ]
-                    [ Type.Constructor (Name.fromString "Just") [ ( [ "value" ], Type.Variable () (Name.fromString "a") ) ]
-                    , Type.Constructor (Name.fromString "Nothing") []
-                    ]
+                    (Dict.fromList
+                        [ ( Name.fromString "Just", [ ( [ "value" ], Type.Variable () (Name.fromString "a") ) ] )
+                        , ( Name.fromString "Nothing", [] )
+                        ]
+                    )
                     |> Documented "Type that represents an optional value."
               )
             ]

@@ -43,10 +43,12 @@ moduleSpec =
             , ( Name.fromString "Float", OpaqueTypeSpecification [] |> Documented "Type that represents a floating-point number." )
             , ( Name.fromString "Order"
               , CustomTypeSpecification []
-                    [ Type.Constructor (Name.fromString "LT") []
-                    , Type.Constructor (Name.fromString "EQ") []
-                    , Type.Constructor (Name.fromString "GT") []
-                    ]
+                    (Dict.fromList
+                        [ ( Name.fromString "LT", [] )
+                        , ( Name.fromString "EQ", [] )
+                        , ( Name.fromString "GT", [] )
+                        ]
+                    )
                     |> Documented "Represents the relative ordering of two things. The relations are less than, equal to, and greater than."
               )
             , ( Name.fromString "Bool", OpaqueTypeSpecification [] |> Documented "Type that represents a boolean value." )

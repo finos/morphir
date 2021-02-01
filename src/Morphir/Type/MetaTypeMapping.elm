@@ -35,15 +35,12 @@ lookupConstructor baseVar refs ((FQName packageName moduleName localName) as fQN
                         (\( typeName, typeSpec ) ->
                             case typeSpec.value of
                                 Type.CustomTypeSpecification paramNames ctors ->
-                                    ctors
-                                        |> List.filterMap
-                                            (\(Type.Constructor ctorName ctorArgs) ->
-                                                if ctorName == localName then
-                                                    Just (ctorToMetaType baseVar refs (MetaRef (FQName packageName moduleName typeName)) paramNames (ctorArgs |> List.map Tuple.second))
+                                    case ctors |> Dict.get localName of
+                                        Just ctorArgs ->
+                                            [ ctorToMetaType baseVar refs (MetaRef (FQName packageName moduleName typeName)) paramNames (ctorArgs |> List.map Tuple.second) ]
 
-                                                else
-                                                    Nothing
-                                            )
+                                        Nothing ->
+                                            []
 
                                 _ ->
                                     []
