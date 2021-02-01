@@ -1,22 +1,28 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, fill, rgb, spacing, text, width)
+import Element exposing (Element, centerX, column, el, fill, padding, rgb, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font exposing (..)
+import Html exposing (div)
+import Html.Attributes
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.FQName exposing (FQName(..))
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.FQName as FQName exposing (FQName(..))
+import Morphir.IR.Literal as Value exposing (Literal(..))
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
 import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.AbstractTreeVisualizer exposing (outerView, view)
+import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
 import Morphir.Visual.Context as Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
+import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
 import Morphir.Visual.ViewField as ViewField
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
@@ -36,7 +42,7 @@ viewDefinition distribution valueDef variables onReferenceClicked expandedFuncti
         ctx =
             Context.fromDistributionAndVariables distribution variables onReferenceClicked
     in
-    Element.column [ spacing 8 ]
+    Element.column [ spacing 8, width fill, centerX ]
         [ viewValue ctx variables valueDef.body
         , if Dict.isEmpty expandedFunctions then
             Element.none
@@ -96,6 +102,15 @@ viewValueByValueType ctx argumentValues typedValue =
         in
         ViewBoolOperatorTree.view (viewValueByLanguageFeature ctx argumentValues) boolOperatorTree
 
+    else if Basics.isNumber valueType then
+        let
+            arithmeticOperatorTree : ArithmeticOperatorTree
+            arithmeticOperatorTree =
+                ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
+        in
+        ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree
+        -- Element.column [] [ ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree, Element.html (div [ Html.Attributes.style "display" "none", Html.Attributes.style "padding" "10", Html.Attributes.style "background-color" "rgb (50 50 50)", Html.Attributes.style "font-size" "16", Html.Attributes.style "color" "rgb(255 78 185 255)" ] [ outerView [] (parseArithmeticOperatorTree arithmeticOperatorTree) ]) ]
+
     else
         viewValueByLanguageFeature ctx argumentValues typedValue
 
@@ -116,8 +131,11 @@ viewValueByLanguageFeature ctx argumentValues value =
             ViewList.view ctx.distribution (viewValue ctx argumentValues) itemType items
 
         Value.Variable tpe name ->
-            el []
-                (text (nameToText name))
+            row
+                [ spacing 6
+                , centerX
+                ]
+                [ column [] [ text (nameToText name) ] ]
 
         Value.Reference tpe fQName ->
             ViewReference.view ctx (viewValue ctx argumentValues) fQName
@@ -176,3 +194,62 @@ viewValueByLanguageFeature ctx argumentValues value =
                     ]
                     (XRayView.viewValue other)
                 ]
+
+
+parseArithmeticOperatorTree : ArithmeticOperatorTree -> String
+parseArithmeticOperatorTree arithmeticOperatorTree =
+    case arithmeticOperatorTree of
+        ArithmeticValueLeaf typedValue ->
+            helperFunctionValue typedValue
+
+        ArithmeticDivisionBranch arithmeticOperatorTree1 arithmeticOperatorTree2 ->
+            "ADB" ++ " -> Divide -> [ " ++ parseArithmeticOperatorTree arithmeticOperatorTree1 ++ " , " ++ parseArithmeticOperatorTree arithmeticOperatorTree2 ++ " ]"
+
+        ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees ->
+            case arithmeticOperator of
+                Add ->
+                    "AOB" ++ " -> Add -> [ " ++ String.join " , " (List.map parseArithmeticOperatorTree arithmeticOperatorTrees) ++ " ]"
+
+                Subtract ->
+                    "AOB" ++ " -> Subtract -> [ " ++ String.join " , " (List.map parseArithmeticOperatorTree arithmeticOperatorTrees) ++ " ]"
+
+                Multiply ->
+                    "AOB" ++ " -> Multiply -> [ " ++ String.join " , " (List.map parseArithmeticOperatorTree arithmeticOperatorTrees) ++ " ]"
+
+
+helperFunctionValue : Value ta va -> String
+helperFunctionValue value1 =
+    case value1 of
+        Literal _ literal ->
+            case literal of
+                BoolLiteral bool ->
+                    case bool of
+                        True ->
+                            "AVL (Bool) = True"
+
+                        False ->
+                            "AVL (Bool) = False"
+
+                CharLiteral char ->
+                    "AVL (char) = " ++ String.fromChar char
+
+                StringLiteral string ->
+                    "AVL (String) = " ++ string
+
+                IntLiteral int ->
+                    "AVL (Int) = " ++ String.fromInt int
+
+                FloatLiteral float ->
+                    "AVL (Float) = " ++ String.fromFloat float
+
+        Variable _ name ->
+            "AVL (Variable) -> " ++ Name.toTitleCase name
+
+        Reference va fQName ->
+            "AVL (Reference) -> " ++ FQName.toString fQName
+
+        Apply va value2 value3 ->
+            "AVL (Apply): " ++ helperFunctionValue value2 ++ " __ " ++ helperFunctionValue value3
+
+        _ ->
+            "Some other format"
