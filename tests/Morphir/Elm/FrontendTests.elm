@@ -410,7 +410,7 @@ valueTests =
         , checkIR "a << b" <| binary SDKBasics.composeLeft (ref "a") (ref "b")
         , checkIR "a >> b" <| binary SDKBasics.composeRight (ref "a") (ref "b")
         , checkIR "a :: b" <| binary List.construct (ref "a") (ref "b")
-        , checkIR "::" <| List.construct ()
+        , checkIR "(::)" <| List.construct ()
         , checkIR "foo (::)" <| Apply () (ref "foo") (List.construct ())
         , checkIR
             (String.join "\n"
