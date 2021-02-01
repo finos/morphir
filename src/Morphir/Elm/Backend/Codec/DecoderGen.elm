@@ -1,22 +1,23 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
 module Morphir.Elm.Backend.Codec.DecoderGen exposing (..)
 
+import Dict
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.ModuleName exposing (ModuleName)
@@ -26,7 +27,7 @@ import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Type as Type exposing (Constructor(..), Definition(..), Field, Type(..))
+import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..))
 
 
 typeDefToDecoder : Name -> AccessControlled (Documented (Type.Definition ())) -> Declaration
@@ -45,7 +46,7 @@ typeDefToDecoder typeName accessCtrlTypeDef =
                         CustomTypeDefinition _ acsCtrlCtors ->
                             case acsCtrlCtors.access of
                                 Public ->
-                                    case acsCtrlCtors.value of
+                                    case acsCtrlCtors.value |> Dict.toList of
                                         [] ->
                                             Literal "Opaque types are not supported"
 
@@ -84,8 +85,8 @@ typeDefToDecoder typeName accessCtrlTypeDef =
         (decoderExpr |> Utils.emptyRangeNode)
 
 
-constructorDecoder : Bool -> Constructor () -> Expression
-constructorDecoder isSingle (Constructor ctorName fields) =
+constructorDecoder : Bool -> ( Name, List ( Name, Type () ) ) -> Expression
+constructorDecoder isSingle ( ctorName, fields ) =
     case fields of
         [] ->
             Application

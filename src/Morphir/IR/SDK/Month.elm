@@ -38,19 +38,21 @@ moduleSpec =
         Dict.fromList
             [ ( Name.fromString "Month"
               , CustomTypeSpecification []
-                    [ Type.Constructor (Name.fromString "January") []
-                    , Type.Constructor (Name.fromString "February") []
-                    , Type.Constructor (Name.fromString "March") []
-                    , Type.Constructor (Name.fromString "April") []
-                    , Type.Constructor (Name.fromString "May") []
-                    , Type.Constructor (Name.fromString "June") []
-                    , Type.Constructor (Name.fromString "July") []
-                    , Type.Constructor (Name.fromString "August") []
-                    , Type.Constructor (Name.fromString "September") []
-                    , Type.Constructor (Name.fromString "October") []
-                    , Type.Constructor (Name.fromString "November") []
-                    , Type.Constructor (Name.fromString "December") []
-                    ]
+                    (Dict.fromList
+                        [ ( Name.fromString "January", [] )
+                        , ( Name.fromString "February", [] )
+                        , ( Name.fromString "March", [] )
+                        , ( Name.fromString "April", [] )
+                        , ( Name.fromString "May", [] )
+                        , ( Name.fromString "June", [] )
+                        , ( Name.fromString "July", [] )
+                        , ( Name.fromString "August", [] )
+                        , ( Name.fromString "September", [] )
+                        , ( Name.fromString "October", [] )
+                        , ( Name.fromString "November", [] )
+                        , ( Name.fromString "December", [] )
+                        ]
+                    )
                     |> Documented "Type that represents an month concept."
               )
             ]

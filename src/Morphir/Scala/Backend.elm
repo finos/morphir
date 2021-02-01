@@ -323,8 +323,9 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                         }
                   ]
                 , accessControlledCtors.value
+                    |> Dict.toList
                     |> List.map
-                        (\(Type.Constructor ctorName ctorArgs) ->
+                        (\( ctorName, ctorArgs ) ->
                             caseClass ctorName
                                 ctorArgs
                                 (if List.isEmpty typeParams then
@@ -336,8 +337,8 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                         )
                 ]
     in
-    case accessControlledCtors.value of
-        [ Type.Constructor ctorName ctorArgs ] ->
+    case accessControlledCtors.value |> Dict.toList of
+        [ ( ctorName, ctorArgs ) ] ->
             if ctorName == typeName then
                 [ Scala.withoutAnnotation
                     (Scala.MemberTypeDecl

@@ -142,10 +142,13 @@ frontendTest =
                                             (Documented ""
                                                 (Type.CustomTypeDefinition []
                                                     (public
-                                                        [ Type.Constructor [ "foo" ]
-                                                            [ ( [ "arg", "1" ], Type.Reference () (fQName packageName [ [ "b" ] ] [ "bee" ]) [] )
+                                                        (Dict.fromList
+                                                            [ ( [ "foo" ]
+                                                              , [ ( [ "arg", "1" ], Type.Reference () (fQName packageName [ [ "b" ] ] [ "bee" ]) [] )
+                                                                ]
+                                                              )
                                                             ]
-                                                        ]
+                                                        )
                                                     )
                                                 )
                                             )
@@ -201,7 +204,7 @@ frontendTest =
                                       , public
                                             (Documented " It's a bee "
                                                 (Type.CustomTypeDefinition []
-                                                    (public [ Type.Constructor [ "bee" ] [] ])
+                                                    (public (Dict.fromList [ ( [ "bee" ], [] ) ]))
                                                 )
                                             )
                                       )
