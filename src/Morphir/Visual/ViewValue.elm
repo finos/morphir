@@ -18,7 +18,6 @@ import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
 import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (nameToText)
-import Morphir.Visual.Components.AbstractTreeVisualizer exposing (parseArithmeticOperatorTree, view)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
 import Morphir.Visual.Context as Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
