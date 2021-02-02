@@ -1,6 +1,6 @@
 {
   "name": "morphir-elm",
-  "version": "2.13.0",
+  "version": "2.14.0",
   "description": "Elm bindings for Morphir",
   "scripts": {
     "clean": "del dist",
@@ -18,8 +18,8 @@
     "url": "git+https://github.com/Morgan-Stanley/morphir-elm.git"
   },
   "bin": {
-    "morphir-elm": "./cli/morphir-elm.js",
-    "morphir-dapr": "./cli/morphir-dapr.js"
+    "morphir-elm": "cli/morphir-elm.js",
+    "morphir-dapr": "cli/morphir-dapr.js"
   },
   "files": [
     "cli/cli.js",
