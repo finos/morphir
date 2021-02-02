@@ -2,7 +2,6 @@ module Morphir.Visual.Components.AbstractTreeVisualizer exposing (..)
 
 import Html exposing (Html, button, div, text)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
 import List
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
