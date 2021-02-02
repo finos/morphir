@@ -107,9 +107,6 @@ viewValueByValueType ctx argumentValues typedValue =
             arithmeticOperatorTree : ArithmeticOperatorTree
             arithmeticOperatorTree =
                 ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
-
-            pik =
-                Debug.log "marshall    ->    " arithmeticOperatorTree
         in
         ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree
 

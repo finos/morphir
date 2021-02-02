@@ -20,10 +20,6 @@ type ArithmeticOperator
 
 fromArithmeticTypedValue : TypedValue -> ArithmeticOperatorTree
 fromArithmeticTypedValue typedValue =
-    let
-        tim =
-            Debug.log "travel   ->  " typedValue
-    in
     case typedValue of
         Value.Apply _ fun arg ->
             let
@@ -39,16 +35,16 @@ fromArithmeticTypedValue typedValue =
                     in
                     case operatorName of
                         "Basics.add" ->
-                            ArithmeticOperatorBranch Add ([ ArithmeticValueLeaf arg1 ] ++  helperArithmeticTreeBuilderRecursion arg2 operatorName)
+                            ArithmeticOperatorBranch Add ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         "Basics.subtract" ->
-                            ArithmeticOperatorBranch Subtract ([ ArithmeticValueLeaf arg1 ] ++  helperArithmeticTreeBuilderRecursion arg2 operatorName)
+                            ArithmeticOperatorBranch Subtract ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         "Basics.divide" ->
-                            ArithmeticDivisionBranch ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName )
+                            ArithmeticDivisionBranch ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         "Basics.multiply" ->
-                            ArithmeticOperatorBranch Multiply ([ ArithmeticValueLeaf arg1 ] ++  helperArithmeticTreeBuilderRecursion arg2 operatorName)
+                            ArithmeticOperatorBranch Multiply ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         _ ->
                             ArithmeticValueLeaf typedValue
@@ -62,28 +58,27 @@ fromArithmeticTypedValue typedValue =
 
 helperArithmeticTreeBuilderRecursion : TypedValue -> String -> List ArithmeticOperatorTree
 helperArithmeticTreeBuilderRecursion value operatorName =
-    let
-        tim =
-            Debug.log "time   ->  " value
-    in
     case value of
         Value.Apply _ fun arg ->
             let
                 ( function, args ) =
                     Value.uncurryApply fun arg
-
             in
             case ( function, args ) of
                 ( Value.Reference _ (FQName _ moduleName localName), [ arg1, arg2 ] ) ->
                     case functionName moduleName localName of
                         "Basics.add" ->
-                            [ ArithmeticOperatorBranch Add ([ArithmeticValueLeaf arg1] ++ (helperArithmeticTreeBuilderRecursion arg2 operatorName) )]
+                            [ ArithmeticOperatorBranch Add ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
+
                         "Basics.subtract" ->
-                            [ ArithmeticOperatorBranch Subtract ([ArithmeticValueLeaf arg1] ++ (helperArithmeticTreeBuilderRecursion arg2 operatorName) )]
+                            [ ArithmeticOperatorBranch Subtract ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
+
                         "Basics.multiply" ->
-                            [ ArithmeticOperatorBranch Multiply ([ArithmeticValueLeaf arg1] ++ (helperArithmeticTreeBuilderRecursion arg2 operatorName) )]
+                            [ ArithmeticOperatorBranch Multiply ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
+
                         "Basics.divide" ->
-                            [ ArithmeticDivisionBranch ([ArithmeticValueLeaf arg1] ++ (helperArithmeticTreeBuilderRecursion arg2 operatorName)  )]
+                            [ ArithmeticDivisionBranch ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
+
                         _ ->
                             [ fromArithmeticTypedValue value ]
 
@@ -100,6 +95,7 @@ functionName moduleName localName =
         [ moduleName |> Path.toString Name.toTitleCase "."
         , localName |> Name.toCamelCase
         ]
+
 
 currentPrecedence : String -> Int
 currentPrecedence operatorName =
