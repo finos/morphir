@@ -34,7 +34,7 @@ import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
-import Morphir.IR.Type as Type exposing (Constructor(..), Specification(..), Type(..))
+import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value(..))
 
 
@@ -232,25 +232,24 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                             case accessControlledCtors |> withPublicAccess of
                                 Just ctors ->
                                     ctors
+                                        |> Dict.toList
                                         |> List.map
-                                            (\constructor ->
-                                                case constructor of
-                                                    Type.Constructor _ namesAndTypes ->
-                                                        namesAndTypes
-                                                            |> List.concatMap
-                                                                (\( _, tipe ) ->
-                                                                    leafType tipe
-                                                                        |> List.concatMap
-                                                                            (\leafFqn ->
-                                                                                let
-                                                                                    leafNode =
-                                                                                        Type leafFqn
-                                                                                in
-                                                                                [ NodeEntry leafNode
-                                                                                , EdgeEntry (Edge typeNode Unions leafNode)
-                                                                                ]
-                                                                            )
-                                                                )
+                                            (\( _, namesAndTypes ) ->
+                                                namesAndTypes
+                                                    |> List.concatMap
+                                                        (\( _, tipe ) ->
+                                                            leafType tipe
+                                                                |> List.concatMap
+                                                                    (\leafFqn ->
+                                                                        let
+                                                                            leafNode =
+                                                                                Type leafFqn
+                                                                        in
+                                                                        [ NodeEntry leafNode
+                                                                        , EdgeEntry (Edge typeNode Unions leafNode)
+                                                                        ]
+                                                                    )
+                                                        )
                                             )
                                         |> List.concat
 

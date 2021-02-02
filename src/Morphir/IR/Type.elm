@@ -21,7 +21,7 @@ module Morphir.IR.Type exposing
     , Field, mapFieldName, mapFieldType
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
     , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification
-    , Constructors, Constructor(..)
+    , Constructors
     , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition
     , eraseAttributes, collectVariables, substituteTypeVariables
     )
@@ -232,14 +232,10 @@ type Definition a
     | CustomTypeDefinition (List Name) (AccessControlled (Constructors a))
 
 
-{-| -}
+{-| Constructors in a dictionary keyed by their name. The values are the argument types for each constructor.
+-}
 type alias Constructors a =
-    List (Constructor a)
-
-
-{-| -}
-type Constructor a
-    = Constructor Name (List ( Name, Type a ))
+    Dict Name (List ( Name, Type a ))
 
 
 {-| -}
@@ -271,15 +267,13 @@ mapSpecificationAttributes f spec =
         CustomTypeSpecification params constructors ->
             CustomTypeSpecification params
                 (constructors
-                    |> List.map
-                        (\(Constructor ctorName ctorArgs) ->
-                            Constructor ctorName
-                                (ctorArgs
-                                    |> List.map
-                                        (\( argName, argType ) ->
-                                            ( argName, mapTypeAttributes f argType )
-                                        )
-                                )
+                    |> Dict.map
+                        (\_ ctorArgs ->
+                            ctorArgs
+                                |> List.map
+                                    (\( argName, argType ) ->
+                                        ( argName, mapTypeAttributes f argType )
+                                    )
                         )
                 )
 
@@ -298,8 +292,9 @@ mapDefinition f def =
                 ctorsResult : Result (List e) (AccessControlled (Constructors b))
                 ctorsResult =
                     constructors.value
+                        |> Dict.toList
                         |> List.map
-                            (\(Constructor ctorName ctorArgs) ->
+                            (\( ctorName, ctorArgs ) ->
                                 ctorArgs
                                     |> List.map
                                         (\( argName, argType ) ->
@@ -307,10 +302,10 @@ mapDefinition f def =
                                                 |> Result.map (Tuple.pair argName)
                                         )
                                     |> ListOfResults.liftAllErrors
-                                    |> Result.map (Constructor ctorName)
+                                    |> Result.map (Tuple.pair ctorName)
                             )
                         |> ListOfResults.liftAllErrors
-                        |> Result.map (AccessControlled constructors.access)
+                        |> Result.map (Dict.fromList >> AccessControlled constructors.access)
                         |> Result.mapError List.concat
             in
             ctorsResult
@@ -328,15 +323,13 @@ mapDefinitionAttributes f def =
             CustomTypeDefinition params
                 (AccessControlled constructors.access
                     (constructors.value
-                        |> List.map
-                            (\(Constructor ctorName ctorArgs) ->
-                                Constructor ctorName
-                                    (ctorArgs
-                                        |> List.map
-                                            (\( argName, argType ) ->
-                                                ( argName, mapTypeAttributes f argType )
-                                            )
-                                    )
+                        |> Dict.map
+                            (\_ ctorArgs ->
+                                ctorArgs
+                                    |> List.map
+                                        (\( argName, argType ) ->
+                                            ( argName, mapTypeAttributes f argType )
+                                        )
                             )
                     )
                 )
@@ -403,20 +396,15 @@ eraseAttributes typeDef =
 
         CustomTypeDefinition typeVars acsCtrlConstructors ->
             let
-                eraseCtor : Constructor a -> Constructor ()
-                eraseCtor (Constructor name types) =
-                    let
-                        extraErasedTypes : List ( Name, Type () )
-                        extraErasedTypes =
-                            types
-                                |> List.map (\( n, t ) -> ( n, mapTypeAttributes (\_ -> ()) t ))
-                    in
-                    Constructor name extraErasedTypes
+                eraseCtor : List ( Name, Type a ) -> List ( Name, Type () )
+                eraseCtor types =
+                    types
+                        |> List.map (\( n, t ) -> ( n, mapTypeAttributes (\_ -> ()) t ))
 
                 eraseAccessControlledCtors : AccessControlled (Constructors a) -> AccessControlled (Constructors ())
                 eraseAccessControlledCtors acsCtrlCtors =
                     AccessControlled.map
-                        (\ctors -> ctors |> List.map eraseCtor)
+                        (\ctors -> ctors |> Dict.map (\_ -> eraseCtor))
                         acsCtrlCtors
             in
             CustomTypeDefinition typeVars (eraseAccessControlledCtors acsCtrlConstructors)

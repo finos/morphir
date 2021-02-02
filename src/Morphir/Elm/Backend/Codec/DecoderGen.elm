@@ -17,6 +17,7 @@
 
 module Morphir.Elm.Backend.Codec.DecoderGen exposing (..)
 
+import Dict
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.ModuleName exposing (ModuleName)
@@ -25,7 +26,7 @@ import Morphir.Elm.Backend.Utils as Utils
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Type as Type exposing (Constructor(..), Definition(..), Field, Type(..))
+import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..))
 
 
 typeDefToDecoder : Name -> AccessControlled (Documented (Type.Definition ())) -> Declaration
@@ -44,7 +45,7 @@ typeDefToDecoder typeName accessCtrlTypeDef =
                         CustomTypeDefinition _ acsCtrlCtors ->
                             case acsCtrlCtors.access of
                                 Public ->
-                                    case acsCtrlCtors.value of
+                                    case acsCtrlCtors.value |> Dict.toList of
                                         [] ->
                                             Literal "Opaque types are not supported"
 
@@ -83,8 +84,8 @@ typeDefToDecoder typeName accessCtrlTypeDef =
         (decoderExpr |> Utils.emptyRangeNode)
 
 
-constructorDecoder : Bool -> Constructor () -> Expression
-constructorDecoder isSingle (Constructor ctorName fields) =
+constructorDecoder : Bool -> ( Name, List ( Name, Type () ) ) -> Expression
+constructorDecoder isSingle ( ctorName, fields ) =
     case fields of
         [] ->
             Application

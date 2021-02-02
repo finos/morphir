@@ -694,10 +694,11 @@ mapDeclarationsToType sourceFile expose decls =
                                             ctorArgsResult
                                                 |> Result.map
                                                     (\ctorArgs ->
-                                                        Type.Constructor ctorName ctorArgs
+                                                        ( ctorName, ctorArgs )
                                                     )
                                         )
                                     |> ListOfResults.liftAllErrors
+                                    |> Result.map Dict.fromList
                                     |> Result.mapError List.concat
 
                             doc =
@@ -887,7 +888,7 @@ mapExpression sourceFile (Node range exp) =
         sourceLocation =
             range |> SourceLocation sourceFile
     in
-    case fixAssociativity exp of
+    case exp of
         Expression.UnitExpr ->
             Ok (Value.Unit sourceLocation)
 
@@ -1852,25 +1853,6 @@ withAccessControl isExposed a =
 
     else
         private a
-
-
-{-| This is an incomplete fis for an associativity issue in elm-syntax.
-It only works when the operators are the same instead of relying on precedence equality.
-Consequently it also doesn't take mixed associativities into account.
--}
-fixAssociativity : Expression -> Expression
-fixAssociativity expr =
-    case expr of
-        Expression.OperatorApplication o d (Node lr l) (Node _ (Expression.OperatorApplication ro rd (Node rlr rl) (Node rrr rr))) ->
-            if (o == ro) && d == Infix.Left then
-                Expression.OperatorApplication o d (Node (Range.combine [ lr, rlr ]) (Expression.OperatorApplication ro rd (Node lr l) (Node rlr rl))) (Node rrr rr)
-                    |> fixAssociativity
-
-            else
-                expr
-
-        _ ->
-            expr
 
 
 withWellKnownOperators : ProcessContext -> ProcessContext

@@ -17,6 +17,7 @@
 
 module Morphir.Elm.Backend.Codec.EncoderGen exposing (..)
 
+import Dict
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Expression exposing (Case, Expression(..), Function, FunctionImplementation)
 import Elm.Syntax.ModuleName exposing (ModuleName)
@@ -27,7 +28,7 @@ import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
-import Morphir.IR.Type exposing (Constructor(..), Definition(..), Field, Type(..), record)
+import Morphir.IR.Type exposing (Definition(..), Field, Type(..), record)
 
 
 typeDefToEncoder : Name -> AccessControlled (Documented (Definition ())) -> Declaration
@@ -59,11 +60,11 @@ typeDefToEncoder typeName typeDef =
                         CustomTypeDefinition _ constructors ->
                             case constructors.access of
                                 Public ->
-                                    case constructors.value of
+                                    case constructors.value |> Dict.toList of
                                         [] ->
                                             []
 
-                                        (Constructor ctorName fields) :: [] ->
+                                        ( ctorName, fields ) :: [] ->
                                             [ deconsPattern ctorName fields
                                                 |> Utils.emptyRangeNode
                                                 |> ParenthesizedPattern
@@ -90,11 +91,11 @@ typeDefToEncoder typeName typeDef =
                         CustomTypeDefinition _ constructors ->
                             case constructors.access of
                                 Public ->
-                                    case constructors.value of
+                                    case constructors.value |> Dict.toList of
                                         [] ->
                                             Literal "Types without constructors are not supported"
 
-                                        ((Constructor ctorName _) as ctor) :: [] ->
+                                        (( ctorName, _ ) as ctor) :: [] ->
                                             ctor
                                                 |> constructorToRecord
                                                 |> typeToEncoder False [ ctorName ]
@@ -111,8 +112,8 @@ typeDefToEncoder typeName typeDef =
                                                 cases : List ( Node Pattern, Node Expression )
                                                 cases =
                                                     let
-                                                        ctorToPatternExpr : Constructor () -> ( Node Pattern, Node Expression )
-                                                        ctorToPatternExpr ((Constructor ctorName ctorArgs) as ctor) =
+                                                        ctorToPatternExpr : ( Name, List ( Name, Type () ) ) -> ( Node Pattern, Node Expression )
+                                                        ctorToPatternExpr (( ctorName, ctorArgs ) as ctor) =
                                                             let
                                                                 pattern : Pattern
                                                                 pattern =
@@ -293,8 +294,8 @@ deconsPattern ctorName fields =
         consVars
 
 
-constructorToRecord : Constructor () -> Type ()
-constructorToRecord (Constructor _ types) =
+constructorToRecord : ( Name, List ( Name, Type () ) ) -> Type ()
+constructorToRecord ( _, types ) =
     let
         fields : List (Morphir.IR.Type.Field ())
         fields =
