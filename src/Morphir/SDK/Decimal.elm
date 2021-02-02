@@ -104,7 +104,7 @@ module Morphir.SDK.Decimal exposing
 -}
 
 import Basics as B
-import Morphir.SDK.Decimal as D
+import Decimal as D
 
 
 {-| The Decimal data type
