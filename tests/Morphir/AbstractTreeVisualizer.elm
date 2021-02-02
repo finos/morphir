@@ -1,4 +1,4 @@
-module Morphir.Visual.Components.AbstractTreeVisualizer exposing (..)
+module Morphir.AbstractTreeVisualizer exposing (..)
 
 import Html exposing (Html, button, div, text)
 import Html.Attributes exposing (..)
