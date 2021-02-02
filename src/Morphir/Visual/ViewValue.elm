@@ -111,8 +111,7 @@ viewValueByValueType ctx argumentValues typedValue =
             pik =
                 Debug.log "marshall    ->    " arithmeticOperatorTree
         in
-        --ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree
-        Element.column [] [ ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree, Element.html (div [ Html.Attributes.style "display" "block", Html.Attributes.style "padding" "10", Html.Attributes.style "background-color" "rgb (50 50 50)", Html.Attributes.style "font-size" "16", Html.Attributes.style "color" "rgb(255 78 185 255)" ] [ view [] (parseArithmeticOperatorTree arithmeticOperatorTree) ]) ]
+        ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree
 
     else
         viewValueByLanguageFeature ctx argumentValues typedValue
@@ -197,6 +196,3 @@ viewValueByLanguageFeature ctx argumentValues value =
                     ]
                     (XRayView.viewValue other)
                 ]
-
-
-

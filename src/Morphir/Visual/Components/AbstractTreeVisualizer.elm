@@ -13,6 +13,11 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 
 
+
+-- Add line below to ( else if Basics.isNumber valueType then ) branch to visualize AST
+-- Element.column [] [ ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree, Element.html (div [ Html.Attributes.style "display" "block", Html.Attributes.style "padding" "10", Html.Attributes.style "background-color" "rgb (50 50 50)", Html.Attributes.style "font-size" "16", Html.Attributes.style "color" "rgb(255 78 185 255)" ] [ view [] (parseArithmeticOperatorTree arithmeticOperatorTree) ]) ]
+
+
 type alias Model =
     List Int
 
@@ -20,7 +25,6 @@ type alias Model =
 initialModel : Model
 initialModel =
     []
-
 
 
 chopWord : List Int -> Int -> Int -> String -> List String -> List String
@@ -168,7 +172,6 @@ drawTree listAll htmlAggregation =
                         , Html.Attributes.style "left" (String.fromFloat (30 + previousIndexMax listAll (indO - 1) 0 [] * 12.3) ++ "px")
                         ]
                         [ Html.text (String.replace "]" "" (String.replace "[" "" elemInner)) ]
-
                 )
                 elem
         )
@@ -203,18 +206,20 @@ positionsX =
     []
 
 
-findLastString: List Float -> (Maybe Float) -> Int ->  String
+findLastString : List Float -> Maybe Float -> Int -> String
 findLastString listy elm ind1 =
     if ind1 == 0 then
-        (String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 55) ++ "," ++ String.fromInt (400 + ((ind1 + 1) * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop ind1 listy)) * 12.3) + 55) ++ "," ++ String.fromInt (405 + ((ind1 + 1 ) * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop 1 listy)) * 12.3) + 55) ++ "," ++ String.fromInt (405 + ((ind1 + 1) * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop 1 listy)) * 12.3) + 55) ++ "," ++ String.fromInt (400 + ((ind1 + 1) * 60)))
+        String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 55) ++ "," ++ String.fromInt (400 + ((ind1 + 1) * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop ind1 listy)) * 12.3) + 55) ++ "," ++ String.fromInt (405 + ((ind1 + 1) * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop 1 listy)) * 12.3) + 55) ++ "," ++ String.fromInt (405 + ((ind1 + 1) * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop 1 listy)) * 12.3) + 55) ++ "," ++ String.fromInt (400 + ((ind1 + 1) * 60))
+
     else
-        (String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 55) ++ "," ++ String.fromInt (400 + ((ind1) * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop ind1 listy)) * 12.3) + 55) ++ "," ++ String.fromInt (405 + ((ind1) * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop (ind1 - 1) listy)) * 12.3) + 55) ++ "," ++ String.fromInt (405 + ((ind1) * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop (ind1 - 1) listy)) * 12.3) + 55) ++ "," ++ String.fromInt (400 + ((ind1) * 60)))
+        String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 55) ++ "," ++ String.fromInt (400 + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop ind1 listy)) * 12.3) + 55) ++ "," ++ String.fromInt (405 + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop (ind1 - 1) listy)) * 12.3) + 55) ++ "," ++ String.fromInt (405 + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 (List.head (List.drop (ind1 - 1) listy)) * 12.3) + 55) ++ "," ++ String.fromInt (400 + (ind1 * 60))
 
 
 view model stringy1 =
     let
         listy =
             populatePositions (createTreeFromString stringy1) 0 0 []
+
         tough =
             Debug.log "daily visit    " stringy1
     in
@@ -244,18 +249,27 @@ view model stringy1 =
                 (List.indexedMap
                     (\ind1 elm ->
                         [ polygon [ fill "#6ec0ff", points ("" ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 55) ++ "," ++ String.fromInt (400 + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 50) ++ "," ++ String.fromInt (400 + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 50) ++ "," ++ String.fromInt (450 + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 55) ++ "," ++ String.fromInt (450 + (ind1 * 60))) ] []
-                        , polygon [ fill "#6ec0ff", points (findLastString listy elm ind1 ) ] []
-                        ] ++ (List.concat (List.indexedMap (\ind3 ni ->
-                                if ind3 == ind1 then
-                                ( (List.indexedMap (\ind2 ne ->
-                                    if ind2 < ( List.length ni - 2 ) then
-                                        polygon [ fill "#6ec0ff", points ("" ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 55) ++ "," ++ String.fromInt ( (480 + (40 * ind2) ) + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 55) ++ "," ++ String.fromInt ( (520 + (40 * ind2) ) + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 50) ++ "," ++ String.fromInt ( ( 520 + (40 * ind2) ) + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 50) ++ "," ++ String.fromInt ( ( 480 + (40 * ind2) ) + (ind1 * 60))) ] []
-                                    else
-                                        circle [ cx "60", cy "60", r "0" ] [ ]
-                              ) ) ni )
-                                else
-                                []
-                             ) (drawTree (createTreeFromString stringy1) []) ) )
+                        , polygon [ fill "#6ec0ff", points (findLastString listy elm ind1) ] []
+                        ]
+                            ++ List.concat
+                                (List.indexedMap
+                                    (\ind3 ni ->
+                                        if ind3 == ind1 then
+                                            List.indexedMap
+                                                (\ind2 ne ->
+                                                    if ind2 < (List.length ni - 2) then
+                                                        polygon [ fill "#6ec0ff", points ("" ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 55) ++ "," ++ String.fromInt ((480 + (40 * ind2)) + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 55) ++ "," ++ String.fromInt ((520 + (40 * ind2)) + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 50) ++ "," ++ String.fromInt ((520 + (40 * ind2)) + (ind1 * 60)) ++ " " ++ String.fromFloat ((Maybe.withDefault 0.0 elm * 12.3) + 50) ++ "," ++ String.fromInt ((480 + (40 * ind2)) + (ind1 * 60))) ] []
+
+                                                    else
+                                                        circle [ cx "60", cy "60", r "0" ] []
+                                                )
+                                                ni
+
+                                        else
+                                            []
+                                    )
+                                    (drawTree (createTreeFromString stringy1) [])
+                                )
                     )
                     (List.map (\e -> Just e) listy)
                 )
@@ -269,7 +283,7 @@ parseArithmeticOperatorTree arithmeticOperatorTree =
         ArithmeticValueLeaf typedValue ->
             helperFunctionValue typedValue
 
-        ArithmeticDivisionBranch [arithmeticOperatorTree1, arithmeticOperatorTree2] ->
+        ArithmeticDivisionBranch [ arithmeticOperatorTree1, arithmeticOperatorTree2 ] ->
             "ADB" ++ " -> Divide -> [ " ++ parseArithmeticOperatorTree arithmeticOperatorTree1 ++ " , " ++ parseArithmeticOperatorTree arithmeticOperatorTree2 ++ " ]"
 
         ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees ->
@@ -282,6 +296,7 @@ parseArithmeticOperatorTree arithmeticOperatorTree =
 
                 Multiply ->
                     "AOB" ++ " -> Multiply -> [ " ++ String.join " , " (List.map parseArithmeticOperatorTree arithmeticOperatorTrees) ++ " ]"
+
         _ ->
             ""
 
