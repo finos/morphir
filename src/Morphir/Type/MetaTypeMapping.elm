@@ -1,7 +1,7 @@
 module Morphir.Type.MetaTypeMapping exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
@@ -23,7 +23,7 @@ type LookupError
 
 
 lookupConstructor : Variable -> References -> FQName -> Result LookupError MetaType
-lookupConstructor baseVar refs ((FQName packageName moduleName localName) as fQName) =
+lookupConstructor baseVar refs (( packageName, moduleName, localName ) as fQName) =
     refs
         |> Dict.get packageName
         |> Maybe.andThen (.modules >> Dict.get moduleName)
@@ -39,7 +39,7 @@ lookupConstructor baseVar refs ((FQName packageName moduleName localName) as fQN
                                         |> List.filterMap
                                             (\(Type.Constructor ctorName ctorArgs) ->
                                                 if ctorName == localName then
-                                                    Just (ctorToMetaType baseVar refs (MetaRef (FQName packageName moduleName typeName)) paramNames (ctorArgs |> List.map Tuple.second))
+                                                    Just (ctorToMetaType baseVar refs (MetaRef ( packageName, moduleName, typeName )) paramNames (ctorArgs |> List.map Tuple.second))
 
                                                 else
                                                     Nothing
@@ -54,7 +54,7 @@ lookupConstructor baseVar refs ((FQName packageName moduleName localName) as fQN
 
 
 lookupValue : Variable -> References -> FQName -> Result LookupError MetaType
-lookupValue baseVar refs ((FQName packageName moduleName localName) as fQName) =
+lookupValue baseVar refs (( packageName, moduleName, localName ) as fQName) =
     refs
         |> Dict.get packageName
         |> Maybe.andThen (.modules >> Dict.get moduleName)
@@ -64,7 +64,7 @@ lookupValue baseVar refs ((FQName packageName moduleName localName) as fQName) =
 
 
 lookupAliasedType : Variable -> References -> FQName -> Result LookupError (Type ())
-lookupAliasedType baseVar refs ((FQName packageName moduleName localName) as fQName) =
+lookupAliasedType baseVar refs (( packageName, moduleName, localName ) as fQName) =
     refs
         |> Dict.get packageName
         |> Maybe.andThen (.modules >> Dict.get moduleName)

@@ -7,12 +7,11 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font exposing (..)
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
-import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Context as Context exposing (Context)
@@ -29,7 +28,7 @@ import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme.Light exposing (gray)
 
 
-viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> (FQN -> Bool -> msg) -> Dict FQN (Value.Definition () (Type ())) -> Element msg
+viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> (FQName -> Bool -> msg) -> Dict FQName (Value.Definition () (Type ())) -> Element msg
 viewDefinition distribution valueDef variables onReferenceClicked expandedFunctions =
     let
         ctx : Context msg
@@ -112,7 +111,7 @@ viewValueByLanguageFeature ctx argumentValues value =
         Value.Tuple tpe elems ->
             ViewTuple.view (viewValue ctx argumentValues) elems
 
-        Value.List (Type.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "list" ] ] [ "list" ]) [ itemType ]) items ->
+        Value.List (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ]) items ->
             ViewList.view ctx.distribution (viewValue ctx argumentValues) itemType items
 
         Value.Variable tpe name ->

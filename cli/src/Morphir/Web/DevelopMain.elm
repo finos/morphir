@@ -15,16 +15,15 @@ import Morphir.Compiler as Compiler
 import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Distribution.Codec as DistributionCodec
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
-import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
 import Morphir.Visual.Edit as Edit
-import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Web.Theme exposing (Theme)
 import Morphir.Web.Theme.Light as Light exposing (blue)
@@ -69,7 +68,7 @@ type Msg
     | SelectFunction String
     | UpdateArgumentValue Int (Value () ())
     | InvalidArgumentValue Int String
-    | ExpandReference FQN Bool
+    | ExpandReference FQName Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

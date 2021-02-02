@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -24,7 +24,6 @@ import Elm.Syntax.Pattern exposing (Pattern(..))
 import Morphir.Elm.Backend.Utils as Utils
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Constructor(..), Definition(..), Field, Type(..))
 
@@ -127,19 +126,19 @@ typeToDecoder typeName topLevelFieldNames tpe =
     case tpe of
         Reference _ fqName typeParams ->
             case fqName of
-                FQName _ _ [ "string" ] ->
+                ( _, _, [ "string" ] ) ->
                     FunctionOrValue decoderModuleName "string"
 
-                FQName _ _ [ "bool" ] ->
+                ( _, _, [ "bool" ] ) ->
                     FunctionOrValue decoderModuleName "bool"
 
-                FQName _ _ [ "int" ] ->
+                ( _, _, [ "int" ] ) ->
                     FunctionOrValue decoderModuleName "int"
 
-                FQName _ _ [ "float" ] ->
+                ( _, _, [ "float" ] ) ->
                     FunctionOrValue decoderModuleName "float"
 
-                FQName _ _ [ "maybe" ] ->
+                ( _, _, [ "maybe" ] ) ->
                     let
                         typeParamEncoder =
                             case typeParams of
@@ -162,7 +161,7 @@ typeToDecoder typeName topLevelFieldNames tpe =
                         |> Utils.emptyRangeNode
                         |> ParenthesizedExpression
 
-                FQName _ _ name ->
+                ( _, _, name ) ->
                     FunctionOrValue
                         []
                         ("decoder" ++ (name |> Name.toTitleCase))

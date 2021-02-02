@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -25,7 +25,6 @@ import Elm.Syntax.Pattern exposing (Pattern(..), QualifiedNameRef)
 import Morphir.Elm.Backend.Utils as Utils
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type exposing (Constructor(..), Definition(..), Field, Type(..), record)
@@ -154,22 +153,22 @@ typeToEncoder fwdNames varName tpe =
     case tpe of
         Reference _ fqName typeArgs ->
             case fqName of
-                FQName _ _ [ "int" ] ->
+                ( _, _, [ "int" ] ) ->
                     elmJsonEncoderApplication
                         (elmJsonEncoderFunction "int")
                         (varPathToExpr varName)
 
-                FQName _ _ [ "float" ] ->
+                ( _, _, [ "float" ] ) ->
                     elmJsonEncoderApplication
                         (elmJsonEncoderFunction "float")
                         (varPathToExpr varName)
 
-                FQName _ _ [ "string" ] ->
+                ( _, _, [ "string" ] ) ->
                     elmJsonEncoderApplication
                         (elmJsonEncoderFunction "string")
                         (varPathToExpr varName)
 
-                FQName _ _ [ "maybe" ] ->
+                ( _, _, [ "maybe" ] ) ->
                     case typeArgs of
                         typeArg :: [] ->
                             let
@@ -215,7 +214,7 @@ typeToEncoder fwdNames varName tpe =
                             Literal
                                 """Generic types with a single type argument are supported"""
 
-                FQName _ _ names ->
+                ( _, _, names ) ->
                     elmJsonEncoderApplication
                         ([ "encode" ] ++ names |> Name.toCamelCase |> FunctionOrValue [])
                         (varPathToExpr varName)

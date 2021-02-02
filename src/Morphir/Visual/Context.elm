@@ -2,20 +2,21 @@ module Morphir.Visual.Context exposing (Context, evaluate, fromDistributionAndVa
 
 import Dict exposing (Dict)
 import Morphir.IR.Distribution exposing (Distribution)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Value exposing (RawValue)
-import Morphir.Value.Interpreter as Interpreter exposing (FQN)
+import Morphir.Value.Interpreter as Interpreter
 
 
 type alias Context msg =
     { distribution : Distribution
-    , references : Dict Interpreter.FQN Interpreter.Reference
+    , references : Dict FQName Interpreter.Reference
     , variables : Dict Name RawValue
-    , onReferenceClicked : FQN -> Bool -> msg
+    , onReferenceClicked : FQName -> Bool -> msg
     }
 
 
-fromDistributionAndVariables : Distribution -> Dict Name RawValue -> (FQN -> Bool -> msg) -> Context msg
+fromDistributionAndVariables : Distribution -> Dict Name RawValue -> (FQName -> Bool -> msg) -> Context msg
 fromDistributionAndVariables distribution variables onReferenceClick =
     let
         references =
