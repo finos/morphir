@@ -9,7 +9,7 @@ import Morphir.IR.Value as Value exposing (TypedValue)
 type ArithmeticOperatorTree
     = ArithmeticOperatorBranch ArithmeticOperator (List ArithmeticOperatorTree)
     | ArithmeticValueLeaf TypedValue
-    | ArithmeticDivisionBranch ArithmeticOperatorTree ArithmeticOperatorTree
+    | ArithmeticDivisionBranch (List ArithmeticOperatorTree)
 
 
 type ArithmeticOperator
@@ -20,6 +20,10 @@ type ArithmeticOperator
 
 fromArithmeticTypedValue : TypedValue -> ArithmeticOperatorTree
 fromArithmeticTypedValue typedValue =
+    let
+        tim =
+            Debug.log "travel   ->  " typedValue
+    in
     case typedValue of
         Value.Apply _ fun arg ->
             let
@@ -35,16 +39,16 @@ fromArithmeticTypedValue typedValue =
                     in
                     case operatorName of
                         "Basics.add" ->
-                            ArithmeticOperatorBranch Add (helperArithmeticTreeBuilderRecursion typedValue operatorName)
+                            ArithmeticOperatorBranch Add ([ ArithmeticValueLeaf arg1 ] ++  helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         "Basics.subtract" ->
-                            ArithmeticOperatorBranch Subtract (helperArithmeticTreeBuilderRecursion typedValue operatorName)
+                            ArithmeticOperatorBranch Subtract ([ ArithmeticValueLeaf arg1 ] ++  helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         "Basics.divide" ->
-                            ArithmeticDivisionBranch (ArithmeticValueLeaf arg1) (ArithmeticValueLeaf arg2)
+                            ArithmeticDivisionBranch ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName )
 
                         "Basics.multiply" ->
-                            ArithmeticOperatorBranch Multiply (helperArithmeticTreeBuilderRecursion typedValue operatorName)
+                            ArithmeticOperatorBranch Multiply ([ ArithmeticValueLeaf arg1 ] ++  helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         _ ->
                             ArithmeticValueLeaf typedValue
@@ -58,19 +62,30 @@ fromArithmeticTypedValue typedValue =
 
 helperArithmeticTreeBuilderRecursion : TypedValue -> String -> List ArithmeticOperatorTree
 helperArithmeticTreeBuilderRecursion value operatorName =
+    let
+        tim =
+            Debug.log "time   ->  " value
+    in
     case value of
         Value.Apply _ fun arg ->
             let
                 ( function, args ) =
                     Value.uncurryApply fun arg
+
             in
             case ( function, args ) of
                 ( Value.Reference _ (FQName _ moduleName localName), [ arg1, arg2 ] ) ->
-                    if functionName moduleName localName == operatorName then
-                        helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName
-
-                    else
-                        [ fromArithmeticTypedValue value ]
+                    case functionName moduleName localName of
+                        "Basics.add" ->
+                            [ ArithmeticOperatorBranch Add ([ArithmeticValueLeaf arg1] ++ (helperArithmeticTreeBuilderRecursion arg2 operatorName) )]
+                        "Basics.subtract" ->
+                            [ ArithmeticOperatorBranch Subtract ([ArithmeticValueLeaf arg1] ++ (helperArithmeticTreeBuilderRecursion arg2 operatorName) )]
+                        "Basics.multiply" ->
+                            [ ArithmeticOperatorBranch Multiply ([ArithmeticValueLeaf arg1] ++ (helperArithmeticTreeBuilderRecursion arg2 operatorName) )]
+                        "Basics.divide" ->
+                            [ ArithmeticDivisionBranch ([ArithmeticValueLeaf arg1] ++ (helperArithmeticTreeBuilderRecursion arg2 operatorName)  )]
+                        _ ->
+                            [ fromArithmeticTypedValue value ]
 
                 _ ->
                     [ ArithmeticValueLeaf value ]
@@ -86,20 +101,6 @@ functionName moduleName localName =
         , localName |> Name.toCamelCase
         ]
 
-
-functionNameHelper : ArithmeticOperator -> String
-functionNameHelper ao =
-    case ao of
-        Add ->
-            "Add"
-
-        Subtract ->
-            "Subtract"
-
-        Multiply ->
-            "Multiply"
-
-
 currentPrecedence : String -> Int
 currentPrecedence operatorName =
     case operatorName of
@@ -113,7 +114,7 @@ currentPrecedence operatorName =
             2
 
         "Basics.divide" ->
-            3
+            2
 
         _ ->
             0

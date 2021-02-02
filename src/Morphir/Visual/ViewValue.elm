@@ -18,7 +18,7 @@ import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
 import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (nameToText)
-import Morphir.Visual.Components.AbstractTreeVisualizer exposing (outerView, view)
+import Morphir.Visual.Components.AbstractTreeVisualizer exposing (parseArithmeticOperatorTree, view)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
 import Morphir.Visual.Context as Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
@@ -107,9 +107,12 @@ viewValueByValueType ctx argumentValues typedValue =
             arithmeticOperatorTree : ArithmeticOperatorTree
             arithmeticOperatorTree =
                 ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
+
+            pik =
+                Debug.log "marshall    ->    " arithmeticOperatorTree
         in
-        ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree
-        -- Element.column [] [ ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree, Element.html (div [ Html.Attributes.style "display" "none", Html.Attributes.style "padding" "10", Html.Attributes.style "background-color" "rgb (50 50 50)", Html.Attributes.style "font-size" "16", Html.Attributes.style "color" "rgb(255 78 185 255)" ] [ outerView [] (parseArithmeticOperatorTree arithmeticOperatorTree) ]) ]
+        --ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree
+        Element.column [] [ ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree, Element.html (div [ Html.Attributes.style "display" "block", Html.Attributes.style "padding" "10", Html.Attributes.style "background-color" "rgb (50 50 50)", Html.Attributes.style "font-size" "16", Html.Attributes.style "color" "rgb(255 78 185 255)" ] [ view [] (parseArithmeticOperatorTree arithmeticOperatorTree) ]) ]
 
     else
         viewValueByLanguageFeature ctx argumentValues typedValue
@@ -196,60 +199,4 @@ viewValueByLanguageFeature ctx argumentValues value =
                 ]
 
 
-parseArithmeticOperatorTree : ArithmeticOperatorTree -> String
-parseArithmeticOperatorTree arithmeticOperatorTree =
-    case arithmeticOperatorTree of
-        ArithmeticValueLeaf typedValue ->
-            helperFunctionValue typedValue
 
-        ArithmeticDivisionBranch arithmeticOperatorTree1 arithmeticOperatorTree2 ->
-            "ADB" ++ " -> Divide -> [ " ++ parseArithmeticOperatorTree arithmeticOperatorTree1 ++ " , " ++ parseArithmeticOperatorTree arithmeticOperatorTree2 ++ " ]"
-
-        ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees ->
-            case arithmeticOperator of
-                Add ->
-                    "AOB" ++ " -> Add -> [ " ++ String.join " , " (List.map parseArithmeticOperatorTree arithmeticOperatorTrees) ++ " ]"
-
-                Subtract ->
-                    "AOB" ++ " -> Subtract -> [ " ++ String.join " , " (List.map parseArithmeticOperatorTree arithmeticOperatorTrees) ++ " ]"
-
-                Multiply ->
-                    "AOB" ++ " -> Multiply -> [ " ++ String.join " , " (List.map parseArithmeticOperatorTree arithmeticOperatorTrees) ++ " ]"
-
-
-helperFunctionValue : Value ta va -> String
-helperFunctionValue value1 =
-    case value1 of
-        Literal _ literal ->
-            case literal of
-                BoolLiteral bool ->
-                    case bool of
-                        True ->
-                            "AVL (Bool) = True"
-
-                        False ->
-                            "AVL (Bool) = False"
-
-                CharLiteral char ->
-                    "AVL (char) = " ++ String.fromChar char
-
-                StringLiteral string ->
-                    "AVL (String) = " ++ string
-
-                IntLiteral int ->
-                    "AVL (Int) = " ++ String.fromInt int
-
-                FloatLiteral float ->
-                    "AVL (Float) = " ++ String.fromFloat float
-
-        Variable _ name ->
-            "AVL (Variable) -> " ++ Name.toTitleCase name
-
-        Reference va fQName ->
-            "AVL (Reference) -> " ++ FQName.toString fQName
-
-        Apply va value2 value3 ->
-            "AVL (Apply): " ++ helperFunctionValue value2 ++ " __ " ++ helperFunctionValue value3
-
-        _ ->
-            "Some other format"
