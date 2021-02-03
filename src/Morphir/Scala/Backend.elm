@@ -210,7 +210,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                                     Private ->
                                         [ Scala.Private Nothing ]
                             , name =
-                                valueName |> Name.toCamelCase
+                                mapValueName valueName
                             , typeArgs =
                                 []
                             , args =
@@ -384,7 +384,7 @@ mapType tpe =
                         (\field ->
                             Scala.FunctionDecl
                                 { modifiers = []
-                                , name = field.name |> Name.toCamelCase
+                                , name = mapValueName field.name
                                 , typeArgs = []
                                 , args = []
                                 , returnType = Just (mapType field.tpe)
@@ -400,7 +400,7 @@ mapType tpe =
                         (\field ->
                             Scala.FunctionDecl
                                 { modifiers = []
-                                , name = field.name |> Name.toCamelCase
+                                , name = mapValueName field.name
                                 , typeArgs = []
                                 , args = []
                                 , returnType = Just (mapType field.tpe)
@@ -482,7 +482,7 @@ mapFunctionBody distribution val =
                         (fieldValues
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
-                                    ( fieldName |> Name.toCamelCase, mapValue fieldValue )
+                                    ( mapValueName fieldName, mapValue fieldValue )
                                 )
                         )
 
@@ -494,20 +494,20 @@ mapFunctionBody distribution val =
                         ( path, name ) =
                             mapFQNameToPathAndName fQName
                     in
-                    Scala.Ref path (name |> Name.toCamelCase)
+                    Scala.Ref path (mapValueName name)
 
                 Field a subjectValue fieldName ->
-                    Scala.Select (mapValue subjectValue) (fieldName |> Name.toCamelCase)
+                    Scala.Select (mapValue subjectValue) (mapValueName fieldName)
 
                 FieldFunction tpe fieldName ->
                     case tpe of
                         Type.Function _ inputType _ ->
                             Scala.Lambda
                                 [ ( "x", Just (mapType inputType) ) ]
-                                (Scala.Select (Scala.Variable "x") (fieldName |> Name.toCamelCase))
+                                (Scala.Select (Scala.Variable "x") (mapValueName fieldName))
 
                         _ ->
-                            Scala.Select Scala.Wildcard (fieldName |> Name.toCamelCase)
+                            Scala.Select Scala.Wildcard (mapValueName fieldName)
 
                 Apply a fun arg ->
                     let
@@ -564,7 +564,7 @@ mapFunctionBody distribution val =
                                     if List.isEmpty def.inputTypes then
                                         Scala.ValueDecl
                                             { modifiers = []
-                                            , pattern = Scala.NamedMatch (defName |> Name.toCamelCase)
+                                            , pattern = Scala.NamedMatch (mapValueName defName)
                                             , valueType = Just (mapType def.outputType)
                                             , value = mapValue def.body
                                             }
@@ -572,7 +572,7 @@ mapFunctionBody distribution val =
                                     else
                                         Scala.FunctionDecl
                                             { modifiers = []
-                                            , name = defName |> Name.toCamelCase
+                                            , name = mapValueName defName
                                             , typeArgs = []
                                             , args =
                                                 [ def.inputTypes
@@ -602,7 +602,7 @@ mapFunctionBody distribution val =
                                 (\( defName, def ) ->
                                     Scala.FunctionDecl
                                         { modifiers = []
-                                        , name = defName |> Name.toCamelCase
+                                        , name = mapValueName defName
                                         , typeArgs = []
                                         , args =
                                             if List.isEmpty def.inputTypes then
@@ -659,7 +659,7 @@ mapFunctionBody distribution val =
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     Scala.ArgValue
-                                        (Just (fieldName |> Name.toCamelCase))
+                                        (Just (mapValueName fieldName))
                                         (mapValue fieldValue)
                                 )
                         )
@@ -729,10 +729,26 @@ mapPattern pattern =
             Scala.WildcardMatch
 
 
-reservedValueNames : Set String
-reservedValueNames =
+mapValueName : Name -> String
+mapValueName name =
+    let
+        scalaName : String
+        scalaName =
+            Name.toCamelCase name
+    in
+    if Set.member scalaName javaObjectMethods then
+        "_" ++ scalaName
+
+    else
+        scalaName
+
+
+{-| We cannot use any method names in `java.lang.Object` because values are represented as functions/values in a Scala
+object which implicitly inherits those methods which can result in name collisions.
+-}
+javaObjectMethods : Set String
+javaObjectMethods =
     Set.fromList
-        -- we cannot use any method names in java.lamg.Object because values are represented as functions/values in a Scala object
         [ "clone"
         , "equals"
         , "finalize"
