@@ -14,8 +14,10 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Context as Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
+import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
 import Morphir.Visual.ViewField as ViewField
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
@@ -94,6 +96,14 @@ viewValueByValueType ctx argumentValues typedValue =
                 BoolOperatorTree.fromTypedValue typedValue
         in
         ViewBoolOperatorTree.view (viewValueByLanguageFeature ctx argumentValues) boolOperatorTree
+
+    else if Basics.isNumber valueType then
+        let
+            arithmeticOperatorTree : ArithmeticOperatorTree
+            arithmeticOperatorTree =
+                ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
+        in
+        ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree
 
     else
         viewValueByLanguageFeature ctx argumentValues typedValue

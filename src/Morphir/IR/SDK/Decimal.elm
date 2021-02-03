@@ -26,7 +26,7 @@ moduleSpec =
     , values =
         Dict.fromList
             [ vSpec "fromInt" [ ( "n", intType () ) ] (decimalType ())
-            , vSpec "fromFloat" [ ( "f", floatType () ) ] (maybeType () (decimalType ()))
+            , vSpec "fromFloat" [ ( "f", floatType () ) ] (decimalType ())
             , vSpec "fromString" [ ( "str", stringType () ) ] (maybeType () (decimalType ()))
             , vSpec "hundred" [ ( "n", intType () ) ] (decimalType ())
             , vSpec "thousand" [ ( "n", intType () ) ] (decimalType ())
