@@ -457,13 +457,20 @@ mapFunctionBody distribution val =
                         FloatLiteral v ->
                             wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
 
-                Constructor a fQName ->
+                Constructor tpe fQName ->
                     let
                         ( path, name ) =
                             mapFQNameToPathAndName fQName
                     in
-                    Scala.Ref path
-                        (name |> Name.toTitleCase)
+                    case tpe of
+                        -- if the constructor has at least 2 arguments we should curry it
+                        Type.Function _ _ (Type.Function _ _ _) ->
+                            Scala.Select
+                                (Scala.Ref path (name |> Name.toTitleCase))
+                                "curried"
+
+                        _ ->
+                            Scala.Ref path (name |> Name.toTitleCase)
 
                 Tuple a elemValues ->
                     Scala.Tuple
@@ -510,24 +517,9 @@ mapFunctionBody distribution val =
                             Scala.Select Scala.Wildcard (mapValueName fieldName)
 
                 Apply a fun arg ->
-                    let
-                        ( bottomFun, args ) =
-                            Value.uncurryApply fun arg
-                    in
-                    case bottomFun of
-                        Reference _ _ ->
-                            Scala.Apply (mapValue fun)
-                                [ Scala.ArgValue Nothing (mapValue arg)
-                                ]
-
-                        _ ->
-                            Scala.Apply (mapValue bottomFun)
-                                (args
-                                    |> List.map
-                                        (\argValue ->
-                                            Scala.ArgValue Nothing (mapValue argValue)
-                                        )
-                                )
+                    Scala.Apply (mapValue fun)
+                        [ Scala.ArgValue Nothing (mapValue arg)
+                        ]
 
                 Lambda a argPattern bodyValue ->
                     case argPattern of
