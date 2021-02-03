@@ -1,24 +1,20 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, column, el, fill, padding, rgb, row, spacing, text, width)
+import Element exposing (Element, el, fill, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font exposing (..)
-import Html exposing (div)
-import Html.Attributes
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.FQName as FQName exposing (FQName(..))
-import Morphir.IR.Literal as Value exposing (Literal(..))
-import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
-import Morphir.Value.Interpreter exposing (FQN)
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (nameToText)
-import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
+import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Context as Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
@@ -34,14 +30,14 @@ import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme.Light exposing (gray)
 
 
-viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> (FQN -> Bool -> msg) -> Dict FQN (Value.Definition () (Type ())) -> Element msg
+viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> (FQName -> Bool -> msg) -> Dict FQName (Value.Definition () (Type ())) -> Element msg
 viewDefinition distribution valueDef variables onReferenceClicked expandedFunctions =
     let
         ctx : Context msg
         ctx =
             Context.fromDistributionAndVariables distribution variables onReferenceClicked
     in
-    Element.column [ spacing 8, width fill, centerX ]
+    Element.column [ spacing 8 ]
         [ viewValue ctx variables valueDef.body
         , if Dict.isEmpty expandedFunctions then
             Element.none
@@ -125,15 +121,12 @@ viewValueByLanguageFeature ctx argumentValues value =
         Value.Tuple tpe elems ->
             ViewTuple.view (viewValue ctx argumentValues) elems
 
-        Value.List (Type.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "list" ] ] [ "list" ]) [ itemType ]) items ->
+        Value.List (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ]) items ->
             ViewList.view ctx.distribution (viewValue ctx argumentValues) itemType items
 
         Value.Variable tpe name ->
-            row
-                [ spacing 6
-                , centerX
-                ]
-                [ column [] [ text (nameToText name) ] ]
+            el []
+                (text (nameToText name))
 
         Value.Reference tpe fQName ->
             ViewReference.view ctx (viewValue ctx argumentValues) fQName

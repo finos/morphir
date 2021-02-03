@@ -1,11 +1,10 @@
 module Morphir.Visual.XRayView exposing (NodeType(..), TreeNode(..), childNodes, noPadding, patternToNode, valueToNode, viewConstructorName, viewLiteral, viewPatternAsHeader, viewReferenceName, viewTreeNode, viewValue, viewValueAsHeader, viewValueDefinition)
 
 import Dict
-import Element exposing (Element, column, el, padding, paddingEach, paddingXY, rgb, row, spacing, text)
+import Element exposing (Element, column, el, paddingEach, paddingXY, rgb, row, spacing, text)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
@@ -411,7 +410,7 @@ patternToNode maybeTag pattern =
                 []
 
 
-viewReferenceName (FQName packageName moduleName localName) =
+viewReferenceName ( packageName, moduleName, localName ) =
     text
         (String.join " "
             [ packageName |> Path.toString Name.toTitleCase "."
@@ -421,7 +420,7 @@ viewReferenceName (FQName packageName moduleName localName) =
         )
 
 
-viewConstructorName (FQName packageName moduleName localName) =
+viewConstructorName ( packageName, moduleName, localName ) =
     text
         (String.join " "
             [ packageName |> Path.toString Name.toTitleCase "."

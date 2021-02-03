@@ -25,7 +25,6 @@ import Elm.Syntax.Pattern exposing (Pattern(..))
 import Morphir.Elm.Backend.Utils as Utils
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..))
 
@@ -128,19 +127,19 @@ typeToDecoder typeName topLevelFieldNames tpe =
     case tpe of
         Reference _ fqName typeParams ->
             case fqName of
-                FQName _ _ [ "string" ] ->
+                ( _, _, [ "string" ] ) ->
                     FunctionOrValue decoderModuleName "string"
 
-                FQName _ _ [ "bool" ] ->
+                ( _, _, [ "bool" ] ) ->
                     FunctionOrValue decoderModuleName "bool"
 
-                FQName _ _ [ "int" ] ->
+                ( _, _, [ "int" ] ) ->
                     FunctionOrValue decoderModuleName "int"
 
-                FQName _ _ [ "float" ] ->
+                ( _, _, [ "float" ] ) ->
                     FunctionOrValue decoderModuleName "float"
 
-                FQName _ _ [ "maybe" ] ->
+                ( _, _, [ "maybe" ] ) ->
                     let
                         typeParamEncoder =
                             case typeParams of
@@ -163,7 +162,7 @@ typeToDecoder typeName topLevelFieldNames tpe =
                         |> Utils.emptyRangeNode
                         |> ParenthesizedExpression
 
-                FQName _ _ name ->
+                ( _, _, name ) ->
                     FunctionOrValue
                         []
                         ("decoder" ++ (name |> Name.toTitleCase))

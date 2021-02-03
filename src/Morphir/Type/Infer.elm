@@ -3,7 +3,7 @@ module Morphir.Type.Infer exposing (..)
 import Dict exposing (Dict)
 import Morphir.Compiler as Compiler
 import Morphir.IR.AccessControlled exposing (AccessControlled)
-import Morphir.IR.FQName as FQName exposing (FQName(..))
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)

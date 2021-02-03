@@ -19,7 +19,6 @@ module Morphir.IR.SDK.Basics exposing (add, and, boolType, composeLeft, composeR
 
 import Dict exposing (Dict)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -29,7 +28,6 @@ import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Native as Native
-import Morphir.Visual.Components.AritmeticExpressions exposing (ArithmeticOperatorTree(..))
 
 
 moduleName : ModuleName
@@ -432,10 +430,10 @@ composeRight a =
 isNumber : Type ta -> Bool
 isNumber tpe =
     case tpe of
-        Reference a (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "basics" ] ] [ "float" ]) [] ->
+        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
             True
 
-        Reference a (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "basics" ] ] [ "int" ]) [] ->
+        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
             True
 
         _ ->

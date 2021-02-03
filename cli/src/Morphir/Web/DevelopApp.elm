@@ -3,18 +3,18 @@ module Morphir.Web.DevelopApp exposing (..)
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, column, el, fill, height, image, layout, link, minimum, padding, paddingEach, paddingXY, paragraph, px, rgb, row, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignTop, column, el, fill, height, image, layout, link, minimum, padding, paddingXY, px, rgb, row, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font exposing (center)
-import Element.Input as Input exposing (labelHidden, labelLeft)
+import Element.Font as Font
+import Element.Input as Input exposing (labelHidden)
 import Http
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme exposing (Theme)
@@ -84,7 +84,7 @@ type Msg
     | UrlChanged Url.Url
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
-    | ExpandReference FQN Bool
+    | ExpandReference FQName Bool
     | ValueFilterChanged String
 
 

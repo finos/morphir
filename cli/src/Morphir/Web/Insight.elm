@@ -7,11 +7,11 @@ import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder, string)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Distribution.Codec as DistributionCodec
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.QName as QName exposing (QName(..))
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value exposing (Value)
 import Morphir.IR.Value.Codec as ValueCodec
-import Morphir.Value.Interpreter exposing (FQN)
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
 import Morphir.Visual.ViewValue as ViewValue
 
@@ -71,7 +71,7 @@ port receiveFunctionArguments : (Decode.Value -> msg) -> Sub msg
 type Msg
     = FunctionNameReceived String
     | FunctionArgumentsReceived Decode.Value
-    | ExpandReference FQN Bool
+    | ExpandReference FQName Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
