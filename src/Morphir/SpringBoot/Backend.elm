@@ -207,20 +207,19 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
 
                             Just (CustomTypeSpecification _ constructors) ->
                                 constructors
+                                    |> Dict.toList
                                     |> List.concatMap
-                                        (\constructor ->
-                                            case constructor of
-                                                Type.Constructor _ types ->
-                                                    types
-                                                        |> List.concatMap
-                                                            (\( _, consType ) ->
-                                                                case consType of
-                                                                    Type.Reference _ ( _, _, consTypeName ) _ ->
-                                                                        [ consTypeName |> Name.toTitleCase ]
+                                        (\( _, types ) ->
+                                            types
+                                                |> List.concatMap
+                                                    (\( _, consType ) ->
+                                                        case consType of
+                                                            Type.Reference _ ( _, _, consTypeName ) _ ->
+                                                                [ consTypeName |> Name.toTitleCase ]
 
-                                                                    _ ->
-                                                                        []
-                                                            )
+                                                            _ ->
+                                                                []
+                                                    )
                                         )
 
                             _ ->
