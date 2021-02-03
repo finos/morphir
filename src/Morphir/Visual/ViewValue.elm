@@ -190,5 +190,5 @@ viewValueByLanguageFeature ctx argumentValues value =
                     , Border.rounded 3
                     , width fill
                     ]
-                    (XRayView.viewValue other)
+                    (XRayView.viewValue XRayView.viewType other)
                 ]
