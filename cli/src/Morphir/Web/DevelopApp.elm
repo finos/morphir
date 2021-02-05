@@ -273,7 +273,7 @@ viewHeader model =
                         }
                     )
                 , el [ paddingXY 10 0 ]
-                    (model.theme.heading 1 "Morphir Development Server")
+                    (model.theme.heading 1 "Morphir Web")
                 ]
             ]
         ]
