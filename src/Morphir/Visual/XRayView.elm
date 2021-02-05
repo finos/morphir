@@ -6,7 +6,6 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Morphir.IR.AccessControlled exposing (AccessControlled)
-import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
@@ -425,12 +424,12 @@ patternToNode maybeTag pattern =
                 []
 
 
-viewReferenceName (FQName packageName moduleName localName) =
+viewReferenceName ( _, _, localName ) =
     text
         (localName |> Name.toCamelCase)
 
 
-viewConstructorName (FQName packageName moduleName localName) =
+viewConstructorName ( _, _, localName ) =
     text
         (localName |> Name.toTitleCase)
 
@@ -468,7 +467,7 @@ viewType tpe =
         Type.Variable _ varName ->
             text (Name.toCamelCase varName)
 
-        Type.Reference _ (FQName packageName moduleName localName) argTypes ->
+        Type.Reference _ ( _, _, localName ) argTypes ->
             if List.isEmpty argTypes then
                 text (localName |> Name.toTitleCase)
 
