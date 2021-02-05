@@ -1,18 +1,10 @@
 module Morphir.Visual.ViewArithmetic exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, column, fill, padding, paddingEach, rgb, row, spacing, text, width)
+import Element exposing (Element, centerX, column, padding, paddingEach, rgb, row, spacing, text, width)
 import Element.Border as Border
-import Element.Font exposing (alignRight, center, justify)
-import Morphir.Graph.GraphViz.AST exposing (Attribute(..))
-import Morphir.IR.FQName exposing (FQName(..))
-import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.Components.AritmeticExpressions exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
-import Morphir.Visual.Context exposing (Context)
-import Morphir.Visual.ViewLiteral as ViewLiteral
 
 
 view : (TypedValue -> Element msg) -> ArithmeticOperatorTree -> Element msg

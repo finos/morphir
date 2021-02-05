@@ -39,7 +39,7 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName(..), fqn)
+import Morphir.IR.FQName exposing (FQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
@@ -89,7 +89,7 @@ mapPackageDefinition opt distribution packagePath packageDef =
 
 
 mapFQNameToPathAndName : FQName -> ( Scala.Path, Name )
-mapFQNameToPathAndName (FQName packagePath modulePath localName) =
+mapFQNameToPathAndName ( packagePath, modulePath, localName ) =
     let
         scalaModulePath =
             case modulePath |> List.reverse of
@@ -309,7 +309,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                     }
 
         parentTraitRef =
-            mapFQNameToTypeRef (FQName currentPackagePath currentModulePath typeName)
+            mapFQNameToTypeRef ( currentPackagePath, currentModulePath, typeName )
 
         sealedTraitHierarchy : List Scala.TypeDecl
         sealedTraitHierarchy =

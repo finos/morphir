@@ -4,9 +4,6 @@ import Morphir.Reference.Model.Types as Types exposing (Custom(..), FooBarBazRec
 import String exposing (fromInt)
 
 
-
-
-
 basicLiteralBool : Bool
 basicLiteralBool =
     True

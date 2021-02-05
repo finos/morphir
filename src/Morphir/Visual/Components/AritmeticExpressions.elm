@@ -1,6 +1,5 @@
 module Morphir.Visual.Components.AritmeticExpressions exposing (..)
 
-import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Value as Value exposing (TypedValue)
@@ -27,7 +26,7 @@ fromArithmeticTypedValue typedValue =
                     Value.uncurryApply fun arg
             in
             case ( function, args ) of
-                ( Value.Reference _ (FQName _ moduleName localName), [ arg1, arg2 ] ) ->
+                ( Value.Reference _ ( _, moduleName, localName ), [ arg1, arg2 ] ) ->
                     let
                         operatorName : String
                         operatorName =
@@ -65,7 +64,7 @@ helperArithmeticTreeBuilderRecursion value operatorName =
                     Value.uncurryApply fun arg
             in
             case ( function, args ) of
-                ( Value.Reference _ (FQName _ moduleName localName), [ arg1, arg2 ] ) ->
+                ( Value.Reference _ ( _, moduleName, localName ), [ arg1, arg2 ] ) ->
                     case functionName moduleName localName of
                         "Basics.add" ->
                             [ ArithmeticOperatorBranch Add ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
