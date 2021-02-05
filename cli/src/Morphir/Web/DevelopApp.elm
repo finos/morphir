@@ -1,4 +1,4 @@
-module Morphir.Web.DevelopApp exposing (..)
+module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Route(..), ServerState(..), ViewType(..), httpMakeModel, init, main, makeURL, noBorderWidth, routeParser, scaled, subscriptions, toRoute, update, view, viewAsCard, viewBody, viewHeader, viewModuleControls, viewTitle, viewTypeFromString, viewValue)
 
 import Browser
 import Browser.Navigation as Nav
@@ -232,7 +232,7 @@ view model =
                 [ width fill
                 ]
                 [ viewHeader model
-                , el [ padding 5 ] (viewBody model)
+                , el [ padding 5, width fill ] (viewBody model)
                 ]
             )
         ]
@@ -257,7 +257,6 @@ viewHeader model =
     column
         [ width fill
         , Background.color model.theme.highlightColor
-        , padding 5
         ]
         [ row
             [ width fill
@@ -265,14 +264,16 @@ viewHeader model =
             [ row
                 [ width fill
                 ]
-                [ image
-                    [ height (px 50)
-                    ]
-                    { src = "/assets/2020_Morphir_Logo_Icon_WHT.svg"
-                    , description = "Morphir Logo"
-                    }
+                [ el [ padding 6 ]
+                    (image
+                        [ height (px 40)
+                        ]
+                        { src = "/assets/2020_Morphir_Logo_Icon_WHT.svg"
+                        , description = "Morphir Logo"
+                        }
+                    )
                 , el [ paddingXY 10 0 ]
-                    (model.theme.heading 1 "Morphir Development Server")
+                    (model.theme.heading 1 "Morphir Web")
                 ]
             ]
         ]
@@ -319,7 +320,8 @@ viewBody model =
                     case packageDef.modules |> Dict.get (moduleName |> List.map Name.fromString) of
                         Just accessControlledModuleDef ->
                             column
-                                [ spacing (scaled 4)
+                                [ width fill
+                                , spacing (scaled 4)
                                 ]
                                 [ viewModuleControls moduleName filterString viewType
                                 , wrappedRow [ spacing (scaled 4) ]
@@ -358,7 +360,7 @@ viewBody model =
                                                                             Dict.empty
 
                                                                     RawIRView ->
-                                                                        XRayView.viewValueDefinition accessControlledValueDef
+                                                                        XRayView.viewValueDefinition XRayView.viewType accessControlledValueDef
                                                                 )
                                                             )
                                                         )
@@ -419,7 +421,9 @@ viewModuleControls moduleName filterString viewType =
         , height shrink
         ]
         [ Input.text
-            [ padding 4
+            [ paddingXY 10 4
+            , Border.width 1
+            , Border.rounded 10
             ]
             { onChange = ValueFilterChanged
             , text = filterString |> Maybe.withDefault ""
@@ -482,22 +486,32 @@ viewAsCard title content =
     let
         gray =
             rgb 0.9 0.9 0.9
+
+        white =
+            rgb 1 1 1
     in
     column
-        [ Border.width 3
-        , Border.color gray
+        [ Background.color gray
         , Border.rounded 3
         , height (shrink |> minimum 200)
         , width (shrink |> minimum 200)
+        , padding 5
+        , spacing 5
         ]
         [ el
             [ width fill
-            , padding 5
-            , Background.color gray
-            , Font.size (scaled 3)
+            , padding 2
+            , Font.size (scaled 2)
             ]
             (text title)
-        , el [ padding 5 ] content
+        , el
+            [ Background.color white
+            , Border.rounded 3
+            , padding 5
+            , height fill
+            , width fill
+            ]
+            content
         ]
 
 
