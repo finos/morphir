@@ -49,7 +49,7 @@ Commands:
 
 Each command has different options which are detailed below:
 
-### `morphir-elm make` - Translate Elm sources to Morphir IR
+### `morphir-elm make`
 
 This command reads Elm sources, translates to Morphir IR and outputs the IR into JSON. 
 
@@ -89,9 +89,9 @@ common package prefix. In the above example `Foo` refers to the Elm module `My.P
 
 If you want to try the `make` command you can use the reference model we have under `tests-integration/reference-model`. Simply `cd` into the directory and run the command.
 
-### `morphir-elm gen` - Generate code from Morphir IR
+### `morphir-elm gen`
 
-This command reads the JSON produced by `morphir-elm make` and generates Scala sources into the specified folder:
+This command reads the JSON produced by `morphir-elm make` and generates code into the specified folder:
 
 ```
 Usage: morphir-elm gen [options]
@@ -109,7 +109,7 @@ Options:
 
 If you want to try the `gen` command you can use the reference model we have under `tests-integration/reference-model`. Simply `cd` into the directory and run the command.
 
-### `morphir-elm develop` - Start up a web server and expose developer tools through a web UI
+### `morphir-elm develop`
 
 This command relies on the JSON produced by `morphir-elm make` and brings up a web server to browse the Morphir IR.
 
