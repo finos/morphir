@@ -28,24 +28,11 @@ decodeDataTest =
         stringDecoder : Type ()
         stringDecoder =
             Type.Reference () (fqn "Morphir.SDK" "String" "String") []
-
-        jsonDecoder : Type () -> Result String (Decode.Decoder (Value () ()))
-        jsonDecoder typeDecoder =
-            decodeData typeDecoder
     in
     describe "JsonDecoderTest"
         [ test "PassedInt"
             (\_ ->
                 case decodeData intDecoder of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "42") (Ok (Value.literal () (IntLiteral 425)))
-
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
-        , test "FailedInt"
-            (\_ ->
-                case jsonDecoder floatDecoder of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "42") (Ok (Value.literal () (IntLiteral 42)))
 
@@ -54,16 +41,7 @@ decodeDataTest =
             )
         , test "PassedFloat"
             (\_ ->
-                case jsonDecoder floatDecoder of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "42.5") (Ok (Value.literal () (FloatLiteral 42.5)))
-
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
-        , test "FailedFloat"
-            (\_ ->
-                case jsonDecoder intDecoder of
+                case decodeData floatDecoder of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "42.5") (Ok (Value.literal () (FloatLiteral 42.5)))
 
@@ -72,34 +50,16 @@ decodeDataTest =
             )
         , test "PassedChar"
             (\_ ->
-                case jsonDecoder charDecoder of
+                case decodeData charDecoder of
                     Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "'a'") (Ok (Value.literal () (StringLiteral "a")))
-
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
-        , test "FailedChar"
-            (\_ ->
-                case jsonDecoder charDecoder of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "'b'") (Ok (Value.literal () (StringLiteral "Hello")))
+                        Expect.equal (Decode.decodeString decoder "\"a\"") (Ok (Value.literal () (StringLiteral "a")))
 
                     Err error ->
                         Expect.equal "Cannot Decode this type" error
             )
         , test "PassedString"
             (\_ ->
-                case jsonDecoder stringDecoder of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "\"Hello\"") (Ok (Value.literal () (StringLiteral "Hello")))
-
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
-        , test "FailedString"
-            (\_ ->
-                case jsonDecoder floatDecoder of
+                case decodeData stringDecoder of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "\"Hello\"") (Ok (Value.literal () (StringLiteral "Hello")))
 

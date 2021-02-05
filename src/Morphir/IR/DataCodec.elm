@@ -41,23 +41,23 @@ decodeData tpe =
                 |> Result.map (\decoder -> Decode.map (Value.Record ()) decoder)
 
         Type.Reference _ (( packageName, moduleName, localName ) as fQName) args ->
-            case FQName.toString fQName of
-                "Morphir.SDK.Basics.Int" ->
+            case fQName of
+                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (IntLiteral value)) Decode.int)
 
-                "Morphir.SDK.Basics.Float" ->
+                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (FloatLiteral value)) Decode.float)
 
-                "Morphir.SDK.Basics.Bool" ->
+                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (BoolLiteral value)) Decode.bool)
 
-                "Morphir.SDK.Char.Char" ->
+                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "char" ] ], [ "char" ] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (StringLiteral value)) Decode.string)
 
-                "Morphir.SDK.String.String" ->
+                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (StringLiteral value)) Decode.string)
 
-                "Morphir.SDK.List.List" ->
+                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) ->
                     Err "Cannot Decode this type"
 
                 _ ->
