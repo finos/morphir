@@ -1,9 +1,9 @@
 {
   "name": "morphir-elm",
-  "version": "2.15.0",
+  "version": "2.15.1",
   "description": "Elm bindings for Morphir",
   "scripts": {
-    "clean": "del dist",
+    "clean": "del-cli dist",
     "test": "elm-test",
     "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js --optimize",
     "make-cli-dev": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js",
@@ -11,7 +11,9 @@
     "make-insight-api": "cd cli && elm make src/Morphir/Web/Insight.elm --output=web/insight.js",
     "insight-server-live": "cd cli && elm-live src/Morphir/Web/Insight.elm --start-page=./web/insight.html --dir=./web --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/insight.js",
     "dev-server-live": "cd cli && elm-live src/Morphir/Web/DevelopApp.elm --dir=web --pushstate --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/index.html",
-    "build": "npm run clean && npm run make-cli && npm run make-dev-server &&  npm run make-insight-api && ncc build cli/morphir.js -o dist/morphir"
+    "ncc-morphir": "ncc build cli/morphir.js -o dist/morphir",
+    "ncc-morphir-server": "ncc build cli/morphir-elm-develop.js -o dist/morphir-server",
+    "build": "npm run clean && npm run make-cli && npm run make-dev-server &&  npm run make-insight-api && npm run ncc-morphir && npm run ncc-morphir-server"
   },
   "repository": {
     "type": "git",
@@ -32,6 +34,7 @@
     "cli/Morphir.Elm.DaprCLI.js",
     "cli/assets/*",
     "cli/web/*",
+    "dist/morphir-server/*",
     "src/Morphir/SDK/*",
     "redistributable/SpringBoot/*"
   ],
