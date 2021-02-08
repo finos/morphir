@@ -3,7 +3,7 @@ module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Route(..), 
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, column, el, fill, height, image, layout, link, minimum, padding, paddingXY, px, rgb, row, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignTop, column, el, fill, height, image, layout, link, minimum, none, padding, paddingXY, px, rgb, row, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -232,6 +232,12 @@ view model =
                 [ width fill
                 ]
                 [ viewHeader model
+                , case model.serverState of
+                    ServerReady ->
+                        none
+
+                    ServerHttpError error ->
+                        viewServerError error
                 , el [ padding 5, width fill ] (viewBody model)
                 ]
             )
@@ -277,6 +283,36 @@ viewHeader model =
                 ]
             ]
         ]
+
+
+viewServerError : Http.Error -> Element msg
+viewServerError error =
+    let
+        message : String
+        message =
+            case error of
+                Http.BadUrl url ->
+                    "An invalid URL was provided: " ++ url
+
+                Http.Timeout ->
+                    "Request timed out"
+
+                Http.NetworkError ->
+                    "Network error"
+
+                Http.BadStatus code ->
+                    "Server returned an error: " ++ String.fromInt code
+
+                Http.BadBody body ->
+                    "Unexpected response body: " ++ body
+    in
+    el
+        [ width fill
+        , paddingXY 20 10
+        , Background.color (rgb 1 0.5 0.5)
+        , Font.color (rgb 1 1 1)
+        ]
+        (text message)
 
 
 viewBody : Model -> Element Msg
