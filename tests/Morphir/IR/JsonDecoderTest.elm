@@ -97,23 +97,24 @@ decodeDataTest =
                     Err error ->
                         Expect.equal "Cannot Decode this type" error
             )
-        , test "ListDecoder"
-            (\_ ->
-                case decodeData (listType () (floatType ())) of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "[1.1,2.3,3.5]")
-                            (Ok
-                                (Value.List ()
-                                    [ Value.Literal () (FloatLiteral 1.1)
-                                    , Value.Literal () (FloatLiteral 2.3)
-                                    , Value.Literal () (FloatLiteral 3.5)
-                                    ]
-                                )
-                            )
 
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
+        --, test "ListDecoder"
+        --    (\_ ->
+        --        case decodeData (listType () (floatType ())) of
+        --            Ok decoder ->
+        --                Expect.equal (Decode.decodeString decoder "[1.1,2.3,3.5]")
+        --                    (Ok
+        --                        (Value.List ()
+        --                            [ Value.Literal () (FloatLiteral 1.1)
+        --                            , Value.Literal () (FloatLiteral 2.3)
+        --                            , Value.Literal () (FloatLiteral 3.5)
+        --                            ]
+        --                        )
+        --                    )
+        --
+        --            Err error ->
+        --                Expect.equal "Cannot Decode this type" error
+        --    )
         , test "EmptyListDecoder"
             (\_ ->
                 case decodeData emptyListType of
@@ -156,25 +157,26 @@ decodeDataTest =
                     Err error ->
                         Expect.equal "Cannot Decode this type" error
             )
-        , test "TupleDecoder"
-            (\_ ->
-                case decodeData tupleType of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "[13,false,24.6,\"b\",\"tuple\"]")
-                            (Ok
-                                (Value.Tuple ()
-                                    [ Value.Literal () (IntLiteral 13)
-                                    , Value.Literal () (BoolLiteral False)
-                                    , Value.Literal () (FloatLiteral 24.6)
-                                    , Value.Literal () (StringLiteral "b")
-                                    , Value.Literal () (StringLiteral "tuple")
-                                    ]
-                                )
-                            )
 
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
+        --, test "TupleDecoder"
+        --    (\_ ->
+        --        case decodeData tupleType of
+        --            Ok decoder ->
+        --                Expect.equal (Decode.decodeString decoder "[13,false,24.6,\"b\",\"tuple\"]")
+        --                    (Ok
+        --                        (Value.Tuple ()
+        --                            [ Value.Literal () (IntLiteral 13)
+        --                            , Value.Literal () (BoolLiteral False)
+        --                            , Value.Literal () (FloatLiteral 24.6)
+        --                            , Value.Literal () (StringLiteral "b")
+        --                            , Value.Literal () (StringLiteral "tuple")
+        --                            ]
+        --                        )
+        --                    )
+        --
+        --            Err error ->
+        --                Expect.equal "Cannot Decode this type" error
+        --    )
         , test "EmptyTupleDecoder"
             (\_ ->
                 case decodeData emptyTupleType of
