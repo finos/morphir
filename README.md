@@ -34,17 +34,34 @@ npm install -g morphir-elm
 All the features can be accessed through sub-commands within the `morphir-elm` command:
 
 ```
-morphir-elm [command]
+Usage: morphir-elm [options] [command]
+
+Options:
+  -v, --version  output the version number
+  -h, --help     output usage information
+
+Commands:
+  make           Translate Elm sources to Morphir IR
+  gen            Generate code from Morphir IR
+  develop        Start up a web server and expose developer tools through a web UI
+  help [cmd]     display help for [cmd]
 ```
 
 Each command has different options which are detailed below:
 
-### Translate Elm sources to Morphir IR
+### `morphir-elm make`
 
 This command reads Elm sources, translates to Morphir IR and outputs the IR into JSON. 
 
 ```
-morphir-elm make [options]
+Usage: morphir-elm make [options]
+
+Translate Elm sources to Morphir IR
+
+Options:
+  -p, --project-dir <path>  Root directory of the project where morphir.json is located. (default: ".")
+  -o, --output <path>       Target file location where the Morphir IR will be saved. (default: "morphir-ir.json")
+  -h, --help                output usage information
 ```
 
 **Important**: The command requires a configuration file called `morphir.json` located in the project 
@@ -67,33 +84,50 @@ under that or in submodules.
 * **sourceDirectory** - The directory where your Elm sources are located.
 * **exposedModules** - The list of modules in the public interface of the package. Module names should exclude the 
 common package prefix. In the above example `Foo` refers to the Elm module `My.Package.Foo`. 
-
-#### Options
-
-- `--project-dir <path>`, `-p`
-  - Root directory of the project where morphir.json is located. 
-  - Defaults to current directory.
-- `--output <path>`, `-o`
-  - Target location where the Morphir IR will be saved.
-  - Defaults to `morphir-ir.json`.
-
-### Transpile Morphir IR into Scala
-
-This command reads the JSON produced by `morphir-elm make` and generates Scala sources into the specified folder:
-
-```
-morphir-elm gen [options]
-```
-
-#### Options
-
-- `--input <path>`, `-i` 
-  - Source location where the Morphir IR will be loaded from. 
-  - Defaults to `morphir-ir.json`.
-- `--output <path>`, `-o`
-  - Target location where the generated code will be saved. 
-  - Defaults to `./dist`.
   
+#### Examples
+
+If you want to try the `make` command you can use the reference model we have under `tests-integration/reference-model`. Simply `cd` into the directory and run the command.
+
+### `morphir-elm gen`
+
+This command reads the JSON produced by `morphir-elm make` and generates code into the specified folder:
+
+```
+Usage: morphir-elm gen [options]
+
+Generate code from Morphir IR
+
+Options:
+  -i, --input <path>   Source location where the Morphir IR will be loaded from. (default: "morphir-ir.json")
+  -o, --output <path>  Target location where the generated code will be saved. (default: "./dist")
+  -t, --target <type>  Language to Generate (Scala | SpringBoot | cypher | triples (default: "Scala")
+  -h, --help           output usage information
+```
+
+#### Examples
+
+If you want to try the `gen` command you can use the reference model we have under `tests-integration/reference-model`. Simply `cd` into the directory and run the command.
+
+### `morphir-elm develop`
+
+This command relies on the JSON produced by `morphir-elm make` and brings up a web server to browse the Morphir IR.
+
+```
+Usage: morphir-elm develop [options]
+
+Start up a web server and expose developer tools through a web UI
+
+Options:
+  -p, --project-dir <path>  Root directory of the project where morphir.json is located. (default: ".")
+  -h, --help                output usage information
+```
+
+#### Examples
+
+If you want to try the `develop` server you can use the reference model we have under `tests-integration/reference-model`. Simply `cd` into the directory and run the command.
+
+
 # Elm package
 
 [![Latest version of the Elm package](https://reiner-dolp.github.io/elm-badges/finos/morphir-elm/version.svg)](https://package.elm-lang.org/packages/finos/morphir-elm/latest)
@@ -153,6 +187,8 @@ structure follows the structure of the IR. Here's a list of concepts in a top-do
   is a utility to define visibility constraints for modules, types and values  
 
 ## Contributing
+
+[Contribution Guide](docs/contribution-guide.md)
 
 1. Fork it (<https://github.com/finos/morphir-elm/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)

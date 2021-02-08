@@ -10,12 +10,12 @@ import Morphir.Visual.Components.DecisionTree as DecisionTree exposing (LeftOrRi
 import Morphir.Visual.Context as Context exposing (Context)
 
 
-view : Context -> (TypedValue -> Element msg) -> Value () (Type ()) -> Dict Name (Value () ()) -> Element msg
+view : Context msg -> (TypedValue -> Element msg) -> Value () (Type ()) -> Dict Name (Value () ()) -> Element msg
 view ctx viewValue value variables =
     DecisionTree.layout viewValue (valueToTree ctx True value)
 
 
-valueToTree : Context -> Bool -> TypedValue -> DecisionTree.Node
+valueToTree : Context msg -> Bool -> TypedValue -> DecisionTree.Node
 valueToTree ctx doEval value =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->

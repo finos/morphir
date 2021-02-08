@@ -24,26 +24,33 @@ packageSpec =
                         [ ( Name.fromString "DealCmd"
                           , Documented ""
                                 (Type.CustomTypeSpecification []
-                                    [ Type.Constructor (Name.fromString "OpenDeal")
-                                        [ ( Name.fromString "productId", stringType () )
-                                        , ( Name.fromString "price", floatType () )
-                                        , ( Name.fromString "quantity", intType () )
+                                    (Dict.fromList
+                                        [ ( Name.fromString "OpenDeal"
+                                          , [ ( Name.fromString "productId", stringType () )
+                                            , ( Name.fromString "price", floatType () )
+                                            , ( Name.fromString "quantity", intType () )
+                                            ]
+                                          )
                                         ]
-                                    ]
+                                    )
                                 )
                           )
                         , ( Name.fromString "DealEvent"
                           , Documented ""
                                 (Type.CustomTypeSpecification []
-                                    [ Type.Constructor (Name.fromString "DealOpened")
-                                        [ ( Name.fromString "productId", stringType () )
-                                        , ( Name.fromString "price", floatType () )
-                                        , ( Name.fromString "quantity", intType () )
+                                    (Dict.fromList
+                                        [ ( Name.fromString "DealOpened"
+                                          , [ ( Name.fromString "productId", stringType () )
+                                            , ( Name.fromString "price", floatType () )
+                                            , ( Name.fromString "quantity", intType () )
+                                            ]
+                                          )
+                                        , ( Name.fromString "InvalidPrice"
+                                          , [ ( Name.fromString "price", floatType () )
+                                            ]
+                                          )
                                         ]
-                                    , Type.Constructor (Name.fromString "InvalidPrice")
-                                        [ ( Name.fromString "price", floatType () )
-                                        ]
-                                    ]
+                                    )
                                 )
                           )
                         ]

@@ -1,138 +1,345 @@
-{-
-Copyright 2020 Morgan Stanley
+module Morphir.SDK.Number exposing
+    ( Number(..)
+    , fromInt
+    , equal, notEqual, lessThan, lessThanOrEqual, greaterThan, greaterThanOrEqual
+    , add, subtract, multiply, divide, abs, negate, reciprocal
+    , toFractionalString, toDecimal, coerceToDecimal
+    , simplify, isSimplified
+    , zero, one
+    )
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+{-| This module provides a way to represent a number without the risk of rounding issues or division by zero for any of
+the basic operations: `+`, `-`, `*`, `/`. More accurately a `Number` represents an arbitrary-precision rational number.
+If you need irrational numbers please use a `Float`.
 
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--}
-
-
-module Morphir.SDK.Number exposing (..)
-
-{-| Basic operations on numbers.
--}
+@docs Number
 
 
-{-| Add two numbers. The `number` type variable means this operation can be
-specialized to `Int -> Int -> Int` or to `Float -> Float -> Float`. So you
-can do things like this:
+# Convert from
 
-    3002 + 4004 == 7006 -- all ints
-
-    3.14 + 3.14 == 6.28 -- all floats
-
-You _cannot_ add an `Int` and a `Float` directly though. Use functions like
-[toFloat](#toFloat) or [round](#round) to convert both values to the same type.
-So if you needed to add a list length to a `Float` for some reason, you
-could say one of these:
-
-    3.14 + toFloat (List.length [ 1, 2, 3 ]) == 6.14
-
-    round 3.14 + List.length [ 1, 2, 3 ] == 6
-
-**Note:** Languages like Java and JavaScript automatically convert `Int` values
-to `Float` values when you mix and match. This can make it difficult to be sure
-exactly what type of number you are dealing with. When you try to _infer_ these
-conversions (as Scala does) it can be even more confusing. Elm has opted for a
-design that makes all conversions explicit.
-
--}
-add : number -> number -> number
-add =
-    (+)
+@docs fromInt
 
 
-{-| Subtract numbers like `4 - 3 == 1`.
+# Comparison
 
-See [`add`](#+) for docs on the `number` type variable.
+@docs equal, notEqual, lessThan, lessThanOrEqual, greaterThan, greaterThanOrEqual
+
+
+# Arithmetic
+
+@docs add, subtract, multiply, divide, abs, negate, reciprocal
+
+
+# Convert to
+
+@docs toFractionalString, toDecimal, coerceToDecimal
+
+
+# Misc
+
+@docs simplify, isSimplified
+
+
+# Constants
+
+@docs zero, one
 
 -}
-subtract : number -> number -> number
-subtract =
-    (-)
+
+import BigInt as BigInt exposing (BigInt)
+import Morphir.SDK.Decimal as Decimal exposing (Decimal)
 
 
-{-| Multiply numbers like `2 * 3 == 6`.
+{-| Represents an arbitrary-precision rational number.
+-}
+type Number
+    = Rational BigInt BigInt
 
-See [`add`](#+) for docs on the `number` type variable.
+
+type DivisionByZero
+    = DivisionByZero
+
+
+{-| Create a Number by converting it from an Int
+-}
+fromInt : Int -> Number
+fromInt int =
+    Rational (BigInt.fromInt int) (BigInt.fromInt 1)
+
+
+{-| Turn a number into a decimal.
+NOTE: it is possible for this operation to fail if the Number is a rational number for 0.
+-}
+toDecimal : Number -> Maybe Decimal
+toDecimal (Rational nominator denominator) =
+    let
+        div_ ( n, d ) =
+            Decimal.div n d
+    in
+    Maybe.map2
+        Tuple.pair
+        (nominator |> BigInt.toString |> Decimal.fromString)
+        (denominator |> BigInt.toString |> Decimal.fromString)
+        |> Maybe.andThen div_
+
+
+{-| Turn a number into a decimal, by providing a default value in the case things go awry.
+-}
+coerceToDecimal : Decimal -> Number -> Decimal
+coerceToDecimal default (Rational nominator denominator) =
+    Maybe.map2
+        (Decimal.divWithDefault default)
+        (nominator |> BigInt.toString |> Decimal.fromString)
+        (denominator |> BigInt.toString |> Decimal.fromString)
+        |> Maybe.withDefault default
+
+
+{-| Checks if two numbers are equal.
+
+    equal one one == True
+
+    equal one (divide ten ten) == True
+
+    equal one zero == False
 
 -}
-multiply : number -> number -> number
-multiply =
-    (*)
+equal : Number -> Number -> Bool
+equal =
+    compareWith (==)
 
 
-{-| Exponentiation
+{-| Checks if two numbers are not equal.
 
-    3 ^ 2 == 9
+    notEqual one zero == True
 
-    3 ^ 3 == 27
+    notEqual zero one == True
 
--}
-pow : number -> number -> number
-pow =
-    (^)
-
-
-{-| Negate a number.
-
-    negate 42 == -42
-
-    negate -42 == 42
-
-    negate 0 == 0
+    notEqual one one == False
 
 -}
-negate : number -> number
-negate n =
-    -n
+notEqual : Number -> Number -> Bool
+notEqual =
+    compareWith (/=)
 
 
-{-| Get the [absolute value][abs] of a number.
-
-    abs 16 == 16
-
-    abs -4 == 4
-
-    abs -8.5 == 8.5
-
-    abs 3.14 == 3.14
-
-[abs]: https://en.wikipedia.org/wiki/Absolute_value
-
+{-| Checks if the first number is less than the second
 -}
-abs : number -> number
-abs n =
-    if lt n 0 then
-        -n
-
-    else
-        n
+lessThan : Number -> Number -> Bool
+lessThan =
+    compareWith BigInt.lt
 
 
-{-| Clamps a number within a given range. With the expression
-`clamp 100 200 x` the results are as follows:
-
-    100     if x < 100
-     x      if 100 <= x < 200
-    200     if 200 <= x
-
+{-| Checks if the first number is less than or equal to the second
 -}
-clamp : number -> number -> number -> number
-clamp low high number =
-    if lt number low then
-        low
+lessThanOrEqual : Number -> Number -> Bool
+lessThanOrEqual =
+    compareWith BigInt.lte
 
-    else if gt number high then
-        high
 
-    else
+{-| Checks if the first number is greater than the second
+-}
+greaterThan : Number -> Number -> Bool
+greaterThan =
+    compareWith BigInt.gt
+
+
+{-| Checks if the first number is greater or equal than the second
+-}
+greaterThanOrEqual : Number -> Number -> Bool
+greaterThanOrEqual =
+    compareWith BigInt.gte
+
+
+compareWith : (BigInt -> BigInt -> a) -> Number -> Number -> a
+compareWith f (Rational a b) (Rational c d) =
+    f
+        (BigInt.mul a d)
+        (BigInt.mul b c)
+
+
+{-| Negate the given number, thus flipping the sign.
+-}
+negate : Number -> Number
+negate (Rational a b) =
+    Rational
+        (BigInt.negate a)
+        b
+
+
+{-| Takes the absolute value of the number
+-}
+abs : Number -> Number
+abs (Rational a b) =
+    Rational
+        (BigInt.abs a)
+        (BigInt.abs b)
+
+
+{-| Calculates the reciprocal of the number
+-}
+reciprocal : Number -> Number
+reciprocal ((Rational nominator denominator) as number) =
+    if isZero number then
         number
+
+    else
+        Rational
+            denominator
+            nominator
+
+
+{-| Adds two numbers together.
+-}
+add : Number -> Number -> Number
+add (Rational a b) (Rational c d) =
+    Rational
+        (BigInt.add
+            (BigInt.mul a d)
+            (BigInt.mul b c)
+        )
+        (BigInt.mul b d)
+
+
+{-| Subtracts one number from the other.
+-}
+subtract : Number -> Number -> Number
+subtract (Rational a b) (Rational c d) =
+    Rational
+        (BigInt.sub
+            (BigInt.mul a d)
+            (BigInt.mul b c)
+        )
+        (BigInt.mul b d)
+
+
+{-| Multiplies two numbers together
+-}
+multiply : Number -> Number -> Number
+multiply (Rational a b) (Rational c d) =
+    Rational
+        (BigInt.mul a c)
+        (BigInt.mul b d)
+
+
+{-| Division
+-}
+divide : Number -> Number -> Result DivisionByZero Number
+divide (Rational a b) ((Rational c d) as denominator) =
+    if isZero denominator then
+        Err DivisionByZero
+
+    else
+        Ok
+            (Rational
+                (BigInt.mul a d)
+                (BigInt.mul b c)
+            )
+
+
+gcd : BigInt -> BigInt -> Maybe BigInt
+gcd a b =
+    let
+        zero_ =
+            BigInt.fromInt 0
+
+        gcd_ x maybeY =
+            case maybeY of
+                Nothing ->
+                    Nothing
+
+                Just y ->
+                    if y == zero_ then
+                        Just x
+
+                    else
+                        gcd_ y (BigInt.modBy y x)
+    in
+    gcd_ (BigInt.abs a) (BigInt.abs b |> Just)
+
+
+{-| Tries to simplify the number.
+-}
+simplify : Number -> Maybe Number
+simplify (Rational numerator denominator) =
+    let
+        zero_ =
+            BigInt.fromInt 0
+
+        denominatorIsZero =
+            bigIntsAreEqual denominator zero_
+    in
+    if denominatorIsZero then
+        Nothing
+
+    else
+        let
+            commonFactor =
+                gcd numerator denominator
+
+            reducedNumerator =
+                commonFactor
+                    |> Maybe.andThen (\gcf -> BigInt.divmod numerator gcf |> Maybe.map Tuple.first)
+
+            reducedDenominator =
+                commonFactor
+                    |> Maybe.andThen (\gcf -> BigInt.divmod denominator gcf |> Maybe.map Tuple.first)
+        in
+        Maybe.map2 Rational reducedNumerator reducedDenominator
+
+
+{-| Tells if the number is simplified
+-}
+isSimplified : Number -> Bool
+isSimplified ((Rational originalNumerator originalDenominator) as num) =
+    case simplify num of
+        Nothing ->
+            True
+
+        Just (Rational numerator denominator) ->
+            bigIntsAreEqual originalNumerator numerator && bigIntsAreEqual originalDenominator denominator
+
+
+{-| Create a fractional representation of the number
+-}
+toFractionalString : Number -> String
+toFractionalString (Rational numerator denominator) =
+    BigInt.toString numerator ++ "/" ++ BigInt.toString denominator
+
+
+isZero : Number -> Bool
+isZero (Rational nominator _) =
+    nominator == BigInt.fromInt 0
+
+
+{-| Constant for 0
+-}
+zero : Number
+zero =
+    Rational (BigInt.fromInt 0) (BigInt.fromInt 1)
+
+
+{-| Constant for one
+-}
+one : Number
+one =
+    Rational (BigInt.fromInt 1) (BigInt.fromInt 1)
+
+
+ten : Number
+ten =
+    Rational (BigInt.fromInt 10) (BigInt.fromInt 1)
+
+
+bigIntsAreEqual : BigInt -> BigInt -> Bool
+bigIntsAreEqual a b =
+    case BigInt.compare a b of
+        EQ ->
+            True
+
+        _ ->
+            False
+
+
+bigIntIsZero : BigInt -> Bool
+bigIntIsZero n =
+    bigIntsAreEqual (BigInt.fromInt 0) n

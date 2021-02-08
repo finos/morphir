@@ -18,8 +18,7 @@
 module Morphir.Elm.Frontend exposing
     ( packageDefinitionFromSource, mapDeclarationsToType
     , defaultDependencies
-    , ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation
-    , mapSource
+    , ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation, mapSource
     )
 
 {-| The Elm frontend turns Elm source code into Morphir IR.
@@ -34,7 +33,7 @@ module Morphir.Elm.Frontend exposing
 
 @docs defaultDependencies
 
-@docs ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation
+@docs ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation, mapSource
 
 -}
 
@@ -60,7 +59,7 @@ import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName as FQName exposing (FQName(..), fQName)
+import Morphir.IR.FQName as FQName exposing (FQName, fQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
@@ -166,6 +165,7 @@ defaultDependencies =
         ]
 
 
+{-| -}
 mapSource : PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result (List Compiler.Error) (Package.Definition SourceLocation SourceLocation)
 mapSource packageInfo dependencies sourceFiles =
     let
@@ -694,10 +694,11 @@ mapDeclarationsToType sourceFile expose decls =
                                             ctorArgsResult
                                                 |> Result.map
                                                     (\ctorArgs ->
-                                                        Type.Constructor ctorName ctorArgs
+                                                        ( ctorName, ctorArgs )
                                                     )
                                         )
                                     |> ListOfResults.liftAllErrors
+                                    |> Result.map Dict.fromList
                                     |> Result.mapError List.concat
 
                             doc =
@@ -887,7 +888,7 @@ mapExpression sourceFile (Node range exp) =
         sourceLocation =
             range |> SourceLocation sourceFile
     in
-    case fixAssociativity exp of
+    case exp of
         Expression.UnitExpr ->
             Ok (Value.Unit sourceLocation)
 
@@ -1625,7 +1626,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                 (resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body)
     in
     case value of
-        Value.Constructor sourceLocation (FQName [] modulePath localName) ->
+        Value.Constructor sourceLocation ( [], modulePath, localName ) ->
             moduleResolver.resolveCtor
                 (modulePath |> List.map Name.toTitleCase)
                 (localName |> Name.toTitleCase)
@@ -1635,7 +1636,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                     )
                 |> Result.mapError (ResolveError sourceLocation >> List.singleton)
 
-        Value.Reference sourceLocation (FQName [] modulePath localName) ->
+        Value.Reference sourceLocation ( [], modulePath, localName ) ->
             if variables |> Dict.member localName then
                 Ok (Value.Variable sourceLocation localName)
 
@@ -1820,7 +1821,7 @@ resolvePatternReferences moduleResolver pattern =
                     |> Result.mapError List.concat
                 )
 
-        Value.ConstructorPattern sourceLocation (FQName [] modulePath localName) argPatterns ->
+        Value.ConstructorPattern sourceLocation ( [], modulePath, localName ) argPatterns ->
             Result.map2
                 (\resolvedFullName resolvedArgPatterns ->
                     Value.ConstructorPattern sourceLocation resolvedFullName resolvedArgPatterns
@@ -1852,25 +1853,6 @@ withAccessControl isExposed a =
 
     else
         private a
-
-
-{-| This is an incomplete fis for an associativity issue in elm-syntax.
-It only works when the operators are the same instead of relying on precedence equality.
-Consequently it also doesn't take mixed associativities into account.
--}
-fixAssociativity : Expression -> Expression
-fixAssociativity expr =
-    case expr of
-        Expression.OperatorApplication o d (Node lr l) (Node _ (Expression.OperatorApplication ro rd (Node rlr rl) (Node rrr rr))) ->
-            if (o == ro) && d == Infix.Left then
-                Expression.OperatorApplication o d (Node (Range.combine [ lr, rlr ]) (Expression.OperatorApplication ro rd (Node lr l) (Node rlr rl))) (Node rrr rr)
-                    |> fixAssociativity
-
-            else
-                expr
-
-        _ ->
-            expr
 
 
 withWellKnownOperators : ProcessContext -> ProcessContext

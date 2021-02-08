@@ -1,22 +1,23 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
 module Morphir.Elm.Backend.Codec.EncoderGen exposing (..)
 
+import Dict
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Expression exposing (Case, Expression(..), Function, FunctionImplementation)
 import Elm.Syntax.ModuleName exposing (ModuleName)
@@ -25,10 +26,9 @@ import Elm.Syntax.Pattern exposing (Pattern(..), QualifiedNameRef)
 import Morphir.Elm.Backend.Utils as Utils
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
-import Morphir.IR.Type exposing (Constructor(..), Definition(..), Field, Type(..), record)
+import Morphir.IR.Type exposing (Definition(..), Field, Type(..), record)
 
 
 typeDefToEncoder : Name -> AccessControlled (Documented (Definition ())) -> Declaration
@@ -60,11 +60,11 @@ typeDefToEncoder typeName typeDef =
                         CustomTypeDefinition _ constructors ->
                             case constructors.access of
                                 Public ->
-                                    case constructors.value of
+                                    case constructors.value |> Dict.toList of
                                         [] ->
                                             []
 
-                                        (Constructor ctorName fields) :: [] ->
+                                        ( ctorName, fields ) :: [] ->
                                             [ deconsPattern ctorName fields
                                                 |> Utils.emptyRangeNode
                                                 |> ParenthesizedPattern
@@ -91,11 +91,11 @@ typeDefToEncoder typeName typeDef =
                         CustomTypeDefinition _ constructors ->
                             case constructors.access of
                                 Public ->
-                                    case constructors.value of
+                                    case constructors.value |> Dict.toList of
                                         [] ->
                                             Literal "Types without constructors are not supported"
 
-                                        ((Constructor ctorName _) as ctor) :: [] ->
+                                        (( ctorName, _ ) as ctor) :: [] ->
                                             ctor
                                                 |> constructorToRecord
                                                 |> typeToEncoder False [ ctorName ]
@@ -112,8 +112,8 @@ typeDefToEncoder typeName typeDef =
                                                 cases : List ( Node Pattern, Node Expression )
                                                 cases =
                                                     let
-                                                        ctorToPatternExpr : Constructor () -> ( Node Pattern, Node Expression )
-                                                        ctorToPatternExpr ((Constructor ctorName ctorArgs) as ctor) =
+                                                        ctorToPatternExpr : ( Name, List ( Name, Type () ) ) -> ( Node Pattern, Node Expression )
+                                                        ctorToPatternExpr (( ctorName, ctorArgs ) as ctor) =
                                                             let
                                                                 pattern : Pattern
                                                                 pattern =
@@ -154,22 +154,22 @@ typeToEncoder fwdNames varName tpe =
     case tpe of
         Reference _ fqName typeArgs ->
             case fqName of
-                FQName _ _ [ "int" ] ->
+                ( _, _, [ "int" ] ) ->
                     elmJsonEncoderApplication
                         (elmJsonEncoderFunction "int")
                         (varPathToExpr varName)
 
-                FQName _ _ [ "float" ] ->
+                ( _, _, [ "float" ] ) ->
                     elmJsonEncoderApplication
                         (elmJsonEncoderFunction "float")
                         (varPathToExpr varName)
 
-                FQName _ _ [ "string" ] ->
+                ( _, _, [ "string" ] ) ->
                     elmJsonEncoderApplication
                         (elmJsonEncoderFunction "string")
                         (varPathToExpr varName)
 
-                FQName _ _ [ "maybe" ] ->
+                ( _, _, [ "maybe" ] ) ->
                     case typeArgs of
                         typeArg :: [] ->
                             let
@@ -215,7 +215,7 @@ typeToEncoder fwdNames varName tpe =
                             Literal
                                 """Generic types with a single type argument are supported"""
 
-                FQName _ _ names ->
+                ( _, _, names ) ->
                     elmJsonEncoderApplication
                         ([ "encode" ] ++ names |> Name.toCamelCase |> FunctionOrValue [])
                         (varPathToExpr varName)
@@ -294,8 +294,8 @@ deconsPattern ctorName fields =
         consVars
 
 
-constructorToRecord : Constructor () -> Type ()
-constructorToRecord (Constructor _ types) =
+constructorToRecord : ( Name, List ( Name, Type () ) ) -> Type ()
+constructorToRecord ( _, types ) =
     let
         fields : List (Morphir.IR.Type.Field ())
         fields =

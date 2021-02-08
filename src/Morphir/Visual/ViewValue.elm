@@ -1,18 +1,23 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, text)
+import Element exposing (Element, el, fill, rgb, spacing, text, width)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Events exposing (onClick)
+import Element.Font as Font exposing (..)
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
-import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
-import Morphir.Visual.Common exposing (cssClass, nameToText)
+import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Context as Context exposing (Context)
 import Morphir.Visual.ViewApply as ViewApply
+import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
 import Morphir.Visual.ViewField as ViewField
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
@@ -21,24 +26,63 @@ import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
+import Morphir.Visual.XRayView as XRayView
+import Morphir.Web.Theme.Light exposing (gray)
 
 
-viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> Element msg
-viewDefinition distribution valueDef variables =
+viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> (FQName -> Bool -> msg) -> Dict FQName (Value.Definition () (Type ())) -> Element msg
+viewDefinition distribution valueDef variables onReferenceClicked expandedFunctions =
     let
-        ctx : Context
+        ctx : Context msg
         ctx =
-            Context.fromDistributionAndVariables distribution variables
+            Context.fromDistributionAndVariables distribution variables onReferenceClicked
     in
-    viewValue ctx variables valueDef.body
+    Element.column [ spacing 8 ]
+        [ viewValue ctx variables valueDef.body
+        , if Dict.isEmpty expandedFunctions then
+            Element.none
+
+          else
+            Element.column
+                [ spacing 10 ]
+                [ Element.el [ Font.bold ] (Element.text "where")
+                , Element.column
+                    [ spacing 20
+                    ]
+                    (expandedFunctions
+                        |> Dict.toList
+                        |> List.reverse
+                        |> List.map
+                            (\( ( _, _, localName ) as fqName, valDef ) ->
+                                Element.column
+                                    [ spacing 10
+                                    ]
+                                    [ Element.el [ Font.bold ] (text (nameToText localName ++ " ="))
+                                    , el
+                                        []
+                                        (viewValue ctx Dict.empty valDef.body)
+                                    , Element.column
+                                        [ Font.bold
+                                        , Border.solid
+                                        , Border.rounded 5
+                                        , Background.color gray
+                                        , Element.padding 10
+                                        , onClick (ctx.onReferenceClicked fqName True)
+                                        ]
+                                        [ Element.text "Close" ]
+                                    ]
+                            )
+                    )
+                ]
+        ]
 
 
-viewValue : Context -> Dict Name RawValue -> TypedValue -> Element msg
+viewValue : Context msg -> Dict Name RawValue -> TypedValue -> Element msg
 viewValue ctx argumentValues value =
     viewValueByValueType ctx argumentValues value
 
 
-viewValueByValueType : Context -> Dict Name RawValue -> TypedValue -> Element msg
+viewValueByValueType : Context msg -> Dict Name RawValue -> TypedValue -> Element msg
 viewValueByValueType ctx argumentValues typedValue =
     let
         valueType : Type ()
@@ -53,23 +97,31 @@ viewValueByValueType ctx argumentValues typedValue =
         in
         ViewBoolOperatorTree.view (viewValueByLanguageFeature ctx argumentValues) boolOperatorTree
 
+    else if Basics.isNumber valueType then
+        let
+            arithmeticOperatorTree : ArithmeticOperatorTree
+            arithmeticOperatorTree =
+                ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
+        in
+        ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree
+
     else
         viewValueByLanguageFeature ctx argumentValues typedValue
 
 
-viewValueByLanguageFeature : Context -> Dict Name RawValue -> TypedValue -> Element msg
+viewValueByLanguageFeature : Context msg -> Dict Name RawValue -> TypedValue -> Element msg
 viewValueByLanguageFeature ctx argumentValues value =
     case value of
         Value.Literal literalType literal ->
             ViewLiteral.view literal
 
         Value.Constructor tpe fQName ->
-            ViewReference.view (viewValue ctx argumentValues) fQName
+            ViewReference.view ctx (viewValue ctx argumentValues) fQName
 
         Value.Tuple tpe elems ->
             ViewTuple.view (viewValue ctx argumentValues) elems
 
-        Value.List (Type.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "list" ] ] [ "list" ]) [ itemType ]) items ->
+        Value.List (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ]) items ->
             ViewList.view ctx.distribution (viewValue ctx argumentValues) itemType items
 
         Value.Variable tpe name ->
@@ -77,7 +129,7 @@ viewValueByLanguageFeature ctx argumentValues value =
                 (text (nameToText name))
 
         Value.Reference tpe fQName ->
-            ViewReference.view (viewValue ctx argumentValues) fQName
+            ViewReference.view ctx (viewValue ctx argumentValues) fQName
 
         Value.Field tpe subjectValue fieldName ->
             ViewField.view (viewValue ctx argumentValues) subjectValue fieldName
@@ -112,8 +164,24 @@ viewValueByLanguageFeature ctx argumentValues value =
         Value.IfThenElse _ _ _ _ ->
             ViewIfThenElse.view ctx (viewValue ctx argumentValues) value Dict.empty
 
-        _ ->
-            Element.paragraph
-                [ cssClass "todo"
+        other ->
+            Element.column
+                [ Background.color (rgb 1 0.6 0.6)
+                , Element.padding 5
+                , Border.rounded 3
                 ]
-                [ Element.text "???" ]
+                [ Element.el
+                    [ Element.padding 5
+                    , Font.bold
+
+                    --, Font.color (rgb 1 1 1)
+                    ]
+                    (Element.text "No visual mapping found for:")
+                , Element.el
+                    [ Background.color (rgb 1 1 1)
+                    , Element.padding 5
+                    , Border.rounded 3
+                    , width fill
+                    ]
+                    (XRayView.viewValue XRayView.viewType other)
+                ]

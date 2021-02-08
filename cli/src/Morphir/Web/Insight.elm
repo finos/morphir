@@ -1,17 +1,19 @@
 port module Morphir.Web.Insight exposing (Model(..), Msg(..), init, main, receiveFunctionArguments, receiveFunctionName, subscriptions, update, view)
 
 import Browser
-import Dict
+import Dict exposing (Dict)
 import Element
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder, string)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.QName as QName exposing (QName)
-import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.Name exposing (Name)
+import Morphir.IR.QName as QName exposing (QName(..))
+import Morphir.IR.Value exposing (Value)
 import Morphir.IR.Value.Codec as ValueCodec
-import Morphir.Visual.ViewValue
+import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
+import Morphir.Visual.ViewValue as ViewValue
 
 
 
@@ -33,8 +35,7 @@ main =
 
 type Model
     = IRLoaded Distribution
-    | FunctionNameSet Distribution QName (Value.Definition () (Type ()))
-    | FunctionArgumentsSet Distribution QName (Value.Definition () (Type ())) (List (Value () ()))
+    | FunctionsSet VisualizationState
     | Failed String
 
 
@@ -68,8 +69,9 @@ port receiveFunctionArguments : (Decode.Value -> msg) -> Sub msg
 
 
 type Msg
-    = FunctionArgumentsReceived Decode.Value
-    | FunctionNameReceived String
+    = FunctionNameReceived String
+    | FunctionArgumentsReceived Decode.Value
+    | ExpandReference FQName Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -81,36 +83,13 @@ update msg model =
                 IRLoaded distribution ->
                     Just distribution
 
-                FunctionNameSet distribution _ _ ->
-                    Just distribution
-
-                FunctionArgumentsSet distribution _ _ _ ->
-                    Just distribution
+                FunctionsSet visualizationState ->
+                    Just visualizationState.distribution
 
                 _ ->
                     Nothing
     in
     case msg of
-        FunctionArgumentsReceived jsonList ->
-            let
-                jsonDecoder =
-                    Decode.list (ValueCodec.decodeValue (Decode.succeed ()) (Decode.succeed ()))
-            in
-            case jsonList |> Decode.decodeValue jsonDecoder of
-                Ok updatedArgValues ->
-                    case model of
-                        FunctionNameSet distribution qName valueDef ->
-                            ( FunctionArgumentsSet distribution qName valueDef updatedArgValues, Cmd.none )
-
-                        FunctionArgumentsSet distribution qName valueDef _ ->
-                            ( FunctionArgumentsSet distribution qName valueDef updatedArgValues, Cmd.none )
-
-                        _ ->
-                            ( Failed "Invalid State", Cmd.none )
-
-                Err _ ->
-                    ( Failed "Received Arguments Cannot Decode", Cmd.none )
-
         FunctionNameReceived qNameString ->
             case qNameString |> QName.fromString of
                 Just qName ->
@@ -119,13 +98,66 @@ update msg model =
                             (\distribution ->
                                 distribution
                                     |> Distribution.lookupValueDefinition qName
-                                    |> Maybe.map (\valueDef -> FunctionNameSet distribution qName valueDef)
+                                    |> Maybe.map
+                                        (\funDef ->
+                                            FunctionsSet
+                                                { distribution = distribution
+                                                , selectedFunction = qName
+                                                , functionDefinition = funDef
+                                                , functionArguments = []
+                                                , expandedFunctions = Dict.empty
+                                                }
+                                        )
                             )
                         |> Maybe.map (\m -> ( m, Cmd.none ))
-                        |> Maybe.withDefault ( Failed "Invalid State", Cmd.none )
+                        |> Maybe.withDefault ( Failed "Invalid State in receiving function name", Cmd.none )
 
                 Nothing ->
-                    ( Failed "Function Name Received is Not correct", Cmd.none )
+                    ( Failed "Received function name is not found", Cmd.none )
+
+        FunctionArgumentsReceived jsonList ->
+            let
+                jsonDecoder =
+                    Decode.list (ValueCodec.decodeValue (Decode.succeed ()) (Decode.succeed ()))
+            in
+            case jsonList |> Decode.decodeValue jsonDecoder of
+                Ok updatedArgValues ->
+                    case model of
+                        FunctionsSet visualizationState ->
+                            ( FunctionsSet { visualizationState | functionArguments = updatedArgValues }
+                            , Cmd.none
+                            )
+
+                        _ ->
+                            ( Failed "Invalid State", Cmd.none )
+
+                Err _ ->
+                    ( Failed "Received function arguments cannot be decoded", Cmd.none )
+
+        ExpandReference (( packageName, moduleName, localName ) as fqName) bool ->
+            case model of
+                FunctionsSet visualizationState ->
+                    if visualizationState.expandedFunctions |> Dict.member fqName then
+                        case bool of
+                            True ->
+                                ( FunctionsSet { visualizationState | expandedFunctions = visualizationState.expandedFunctions |> Dict.remove fqName }, Cmd.none )
+
+                            False ->
+                                ( model, Cmd.none )
+
+                    else
+                        ( FunctionsSet
+                            { visualizationState
+                                | expandedFunctions =
+                                    Distribution.lookupValueDefinition (QName moduleName localName) visualizationState.distribution
+                                        |> Maybe.map (\valueDef -> visualizationState.expandedFunctions |> Dict.insert fqName valueDef)
+                                        |> Maybe.withDefault visualizationState.expandedFunctions
+                            }
+                        , Cmd.none
+                        )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 
@@ -144,22 +176,23 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     case model of
-        IRLoaded distribution ->
-            Html.div [] []
+        IRLoaded _ ->
+            Html.div [] [ Html.text "IR Loaded Successfully" ]
 
         Failed string ->
             Html.div [] [ Html.text string ]
 
-        FunctionNameSet distribution qName valueDef ->
-            Morphir.Visual.ViewValue.viewDefinition distribution valueDef Dict.empty |> Element.layout []
-
-        FunctionArgumentsSet distribution qName valueDef argValues ->
-            List.map2
-                (\( argName, _, _ ) argValue ->
-                    ( argName, argValue )
-                )
-                valueDef.inputTypes
-                argValues
-                |> Dict.fromList
-                |> Morphir.Visual.ViewValue.viewDefinition distribution valueDef
+        FunctionsSet visualizationState ->
+            let
+                validArgValues : Dict Name (Value () ())
+                validArgValues =
+                    List.map2
+                        (\( argName, _, _ ) argValue ->
+                            ( argName, argValue )
+                        )
+                        visualizationState.functionDefinition.inputTypes
+                        visualizationState.functionArguments
+                        |> Dict.fromList
+            in
+            ViewValue.viewDefinition visualizationState.distribution visualizationState.functionDefinition validArgValues ExpandReference visualizationState.expandedFunctions
                 |> Element.layout []

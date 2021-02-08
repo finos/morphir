@@ -1,14 +1,13 @@
 module Morphir.Value.Interpreter exposing
-    ( evaluate
-    , FQN, Reference(..)
-    , evaluateValue, referencesForDistribution
+    ( evaluate, evaluateValue, referencesForDistribution
+    , Reference(..)
     )
 
 {-| This module contains an interpreter for Morphir expressions. The interpreter takes a piece of logic as input,
 evaluates it and returns the resulting data. In Morphir both logic and data is captured as a `Value` so the interpreter
 takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
-@docs evaluate
+@docs evaluate, evaluateValue, referencesForDistribution
 
 
 # Utilities
@@ -19,21 +18,14 @@ takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
 import Dict exposing (Dict)
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.FQName exposing (FQName(..))
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
-import Morphir.IR.Path exposing (Path)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Value as Value exposing (Pattern, Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
 import Morphir.Value.Native as Native
-
-
-{-| Represents a fully-qualified name. Same as [FQName](Morphir-IR-FQName#FQName) but comparable.
--}
-type alias FQN =
-    ( Path, Path, Name )
 
 
 {-| Dictionary of variable name to value.
@@ -51,12 +43,12 @@ type Reference
 
 {-| Translate a distribution into references that can be fed into the interpreter to be used during evaluation.
 -}
-referencesForDistribution : Distribution -> Dict FQN Reference
+referencesForDistribution : Distribution -> Dict FQName Reference
 referencesForDistribution distribution =
     case distribution of
         Library packageName dependencies packageDef ->
             let
-                packageReferences : Dict FQN Reference
+                packageReferences : Dict FQName Reference
                 packageReferences =
                     packageDef.modules
                         |> Dict.toList
@@ -76,7 +68,7 @@ referencesForDistribution distribution =
                             )
                         |> Dict.fromList
 
-                sdkReferences : Dict FQN Reference
+                sdkReferences : Dict FQName Reference
                 sdkReferences =
                     SDK.nativeFunctions
                         |> Dict.map
@@ -99,7 +91,7 @@ by fully-qualified name that will be used for lookup if the expression contains 
         -- (Value.Literal () (BoolLiteral False))
 
 -}
-evaluate : Dict FQN Reference -> Value () () -> Result Error (Value () ())
+evaluate : Dict FQName Reference -> Value () () -> Result Error (Value () ())
 evaluate references value =
     evaluateValue references Dict.empty [] value
 
@@ -107,7 +99,7 @@ evaluate references value =
 {-| Evaluates a value expression recursively in a single pass while keeping track of variables and arguments along the
 evaluation.
 -}
-evaluateValue : Dict FQN Reference -> Variables -> List (Value () ()) -> Value () () -> Result Error (Value () ())
+evaluateValue : Dict FQName Reference -> Variables -> List (Value () ()) -> Value () () -> Result Error (Value () ())
 evaluateValue references variables arguments value =
     case value of
         Value.Literal _ _ ->
@@ -163,7 +155,7 @@ evaluateValue references variables arguments value =
                 -- Wrap the error to make it easier to understand where it happened
                 |> Result.mapError (ErrorWhileEvaluatingVariable varName)
 
-        Value.Reference _ ((FQName packageName moduleName localName) as fQName) ->
+        Value.Reference _ (( packageName, moduleName, localName ) as fQName) ->
             -- For references we first need to find what they point to.
             references
                 |> Dict.get ( packageName, moduleName, localName )
