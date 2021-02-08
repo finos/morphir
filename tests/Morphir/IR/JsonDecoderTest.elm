@@ -5,6 +5,10 @@ import Json.Decode as Decode
 import Morphir.IR.DataCodec exposing (decodeData)
 import Morphir.IR.FQName exposing (fqn)
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
+import Morphir.IR.SDK.Char exposing (charType)
+import Morphir.IR.SDK.List exposing (listType)
+import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Test exposing (Test, describe, test)
@@ -13,55 +17,174 @@ import Test exposing (Test, describe, test)
 decodeDataTest : Test
 decodeDataTest =
     let
-        intDecoder : Type ()
-        intDecoder =
-            Type.Reference () (fqn "Morphir.SDK" "Basics" "Int") []
+        recordType : Type ()
+        recordType =
+            Type.Record ()
+                [ Type.Field [ "foo" ] (stringType ())
+                , Type.Field [ "bar" ] (boolType ())
+                , Type.Field [ "baz" ] (intType ())
+                , Type.Field [ "bee" ] (floatType ())
+                , Type.Field [ "ball" ] (charType ())
+                ]
 
-        floatDecoder : Type ()
-        floatDecoder =
-            Type.Reference () (fqn "Morphir.SDK" "Basics" "Float") []
+        emptyRecordType : Type ()
+        emptyRecordType =
+            Type.Record () []
 
-        charDecoder : Type ()
-        charDecoder =
-            Type.Reference () (fqn "Morphir.SDK" "Char" "Char") []
+        tupleType : Type ()
+        tupleType =
+            Type.Tuple () [ intType (), boolType (), floatType (), charType (), stringType () ]
 
-        stringDecoder : Type ()
-        stringDecoder =
-            Type.Reference () (fqn "Morphir.SDK" "String" "String") []
+        emptyTupleType : Type ()
+        emptyTupleType =
+            Type.Tuple () []
+
+        emptyListType : Type ()
+        emptyListType =
+            Type.Reference () (fqn "Morphir.SDK" "List" "List") []
+
+        mayBeType : Type ()
+        mayBeType =
+            Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") []
+
+        customType : Type ()
+        customType =
+            Type.Reference () (fqn "Morphir" "Types" "customNoArg") []
     in
     describe "JsonDecoderTest"
-        [ test "PassedInt"
+        [ test "BoolDecoder"
             (\_ ->
-                case decodeData intDecoder of
+                case decodeData (boolType ()) of
+                    Ok decoder ->
+                        Expect.equal (Decode.decodeString decoder "true") (Ok (Value.literal () (BoolLiteral True)))
+
+                    Err error ->
+                        Expect.equal "Cannot Decode this type" error
+            )
+        , test "IntDecoder"
+            (\_ ->
+                case decodeData (intType ()) of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "42") (Ok (Value.literal () (IntLiteral 42)))
 
                     Err error ->
                         Expect.equal "Cannot Decode this type" error
             )
-        , test "PassedFloat"
+        , test "FloatDecoder"
             (\_ ->
-                case decodeData floatDecoder of
+                case decodeData (floatType ()) of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "42.5") (Ok (Value.literal () (FloatLiteral 42.5)))
 
                     Err error ->
                         Expect.equal "Cannot Decode this type" error
             )
-        , test "PassedChar"
+        , test "CharDecoder"
             (\_ ->
-                case decodeData charDecoder of
+                case decodeData (charType ()) of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "\"a\"") (Ok (Value.literal () (StringLiteral "a")))
 
                     Err error ->
                         Expect.equal "Cannot Decode this type" error
             )
-        , test "PassedString"
+        , test "StringDecoder"
             (\_ ->
-                case decodeData stringDecoder of
+                case decodeData (stringType ()) of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "\"Hello\"") (Ok (Value.literal () (StringLiteral "Hello")))
+
+                    Err error ->
+                        Expect.equal "Cannot Decode this type" error
+            )
+        , test "ListDecoder"
+            (\_ ->
+                case decodeData (listType () (floatType ())) of
+                    Ok decoder ->
+                        Expect.equal (Decode.decodeString decoder "[1.1,2.3,3.5]")
+                            (Ok
+                                (Value.List ()
+                                    [ Value.Literal () (FloatLiteral 1.1)
+                                    , Value.Literal () (FloatLiteral 2.3)
+                                    , Value.Literal () (FloatLiteral 3.5)
+                                    ]
+                                )
+                            )
+
+                    Err error ->
+                        Expect.equal "Cannot Decode this type" error
+            )
+        , test "EmptyListDecoder"
+            (\_ ->
+                case decodeData emptyListType of
+                    Ok decoder ->
+                        Expect.equal (Decode.decodeString decoder "[]") (Ok (Value.List () []))
+
+                    Err error ->
+                        Expect.equal "Cannot Decode this type" error
+            )
+        , test "RecordDecoder"
+            (\_ ->
+                case decodeData recordType of
+                    Ok decoder ->
+                        Expect.equal (Decode.decodeString decoder "{ \"foo\" : \"Hello\", \"bar\" : true, \"baz\" : 99, \"bee\" : 49.56, \"ball\" : \"c\" }")
+                            (Ok
+                                (Value.Record ()
+                                    [ ( [ "foo" ], Value.Literal () (StringLiteral "Hello") )
+                                    , ( [ "bar" ], Value.Literal () (BoolLiteral True) )
+                                    , ( [ "baz" ], Value.Literal () (IntLiteral 99) )
+                                    , ( [ "bee" ], Value.Literal () (FloatLiteral 49.56) )
+                                    , ( [ "ball" ], Value.Literal () (StringLiteral "c") )
+                                    ]
+                                )
+                            )
+
+                    Err error ->
+                        Expect.equal "Cannot Decode this type" error
+            )
+        , test "EmptyRecordDecoder"
+            (\_ ->
+                case decodeData emptyRecordType of
+                    Ok decoder ->
+                        Expect.equal (Decode.decodeString decoder "{}")
+                            (Ok
+                                (Value.Record ()
+                                    []
+                                )
+                            )
+
+                    Err error ->
+                        Expect.equal "Cannot Decode this type" error
+            )
+        , test "TupleDecoder"
+            (\_ ->
+                case decodeData tupleType of
+                    Ok decoder ->
+                        Expect.equal (Decode.decodeString decoder "[13,false,24.6,\"b\",\"tuple\"]")
+                            (Ok
+                                (Value.Tuple ()
+                                    [ Value.Literal () (IntLiteral 13)
+                                    , Value.Literal () (BoolLiteral False)
+                                    , Value.Literal () (FloatLiteral 24.6)
+                                    , Value.Literal () (StringLiteral "b")
+                                    , Value.Literal () (StringLiteral "tuple")
+                                    ]
+                                )
+                            )
+
+                    Err error ->
+                        Expect.equal "Cannot Decode this type" error
+            )
+        , test "EmptyTupleDecoder"
+            (\_ ->
+                case decodeData emptyTupleType of
+                    Ok decoder ->
+                        Expect.equal (Decode.decodeString decoder "[]")
+                            (Ok
+                                (Value.Tuple ()
+                                    []
+                                )
+                            )
 
                     Err error ->
                         Expect.equal "Cannot Decode this type" error
