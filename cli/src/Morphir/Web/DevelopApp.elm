@@ -15,6 +15,8 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Value.Interpreter as Interpreter
+import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme exposing (Theme)
@@ -513,8 +515,23 @@ viewValue distribution valueDef argValues =
                             |> Maybe.map (Tuple.pair argName)
                     )
                 |> Dict.fromList
+
+        config : Config Msg
+        config =
+            { irContext =
+                { distribution = distribution
+                , references = Interpreter.referencesForDistribution distribution
+                }
+            , state =
+                { expandedFunctions = Dict.empty
+                , variables = Dict.empty
+                }
+            , handlers =
+                { onReferenceClicked = ExpandReference
+                }
+            }
     in
-    ViewValue.viewDefinition distribution valueDef validArgValues ExpandReference Dict.empty
+    ViewValue.viewDefinition config valueDef validArgValues
 
 
 viewAsCard : String -> Element msg -> Element msg

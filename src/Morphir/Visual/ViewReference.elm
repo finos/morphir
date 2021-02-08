@@ -6,12 +6,12 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value exposing (Value)
 import Morphir.Visual.Common exposing (nameToText)
-import Morphir.Visual.Context exposing (Context)
+import Morphir.Visual.Config exposing (Config)
 
 
-view : Context msg -> (Value ta (Type ta) -> Element msg) -> FQName -> Element msg
-view context viewValue (( packageName, moduleName, localName ) as fQName) =
-    Element.row [ padding 8, spacing 8, onClick (context.onReferenceClicked fQName False) ]
+view : Config msg -> (Value ta (Type ta) -> Element msg) -> FQName -> Element msg
+view config viewValue (( packageName, moduleName, localName ) as fQName) =
+    Element.row [ padding 8, spacing 8, onClick (config.handlers.onReferenceClicked fQName False) ]
         [ Element.el []
             (text
                 (nameToText localName)

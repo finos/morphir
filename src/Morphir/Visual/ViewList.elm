@@ -9,10 +9,11 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Visual.Common exposing (element)
+import Morphir.Visual.Config exposing (Config)
 
 
-view : Distribution -> (Value () (Type ()) -> Element msg) -> Type () -> List (Value () (Type ())) -> Element msg
-view distribution viewValue itemType items =
+view : Config msg -> (Value () (Type ()) -> Element msg) -> Type () -> List (Value () (Type ())) -> Element msg
+view config viewValue itemType items =
     case itemType of
         Type.Record _ fields ->
             table
@@ -21,7 +22,7 @@ view distribution viewValue itemType items =
                     items
                         |> List.map
                             (\item ->
-                                distribution |> Distribution.resolveRecordConstructors item
+                                config.irContext.distribution |> Distribution.resolveRecordConstructors item
                             )
                 , columns =
                     fields
@@ -56,9 +57,9 @@ view distribution viewValue itemType items =
                 }
 
         Type.Reference _ fQName typeArgs ->
-            case distribution |> Distribution.resolveTypeReference fQName typeArgs of
+            case config.irContext.distribution |> Distribution.resolveTypeReference fQName typeArgs of
                 Ok resolvedItemType ->
-                    view distribution viewValue resolvedItemType items
+                    view config viewValue resolvedItemType items
 
                 Err error ->
                     Element.text error
