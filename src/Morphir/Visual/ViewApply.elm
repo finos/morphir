@@ -98,4 +98,5 @@ inlineBinaryOperators =
         , ( "Basics.subtract", "-" )
         , ( "Basics.multiply", "*" )
         , ( "Basics.divide", "/" )
+        , ( "List.append", "+" )
         ]
