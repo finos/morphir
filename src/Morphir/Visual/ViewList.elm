@@ -1,8 +1,10 @@
 module Morphir.Visual.ViewList exposing (view)
 
 import Dict
-import Element exposing (Element, el, fill, html, none, paddingXY, spacing, table, text)
+import Element exposing (Element, centerX, centerY, el, explain, fill, height, html, indexedTable, none, paddingXY, rgb, spacing, table, text, width)
+import Element.Background as Background
 import Element.Border as Border
+import Element.Font exposing (center)
 import Html
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
@@ -16,7 +18,7 @@ view : Config msg -> (Value () (Type ()) -> Element msg) -> Type () -> List (Val
 view config viewValue itemType items =
     case itemType of
         Type.Record _ fields ->
-            table
+            indexedTable
                 []
                 { data =
                     items
@@ -36,21 +38,25 @@ view config viewValue itemType items =
                                         (text (field.name |> Name.toHumanWords |> String.join " "))
                                 , width = fill
                                 , view =
-                                    \item ->
+                                    \rowIndex item ->
                                         el
                                             [ paddingXY 10 5
+                                            , width fill
+                                            , height fill
                                             ]
                                             -- TODO: Use interpreter to get field values
-                                            (case item of
-                                                Value.Record _ fieldValues ->
-                                                    fieldValues
-                                                        |> Dict.fromList
-                                                        |> Dict.get field.name
-                                                        |> Maybe.map viewValue
-                                                        |> Maybe.withDefault (text "???")
+                                            (el [ centerX, centerY ]
+                                                (case item of
+                                                    Value.Record _ fieldValues ->
+                                                        fieldValues
+                                                            |> Dict.fromList
+                                                            |> Dict.get field.name
+                                                            |> Maybe.map viewValue
+                                                            |> Maybe.withDefault (text "???")
 
-                                                _ ->
-                                                    viewValue item
+                                                    _ ->
+                                                        viewValue item
+                                                )
                                             )
                                 }
                             )
