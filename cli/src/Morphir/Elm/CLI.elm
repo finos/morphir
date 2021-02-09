@@ -23,7 +23,7 @@ import Json.Encode as Encode
 import Morphir.Compiler as Compiler
 import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
-import Morphir.Elm.Frontend.Codec as FrontendCodec exposing (decodePackageInfo)
+import Morphir.Elm.Frontend.Codec exposing (decodePackageInfo)
 import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
@@ -31,7 +31,6 @@ import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.Package as Package
 import Morphir.IR.Type exposing (Type)
 import Morphir.Type.Infer as Infer
-import Morphir.Type.Infer.Codec exposing (decodeValueTypeError, encodeValueTypeError)
 import Morphir.Type.MetaTypeMapping as MetaTypeMapping
 
 

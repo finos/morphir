@@ -1,17 +1,17 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
@@ -26,18 +26,18 @@ import Elm.Syntax.Module exposing (Module(..))
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node exposing (Node)
 import Elm.Syntax.Pattern exposing (Pattern(..))
-import Elm.Syntax.Range as Range exposing (emptyRange)
+import Elm.Syntax.Range as Range
 import Elm.Syntax.Signature exposing (Signature)
 import Elm.Syntax.TypeAnnotation exposing (RecordDefinition, RecordField, TypeAnnotation(..))
 import Elm.Writer
-import Morphir.Elm.Backend.Codec.DecoderGen as DecoderGen exposing (typeDefToDecoder)
-import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen exposing (typeDefToEncoder)
-import Morphir.Elm.Backend.Utils as Utils exposing (emptyRangeNode)
-import Morphir.Elm.Frontend as Frontend exposing (ContentLocation, ContentRange, SourceFile, SourceLocation, mapDeclarationsToType)
-import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, map)
+import Morphir.Elm.Backend.Codec.DecoderGen as DecoderGen
+import Morphir.Elm.Backend.Codec.EncoderGen as EncoderGen
+import Morphir.Elm.Backend.Utils as Utils
+import Morphir.Elm.Frontend as Frontend exposing (ContentLocation, ContentRange, SourceFile, SourceLocation)
+import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled)
 import Morphir.IR.Documented as Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName(..))
-import Morphir.IR.Name as Name exposing (Name, toCamelCase)
+import Morphir.IR.FQName exposing (fQName)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..), eraseAttributes)
 
@@ -45,7 +45,7 @@ import Morphir.IR.Type as Type exposing (Definition(..), Field, Type(..), eraseA
 gen : Path -> Name -> Type () -> List ( Name, AccessControlled (Documented (Type.Definition ())) ) -> Maybe File
 gen fullAppPath appName appType otherTypeDefs =
     case appType of
-        Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "stateful", "app" ] ] [ "stateful", "app" ]) (keyType :: cmdType :: stateType :: eventType :: []) ->
+        Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "stateful", "app" ] ], [ "stateful", "app" ] ) (keyType :: cmdType :: stateType :: eventType :: []) ->
             let
                 moduleDef : Module
                 moduleDef =
@@ -574,19 +574,19 @@ morphirToElmTypeDef tpe =
         Variable _ name ->
             name |> Name.toCamelCase |> GenericType
 
-        Reference _ (FQName _ _ [ "bool" ]) [] ->
+        Reference _ ( _, _, [ "bool" ] ) [] ->
             Typed (( [], "Bool" ) |> Utils.emptyRangeNode) []
 
-        Reference _ (FQName _ _ [ "int" ]) [] ->
+        Reference _ ( _, _, [ "int" ] ) [] ->
             Typed (( [], "Int" ) |> Utils.emptyRangeNode) []
 
-        Reference _ (FQName _ _ [ "float" ]) [] ->
+        Reference _ ( _, _, [ "float" ] ) [] ->
             Typed (( [], "Float" ) |> Utils.emptyRangeNode) []
 
-        Reference _ (FQName _ _ [ "string" ]) [] ->
+        Reference _ ( _, _, [ "string" ] ) [] ->
             Typed (( [], "String" ) |> Utils.emptyRangeNode) []
 
-        Reference _ (FQName pkgPath modPath tpeName) types ->
+        Reference _ ( pkgPath, modPath, tpeName ) types ->
             let
                 moduleName : ModuleName
                 moduleName =
@@ -683,18 +683,18 @@ emptyFuncImpl =
 test : Type ()
 test =
     Reference ()
-        (FQName [ [ "morphir" ] ] [ [ "s", "d", "k" ], [ "stateful", "app" ] ] [ "stateful", "app" ])
+        ( [ [ "morphir" ] ], [ [ "s", "d", "k" ], [ "stateful", "app" ] ], [ "stateful", "app" ] )
         [ Reference ()
-            (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
+            ( [], [ [ "morphir" ], [ "sdk" ] ], [ "Int" ] )
             []
         , Reference ()
-            (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
+            ( [], [ [ "morphir" ], [ "sdk" ] ], [ "Int" ] )
             []
         , Reference ()
-            (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
+            ( [], [ [ "morphir" ], [ "sdk" ] ], [ "Int" ] )
             []
         , Reference ()
-            (FQName [] [ [ "morphir" ], [ "sdk" ] ] [ "Int" ])
+            ( [], [ [ "morphir" ], [ "sdk" ] ], [ "Int" ] )
             []
         ]
 

@@ -4,48 +4,69 @@ import Dict exposing (Dict)
 import Element exposing (Element)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
-import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (TypedValue, Value)
 import Morphir.Visual.Components.DecisionTree as DecisionTree exposing (LeftOrRight(..))
-import Morphir.Visual.Context exposing (Context)
+import Morphir.Visual.Config as Config exposing (Config)
 
 
-view : Context -> (TypedValue -> Element msg) -> Value () (Type ()) -> Dict Name (Value () ()) -> Element msg
-view ctx viewValue value variables =
-    DecisionTree.layout ctx viewValue (valueToTree ctx value)
+view : Config msg -> (TypedValue -> Element msg) -> Value () (Type ()) -> Dict Name (Value () ()) -> Element msg
+view config viewValue value variables =
+    DecisionTree.layout viewValue (valueToTree config True value)
 
 
-valueToTree : Context -> TypedValue -> DecisionTree.Node
-valueToTree ctx value =
+valueToTree : Config msg -> Bool -> TypedValue -> DecisionTree.Node
+valueToTree config doEval value =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
             let
-                withCondition : TypedValue -> TypedValue -> TypedValue -> DecisionTree.Node
-                withCondition cond left right =
-                    case cond of
-                        --Value.Apply _ (Value.Apply _ (Value.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "basics" ] ] [ "or" ])) arg1) arg2 ->
-                        --    DecisionTree.Branch
-                        --        { nodeLabel = arg1
-                        --        , leftBranchLabel = Value.Literal (Basics.boolType ()) (BoolLiteral True)
-                        --        , leftBranch = valueToTree left
-                        --        , rightBranchLabel = Value.Literal (Basics.boolType ()) (BoolLiteral False)
-                        --        , rightBranch =
-                        --            withCondition arg2 left right
-                        --        , executionPath = Just Left
-                        --        }
-                        --
-                        _ ->
-                            DecisionTree.Branch
-                                { condition = cond
-                                , thenBranch = valueToTree ctx left
-                                , elseBranch = valueToTree ctx right
-                                }
-            in
-            withCondition condition thenBranch elseBranch
+                result =
+                    if doEval then
+                        case config |> Config.evaluate (Value.toRawValue condition) of
+                            Ok (Value.Literal _ (BoolLiteral v)) ->
+                                Just v
 
-        Value.LetDefinition _ _ _ inValue ->
-            valueToTree ctx inValue
+                            _ ->
+                                Nothing
+
+                    else
+                        Nothing
+            in
+            DecisionTree.Branch
+                { condition = condition
+                , conditionValue = result
+                , thenBranch = valueToTree config (result == Just True) thenBranch
+                , elseBranch = valueToTree config (result == Just False) elseBranch
+                }
+
+        Value.LetDefinition _ defName defValue inValue ->
+            let
+                currentState =
+                    config.state
+
+                newState =
+                    { currentState
+                        | variables =
+                            config
+                                |> Config.evaluate
+                                    (defValue
+                                        |> Value.mapDefinitionAttributes identity (always ())
+                                        |> Value.definitionToValue
+                                    )
+                                |> Result.map
+                                    (\evaluatedDefValue ->
+                                        currentState.variables
+                                            |> Dict.insert defName evaluatedDefValue
+                                    )
+                                |> Result.withDefault currentState.variables
+                    }
+            in
+            valueToTree
+                { config
+                    | state = newState
+                }
+                doEval
+                inValue
 
         _ ->
             DecisionTree.Leaf value

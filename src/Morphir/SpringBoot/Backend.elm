@@ -18,12 +18,11 @@
 module Morphir.SpringBoot.Backend exposing (..)
 
 import Dict
-import List.Extra exposing (unique, uniqueBy)
+import List.Extra exposing (unique)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.SourceCode exposing (dotSep, newLine)
 import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution, lookupTypeSpecification)
-import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Module as Module exposing (Definition)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
@@ -98,7 +97,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                     case acsCtrlValueDef.access of
                                         Public ->
                                             case acsCtrlValueDef.value.body of
-                                                Value.Apply _ (Constructor _ _) (Value.Reference _ (FQName _ _ name)) ->
+                                                Value.Apply _ (Constructor _ _) (Value.Reference _ ( _, _, name )) ->
                                                     name
 
                                                 _ ->
@@ -166,7 +165,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                 |> List.concatMap
                     (\( _, a ) ->
                         case a.value.outputType of
-                            Type.Reference _ (FQName mod package name) list ->
+                            Type.Reference _ ( mod, package, name ) list ->
                                 case
                                     ( Path.toString Name.toTitleCase "." mod
                                     , Path.toString Name.toTitleCase "." package
@@ -208,20 +207,19 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
 
                             Just (CustomTypeSpecification _ constructors) ->
                                 constructors
+                                    |> Dict.toList
                                     |> List.concatMap
-                                        (\constructor ->
-                                            case constructor of
-                                                Type.Constructor _ types ->
-                                                    types
-                                                        |> List.concatMap
-                                                            (\( _, consType ) ->
-                                                                case consType of
-                                                                    Type.Reference _ (FQName _ _ consTypeName) _ ->
-                                                                        [ consTypeName |> Name.toTitleCase ]
+                                        (\( _, types ) ->
+                                            types
+                                                |> List.concatMap
+                                                    (\( _, consType ) ->
+                                                        case consType of
+                                                            Type.Reference _ ( _, _, consTypeName ) _ ->
+                                                                [ consTypeName |> Name.toTitleCase ]
 
-                                                                    _ ->
-                                                                        []
-                                                            )
+                                                            _ ->
+                                                                []
+                                                    )
                                         )
 
                             _ ->

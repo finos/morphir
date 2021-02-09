@@ -40,8 +40,10 @@ testReferences =
                                 [ ( [ "custom" ]
                                   , Documented ""
                                         (Type.CustomTypeSpecification []
-                                            [ Type.Constructor [ "custom", "zero" ] []
-                                            ]
+                                            (Dict.fromList
+                                                [ ( [ "custom", "zero" ], [] )
+                                                ]
+                                            )
                                         )
                                   )
                                 , ( [ "foo", "bar", "baz", "record" ]

@@ -1,8 +1,7 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, column, fill, moveRight, paddingEach, row, spacing, text, width, wrappedRow)
-import Morphir.IR.FQName exposing (FQName(..))
+import Element exposing (Element, column, fill, moveRight, paddingEach, row, spacing, text, width)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
 import Morphir.IR.Type exposing (Type)
@@ -13,7 +12,7 @@ import Morphir.Visual.Common exposing (nameToText)
 view : (Value ta (Type ta) -> Element msg) -> Value ta (Type ta) -> List (Value ta (Type ta)) -> Element msg
 view viewValue functionValue argValues =
     case ( functionValue, argValues ) of
-        ( Value.Reference _ (FQName _ _ (("is" :: _) as localName)), [ argValue ] ) ->
+        ( Value.Reference _ ( _, _, ("is" :: _) as localName ), [ argValue ] ) ->
             row
                 [ width fill
                 , spacing 10
@@ -22,8 +21,22 @@ view viewValue functionValue argValues =
                 , text (nameToText localName)
                 ]
 
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "negate" ] ), [ argValue ] ) ->
+            row [ spacing 3 ]
+                [ text "- ("
+                , viewValue argValue
+                , text ")"
+                ]
+
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "abs" ] ), [ argValue ] ) ->
+            row [ spacing 3 ]
+                [ text "abs ("
+                , viewValue argValue
+                , text ")"
+                ]
+
         -- possibly binary operator
-        ( Value.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] moduleName localName), [ argValue1, argValue2 ] ) ->
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ), [ argValue1, argValue2 ] ) ->
             let
                 functionName : String
                 functionName =

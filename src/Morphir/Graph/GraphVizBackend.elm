@@ -2,7 +2,6 @@ module Morphir.Graph.GraphVizBackend exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.Graph.GraphViz.AST exposing (Attribute(..), Graph(..), NodeID, Statement(..))
-import Morphir.IR.FQName exposing (FQName(..))
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
@@ -142,7 +141,7 @@ valueToLabel indexedValue variables =
 
         Value.Apply _ fun arg ->
             case Value.uncurryApply fun arg of
-                ( Value.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] moduleName localName), [ argValue1 ] ) ->
+                ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ), [ argValue1 ] ) ->
                     let
                         functionName : String
                         functionName =
@@ -162,7 +161,7 @@ valueToLabel indexedValue variables =
                     in
                     String.join " " [ operatorName, valueToLabel argValue1 variables ]
 
-                ( Value.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] moduleName localName), [ argValue1, argValue2 ] ) ->
+                ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ), [ argValue1, argValue2 ] ) ->
                     let
                         functionName : String
                         functionName =

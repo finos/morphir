@@ -39,24 +39,27 @@ moduleSpec =
             [ ( Name.fromString "StatefulApp"
               , CustomTypeSpecification [ Name.fromString "k", Name.fromString "c", Name.fromString "s", Name.fromString "e" ]
                     -- StatefulApp (Maybe s -> c -> ( Maybe s, e ))
-                    [ Type.Constructor (Name.fromString "StatefulApp")
-                        [ ( Name.fromString "logic"
-                            -- Maybe s -> c -> ( Maybe s, e )
-                          , Type.Function ()
-                                (maybeType () (Type.Variable () (Name.fromString "s")))
-                                -- c -> ( Maybe s, e )
-                                (Type.Function ()
-                                    (Type.Variable () (Name.fromString "c"))
-                                    -- ( Maybe s, e )
-                                    (Type.Tuple ()
-                                        [ maybeType () (Type.Variable () (Name.fromString "s"))
-                                        , Type.Variable () (Name.fromString "e")
-                                        ]
+                    (Dict.fromList
+                        [ ( Name.fromString "StatefulApp"
+                          , [ ( Name.fromString "logic"
+                                -- Maybe s -> c -> ( Maybe s, e )
+                              , Type.Function ()
+                                    (maybeType () (Type.Variable () (Name.fromString "s")))
+                                    -- c -> ( Maybe s, e )
+                                    (Type.Function ()
+                                        (Type.Variable () (Name.fromString "c"))
+                                        -- ( Maybe s, e )
+                                        (Type.Tuple ()
+                                            [ maybeType () (Type.Variable () (Name.fromString "s"))
+                                            , Type.Variable () (Name.fromString "e")
+                                            ]
+                                        )
                                     )
-                                )
+                              )
+                            ]
                           )
                         ]
-                    ]
+                    )
                     |> Documented "Type that represents a stateful app."
               )
             ]

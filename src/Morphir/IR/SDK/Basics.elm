@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK.Basics exposing (add, and, boolType, composeLeft, composeRight, divide, equal, floatType, greaterThan, greaterThanOrEqual, intType, integerDivide, lessThan, lessThanOrEqual, moduleName, moduleSpec, multiply, nativeFunctions, negate, neverType, notEqual, or, orderType, power, subtract)
+module Morphir.IR.SDK.Basics exposing (add, and, boolType, composeLeft, composeRight, divide, equal, floatType, greaterThan, greaterThanOrEqual, intType, integerDivide, isNumber, lessThan, lessThanOrEqual, moduleName, moduleSpec, multiply, nativeFunctions, negate, neverType, notEqual, or, orderType, power, subtract)
 
 import Dict exposing (Dict)
 import Morphir.IR.Documented exposing (Documented)
@@ -43,10 +43,12 @@ moduleSpec =
             , ( Name.fromString "Float", OpaqueTypeSpecification [] |> Documented "Type that represents a floating-point number." )
             , ( Name.fromString "Order"
               , CustomTypeSpecification []
-                    [ Type.Constructor (Name.fromString "LT") []
-                    , Type.Constructor (Name.fromString "EQ") []
-                    , Type.Constructor (Name.fromString "GT") []
-                    ]
+                    (Dict.fromList
+                        [ ( Name.fromString "LT", [] )
+                        , ( Name.fromString "EQ", [] )
+                        , ( Name.fromString "GT", [] )
+                        ]
+                    )
                     |> Documented "Represents the relative ordering of two things. The relations are less than, equal to, and greater than."
               )
             , ( Name.fromString "Bool", OpaqueTypeSpecification [] |> Documented "Type that represents a boolean value." )
@@ -270,6 +272,12 @@ nativeFunctions =
                     ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
                         Ok (Value.Literal () (BoolLiteral (v1 < v2)))
 
+                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 < toFloat v2)))
+
+                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (toFloat v1 < v2)))
+
                     ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
                         Ok (Value.Literal () (BoolLiteral (v1 < v2)))
 
@@ -289,6 +297,12 @@ nativeFunctions =
 
                     ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
                         Ok (Value.Literal () (BoolLiteral (v1 > v2)))
+
+                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (v1 > toFloat v2)))
+
+                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
+                        Ok (Value.Literal () (BoolLiteral (toFloat v1 > v2)))
 
                     ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
                         Ok (Value.Literal () (BoolLiteral (v1 > v2)))
@@ -411,3 +425,16 @@ composeLeft a =
 composeRight : a -> Value ta a
 composeRight a =
     Value.Reference a (toFQName moduleName "composeRight")
+
+
+isNumber : Type ta -> Bool
+isNumber tpe =
+    case tpe of
+        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
+            True
+
+        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
+            True
+
+        _ ->
+            False

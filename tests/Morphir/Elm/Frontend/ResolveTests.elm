@@ -47,8 +47,8 @@ moduleResolverTests =
                     [ ( [ [ "module", "1" ] ]
                       , { types =
                             Dict.fromList
-                                [ ( [ "one" ], Documented "" (Type.CustomTypeSpecification [] [ Type.Constructor [ "one" ] [] ]) )
-                                , ( [ "one", "one" ], Documented "" (Type.CustomTypeSpecification [] [ Type.Constructor [ "one", "two" ] [] ]) )
+                                [ ( [ "one" ], Documented "" (Type.CustomTypeSpecification [] (Dict.fromList [ ( [ "one" ], [] ) ])) )
+                                , ( [ "one", "one" ], Documented "" (Type.CustomTypeSpecification [] (Dict.fromList [ ( [ "one", "two" ], [] ) ])) )
                                 , ( [ "rec", "one" ], Documented "" (Type.TypeAliasSpecification [] (Type.Record () [])) )
                                 ]
                         , values =
@@ -60,7 +60,7 @@ moduleResolverTests =
                     , ( [ [ "module", "2" ] ]
                       , { types =
                             Dict.fromList
-                                [ ( [ "two" ], Documented "" (Type.CustomTypeSpecification [] [ Type.Constructor [ "two", "one" ] [] ]) )
+                                [ ( [ "two" ], Documented "" (Type.CustomTypeSpecification [] (Dict.fromList [ ( [ "two", "one" ], [] ) ])) )
                                 , ( [ "rec", "two" ], Documented "" (Type.TypeAliasSpecification [] (Type.Record () [])) )
                                 ]
                         , values =
@@ -72,7 +72,7 @@ moduleResolverTests =
                     , ( [ [ "module", "3" ] ]
                       , { types =
                             Dict.fromList
-                                [ ( [ "three" ], Documented "" (Type.CustomTypeSpecification [] [ Type.Constructor [ "three", "four" ] [] ]) )
+                                [ ( [ "three" ], Documented "" (Type.CustomTypeSpecification [] (Dict.fromList [ ( [ "three", "four" ], [] ) ])) )
                                 , ( [ "rec", "three" ], Documented "" (Type.TypeAliasSpecification [] (Type.Record () [])) )
                                 ]
                         , values =
@@ -121,7 +121,7 @@ moduleResolverTests =
                 , moduleDef =
                     Module.Definition
                         (Dict.fromList
-                            [ ( [ "zero" ], AccessControlled Private (Documented "" (Type.CustomTypeDefinition [] (AccessControlled Private [ Type.Constructor [ "zero", "one" ] [] ]))) )
+                            [ ( [ "zero" ], AccessControlled Private (Documented "" (Type.CustomTypeDefinition [] (AccessControlled Private (Dict.fromList [ ( [ "zero", "one" ], [] ) ])))) )
                             , ( [ "rec", "zero" ], AccessControlled Private (Documented "" (Type.TypeAliasDefinition [] (Type.Record () []))) )
                             ]
                         )
