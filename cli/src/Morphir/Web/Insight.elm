@@ -179,7 +179,7 @@ view : Model -> Html Msg
 view model =
     case model of
         IRLoaded _ ->
-            Html.div [] [ Html.text "IR Loaded Successfully" ]
+            Html.div [] []
 
         Failed string ->
             Html.div [] [ Html.text string ]
