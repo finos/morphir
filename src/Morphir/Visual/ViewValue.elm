@@ -6,8 +6,6 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font exposing (..)
-import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
@@ -15,7 +13,7 @@ import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
-import Morphir.Visual.Context as Context exposing (Context)
+import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -30,16 +28,11 @@ import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme.Light exposing (gray)
 
 
-viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> (FQName -> Bool -> msg) -> Dict FQName (Value.Definition () (Type ())) -> Element msg
-viewDefinition distribution valueDef variables onReferenceClicked expandedFunctions =
-    let
-        ctx : Context msg
-        ctx =
-            Context.fromDistributionAndVariables distribution variables onReferenceClicked
-    in
+viewDefinition : Config msg -> Value.Definition () (Type ()) -> Dict Name RawValue -> Element msg
+viewDefinition config valueDef variables =
     Element.column [ spacing 8 ]
-        [ viewValue ctx variables valueDef.body
-        , if Dict.isEmpty expandedFunctions then
+        [ viewValue config variables valueDef.body
+        , if Dict.isEmpty config.state.expandedFunctions then
             Element.none
 
           else
@@ -49,7 +42,7 @@ viewDefinition distribution valueDef variables onReferenceClicked expandedFuncti
                 , Element.column
                     [ spacing 20
                     ]
-                    (expandedFunctions
+                    (config.state.expandedFunctions
                         |> Dict.toList
                         |> List.reverse
                         |> List.map
@@ -60,14 +53,14 @@ viewDefinition distribution valueDef variables onReferenceClicked expandedFuncti
                                     [ Element.el [ Font.bold ] (text (nameToText localName ++ " ="))
                                     , el
                                         []
-                                        (viewValue ctx Dict.empty valDef.body)
+                                        (viewValue config Dict.empty valDef.body)
                                     , Element.column
                                         [ Font.bold
                                         , Border.solid
                                         , Border.rounded 5
                                         , Background.color gray
                                         , Element.padding 10
-                                        , onClick (ctx.onReferenceClicked fqName True)
+                                        , onClick (config.handlers.onReferenceClicked fqName True)
                                         ]
                                         [ Element.text "Close" ]
                                     ]
@@ -77,13 +70,13 @@ viewDefinition distribution valueDef variables onReferenceClicked expandedFuncti
         ]
 
 
-viewValue : Context msg -> Dict Name RawValue -> TypedValue -> Element msg
-viewValue ctx argumentValues value =
-    viewValueByValueType ctx argumentValues value
+viewValue : Config msg -> Dict Name RawValue -> TypedValue -> Element msg
+viewValue config argumentValues value =
+    viewValueByValueType config argumentValues value
 
 
-viewValueByValueType : Context msg -> Dict Name RawValue -> TypedValue -> Element msg
-viewValueByValueType ctx argumentValues typedValue =
+viewValueByValueType : Config msg -> Dict Name RawValue -> TypedValue -> Element msg
+viewValueByValueType config argumentValues typedValue =
     let
         valueType : Type ()
         valueType =
@@ -95,7 +88,7 @@ viewValueByValueType ctx argumentValues typedValue =
             boolOperatorTree =
                 BoolOperatorTree.fromTypedValue typedValue
         in
-        ViewBoolOperatorTree.view (viewValueByLanguageFeature ctx argumentValues) boolOperatorTree
+        ViewBoolOperatorTree.view (viewValueByLanguageFeature config argumentValues) boolOperatorTree
 
     else if Basics.isNumber valueType then
         let
@@ -103,43 +96,43 @@ viewValueByValueType ctx argumentValues typedValue =
             arithmeticOperatorTree =
                 ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
         in
-        ViewArithmetic.view (viewValueByLanguageFeature ctx argumentValues) arithmeticOperatorTree
+        ViewArithmetic.view (viewValueByLanguageFeature config argumentValues) arithmeticOperatorTree
 
     else
-        viewValueByLanguageFeature ctx argumentValues typedValue
+        viewValueByLanguageFeature config argumentValues typedValue
 
 
-viewValueByLanguageFeature : Context msg -> Dict Name RawValue -> TypedValue -> Element msg
-viewValueByLanguageFeature ctx argumentValues value =
+viewValueByLanguageFeature : Config msg -> Dict Name RawValue -> TypedValue -> Element msg
+viewValueByLanguageFeature config argumentValues value =
     case value of
         Value.Literal literalType literal ->
             ViewLiteral.view literal
 
         Value.Constructor tpe fQName ->
-            ViewReference.view ctx (viewValue ctx argumentValues) fQName
+            ViewReference.view config (viewValue config argumentValues) fQName
 
         Value.Tuple tpe elems ->
-            ViewTuple.view (viewValue ctx argumentValues) elems
+            ViewTuple.view (viewValue config argumentValues) elems
 
         Value.List (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ]) items ->
-            ViewList.view ctx.distribution (viewValue ctx argumentValues) itemType items
+            ViewList.view config (viewValue config argumentValues) itemType items
 
         Value.Variable tpe name ->
             el []
                 (text (nameToText name))
 
         Value.Reference tpe fQName ->
-            ViewReference.view ctx (viewValue ctx argumentValues) fQName
+            ViewReference.view config (viewValue config argumentValues) fQName
 
         Value.Field tpe subjectValue fieldName ->
-            ViewField.view (viewValue ctx argumentValues) subjectValue fieldName
+            ViewField.view (viewValue config argumentValues) subjectValue fieldName
 
         Value.Apply _ fun arg ->
             let
                 ( function, args ) =
                     Value.uncurryApply fun arg
             in
-            ViewApply.view (viewValue ctx argumentValues) function args
+            ViewApply.view (viewValue config argumentValues) function args
 
         Value.LetDefinition tpe _ _ _ ->
             let
@@ -159,10 +152,10 @@ viewValueByLanguageFeature ctx argumentValues value =
                 ( definitions, inValue ) =
                     unnest value
             in
-            ViewLetDefinition.view (viewValue ctx argumentValues) definitions inValue
+            ViewLetDefinition.view (viewValue config argumentValues) definitions inValue
 
         Value.IfThenElse _ _ _ _ ->
-            ViewIfThenElse.view ctx (viewValue ctx argumentValues) value Dict.empty
+            ViewIfThenElse.view config (viewValue config argumentValues) value Dict.empty
 
         other ->
             Element.column

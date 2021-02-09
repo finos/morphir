@@ -21,6 +21,20 @@ view viewValue functionValue argValues =
                 , text (nameToText localName)
                 ]
 
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "negate" ] ), [ argValue ] ) ->
+            row [ spacing 3 ]
+                [ text "- ("
+                , viewValue argValue
+                , text ")"
+                ]
+
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "abs" ] ), [ argValue ] ) ->
+            row [ spacing 3 ]
+                [ text "abs ("
+                , viewValue argValue
+                , text ")"
+                ]
+
         -- possibly binary operator
         ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ), [ argValue1, argValue2 ] ) ->
             let
