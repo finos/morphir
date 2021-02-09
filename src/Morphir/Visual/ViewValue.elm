@@ -14,7 +14,7 @@ import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (definition, nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
-import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Config as Config exposing (Config)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -142,36 +142,56 @@ viewValueByLanguageFeature config value =
 
                 Value.LetDefinition tpe _ _ _ ->
                     let
-                        unnest : Value ta (Type ta) -> ( List ( Name, Value.Definition ta (Type ta) ), Value ta (Type ta) )
-                        unnest v =
+                        unnest : Config msg -> Value () (Type ()) -> ( List ( Name, Element msg ), Element msg )
+                        unnest conf v =
                             case v of
                                 Value.LetDefinition _ defName def inVal ->
                                     let
+                                        currentState =
+                                            conf.state
+
+                                        newState =
+                                            { currentState
+                                                | variables =
+                                                    conf
+                                                        |> Config.evaluate
+                                                            (def
+                                                                |> Value.mapDefinitionAttributes (always ()) (always ())
+                                                                |> Value.definitionToValue
+                                                            )
+                                                        |> Result.map
+                                                            (\evaluatedDefValue ->
+                                                                currentState.variables
+                                                                    |> Dict.insert defName evaluatedDefValue
+                                                            )
+                                                        |> Result.withDefault currentState.variables
+                                            }
+
                                         ( defs, bottomIn ) =
-                                            unnest inVal
+                                            unnest { conf | state = newState } inVal
                                     in
-                                    ( ( defName, def ) :: defs, bottomIn )
+                                    ( ( defName, viewValue conf def.body ) :: defs, bottomIn )
 
                                 notLet ->
-                                    ( [], notLet )
+                                    ( [], viewValue conf notLet )
 
-                        ( definitions, inValue ) =
-                            unnest value
+                        ( definitions, inValueElem ) =
+                            unnest config value
                     in
                     column
                         [ spacing 20 ]
-                        [ viewValue config inValue
+                        [ inValueElem
                         , column
                             [ spacing 20
                             ]
                             (definitions
                                 |> List.map
-                                    (\( defName, def ) ->
+                                    (\( defName, defElem ) ->
                                         column
                                             [ spacing 10
                                             ]
                                             [ definition (nameToText defName)
-                                                (viewValue config def.body)
+                                                defElem
                                             ]
                                     )
                             )
