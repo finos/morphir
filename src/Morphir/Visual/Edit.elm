@@ -14,7 +14,7 @@ editValue valueType currentValue valueUpdated invalidValue =
         editInt currentValue valueUpdated invalidValue
 
     else if valueType == Basics.floatType () then
-        editFloat (currentValue |> Debug.log "current vaalue") valueUpdated invalidValue
+        editFloat currentValue valueUpdated invalidValue
 
     else
         textBox

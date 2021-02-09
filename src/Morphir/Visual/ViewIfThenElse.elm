@@ -3,15 +3,14 @@ module Morphir.Visual.ViewIfThenElse exposing (view)
 import Dict exposing (Dict)
 import Element exposing (Element)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (TypedValue, Value)
 import Morphir.Visual.Components.DecisionTree as DecisionTree exposing (LeftOrRight(..))
 import Morphir.Visual.Config as Config exposing (Config)
 
 
-view : Config msg -> (TypedValue -> Element msg) -> Value () (Type ()) -> Dict Name (Value () ()) -> Element msg
-view config viewValue value variables =
+view : Config msg -> (TypedValue -> Element msg) -> Value () (Type ()) -> Element msg
+view config viewValue value =
     DecisionTree.layout viewValue (valueToTree config True value)
 
 
