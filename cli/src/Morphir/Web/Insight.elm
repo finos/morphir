@@ -12,7 +12,9 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.Value exposing (Value)
 import Morphir.IR.Value.Codec as ValueCodec
+import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
+import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.ViewValue as ViewValue
 
 
@@ -193,6 +195,21 @@ view model =
                         visualizationState.functionDefinition.inputTypes
                         visualizationState.functionArguments
                         |> Dict.fromList
+
+                config : Config Msg
+                config =
+                    { irContext =
+                        { distribution = visualizationState.distribution
+                        , references = Interpreter.referencesForDistribution visualizationState.distribution
+                        }
+                    , state =
+                        { expandedFunctions = Dict.empty
+                        , variables = Dict.empty
+                        }
+                    , handlers =
+                        { onReferenceClicked = ExpandReference
+                        }
+                    }
             in
-            ViewValue.viewDefinition visualizationState.distribution visualizationState.functionDefinition validArgValues ExpandReference visualizationState.expandedFunctions
+            ViewValue.viewDefinition config visualizationState.functionDefinition validArgValues
                 |> Element.layout []

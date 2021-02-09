@@ -3,7 +3,7 @@ module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Route(..), 
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, column, el, fill, height, image, layout, link, minimum, padding, paddingXY, px, rgb, row, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignTop, column, el, fill, height, html, image, layout, link, minimum, none, padding, paddingXY, px, rgb, row, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -14,7 +14,10 @@ import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.Value.Interpreter as Interpreter
+import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Edit as Edit
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme exposing (Theme)
@@ -50,6 +53,7 @@ type alias Model =
     , theme : Theme Msg
     , irState : IRState
     , serverState : ServerState
+    , argState : Dict ( FQName, Name ) RawValue
     }
 
 
@@ -70,6 +74,7 @@ init flags url key =
       , theme = Light.theme scaled
       , irState = IRLoading
       , serverState = ServerReady
+      , argState = Dict.empty
       }
     , httpMakeModel
     )
@@ -86,11 +91,13 @@ type Msg
     | ServerGetIRResponse Distribution
     | ExpandReference FQName Bool
     | ValueFilterChanged String
+    | ArgValueUpdated FQName Name RawValue
+    | InvalidArgValue FQName Name String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
+    case msg |> Debug.log "msg" of
         LinkClicked urlRequest ->
             case urlRequest of
                 Browser.Internal url ->
@@ -140,6 +147,18 @@ update msg model =
         ExpandReference fqn bool ->
             ( model, Cmd.none )
 
+        ArgValueUpdated fQName argName rawValue ->
+            ( { model
+                | argState =
+                    model.argState
+                        |> Dict.insert ( fQName, argName ) rawValue
+              }
+            , Cmd.none
+            )
+
+        InvalidArgValue fQName argName string ->
+            ( model, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -161,7 +180,7 @@ type Route
 
 
 type ViewType
-    = RawIRView
+    = XRayView
     | InsightView
 
 
@@ -172,7 +191,7 @@ viewTypeFromString string =
             InsightView
 
         _ ->
-            RawIRView
+            XRayView
 
 
 routeParser : UrlParser.Parser (Route -> a) a
@@ -197,7 +216,7 @@ routeParser =
             (UrlParser.s "module"
                 </> (UrlParser.string |> UrlParser.map (String.split "."))
                 <?> Query.string "filter"
-                <?> (Query.string "view" |> Query.map (Maybe.map viewTypeFromString >> Maybe.withDefault RawIRView))
+                <?> (Query.string "view" |> Query.map (Maybe.map viewTypeFromString >> Maybe.withDefault InsightView))
             )
         , UrlParser.map (always Home) UrlParser.string
         ]
@@ -232,6 +251,12 @@ view model =
                 [ width fill
                 ]
                 [ viewHeader model
+                , case model.serverState of
+                    ServerReady ->
+                        none
+
+                    ServerHttpError error ->
+                        viewServerError error
                 , el [ padding 5, width fill ] (viewBody model)
                 ]
             )
@@ -279,22 +304,46 @@ viewHeader model =
         ]
 
 
+viewServerError : Http.Error -> Element msg
+viewServerError error =
+    let
+        message : String
+        message =
+            case error of
+                Http.BadUrl url ->
+                    "An invalid URL was provided: " ++ url
+
+                Http.Timeout ->
+                    "Request timed out"
+
+                Http.NetworkError ->
+                    "Network error"
+
+                Http.BadStatus code ->
+                    "Server returned an error: " ++ String.fromInt code
+
+                Http.BadBody body ->
+                    "Unexpected response body: " ++ body
+    in
+    el
+        [ width fill
+        , paddingXY 20 10
+        , Background.color (rgb 1 0.5 0.5)
+        , Font.color (rgb 1 1 1)
+        ]
+        (text message)
+
+
 viewBody : Model -> Element Msg
 viewBody model =
     case model.irState of
         IRLoading ->
             text "Loading the IR ..."
 
-        IRLoaded distribution ->
-            let
-                packageDef =
-                    case distribution of
-                        Library _ _ pack ->
-                            pack
-            in
+        IRLoaded ((Library packageName _ packageDef) as distribution) ->
             case model.route of
                 Home ->
-                    viewAsCard "Modules"
+                    viewAsCard (text "Modules")
                         (column
                             [ padding 10
                             , spacing 10
@@ -316,14 +365,18 @@ viewBody model =
                             )
                         )
 
-                Module moduleName filterString viewType ->
-                    case packageDef.modules |> Dict.get (moduleName |> List.map Name.fromString) of
+                Module moduleNameString filterString viewType ->
+                    let
+                        moduleName =
+                            moduleNameString |> List.map Name.fromString
+                    in
+                    case packageDef.modules |> Dict.get moduleName of
                         Just accessControlledModuleDef ->
                             column
                                 [ width fill
                                 , spacing (scaled 4)
                                 ]
-                                [ viewModuleControls moduleName filterString viewType
+                                [ viewModuleControls moduleNameString filterString viewType
                                 , wrappedRow [ spacing (scaled 4) ]
                                     (accessControlledModuleDef.value.values
                                         |> Dict.toList
@@ -348,9 +401,13 @@ viewBody model =
                                                     Just
                                                         (el [ alignTop ]
                                                             (viewAsCard
-                                                                (valueName
-                                                                    |> Name.toHumanWords
-                                                                    |> String.join " "
+                                                                (column [ spacing 5 ]
+                                                                    [ valueName
+                                                                        |> Name.toHumanWords
+                                                                        |> String.join " "
+                                                                        |> text
+                                                                    , viewArgumentEditors model ( packageName, moduleName, valueName ) accessControlledValueDef.value
+                                                                    ]
                                                                 )
                                                                 (case viewType of
                                                                     InsightView ->
@@ -359,7 +416,7 @@ viewBody model =
                                                                             accessControlledValueDef.value
                                                                             Dict.empty
 
-                                                                    RawIRView ->
+                                                                    XRayView ->
                                                                         XRayView.viewValueDefinition XRayView.viewType accessControlledValueDef
                                                                 )
                                                             )
@@ -372,10 +429,36 @@ viewBody model =
                                 ]
 
                         Nothing ->
-                            text (String.join " " [ "Module", moduleName |> String.join ".", "not found" ])
+                            text (String.join " " [ "Module", moduleNameString |> String.join ".", "not found" ])
 
                 NotFound ->
                     text "Route not found"
+
+
+viewArgumentEditors : Model -> FQName -> Value.Definition () (Type ()) -> Element Msg
+viewArgumentEditors model fQName valueDef =
+    valueDef.inputTypes
+        |> List.map
+            (\( argName, _, argType ) ->
+                row
+                    [ Background.color (rgb 1 1 1)
+                    , Border.rounded 5
+                    , spacing 10
+                    ]
+                    [ el [ paddingXY 10 0 ]
+                        (text (argName |> Name.toHumanWords |> String.join " "))
+                    , el []
+                        (Edit.editValue
+                            argType
+                            (model.argState |> Dict.get ( fQName, argName ))
+                            (ArgValueUpdated fQName argName)
+                            (InvalidArgValue fQName argName)
+                        )
+                    ]
+            )
+        |> wrappedRow
+            [ spacing 5
+            ]
 
 
 scaled : Int -> Int
@@ -432,8 +515,8 @@ viewModuleControls moduleName filterString viewType =
             }
         , el []
             (row [ spacing 5 ]
-                [ link [ paddingXY 6 4, Border.rounded 3, viewTypeBackground RawIRView ]
-                    { url = makeURL moduleName filterString RawIRView
+                [ link [ paddingXY 6 4, Border.rounded 3, viewTypeBackground XRayView ]
+                    { url = makeURL moduleName filterString XRayView
                     , label = text "x-ray"
                     }
                 , text "|"
@@ -477,12 +560,27 @@ viewValue distribution valueDef argValues =
                             |> Maybe.map (Tuple.pair argName)
                     )
                 |> Dict.fromList
+
+        config : Config Msg
+        config =
+            { irContext =
+                { distribution = distribution
+                , references = Interpreter.referencesForDistribution distribution
+                }
+            , state =
+                { expandedFunctions = Dict.empty
+                , variables = Dict.empty
+                }
+            , handlers =
+                { onReferenceClicked = ExpandReference
+                }
+            }
     in
-    ViewValue.viewDefinition distribution valueDef validArgValues ExpandReference Dict.empty
+    ViewValue.viewDefinition config valueDef validArgValues
 
 
-viewAsCard : String -> Element msg -> Element msg
-viewAsCard title content =
+viewAsCard : Element msg -> Element msg -> Element msg
+viewAsCard header content =
     let
         gray =
             rgb 0.9 0.9 0.9
@@ -503,7 +601,7 @@ viewAsCard title content =
             , padding 2
             , Font.size (scaled 2)
             ]
-            (text title)
+            header
         , el
             [ Background.color white
             , Border.rounded 3
