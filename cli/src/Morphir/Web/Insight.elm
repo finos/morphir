@@ -5,7 +5,7 @@ import Dict exposing (Dict)
 import Element
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder, string)
-import Morphir.IR.Distribution as Distribution exposing (Distribution)
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
@@ -204,12 +204,18 @@ view model =
                         }
                     , state =
                         { expandedFunctions = Dict.empty
-                        , variables = Dict.empty
+                        , variables = validArgValues
                         }
                     , handlers =
                         { onReferenceClicked = ExpandReference
                         }
                     }
+
+                valueFQName : FQName
+                valueFQName =
+                    case ( visualizationState.distribution, visualizationState.selectedFunction ) of
+                        ( Library packageName _ _, QName moduleName localName ) ->
+                            ( packageName, moduleName, localName )
             in
-            ViewValue.viewDefinition config visualizationState.functionDefinition validArgValues
+            ViewValue.viewDefinition config valueFQName visualizationState.functionDefinition
                 |> Element.layout []

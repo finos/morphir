@@ -314,6 +314,22 @@ nativeFunctions =
                         Err (UnexpectedArguments [ arg1, arg2 ])
             )
       )
+    , ( "abs"
+      , Native.unaryStrict
+            (Native.mapLiteral
+                (\lit ->
+                    case lit of
+                        IntLiteral v ->
+                            Ok (IntLiteral (abs v))
+
+                        FloatLiteral v ->
+                            Ok (FloatLiteral (abs v))
+
+                        _ ->
+                            Err (ExpectedBoolLiteral lit)
+                )
+            )
+      )
     ]
 
 

@@ -53,7 +53,8 @@ type alias Model =
     , theme : Theme Msg
     , irState : IRState
     , serverState : ServerState
-    , argState : Dict ( FQName, Name ) RawValue
+    , argState : Dict FQName (Dict Name RawValue)
+    , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     }
 
 
@@ -75,6 +76,7 @@ init flags url key =
       , irState = IRLoading
       , serverState = ServerReady
       , argState = Dict.empty
+      , expandedValues = Dict.empty
       }
     , httpMakeModel
     )
@@ -145,13 +147,23 @@ update msg model =
             )
 
         ExpandReference fqn bool ->
-            ( model, Cmd.none )
+            ( model
+            , Cmd.none
+            )
 
         ArgValueUpdated fQName argName rawValue ->
             ( { model
                 | argState =
                     model.argState
-                        |> Dict.insert ( fQName, argName ) rawValue
+                        |> Dict.update fQName
+                            (\maybeArgs ->
+                                case maybeArgs of
+                                    Just args ->
+                                        args |> Dict.insert argName rawValue |> Just
+
+                                    Nothing ->
+                                        Dict.singleton argName rawValue |> Just
+                            )
               }
             , Cmd.none
             )
@@ -396,6 +408,9 @@ viewBody model =
 
                                                             Nothing ->
                                                                 True
+
+                                                    valueFQName =
+                                                        ( packageName, moduleName, valueName )
                                                 in
                                                 if matchesFilter then
                                                     Just
@@ -406,15 +421,16 @@ viewBody model =
                                                                         |> Name.toHumanWords
                                                                         |> String.join " "
                                                                         |> text
-                                                                    , viewArgumentEditors model ( packageName, moduleName, valueName ) accessControlledValueDef.value
+                                                                    , viewArgumentEditors model valueFQName accessControlledValueDef.value
                                                                     ]
                                                                 )
                                                                 (case viewType of
                                                                     InsightView ->
                                                                         viewValue
+                                                                            model
                                                                             distribution
+                                                                            valueFQName
                                                                             accessControlledValueDef.value
-                                                                            Dict.empty
 
                                                                     XRayView ->
                                                                         XRayView.viewValueDefinition XRayView.viewType accessControlledValueDef
@@ -450,7 +466,7 @@ viewArgumentEditors model fQName valueDef =
                     , el []
                         (Edit.editValue
                             argType
-                            (model.argState |> Dict.get ( fQName, argName ))
+                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName))
                             (ArgValueUpdated fQName argName)
                             (InvalidArgValue fQName argName)
                         )
@@ -546,20 +562,14 @@ makeURL moduleName filterString viewType =
         ]
 
 
-viewValue : Distribution -> Value.Definition () (Type ()) -> Dict Name (Result String (Value () ())) -> Element Msg
-viewValue distribution valueDef argValues =
+viewValue : Model -> Distribution -> FQName -> Value.Definition () (Type ()) -> Element Msg
+viewValue model distribution valueFQName valueDef =
     let
         validArgValues : Dict Name (Value () ())
         validArgValues =
-            argValues
-                |> Dict.toList
-                |> List.filterMap
-                    (\( argName, argValueResult ) ->
-                        argValueResult
-                            |> Result.toMaybe
-                            |> Maybe.map (Tuple.pair argName)
-                    )
-                |> Dict.fromList
+            model.argState
+                |> Dict.get valueFQName
+                |> Maybe.withDefault Dict.empty
 
         config : Config Msg
         config =
@@ -569,14 +579,14 @@ viewValue distribution valueDef argValues =
                 }
             , state =
                 { expandedFunctions = Dict.empty
-                , variables = Dict.empty
+                , variables = validArgValues
                 }
             , handlers =
                 { onReferenceClicked = ExpandReference
                 }
             }
     in
-    ViewValue.viewDefinition config valueDef validArgValues
+    ViewValue.viewDefinition config valueFQName valueDef
 
 
 viewAsCard : Element msg -> Element msg -> Element msg
