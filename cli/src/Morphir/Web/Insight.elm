@@ -5,6 +5,7 @@ import Dict exposing (Dict)
 import Element
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder, string)
+import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
@@ -45,12 +46,12 @@ init : Decode.Value -> ( Model, Cmd Msg )
 init distributionJson =
     let
         model =
-            case distributionJson |> Decode.decodeValue DistributionCodec.decodeDistribution of
+            case distributionJson |> Decode.decodeValue CompilerCodec.decodeIR of
                 Ok distribution ->
                     IRLoaded distribution
 
                 Err error ->
-                    Failed "Wrong IR"
+                    Failed ("Wrong IR: " ++ Decode.errorToString error)
     in
     ( model, Cmd.none )
 
