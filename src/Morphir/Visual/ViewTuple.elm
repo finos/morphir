@@ -3,10 +3,11 @@ module Morphir.Visual.ViewTuple exposing (..)
 import Element exposing (Element, column, el, moveRight, spacing, text, wrappedRow)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value exposing (Value)
+import Morphir.Visual.Config exposing (Config)
 
 
-view : (Value ta (Type ta) -> Element msg) -> List (Value ta (Type ta)) -> Element msg
-view viewValue elems =
+view : Config msg -> (Value ta (Type ta) -> Element msg) -> List (Value ta (Type ta)) -> Element msg
+view config viewValue elems =
     let
         tupleCase : String
         tupleCase =
@@ -21,11 +22,11 @@ view viewValue elems =
                     "tuple"
     in
     column
-        [ spacing 10 ]
+        [ spacing config.state.theme.smallSpacing ]
         [ text (tupleCase ++ " of")
         , column
             [ moveRight 10
-            , spacing 10
+            , spacing config.state.theme.smallSpacing
             ]
             (elems
                 |> List.map viewValue

@@ -7,29 +7,30 @@ import Morphir.IR.Path as Path
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Config exposing (Config)
 
 
-view : (Value ta (Type ta) -> Element msg) -> Value ta (Type ta) -> List (Value ta (Type ta)) -> Element msg
-view viewValue functionValue argValues =
+view : Config msg -> (Value ta (Type ta) -> Element msg) -> Value ta (Type ta) -> List (Value ta (Type ta)) -> Element msg
+view config viewValue functionValue argValues =
     case ( functionValue, argValues ) of
         ( Value.Reference _ ( _, _, ("is" :: _) as localName ), [ argValue ] ) ->
             row
                 [ width fill
-                , spacing 10
+                , spacing config.state.theme.smallSpacing
                 ]
                 [ viewValue argValue
                 , text (nameToText localName)
                 ]
 
         ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "negate" ] ), [ argValue ] ) ->
-            row [ spacing 3 ]
+            row [ spacing config.state.theme.smallSpacing ]
                 [ text "- ("
                 , viewValue argValue
                 , text ")"
                 ]
 
         ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "abs" ] ), [ argValue ] ) ->
-            row [ spacing 3 ]
+            row [ spacing config.state.theme.smallSpacing ]
                 [ text "abs ("
                 , viewValue argValue
                 , text ")"
@@ -51,7 +52,7 @@ view viewValue functionValue argValues =
                     (\functionText ->
                         row
                             [ width fill
-                            , spacing 5
+                            , spacing config.state.theme.smallSpacing
                             ]
                             [ viewValue argValue1
                             , text functionText
@@ -60,11 +61,11 @@ view viewValue functionValue argValues =
                     )
                 |> Maybe.withDefault
                     (column
-                        [ spacing 10 ]
+                        [ spacing config.state.theme.smallSpacing ]
                         [ viewValue functionValue
                         , column
                             [ paddingEach { left = 10, right = 0, top = 0, bottom = 0 }
-                            , spacing 10
+                            , spacing config.state.theme.smallSpacing
                             ]
                             (argValues
                                 |> List.map viewValue
@@ -74,11 +75,11 @@ view viewValue functionValue argValues =
 
         _ ->
             column
-                [ spacing 10 ]
+                [ spacing config.state.theme.smallSpacing ]
                 [ viewValue functionValue
                 , column
                     [ moveRight 10
-                    , spacing 10
+                    , spacing config.state.theme.smallSpacing
                     ]
                     (argValues
                         |> List.map viewValue

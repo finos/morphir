@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, rgb, spacing, text, width)
+import Element exposing (Element, el, fill, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -34,7 +34,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
         _ =
             Debug.log "variables" config.state.variables
     in
-    Element.column [ spacing 20 ]
+    Element.column [ spacing config.state.theme.mediumSpacing ]
         [ definition
             (nameToText valueName)
             (viewValue config valueDef.body)
@@ -43,33 +43,27 @@ viewDefinition config ( _, _, valueName ) valueDef =
 
           else
             Element.column
-                [ spacing 20 ]
-                [ Element.column
-                    [ spacing 20
-                    ]
-                    (config.state.expandedFunctions
-                        |> Dict.toList
-                        |> List.reverse
-                        |> List.map
-                            (\( ( _, _, localName ) as fqName, valDef ) ->
-                                Element.column
-                                    [ spacing 10
+                [ spacing config.state.theme.mediumSpacing ]
+                (config.state.expandedFunctions
+                    |> Dict.toList
+                    |> List.reverse
+                    |> List.map
+                        (\( ( _, _, localName ) as fqName, valDef ) ->
+                            Element.column
+                                [ spacing config.state.theme.smallSpacing ]
+                                [ definition (nameToText localName) (viewValue config valDef.body)
+                                , Element.el
+                                    [ Font.bold
+                                    , Border.solid
+                                    , Border.rounded 5
+                                    , Background.color gray
+                                    , padding config.state.theme.smallSpacing
+                                    , onClick (config.handlers.onReferenceClicked fqName True)
                                     ]
-                                    [ definition (nameToText localName)
-                                        (viewValue config valDef.body)
-                                    , Element.column
-                                        [ Font.bold
-                                        , Border.solid
-                                        , Border.rounded 5
-                                        , Background.color gray
-                                        , Element.padding 10
-                                        , onClick (config.handlers.onReferenceClicked fqName True)
-                                        ]
-                                        [ Element.text "Close" ]
-                                    ]
-                            )
-                    )
-                ]
+                                    (Element.text "Close")
+                                ]
+                        )
+                )
         ]
 
 
@@ -91,7 +85,7 @@ viewValueByValueType config typedValue =
             boolOperatorTree =
                 BoolOperatorTree.fromTypedValue typedValue
         in
-        ViewBoolOperatorTree.view (viewValueByLanguageFeature config) boolOperatorTree
+        ViewBoolOperatorTree.view config (viewValueByLanguageFeature config) boolOperatorTree
 
     else if Basics.isNumber valueType then
         let
@@ -99,7 +93,7 @@ viewValueByValueType config typedValue =
             arithmeticOperatorTree =
                 ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
         in
-        ViewArithmetic.view (viewValueByLanguageFeature config) arithmeticOperatorTree
+        ViewArithmetic.view config (viewValueByLanguageFeature config) arithmeticOperatorTree
 
     else
         viewValueByLanguageFeature config typedValue
@@ -118,7 +112,7 @@ viewValueByLanguageFeature config value =
                     ViewReference.view config (viewValue config) fQName
 
                 Value.Tuple tpe elems ->
-                    ViewTuple.view (viewValue config) elems
+                    ViewTuple.view config (viewValue config) elems
 
                 Value.List (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ]) items ->
                     ViewList.view config (viewValue config) itemType items
@@ -138,7 +132,7 @@ viewValueByLanguageFeature config value =
                         ( function, args ) =
                             Value.uncurryApply fun arg
                     in
-                    ViewApply.view (viewValue config) function args
+                    ViewApply.view config (viewValue config) function args
 
                 Value.LetDefinition tpe _ _ _ ->
                     let
@@ -178,17 +172,17 @@ viewValueByLanguageFeature config value =
                         ( definitions, inValueElem ) =
                             unnest config value
                     in
-                    column
-                        [ spacing 20 ]
+                    Element.column
+                        [ spacing config.state.theme.mediumSpacing ]
                         [ inValueElem
-                        , column
-                            [ spacing 20
+                        , Element.column
+                            [ spacing config.state.theme.mediumSpacing
                             ]
                             (definitions
                                 |> List.map
                                     (\( defName, defElem ) ->
-                                        column
-                                            [ spacing 10
+                                        Element.column
+                                            [ spacing config.state.theme.smallSpacing
                                             ]
                                             [ definition (nameToText defName)
                                                 defElem
@@ -203,19 +197,17 @@ viewValueByLanguageFeature config value =
                 other ->
                     Element.column
                         [ Background.color (rgb 1 0.6 0.6)
-                        , Element.padding 5
+                        , Element.padding config.state.theme.smallPadding
                         , Border.rounded 3
                         ]
                         [ Element.el
                             [ Element.padding 5
                             , Font.bold
-
-                            --, Font.color (rgb 1 1 1)
                             ]
                             (Element.text "No visual mapping found for:")
                         , Element.el
                             [ Background.color (rgb 1 1 1)
-                            , Element.padding 5
+                            , Element.padding config.state.theme.smallPadding
                             , Border.rounded 3
                             , width fill
                             ]

@@ -34,14 +34,14 @@ view config viewValue itemType items =
                                     { header =
                                         el
                                             [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
-                                            , paddingXY 10 5
+                                            , paddingXY config.state.theme.smallPadding (config.state.theme.smallPadding // 2)
                                             ]
                                             (text (field.name |> Name.toHumanWords |> String.join " "))
                                     , width = fill
                                     , view =
                                         \rowIndex item ->
                                             el
-                                                [ paddingXY 10 5
+                                                [ paddingXY config.state.theme.smallPadding (config.state.theme.smallPadding // 2)
                                                 , width fill
                                                 , height fill
                                                 ]
@@ -73,7 +73,7 @@ view config viewValue itemType items =
 
             _ ->
                 table
-                    [ spacing 10
+                    [ spacing config.state.theme.smallSpacing
                     ]
                     { data = items
                     , columns =

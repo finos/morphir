@@ -1,8 +1,9 @@
-port module Morphir.Web.Insight exposing (Model(..), Msg(..), init, main, receiveFunctionArguments, receiveFunctionName, subscriptions, update, view)
+port module Morphir.Web.Insight exposing (Model, Msg(..), init, main, receiveFunctionArguments, receiveFunctionName, subscriptions, update, view)
 
 import Browser
 import Dict exposing (Dict)
-import Element
+import Element exposing (padding)
+import Element.Font as Font
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder, string)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
@@ -13,6 +14,7 @@ import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.Value exposing (Value)
 import Morphir.IR.Value.Codec as ValueCodec
 import Morphir.Value.Interpreter as Interpreter
+import Morphir.Visual.Components.Theme exposing (Style, Theme, scaled)
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.ViewValue as ViewValue
@@ -35,29 +37,51 @@ main =
 -- MODEL
 
 
-type Model
+type alias Flags =
+    { distributionJson : Decode.Value
+    , style : Style
+    }
+
+
+type alias Model =
+    { theme : Theme
+    , modelState : ModelState
+    }
+
+
+type ModelState
     = IRLoaded Distribution
     | FunctionsSet VisualizationState
     | Failed String
 
 
-init : Decode.Value -> ( Model, Cmd Msg )
-init distributionJson =
+init : Flags -> ( Model, Cmd Msg )
+init flags =
     let
+        styleTheme : Theme
+        styleTheme =
+            { fontSize = flags.style.fontSize
+            , smallSpacing = scaled -3 flags.style
+            , mediumSpacing = scaled 1 flags.style
+            , largeSpacing = scaled 4 flags.style
+            , smallPadding = scaled -4 flags.style
+            , mediumPadding = scaled -2 flags.style
+            , largePadding = scaled 2 flags.style
+            }
+
         model =
-            case distributionJson |> Decode.decodeValue DistributionCodec.decodeDistribution of
+            case flags.distributionJson |> Decode.decodeValue DistributionCodec.decodeDistribution of
                 Ok distribution ->
-                    IRLoaded distribution
+                    { theme = styleTheme, modelState = IRLoaded distribution }
 
                 Err error ->
-                    Failed "Wrong IR"
+                    { theme = styleTheme, modelState = Failed "Wrong IR" }
     in
     ( model, Cmd.none )
 
 
 
 -- PORTS
---port sendErrorReport : String -> Cmd msg
 
 
 port receiveFunctionName : (String -> msg) -> Sub msg
@@ -81,7 +105,7 @@ update msg model =
     let
         getDistribution : Maybe Distribution
         getDistribution =
-            case model of
+            case model.modelState of
                 IRLoaded distribution ->
                     Just distribution
 
@@ -102,20 +126,23 @@ update msg model =
                                     |> Distribution.lookupValueDefinition qName
                                     |> Maybe.map
                                         (\funDef ->
-                                            FunctionsSet
-                                                { distribution = distribution
-                                                , selectedFunction = qName
-                                                , functionDefinition = funDef
-                                                , functionArguments = []
-                                                , expandedFunctions = Dict.empty
-                                                }
+                                            { model
+                                                | modelState =
+                                                    FunctionsSet
+                                                        { distribution = distribution
+                                                        , selectedFunction = qName
+                                                        , functionDefinition = funDef
+                                                        , functionArguments = []
+                                                        , expandedFunctions = Dict.empty
+                                                        }
+                                            }
                                         )
                             )
                         |> Maybe.map (\m -> ( m, Cmd.none ))
-                        |> Maybe.withDefault ( Failed "Invalid State in receiving function name", Cmd.none )
+                        |> Maybe.withDefault ( { model | modelState = Failed "Invalid State in receiving function name" }, Cmd.none )
 
                 Nothing ->
-                    ( Failed "Received function name is not found", Cmd.none )
+                    ( { model | modelState = Failed "Received function name is not found" }, Cmd.none )
 
         FunctionArgumentsReceived jsonList ->
             let
@@ -124,37 +151,40 @@ update msg model =
             in
             case jsonList |> Decode.decodeValue jsonDecoder of
                 Ok updatedArgValues ->
-                    case model of
+                    case model.modelState of
                         FunctionsSet visualizationState ->
-                            ( FunctionsSet { visualizationState | functionArguments = updatedArgValues }
+                            ( { model | modelState = FunctionsSet { visualizationState | functionArguments = updatedArgValues } }
                             , Cmd.none
                             )
 
                         _ ->
-                            ( Failed "Invalid State", Cmd.none )
+                            ( { model | modelState = Failed "Invalid State" }, Cmd.none )
 
                 Err _ ->
-                    ( Failed "Received function arguments cannot be decoded", Cmd.none )
+                    ( { model | modelState = Failed "Received function arguments cannot be decoded" }, Cmd.none )
 
         ExpandReference (( packageName, moduleName, localName ) as fqName) bool ->
-            case model of
+            case model.modelState of
                 FunctionsSet visualizationState ->
                     if visualizationState.expandedFunctions |> Dict.member fqName then
                         case bool of
                             True ->
-                                ( FunctionsSet { visualizationState | expandedFunctions = visualizationState.expandedFunctions |> Dict.remove fqName }, Cmd.none )
+                                ( { model | modelState = FunctionsSet { visualizationState | expandedFunctions = visualizationState.expandedFunctions |> Dict.remove fqName } }, Cmd.none )
 
                             False ->
                                 ( model, Cmd.none )
 
                     else
-                        ( FunctionsSet
-                            { visualizationState
-                                | expandedFunctions =
-                                    Distribution.lookupValueDefinition (QName moduleName localName) visualizationState.distribution
-                                        |> Maybe.map (\valueDef -> visualizationState.expandedFunctions |> Dict.insert fqName valueDef)
-                                        |> Maybe.withDefault visualizationState.expandedFunctions
-                            }
+                        ( { model
+                            | modelState =
+                                FunctionsSet
+                                    { visualizationState
+                                        | expandedFunctions =
+                                            Distribution.lookupValueDefinition (QName moduleName localName) visualizationState.distribution
+                                                |> Maybe.map (\valueDef -> visualizationState.expandedFunctions |> Dict.insert fqName valueDef)
+                                                |> Maybe.withDefault visualizationState.expandedFunctions
+                                    }
+                          }
                         , Cmd.none
                         )
 
@@ -177,12 +207,12 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    case model of
+    case model.modelState of
         IRLoaded _ ->
             Html.div [] []
 
         Failed string ->
-            Html.div [] [ Html.text string ]
+            Element.layout [ Font.size model.theme.fontSize, padding model.theme.mediumPadding, Font.bold ] (Element.text string)
 
         FunctionsSet visualizationState ->
             let
@@ -203,8 +233,9 @@ view model =
                         , references = Interpreter.referencesForDistribution visualizationState.distribution
                         }
                     , state =
-                        { expandedFunctions = Dict.empty
+                        { expandedFunctions = visualizationState.expandedFunctions
                         , variables = validArgValues
+                        , theme = model.theme
                         }
                     , handlers =
                         { onReferenceClicked = ExpandReference
@@ -218,4 +249,4 @@ view model =
                             ( packageName, moduleName, localName )
             in
             ViewValue.viewDefinition config valueFQName visualizationState.functionDefinition
-                |> Element.layout []
+                |> Element.layout [ Font.size model.theme.fontSize, padding model.theme.mediumPadding ]

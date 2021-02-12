@@ -7,6 +7,7 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Value.Interpreter as Interpreter
+import Morphir.Visual.Components.Theme exposing (Theme)
 
 
 type alias Config msg =
@@ -25,6 +26,7 @@ type alias IRContext =
 type alias VisualState =
     { expandedFunctions : Dict FQName (Value.Definition () (Type ()))
     , variables : Dict Name RawValue
+    , theme : Theme
     }
 
 

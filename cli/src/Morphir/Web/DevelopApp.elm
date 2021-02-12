@@ -16,6 +16,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Value.Interpreter as Interpreter
+import Morphir.Visual.Components.Theme as Theme exposing (Style)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Edit as Edit
 import Morphir.Visual.ViewValue as ViewValue
@@ -565,6 +566,10 @@ makeURL moduleName filterString viewType =
 viewValue : Model -> Distribution -> FQName -> Value.Definition () (Type ()) -> Element Msg
 viewValue model distribution valueFQName valueDef =
     let
+        style : Style
+        style =
+            { fontSize = 14 }
+
         validArgValues : Dict Name (Value () ())
         validArgValues =
             model.argState
@@ -580,6 +585,15 @@ viewValue model distribution valueFQName valueDef =
             , state =
                 { expandedFunctions = Dict.empty
                 , variables = validArgValues
+                , theme =
+                    { fontSize = style.fontSize
+                    , smallSpacing = Theme.scaled -3 style
+                    , mediumSpacing = Theme.scaled 1 style
+                    , largeSpacing = Theme.scaled 4 style
+                    , smallPadding = Theme.scaled -4 style
+                    , mediumPadding = Theme.scaled -2 style
+                    , largePadding = Theme.scaled 2 style
+                    }
                 }
             , handlers =
                 { onReferenceClicked = ExpandReference

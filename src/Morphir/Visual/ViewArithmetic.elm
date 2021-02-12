@@ -5,10 +5,11 @@ import Element exposing (Element, centerX, column, padding, paddingEach, rgb, ro
 import Element.Border as Border
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.Components.AritmeticExpressions exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
+import Morphir.Visual.Config exposing (Config)
 
 
-view : (TypedValue -> Element msg) -> ArithmeticOperatorTree -> Element msg
-view viewValue arithmeticOperatorTree =
+view : Config msg -> (TypedValue -> Element msg) -> ArithmeticOperatorTree -> Element msg
+view config viewValue arithmeticOperatorTree =
     case arithmeticOperatorTree of
         ArithmeticValueLeaf typedValue ->
             viewValue typedValue
@@ -22,9 +23,9 @@ view viewValue arithmeticOperatorTree =
                                 [ row [ centerX, width Element.fill ]
                                     [ row
                                         [ width Element.fill
-                                        , spacing 5
+                                        , spacing config.state.theme.smallSpacing
                                         , Border.color (rgb 0 0.7 0)
-                                        , paddingEach { left = 0, top = 0, right = 0, bottom = 4 }
+                                        , paddingEach { left = 0, top = 0, right = 0, bottom = config.state.theme.smallPadding }
                                         , centerX
                                         ]
                                         [ viewValue typedValue1
@@ -35,7 +36,7 @@ view viewValue arithmeticOperatorTree =
                                     , width Element.fill
                                     , Border.solid
                                     , Border.widthEach { bottom = 0, left = 0, right = 0, top = 1 }
-                                    , paddingEach { left = 0, bottom = 0, right = 0, top = 10 }
+                                    , paddingEach { left = 0, bottom = 0, right = 0, top = config.state.theme.smallPadding }
                                     ]
                                     [ viewValue typedValue2
                                     ]
@@ -47,7 +48,7 @@ view viewValue arithmeticOperatorTree =
                                     let
                                         separator =
                                             row
-                                                [ spacing 5
+                                                [ spacing config.state.theme.smallSpacing
                                                 , width Element.fill
                                                 , centerX
                                                 ]
@@ -57,7 +58,7 @@ view viewValue arithmeticOperatorTree =
                                         mainBody =
                                             arithmeticOperatorTrees
                                                 |> List.map
-                                                    (view viewValue)
+                                                    (view config viewValue)
                                                 |> List.indexedMap
                                                     (\i b ->
                                                         if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
@@ -153,7 +154,7 @@ view viewValue arithmeticOperatorTree =
                     in
                     arithmeticOperatorTrees
                         |> List.map
-                            (view viewValue)
+                            (view config viewValue)
                         |> List.indexedMap
                             (\i b ->
                                 if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then

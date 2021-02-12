@@ -11,7 +11,11 @@ import Morphir.Visual.Config exposing (Config)
 
 view : Config msg -> (Value ta (Type ta) -> Element msg) -> FQName -> Element msg
 view config viewValue (( packageName, moduleName, localName ) as fQName) =
-    Element.row [ padding 8, spacing 8, onClick (config.handlers.onReferenceClicked fQName False) ]
+    Element.row
+        [ padding config.state.theme.smallPadding
+        , spacing config.state.theme.smallSpacing
+        , onClick (config.handlers.onReferenceClicked fQName False)
+        ]
         [ Element.el []
             (text
                 (nameToText localName)
