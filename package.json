@@ -20,8 +20,8 @@
     "url": "git+https://github.com/Morgan-Stanley/morphir-elm.git"
   },
   "bin": {
-    "morphir-elm": "./cli/morphir-elm.js",
-    "morphir-dapr": "./cli/morphir-dapr.js"
+    "morphir-elm": "cli/morphir-elm.js",
+    "morphir-dapr": "cli/morphir-dapr.js"
   },
   "files": [
     "cli/cli.js",

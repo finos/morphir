@@ -3,4 +3,6 @@ node_modules
 dist
 .vscode
 .idea
+.metals/
 morphir-ir.json
+out/
