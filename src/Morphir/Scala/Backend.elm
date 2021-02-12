@@ -313,31 +313,68 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
         parentTraitRef =
             mapFQNameToTypeRef ( currentPackagePath, currentModulePath, typeName )
 
+        ( parentPackagePath, parentTraitName ) =
+            let
+                ( thePath, theName ) =
+                    mapFQNameToPathAndName ( currentPackagePath, currentModulePath, typeName )
+            in
+            ( thePath, theName |> Name.toTitleCase )
+
+        companionObjectVal : Name -> Scala.MemberDecl
+        companionObjectVal name =
+            let
+                companionTypeRef =
+                    Scala.TypeRef (parentPackagePath ++ [ parentTraitName, name |> Name.toTitleCase ]) "type"
+            in
+            Scala.ValueDecl
+                { modifiers = []
+                , pattern = Scala.NamedMatch (name |> Name.toTitleCase)
+                , valueType = Just companionTypeRef
+                , value = Scala.Ref (parentPackagePath ++ [ parentTraitName ]) (name |> Name.toTitleCase)
+                }
+
         sealedTraitHierarchy : List Scala.TypeDecl
         sealedTraitHierarchy =
-            List.concat
-                [ [ Scala.Trait
-                        { modifiers = [ Scala.Sealed ]
-                        , name = typeName |> Name.toTitleCase
-                        , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
-                        , extends = []
-                        , members = []
-                        }
-                  ]
-                , accessControlledCtors.value
-                    |> Dict.toList
-                    |> List.map
-                        (\( ctorName, ctorArgs ) ->
-                            caseClass ctorName
-                                ctorArgs
-                                (if List.isEmpty typeParams then
-                                    [ parentTraitRef ]
+            [ Scala.Trait
+                { modifiers = [ Scala.Sealed ]
+                , name = typeName |> Name.toTitleCase
+                , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                , extends = []
+                , members = []
+                }
+            , Scala.Object
+                { modifiers = []
+                , name = typeName |> Name.toTitleCase
+                , extends = []
+                , members =
+                    accessControlledCtors.value
+                        |> Dict.toList
+                        |> List.map
+                            (\( ctorName, ctorArgs ) ->
+                                Scala.withAnnotation []
+                                    (caseClass
+                                        ctorName
+                                        ctorArgs
+                                        (if List.isEmpty typeParams then
+                                            [ parentTraitRef ]
 
-                                 else
-                                    [ Scala.TypeApply parentTraitRef (typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)) ]
-                                )
-                        )
-                ]
+                                         else
+                                            [ Scala.TypeApply parentTraitRef (typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)) ]
+                                        )
+                                        |> Scala.MemberTypeDecl
+                                    )
+                            )
+                , body = Nothing
+                }
+            ]
+
+        companionHelpers =
+            accessControlledCtors.value
+                |> Dict.toList
+                |> List.map
+                    (\( ctorName, _ ) ->
+                        Scala.withoutAnnotation (companionObjectVal ctorName)
+                    )
     in
     case accessControlledCtors.value |> Dict.toList of
         [ ( ctorName, ctorArgs ) ] ->
@@ -358,12 +395,18 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                     ]
 
             else
-                sealedTraitHierarchy
-                    |> List.map (Scala.MemberTypeDecl >> Scala.withoutAnnotation)
+                List.concat
+                    [ sealedTraitHierarchy
+                        |> List.map (Scala.MemberTypeDecl >> Scala.withoutAnnotation)
+                    , companionHelpers
+                    ]
 
         _ ->
-            sealedTraitHierarchy
-                |> List.map (Scala.MemberTypeDecl >> Scala.withoutAnnotation)
+            List.concat
+                [ sealedTraitHierarchy
+                    |> List.map (Scala.MemberTypeDecl >> Scala.withoutAnnotation)
+                , companionHelpers
+                ]
 
 
 {-| Map a Morphir type to a Scala type.
