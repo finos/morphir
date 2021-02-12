@@ -5,14 +5,16 @@ import Dict exposing (Dict)
 import Element
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder, string)
-import Morphir.IR.Distribution as Distribution exposing (Distribution)
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.QName as QName exposing (QName(..))
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value exposing (Value)
 import Morphir.IR.Value.Codec as ValueCodec
-import Morphir.Value.Interpreter exposing (FQN)
+import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
+import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.ViewValue as ViewValue
 
 
@@ -71,7 +73,7 @@ port receiveFunctionArguments : (Decode.Value -> msg) -> Sub msg
 type Msg
     = FunctionNameReceived String
     | FunctionArgumentsReceived Decode.Value
-    | ExpandReference FQN Bool
+    | ExpandReference FQName Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -177,7 +179,7 @@ view : Model -> Html Msg
 view model =
     case model of
         IRLoaded _ ->
-            Html.div [] [ Html.text "IR Loaded Successfully" ]
+            Html.div [] []
 
         Failed string ->
             Html.div [] [ Html.text string ]
@@ -193,6 +195,27 @@ view model =
                         visualizationState.functionDefinition.inputTypes
                         visualizationState.functionArguments
                         |> Dict.fromList
+
+                config : Config Msg
+                config =
+                    { irContext =
+                        { distribution = visualizationState.distribution
+                        , references = Interpreter.referencesForDistribution visualizationState.distribution
+                        }
+                    , state =
+                        { expandedFunctions = Dict.empty
+                        , variables = validArgValues
+                        }
+                    , handlers =
+                        { onReferenceClicked = ExpandReference
+                        }
+                    }
+
+                valueFQName : FQName
+                valueFQName =
+                    case ( visualizationState.distribution, visualizationState.selectedFunction ) of
+                        ( Library packageName _ _, QName moduleName localName ) ->
+                            ( packageName, moduleName, localName )
             in
-            ViewValue.viewDefinition visualizationState.distribution visualizationState.functionDefinition validArgValues ExpandReference visualizationState.expandedFunctions
+            ViewValue.viewDefinition config valueFQName visualizationState.functionDefinition
                 |> Element.layout []

@@ -1,14 +1,12 @@
 module Morphir.Visual.Components.DecisionTree exposing (BranchNode, LeftOrRight(..), Node(..), downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
 
-import Element exposing (Color, Element, alignLeft, alignTop, centerX, centerY, column, el, explain, fill, height, html, padding, paddingEach, paddingXY, rgb, rgb255, row, shrink, spacing, text, width)
+import Element exposing (Attribute, Color, Element, alignLeft, alignTop, centerX, centerY, column, el, fill, height, html, padding, paddingEach, paddingXY, rgb255, row, shrink, spacing, text, width)
 import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes
-import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue)
+import Morphir.IR.Value exposing (RawValue, TypedValue)
 import Morphir.Visual.Common exposing (element)
-import Morphir.Visual.Context as Context exposing (Context)
 import Svg
 import Svg.Attributes
 
@@ -32,14 +30,53 @@ type LeftOrRight
 
 
 highlightColor =
-    { true = Color 0 180 0
-    , false = Color 180 0 0
+    { true = Color 100 180 100
+    , false = Color 180 100 100
     , default = Color 120 120 120
     }
 
 
 type Color
     = Color Int Int Int
+
+
+type HighlightState
+    = Highlighted Bool
+    | NotHighlighted
+
+
+highlighStateToColor : HighlightState -> Color
+highlighStateToColor state =
+    case state of
+        Highlighted bool ->
+            if bool then
+                highlightColor.true
+
+            else
+                highlightColor.false
+
+        NotHighlighted ->
+            highlightColor.default
+
+
+highlighStateToBorderWidth : HighlightState -> Int
+highlighStateToBorderWidth state =
+    case state of
+        Highlighted _ ->
+            4
+
+        NotHighlighted ->
+            2
+
+
+highlighStateToFontWeight : HighlightState -> Attribute msg
+highlighStateToFontWeight state =
+    case state of
+        Highlighted _ ->
+            Font.bold
+
+        NotHighlighted ->
+            Font.regular
 
 
 toElementColor : Color -> Element.Color
@@ -54,11 +91,11 @@ toCssColor (Color r g b) =
 
 layout : (TypedValue -> Element msg) -> Node -> Element msg
 layout viewValue rootNode =
-    layoutHelp highlightColor.default viewValue rootNode
+    layoutHelp NotHighlighted viewValue rootNode
 
 
-layoutHelp : Color -> (TypedValue -> Element msg) -> Node -> Element msg
-layoutHelp color viewValue rootNode =
+layoutHelp : HighlightState -> (TypedValue -> Element msg) -> Node -> Element msg
+layoutHelp highlightState viewValue rootNode =
     let
         depthOf : (BranchNode -> Node) -> Node -> Int
         depthOf f node =
@@ -72,74 +109,80 @@ layoutHelp color viewValue rootNode =
     case rootNode of
         Branch branch ->
             let
-                borderColor : Color
-                borderColor =
+                conditionState : HighlightState
+                conditionState =
+                    case branch.conditionValue of
+                        Just v ->
+                            Highlighted v
+
+                        _ ->
+                            NotHighlighted
+
+                thenState : HighlightState
+                thenState =
                     case branch.conditionValue of
                         Just v ->
                             if v then
-                                highlightColor.true
+                                Highlighted True
 
                             else
-                                highlightColor.false
+                                NotHighlighted
 
                         _ ->
-                            highlightColor.default
+                            NotHighlighted
 
-                thenColor : Color
-                thenColor =
+                elseState : HighlightState
+                elseState =
                     case branch.conditionValue of
                         Just v ->
                             if v then
-                                highlightColor.true
+                                NotHighlighted
 
                             else
-                                highlightColor.default
+                                Highlighted False
 
                         _ ->
-                            highlightColor.default
-
-                elseColor : Color
-                elseColor =
-                    case branch.conditionValue of
-                        Just v ->
-                            if v then
-                                highlightColor.default
-
-                            else
-                                highlightColor.false
-
-                        _ ->
-                            highlightColor.default
+                            NotHighlighted
             in
             -- TODO: choose vertical/horizontal left/right layout based on some heuristics
             horizontalLayout
                 (el
-                    [ Border.width 2
+                    [ conditionState |> highlighStateToBorderWidth |> Border.width
                     , Border.rounded 7
-                    , Border.color (toElementColor borderColor)
+                    , Border.color (conditionState |> highlighStateToColor |> toElementColor)
                     , padding 10
                     ]
                     (viewValue branch.condition)
                 )
-                (el [ Font.color (toElementColor thenColor) ] (text "Yes"))
-                thenColor
-                (layoutHelp thenColor viewValue branch.thenBranch)
-                (el [ Font.color (toElementColor elseColor) ] (text "No"))
-                elseColor
-                (layoutHelp elseColor viewValue branch.elseBranch)
+                (el
+                    [ Font.color (thenState |> highlighStateToColor |> toElementColor)
+                    , thenState |> highlighStateToFontWeight
+                    ]
+                    (text "Yes")
+                )
+                thenState
+                (layoutHelp thenState viewValue branch.thenBranch)
+                (el
+                    [ Font.color (elseState |> highlighStateToColor |> toElementColor)
+                    , elseState |> highlighStateToFontWeight
+                    ]
+                    (text "No")
+                )
+                elseState
+                (layoutHelp elseState viewValue branch.elseBranch)
 
         Leaf value ->
             el
-                [ Border.width 2
+                [ highlightState |> highlighStateToBorderWidth |> Border.width
                 , Border.rounded 7
-                , Border.color (toElementColor color)
+                , Border.color (highlightState |> highlighStateToColor |> toElementColor)
                 , padding 10
                 ]
                 (viewValue value)
 
 
-horizontalLayout : Element msg -> Element msg -> Color -> Element msg -> Element msg -> Color -> Element msg -> Element msg
-horizontalLayout condition branch1Label branch1Color branch1 branch2Label branch2Color branch2 =
+horizontalLayout : Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
+horizontalLayout condition branch1Label branch1State branch1 branch2Label branch2State branch2 =
     row
         []
         [ column
@@ -164,7 +207,7 @@ horizontalLayout condition branch1Label branch1Color branch1 branch2Label branch
                             [ paddingEach { noPadding | left = 10 }
                             , height fill
                             ]
-                            (downArrow branch1Color)
+                            (downArrow branch1State)
                         , el
                             [ centerY
                             , paddingXY 0 15
@@ -180,7 +223,7 @@ horizontalLayout condition branch1Label branch1Color branch1 branch2Label branch
                         [ width fill
                         , paddingEach { noPadding | top = 10 }
                         ]
-                        (rightArrow branch2Color)
+                        (rightArrow branch2State)
                     , el
                         [ centerX
                         , paddingXY 20 5
@@ -200,8 +243,8 @@ horizontalLayout condition branch1Label branch1Color branch1 branch2Label branch
         ]
 
 
-verticalLayout : Element msg -> Element msg -> Color -> Element msg -> Element msg -> Color -> Element msg -> Element msg
-verticalLayout condition branch1Label branch1Color branch1 branch2Label branch2Color branch2 =
+verticalLayout : Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
+verticalLayout condition branch1Label branch1State branch1 branch2Label branch2State branch2 =
     column
         []
         [ row []
@@ -220,7 +263,7 @@ verticalLayout condition branch1Label branch1Color branch1 branch2Label branch2C
                         [ paddingEach { noPadding | left = 10 }
                         , height fill
                         ]
-                        (downArrow branch1Color)
+                        (downArrow branch1State)
                     , el
                         [ centerY
                         , paddingXY 0 10
@@ -233,7 +276,7 @@ verticalLayout condition branch1Label branch1Color branch1 branch2Label branch2C
                     [ width fill
                     , paddingEach { noPadding | top = 5 }
                     ]
-                    (rightArrow branch2Color)
+                    (rightArrow branch2State)
                 , el [ centerX, paddingXY 10 0 ]
                     branch2Label
                 ]
@@ -243,8 +286,8 @@ verticalLayout condition branch1Label branch1Color branch1 branch2Label branch2C
         ]
 
 
-rightArrow : Color -> Element msg
-rightArrow color =
+rightArrow : HighlightState -> Element msg
+rightArrow highlightState =
     el
         [ width fill
         , height fill
@@ -255,13 +298,17 @@ rightArrow color =
                 , Html.Attributes.style "width" "100%"
                 ]
                 [ Html.tr []
-                    [ Html.td [ Html.Attributes.style "border-bottom" ("solid 2px " ++ toCssColor color), Html.Attributes.style "width" "100%" ] []
+                    [ Html.td
+                        [ Html.Attributes.style "border-bottom" (String.concat [ "solid ", highlightState |> highlighStateToBorderWidth |> String.fromInt, "px ", highlightState |> highlighStateToColor |> toCssColor ])
+                        , Html.Attributes.style "width" "100%"
+                        ]
+                        []
                     , Html.td
                         [ Html.Attributes.rowspan 2 ]
                         [ element
                             (el
                                 [ centerY ]
-                                (html (rightArrowHead (toCssColor color)))
+                                (html (rightArrowHead highlightState))
                             )
                         ]
                     ]
@@ -273,8 +320,8 @@ rightArrow color =
         )
 
 
-downArrow : Color -> Element msg
-downArrow color =
+downArrow : HighlightState -> Element msg
+downArrow highlightState =
     el
         [ width fill
         , height fill
@@ -285,7 +332,7 @@ downArrow color =
                 , Html.Attributes.style "height" "100%"
                 ]
                 [ Html.tr [ Html.Attributes.style "height" "100%" ]
-                    [ Html.td [ Html.Attributes.style "border-right" ("solid 2px " ++ toCssColor color) ] []
+                    [ Html.td [ Html.Attributes.style "border-right" (String.concat [ "solid ", highlightState |> highlighStateToBorderWidth |> String.fromInt, "px ", highlightState |> highlighStateToColor |> toCssColor ]) ] []
                     , Html.td [] []
                     ]
                 , Html.tr []
@@ -294,7 +341,7 @@ downArrow color =
                         [ element
                             (el
                                 [ centerX ]
-                                (html (downArrowHead (toCssColor color)))
+                                (html (downArrowHead highlightState))
                             )
                         ]
                     ]
@@ -303,31 +350,55 @@ downArrow color =
         )
 
 
-rightArrowHead : String -> Html msg
-rightArrowHead color =
+rightArrowHead : HighlightState -> Html msg
+rightArrowHead highlightState =
     Svg.svg
-        [ Svg.Attributes.width "10"
-        , Svg.Attributes.height "10"
+        [ Svg.Attributes.width
+            (if highlightState == NotHighlighted then
+                "10"
+
+             else
+                "15"
+            )
+        , Svg.Attributes.height
+            (if highlightState == NotHighlighted then
+                "10"
+
+             else
+                "15"
+            )
         , Svg.Attributes.viewBox "0 0 200 200"
         ]
         [ Svg.polygon
             [ Svg.Attributes.points "0,0 200,100 0,200"
-            , Svg.Attributes.style ("fill:" ++ color)
+            , Svg.Attributes.style ("fill:" ++ (highlightState |> highlighStateToColor |> toCssColor))
             ]
             []
         ]
 
 
-downArrowHead : String -> Html msg
-downArrowHead color =
+downArrowHead : HighlightState -> Html msg
+downArrowHead highlightState =
     Svg.svg
-        [ Svg.Attributes.width "10"
-        , Svg.Attributes.height "10"
+        [ Svg.Attributes.width
+            (if highlightState == NotHighlighted then
+                "10"
+
+             else
+                "15"
+            )
+        , Svg.Attributes.height
+            (if highlightState == NotHighlighted then
+                "10"
+
+             else
+                "15"
+            )
         , Svg.Attributes.viewBox "0 0 200 200"
         ]
         [ Svg.polygon
             [ Svg.Attributes.points "0,0 100,200 200,0"
-            , Svg.Attributes.style ("fill:" ++ color)
+            , Svg.Attributes.style ("fill:" ++ (highlightState |> highlighStateToColor |> toCssColor))
             ]
             []
         ]

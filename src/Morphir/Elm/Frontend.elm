@@ -59,7 +59,7 @@ import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName as FQName exposing (FQName(..), fQName)
+import Morphir.IR.FQName as FQName exposing (FQName, fQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
@@ -1626,7 +1626,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                 (resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body)
     in
     case value of
-        Value.Constructor sourceLocation (FQName [] modulePath localName) ->
+        Value.Constructor sourceLocation ( [], modulePath, localName ) ->
             moduleResolver.resolveCtor
                 (modulePath |> List.map Name.toTitleCase)
                 (localName |> Name.toTitleCase)
@@ -1636,7 +1636,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                     )
                 |> Result.mapError (ResolveError sourceLocation >> List.singleton)
 
-        Value.Reference sourceLocation (FQName [] modulePath localName) ->
+        Value.Reference sourceLocation ( [], modulePath, localName ) ->
             if variables |> Dict.member localName then
                 Ok (Value.Variable sourceLocation localName)
 
@@ -1821,7 +1821,7 @@ resolvePatternReferences moduleResolver pattern =
                     |> Result.mapError List.concat
                 )
 
-        Value.ConstructorPattern sourceLocation (FQName [] modulePath localName) argPatterns ->
+        Value.ConstructorPattern sourceLocation ( [], modulePath, localName ) argPatterns ->
             Result.map2
                 (\resolvedFullName resolvedArgPatterns ->
                     Value.ConstructorPattern sourceLocation resolvedFullName resolvedArgPatterns

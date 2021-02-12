@@ -1,6 +1,6 @@
 module Morphir.Visual.ViewLiteral exposing (..)
 
-import Element exposing (Element)
+import Element exposing (Element, el, paragraph, text)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.Visual.Common as Common
 
@@ -36,7 +36,9 @@ view literal =
 
 
 viewLiteralText : String -> String -> Element msg
-viewLiteralText className text =
-    Element.paragraph
-        [ Common.cssClass className ]
-        [ Element.text text ]
+viewLiteralText className literalText =
+    el []
+        (paragraph
+            [ Common.cssClass className ]
+            [ text literalText ]
+        )

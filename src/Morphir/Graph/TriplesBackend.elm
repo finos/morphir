@@ -18,13 +18,8 @@
 module Morphir.Graph.TriplesBackend exposing (..)
 
 import Dict
-import List.Extra exposing (unique, uniqueBy)
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.IR.Distribution as Distribution exposing (Distribution, lookupTypeSpecification)
-import Morphir.IR.FQName as FQName exposing (FQName(..))
-import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Path as Path exposing (Path)
-import Set
+import Morphir.IR.Distribution exposing (Distribution)
 
 
 type alias Options =

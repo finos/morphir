@@ -39,7 +39,7 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName(..), fqn)
+import Morphir.IR.FQName exposing (FQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
@@ -89,7 +89,7 @@ mapPackageDefinition opt distribution packagePath packageDef =
 
 
 mapFQNameToPathAndName : FQName -> ( Scala.Path, Name )
-mapFQNameToPathAndName (FQName packagePath modulePath localName) =
+mapFQNameToPathAndName ( packagePath, modulePath, localName ) =
     let
         scalaModulePath =
             case modulePath |> List.reverse of
@@ -210,7 +210,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                                     Private ->
                                         [ Scala.Private Nothing ]
                             , name =
-                                valueName |> Name.toCamelCase
+                                mapValueName valueName
                             , typeArgs =
                                 []
                             , args =
@@ -309,7 +309,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                     }
 
         parentTraitRef =
-            mapFQNameToTypeRef (FQName currentPackagePath currentModulePath typeName)
+            mapFQNameToTypeRef ( currentPackagePath, currentModulePath, typeName )
 
         sealedTraitHierarchy : List Scala.TypeDecl
         sealedTraitHierarchy =
@@ -384,7 +384,7 @@ mapType tpe =
                         (\field ->
                             Scala.FunctionDecl
                                 { modifiers = []
-                                , name = field.name |> Name.toCamelCase
+                                , name = mapValueName field.name
                                 , typeArgs = []
                                 , args = []
                                 , returnType = Just (mapType field.tpe)
@@ -400,7 +400,7 @@ mapType tpe =
                         (\field ->
                             Scala.FunctionDecl
                                 { modifiers = []
-                                , name = field.name |> Name.toCamelCase
+                                , name = mapValueName field.name
                                 , typeArgs = []
                                 , args = []
                                 , returnType = Just (mapType field.tpe)
@@ -457,13 +457,20 @@ mapFunctionBody distribution val =
                         FloatLiteral v ->
                             wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
 
-                Constructor a fQName ->
+                Constructor tpe fQName ->
                     let
                         ( path, name ) =
                             mapFQNameToPathAndName fQName
                     in
-                    Scala.Ref path
-                        (name |> Name.toTitleCase)
+                    case tpe of
+                        -- if the constructor has at least 2 arguments we should curry it
+                        Type.Function _ _ (Type.Function _ _ _) ->
+                            Scala.Select
+                                (Scala.Ref path (name |> Name.toTitleCase))
+                                "curried"
+
+                        _ ->
+                            Scala.Ref path (name |> Name.toTitleCase)
 
                 Tuple a elemValues ->
                     Scala.Tuple
@@ -482,7 +489,7 @@ mapFunctionBody distribution val =
                         (fieldValues
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
-                                    ( fieldName |> Name.toCamelCase, mapValue fieldValue )
+                                    ( mapValueName fieldName, mapValue fieldValue )
                                 )
                         )
 
@@ -494,40 +501,25 @@ mapFunctionBody distribution val =
                         ( path, name ) =
                             mapFQNameToPathAndName fQName
                     in
-                    Scala.Ref path (name |> Name.toCamelCase)
+                    Scala.Ref path (mapValueName name)
 
                 Field a subjectValue fieldName ->
-                    Scala.Select (mapValue subjectValue) (fieldName |> Name.toCamelCase)
+                    Scala.Select (mapValue subjectValue) (mapValueName fieldName)
 
                 FieldFunction tpe fieldName ->
                     case tpe of
                         Type.Function _ inputType _ ->
                             Scala.Lambda
                                 [ ( "x", Just (mapType inputType) ) ]
-                                (Scala.Select (Scala.Variable "x") (fieldName |> Name.toCamelCase))
+                                (Scala.Select (Scala.Variable "x") (mapValueName fieldName))
 
                         _ ->
-                            Scala.Select Scala.Wildcard (fieldName |> Name.toCamelCase)
+                            Scala.Select Scala.Wildcard (mapValueName fieldName)
 
                 Apply a fun arg ->
-                    let
-                        ( bottomFun, args ) =
-                            Value.uncurryApply fun arg
-                    in
-                    case bottomFun of
-                        Reference _ _ ->
-                            Scala.Apply (mapValue fun)
-                                [ Scala.ArgValue Nothing (mapValue arg)
-                                ]
-
-                        _ ->
-                            Scala.Apply (mapValue bottomFun)
-                                (args
-                                    |> List.map
-                                        (\argValue ->
-                                            Scala.ArgValue Nothing (mapValue argValue)
-                                        )
-                                )
+                    Scala.Apply (mapValue fun)
+                        [ Scala.ArgValue Nothing (mapValue arg)
+                        ]
 
                 Lambda a argPattern bodyValue ->
                     case argPattern of
@@ -564,7 +556,7 @@ mapFunctionBody distribution val =
                                     if List.isEmpty def.inputTypes then
                                         Scala.ValueDecl
                                             { modifiers = []
-                                            , pattern = Scala.NamedMatch (defName |> Name.toCamelCase)
+                                            , pattern = Scala.NamedMatch (mapValueName defName)
                                             , valueType = Just (mapType def.outputType)
                                             , value = mapValue def.body
                                             }
@@ -572,7 +564,7 @@ mapFunctionBody distribution val =
                                     else
                                         Scala.FunctionDecl
                                             { modifiers = []
-                                            , name = defName |> Name.toCamelCase
+                                            , name = mapValueName defName
                                             , typeArgs = []
                                             , args =
                                                 [ def.inputTypes
@@ -602,7 +594,7 @@ mapFunctionBody distribution val =
                                 (\( defName, def ) ->
                                     Scala.FunctionDecl
                                         { modifiers = []
-                                        , name = defName |> Name.toCamelCase
+                                        , name = mapValueName defName
                                         , typeArgs = []
                                         , args =
                                             if List.isEmpty def.inputTypes then
@@ -659,7 +651,7 @@ mapFunctionBody distribution val =
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     Scala.ArgValue
-                                        (Just (fieldName |> Name.toCamelCase))
+                                        (Just (mapValueName fieldName))
                                         (mapValue fieldValue)
                                 )
                         )
@@ -729,10 +721,26 @@ mapPattern pattern =
             Scala.WildcardMatch
 
 
-reservedValueNames : Set String
-reservedValueNames =
+mapValueName : Name -> String
+mapValueName name =
+    let
+        scalaName : String
+        scalaName =
+            Name.toCamelCase name
+    in
+    if Set.member scalaName javaObjectMethods then
+        "_" ++ scalaName
+
+    else
+        scalaName
+
+
+{-| We cannot use any method names in `java.lang.Object` because values are represented as functions/values in a Scala
+object which implicitly inherits those methods which can result in name collisions.
+-}
+javaObjectMethods : Set String
+javaObjectMethods =
     Set.fromList
-        -- we cannot use any method names in java.lamg.Object because values are represented as functions/values in a Scala object
         [ "clone"
         , "equals"
         , "finalize"

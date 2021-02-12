@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK.Basics exposing (add, and, boolType, composeLeft, composeRight, divide, equal, floatType, greaterThan, greaterThanOrEqual, intType, integerDivide, lessThan, lessThanOrEqual, moduleName, moduleSpec, multiply, nativeFunctions, negate, neverType, notEqual, or, orderType, power, subtract)
+module Morphir.IR.SDK.Basics exposing (add, and, boolType, composeLeft, composeRight, divide, equal, floatType, greaterThan, greaterThanOrEqual, intType, integerDivide, isNumber, lessThan, lessThanOrEqual, moduleName, moduleSpec, multiply, nativeFunctions, negate, neverType, notEqual, or, orderType, power, subtract)
 
 import Dict exposing (Dict)
 import Morphir.IR.Documented exposing (Documented)
@@ -314,6 +314,22 @@ nativeFunctions =
                         Err (UnexpectedArguments [ arg1, arg2 ])
             )
       )
+    , ( "abs"
+      , Native.unaryStrict
+            (Native.mapLiteral
+                (\lit ->
+                    case lit of
+                        IntLiteral v ->
+                            Ok (IntLiteral (abs v))
+
+                        FloatLiteral v ->
+                            Ok (FloatLiteral (abs v))
+
+                        _ ->
+                            Err (ExpectedBoolLiteral lit)
+                )
+            )
+      )
     ]
 
 
@@ -425,3 +441,16 @@ composeLeft a =
 composeRight : a -> Value ta a
 composeRight a =
     Value.Reference a (toFQName moduleName "composeRight")
+
+
+isNumber : Type ta -> Bool
+isNumber tpe =
+    case tpe of
+        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
+            True
+
+        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
+            True
+
+        _ ->
+            False

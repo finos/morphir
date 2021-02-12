@@ -1,6 +1,7 @@
-module Morphir.Visual.Common exposing (cssClass, element, grayScale, nameToText)
+module Morphir.Visual.Common exposing (cssClass, definition, element, grayScale, nameToText)
 
-import Element exposing (Attribute, Color, Element, height, rgb, shrink, width)
+import Element exposing (Attribute, Color, Element, column, el, height, paddingEach, rgb, row, shrink, spacing, text, width)
+import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes exposing (class)
 import Morphir.IR.Name as Name exposing (Name)
@@ -34,3 +35,15 @@ element elem =
 grayScale : Float -> Color
 grayScale v =
     rgb v v v
+
+
+definition : String -> Element msg -> Element msg
+definition header body =
+    column [ spacing 10 ]
+        [ row [ spacing 5 ]
+            [ el [ Font.bold ] (text header)
+            , el [] (text "=")
+            ]
+        , el [ paddingEach { left = 20, right = 0, top = 0, bottom = 0 } ]
+            body
+        ]

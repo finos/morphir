@@ -1,49 +1,76 @@
-module Morphir.Visual.Edit exposing (..)
+module Morphir.Visual.Edit exposing (editFloat, editInt, editValue)
 
-import Html exposing (Html)
-import Html.Attributes
-import Html.Events
+import Element exposing (Element, height, paddingXY, px, shrink, text, width)
+import Element.Input as Input
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
 
 
-editValue : Type () -> (Value () () -> msg) -> (String -> msg) -> Html msg
-editValue valueType valueUpdated invalidValue =
+editValue : Type () -> Maybe RawValue -> (Value () () -> msg) -> (String -> msg) -> Element msg
+editValue valueType currentValue valueUpdated invalidValue =
     if valueType == Basics.intType () then
-        editInt valueUpdated invalidValue
+        editInt currentValue valueUpdated invalidValue
 
     else if valueType == Basics.floatType () then
-        editFloat valueUpdated invalidValue
+        editFloat currentValue valueUpdated invalidValue
 
     else
-        Html.text "Unknown value type"
+        textBox
+            { onChange =
+                \updatedText ->
+                    invalidValue "unknown value type"
+            , text = ""
+            }
 
 
-editInt : (Value () () -> msg) -> (String -> msg) -> Html msg
-editInt valueUpdated invalidValue =
-    Html.input
-        [ Html.Attributes.placeholder "Start typing an integer value ..."
-        , Html.Events.onInput
-            (\updatedText ->
+editInt : Maybe RawValue -> (Value () () -> msg) -> (String -> msg) -> Element msg
+editInt currentValue valueUpdated invalidValue =
+    textBox
+        { onChange =
+            \updatedText ->
                 String.toInt updatedText
                     |> Maybe.map (\int -> valueUpdated (Value.Literal () (IntLiteral int)))
                     |> Maybe.withDefault (invalidValue "needs to be an integer value")
-            )
-        ]
-        []
+        , text =
+            case currentValue of
+                Just (Value.Literal _ (IntLiteral v)) ->
+                    String.fromInt v
+
+                _ ->
+                    ""
+        }
 
 
-editFloat : (Value () () -> msg) -> (String -> msg) -> Html msg
-editFloat valueUpdated invalidValue =
-    Html.input
-        [ Html.Attributes.placeholder "Start typing a floating-point value ..."
-        , Html.Events.onInput
-            (\updatedText ->
+editFloat : Maybe RawValue -> (Value () () -> msg) -> (String -> msg) -> Element msg
+editFloat currentValue valueUpdated invalidValue =
+    textBox
+        { onChange =
+            \updatedText ->
                 String.toFloat updatedText
                     |> Maybe.map (\float -> valueUpdated (Value.Literal () (FloatLiteral float)))
                     |> Maybe.withDefault (invalidValue "needs to be a a floating-point value")
-            )
+        , text =
+            case currentValue of
+                Just (Value.Literal _ (FloatLiteral v)) ->
+                    String.fromFloat v
+
+                _ ->
+                    ""
+        }
+
+
+textBox config =
+    Input.text
+        [ width (px 70)
+        , height shrink
+        , paddingXY 10 3
         ]
-        []
+        { onChange =
+            config.onChange
+        , text =
+            config.text
+        , placeholder = Nothing
+        , label = Input.labelHidden ""
+        }

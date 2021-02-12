@@ -8,18 +8,18 @@ const fs = require('fs')
 const readFile = util.promisify(fs.readFile)
 const commander = require('commander')
 const express = require('express')
-const cli = require('./cli')
 
 // Set up Commander
 const program = new commander.Command()
 program
   .name('morphir-elm develop')
   .description('Start up a web server and expose developer tools through a web UI')
-  .option('-p, --project-dir <path>', 'Root directory of the project where morphir.json is located.', '.')
+  .option('-p, --port <port>', 'Port to bind the web server to.', '3000')
+  .option('-i, --project-dir <path>', 'Root directory of the project where morphir.json is located.', '.')
   .parse(process.argv)
 
 const app = express()
-const port = 3000
+const port = program.port
 
 const wrap = fn => (...args) => fn(...args).catch(args[2])
 
@@ -42,16 +42,6 @@ app.get('/server/morphir-ir.json', wrap(async (req, res, next) => {
   const morphirJson = JSON.parse(morphirJsonContent.toString())
   res.send(morphirJson)
 }))
-
-app.get('/server/make', (req, res) => {
-  cli.make(program.projectDir)
-    .then((packageDef) => {
-      res.send(['ok', packageDef])
-    })
-    .catch((err) => {
-      res.send(['err', err])
-    })
-})
 
 app.listen(port, () => {
   console.log(`Developer server listening at http://localhost:${port}`)
