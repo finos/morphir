@@ -25,7 +25,6 @@ import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Char
 import Morphir.IR.SDK.Decimal as Decimal
 import Morphir.IR.SDK.Dict as Dict
-import Morphir.IR.SDK.Key as Key
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.LocalDate as LocalDate
 import Morphir.IR.SDK.Maybe as Maybe
@@ -67,7 +66,6 @@ packageSpec =
             , ( [ [ "decimal" ] ], Decimal.moduleSpec )
             , ( [ [ "int" ] ], Decimal.moduleSpec )
             , ( [ [ "number" ] ], Number.moduleSpec )
-            , ( [ [ "key" ] ], Key.moduleSpec )
             ]
     }
 
