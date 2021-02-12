@@ -34,6 +34,7 @@ to the file-system.
 -}
 
 import Dict
+import List
 import List.Extra as ListExtra
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
@@ -49,6 +50,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 import Morphir.Scala.AST as Scala exposing (Annotated, MemberDecl(..))
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
+import Morphir.Scala.WellKnownTypes as ScalaTypes exposing (anyVal)
 import Set exposing (Set)
 
 
@@ -131,7 +133,7 @@ mapTypeMember currentPackagePath currentModulePath accessControlledModuleDef ( t
             [ Scala.withoutAnnotation
                 (Scala.MemberTypeDecl
                     (Scala.Class
-                        { modifiers = [ Scala.Case ]
+                        { modifiers = [ Scala.Final, Scala.Case ]
                         , name = typeName |> Name.toTitleCase
                         , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
                         , ctorArgs =
@@ -290,7 +292,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
 
             else
                 Scala.Class
-                    { modifiers = [ Scala.Case ]
+                    { modifiers = [ Scala.Final, Scala.Case ]
                     , name = name |> Name.toTitleCase
                     , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
                     , ctorArgs =
@@ -340,11 +342,20 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
     case accessControlledCtors.value |> Dict.toList of
         [ ( ctorName, ctorArgs ) ] ->
             if ctorName == typeName then
-                [ Scala.withoutAnnotation
-                    (Scala.MemberTypeDecl
-                        (caseClass ctorName ctorArgs [])
-                    )
-                ]
+                if List.length ctorArgs == 1 then
+                    -- In this case we should encode this as a value type
+                    [ Scala.withoutAnnotation
+                        (Scala.MemberTypeDecl
+                            (caseClass ctorName ctorArgs [ anyVal ])
+                        )
+                    ]
+
+                else
+                    [ Scala.withoutAnnotation
+                        (Scala.MemberTypeDecl
+                            (caseClass ctorName ctorArgs [])
+                        )
+                    ]
 
             else
                 sealedTraitHierarchy
