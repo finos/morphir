@@ -1,13 +1,48 @@
-module Morphir.IR.DataCodec exposing (..)
+module Morphir.IR.DataCodec exposing (decodeData, encodeData)
 
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
-import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Type as Type exposing (ResolvedType, Type)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
 
 
-decodeData : Type () -> Result String (Decode.Decoder (Value () ()))
+encodeData : ResolvedType -> Result String (RawValue -> Encode.Value)
+encodeData tpe =
+    case tpe of
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
+            case ( moduleName, localName, args ) of
+                ( [ [ "basics" ] ], [ "int" ], [] ) ->
+                    Ok
+                        (\value ->
+                            case value of
+                                Value.Literal _ (IntLiteral v) ->
+                                    Encode.int v
+
+                                _ ->
+                                    Encode.null
+                        )
+
+                ( [ [ "basics" ] ], [ "float" ], [] ) ->
+                    Ok
+                        (\value ->
+                            case value of
+                                Value.Literal _ (FloatLiteral v) ->
+                                    Encode.float v
+
+                                _ ->
+                                    Encode.null
+                        )
+
+                _ ->
+                    Debug.todo "implement"
+
+        _ ->
+            Debug.todo "implement"
+
+
+decodeData : ResolvedType -> Result String (Decode.Decoder RawValue)
 decodeData tpe =
     case tpe of
         Type.Record _ fields ->
@@ -37,49 +72,32 @@ decodeData tpe =
                     (Ok (Decode.succeed []))
                 |> Result.map (\decoder -> Decode.map (Value.Record ()) decoder)
 
-        Type.Reference _ (( packageName, moduleName, localName ) as fQName) args ->
-            case fQName of
-                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) ->
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
+            case ( moduleName, localName, args ) of
+                ( [ [ "basics" ] ], [ "bool" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (BoolLiteral value)) Decode.bool)
 
-                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) ->
+                ( [ [ "basics" ] ], [ "int" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (IntLiteral value)) Decode.int)
 
-                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) ->
+                ( [ [ "basics" ] ], [ "float" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (FloatLiteral value)) Decode.float)
 
-                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "char" ] ], [ "char" ] ) ->
+                ( [ [ "char" ] ], [ "char" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (StringLiteral value)) Decode.string)
 
-                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) ->
+                ( [ [ "string" ] ], [ "string" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (StringLiteral value)) Decode.string)
 
-                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) ->
-                    args
-                        |> List.foldr
-                            (\argValue resultSoFar ->
-                                resultSoFar
-                                    |> Result.andThen
-                                        (\decoderSoFar ->
-                                            decodeData argValue
-                                                |> Result.map
-                                                    (\fieldDecoder ->
-                                                        decoderSoFar
-                                                            |> Decode.andThen
-                                                                (\fieldValuesSoFar ->
-                                                                    fieldDecoder
-                                                                        |> Decode.map
-                                                                            (\fieldValue ->
-                                                                                fieldValue :: fieldValuesSoFar
-                                                                            )
-                                                                )
-                                                    )
-                                        )
+                ( [ [ "list" ] ], [ "list" ], [ itemType ] ) ->
+                    decodeData itemType
+                        |> Result.map
+                            (\itemDecoder ->
+                                Decode.list itemDecoder
+                                    |> Decode.map (Value.List ())
                             )
-                            (Ok (Decode.succeed []))
-                        |> Result.map (\decoder -> Decode.map (Value.List ()) decoder)
 
-                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) ->
+                ( [ [ "maybe" ] ], [ "maybe" ], [ itemType ] ) ->
                     Debug.todo "Todo Maybe Type"
 
                 _ ->

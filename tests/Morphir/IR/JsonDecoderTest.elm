@@ -1,47 +1,48 @@
-module Morphir.IR.JsonDecoderTest exposing (..)
+module Morphir.IR.JsonDecoderTest exposing (decodeDataTest)
 
-import Expect
+import Expect exposing (Expectation)
 import Json.Decode as Decode
-import Morphir.IR.DataCodec exposing (decodeData)
+import Morphir.IR.DataCodec exposing (decodeData, encodeData)
 import Morphir.IR.FQName exposing (fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
 import Morphir.IR.SDK.Char exposing (charType)
-import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.SDK.String exposing (stringType)
-import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
-import Test exposing (Test, describe, test)
+import Morphir.IR.Type as Type exposing (ResolvedType, Type)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.IR.ValueFuzzer exposing (floatFuzzer, intFuzzer)
+import Test exposing (Test, describe, fuzz, test)
 
 
 decodeDataTest : Test
 decodeDataTest =
     let
-        recordType : Type ()
+        recordType : ResolvedType
         recordType =
-            Type.Record ()
-                [ Type.Field [ "foo" ] (stringType ())
-                , Type.Field [ "bar" ] (boolType ())
-                , Type.Field [ "baz" ] (intType ())
-                , Type.Field [ "bee" ] (floatType ())
-                , Type.Field [ "ball" ] (charType ())
+            Type.Record Nothing
+                [ Type.Field [ "foo" ] (stringType Nothing)
+                , Type.Field [ "bar" ] (boolType Nothing)
+                , Type.Field [ "baz" ] (intType Nothing)
+                , Type.Field [ "bee" ] (floatType Nothing)
+                , Type.Field [ "ball" ] (charType Nothing)
                 ]
 
-        emptyRecordType : Type ()
+        emptyRecordType : ResolvedType
         emptyRecordType =
-            Type.Record () []
+            Type.Record Nothing []
 
-        tupleType : Type ()
+        tupleType : ResolvedType
         tupleType =
-            Type.Tuple () [ intType (), boolType (), floatType (), charType (), stringType () ]
+            Type.Tuple Nothing
+                [ intType Nothing, boolType Nothing, floatType Nothing, charType Nothing, stringType Nothing ]
 
-        emptyTupleType : Type ()
+        emptyTupleType : ResolvedType
         emptyTupleType =
-            Type.Tuple () []
+            Type.Tuple Nothing []
 
-        emptyListType : Type ()
-        emptyListType =
-            Type.Reference () (fqn "Morphir.SDK" "List" "List") []
+        intListType : ResolvedType
+        intListType =
+            Type.Reference Nothing (fqn "Morphir.SDK" "List" "List") [ intType Nothing ]
 
         mayBeType : Type ()
         mayBeType =
@@ -50,34 +51,18 @@ decodeDataTest =
     describe "JsonDecoderTest"
         [ test "BoolDecoder"
             (\_ ->
-                case decodeData (boolType ()) of
+                case decodeData (boolType Nothing) of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "true") (Ok (Value.literal () (BoolLiteral True)))
 
                     Err error ->
                         Expect.equal "Cannot Decode this type" error
             )
-        , test "IntDecoder"
-            (\_ ->
-                case decodeData (intType ()) of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "42") (Ok (Value.literal () (IntLiteral 42)))
-
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
-        , test "FloatDecoder"
-            (\_ ->
-                case decodeData (floatType ()) of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "42.5") (Ok (Value.literal () (FloatLiteral 42.5)))
-
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
+        , fuzz intFuzzer "Int" (encodeDecodeTest (intType Nothing))
+        , fuzz floatFuzzer "Float" (encodeDecodeTest (floatType Nothing))
         , test "CharDecoder"
             (\_ ->
-                case decodeData (charType ()) of
+                case decodeData (charType Nothing) of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "\"a\"") (Ok (Value.literal () (StringLiteral "a")))
 
@@ -86,7 +71,7 @@ decodeDataTest =
             )
         , test "StringDecoder"
             (\_ ->
-                case decodeData (stringType ()) of
+                case decodeData (stringType Nothing) of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "\"Hello\"") (Ok (Value.literal () (StringLiteral "Hello")))
 
@@ -111,14 +96,14 @@ decodeDataTest =
         --            Err error ->
         --                Expect.equal "Cannot Decode this type" error
         --    )
-        , test "EmptyListDecoder"
+        , test "IntListDecoder"
             (\_ ->
-                case decodeData emptyListType of
+                case decodeData intListType of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "[]") (Ok (Value.List () []))
 
                     Err error ->
-                        Expect.equal "Cannot Decode this type" error
+                        Expect.fail error
             )
         , test "RecordDecoder"
             (\_ ->
@@ -216,3 +201,16 @@ decodeDataTest =
         --                Expect.equal "Cannot Decode this type" error
         --    )
         ]
+
+
+encodeDecodeTest : ResolvedType -> RawValue -> Expectation
+encodeDecodeTest tpe value =
+    Result.map2
+        (\encode decoder ->
+            encode value
+                |> Decode.decodeValue decoder
+                |> Expect.equal (Ok value)
+        )
+        (encodeData tpe)
+        (decodeData tpe)
+        |> Result.withDefault (Expect.fail ("Could not create codec for " ++ Debug.toString tpe))
