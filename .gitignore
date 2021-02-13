@@ -5,4 +5,5 @@ dist
 .idea
 .metals/
 morphir-ir.json
+generated/
 out/

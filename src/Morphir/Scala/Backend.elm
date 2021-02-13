@@ -199,6 +199,16 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
 
         functionMembers : List (Scala.Annotated Scala.MemberDecl)
         functionMembers =
+            let
+                gatherTypeNames tpe acc =
+                    Type.collectVariables tpe |> Set.map Name.toTitleCase |> Set.union acc
+
+                gatherAllTypeNames inputTypes =
+                    inputTypes
+                        |> List.foldl gatherTypeNames Set.empty
+                        |> Set.toList
+                        |> List.map Scala.TypeVar
+            in
             accessControlledModuleDef.value.values
                 |> Dict.toList
                 |> List.concatMap
@@ -214,7 +224,10 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                             , name =
                                 mapValueName valueName
                             , typeArgs =
-                                []
+                                accessControlledValueDef.value.inputTypes
+                                    |> List.map (\( _, _, tpe ) -> tpe)
+                                    |> (::) accessControlledValueDef.value.outputType
+                                    |> gatherAllTypeNames
                             , args =
                                 if List.isEmpty accessControlledValueDef.value.inputTypes then
                                     []
