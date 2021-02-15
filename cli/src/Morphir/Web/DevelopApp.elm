@@ -9,6 +9,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input exposing (labelHidden)
 import Http
+import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
@@ -501,7 +502,7 @@ httpMakeModel =
                         Ok result ->
                             ServerGetIRResponse result
                 )
-                DistributionCodec.decodeDistribution
+                CompilerCodec.decodeIR
         }
 
 

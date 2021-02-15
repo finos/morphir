@@ -16,6 +16,24 @@ type Custom
     | CustomTwoArg String Quantity
 
 
+{-| Value type example
+-}
+type Email
+    = Email String
+
+
+type FirstName
+    = FirstName String
+
+
+type LastName
+    = LastName String
+
+
+type FullName
+    = FullName FirstName LastName
+
+
 customToInt : Custom -> Int
 customToInt custom =
     case custom of
