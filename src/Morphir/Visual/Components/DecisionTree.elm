@@ -7,6 +7,7 @@ import Html exposing (Html)
 import Html.Attributes
 import Morphir.IR.Value exposing (RawValue, TypedValue)
 import Morphir.Visual.Common exposing (element)
+import Morphir.Visual.Config exposing (Config)
 import Svg
 import Svg.Attributes
 
@@ -89,13 +90,13 @@ toCssColor (Color r g b) =
     String.concat [ "rgb(", String.fromInt r, ",", String.fromInt g, ",", String.fromInt b, ")" ]
 
 
-layout : (TypedValue -> Element msg) -> Node -> Element msg
-layout viewValue rootNode =
-    layoutHelp NotHighlighted viewValue rootNode
+layout : Config msg -> (TypedValue -> Element msg) -> Node -> Element msg
+layout config viewValue rootNode =
+    layoutHelp config NotHighlighted viewValue rootNode
 
 
-layoutHelp : HighlightState -> (TypedValue -> Element msg) -> Node -> Element msg
-layoutHelp highlightState viewValue rootNode =
+layoutHelp : Config msg -> HighlightState -> (TypedValue -> Element msg) -> Node -> Element msg
+layoutHelp config highlightState viewValue rootNode =
     let
         depthOf : (BranchNode -> Node) -> Node -> Int
         depthOf f node =
@@ -146,11 +147,12 @@ layoutHelp highlightState viewValue rootNode =
             in
             -- TODO: choose vertical/horizontal left/right layout based on some heuristics
             horizontalLayout
+                config
                 (el
                     [ conditionState |> highlighStateToBorderWidth |> Border.width
                     , Border.rounded 7
                     , Border.color (conditionState |> highlighStateToColor |> toElementColor)
-                    , padding 10
+                    , padding config.state.theme.mediumPadding
                     ]
                     (viewValue branch.condition)
                 )
@@ -161,7 +163,7 @@ layoutHelp highlightState viewValue rootNode =
                     (text "Yes")
                 )
                 thenState
-                (layoutHelp thenState viewValue branch.thenBranch)
+                (layoutHelp config thenState viewValue branch.thenBranch)
                 (el
                     [ Font.color (elseState |> highlighStateToColor |> toElementColor)
                     , elseState |> highlighStateToFontWeight
@@ -169,20 +171,20 @@ layoutHelp highlightState viewValue rootNode =
                     (text "No")
                 )
                 elseState
-                (layoutHelp elseState viewValue branch.elseBranch)
+                (layoutHelp config elseState viewValue branch.elseBranch)
 
         Leaf value ->
             el
                 [ highlightState |> highlighStateToBorderWidth |> Border.width
                 , Border.rounded 7
                 , Border.color (highlightState |> highlighStateToColor |> toElementColor)
-                , padding 10
+                , padding config.state.theme.mediumPadding
                 ]
                 (viewValue value)
 
 
-horizontalLayout : Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
-horizontalLayout condition branch1Label branch1State branch1 branch2Label branch2State branch2 =
+horizontalLayout : Config msg -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
+horizontalLayout config condition branch1Label branch1State branch1 branch2Label branch2State branch2 =
     row
         []
         [ column
@@ -201,16 +203,16 @@ horizontalLayout condition branch1Label branch1State branch1 branch2Label branch
                         [ alignLeft
                         , height fill
                         , width fill
-                        , spacing 10
+                        , spacing config.state.theme.smallSpacing
                         ]
                         [ el
-                            [ paddingEach { noPadding | left = 10 }
+                            [ paddingEach { noPadding | left = config.state.theme.mediumPadding }
                             , height fill
                             ]
                             (downArrow branch1State)
                         , el
                             [ centerY
-                            , paddingXY 0 15
+                            , paddingXY 0 config.state.theme.largePadding
                             ]
                             branch1Label
                         ]
@@ -221,18 +223,18 @@ horizontalLayout condition branch1Label branch1State branch1 branch2Label branch
                     ]
                     [ el
                         [ width fill
-                        , paddingEach { noPadding | top = 10 }
+                        , paddingEach { noPadding | top = config.state.theme.mediumPadding }
                         ]
                         (rightArrow branch2State)
                     , el
                         [ centerX
-                        , paddingXY 20 5
+                        , padding config.state.theme.mediumPadding
                         ]
                         branch2Label
                     ]
                 ]
             , el
-                [ paddingEach { noPadding | right = 40 }
+                [ paddingEach { noPadding | right = config.state.theme.largePadding }
                 ]
                 branch1
             ]
@@ -243,8 +245,8 @@ horizontalLayout condition branch1Label branch1State branch1 branch2Label branch
         ]
 
 
-verticalLayout : Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
-verticalLayout condition branch1Label branch1State branch1 branch2Label branch2State branch2 =
+verticalLayout : Config msg -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
+verticalLayout config condition branch1Label branch1State branch1 branch2Label branch2State branch2 =
     column
         []
         [ row []
@@ -257,16 +259,16 @@ verticalLayout condition branch1Label branch1State branch1 branch2Label branch2S
                     [ alignLeft
                     , height fill
                     , width fill
-                    , spacing 10
+                    , spacing config.state.theme.mediumSpacing
                     ]
                     [ el
-                        [ paddingEach { noPadding | left = 10 }
+                        [ paddingEach { noPadding | left = config.state.theme.mediumPadding }
                         , height fill
                         ]
                         (downArrow branch1State)
                     , el
                         [ centerY
-                        , paddingXY 0 10
+                        , paddingXY 0 config.state.theme.mediumPadding
                         ]
                         branch1Label
                     ]
@@ -274,13 +276,13 @@ verticalLayout condition branch1Label branch1State branch1 branch2Label branch2S
             , column [ alignTop ]
                 [ el
                     [ width fill
-                    , paddingEach { noPadding | top = 5 }
+                    , paddingEach { noPadding | top = config.state.theme.smallPadding }
                     ]
                     (rightArrow branch2State)
-                , el [ centerX, paddingXY 10 0 ]
+                , el [ centerX, paddingXY config.state.theme.mediumPadding 0 ]
                     branch2Label
                 ]
-            , el [ alignTop, paddingEach { noPadding | bottom = 20 } ] branch2
+            , el [ alignTop, paddingEach { noPadding | bottom = config.state.theme.largePadding } ] branch2
             ]
         , branch1
         ]

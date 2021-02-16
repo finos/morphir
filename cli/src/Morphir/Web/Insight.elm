@@ -2,12 +2,12 @@ port module Morphir.Web.Insight exposing (Model, Msg(..), init, main, receiveFun
 
 import Browser
 import Dict exposing (Dict)
-import Element exposing (padding)
+import Element exposing (padding, spacing)
 import Element.Font as Font
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder, string)
+import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
-import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.QName as QName exposing (QName(..))
@@ -38,7 +38,7 @@ main =
 
 
 type alias Flags =
-    { distributionJson : Decode.Value
+    { distribution : Decode.Value
     , style : Style
     }
 
@@ -63,19 +63,19 @@ init flags =
             { fontSize = flags.style.fontSize
             , smallSpacing = scaled -3 flags.style
             , mediumSpacing = scaled 1 flags.style
-            , largeSpacing = scaled 4 flags.style
+            , largeSpacing = scaled 6 flags.style
             , smallPadding = scaled -4 flags.style
             , mediumPadding = scaled -2 flags.style
             , largePadding = scaled 2 flags.style
             }
 
         model =
-            case flags.distributionJson |> Decode.decodeValue DistributionCodec.decodeDistribution of
+            case flags.distribution |> Decode.decodeValue CompilerCodec.decodeIR of
                 Ok distribution ->
                     { theme = styleTheme, modelState = IRLoaded distribution }
 
                 Err error ->
-                    { theme = styleTheme, modelState = Failed "Wrong IR" }
+                    { theme = styleTheme, modelState = Failed ("Wrong IR: " ++ Decode.errorToString error) }
     in
     ( model, Cmd.none )
 
@@ -249,4 +249,4 @@ view model =
                             ( packageName, moduleName, localName )
             in
             ViewValue.viewDefinition config valueFQName visualizationState.functionDefinition
-                |> Element.layout [ Font.size model.theme.fontSize, padding model.theme.mediumPadding ]
+                |> Element.layout [ Font.size model.theme.fontSize, padding model.theme.mediumPadding, spacing model.theme.mediumSpacing ]

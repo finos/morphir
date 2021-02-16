@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, fill, padding, rgb, spacing, text, width)
+import Element exposing (Element, el, fill, padding, rgb, scale, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -35,7 +35,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
             Debug.log "variables" config.state.variables
     in
     Element.column [ spacing config.state.theme.mediumSpacing ]
-        [ definition
+        [ definition config
             (nameToText valueName)
             (viewValue config valueDef.body)
         , if Dict.isEmpty config.state.expandedFunctions then
@@ -51,13 +51,14 @@ viewDefinition config ( _, _, valueName ) valueDef =
                         (\( ( _, _, localName ) as fqName, valDef ) ->
                             Element.column
                                 [ spacing config.state.theme.smallSpacing ]
-                                [ definition (nameToText localName) (viewValue config valDef.body)
+                                [ definition config (nameToText localName) (viewValue config valDef.body)
                                 , Element.el
                                     [ Font.bold
                                     , Border.solid
-                                    , Border.rounded 5
+                                    , Border.rounded 4
                                     , Background.color gray
-                                    , padding config.state.theme.smallSpacing
+                                    , padding config.state.theme.smallPadding
+                                    , spacing config.state.theme.smallSpacing
                                     , onClick (config.handlers.onReferenceClicked fqName True)
                                     ]
                                     (Element.text "Close")
@@ -176,17 +177,13 @@ viewValueByLanguageFeature config value =
                         [ spacing config.state.theme.mediumSpacing ]
                         [ inValueElem
                         , Element.column
-                            [ spacing config.state.theme.mediumSpacing
-                            ]
+                            [ spacing config.state.theme.mediumSpacing ]
                             (definitions
                                 |> List.map
                                     (\( defName, defElem ) ->
                                         Element.column
-                                            [ spacing config.state.theme.smallSpacing
-                                            ]
-                                            [ definition (nameToText defName)
-                                                defElem
-                                            ]
+                                            [ spacing config.state.theme.mediumSpacing ]
+                                            [ definition config (nameToText defName) defElem ]
                                     )
                             )
                         ]
@@ -198,17 +195,17 @@ viewValueByLanguageFeature config value =
                     Element.column
                         [ Background.color (rgb 1 0.6 0.6)
                         , Element.padding config.state.theme.smallPadding
-                        , Border.rounded 3
+                        , Border.rounded 4
                         ]
                         [ Element.el
-                            [ Element.padding 5
+                            [ Element.padding config.state.theme.smallPadding
                             , Font.bold
                             ]
                             (Element.text "No visual mapping found for:")
                         , Element.el
                             [ Background.color (rgb 1 1 1)
                             , Element.padding config.state.theme.smallPadding
-                            , Border.rounded 3
+                            , Border.rounded 4
                             , width fill
                             ]
                             (XRayView.viewValue XRayView.viewType other)

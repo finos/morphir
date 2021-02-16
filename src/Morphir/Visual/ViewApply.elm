@@ -64,7 +64,7 @@ view config viewValue functionValue argValues =
                         [ spacing config.state.theme.smallSpacing ]
                         [ viewValue functionValue
                         , column
-                            [ paddingEach { left = 10, right = 0, top = 0, bottom = 0 }
+                            [ paddingEach { left = config.state.theme.mediumPadding, right = 0, top = 0, bottom = 0 }
                             , spacing config.state.theme.smallSpacing
                             ]
                             (argValues

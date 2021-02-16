@@ -5,6 +5,7 @@ import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes exposing (class)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.Visual.Config exposing (Config)
 
 
 cssClass : String -> Attribute msg
@@ -37,13 +38,13 @@ grayScale v =
     rgb v v v
 
 
-definition : String -> Element msg -> Element msg
-definition header body =
-    column [ spacing 10 ]
-        [ row [ spacing 5 ]
+definition : Config msg -> String -> Element msg -> Element msg
+definition config header body =
+    column [ spacing config.state.theme.mediumSpacing ]
+        [ row [ spacing config.state.theme.mediumSpacing ]
             [ el [ Font.bold ] (text header)
             , el [] (text "=")
             ]
-        , el [ paddingEach { left = 20, right = 0, top = 0, bottom = 0 } ]
+        , el [ paddingEach { left = config.state.theme.mediumPadding, right = 0, top = 0, bottom = 0 } ]
             body
         ]

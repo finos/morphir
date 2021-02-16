@@ -11,7 +11,7 @@ import Morphir.Visual.Config as Config exposing (Config)
 
 view : Config msg -> (TypedValue -> Element msg) -> Value () (Type ()) -> Element msg
 view config viewValue value =
-    DecisionTree.layout viewValue (valueToTree config True value)
+    DecisionTree.layout config viewValue (valueToTree config True value)
 
 
 valueToTree : Config msg -> Bool -> TypedValue -> DecisionTree.Node
