@@ -119,7 +119,7 @@ Here is the full definition for reference:
 
 # Constructors
 
-@docs Constructors, Constructor
+@docs Constructors
 
 
 # Mapping
