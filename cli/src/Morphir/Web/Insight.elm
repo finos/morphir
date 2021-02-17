@@ -14,9 +14,10 @@ import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.Value exposing (Value)
 import Morphir.IR.Value.Codec as ValueCodec
 import Morphir.Value.Interpreter as Interpreter
-import Morphir.Visual.Components.Theme exposing (FontConfig, Theme, fromConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme as Theme exposing (Theme, ThemeConfig, smallPadding, smallSpacing)
+import Morphir.Visual.Theme.Codec exposing (decodeThemeConfig)
 import Morphir.Visual.ViewValue as ViewValue
 
 
@@ -37,9 +38,9 @@ main =
 -- MODEL
 
 
-type alias Flags =
-    { distribution : Decode.Value
-    , config : FontConfig
+type alias Flag =
+    { distribution : Distribution
+    , config : Maybe ThemeConfig
     }
 
 
@@ -55,20 +56,16 @@ type ModelState
     | Failed String
 
 
-init : Flags -> ( Model, Cmd Msg )
-init flags =
+init : Decode.Value -> ( Model, Cmd Msg )
+init json =
     let
-        theme : Theme
-        theme =
-            fromConfig flags.config
-
         model =
-            case flags.distribution |> Decode.decodeValue CompilerCodec.decodeIR of
-                Ok distribution ->
-                    { theme = theme, modelState = IRLoaded distribution }
+            case json |> Decode.decodeValue decodeFlag of
+                Ok flag ->
+                    { theme = Theme.fromConfig flag.config, modelState = IRLoaded flag.distribution }
 
                 Err error ->
-                    { theme = theme, modelState = Failed ("Wrong IR: " ++ Decode.errorToString error) }
+                    { theme = Theme.fromConfig Nothing, modelState = Failed ("Wrong IR: " ++ Decode.errorToString error) }
     in
     ( model, Cmd.none )
 
@@ -243,3 +240,10 @@ view model =
             in
             ViewValue.viewDefinition config valueFQName visualizationState.functionDefinition
                 |> Element.layout [ Font.size model.theme.fontSize, smallPadding model.theme |> padding, smallSpacing model.theme |> spacing ]
+
+
+decodeFlag : Decode.Decoder Flag
+decodeFlag =
+    Decode.map2 Flag
+        (Decode.field "distribution" CompilerCodec.decodeIR)
+        (Decode.field "config" decodeThemeConfig |> Decode.maybe)

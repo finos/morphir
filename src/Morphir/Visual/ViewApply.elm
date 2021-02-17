@@ -7,8 +7,8 @@ import Morphir.IR.Path as Path
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Visual.Common exposing (nameToText)
-import Morphir.Visual.Components.Theme exposing (mediumPadding, smallSpacing)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (mediumPadding, smallSpacing)
 
 
 view : Config msg -> (Value ta (Type ta) -> Element msg) -> Value ta (Type ta) -> List (Value ta (Type ta)) -> Element msg

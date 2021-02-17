@@ -5,8 +5,8 @@ import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes exposing (class)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.Visual.Components.Theme exposing (mediumPadding, mediumSpacing)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing)
 
 
 cssClass : String -> Attribute msg

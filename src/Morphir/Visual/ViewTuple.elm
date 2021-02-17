@@ -3,8 +3,8 @@ module Morphir.Visual.ViewTuple exposing (..)
 import Element exposing (Element, column, moveRight, spacing, text)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value exposing (Value)
-import Morphir.Visual.Components.Theme exposing (smallSpacing)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (smallSpacing)
 
 
 view : Config msg -> (Value ta (Type ta) -> Element msg) -> List (Value ta (Type ta)) -> Element msg

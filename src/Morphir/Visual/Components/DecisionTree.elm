@@ -7,8 +7,8 @@ import Html exposing (Html)
 import Html.Attributes
 import Morphir.IR.Value exposing (RawValue, TypedValue)
 import Morphir.Visual.Common exposing (element)
-import Morphir.Visual.Components.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing)
 import Svg
 import Svg.Attributes
 

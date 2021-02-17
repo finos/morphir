@@ -5,8 +5,8 @@ import Element.Border
 import Element.Font as Font
 import Morphir.IR.Value exposing (TypedValue)
 import Morphir.Visual.BoolOperatorTree exposing (BoolOperator(..), BoolOperatorTree(..))
-import Morphir.Visual.Components.Theme exposing (smallPadding, smallSpacing)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 
 
 view : Config msg -> (TypedValue -> Element msg) -> BoolOperatorTree -> Element msg

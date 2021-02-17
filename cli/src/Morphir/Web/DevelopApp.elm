@@ -16,9 +16,9 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Value.Interpreter as Interpreter
-import Morphir.Visual.Components.Theme exposing (fromConfig)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Edit as Edit
+import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme exposing (Theme)
@@ -581,7 +581,7 @@ viewValue model distribution valueFQName valueDef =
             , state =
                 { expandedFunctions = Dict.empty
                 , variables = validArgValues
-                , theme = fromConfig { fontSize = Nothing }
+                , theme = Theme.fromConfig Nothing
                 }
             , handlers =
                 { onReferenceClicked = ExpandReference

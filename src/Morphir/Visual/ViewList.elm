@@ -7,8 +7,8 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Visual.Components.Theme exposing (smallPadding, smallSpacing)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 
 
 view : Config msg -> (Value () (Type ()) -> Element msg) -> Type () -> List (Value () (Type ())) -> Element msg
