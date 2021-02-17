@@ -5,8 +5,8 @@ import Element exposing (Element, centerX, column, padding, paddingEach, rgb, ro
 import Element.Border as Border
 import Morphir.IR.Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.Components.AritmeticExpressions exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
-import Morphir.Visual.Components.Theme exposing (smallPadding, smallSpacing)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 
 
 view : Config msg -> (TypedValue -> Element msg) -> ArithmeticOperatorTree -> Element msg

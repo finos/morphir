@@ -14,8 +14,8 @@ import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (definition, nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
-import Morphir.Visual.Components.Theme exposing (mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.Config as Config exposing (Config)
+import Morphir.Visual.Theme exposing (mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
