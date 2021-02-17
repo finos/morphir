@@ -1,15 +1,14 @@
 {
   "name": "morphir-elm",
-  "version": "2.17.0",
+  "version": "2.18.0",
   "description": "Elm bindings for Morphir",
   "scripts": {
     "clean": "del-cli dist tests-integration/generated/",
-    "test:integration":"npm run test:integration:clean && npm run test:integration:make && npm run test:integration:gen && npm run test:integration:build",
+    "test:integration": "npm run test:integration:clean && npm run test:integration:make && npm run test:integration:gen && npm run test:integration:build",
     "test:integration:build": "cd tests-integration && mill __.compile",
     "test:integration:clean": "del-cli tests-integration/generated/",
     "test:integration:gen": "node dist/morphir elm gen -i ./tests-integration/generated/morphir-ir.json -o ./tests-integration/generated/refModel/src/scala/ -t Scala ",
     "test:integration:make": "node dist/morphir elm make -p ./tests-integration/reference-model -o ./tests-integration/generated/morphir-ir.json",
-
     "test": "elm-test",
     "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js --optimize",
     "make-cli-dev": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js",
