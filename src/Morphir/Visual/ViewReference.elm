@@ -6,14 +6,15 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value exposing (Value)
 import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.Theme exposing (smallPadding, smallSpacing)
 import Morphir.Visual.Config exposing (Config)
 
 
 view : Config msg -> (Value ta (Type ta) -> Element msg) -> FQName -> Element msg
 view config viewValue (( packageName, moduleName, localName ) as fQName) =
     Element.row
-        [ padding config.state.theme.smallPadding
-        , spacing config.state.theme.smallSpacing
+        [ smallPadding config.state.theme |> padding
+        , smallSpacing config.state.theme |> spacing
         , onClick (config.handlers.onReferenceClicked fQName False)
         ]
         [ Element.el []

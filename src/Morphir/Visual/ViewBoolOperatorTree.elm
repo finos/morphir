@@ -5,6 +5,7 @@ import Element.Border
 import Element.Font as Font
 import Morphir.IR.Value exposing (TypedValue)
 import Morphir.Visual.BoolOperatorTree exposing (BoolOperator(..), BoolOperatorTree(..))
+import Morphir.Visual.Components.Theme exposing (smallPadding, smallSpacing)
 import Morphir.Visual.Config exposing (Config)
 
 
@@ -42,7 +43,7 @@ viewTreeNode config viewValue direction boolOperatorTree =
                                             none
                                         ]
                             in
-                            Element.column [ centerY, height fill ] [ verticalLine, Element.el [ padding config.state.theme.smallPadding, Font.bold ] (Element.text (operator |> operatorToString)), verticalLine ]
+                            Element.column [ centerY, height fill ] [ verticalLine, Element.el [ smallPadding config.state.theme |> padding, Font.bold ] (Element.text (operator |> operatorToString)), verticalLine ]
 
                         Vertical ->
                             let
@@ -65,16 +66,16 @@ viewTreeNode config viewValue direction boolOperatorTree =
                                             none
                                         ]
                             in
-                            Element.row [ centerX, width fill ] [ horizontalLine, Element.el [ padding config.state.theme.smallPadding, Font.bold ] (Element.text (operator |> operatorToString)), horizontalLine ]
+                            Element.row [ centerX, width fill ] [ horizontalLine, Element.el [ smallPadding config.state.theme |> padding, Font.bold ] (Element.text (operator |> operatorToString)), horizontalLine ]
 
                 layout : List (Element msg) -> Element msg
                 layout elems =
                     case direction of
                         Horizontal ->
-                            Element.row [ centerX, spacing config.state.theme.smallSpacing ] elems
+                            Element.row [ centerX, smallSpacing config.state.theme |> spacing ] elems
 
                         Vertical ->
-                            Element.column [ centerY, spacing config.state.theme.smallSpacing ] elems
+                            Element.column [ centerY, smallSpacing config.state.theme |> spacing ] elems
             in
             values
                 |> List.map (viewTreeNode config viewValue (flipLayoutDirection direction))

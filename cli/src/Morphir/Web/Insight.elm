@@ -14,7 +14,7 @@ import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.Value exposing (Value)
 import Morphir.IR.Value.Codec as ValueCodec
 import Morphir.Value.Interpreter as Interpreter
-import Morphir.Visual.Components.Theme exposing (Style, Theme, scaled)
+import Morphir.Visual.Components.Theme exposing (FontConfig, Theme, fromConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.ViewValue as ViewValue
@@ -39,7 +39,7 @@ main =
 
 type alias Flags =
     { distribution : Decode.Value
-    , style : Style
+    , config : FontConfig
     }
 
 
@@ -58,24 +58,17 @@ type ModelState
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     let
-        styleTheme : Theme
-        styleTheme =
-            { fontSize = flags.style.fontSize
-            , smallSpacing = scaled -3 flags.style
-            , mediumSpacing = scaled 1 flags.style
-            , largeSpacing = scaled 6 flags.style
-            , smallPadding = scaled -4 flags.style
-            , mediumPadding = scaled -2 flags.style
-            , largePadding = scaled 2 flags.style
-            }
+        theme : Theme
+        theme =
+            fromConfig flags.config
 
         model =
             case flags.distribution |> Decode.decodeValue CompilerCodec.decodeIR of
                 Ok distribution ->
-                    { theme = styleTheme, modelState = IRLoaded distribution }
+                    { theme = theme, modelState = IRLoaded distribution }
 
                 Err error ->
-                    { theme = styleTheme, modelState = Failed ("Wrong IR: " ++ Decode.errorToString error) }
+                    { theme = theme, modelState = Failed ("Wrong IR: " ++ Decode.errorToString error) }
     in
     ( model, Cmd.none )
 
@@ -212,7 +205,7 @@ view model =
             Html.div [] []
 
         Failed string ->
-            Element.layout [ Font.size model.theme.fontSize, padding model.theme.mediumPadding, Font.bold ] (Element.text string)
+            Element.layout [ Font.size model.theme.fontSize, smallPadding model.theme |> padding, Font.bold ] (Element.text string)
 
         FunctionsSet visualizationState ->
             let
@@ -249,4 +242,4 @@ view model =
                             ( packageName, moduleName, localName )
             in
             ViewValue.viewDefinition config valueFQName visualizationState.functionDefinition
-                |> Element.layout [ Font.size model.theme.fontSize, padding model.theme.mediumPadding, spacing model.theme.mediumSpacing ]
+                |> Element.layout [ Font.size model.theme.fontSize, smallPadding model.theme |> padding, smallSpacing model.theme |> spacing ]

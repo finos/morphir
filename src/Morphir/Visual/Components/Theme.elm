@@ -5,20 +5,49 @@ import Element
 
 type alias Theme =
     { fontSize : Int
-    , smallSpacing : Int
-    , mediumSpacing : Int
-    , largeSpacing : Int
-    , smallPadding : Int
-    , mediumPadding : Int
-    , largePadding : Int
     }
 
 
-type alias Style =
-    { fontSize : Int
+type alias FontConfig =
+    { fontSize : Maybe Int
     }
 
 
-scaled : Int -> Style -> Int
-scaled scaleValue style =
-    Element.modular (toFloat style.fontSize) 1.25 scaleValue |> round
+fromConfig : FontConfig -> Theme
+fromConfig config =
+    { fontSize = config.fontSize |> Maybe.withDefault 12 }
+
+
+smallSpacing : Theme -> Int
+smallSpacing theme =
+    scaled -3 theme
+
+
+mediumSpacing : Theme -> Int
+mediumSpacing theme =
+    scaled 0 theme
+
+
+largeSpacing : Theme -> Int
+largeSpacing theme =
+    scaled 4 theme
+
+
+smallPadding : Theme -> Int
+smallPadding theme =
+    scaled -3 theme
+
+
+mediumPadding : Theme -> Int
+mediumPadding theme =
+    scaled 0 theme
+
+
+largePadding : Theme -> Int
+largePadding theme =
+    scaled 4 theme
+
+
+scaled : Int -> Theme -> Int
+scaled scaleValue theme =
+    Element.modular (toFloat theme.fontSize) 1.25 scaleValue |> round

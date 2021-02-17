@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, fill, padding, rgb, scale, spacing, text, width)
+import Element exposing (Element, el, fill, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -14,6 +14,7 @@ import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (definition, nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
+import Morphir.Visual.Components.Theme exposing (mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.Config as Config exposing (Config)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
@@ -34,7 +35,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
         _ =
             Debug.log "variables" config.state.variables
     in
-    Element.column [ spacing config.state.theme.mediumSpacing ]
+    Element.column [ mediumSpacing config.state.theme |> spacing ]
         [ definition config
             (nameToText valueName)
             (viewValue config valueDef.body)
@@ -43,22 +44,22 @@ viewDefinition config ( _, _, valueName ) valueDef =
 
           else
             Element.column
-                [ spacing config.state.theme.mediumSpacing ]
+                [ mediumSpacing config.state.theme |> spacing ]
                 (config.state.expandedFunctions
                     |> Dict.toList
                     |> List.reverse
                     |> List.map
                         (\( ( _, _, localName ) as fqName, valDef ) ->
                             Element.column
-                                [ spacing config.state.theme.smallSpacing ]
+                                [ smallSpacing config.state.theme |> spacing ]
                                 [ definition config (nameToText localName) (viewValue config valDef.body)
                                 , Element.el
                                     [ Font.bold
                                     , Border.solid
                                     , Border.rounded 4
                                     , Background.color gray
-                                    , padding config.state.theme.smallPadding
-                                    , spacing config.state.theme.smallSpacing
+                                    , smallPadding config.state.theme |> padding
+                                    , smallSpacing config.state.theme |> spacing
                                     , onClick (config.handlers.onReferenceClicked fqName True)
                                     ]
                                     (Element.text "Close")
@@ -174,15 +175,15 @@ viewValueByLanguageFeature config value =
                             unnest config value
                     in
                     Element.column
-                        [ spacing config.state.theme.mediumSpacing ]
+                        [ mediumSpacing config.state.theme |> spacing ]
                         [ inValueElem
                         , Element.column
-                            [ spacing config.state.theme.mediumSpacing ]
+                            [ mediumSpacing config.state.theme |> spacing ]
                             (definitions
                                 |> List.map
                                     (\( defName, defElem ) ->
                                         Element.column
-                                            [ spacing config.state.theme.mediumSpacing ]
+                                            [ mediumSpacing config.state.theme |> spacing ]
                                             [ definition config (nameToText defName) defElem ]
                                     )
                             )
@@ -194,18 +195,18 @@ viewValueByLanguageFeature config value =
                 other ->
                     Element.column
                         [ Background.color (rgb 1 0.6 0.6)
-                        , Element.padding config.state.theme.smallPadding
-                        , Border.rounded 4
+                        , smallPadding config.state.theme |> padding
+                        , Border.rounded 6
                         ]
                         [ Element.el
-                            [ Element.padding config.state.theme.smallPadding
+                            [ smallPadding config.state.theme |> padding
                             , Font.bold
                             ]
                             (Element.text "No visual mapping found for:")
                         , Element.el
                             [ Background.color (rgb 1 1 1)
-                            , Element.padding config.state.theme.smallPadding
-                            , Border.rounded 4
+                            , smallPadding config.state.theme |> padding
+                            , Border.rounded 6
                             , width fill
                             ]
                             (XRayView.viewValue XRayView.viewType other)

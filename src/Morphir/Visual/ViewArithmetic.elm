@@ -3,8 +3,9 @@ module Morphir.Visual.ViewArithmetic exposing (..)
 import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, padding, paddingEach, rgb, row, spacing, text, width)
 import Element.Border as Border
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
+import Morphir.IR.Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.Components.AritmeticExpressions exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
+import Morphir.Visual.Components.Theme exposing (smallPadding, smallSpacing)
 import Morphir.Visual.Config exposing (Config)
 
 
@@ -23,9 +24,9 @@ view config viewValue arithmeticOperatorTree =
                                 [ row [ centerX, width Element.fill ]
                                     [ row
                                         [ width Element.fill
-                                        , spacing config.state.theme.smallSpacing
+                                        , smallSpacing config.state.theme |> spacing
                                         , Border.color (rgb 0 0.7 0)
-                                        , paddingEach { left = 0, top = 0, right = 0, bottom = config.state.theme.smallPadding }
+                                        , smallPadding config.state.theme |> padding
                                         , centerX
                                         ]
                                         [ viewValue typedValue1
@@ -36,7 +37,7 @@ view config viewValue arithmeticOperatorTree =
                                     , width Element.fill
                                     , Border.solid
                                     , Border.widthEach { bottom = 0, left = 0, right = 0, top = 1 }
-                                    , paddingEach { left = 0, bottom = 0, right = 0, top = config.state.theme.smallPadding }
+                                    , smallPadding config.state.theme |> padding
                                     ]
                                     [ viewValue typedValue2
                                     ]
@@ -48,7 +49,7 @@ view config viewValue arithmeticOperatorTree =
                                     let
                                         separator =
                                             row
-                                                [ spacing config.state.theme.smallSpacing
+                                                [ smallSpacing config.state.theme |> spacing
                                                 , width Element.fill
                                                 , centerX
                                                 ]

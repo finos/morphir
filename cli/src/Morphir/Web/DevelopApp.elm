@@ -3,7 +3,7 @@ module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Route(..), 
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, column, el, fill, height, html, image, layout, link, minimum, none, padding, paddingXY, px, rgb, row, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignTop, column, el, fill, height, image, layout, link, minimum, none, padding, paddingXY, px, rgb, row, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -11,13 +11,12 @@ import Element.Input as Input exposing (labelHidden)
 import Http
 import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Value.Interpreter as Interpreter
-import Morphir.Visual.Components.Theme as Theme exposing (Style)
+import Morphir.Visual.Components.Theme exposing (fromConfig)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Edit as Edit
 import Morphir.Visual.ViewValue as ViewValue
@@ -567,10 +566,6 @@ makeURL moduleName filterString viewType =
 viewValue : Model -> Distribution -> FQName -> Value.Definition () (Type ()) -> Element Msg
 viewValue model distribution valueFQName valueDef =
     let
-        style : Style
-        style =
-            { fontSize = 14 }
-
         validArgValues : Dict Name (Value () ())
         validArgValues =
             model.argState
@@ -586,15 +581,7 @@ viewValue model distribution valueFQName valueDef =
             , state =
                 { expandedFunctions = Dict.empty
                 , variables = validArgValues
-                , theme =
-                    { fontSize = style.fontSize
-                    , smallSpacing = Theme.scaled -3 style
-                    , mediumSpacing = Theme.scaled 1 style
-                    , largeSpacing = Theme.scaled 6 style
-                    , smallPadding = Theme.scaled -4 style
-                    , mediumPadding = Theme.scaled -2 style
-                    , largePadding = Theme.scaled 2 style
-                    }
+                , theme = fromConfig { fontSize = Nothing }
                 }
             , handlers =
                 { onReferenceClicked = ExpandReference

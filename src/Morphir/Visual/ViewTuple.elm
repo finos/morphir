@@ -1,8 +1,9 @@
 module Morphir.Visual.ViewTuple exposing (..)
 
-import Element exposing (Element, column, el, moveRight, spacing, text, wrappedRow)
+import Element exposing (Element, column, moveRight, spacing, text)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value exposing (Value)
+import Morphir.Visual.Components.Theme exposing (smallSpacing)
 import Morphir.Visual.Config exposing (Config)
 
 
@@ -22,11 +23,11 @@ view config viewValue elems =
                     "tuple"
     in
     column
-        [ spacing config.state.theme.smallSpacing ]
+        [ smallSpacing config.state.theme |> spacing ]
         [ text (tupleCase ++ " of")
         , column
             [ moveRight 10
-            , spacing config.state.theme.smallSpacing
+            , smallSpacing config.state.theme |> spacing
             ]
             (elems
                 |> List.map viewValue

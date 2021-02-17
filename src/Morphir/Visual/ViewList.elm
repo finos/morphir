@@ -3,11 +3,11 @@ module Morphir.Visual.ViewList exposing (view)
 import Dict
 import Element exposing (Element, centerX, centerY, el, fill, height, indexedTable, none, padding, spacing, table, text, width)
 import Element.Border as Border
-import Element.Font as Font
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Visual.Components.Theme exposing (smallPadding, smallSpacing)
 import Morphir.Visual.Config exposing (Config)
 
 
@@ -35,14 +35,14 @@ view config viewValue itemType items =
                                     { header =
                                         el
                                             [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
-                                            , padding config.state.theme.smallPadding
+                                            , smallPadding config.state.theme |> padding
                                             ]
                                             (el [ centerY, centerX ] (text (field.name |> Name.toHumanWords |> String.join " ")))
                                     , width = fill
                                     , view =
                                         \rowIndex item ->
                                             el
-                                                [ padding config.state.theme.smallPadding
+                                                [ smallPadding config.state.theme |> padding
                                                 , width fill
                                                 , height fill
                                                 ]
@@ -74,7 +74,7 @@ view config viewValue itemType items =
 
             _ ->
                 table
-                    [ spacing config.state.theme.smallSpacing
+                    [ smallSpacing config.state.theme |> spacing
                     ]
                     { data = items
                     , columns =
