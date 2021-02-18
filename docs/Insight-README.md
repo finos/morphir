@@ -14,9 +14,8 @@ For detailed instructions refer to [morphir-elm installation](https://github.com
 Example:
 If we have a file with module name defined as:
 ```
-module Morphir.Reference.Model.BooksAndRecords exposing (..)
+module Morphir.Reference.Model.Insight.UseCase1 exposing (..)
 ```
-**Important**: Currently, the Spring Boot generator works with custom types with at least one argument.
 
 then our folder structure might be
 ```
@@ -26,7 +25,8 @@ exampleIR
 |   |   |Morphir
 |   |   |   |Reference
 |   |   |   |   |Model
-|   |   |   |       BooksAndRecords.elm
+|   |   |   |   |     |Insight
+|   |   |   |   |     |       UseCase1
 ```                 
 
 The morphir.json file should be something like this
@@ -36,11 +36,11 @@ The morphir.json file should be something like this
     "name": "Morphir.Reference.Model",
     "sourceDirectory": "example",
     "exposedModules": [
-
-        "BooksAndRecords"
+        "Insight.UseCase1"
     ]
 }  
 ```
+**Note** Every folder in Model directory will contribute to exposed module name.
 
 Finally, to translate to IR
 - Go to command line
@@ -82,9 +82,9 @@ For more details on flags [Flags](https://guide.elm-lang.org/interop/flags.html)
 
 ### Send Function Name threw ports
 - Function name should be pass as combination of exposed module name + local name.
-- If your exposed module is `BooksAndRecords` and it contains a local function with name `bookingRecords`. Pass both separated by a colon `:`
+- If your exposed module is `Insight.UseCase1` and it contains a local function with name `limitTracking`. Pass both separated by a colon `:`
 ```
-    app.ports.receiveFunctionName.send("BooksAndRecords:bookingRecords")
+    app.ports.receiveFunctionName.send("Insight.UseCase1:limitTracking")
 ```
         
 For more details on ports [Ports](https://guide.elm-lang.org/interop/ports.html)
@@ -94,11 +94,11 @@ For more details on ports [Ports](https://guide.elm-lang.org/interop/ports.html)
 - You need to send type information of arguments along with its values otherwise it won't be accepted.
 - If function signature is :
 ``` 
-    bookingRecords : Int -> Float -> String -> Bool -> String
+    limitTracking : Float -> Float -> Float -> Float -> Float -> List TrackingAdvantage
 ```
-- It means it is expecting 4 arguments of type int, float, string , boolean and returning a string type.
+- It means it is expecting 5 arguments of type float and returning a List type.
 ``` 
-    var argsList = [["literal",{},["int_literal", 4]],["literal",{},["float_literal", 4.5]],["literal",{},["string_literal", "Hello"]],["literal",{},["bool_literal", true]]];
+    var argsList = [["literal",{},["float_literal", 14]],["literal",{},["float_literal", 4.5]],["literal",{},["float_literal", 13.5]],["literal",{},["float_literal", 36.3]],["literal",{},["float_literal", 62.3]]];
     app.ports.receiveFunctionArguments.send(argsList);
 ```
 - For more details of encoding like how to encode `list, tuple, and record`
