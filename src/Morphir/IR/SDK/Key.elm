@@ -411,112 +411,112 @@ moduleSpec =
 -}
 key0Type : a -> Type a
 key0Type attributes =
-    Reference attributes (toFQName moduleName "key0Type") []
+    Reference attributes (toFQName moduleName "Key0") []
 
 
 {-| Create a type key with 2 types.
 -}
 key2Type : a -> Type a -> Type a -> Type a
 key2Type attributes itemType1 itemType2 =
-    Reference attributes (toFQName moduleName "key2Type") [ itemType1, itemType2 ]
+    Reference attributes (toFQName moduleName "Key2") [ itemType1, itemType2 ]
 
 
 {-| Create a type key with 3 types.
 -}
 key3Type : a -> Type a -> Type a -> Type a -> Type a
 key3Type attributes itemType1 itemType2 itemType3 =
-    Reference attributes (toFQName moduleName "key3Type") [ itemType1, itemType2, itemType3 ]
+    Reference attributes (toFQName moduleName "Key3") [ itemType1, itemType2, itemType3 ]
 
 
 {-| Create a type key with 4 types.
 -}
 key4Type : a -> Type a -> Type a -> Type a -> Type a -> Type a
 key4Type attributes itemType1 itemType2 itemType3 itemType4 =
-    Reference attributes (toFQName moduleName "key4Type") [ itemType1, itemType2, itemType3, itemType4 ]
+    Reference attributes (toFQName moduleName "Key4") [ itemType1, itemType2, itemType3, itemType4 ]
 
 
 {-| Create a type key with 5 types.
 -}
 key5Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key5Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 =
-    Reference attributes (toFQName moduleName "key5Type") [ itemType1, itemType2, itemType3, itemType4, itemType5 ]
+    Reference attributes (toFQName moduleName "Key5") [ itemType1, itemType2, itemType3, itemType4, itemType5 ]
 
 
 {-| Create a type key with 6 types.
 -}
 key6Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key6Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 =
-    Reference attributes (toFQName moduleName "key6Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6 ]
+    Reference attributes (toFQName moduleName "Key6") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6 ]
 
 
 {-| Create a type key with 7 types.
 -}
 key7Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key7Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 itemType7 =
-    Reference attributes (toFQName moduleName "key7Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7 ]
+    Reference attributes (toFQName moduleName "Key7") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7 ]
 
 
 {-| Create a type key with 8 types.
 -}
 key8Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key8Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 itemType7 itemType8 =
-    Reference attributes (toFQName moduleName "key8Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8 ]
+    Reference attributes (toFQName moduleName "Key8") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8 ]
 
 
 {-| Create a type key with 9 types.
 -}
 key9Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key9Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 itemType7 itemType8 itemType9 =
-    Reference attributes (toFQName moduleName "key9Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9 ]
+    Reference attributes (toFQName moduleName "Key9") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9 ]
 
 
 {-| Create a type key with 10 types.
 -}
 key10Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key10Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 itemType7 itemType8 itemType9 itemType10 =
-    Reference attributes (toFQName moduleName "key10Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10 ]
+    Reference attributes (toFQName moduleName "Key10") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10 ]
 
 
 {-| Create a type key with 11 types.
 -}
 key11Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key11Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 itemType7 itemType8 itemType9 itemType10 itemType11 =
-    Reference attributes (toFQName moduleName "key11Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11 ]
+    Reference attributes (toFQName moduleName "Key11") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11 ]
 
 
 {-| Create a type key with 12 types.
 -}
 key12Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key12Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 itemType7 itemType8 itemType9 itemType10 itemType11 itemType12 =
-    Reference attributes (toFQName moduleName "key12Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11, itemType12 ]
+    Reference attributes (toFQName moduleName "Key12") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11, itemType12 ]
 
 
 {-| Create a type key with 13 types.
 -}
 key13Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key13Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 itemType7 itemType8 itemType9 itemType10 itemType11 itemType12 itemType13 =
-    Reference attributes (toFQName moduleName "key13Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11, itemType12, itemType13 ]
+    Reference attributes (toFQName moduleName "Key13") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11, itemType12, itemType13 ]
 
 
 {-| Create a type key with 14 types.
 -}
 key14Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key14Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 itemType7 itemType8 itemType9 itemType10 itemType11 itemType12 itemType13 itemType14 =
-    Reference attributes (toFQName moduleName "key14Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11, itemType12, itemType13, itemType14 ]
+    Reference attributes (toFQName moduleName "Key14") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11, itemType12, itemType13, itemType14 ]
 
 
 {-| Create a type key with 15 types.
 -}
 key15Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key15Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 itemType7 itemType8 itemType9 itemType10 itemType11 itemType12 itemType13 itemType14 itemType15 =
-    Reference attributes (toFQName moduleName "key15Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11, itemType12, itemType13, itemType14, itemType15 ]
+    Reference attributes (toFQName moduleName "Key15") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11, itemType12, itemType13, itemType14, itemType15 ]
 
 
 {-| Create a type key with 16 types.
 -}
 key16Type : a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a -> Type a
 key16Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6 itemType7 itemType8 itemType9 itemType10 itemType11 itemType12 itemType13 itemType14 itemType15 itemType16 =
-    Reference attributes (toFQName moduleName "key16Type") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11, itemType12, itemType13, itemType14, itemType15, itemType16 ]
+    Reference attributes (toFQName moduleName "Key16") [ itemType1, itemType2, itemType3, itemType4, itemType5, itemType6, itemType7, itemType8, itemType9, itemType10, itemType11, itemType12, itemType13, itemType14, itemType15, itemType16 ]
 
 
 
@@ -595,9 +595,9 @@ key16Type attributes itemType1 itemType2 itemType3 itemType4 itemType5 itemType6
 --                        |> String.join " "
 --
 --                body keys =
---                    " (toFQName moduleName \"key"
+--                    " (toFQName moduleName \"Key"
 --                        ++ String.fromInt n
---                        ++ "Type\") ["
+--                        ++ "\") ["
 --                        ++ (List.range 1 n
 --                                |> List.map (\i -> "itemType" ++ String.fromInt i)
 --                                |> String.join ", "
