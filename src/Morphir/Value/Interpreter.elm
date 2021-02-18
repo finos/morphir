@@ -12,7 +12,7 @@ takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
 # Utilities
 
-@docs FQN, Reference
+@docs Reference
 
 -}
 

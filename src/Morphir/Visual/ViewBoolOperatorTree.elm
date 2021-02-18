@@ -5,15 +5,17 @@ import Element.Border
 import Element.Font as Font
 import Morphir.IR.Value exposing (TypedValue)
 import Morphir.Visual.BoolOperatorTree exposing (BoolOperator(..), BoolOperatorTree(..))
+import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 
 
-view : (TypedValue -> Element msg) -> BoolOperatorTree -> Element msg
-view viewValue boolOperatorTree =
-    viewTreeNode viewValue Vertical boolOperatorTree
+view : Config msg -> (TypedValue -> Element msg) -> BoolOperatorTree -> Element msg
+view config viewValue boolOperatorTree =
+    viewTreeNode config viewValue Vertical boolOperatorTree
 
 
-viewTreeNode : (TypedValue -> Element msg) -> LayoutDirection -> BoolOperatorTree -> Element msg
-viewTreeNode viewValue direction boolOperatorTree =
+viewTreeNode : Config msg -> (TypedValue -> Element msg) -> LayoutDirection -> BoolOperatorTree -> Element msg
+viewTreeNode config viewValue direction boolOperatorTree =
     case boolOperatorTree of
         BoolOperatorBranch operator values ->
             let
@@ -41,7 +43,7 @@ viewTreeNode viewValue direction boolOperatorTree =
                                             none
                                         ]
                             in
-                            Element.column [ centerY, height fill ] [ verticalLine, Element.el [ Font.size 12, padding 5, Font.bold ] (Element.text (operator |> operatorToString)), verticalLine ]
+                            Element.column [ centerY, height fill ] [ verticalLine, Element.el [ smallPadding config.state.theme |> padding, Font.bold ] (Element.text (operator |> operatorToString)), verticalLine ]
 
                         Vertical ->
                             let
@@ -64,29 +66,20 @@ viewTreeNode viewValue direction boolOperatorTree =
                                             none
                                         ]
                             in
-                            Element.row [ centerX, width fill ] [ horizontalLine, Element.el [ Font.size 12, padding 5, Font.bold ] (Element.text (operator |> operatorToString)), horizontalLine ]
+                            Element.row [ centerX, width fill ] [ horizontalLine, Element.el [ smallPadding config.state.theme |> padding, Font.bold ] (Element.text (operator |> operatorToString)), horizontalLine ]
 
                 layout : List (Element msg) -> Element msg
                 layout elems =
                     case direction of
                         Horizontal ->
-                            Element.row [ centerX ] elems
+                            Element.row [ centerX, smallSpacing config.state.theme |> spacing ] elems
 
                         Vertical ->
-                            Element.column [ centerY ] elems
+                            Element.column [ centerY, smallSpacing config.state.theme |> spacing ] elems
             in
             values
-                |> List.map
-                    (viewTreeNode viewValue
-                        (flipLayoutDirection direction)
-                    )
-                |> List.map
-                    (Element.el
-                        [ padding 8
-                        , spacing 8
-                        , centerX
-                        ]
-                    )
+                |> List.map (viewTreeNode config viewValue (flipLayoutDirection direction))
+                |> List.map (Element.el [ centerX ])
                 |> List.intersperse separator
                 |> layout
 

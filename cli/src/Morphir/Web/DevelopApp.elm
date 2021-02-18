@@ -3,14 +3,14 @@ module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Route(..), 
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, column, el, fill, height, html, image, layout, link, minimum, none, padding, paddingXY, px, rgb, row, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignTop, column, el, fill, height, image, layout, link, minimum, none, padding, paddingXY, px, rgb, row, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input exposing (labelHidden)
 import Http
+import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
@@ -18,6 +18,7 @@ import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Edit as Edit
+import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Theme exposing (Theme)
@@ -500,7 +501,7 @@ httpMakeModel =
                         Ok result ->
                             ServerGetIRResponse result
                 )
-                DistributionCodec.decodeDistribution
+                CompilerCodec.decodeIR
         }
 
 
@@ -580,6 +581,7 @@ viewValue model distribution valueFQName valueDef =
             , state =
                 { expandedFunctions = Dict.empty
                 , variables = validArgValues
+                , theme = Theme.fromConfig Nothing
                 }
             , handlers =
                 { onReferenceClicked = ExpandReference

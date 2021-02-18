@@ -1,6 +1,6 @@
 module Morphir.Visual.Edit exposing (editFloat, editInt, editValue)
 
-import Element exposing (Element, height, paddingXY, px, shrink, text, width)
+import Element exposing (Element, height, paddingXY, px, shrink, width)
 import Element.Input as Input
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK.Basics as Basics

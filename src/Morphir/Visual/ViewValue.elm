@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, rgb, spacing, text, width)
+import Element exposing (Element, el, fill, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -15,6 +15,7 @@ import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperato
 import Morphir.Visual.Common exposing (definition, nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Config as Config exposing (Config)
+import Morphir.Visual.Theme exposing (mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -34,8 +35,8 @@ viewDefinition config ( _, _, valueName ) valueDef =
         _ =
             Debug.log "variables" config.state.variables
     in
-    Element.column [ spacing 20 ]
-        [ definition
+    Element.column [ mediumSpacing config.state.theme |> spacing ]
+        [ definition config
             (nameToText valueName)
             (viewValue config valueDef.body)
         , if Dict.isEmpty config.state.expandedFunctions then
@@ -43,33 +44,28 @@ viewDefinition config ( _, _, valueName ) valueDef =
 
           else
             Element.column
-                [ spacing 20 ]
-                [ Element.column
-                    [ spacing 20
-                    ]
-                    (config.state.expandedFunctions
-                        |> Dict.toList
-                        |> List.reverse
-                        |> List.map
-                            (\( ( _, _, localName ) as fqName, valDef ) ->
-                                Element.column
-                                    [ spacing 10
+                [ mediumSpacing config.state.theme |> spacing ]
+                (config.state.expandedFunctions
+                    |> Dict.toList
+                    |> List.reverse
+                    |> List.map
+                        (\( ( _, _, localName ) as fqName, valDef ) ->
+                            Element.column
+                                [ smallSpacing config.state.theme |> spacing ]
+                                [ definition config (nameToText localName) (viewValue config valDef.body)
+                                , Element.el
+                                    [ Font.bold
+                                    , Border.solid
+                                    , Border.rounded 4
+                                    , Background.color gray
+                                    , smallPadding config.state.theme |> padding
+                                    , smallSpacing config.state.theme |> spacing
+                                    , onClick (config.handlers.onReferenceClicked fqName True)
                                     ]
-                                    [ definition (nameToText localName)
-                                        (viewValue config valDef.body)
-                                    , Element.column
-                                        [ Font.bold
-                                        , Border.solid
-                                        , Border.rounded 5
-                                        , Background.color gray
-                                        , Element.padding 10
-                                        , onClick (config.handlers.onReferenceClicked fqName True)
-                                        ]
-                                        [ Element.text "Close" ]
-                                    ]
-                            )
-                    )
-                ]
+                                    (Element.text "Close")
+                                ]
+                        )
+                )
         ]
 
 
@@ -91,7 +87,7 @@ viewValueByValueType config typedValue =
             boolOperatorTree =
                 BoolOperatorTree.fromTypedValue typedValue
         in
-        ViewBoolOperatorTree.view (viewValueByLanguageFeature config) boolOperatorTree
+        ViewBoolOperatorTree.view config (viewValueByLanguageFeature config) boolOperatorTree
 
     else if Basics.isNumber valueType then
         let
@@ -99,7 +95,7 @@ viewValueByValueType config typedValue =
             arithmeticOperatorTree =
                 ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
         in
-        ViewArithmetic.view (viewValueByLanguageFeature config) arithmeticOperatorTree
+        ViewArithmetic.view config (viewValueByLanguageFeature config) arithmeticOperatorTree
 
     else
         viewValueByLanguageFeature config typedValue
@@ -118,7 +114,7 @@ viewValueByLanguageFeature config value =
                     ViewReference.view config (viewValue config) fQName
 
                 Value.Tuple tpe elems ->
-                    ViewTuple.view (viewValue config) elems
+                    ViewTuple.view config (viewValue config) elems
 
                 Value.List (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ]) items ->
                     ViewList.view config (viewValue config) itemType items
@@ -138,7 +134,7 @@ viewValueByLanguageFeature config value =
                         ( function, args ) =
                             Value.uncurryApply fun arg
                     in
-                    ViewApply.view (viewValue config) function args
+                    ViewApply.view config (viewValue config) function args
 
                 Value.LetDefinition tpe _ _ _ ->
                     let
@@ -178,21 +174,17 @@ viewValueByLanguageFeature config value =
                         ( definitions, inValueElem ) =
                             unnest config value
                     in
-                    column
-                        [ spacing 20 ]
+                    Element.column
+                        [ mediumSpacing config.state.theme |> spacing ]
                         [ inValueElem
-                        , column
-                            [ spacing 20
-                            ]
+                        , Element.column
+                            [ mediumSpacing config.state.theme |> spacing ]
                             (definitions
                                 |> List.map
                                     (\( defName, defElem ) ->
-                                        column
-                                            [ spacing 10
-                                            ]
-                                            [ definition (nameToText defName)
-                                                defElem
-                                            ]
+                                        Element.column
+                                            [ mediumSpacing config.state.theme |> spacing ]
+                                            [ definition config (nameToText defName) defElem ]
                                     )
                             )
                         ]
@@ -203,20 +195,18 @@ viewValueByLanguageFeature config value =
                 other ->
                     Element.column
                         [ Background.color (rgb 1 0.6 0.6)
-                        , Element.padding 5
-                        , Border.rounded 3
+                        , smallPadding config.state.theme |> padding
+                        , Border.rounded 6
                         ]
                         [ Element.el
-                            [ Element.padding 5
+                            [ smallPadding config.state.theme |> padding
                             , Font.bold
-
-                            --, Font.color (rgb 1 1 1)
                             ]
                             (Element.text "No visual mapping found for:")
                         , Element.el
                             [ Background.color (rgb 1 1 1)
-                            , Element.padding 5
-                            , Border.rounded 3
+                            , smallPadding config.state.theme |> padding
+                            , Border.rounded 6
                             , width fill
                             ]
                             (XRayView.viewValue XRayView.viewType other)
