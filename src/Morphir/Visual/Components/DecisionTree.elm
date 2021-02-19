@@ -63,13 +63,13 @@ highlightStateToBackground state =
     case state of
         Highlighted bool ->
             if bool then
-                "repeating-linear-gradient( 45deg, #606dbc, #606dbc 10px, #465298 10px, #465298 20px)"
-
-            else
                 "none"
 
+            else
+                "repeating-linear-gradient( 45deg, #606dbc, #606dbc 10px, #465298 10px, #465298 20px)"
+
         NotHighlighted ->
-            "none"
+             "none"
 
 
 highlighStateToBorderWidth : HighlightState -> Int
