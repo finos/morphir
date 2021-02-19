@@ -1,25 +1,3 @@
-module Morphir.SDK.DataSet exposing
-    ( DataSet, fromList, toList
-    , aggregateMap, aggregateMap2, aggregateMap3
-    , count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
-    )
-
-{-| This module contains functions specifically designed to work with large data sets.
-
-@docs DataSet, fromList, toList
-
-
-# Aggregations
-
-@docs aggregateMap, aggregateMap2, aggregateMap3
-
-
-## Operators
-
-@docs count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
-
--}
-
 {-
    Copyright 2020 Morgan Stanley
 
@@ -36,16 +14,32 @@ module Morphir.SDK.DataSet exposing
    limitations under the License.
 -}
 
-import AssocList as Dict exposing (Dict)
+
+module Morphir.SDK.Aggregate exposing
+    ( aggregateMap, aggregateMap2, aggregateMap3
+    , count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
+    , byKey, withFilter
+    )
+
+{-| This module contains functions specifically designed to work with large data sets.
 
 
-{-| Represents a data set where each row is of type `a`.
+# Aggregations
+
+@docs aggregateMap, aggregateMap2, aggregateMap3
+
+
+## Operators
+
+@docs count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
+
 -}
-type DataSet a
-    = DataSet (List a)
+
+import AssocList as Dict exposing (Dict)
+import Morphir.SDK.Key exposing (Key0, key0)
 
 
-type AggregateOp a
+type Operator a
     = Count
     | Sum (a -> Float)
     | Avg (a -> Float)
@@ -56,59 +50,75 @@ type AggregateOp a
 
 {-| Count the number of rows in a group.
 -}
-count : AggregateOp a
+count : Aggregation a Key0
 count =
-    Count
+    operatorToAggregation Count
 
 
 {-| Apply a function to each row that returns a numeric value and return the sum of the values.
 -}
-sumOf : (a -> Float) -> AggregateOp a
+sumOf : (a -> Float) -> Aggregation a Key0
 sumOf =
-    Sum
+    Sum >> operatorToAggregation
 
 
 {-| Apply a function to each row that returns a numeric value and return the average of the values.
 -}
-averageOf : (a -> Float) -> AggregateOp a
+averageOf : (a -> Float) -> Aggregation a Key0
 averageOf =
-    Avg
+    Avg >> operatorToAggregation
 
 
 {-| Apply a function to each row that returns a numeric value and return the minimum of the values.
 -}
-minimumOf : (a -> Float) -> AggregateOp a
+minimumOf : (a -> Float) -> Aggregation a Key0
 minimumOf =
-    Min
+    Min >> operatorToAggregation
 
 
 {-| Apply a function to each row that returns a numeric value and return the maximum of the values.
 -}
-maximumOf : (a -> Float) -> AggregateOp a
+maximumOf : (a -> Float) -> Aggregation a Key0
 maximumOf =
-    Max
+    Max >> operatorToAggregation
 
 
 {-| Apply two functions to each row that returns a numeric value and return the weighted of the values using the first
 function to get the weights.
 -}
-weightedAverageOf : (a -> Float) -> (a -> Float) -> AggregateOp a
-weightedAverageOf =
-    WAvg
+weightedAverageOf : (a -> Float) -> (a -> Float) -> Aggregation a Key0
+weightedAverageOf getWeight getValue =
+    operatorToAggregation (WAvg getWeight getValue)
 
 
-{-| Create a data set from a list.
--}
-fromList : List a -> DataSet a
-fromList list =
-    DataSet list
+type alias Aggregation a key =
+    { key : a -> key
+    , filter : a -> Bool
+    , operator : Operator a
+    }
 
 
-{-| Turn a data set into a list.
--}
-toList : DataSet a -> List a
-toList (DataSet list) =
-    list
+operatorToAggregation : Operator a -> Aggregation a Key0
+operatorToAggregation op =
+    { key = key0
+    , filter = always True
+    , operator = op
+    }
+
+
+byKey : (a -> key) -> Aggregation a oldKey -> Aggregation a key
+byKey key agg =
+    { key = key
+    , filter = agg.filter
+    , operator = agg.operator
+    }
+
+
+withFilter : (a -> Bool) -> Aggregation a key -> Aggregation a key
+withFilter filter agg =
+    { agg
+        | filter = filter
+    }
 
 
 {-| Map function that provides an aggregated value to the mapping function. The first argument is a tuple where the
@@ -147,21 +157,20 @@ out certain rows from the aggregation and the third argument is the aggregation 
             -}
 
 -}
-aggregateMap : ( a -> key1, a -> Bool, AggregateOp a ) -> (Float -> a -> b) -> DataSet a -> DataSet b
-aggregateMap ( key1, predicate1, op1 ) f (DataSet list) =
+aggregateMap : Aggregation a key1 -> (Float -> a -> b) -> List a -> List b
+aggregateMap agg1 f list =
     let
         aggregated1 : Dict key1 Float
         aggregated1 =
             list
-                |> List.filter predicate1
-                |> aggregateHelp key1 op1
+                |> List.filter agg1.filter
+                |> aggregateHelp agg1.key agg1.operator
     in
     list
         |> List.map
             (\a ->
-                f (aggregated1 |> Dict.get (key1 a) |> Maybe.withDefault 0) a
+                f (aggregated1 |> Dict.get (agg1.key a) |> Maybe.withDefault 0) a
             )
-        |> DataSet
 
 
 {-| Map function that provides two aggregated values to the mapping function. The first argument is a tuple where the
@@ -201,30 +210,29 @@ out certain rows from the aggregation and the third argument is the aggregation 
             -}
 
 -}
-aggregateMap2 : ( a -> key1, a -> Bool, AggregateOp a ) -> ( a -> key2, a -> Bool, AggregateOp a ) -> (Float -> Float -> a -> b) -> DataSet a -> DataSet b
-aggregateMap2 ( key1, predicate1, op1 ) ( key2, predicate2, op2 ) f (DataSet list) =
+aggregateMap2 : Aggregation a key1 -> Aggregation a key2 -> (Float -> Float -> a -> b) -> List a -> List b
+aggregateMap2 agg1 agg2 f list =
     let
         aggregated1 : Dict key1 Float
         aggregated1 =
             list
-                |> List.filter predicate1
-                |> aggregateHelp key1 op1
+                |> List.filter agg1.filter
+                |> aggregateHelp agg1.key agg1.operator
 
         aggregated2 : Dict key2 Float
         aggregated2 =
             list
-                |> List.filter predicate2
-                |> aggregateHelp key2 op2
+                |> List.filter agg2.filter
+                |> aggregateHelp agg2.key agg2.operator
     in
     list
         |> List.map
             (\a ->
                 a
                     |> f
-                        (aggregated1 |> Dict.get (key1 a) |> Maybe.withDefault 0)
-                        (aggregated2 |> Dict.get (key2 a) |> Maybe.withDefault 0)
+                        (aggregated1 |> Dict.get (agg1.key a) |> Maybe.withDefault 0)
+                        (aggregated2 |> Dict.get (agg2.key a) |> Maybe.withDefault 0)
             )
-        |> DataSet
 
 
 {-| Map function that provides three aggregated values to the mapping function. The first argument is a tuple where the
@@ -265,45 +273,44 @@ out certain rows from the aggregation and the third argument is the aggregation 
             -}
 
 -}
-aggregateMap3 : ( a -> key1, a -> Bool, AggregateOp a ) -> ( a -> key2, a -> Bool, AggregateOp a ) -> ( a -> key3, a -> Bool, AggregateOp a ) -> (Float -> Float -> Float -> a -> b) -> DataSet a -> DataSet b
-aggregateMap3 ( key1, predicate1, op1 ) ( key2, predicate2, op2 ) ( key3, predicate3, op3 ) f (DataSet list) =
+aggregateMap3 : Aggregation a key1 -> Aggregation a key2 -> Aggregation a key3 -> (Float -> Float -> Float -> a -> b) -> List a -> List b
+aggregateMap3 agg1 agg2 agg3 f list =
     let
         aggregated1 : Dict key1 Float
         aggregated1 =
             list
-                |> List.filter predicate1
-                |> aggregateHelp key1 op1
+                |> List.filter agg1.filter
+                |> aggregateHelp agg1.key agg1.operator
 
         aggregated2 : Dict key2 Float
         aggregated2 =
             list
-                |> List.filter predicate2
-                |> aggregateHelp key2 op2
+                |> List.filter agg2.filter
+                |> aggregateHelp agg2.key agg2.operator
 
         aggregated3 : Dict key3 Float
         aggregated3 =
             list
-                |> List.filter predicate3
-                |> aggregateHelp key3 op3
+                |> List.filter agg3.filter
+                |> aggregateHelp agg3.key agg3.operator
     in
     list
         |> List.map
             (\a ->
                 a
                     |> f
-                        (aggregated1 |> Dict.get (key1 a) |> Maybe.withDefault 0)
-                        (aggregated2 |> Dict.get (key2 a) |> Maybe.withDefault 0)
-                        (aggregated3 |> Dict.get (key3 a) |> Maybe.withDefault 0)
+                        (aggregated1 |> Dict.get (agg1.key a) |> Maybe.withDefault 0)
+                        (aggregated2 |> Dict.get (agg2.key a) |> Maybe.withDefault 0)
+                        (aggregated3 |> Dict.get (agg3.key a) |> Maybe.withDefault 0)
             )
-        |> DataSet
 
 
-aggregateHelp : (a -> key) -> AggregateOp a -> List a -> Dict key Float
-aggregateHelp getKey aggregateOp list =
+aggregateHelp : (a -> key) -> Operator a -> List a -> Dict key Float
+aggregateHelp getKey op list =
     let
-        aggregate : (a -> Float) -> (Float -> Float -> Float) -> Dict key Float
-        aggregate field op =
-            list
+        aggregate : (a -> Float) -> (Float -> Float -> Float) -> List a -> Dict key Float
+        aggregate getValue o sourceList =
+            sourceList
                 |> List.foldl
                     (\a dict ->
                         dict
@@ -311,10 +318,10 @@ aggregateHelp getKey aggregateOp list =
                                 (\currentValue ->
                                     case currentValue of
                                         Nothing ->
-                                            Just (field a)
+                                            Just (getValue a)
 
                                         Just value ->
-                                            Just (op value (field a))
+                                            Just (o value (getValue a))
                                 )
                     )
                     Dict.empty
@@ -330,29 +337,29 @@ aggregateHelp getKey aggregateOp list =
                             |> f a
                     )
 
-        sum : (a -> Float) -> Dict key Float
-        sum field =
-            aggregate field (+)
+        sum : (a -> Float) -> List a -> Dict key Float
+        sum getValue sourceList =
+            aggregate getValue (+) sourceList
     in
-    case aggregateOp of
+    case op of
         Count ->
-            sum (always 1)
+            sum (always 1) list
 
-        Sum field ->
-            sum field
+        Sum getValue ->
+            sum getValue list
 
-        Avg field ->
+        Avg getValue ->
             combine (/)
-                (sum field)
-                (sum (always 1))
+                (sum getValue list)
+                (sum (always 1) list)
 
-        Min field ->
-            aggregate field min
+        Min getValue ->
+            aggregate getValue min list
 
-        Max field ->
-            aggregate field max
+        Max getValue ->
+            aggregate getValue max list
 
-        WAvg weight value ->
+        WAvg getWeight getValue ->
             combine (/)
-                (sum (\a -> weight a * value a))
-                (sum weight)
+                (sum (\a -> getWeight a * getValue a) list)
+                (sum getWeight list)
