@@ -20,7 +20,7 @@ import Morphir.Type.ConstraintSet as ConstraintSet
 import Morphir.Type.Infer as Infer exposing (TypeError(..), UnificationError(..))
 import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
 import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variable)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variableByIndex)
 import Morphir.Type.SolutionMap as SolutionMap
 import Test exposing (Test, describe, test)
 
@@ -485,14 +485,14 @@ addSolutionTests =
         scenarios : List ( List ( Variable, MetaType ), ( Variable, MetaType ), List ( Variable, MetaType ) )
         scenarios =
             [ ( []
-              , ( variable 1, MetaVar (variable 1) )
-              , [ ( variable 1, MetaVar (variable 1) )
+              , ( variableByIndex 1, MetaVar (variableByIndex 1) )
+              , [ ( variableByIndex 1, MetaVar (variableByIndex 1) )
                 ]
               )
-            , ( [ ( variable 1, MetaVar (variable 2) )
+            , ( [ ( variableByIndex 1, MetaVar (variableByIndex 2) )
                 ]
-              , ( variable 1, MetaVar (variable 2) )
-              , [ ( variable 1, MetaVar (variable 2) )
+              , ( variableByIndex 1, MetaVar (variableByIndex 2) )
+              , [ ( variableByIndex 1, MetaVar (variableByIndex 2) )
                 ]
               )
             ]
@@ -505,7 +505,7 @@ addSolutionTests =
                         (\_ ->
                             solutionMap
                                 |> SolutionMap.fromList
-                                |> Infer.addSolution (MetaType.variable 0) testReferences newVar newSolution
+                                |> Infer.addSolution (MetaType.variableByIndex 0) testReferences newVar newSolution
                                 |> Expect.equal (Ok (SolutionMap.fromList expectedSolutionMap))
                         )
                 )
@@ -516,7 +516,7 @@ solvePositiveTests : Test
 solvePositiveTests =
     let
         t i =
-            variable i
+            variableByIndex i
 
         tvar i =
             MetaVar (t i)
@@ -588,7 +588,7 @@ solvePositiveTests =
                 (\index ( constraints, residualConstraints, expectedSolutionMap ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.solve (MetaType.variable 0) testReferences (ConstraintSet.fromList constraints)
+                            Infer.solve (MetaType.variableByIndex 0) testReferences (ConstraintSet.fromList constraints)
                                 |> Expect.equal (Ok ( ConstraintSet.fromList residualConstraints, SolutionMap.fromList expectedSolutionMap ))
                         )
                 )
@@ -599,7 +599,7 @@ solveNegativeTests : Test
 solveNegativeTests =
     let
         t i =
-            variable i
+            variableByIndex i
 
         tvar i =
             MetaVar (t i)
@@ -619,7 +619,7 @@ solveNegativeTests =
                 (\index ( constraints, expectedError ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.solve (MetaType.variable 0) testReferences (ConstraintSet.fromList constraints)
+                            Infer.solve (MetaType.variableByIndex 0) testReferences (ConstraintSet.fromList constraints)
                                 |> Expect.equal (Err expectedError)
                         )
                 )

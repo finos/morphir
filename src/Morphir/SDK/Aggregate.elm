@@ -19,6 +19,7 @@ module Morphir.SDK.Aggregate exposing
     ( aggregateMap, aggregateMap2, aggregateMap3
     , count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
     , byKey, withFilter
+    , Aggregation
     )
 
 {-| This module contains functions specifically designed to work with large data sets.
@@ -117,7 +118,7 @@ operatorToAggregation op =
            }
 
 -}
-byKey : (a -> key) -> Aggregation a oldKey -> Aggregation a key
+byKey : (a -> key) -> Aggregation a Key0 -> Aggregation a key
 byKey key agg =
     { key = key
     , filter = agg.filter
