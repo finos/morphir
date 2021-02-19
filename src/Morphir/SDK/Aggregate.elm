@@ -32,6 +32,7 @@ module Morphir.SDK.Aggregate exposing
 ## Operators
 
 @docs count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
+@docs byKey, withFilter
 
 -}
 
@@ -106,6 +107,16 @@ operatorToAggregation op =
     }
 
 
+{-| Changes the key of an aggregation. Usage:
+
+    count
+        |> byKey .key1
+        == { key = .key1
+           , filter = always True
+           , operator = Count
+           }
+
+-}
 byKey : (a -> key) -> Aggregation a oldKey -> Aggregation a key
 byKey key agg =
     { key = key
@@ -114,6 +125,16 @@ byKey key agg =
     }
 
 
+{-| Adds a filter to an aggregation. Usage:
+
+    count
+        |> withFilter (\a -> a.value < 0)
+        == { key = key0
+           , filter = \a -> a.value < 0
+           , operator = Count
+           }
+
+-}
 withFilter : (a -> Bool) -> Aggregation a key -> Aggregation a key
 withFilter filter agg =
     { agg
@@ -139,7 +160,7 @@ out certain rows from the aggregation and the third argument is the aggregation 
 
         testDataSet
             |> aggregateMap
-                ( .key1, always True, sumOf .value )
+                (sumOf .value |> byKey .key1)
                     (\\totalValue input ->
                         ( input, totalValue / input.value )
                     )
@@ -191,8 +212,8 @@ out certain rows from the aggregation and the third argument is the aggregation 
 
         testDataSet
             |> aggregateMap2
-                ( .key1, always True, sumOf .value )
-                ( .key2, always True, maximumOf .value )
+                (sumOf .value |> byKey .key1)
+                (maximumOf .value |> byKey .key2)
                 (\totalValue maxValue input ->
                     ( input, totalValue * maxValue / input.value )
                 )
@@ -253,9 +274,9 @@ out certain rows from the aggregation and the third argument is the aggregation 
 
         testDataSet
             |> aggregateMap3
-                ( .key1, always True, sumOf .value )
-                ( .key2, always True, maximumOf .value )
-                ( key2 .key1 .key2, minimumOf .value )
+                (sumOf .value |> byKey .key1)
+                (maximumOf .value |> byKey .key2)
+                (minimumOf .value |> byKey (key2 .key1 .key2))
                 (\totalValue maxValue minValue input ->
                     ( input, totalValue * maxValue / input.value + minValue )
                 )
