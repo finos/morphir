@@ -87,3 +87,8 @@ unemploymentRate unemployed employed =
 amortization : Float -> Float -> Float -> Float -> Float
 amortization p r n t =
     (p * r / n) / (1 - (1 + r / n) - n * t)
+
+amortization2 : Float -> Float -> Float -> Float -> Float
+amortization2 p r n t =
+        (p + r / n) / (1 - (1 + r / n) - n * t)
+

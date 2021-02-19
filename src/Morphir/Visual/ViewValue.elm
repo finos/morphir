@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, fill, padding, rgb, spacing, text, width)
+import Element exposing (Element, centerX, el, fill, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -120,7 +120,7 @@ viewValueByLanguageFeature config value =
                     ViewList.view config (viewValue config) itemType items
 
                 Value.Variable tpe name ->
-                    el []
+                    el [ width Element.fill, center]
                         (text (nameToText name))
 
                 Value.Reference tpe fQName ->

@@ -1,7 +1,8 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, column, fill, moveRight, padding, row, spacing, text, width)
+import Element exposing (Element, centerX, column, fill, moveRight, padding, row, spacing, text, width)
+import Element.Border as Border
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
 import Morphir.IR.Type exposing (Type)
@@ -47,32 +48,50 @@ view config viewValue functionValue argValues =
                         , localName |> Name.toCamelCase
                         ]
             in
-            inlineBinaryOperators
-                |> Dict.get functionName
-                |> Maybe.map
-                    (\functionText ->
-                        row
-                            [ width fill
-                            , smallSpacing config.state.theme |> spacing
-                            ]
-                            [ viewValue argValue1
-                            , text functionText
-                            , viewValue argValue2
-                            ]
-                    )
-                |> Maybe.withDefault
-                    (column
-                        [ smallSpacing config.state.theme |> spacing ]
-                        [ viewValue functionValue
-                        , column
-                            [ mediumPadding config.state.theme |> padding
-                            , smallSpacing config.state.theme |> spacing
-                            ]
-                            (argValues
-                                |> List.map viewValue
+                case Maybe.withDefault "" (Dict.get functionName inlineBinaryOperators) of
+                    "/" -> column
+                               [ width fill
+                               , smallSpacing config.state.theme |> spacing
+                               ]
+                               [
+                                   row [centerX
+                                        , width Element.fill
+                                        , Border.solid
+                                        , Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+                                        , padding 5] [
+
+                                      viewValue argValue1
+                                   ],
+                                   row [centerX
+                                        , width Element.fill, padding 2]
+                                   [
+                                      viewValue argValue2
+                                   ]
+                               ]
+                    _ -> Maybe.map
+                            (\functionText ->
+                                row
+                                    [ width fill
+                                    , smallSpacing config.state.theme |> spacing
+                                    ]
+                                    [ viewValue argValue1
+                                    , text functionText
+                                    , viewValue argValue2
+                                    ]
+                            ) (Dict.get functionName inlineBinaryOperators)
+                        |> Maybe.withDefault
+                            (column
+                                [ smallSpacing config.state.theme |> spacing ]
+                                [ viewValue functionValue
+                                , column
+                                    [ mediumPadding config.state.theme |> padding
+                                    , smallSpacing config.state.theme |> spacing
+                                    ]
+                                    (argValues
+                                        |> List.map viewValue
+                                    )
+                                ]
                             )
-                        ]
-                    )
 
         _ ->
             column

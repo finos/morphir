@@ -20,6 +20,8 @@ view config viewValue arithmeticOperatorTree =
                 ArithmeticValueLeaf typedValue1 ->
                     case arithmeticOperatorTree2 of
                         ArithmeticValueLeaf typedValue2 ->
+                            row [centerX, width Element.fill, spacing 5] [
+                            text "(",
                             column [ centerX, width Element.fill ]
                                 [ row [ centerX, width Element.fill ]
                                     [ row
@@ -41,6 +43,8 @@ view config viewValue arithmeticOperatorTree =
                                     ]
                                     [ viewValue typedValue2
                                     ]
+
+                                ], text ")"
                                 ]
 
                         ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees ->
@@ -114,8 +118,7 @@ view config viewValue arithmeticOperatorTree =
                                     column [ centerX, width Element.fill ]
                                         [ row [ centerX, width Element.fill ]
                                             [ row
-                                                [ width Element.fill
-                                                , spacing 5
+                                                [ spacing 5
                                                 , Border.color (rgb 0 0.7 0)
                                                 , paddingEach { left = 0, top = 0, right = 0, bottom = 4 }
                                                 , centerX
