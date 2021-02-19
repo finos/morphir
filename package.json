@@ -62,10 +62,8 @@
   },
   "dependencies": {
     "commander": "^4.1.1",
-    "elm-live": "^4.0.2",
     "express": "^4.17.1",
     "fs-extra": "^9.0.1",
     "get-stdin": "^8.0.0",
-    "morphir-insight-api": "^1.0.0"
   }
 }

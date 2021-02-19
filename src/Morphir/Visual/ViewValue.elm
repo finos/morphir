@@ -120,7 +120,7 @@ viewValueByLanguageFeature config value =
                     ViewList.view config (viewValue config) itemType items
 
                 Value.Variable tpe name ->
-                    el [ width Element.fill, center]
+                    el [ width fill, center]
                         (text (nameToText name))
 
                 Value.Reference tpe fQName ->

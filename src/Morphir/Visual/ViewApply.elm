@@ -63,7 +63,7 @@ view config viewValue functionValue argValues =
                                       viewValue argValue1
                                    ],
                                    row [centerX
-                                        , width Element.fill, padding 2]
+                                        , width Element.fill, padding 5]
                                    [
                                       viewValue argValue2
                                    ]

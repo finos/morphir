@@ -66,7 +66,7 @@ highlightStateToBackground state =
                 "none"
 
             else
-                "repeating-linear-gradient( 45deg, #606dbc, #606dbc 10px, #465298 10px, #465298 20px)"
+                "repeating-linear-gradient( 45deg, #565656, #9a9595 10px, #656565 10px, #797979 20px )"
 
         NotHighlighted ->
              "none"
