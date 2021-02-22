@@ -505,7 +505,7 @@ addSolutionTests =
                         (\_ ->
                             solutionMap
                                 |> SolutionMap.fromList
-                                |> Infer.addSolution (MetaType.variable 0) testReferences newVar newSolution
+                                |> Infer.addSolution testReferences newVar newSolution
                                 |> Expect.equal (Ok (SolutionMap.fromList expectedSolutionMap))
                         )
                 )
@@ -588,7 +588,7 @@ solvePositiveTests =
                 (\index ( constraints, residualConstraints, expectedSolutionMap ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.solve (MetaType.variable 0) testReferences (ConstraintSet.fromList constraints)
+                            Infer.solve testReferences (ConstraintSet.fromList constraints)
                                 |> Expect.equal (Ok ( ConstraintSet.fromList residualConstraints, SolutionMap.fromList expectedSolutionMap ))
                         )
                 )
@@ -619,7 +619,7 @@ solveNegativeTests =
                 (\index ( constraints, expectedError ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.solve (MetaType.variable 0) testReferences (ConstraintSet.fromList constraints)
+                            Infer.solve testReferences (ConstraintSet.fromList constraints)
                                 |> Expect.equal (Err expectedError)
                         )
                 )
