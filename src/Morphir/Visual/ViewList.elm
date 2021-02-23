@@ -15,7 +15,7 @@ view : Config msg -> (Value () (Type ()) -> Element msg) -> Type () -> List (Val
 view config viewValue itemType items =
     if List.isEmpty items then
         el []
-            (text "[]")
+            (text "[ ]")
 
     else
         case itemType of

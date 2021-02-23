@@ -14,9 +14,9 @@ import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Value.Interpreter as Interpreter
-import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Edit as Edit
 import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ViewValue as ViewValue
@@ -93,6 +93,7 @@ type Msg
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
     | ExpandReference FQName Bool
+    | ExpandVariable ( Float, Float ) (Maybe RawValue)
     | ValueFilterChanged String
     | ArgValueUpdated FQName Name RawValue
     | InvalidArgValue FQName Name String
@@ -170,6 +171,9 @@ update msg model =
             )
 
         InvalidArgValue fQName argName string ->
+            ( model, Cmd.none )
+
+        ExpandVariable ( clientX, clientY ) rawValue ->
             ( model, Cmd.none )
 
 
@@ -566,6 +570,13 @@ makeURL moduleName filterString viewType =
 viewValue : Model -> Distribution -> FQName -> Value.Definition () (Type ()) -> Element Msg
 viewValue model distribution valueFQName valueDef =
     let
+        popupScreen : PopupScreenRecord
+        popupScreen =
+            { clientX = 0
+            , clientY = 0
+            , variableValue = Nothing
+            }
+
         validArgValues : Dict Name (Value () ())
         validArgValues =
             model.argState
@@ -581,10 +592,13 @@ viewValue model distribution valueFQName valueDef =
             , state =
                 { expandedFunctions = Dict.empty
                 , variables = validArgValues
+                , popupVariables = popupScreen
                 , theme = Theme.fromConfig Nothing
                 }
             , handlers =
                 { onReferenceClicked = ExpandReference
+                , onHoverOver = ExpandVariable
+                , onHoverLeave = ExpandVariable
                 }
             }
     in

@@ -1,6 +1,7 @@
 port module Morphir.Web.Insight exposing (Model, Msg(..), init, main, receiveFunctionArguments, receiveFunctionName, subscriptions, update, view)
 
 import Browser
+import Browser.Dom exposing (getViewport)
 import Dict exposing (Dict)
 import Element exposing (padding, spacing)
 import Element.Font as Font
@@ -11,14 +12,15 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.QName as QName exposing (QName(..))
-import Morphir.IR.Value exposing (Value)
+import Morphir.IR.Value exposing (RawValue, Value)
 import Morphir.IR.Value.Codec as ValueCodec
 import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
-import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme, ThemeConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Theme.Codec exposing (decodeThemeConfig)
 import Morphir.Visual.ViewValue as ViewValue
+import Task
 
 
 
@@ -88,6 +90,8 @@ type Msg
     = FunctionNameReceived String
     | FunctionArgumentsReceived Decode.Value
     | ExpandReference FQName Bool
+    | ExpandVariable ( Float, Float ) (Maybe RawValue)
+    | SetPopupView ( Float, Float ) (Maybe RawValue)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -107,6 +111,14 @@ update msg model =
     in
     case msg of
         FunctionNameReceived qNameString ->
+            let
+                popupScreen : PopupScreenRecord
+                popupScreen =
+                    { clientX = 0
+                    , clientY = 0
+                    , variableValue = Nothing
+                    }
+            in
             case qNameString |> QName.fromString of
                 Just qName ->
                     getDistribution
@@ -124,6 +136,7 @@ update msg model =
                                                         , functionDefinition = funDef
                                                         , functionArguments = []
                                                         , expandedFunctions = Dict.empty
+                                                        , popupVariables = popupScreen
                                                         }
                                             }
                                         )
@@ -153,11 +166,11 @@ update msg model =
                 Err _ ->
                     ( { model | modelState = Failed "Received function arguments cannot be decoded" }, Cmd.none )
 
-        ExpandReference (( packageName, moduleName, localName ) as fqName) bool ->
+        ExpandReference (( packageName, moduleName, localName ) as fqName) isFunctionPresent ->
             case model.modelState of
                 FunctionsSet visualizationState ->
                     if visualizationState.expandedFunctions |> Dict.member fqName then
-                        case bool of
+                        case isFunctionPresent of
                             True ->
                                 ( { model | modelState = FunctionsSet { visualizationState | expandedFunctions = visualizationState.expandedFunctions |> Dict.remove fqName } }, Cmd.none )
 
@@ -177,6 +190,37 @@ update msg model =
                           }
                         , Cmd.none
                         )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ExpandVariable ( clientX, clientY ) maybeRawValue ->
+            let
+                scrollPosition =
+                    Task.perform (\viewports -> SetPopupView ( viewports.viewport.x + clientX, viewports.viewport.y + clientY ) maybeRawValue) getViewport
+            in
+            ( model, scrollPosition )
+
+        SetPopupView ( clientX, clientY ) maybeRawValue ->
+            case model.modelState of
+                FunctionsSet visualizationState ->
+                    let
+                        popupScreen : PopupScreenRecord
+                        popupScreen =
+                            { clientX = clientX
+                            , clientY = clientY
+                            , variableValue = maybeRawValue
+                            }
+                    in
+                    ( { model
+                        | modelState =
+                            FunctionsSet
+                                { visualizationState
+                                    | popupVariables = popupScreen
+                                }
+                      }
+                    , Cmd.none
+                    )
 
                 _ ->
                     ( model, Cmd.none )
@@ -225,10 +269,13 @@ view model =
                     , state =
                         { expandedFunctions = visualizationState.expandedFunctions
                         , variables = validArgValues
+                        , popupVariables = visualizationState.popupVariables
                         , theme = model.theme
                         }
                     , handlers =
                         { onReferenceClicked = ExpandReference
+                        , onHoverOver = ExpandVariable
+                        , onHoverLeave = ExpandVariable
                         }
                     }
 
