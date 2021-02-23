@@ -1,7 +1,7 @@
 module Morphir.Type.MetaTypeTests exposing (..)
 
 import Expect
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variable)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variableByIndex)
 import Test exposing (Test, describe, test)
 
 
@@ -19,11 +19,11 @@ substituteVariableTests =
     in
     describe "substituteVariable"
         [ assert "simple replace"
-            (MetaVar (variable 1))
-            ( variable 1, MetaVar (variable 2) )
-            (MetaVar (variable 2))
+            (MetaVar (variableByIndex 1))
+            ( variableByIndex 1, MetaVar (variableByIndex 2) )
+            (MetaVar (variableByIndex 2))
         , assert "no replace"
-            (MetaVar (variable 2))
-            ( variable 1, MetaVar (variable 3) )
-            (MetaVar (variable 2))
+            (MetaVar (variableByIndex 2))
+            ( variableByIndex 1, MetaVar (variableByIndex 3) )
+            (MetaVar (variableByIndex 2))
         ]

@@ -143,7 +143,7 @@ inferValueDefinition refs def =
         constraints : ConstraintSet
         constraints =
             constrainDefinition
-                (MetaType.variable 0)
+                (MetaType.variableByIndex 0)
                 { refs = refs
                 , vars = Dict.empty
                 }
@@ -187,7 +187,7 @@ annotateDefinition baseIndex def =
             def.inputTypes
                 |> List.indexedMap
                     (\index ( name, va, tpe ) ->
-                        ( name, ( va, MetaType.variable (baseIndex + index) ), tpe )
+                        ( name, ( va, MetaType.variableByIndex (baseIndex + index) ), tpe )
                     )
 
         ( annotatedBody, lastVarIndex ) =
@@ -207,7 +207,7 @@ annotateDefinition baseIndex def =
 annotateValue : Int -> Value ta va -> ( Value ta ( va, Variable ), Int )
 annotateValue baseIndex untypedValue =
     untypedValue
-        |> Value.indexedMapValue (\index va -> ( va, MetaType.variable index )) baseIndex
+        |> Value.indexedMapValue (\index va -> ( va, MetaType.variableByIndex index )) baseIndex
 
 
 type alias ConstrainState =

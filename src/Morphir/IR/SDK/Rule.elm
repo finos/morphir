@@ -25,6 +25,7 @@ import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics exposing (boolType)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.SDK.List exposing (listType)
+import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 
@@ -38,7 +39,7 @@ moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Rule", OpaqueTypeSpecification [ [ "a", "b" ] ] |> Documented "Type that represents an rule." )
+            [ ( Name.fromString "Rule", TypeAliasSpecification [ [ "rule" ] ] (tFun [ tVar "a" ] (maybeType () (tVar "b"))) |> Documented "Type that represents an rule." )
             ]
     , values =
         Dict.fromList
