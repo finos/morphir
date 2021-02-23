@@ -2,6 +2,7 @@ module Morphir.IR.Distribution exposing
     ( Distribution(..)
     , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
     , resolveTypeReference, resolveRecordConstructors
+    , lookupPackageName, lookupPackageSpecification
     )
 
 {-| A distribution is a complete package of Morphir types and functions with all their dependencies.
@@ -174,3 +175,19 @@ lookupValueDefinition (QName moduleName localName) distribution =
             packageDef
                 |> lookupModuleDefinition moduleName
                 |> Maybe.andThen (Module.lookupValueDefinition localName)
+
+
+lookupPackageSpecification : Distribution -> Package.Specification ()
+lookupPackageSpecification distribution =
+    case distribution of
+        Library _ _ packageDef ->
+            packageDef
+                |> Package.definitionToSpecificationWithPrivate
+                |> Package.mapSpecificationAttributes (\_ -> ())
+
+
+lookupPackageName : Distribution -> PackageName
+lookupPackageName distribution =
+    case distribution of
+        Library packageName _ _ ->
+            packageName
