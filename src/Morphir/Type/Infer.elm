@@ -2,6 +2,7 @@ module Morphir.Type.Infer exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.Compiler as Compiler
+import Morphir.IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -16,7 +17,7 @@ import Morphir.Type.Class as Class exposing (Class)
 import Morphir.Type.Constraint exposing (Constraint(..), class, equality)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
-import Morphir.Type.MetaTypeMapping exposing (LookupError(..), References, concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
+import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.SolutionMap as SolutionMap exposing (SolutionMap(..))
 import Set exposing (Set)
 
@@ -44,7 +45,7 @@ type UnificationError
     | FieldMismatch
 
 
-inferPackageDefinition : References -> Package.Definition () va -> Result (List Compiler.Error) (Package.Definition () ( va, Type () ))
+inferPackageDefinition : IR -> Package.Definition () va -> Result (List Compiler.Error) (Package.Definition () ( va, Type () ))
 inferPackageDefinition refs packageDef =
     packageDef.modules
         |> Dict.toList
@@ -62,7 +63,7 @@ inferPackageDefinition refs packageDef =
             )
 
 
-inferModuleDefinition : References -> ModuleName -> Module.Definition () va -> Result Compiler.Error (Module.Definition () ( va, Type () ))
+inferModuleDefinition : IR -> ModuleName -> Module.Definition () va -> Result Compiler.Error (Module.Definition () ( va, Type () ))
 inferModuleDefinition refs moduleName moduleDef =
     moduleDef.values
         |> Dict.toList
@@ -134,7 +135,7 @@ typeErrorToMessage typeError =
                 [ "Could not unify '", MetaType.toString metaType1, "' with '", MetaType.toString metaType2, "' because ", cause ]
 
 
-inferValueDefinition : References -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
+inferValueDefinition : IR -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
 inferValueDefinition refs def =
     let
         ( annotatedDef, lastVarIndex ) =
@@ -157,7 +158,7 @@ inferValueDefinition refs def =
         |> Result.map (applySolutionToAnnotatedDefinition annotatedDef)
 
 
-inferValue : References -> Value () va -> Result TypeError (TypedValue va)
+inferValue : IR -> Value () va -> Result TypeError (TypedValue va)
 inferValue refs untypedValue =
     let
         ( annotatedValue, lastVarIndex ) =
@@ -211,7 +212,7 @@ annotateValue baseIndex untypedValue =
 
 
 type alias ConstrainState =
-    { refs : References
+    { refs : IR
     , vars : Dict Name Variable
     }
 
@@ -913,12 +914,12 @@ constrainLiteral thisTypeVar literalValue =
             expectExactType MetaType.floatType
 
 
-solve : References -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
+solve : IR -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
 solve refs constraintSet =
     solveHelp refs SolutionMap.empty constraintSet
 
 
-solveHelp : References -> SolutionMap -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
+solveHelp : IR -> SolutionMap -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
 solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
     constraints
         |> validateConstraints
@@ -988,7 +989,7 @@ validateConstraints constraints =
         |> Result.mapError typeErrors
 
 
-findSubstitution : References -> List Constraint -> Result TypeError (Maybe SolutionMap)
+findSubstitution : IR -> List Constraint -> Result TypeError (Maybe SolutionMap)
 findSubstitution refs constraints =
     case constraints of
         [] ->
@@ -1011,7 +1012,7 @@ findSubstitution refs constraints =
                     findSubstitution refs restOfConstraints
 
 
-addSolution : References -> Variable -> MetaType -> SolutionMap -> Result TypeError SolutionMap
+addSolution : IR -> Variable -> MetaType -> SolutionMap -> Result TypeError SolutionMap
 addSolution refs var newSolution (SolutionMap currentSolutions) =
     case Dict.get var currentSolutions of
         Just existingSolution ->
@@ -1039,7 +1040,7 @@ addSolution refs var newSolution (SolutionMap currentSolutions) =
                 |> Ok
 
 
-mergeSolutions : References -> SolutionMap -> SolutionMap -> Result TypeError SolutionMap
+mergeSolutions : IR -> SolutionMap -> SolutionMap -> Result TypeError SolutionMap
 mergeSolutions refs (SolutionMap newSolutions) currentSolutions =
     newSolutions
         |> Dict.toList
@@ -1051,7 +1052,7 @@ mergeSolutions refs (SolutionMap newSolutions) currentSolutions =
             (Ok currentSolutions)
 
 
-concatSolutions : References -> List SolutionMap -> Result TypeError SolutionMap
+concatSolutions : IR -> List SolutionMap -> Result TypeError SolutionMap
 concatSolutions refs solutionMaps =
     solutionMaps
         |> List.foldl
@@ -1065,7 +1066,7 @@ concatSolutions refs solutionMaps =
             (Ok SolutionMap.empty)
 
 
-unifyMetaType : References -> List FQName -> MetaType -> MetaType -> Result TypeError SolutionMap
+unifyMetaType : IR -> List FQName -> MetaType -> MetaType -> Result TypeError SolutionMap
 unifyMetaType refs aliases metaType1 metaType2 =
     if metaType1 == metaType2 then
         Ok SolutionMap.empty
@@ -1102,7 +1103,7 @@ unifyVariable aliases var1 metaType2 =
     Ok (SolutionMap.singleton var1 (wrapInAliases aliases metaType2))
 
 
-unifyTuple : References -> List FQName -> List MetaType -> MetaType -> Result TypeError SolutionMap
+unifyTuple : IR -> List FQName -> List MetaType -> MetaType -> Result TypeError SolutionMap
 unifyTuple refs aliases elems1 metaType2 =
     case metaType2 of
         MetaVar var2 ->
@@ -1122,7 +1123,7 @@ unifyTuple refs aliases elems1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (MetaTuple elems1) metaType2)
 
 
-unifyRef : References -> List FQName -> FQName -> MetaType -> Result TypeError SolutionMap
+unifyRef : IR -> List FQName -> FQName -> MetaType -> Result TypeError SolutionMap
 unifyRef refs aliases ref1 metaType2 =
     case metaType2 of
         MetaAlias alias subject2 ->
@@ -1145,7 +1146,7 @@ unifyRef refs aliases ref1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (MetaRef ref1) metaType2)
 
 
-unifyApply : References -> List FQName -> MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
+unifyApply : IR -> List FQName -> MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
 unifyApply refs aliases fun1 arg1 metaType2 =
     case metaType2 of
         MetaAlias alias subject2 ->
@@ -1165,7 +1166,7 @@ unifyApply refs aliases fun1 arg1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (MetaApply fun1 arg1) metaType2)
 
 
-unifyFun : References -> List FQName -> MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
+unifyFun : IR -> List FQName -> MetaType -> MetaType -> MetaType -> Result TypeError SolutionMap
 unifyFun refs aliases arg1 return1 metaType2 =
     case metaType2 of
         MetaAlias alias subject2 ->
@@ -1185,7 +1186,7 @@ unifyFun refs aliases arg1 return1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (MetaFun arg1 return1) metaType2)
 
 
-unifyRecord : References -> List FQName -> Maybe Variable -> Dict Name MetaType -> MetaType -> Result TypeError SolutionMap
+unifyRecord : IR -> List FQName -> Maybe Variable -> Dict Name MetaType -> MetaType -> Result TypeError SolutionMap
 unifyRecord refs aliases extends1 fields1 metaType2 =
     case metaType2 of
         MetaAlias alias subject2 ->
@@ -1225,7 +1226,7 @@ unifyRecord refs aliases extends1 fields1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (MetaRecord extends1 fields1) metaType2)
 
 
-unifyFields : References -> Maybe Variable -> Dict Name MetaType -> Maybe Variable -> Dict Name MetaType -> Result TypeError ( Dict Name MetaType, SolutionMap )
+unifyFields : IR -> Maybe Variable -> Dict Name MetaType -> Maybe Variable -> Dict Name MetaType -> Result TypeError ( Dict Name MetaType, SolutionMap )
 unifyFields refs oldExtends oldFields newExtends newFields =
     let
         extraOldFields : Dict Name MetaType
