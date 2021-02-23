@@ -262,25 +262,11 @@ valueToNode tag value =
                 [ valueToNode (Just "subject") subject ]
 
         Value.Apply _ fun arg ->
-            let
-                ( bottomFun, args ) =
-                    Value.uncurryApply fun arg
-
-                funChild =
-                    valueToNode (Just "func") bottomFun
-
-                argsChild =
-                    args
-                        |> List.indexedMap
-                            (\index argChild ->
-                                valueToNode
-                                    (Just (String.join " " [ "arg", String.fromInt (index + 1) ]))
-                                    argChild
-                            )
-            in
             TreeNode tag
                 (ValueNode value)
-                (funChild :: argsChild)
+                [ valueToNode (Just "fun") fun
+                , valueToNode (Just "arg") arg
+                ]
 
         Value.Lambda _ arg body ->
             TreeNode tag

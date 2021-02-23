@@ -19,6 +19,7 @@ module Morphir.IR exposing
     ( IR
     , fromPackageSpecifications, fromDistribution
     , lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification
+    , empty
     )
 
 {-| This module contains data structures and functions to make working with the IR easier and more efficient.
@@ -34,6 +35,11 @@ module Morphir.IR exposing
 # Lookups
 
 @docs lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification
+
+
+# Utilities
+
+@docs empty
 
 -}
 
@@ -52,6 +58,16 @@ type alias IR =
     { valueSpecifications : Dict FQName (Value.Specification ())
     , typeSpecifications : Dict FQName (Type.Specification ())
     , typeConstructors : Dict FQName ( FQName, List Name, List ( Name, Type () ) )
+    }
+
+
+{-| Creates and empty IR with no types or values.
+-}
+empty : IR
+empty =
+    { valueSpecifications = Dict.empty
+    , typeSpecifications = Dict.empty
+    , typeConstructors = Dict.empty
     }
 
 

@@ -44,6 +44,11 @@ fromList list =
     List.foldl insert empty list
 
 
+toList : ConstraintSet -> List Constraint
+toList (ConstraintSet list) =
+    list
+
+
 union : ConstraintSet -> ConstraintSet -> ConstraintSet
 union constraintSet1 (ConstraintSet constraints2) =
     List.foldl insert constraintSet1 constraints2

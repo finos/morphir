@@ -35,6 +35,11 @@ fromList list =
         |> SolutionMap
 
 
+toList : SolutionMap -> List ( Variable, MetaType )
+toList (SolutionMap dict) =
+    dict |> Dict.toList
+
+
 get : Variable -> SolutionMap -> Maybe MetaType
 get var (SolutionMap dict) =
     Dict.get var dict
@@ -89,29 +94,41 @@ findSubstitution refs constraints =
 
 addSolution : IR -> Variable -> MetaType -> SolutionMap -> Result UnificationError SolutionMap
 addSolution refs var newSolution (SolutionMap currentSolutions) =
+    let
+        substitutedNewSolution : MetaType
+        substitutedNewSolution =
+            currentSolutions
+                |> Dict.toList
+                |> List.foldl
+                    (\( currentVar, currentMetaType ) soFar ->
+                        soFar
+                            |> MetaType.substituteVariable currentVar currentMetaType
+                    )
+                    newSolution
+    in
     case Dict.get var currentSolutions of
         Just existingSolution ->
             -- Unify with the existing solution
-            unifyMetaType refs [] existingSolution newSolution
+            unifyMetaType refs [] existingSolution substitutedNewSolution
                 |> Result.map
                     (\(SolutionMap newSubstitutions) ->
                         -- If it unifies apply the substitutions to the existing solution and add all new substitutions
-                        SolutionMap
-                            (currentSolutions
-                                |> Dict.insert var
-                                    (existingSolution
-                                        |> MetaType.substituteVariables (Dict.toList newSubstitutions)
-                                    )
-                                |> Dict.union newSubstitutions
-                            )
+                        currentSolutions
+                            |> Dict.insert var
+                                (existingSolution
+                                    |> MetaType.substituteVariables (Dict.toList newSubstitutions)
+                                )
+                            |> Dict.union newSubstitutions
+                            |> SolutionMap
+                            |> substituteVariable var substitutedNewSolution
                     )
 
         Nothing ->
             -- Simply substitute and insert the new solution
             currentSolutions
-                |> Dict.insert var newSolution
+                |> Dict.insert var substitutedNewSolution
                 |> SolutionMap
-                |> substituteVariable var newSolution
+                |> substituteVariable var substitutedNewSolution
                 |> Ok
 
 
