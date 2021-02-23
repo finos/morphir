@@ -2,6 +2,7 @@ module Morphir.Type.InferTests exposing (..)
 
 import Dict exposing (Dict)
 import Expect
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -25,7 +26,7 @@ import Morphir.Type.SolutionMap as SolutionMap
 import Test exposing (Test, describe, test)
 
 
-testReferences : Dict PackageName (Package.Specification ())
+testReferences : IR
 testReferences =
     Dict.fromList
         [ ( [ [ "morphir" ], [ "s", "d", "k" ] ]
@@ -69,6 +70,7 @@ testReferences =
           , BooksAndRecordsTests.packageSpec
           )
         ]
+        |> IR.fromPackageSpecifications
 
 
 positiveOutcomes : List (Value () (Type ()))

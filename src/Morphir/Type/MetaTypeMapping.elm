@@ -20,12 +20,12 @@ type LookupError
 
 
 lookupConstructor : Variable -> IR -> FQName -> Result LookupError MetaType
-lookupConstructor baseVar ir (( packageName, moduleName, ctorName ) as ctorFQN) =
+lookupConstructor baseVar ir ctorFQN =
     ir
         |> IR.lookupTypeConstructor ctorFQN
         |> Maybe.map
-            (\( _, paramNames, ctorArgs ) ->
-                ctorToMetaType baseVar ir (MetaRef ( packageName, moduleName, ctorName )) paramNames (ctorArgs |> List.map Tuple.second)
+            (\( typeFQN, paramNames, ctorArgs ) ->
+                ctorToMetaType baseVar ir (MetaRef typeFQN) paramNames (ctorArgs |> List.map Tuple.second)
             )
         |> Result.fromMaybe (CouldNotFindConstructor ctorFQN)
 

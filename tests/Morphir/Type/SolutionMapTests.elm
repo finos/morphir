@@ -2,7 +2,7 @@ module Morphir.Type.SolutionMapTests exposing (..)
 
 import Dict
 import Expect
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variable)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variableByIndex)
 import Morphir.Type.SolutionMap as SolutionMap exposing (SolutionMap)
 import Test exposing (Test, describe, test)
 
@@ -22,22 +22,22 @@ substituteVariableTests =
     describe "substituteVariable"
         [ assert "substitute variable"
             (SolutionMap.fromList
-                [ ( variable 0, MetaVar (variable 1) )
+                [ ( variableByIndex 0, MetaVar (variableByIndex 1) )
                 ]
             )
-            ( variable 1, MetaVar (variable 2) )
+            ( variableByIndex 1, MetaVar (variableByIndex 2) )
             (SolutionMap.fromList
-                [ ( variable 0, MetaVar (variable 2) )
+                [ ( variableByIndex 0, MetaVar (variableByIndex 2) )
                 ]
             )
         , assert "substitute extensible record"
             (SolutionMap.fromList
-                [ ( variable 0, MetaRecord (Just (variable 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variable 3) ) ]) )
+                [ ( variableByIndex 0, MetaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]) )
                 ]
             )
-            ( variable 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variable 3) ) ])) )
+            ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
             (SolutionMap.fromList
-                [ ( variable 0, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variable 3) ) ])) )
+                [ ( variableByIndex 0, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
                 ]
             )
         ]

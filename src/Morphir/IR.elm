@@ -17,7 +17,7 @@
 
 module Morphir.IR exposing
     ( IR
-    , fromDistribution
+    , fromPackageSpecifications, fromDistribution
     , lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification
     )
 
@@ -28,7 +28,7 @@ module Morphir.IR exposing
 
 # Conversions
 
-@docs fromDistribution
+@docs fromPackageSpecifications, fromDistribution
 
 
 # Lookups
@@ -60,6 +60,19 @@ is optimized for efficient in-memory processing.
 -}
 fromDistribution : Distribution -> IR
 fromDistribution (Distribution.Library libraryName dependencies packageDef) =
+    let
+        packageSpecs : Dict PackageName (Package.Specification ())
+        packageSpecs =
+            dependencies
+                |> Dict.insert libraryName (packageDef |> Package.definitionToSpecificationWithPrivate)
+    in
+    fromPackageSpecifications packageSpecs
+
+
+{-| Turn a dictionary of package specifications into an `IR`.
+-}
+fromPackageSpecifications : Dict PackageName (Package.Specification ()) -> IR
+fromPackageSpecifications packageSpecs =
     let
         packageValueSpecifications : PackageName -> Package.Specification () -> List ( FQName, Value.Specification () )
         packageValueSpecifications packageName packageSpec =
@@ -113,26 +126,15 @@ fromDistribution (Distribution.Library libraryName dependencies packageDef) =
                                 )
                     )
 
-        flattenDependencies : (PackageName -> Package.Specification () -> List ( FQName, a )) -> Dict FQName a
-        flattenDependencies f =
-            dependencies
+        flatten : (PackageName -> Package.Specification () -> List ( FQName, a )) -> Dict FQName a
+        flatten f =
+            packageSpecs
                 |> Dict.toList
                 |> List.concatMap
                     (\( packageName, packageSpec ) ->
                         f packageName packageSpec
                     )
                 |> Dict.fromList
-
-        flattenLibrary : (PackageName -> Package.Specification () -> List ( FQName, a )) -> Dict FQName a
-        flattenLibrary f =
-            f libraryName (packageDef |> Package.definitionToSpecificationWithPrivate)
-                |> Dict.fromList
-
-        flatten : (PackageName -> Package.Specification () -> List ( FQName, a )) -> Dict FQName a
-        flatten f =
-            Dict.union
-                (flattenDependencies f)
-                (flattenLibrary f)
     in
     { valueSpecifications = flatten packageValueSpecifications
     , typeSpecifications = flatten packageTypeSpecifications
