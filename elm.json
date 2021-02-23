@@ -15,6 +15,7 @@
         "Morphir.SDK.Key",
         "Morphir.SDK.StatefulApp",
         "Morphir.SDK.Aggregate",
+        "Morphir.IR",
         "Morphir.IR.Name",
         "Morphir.IR.Path",
         "Morphir.IR.QName",

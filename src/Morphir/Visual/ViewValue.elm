@@ -9,6 +9,7 @@ import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events.Extra.Mouse exposing (onLeave, onOver)
 import Morphir.Elm.Frontend as Frontend
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
@@ -238,12 +239,13 @@ viewPopup config =
         [ case config.state.popupVariables.variableValue of
             Just value ->
                 let
-                    references : MetaTypeMapping.References
+                    references : IR
                     references =
                         Frontend.defaultDependencies
                             |> Dict.insert
                                 (Distribution.lookupPackageName config.irContext.distribution)
                                 (Distribution.lookupPackageSpecification config.irContext.distribution)
+                            |> IR.fromPackageSpecifications
 
                     typedVal : Result TypeError TypedValue
                     typedVal =

@@ -17,7 +17,7 @@
 
 port module Morphir.Elm.CLI exposing (..)
 
-import Dict
+import Dict exposing (Dict)
 import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
 import Morphir.Compiler as Compiler
@@ -26,9 +26,10 @@ import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, Sourc
 import Morphir.Elm.Frontend.Codec exposing (decodePackageInfo)
 import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.Package as Package
+import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type exposing (Type)
 import Morphir.Type.Infer as Infer
 import Morphir.Type.MetaTypeMapping as MetaTypeMapping
@@ -86,14 +87,15 @@ update msg model =
                                                     |> Package.definitionToSpecificationWithPrivate
                                                     |> Package.mapSpecificationAttributes (\_ -> ())
 
-                                            references : MetaTypeMapping.References
-                                            references =
+                                            ir : IR
+                                            ir =
                                                 Frontend.defaultDependencies
                                                     |> Dict.insert packageInfo.name thisPackageSpec
+                                                    |> IR.fromPackageSpecifications
                                         in
                                         packageDef
                                             |> Package.mapDefinitionAttributes (\_ -> ()) identity
-                                            |> Infer.inferPackageDefinition references
+                                            |> Infer.inferPackageDefinition ir
                                     )
                     in
                     ( model

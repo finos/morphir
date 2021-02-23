@@ -17,7 +17,7 @@ substituteVariableTests =
                         |> Expect.equal expected
                 )
     in
-    describe "addSolution"
+    describe "substituteVariable"
         [ assert "simple replace"
             (MetaVar (variableByIndex 1))
             ( variableByIndex 1, MetaVar (variableByIndex 2) )
