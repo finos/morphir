@@ -1,21 +1,27 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, fill, padding, rgb, spacing, text, width)
+import Element exposing (Element, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font exposing (..)
+import Html.Attributes exposing (style)
+import Html.Events.Extra.Mouse exposing (onLeave, onOver)
+import Morphir.Elm.Frontend as Frontend
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
+import Morphir.Type.Infer as Infer exposing (TypeError)
+import Morphir.Type.MetaTypeMapping as MetaTypeMapping
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (definition, nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Config as Config exposing (Config)
-import Morphir.Visual.Theme exposing (mediumSpacing, smallPadding, smallSpacing)
+import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -34,11 +40,14 @@ viewDefinition config ( _, _, valueName ) valueDef =
     let
         _ =
             Debug.log "variables" config.state.variables
+
+        definitionElem =
+            definition config
+                (nameToText valueName)
+                (viewValue config valueDef.body)
     in
     Element.column [ mediumSpacing config.state.theme |> spacing ]
-        [ definition config
-            (nameToText valueName)
-            (viewValue config valueDef.body)
+        [ el [ Element.inFront (viewPopup config) ] definitionElem
         , if Dict.isEmpty config.state.expandedFunctions then
             Element.none
 
@@ -120,7 +129,15 @@ viewValueByLanguageFeature config value =
                     ViewList.view config (viewValue config) itemType items
 
                 Value.Variable tpe name ->
-                    el []
+                    let
+                        variableValue : Maybe RawValue
+                        variableValue =
+                            Dict.get name config.state.variables
+                    in
+                    el
+                        [ htmlAttribute (onOver (\event -> config.handlers.onHoverOver event.clientPos variableValue))
+                        , htmlAttribute (onLeave (\event -> config.handlers.onHoverLeave event.clientPos Nothing))
+                        ]
                         (text (nameToText name))
 
                 Value.Reference tpe fQName ->
@@ -213,3 +230,62 @@ viewValueByLanguageFeature config value =
                         ]
     in
     valueElem
+
+
+viewPopup : Config msg -> Element msg
+viewPopup config =
+    Element.column []
+        [ case config.state.popupVariables.variableValue of
+            Just value ->
+                let
+                    references : MetaTypeMapping.References
+                    references =
+                        Frontend.defaultDependencies
+                            |> Dict.insert
+                                (Distribution.lookupPackageName config.irContext.distribution)
+                                (Distribution.lookupPackageSpecification config.irContext.distribution)
+
+                    typedVal : Result TypeError TypedValue
+                    typedVal =
+                        Infer.inferValue references value
+                            |> Result.andThen
+                                (\typedValue ->
+                                    typedValue
+                                        |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)
+                                        |> Ok
+                                )
+                in
+                case typedVal of
+                    Ok typedValue ->
+                        el
+                            [ Background.color gray
+                            , Font.bold
+                            , htmlAttribute (style "border-style" "solid")
+                            , htmlAttribute (style "border-width" "5px")
+                            , htmlAttribute (style "text-align" "center")
+                            , htmlAttribute (style "padding" ((mediumPadding config.state.theme |> String.fromInt) ++ "px"))
+                            , htmlAttribute (style "position" "absolute")
+                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
+                            , htmlAttribute (style "top" (String.fromFloat config.state.popupVariables.clientY ++ "px"))
+                            , htmlAttribute (style "left" (String.fromFloat config.state.popupVariables.clientX ++ "px"))
+                            ]
+                            (viewValue config typedValue)
+
+                    Err error ->
+                        el
+                            [ Background.color gray
+                            , Font.bold
+                            , htmlAttribute (style "border-style" "solid")
+                            , htmlAttribute (style "border-width" "5px")
+                            , htmlAttribute (style "text-align" "center")
+                            , htmlAttribute (style "padding" ((mediumPadding config.state.theme |> String.fromInt) ++ "px"))
+                            , htmlAttribute (style "position" "absolute")
+                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
+                            , htmlAttribute (style "top" (String.fromFloat config.state.popupVariables.clientY ++ "px"))
+                            , htmlAttribute (style "left" (String.fromFloat config.state.popupVariables.clientX ++ "px"))
+                            ]
+                            (text (Infer.typeErrorToMessage error))
+
+            Nothing ->
+                el [] (text "")
+        ]
