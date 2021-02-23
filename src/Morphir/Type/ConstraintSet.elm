@@ -3,7 +3,7 @@ module Morphir.Type.ConstraintSet exposing (..)
 import Dict
 import Morphir.Type.Constraint as Constraint exposing (Constraint(..))
 import Morphir.Type.MetaType exposing (MetaType, Variable)
-import Morphir.Type.SolutionMap exposing (SolutionMap(..))
+import Morphir.Type.Solve exposing (SolutionMap(..))
 
 
 type ConstraintSet

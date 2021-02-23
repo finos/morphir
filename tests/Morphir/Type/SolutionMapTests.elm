@@ -3,7 +3,7 @@ module Morphir.Type.SolutionMapTests exposing (..)
 import Dict
 import Expect
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variableByIndex)
-import Morphir.Type.SolutionMap as SolutionMap exposing (SolutionMap)
+import Morphir.Type.Solve as SolutionMap exposing (SolutionMap)
 import Test exposing (Test, describe, test)
 
 

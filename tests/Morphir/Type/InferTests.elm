@@ -18,11 +18,11 @@ import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Type.Class as Class
 import Morphir.Type.Constraint exposing (Constraint, class, equality)
 import Morphir.Type.ConstraintSet as ConstraintSet
-import Morphir.Type.Infer as Infer exposing (TypeError(..), UnificationError(..))
+import Morphir.Type.Infer as Infer exposing (TypeError(..))
 import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
 import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variableByIndex)
-import Morphir.Type.SolutionMap as SolutionMap
+import Morphir.Type.Solve as Solve exposing (UnificationError(..), UnificationErrorType(..))
 import Test exposing (Test, describe, test)
 
 
@@ -377,14 +377,14 @@ negativeOutcomes =
             (Value.Literal 2 (FloatLiteral 1))
             (Value.Literal 3 (IntLiteral 2))
             (Value.Literal 4 (IntLiteral 3))
-      , CouldNotUnify RefMismatch MetaType.boolType MetaType.floatType
+      , UnifyError (CouldNotUnify RefMismatch MetaType.boolType MetaType.floatType)
       )
     , ( Value.List 1
             [ Value.Literal 2 (IntLiteral 2)
             , Value.Literal 3 (FloatLiteral 3)
             , Value.Literal 4 (BoolLiteral False)
             ]
-      , CouldNotUnify RefMismatch MetaType.floatType MetaType.boolType
+      , UnifyError (CouldNotUnify RefMismatch MetaType.floatType MetaType.boolType)
       )
     ]
 
@@ -506,9 +506,9 @@ addSolutionTests =
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
                             solutionMap
-                                |> SolutionMap.fromList
-                                |> Infer.addSolution testReferences newVar newSolution
-                                |> Expect.equal (Ok (SolutionMap.fromList expectedSolutionMap))
+                                |> Solve.fromList
+                                |> Solve.addSolution testReferences newVar newSolution
+                                |> Expect.equal (Ok (Solve.fromList expectedSolutionMap))
                         )
                 )
         )
@@ -591,7 +591,7 @@ solvePositiveTests =
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
                             Infer.solve testReferences (ConstraintSet.fromList constraints)
-                                |> Expect.equal (Ok ( ConstraintSet.fromList residualConstraints, SolutionMap.fromList expectedSolutionMap ))
+                                |> Expect.equal (Ok ( ConstraintSet.fromList residualConstraints, Solve.fromList expectedSolutionMap ))
                         )
                 )
         )

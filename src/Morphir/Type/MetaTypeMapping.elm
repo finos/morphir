@@ -8,7 +8,7 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
-import Morphir.Type.SolutionMap as SolutionMap exposing (SolutionMap)
+import Morphir.Type.Solve as SolutionMap exposing (SolutionMap)
 import Set exposing (Set)
 
 
