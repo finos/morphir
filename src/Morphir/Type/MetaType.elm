@@ -19,8 +19,8 @@ type MetaType
 toString : MetaType -> String
 toString metaType =
     case metaType of
-        MetaVar ( i, j ) ->
-            "var_" ++ String.fromInt i ++ "_" ++ String.fromInt j
+        MetaVar ( n, i, j ) ->
+            "var_" ++ n ++ "_" ++ String.fromInt i ++ "_" ++ String.fromInt j
 
         MetaRef fQName ->
             FQName.toString fQName
@@ -32,8 +32,8 @@ toString metaType =
             let
                 prefix =
                     case extends of
-                        Just ( i, j ) ->
-                            "var_" ++ String.fromInt i ++ "_" ++ String.fromInt j ++ " | "
+                        Just ( n, i, j ) ->
+                            "var_" ++ n ++ "_" ++ String.fromInt i ++ "_" ++ String.fromInt j ++ " | "
 
                         Nothing ->
                             ""
@@ -67,22 +67,27 @@ toString metaType =
 
 
 type alias Variable =
-    ( Int, Int )
+    ( String, Int, Int )
 
 
-variable : Int -> Variable
-variable i =
-    ( i, 0 )
+variableByIndex : Int -> Variable
+variableByIndex i =
+    ( "t", i, 0 )
+
+
+variableByName : Name -> Variable
+variableByName name =
+    ( name |> Name.toCamelCase, 0, 0 )
 
 
 subVariable : Variable -> Variable
-subVariable ( i, s ) =
-    ( i, s + 1 )
+subVariable ( n, i, s ) =
+    ( n, i, s + 1 )
 
 
 toName : Variable -> Name
-toName ( i, s ) =
-    [ "t", String.fromInt i, String.fromInt s ]
+toName ( n, i, s ) =
+    [ n, String.fromInt i, String.fromInt s ]
 
 
 substituteVariable : Variable -> MetaType -> MetaType -> MetaType

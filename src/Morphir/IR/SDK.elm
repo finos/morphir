@@ -21,6 +21,7 @@ import Dict exposing (Dict)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.SDK.Aggregate as Aggregate
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Char
 import Morphir.IR.SDK.Decimal as Decimal
@@ -68,6 +69,7 @@ packageSpec =
             , ( [ [ "int" ] ], Decimal.moduleSpec )
             , ( [ [ "number" ] ], Number.moduleSpec )
             , ( [ [ "key" ] ], Key.moduleSpec )
+            , ( [ [ "aggregate" ] ], Aggregate.moduleSpec )
             ]
     }
 
