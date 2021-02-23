@@ -32,7 +32,7 @@ import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.Theme.Light exposing (gray)
+import Morphir.Web.Theme.Light exposing (gray, silver)
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
@@ -66,7 +66,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
                                     [ Font.bold
                                     , Border.solid
                                     , Border.rounded 4
-                                    , Background.color gray
+                                    , Background.color silver
                                     , smallPadding config.state.theme |> padding
                                     , smallSpacing config.state.theme |> spacing
                                     , onClick (config.handlers.onReferenceClicked fqName True)
@@ -258,12 +258,17 @@ viewPopup config =
                 case typedVal of
                     Ok typedValue ->
                         el
-                            [ Background.color gray
+                            [ Border.shadow
+                                { offset = ( 2, 2 )
+                                , size = 2
+                                , blur = 2
+                                , color = gray
+                                }
+                            , Background.color silver
                             , Font.bold
-                            , htmlAttribute (style "border-style" "solid")
-                            , htmlAttribute (style "border-width" "5px")
-                            , htmlAttribute (style "text-align" "center")
-                            , htmlAttribute (style "padding" ((mediumPadding config.state.theme |> String.fromInt) ++ "px"))
+                            , Border.rounded 4
+                            , Font.center
+                            , mediumPadding config.state.theme |> padding
                             , htmlAttribute (style "position" "absolute")
                             , htmlAttribute (style "transition" "all 0.2s ease-in-out")
                             , htmlAttribute (style "top" (String.fromFloat config.state.popupVariables.clientY ++ "px"))
@@ -273,12 +278,17 @@ viewPopup config =
 
                     Err error ->
                         el
-                            [ Background.color gray
+                            [ Border.shadow
+                                { offset = ( 2, 2 )
+                                , size = 2
+                                , blur = 2
+                                , color = gray
+                                }
+                            , Background.color silver
                             , Font.bold
-                            , htmlAttribute (style "border-style" "solid")
-                            , htmlAttribute (style "border-width" "5px")
-                            , htmlAttribute (style "text-align" "center")
-                            , htmlAttribute (style "padding" ((mediumPadding config.state.theme |> String.fromInt) ++ "px"))
+                            , Border.rounded 4
+                            , Font.center
+                            , mediumPadding config.state.theme |> padding
                             , htmlAttribute (style "position" "absolute")
                             , htmlAttribute (style "transition" "all 0.2s ease-in-out")
                             , htmlAttribute (style "top" (String.fromFloat config.state.popupVariables.clientY ++ "px"))
