@@ -16,10 +16,9 @@
 
 
 module Morphir.SDK.Aggregate exposing
-    ( aggregateMap, aggregateMap2, aggregateMap3
+    ( Aggregation, aggregateMap, aggregateMap2, aggregateMap3
     , count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
     , byKey, withFilter
-    , Aggregation
     )
 
 {-| This module contains functions specifically designed to work with large data sets.
@@ -27,7 +26,7 @@ module Morphir.SDK.Aggregate exposing
 
 # Aggregations
 
-@docs aggregateMap, aggregateMap2, aggregateMap3
+@docs Aggregation, aggregateMap, aggregateMap2, aggregateMap3
 
 
 ## Operators
@@ -93,6 +92,13 @@ weightedAverageOf getWeight getValue =
     operatorToAggregation (WAvg getWeight getValue)
 
 
+{-| Type that represents an aggregation on a type `a` with a key of `key`. It encapsulates the following information:
+
+  - `key` is a function that gets the key of each `a`
+  - `filter` is a function used for filtering items out before the aggregation. This can be set to `always True` to not do any filtering.
+  - `operator` is the aggregation operation to apply (count, sum, average, ...)
+
+-}
 type alias Aggregation a key =
     { key : a -> key
     , filter : a -> Bool
