@@ -3,7 +3,9 @@ module Morphir.Visual.ViewArithmetic exposing (..)
 import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, padding, paddingEach, rgb, row, spacing, text, width)
 import Element.Border as Border
-import Morphir.IR.Value exposing (RawValue, TypedValue, Value)
+import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Type as Type
+import Morphir.IR.Value exposing (RawValue, TypedValue, Value(..))
 import Morphir.Visual.Components.AritmeticExpressions exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
@@ -12,11 +14,91 @@ import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 view : Config msg -> (TypedValue -> Element msg) -> ArithmeticOperatorTree -> Element msg
 view config viewValue arithmeticOperatorTree =
     case arithmeticOperatorTree of
+        ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees ->
+            case arithmeticOperator of
+                _ ->
+                    let
+                        separator =
+                            row
+                                [ spacing 5
+                                , width Element.fill
+                                , centerX
+                                ]
+                                [ text (Maybe.withDefault "" (Dict.get (functionNameHelper arithmeticOperator) inlineBinaryOperators))
+                                ]
+                    in
+                    arithmeticOperatorTrees
+                        |> List.map
+                            (view config viewValue)
+                        |> List.indexedMap
+                            (\i b ->
+                                if i == List.length arithmeticOperatorTrees - 1 && nextOperator arithmeticOperatorTrees i 0 && not (sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator) then
+                                    row
+                                        [ padding 2
+                                        , spacing 5
+                                        , centerX
+                                        ]
+                                        [ b ]
+
+                                else if sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
+                                    row
+                                        [ padding 2
+                                        , spacing 5
+                                        , centerX
+                                        ]
+                                        [ b, separator ]
+
+                                else if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
+                                    row
+                                        [ padding 2
+                                        , spacing 5
+                                        , centerX
+                                        ]
+                                        [ text "(", b, text ")", separator ]
+
+                                else if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator then
+                                    row
+                                        [ padding 2
+                                        , spacing 5
+                                        , centerX
+                                        ]
+                                        [ text "(", b, text ")" ]
+
+                                else if riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
+                                    row
+                                        [ padding 2
+                                        , spacing 5
+                                        , centerX
+                                        ]
+                                        [ text "(", b, text ")", separator ]
+
+                                else if riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator then
+                                    row
+                                        [ padding 2
+                                        , spacing 5
+                                        , centerX
+                                        ]
+                                        [ text "(", b, text ")" ]
+
+                                else if i < List.length arithmeticOperatorTrees - 1 then
+                                    row
+                                        [ padding 2
+                                        , spacing 5
+                                        , centerX
+                                        ]
+                                        [ b, separator ]
+
+                                else
+                                    row
+                                        [ padding 2
+                                        , spacing 5
+                                        , centerX
+                                        ]
+                                        [ b ]
+                            )
+                        |> Element.row [ spacing 5, width Element.fill, centerX ]
+
         ArithmeticDivisionBranch [ arithmeticOperatorTree1, arithmeticOperatorTree2 ] ->
-            let
-                pp2 =
-                    Debug.log "www   " arithmeticOperatorTree1
-            in
             case arithmeticOperatorTree1 of
                 ArithmeticValueLeaf typedValue1 ->
                     case arithmeticOperatorTree2 of
@@ -47,10 +129,6 @@ view config viewValue arithmeticOperatorTree =
                                 ]
 
                         ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees ->
-                            let
-                                pp =
-                                    Debug.log "jjj   " arithmeticOperator
-                            in
                             case arithmeticOperator of
                                 _ ->
                                     let
@@ -69,7 +147,15 @@ view config viewValue arithmeticOperatorTree =
                                                     (view config viewValue)
                                                 |> List.indexedMap
                                                     (\i b ->
-                                                        if sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
+                                                        if i == List.length arithmeticOperatorTrees - 1 && nextOperator arithmeticOperatorTrees i 0 && not (sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator) then
+                                                            row
+                                                                [ padding 2
+                                                                , spacing 5
+                                                                , centerX
+                                                                ]
+                                                                [ b, separator ]
+
+                                                        else if sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
                                                             row
                                                                 [ padding 2
                                                                 , spacing 5
@@ -154,86 +240,6 @@ view config viewValue arithmeticOperatorTree =
                 _ ->
                     Element.none
 
-        ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees ->
-            let
-                pp =
-                    Debug.log "bbb   " arithmeticOperator
-            in
-            case arithmeticOperator of
-                _ ->
-                    let
-                        separator =
-                            row
-                                [ spacing 5
-                                , width Element.fill
-                                , centerX
-                                ]
-                                [ text (Maybe.withDefault "" (Dict.get (functionNameHelper arithmeticOperator) inlineBinaryOperators))
-                                ]
-                    in
-                    arithmeticOperatorTrees
-                        |> List.map
-                            (view config viewValue)
-                        |> List.indexedMap
-                            (\i b ->
-                                if sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ b, separator ]
-
-                                else if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ text "(", b, text ")", separator ]
-
-                                else if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ text "(", b, text ")" ]
-
-                                else if riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ text "(", b, text ")", separator ]
-
-                                else if riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ text "(", b, text ")" ]
-
-                                else if i < List.length arithmeticOperatorTrees - 1 then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ b, separator ]
-
-                                else
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ b ]
-                            )
-                        |> Element.row [ spacing 5, width Element.fill, centerX ]
-
         ArithmeticValueLeaf typedValue ->
             viewValue typedValue
 
@@ -253,6 +259,26 @@ inlineBinaryOperators =
         , ( "Subtract", "-" )
         , ( "Multiply", "*" )
         ]
+
+
+nextOperator : List ArithmeticOperatorTree -> Int -> Int -> Bool
+nextOperator arithmeticOperatorTrees index currentPointer =
+    if currentPointer < index then
+        nextOperator (List.drop 1 arithmeticOperatorTrees) index (currentPointer + 1)
+
+    else
+        case List.head arithmeticOperatorTrees of
+            Just (ArithmeticDivisionBranch _) ->
+                True
+
+            Just (ArithmeticValueLeaf _) ->
+                False
+
+            Just (ArithmeticOperatorBranch _ _) ->
+                False
+
+            Nothing ->
+                False
 
 
 dropInPrecedence : List ArithmeticOperatorTree -> Int -> Int -> Int -> ArithmeticOperator -> Bool

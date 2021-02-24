@@ -39,7 +39,7 @@ view config viewValue functionValue argValues =
                 ]
 
         -- possibly binary operator
-        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ), [ argValues1 ] ) ->
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ), [ argValues1, argValues2 ] ) ->
             let
                 functionName : String
                 functionName =
@@ -49,9 +49,11 @@ view config viewValue functionValue argValues =
                         ]
             in
             if Dict.member functionName inlineBinaryOperators then
-                column
+                row
                     [ smallSpacing config.state.theme |> spacing ]
                     [ viewValue argValues1
+                    , text (Maybe.withDefault "" (Dict.get functionName inlineBinaryOperators))
+                    , viewValue argValues2
                     ]
 
             else

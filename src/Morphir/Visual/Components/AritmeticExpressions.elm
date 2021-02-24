@@ -83,10 +83,10 @@ helperArithmeticTreeBuilderRecursion value operatorName =
                             []
 
                         _ ->
-                            [ fromArithmeticTypedValue value ]
+                            helperArithmeticTreeBuilderRecursion value operatorName
 
                 _ ->
-                    [ fromArithmeticTypedValue value ]
+                    helperArithmeticTreeBuilderRecursion value operatorName
 
         _ ->
             [ ArithmeticValueLeaf value ]
