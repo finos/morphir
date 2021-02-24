@@ -5,6 +5,9 @@
 const commander = require('commander')
 const cli = require('./cli')
 
+// logging
+require('log-timestamp')
+
 // Set up Commander
 const program = new commander.Command()
 program
