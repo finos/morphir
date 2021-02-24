@@ -25,9 +25,6 @@ fromArithmeticTypedValue typedValue =
             let
                 ( function, args ) =
                     Value.uncurryApply fun arg
-
-                papadoc =
-                    Debug.log "freesom   " typedValue
             in
             case ( function, args ) of
                 ( Value.Reference _ ( _, moduleName, localName ), [ arg1, arg2 ] ) ->
@@ -44,7 +41,7 @@ fromArithmeticTypedValue typedValue =
                             ArithmeticOperatorBranch Subtract (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         "Basics.divide" ->
-                            ArithmeticDivisionBranch (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
+                            ArithmeticDivisionBranch ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         "Basics.multiply" ->
                             ArithmeticOperatorBranch Multiply (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
@@ -86,7 +83,7 @@ helperArithmeticTreeBuilderRecursion value operatorName =
                             []
 
                         _ ->
-                            []
+                            [ fromArithmeticTypedValue value ]
 
                 _ ->
                     [ fromArithmeticTypedValue value ]
