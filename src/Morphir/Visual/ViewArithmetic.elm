@@ -32,15 +32,7 @@ view config viewValue arithmeticOperatorTree =
                             (view config viewValue)
                         |> List.indexedMap
                             (\i b ->
-                                if i == List.length arithmeticOperatorTrees - 1 && nextOperator arithmeticOperatorTrees i 0 && not (sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator) then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ b ]
-
-                                else if sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
+                                if sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
                                     row
                                         [ padding 2
                                         , spacing 5
@@ -147,15 +139,7 @@ view config viewValue arithmeticOperatorTree =
                                                     (view config viewValue)
                                                 |> List.indexedMap
                                                     (\i b ->
-                                                        if i == List.length arithmeticOperatorTrees - 1 && nextOperator arithmeticOperatorTrees i 0 && not (sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator) then
-                                                            row
-                                                                [ padding 2
-                                                                , spacing 5
-                                                                , centerX
-                                                                ]
-                                                                [ b, separator ]
-
-                                                        else if sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
+                                                        if sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
                                                             row
                                                                 [ padding 2
                                                                 , spacing 5
