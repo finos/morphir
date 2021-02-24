@@ -32,7 +32,7 @@ member constraint (ConstraintSet constraints) =
 
 insert : Constraint -> ConstraintSet -> ConstraintSet
 insert constraint ((ConstraintSet constraints) as constraintSet) =
-    if member constraint constraintSet then
+    if Constraint.isTrivial constraint || member constraint constraintSet then
         constraintSet
 
     else
@@ -63,7 +63,18 @@ substituteVariable : Variable -> MetaType -> ConstraintSet -> ConstraintSet
 substituteVariable var replacement (ConstraintSet constraints) =
     ConstraintSet
         (constraints
-            |> List.map (Constraint.substitute var replacement)
+            |> List.filterMap
+                (\constraint ->
+                    let
+                        newConstraint =
+                            Constraint.substitute var replacement constraint
+                    in
+                    if Constraint.isTrivial newConstraint then
+                        Nothing
+
+                    else
+                        Just newConstraint
+                )
         )
 
 

@@ -578,7 +578,8 @@ solvePositiveTests =
             , ( [ class (tvar 1) Class.Number
                 , equality (tvar 1) MetaType.intType
                 ]
-              , []
+              , [ class MetaType.intType Class.Number
+                ]
               , [ ( t 1, MetaType.intType )
                 ]
               )

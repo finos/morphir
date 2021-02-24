@@ -3,6 +3,7 @@ module Morphir.Type.MetaType exposing (..)
 import Dict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName, fqn)
 import Morphir.IR.Name as Name exposing (Name)
+import Set exposing (Set)
 
 
 type MetaType
@@ -70,6 +71,11 @@ type alias Variable =
     ( String, Int, Int )
 
 
+nextVar : Variable -> Variable
+nextVar ( n, i, s ) =
+    ( n, i, s + 1 )
+
+
 variableByIndex : Int -> Variable
 variableByIndex i =
     ( "t", i, 0 )
@@ -90,54 +96,109 @@ toName ( n, i, s ) =
     [ n, String.fromInt i, String.fromInt s ]
 
 
-substituteVariable : Variable -> MetaType -> MetaType -> MetaType
-substituteVariable var replacement original =
-    case original of
-        MetaVar thisVar ->
-            if thisVar == var then
-                replacement
+variables : MetaType -> Set Variable
+variables metaType =
+    case metaType of
+        MetaVar variable ->
+            Set.singleton variable
 
-            else
-                original
+        MetaRef fQName ->
+            Set.empty
 
-        MetaTuple metaElems ->
-            MetaTuple
-                (metaElems
-                    |> List.map (substituteVariable var replacement)
-                )
+        MetaTuple elems ->
+            elems
+                |> List.foldl
+                    (\t vars -> Set.union vars (variables t))
+                    Set.empty
 
-        MetaRecord extends metaFields ->
-            if extends == Just var then
-                replacement
+        MetaRecord maybeVar fields ->
+            let
+                aliasVars =
+                    case maybeVar of
+                        Just var ->
+                            Set.singleton var
 
-            else
-                MetaRecord extends
-                    (metaFields
-                        |> Dict.map
-                            (\_ fieldType ->
-                                substituteVariable var replacement fieldType
-                            )
-                    )
+                        Nothing ->
+                            Set.empty
 
-        MetaApply metaFun metaArg ->
-            MetaApply
-                (substituteVariable var replacement metaFun)
-                (substituteVariable var replacement metaArg)
+                fieldVars =
+                    fields
+                        |> Dict.toList
+                        |> List.foldl
+                            (\( _, t ) vars -> Set.union vars (variables t))
+                            Set.empty
+            in
+            Set.union aliasVars fieldVars
 
-        MetaFun metaFun metaArg ->
-            MetaFun
-                (substituteVariable var replacement metaFun)
-                (substituteVariable var replacement metaArg)
+        MetaApply fun arg ->
+            Set.union
+                (variables fun)
+                (variables arg)
 
-        MetaRef _ ->
-            original
+        MetaFun arg return ->
+            Set.union
+                (variables arg)
+                (variables return)
 
         MetaUnit ->
-            original
+            Set.empty
 
-        MetaAlias alias subject ->
-            MetaAlias alias
-                (substituteVariable var replacement subject)
+        MetaAlias _ t ->
+            variables t
+
+
+substituteVariable : Variable -> MetaType -> MetaType -> MetaType
+substituteVariable var replacement original =
+    if variables original |> Set.member var then
+        case original of
+            MetaVar thisVar ->
+                if thisVar == var then
+                    replacement
+
+                else
+                    original
+
+            MetaTuple metaElems ->
+                MetaTuple
+                    (metaElems
+                        |> List.map (substituteVariable var replacement)
+                    )
+
+            MetaRecord extends metaFields ->
+                if extends == Just var then
+                    replacement
+
+                else
+                    MetaRecord extends
+                        (metaFields
+                            |> Dict.map
+                                (\_ fieldType ->
+                                    substituteVariable var replacement fieldType
+                                )
+                        )
+
+            MetaApply metaFun metaArg ->
+                MetaApply
+                    (substituteVariable var replacement metaFun)
+                    (substituteVariable var replacement metaArg)
+
+            MetaFun metaFun metaArg ->
+                MetaFun
+                    (substituteVariable var replacement metaFun)
+                    (substituteVariable var replacement metaArg)
+
+            MetaRef _ ->
+                original
+
+            MetaUnit ->
+                original
+
+            MetaAlias alias subject ->
+                MetaAlias alias
+                    (substituteVariable var replacement subject)
+
+    else
+        original
 
 
 substituteVariables : List ( Variable, MetaType ) -> MetaType -> MetaType

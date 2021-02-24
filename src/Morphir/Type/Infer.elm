@@ -16,7 +16,7 @@ import Morphir.ListOfResults as ListOfResults
 import Morphir.Type.Class as Class exposing (Class)
 import Morphir.Type.Constraint exposing (Constraint(..), class, equality)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, nextVar)
 import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.Solve as Solve exposing (SolutionMap(..), UnificationError(..), UnificationErrorType(..))
 import Set exposing (Set)
@@ -161,9 +161,8 @@ inferValueDefinition refs def =
                 cs =
                     constrainDefinition
                         (MetaType.variableByIndex 0)
-                        { refs = refs
-                        , vars = Dict.empty
-                        }
+                        refs
+                        Dict.empty
                         annotatedDef
 
                 _ =
@@ -183,22 +182,20 @@ inferValueDefinition refs def =
 
 
 inferValue : IR -> Value () va -> Result TypeError (TypedValue va)
-inferValue refs untypedValue =
+inferValue ir untypedValue =
     let
         ( annotatedValue, lastVarIndex ) =
             annotateValue 0 untypedValue
 
         constraints : ConstraintSet
         constraints =
-            constrainValue
-                { refs = refs
-                , vars = Dict.empty
-                }
+            constrainValue ir
+                Dict.empty
                 annotatedValue
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
         solution =
-            solve refs constraints
+            solve ir constraints
     in
     solution
         |> Result.map (applySolutionToAnnotatedValue annotatedValue)
@@ -235,14 +232,8 @@ annotateValue baseIndex untypedValue =
         |> Value.indexedMapValue (\index va -> ( va, MetaType.variableByIndex index )) baseIndex
 
 
-type alias ConstrainState =
-    { refs : IR
-    , vars : Dict Name Variable
-    }
-
-
-constrainDefinition : Variable -> ConstrainState -> Value.Definition () ( va, Variable ) -> ConstraintSet
-constrainDefinition baseVar state def =
+constrainDefinition : Variable -> IR -> Dict Name Variable -> Value.Definition () ( va, Variable ) -> ConstraintSet
+constrainDefinition baseVar ir vars def =
     let
         inputTypeVars : Set Name
         inputTypeVars =
@@ -269,7 +260,7 @@ constrainDefinition baseVar state def =
                     (\( _, ( _, thisTypeVar ), declaredType ) ->
                         equality
                             (MetaVar thisTypeVar)
-                            (concreteTypeToMetaType thisTypeVar state.refs varToMeta declaredType)
+                            (concreteTypeToMetaType thisTypeVar ir varToMeta declaredType)
                     )
                 |> ConstraintSet.fromList
 
@@ -278,7 +269,7 @@ constrainDefinition baseVar state def =
             ConstraintSet.singleton
                 (equality
                     (metaTypeVarForValue def.body)
-                    (concreteTypeToMetaType baseVar state.refs varToMeta def.outputType)
+                    (concreteTypeToMetaType baseVar ir varToMeta def.outputType)
                 )
 
         inputVars : Dict Name Variable
@@ -292,7 +283,7 @@ constrainDefinition baseVar state def =
 
         bodyConstraints : ConstraintSet
         bodyConstraints =
-            constrainValue { state | vars = state.vars |> Dict.union inputVars } def.body
+            constrainValue ir (vars |> Dict.union inputVars) def.body
     in
     ConstraintSet.concat
         [ inputConstraints
@@ -301,14 +292,14 @@ constrainDefinition baseVar state def =
         ]
 
 
-constrainValue : ConstrainState -> Value () ( va, Variable ) -> ConstraintSet
-constrainValue state annotatedValue =
+constrainValue : IR -> Dict Name Variable -> Value () ( va, Variable ) -> ConstraintSet
+constrainValue ir vars annotatedValue =
     case annotatedValue of
         Value.Literal ( _, thisTypeVar ) literalValue ->
             constrainLiteral thisTypeVar literalValue
 
         Value.Constructor ( _, thisTypeVar ) fQName ->
-            lookupConstructor thisTypeVar state.refs fQName
+            lookupConstructor thisTypeVar ir fQName
                 |> Result.map (equality (MetaVar thisTypeVar))
                 |> Result.map ConstraintSet.singleton
                 |> Result.withDefault ConstraintSet.empty
@@ -318,7 +309,7 @@ constrainValue state annotatedValue =
                 elemsConstraints : List ConstraintSet
                 elemsConstraints =
                     elems
-                        |> List.map (constrainValue state)
+                        |> List.map (constrainValue ir vars)
 
                 tupleConstraint : ConstraintSet
                 tupleConstraint =
@@ -348,8 +339,8 @@ constrainValue state annotatedValue =
                     items
                         |> List.map
                             (\item ->
-                                constrainValue state item
-                                    |> ConstraintSet.insert (equality (metaTypeVarForValue item) itemType)
+                                constrainValue ir vars item
+                                    |> ConstraintSet.insert (equality itemType (metaTypeVarForValue item))
                             )
                         |> ConstraintSet.concat
             in
@@ -361,7 +352,7 @@ constrainValue state annotatedValue =
                 fieldConstraints : ConstraintSet
                 fieldConstraints =
                     fieldValues
-                        |> List.map (Tuple.second >> constrainValue state)
+                        |> List.map (Tuple.second >> constrainValue ir vars)
                         |> ConstraintSet.concat
 
                 recordType : MetaType
@@ -385,7 +376,7 @@ constrainValue state annotatedValue =
                 ]
 
         Value.Variable ( _, varUse ) varName ->
-            case state.vars |> Dict.get varName of
+            case vars |> Dict.get varName of
                 Just varDecl ->
                     ConstraintSet.singleton (equality (MetaVar varUse) (MetaVar varDecl))
 
@@ -394,7 +385,7 @@ constrainValue state annotatedValue =
                     ConstraintSet.empty
 
         Value.Reference ( _, thisTypeVar ) fQName ->
-            lookupValue thisTypeVar state.refs fQName
+            lookupValue thisTypeVar ir fQName
                 |> Result.map (equality (MetaVar thisTypeVar))
                 |> Result.map ConstraintSet.singleton
                 |> Result.withDefault ConstraintSet.empty
@@ -425,7 +416,7 @@ constrainValue state annotatedValue =
                         ]
             in
             ConstraintSet.concat
-                [ constrainValue state subjectValue
+                [ constrainValue ir vars subjectValue
                 , fieldConstraints
                 ]
 
@@ -464,15 +455,15 @@ constrainValue state annotatedValue =
                         (equality (metaTypeVarForValue funValue) funType)
             in
             ConstraintSet.concat
-                [ constrainValue state funValue
-                , constrainValue state argValue
+                [ constrainValue ir vars funValue
+                , constrainValue ir vars argValue
                 , applyConstraints
                 ]
 
         Value.Lambda ( _, thisTypeVar ) argPattern bodyValue ->
             let
                 ( argVariables, argConstraints ) =
-                    constrainPattern state argPattern
+                    constrainPattern ir argPattern
 
                 lambdaType : MetaType
                 lambdaType =
@@ -487,8 +478,8 @@ constrainValue state annotatedValue =
 
                 bodyConstraints : ConstraintSet
                 bodyConstraints =
-                    constrainValue
-                        { state | vars = Dict.union argVariables state.vars }
+                    constrainValue ir
+                        (Dict.union argVariables vars)
                         bodyValue
             in
             ConstraintSet.concat
@@ -501,7 +492,7 @@ constrainValue state annotatedValue =
             let
                 defConstraints : ConstraintSet
                 defConstraints =
-                    constrainDefinition thisTypeVar state def
+                    constrainDefinition thisTypeVar ir vars def
 
                 defTypeVar : Variable
                 defTypeVar =
@@ -518,10 +509,8 @@ constrainValue state annotatedValue =
 
                 inConstraints : ConstraintSet
                 inConstraints =
-                    constrainValue
-                        { state
-                            | vars = state.vars |> Dict.insert defName defTypeVar
-                        }
+                    constrainValue ir
+                        (vars |> Dict.insert defName defTypeVar)
                         inValue
 
                 letConstraints : ConstraintSet
@@ -588,7 +577,7 @@ constrainValue state annotatedValue =
 
                                     defConstraints : ConstraintSet
                                     defConstraints =
-                                        constrainDefinition lastTypeVar state def
+                                        constrainDefinition lastTypeVar ir vars def
                                 in
                                 ( nextTypeVar, defConstraints :: constraintsSoFar )
                             )
@@ -598,10 +587,8 @@ constrainValue state annotatedValue =
 
                 inConstraints : ConstraintSet
                 inConstraints =
-                    constrainValue
-                        { state
-                            | vars = state.vars |> Dict.union (defVariables |> Dict.fromList)
-                        }
+                    constrainValue ir
+                        (vars |> Dict.union (defVariables |> Dict.fromList))
                         inValue
 
                 letConstraints : ConstraintSet
@@ -619,15 +606,15 @@ constrainValue state annotatedValue =
         Value.Destructure ( _, thisTypeVar ) bindPattern bindValue inValue ->
             let
                 ( bindPatternVariables, bindPatternConstraints ) =
-                    constrainPattern state bindPattern
+                    constrainPattern ir bindPattern
 
                 bindValueConstraints : ConstraintSet
                 bindValueConstraints =
-                    constrainValue state bindValue
+                    constrainValue ir vars bindValue
 
                 inValueConstraints : ConstraintSet
                 inValueConstraints =
-                    constrainValue { state | vars = Dict.union bindPatternVariables state.vars } inValue
+                    constrainValue ir (Dict.union bindPatternVariables vars) inValue
 
                 destructureConstraints : ConstraintSet
                 destructureConstraints =
@@ -660,9 +647,9 @@ constrainValue state annotatedValue =
 
                 childConstraints : List ConstraintSet
                 childConstraints =
-                    [ constrainValue state condition
-                    , constrainValue state thenBranch
-                    , constrainValue state elseBranch
+                    [ constrainValue ir vars condition
+                    , constrainValue ir vars thenBranch
+                    , constrainValue ir vars elseBranch
                     ]
             in
             ConstraintSet.concat (specificConstraints :: childConstraints)
@@ -679,7 +666,7 @@ constrainValue state annotatedValue =
 
                 subjectConstraints : ConstraintSet
                 subjectConstraints =
-                    constrainValue state subjectValue
+                    constrainValue ir vars subjectValue
 
                 casesConstraints : List ConstraintSet
                 casesConstraints =
@@ -688,11 +675,11 @@ constrainValue state annotatedValue =
                             (\( casePattern, caseValue ) ->
                                 let
                                     ( casePatternVariables, casePatternConstraints ) =
-                                        constrainPattern state casePattern
+                                        constrainPattern ir casePattern
 
                                     caseValueConstraints : ConstraintSet
                                     caseValueConstraints =
-                                        constrainValue { state | vars = Dict.union casePatternVariables state.vars } caseValue
+                                        constrainValue ir (Dict.union casePatternVariables vars) caseValue
 
                                     caseConstraints : ConstraintSet
                                     caseConstraints =
@@ -733,7 +720,7 @@ constrainValue state annotatedValue =
                     fieldValues
                         |> List.map
                             (\( _, fieldValue ) ->
-                                constrainValue state fieldValue
+                                constrainValue ir vars fieldValue
                             )
                         |> ConstraintSet.concat
 
@@ -745,7 +732,7 @@ constrainValue state annotatedValue =
                         ]
             in
             ConstraintSet.concat
-                [ constrainValue state subjectValue
+                [ constrainValue ir vars subjectValue
                 , fieldValueConstraints
                 , fieldConstraints
                 ]
@@ -755,16 +742,20 @@ constrainValue state annotatedValue =
                 (equality (MetaVar thisTypeVar) MetaUnit)
 
 
-constrainPattern : ConstrainState -> Pattern ( va, Variable ) -> ( Dict Name Variable, ConstraintSet )
-constrainPattern state untypedPattern =
-    case untypedPattern of
-        Value.WildcardPattern _ ->
-            ( Dict.empty, ConstraintSet.empty )
+{-| Function that extracts variables and generates constraints for a pattern.
+-}
+constrainPattern : IR -> Pattern ( va, Variable ) -> ( Dict Name Variable, ConstraintSet )
+constrainPattern ir pattern =
+    case pattern of
+        Value.WildcardPattern ( va, thisTypeVar ) ->
+            ( Dict.empty
+            , ConstraintSet.empty
+            )
 
-        Value.AsPattern ( _, thisTypeVar ) nestedPattern alias ->
+        Value.AsPattern ( va, thisTypeVar ) nestedPattern alias ->
             let
                 ( nestedVariables, nestedConstraints ) =
-                    constrainPattern state nestedPattern
+                    constrainPattern ir nestedPattern
 
                 thisPatternConstraints : ConstraintSet
                 thisPatternConstraints =
@@ -775,11 +766,11 @@ constrainPattern state untypedPattern =
             , ConstraintSet.union nestedConstraints thisPatternConstraints
             )
 
-        Value.TuplePattern ( _, thisTypeVar ) elemPatterns ->
+        Value.TuplePattern ( va, thisTypeVar ) elemPatterns ->
             let
                 ( elemsVariables, elemsConstraints ) =
                     elemPatterns
-                        |> List.map (constrainPattern state)
+                        |> List.map (constrainPattern ir)
                         |> List.unzip
 
                 tupleConstraint : ConstraintSet
@@ -797,7 +788,7 @@ constrainPattern state untypedPattern =
             , ConstraintSet.concat (tupleConstraint :: elemsConstraints)
             )
 
-        Value.ConstructorPattern ( _, thisTypeVar ) fQName argPatterns ->
+        Value.ConstructorPattern ( va, thisTypeVar ) fQName argPatterns ->
             let
                 ctorTypeVar : Variable
                 ctorTypeVar =
@@ -825,7 +816,7 @@ constrainPattern state untypedPattern =
 
                 customTypeConstraint : ConstraintSet
                 customTypeConstraint =
-                    lookupConstructor ctorTypeVar state.refs fQName
+                    lookupConstructor ctorTypeVar ir fQName
                         |> Result.map
                             (\ctorFunType ->
                                 ConstraintSet.fromList
@@ -849,14 +840,14 @@ constrainPattern state untypedPattern =
 
                 ( argVariables, argConstraints ) =
                     argPatterns
-                        |> List.map (constrainPattern state)
+                        |> List.map (constrainPattern ir)
                         |> List.unzip
             in
             ( List.foldl Dict.union Dict.empty argVariables
             , ConstraintSet.concat (customTypeConstraint :: ctorFunConstraint :: argConstraints)
             )
 
-        Value.EmptyListPattern ( _, thisTypeVar ) ->
+        Value.EmptyListPattern ( va, thisTypeVar ) ->
             let
                 itemType : MetaType
                 itemType =
@@ -871,13 +862,13 @@ constrainPattern state untypedPattern =
                 (equality (MetaVar thisTypeVar) listType)
             )
 
-        Value.HeadTailPattern ( _, thisTypeVar ) headPattern tailPattern ->
+        Value.HeadTailPattern ( va, thisTypeVar ) headPattern tailPattern ->
             let
                 ( headVariables, headConstraints ) =
-                    constrainPattern state headPattern
+                    constrainPattern ir headPattern
 
                 ( tailVariables, tailConstraints ) =
-                    constrainPattern state tailPattern
+                    constrainPattern ir tailPattern
 
                 itemType : MetaType
                 itemType =
@@ -899,10 +890,12 @@ constrainPattern state untypedPattern =
                 [ headConstraints, tailConstraints, thisPatternConstraints ]
             )
 
-        Value.LiteralPattern ( _, thisTypeVar ) literalValue ->
-            ( Dict.empty, constrainLiteral thisTypeVar literalValue )
+        Value.LiteralPattern ( va, thisTypeVar ) literalValue ->
+            ( Dict.empty
+            , constrainLiteral thisTypeVar literalValue
+            )
 
-        Value.UnitPattern ( _, thisTypeVar ) ->
+        Value.UnitPattern ( va, thisTypeVar ) ->
             ( Dict.empty
             , ConstraintSet.singleton
                 (equality (MetaVar thisTypeVar) MetaUnit)
@@ -945,9 +938,12 @@ solve refs constraintSet =
 
 solveHelp : IR -> SolutionMap -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
 solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
+    --let
+    --    _ =
+    --        Debug.log "solutions so far" (solutionsSoFar |> Solve.toList |> List.length)
+    --in
     constraints
         |> validateConstraints
-        |> Result.map removeTrivialConstraints
         |> Result.andThen
             (\nonTrivialConstraints ->
                 nonTrivialConstraints
@@ -968,27 +964,6 @@ solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
                                                 solveHelp refs mergedSolutions (constraintSet |> ConstraintSet.applySubstitutions mergedSolutions)
                                             )
                         )
-            )
-
-
-removeTrivialConstraints : List Constraint -> List Constraint
-removeTrivialConstraints constraints =
-    constraints
-        |> List.filter
-            (\constraint ->
-                case constraint of
-                    Equality metaType1 metaType2 ->
-                        metaType1 /= metaType2
-
-                    Class metaType _ ->
-                        case metaType of
-                            -- If this is a variable we still need to resolve it
-                            MetaVar _ ->
-                                True
-
-                            -- Otherwise it's a specific type already so we can remove this constraint
-                            _ ->
-                                False
             )
 
 
