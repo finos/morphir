@@ -2,7 +2,8 @@ module Morphir.Visual.Components.AritmeticExpressions exposing (..)
 
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.Value as Value exposing (TypedValue)
+import Morphir.IR.Type as Type
+import Morphir.IR.Value as Value exposing (TypedValue, Value(..))
 
 
 type ArithmeticOperatorTree
@@ -24,6 +25,9 @@ fromArithmeticTypedValue typedValue =
             let
                 ( function, args ) =
                     Value.uncurryApply fun arg
+
+                papadoc =
+                    Debug.log "freesom   " typedValue
             in
             case ( function, args ) of
                 ( Value.Reference _ ( _, moduleName, localName ), [ arg1, arg2 ] ) ->
@@ -34,22 +38,22 @@ fromArithmeticTypedValue typedValue =
                     in
                     case operatorName of
                         "Basics.add" ->
-                            ArithmeticOperatorBranch Add ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
+                            ArithmeticOperatorBranch Add (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         "Basics.subtract" ->
-                            ArithmeticOperatorBranch Subtract ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
+                            ArithmeticOperatorBranch Subtract (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         "Basics.divide" ->
-                            ArithmeticDivisionBranch ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
+                            ArithmeticDivisionBranch (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         "Basics.multiply" ->
-                            ArithmeticOperatorBranch Multiply ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
+                            ArithmeticOperatorBranch Multiply (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         _ ->
-                            ArithmeticValueLeaf typedValue
+                            fromArithmeticTypedValue typedValue
 
                 _ ->
-                    ArithmeticValueLeaf typedValue
+                    fromArithmeticTypedValue typedValue
 
         _ ->
             ArithmeticValueLeaf typedValue
@@ -67,22 +71,25 @@ helperArithmeticTreeBuilderRecursion value operatorName =
                 ( Value.Reference _ ( _, moduleName, localName ), [ arg1, arg2 ] ) ->
                     case functionName moduleName localName of
                         "Basics.add" ->
-                            [ ArithmeticOperatorBranch Add ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
+                            [ ArithmeticOperatorBranch Add (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
 
                         "Basics.subtract" ->
-                            [ ArithmeticOperatorBranch Subtract ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
+                            [ ArithmeticOperatorBranch Subtract (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
 
                         "Basics.multiply" ->
-                            [ ArithmeticOperatorBranch Multiply ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
+                            [ ArithmeticOperatorBranch Multiply (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
 
                         "Basics.divide" ->
                             [ ArithmeticDivisionBranch ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
 
+                        "Basics.float" ->
+                            []
+
                         _ ->
-                            [ fromArithmeticTypedValue value ]
+                            []
 
                 _ ->
-                    [ ArithmeticValueLeaf value ]
+                    [ fromArithmeticTypedValue value ]
 
         _ ->
             [ ArithmeticValueLeaf value ]

@@ -39,7 +39,7 @@ view config viewValue functionValue argValues =
                 ]
 
         -- possibly binary operator
-        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ), [ argValue1, argValue2 ] ) ->
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ), [ argValues1 ] ) ->
             let
                 functionName : String
                 functionName =
@@ -48,63 +48,20 @@ view config viewValue functionValue argValues =
                         , localName |> Name.toCamelCase
                         ]
             in
-                case Maybe.withDefault "" (Dict.get functionName inlineBinaryOperators) of
-                    "/" -> column
-                               [ width fill
-                               , smallSpacing config.state.theme |> spacing
-                               ]
-                               [
-                                   row [centerX
-                                        , width Element.fill
-                                        , Border.solid
-                                        , Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
-                                        , padding 5] [
+            if Dict.member functionName inlineBinaryOperators then
+                column
+                    [ smallSpacing config.state.theme |> spacing ]
+                    [ viewValue argValues1
+                    ]
 
-                                      viewValue argValue1
-                                   ],
-                                   row [centerX
-                                        , width Element.fill, padding 5]
-                                   [
-                                      viewValue argValue2
-                                   ]
-                               ]
-                    _ -> Maybe.map
-                            (\functionText ->
-                                row
-                                    [ width fill
-                                    , smallSpacing config.state.theme |> spacing
-                                    ]
-                                    [ viewValue argValue1
-                                    , text functionText
-                                    , viewValue argValue2
-                                    ]
-                            ) (Dict.get functionName inlineBinaryOperators)
-                        |> Maybe.withDefault
-                            (column
-                                [ smallSpacing config.state.theme |> spacing ]
-                                [ viewValue functionValue
-                                , column
-                                    [ mediumPadding config.state.theme |> padding
-                                    , smallSpacing config.state.theme |> spacing
-                                    ]
-                                    (argValues
-                                        |> List.map viewValue
-                                    )
-                                ]
-                            )
+            else
+                Element.none
 
         _ ->
-            column
-                [ smallSpacing config.state.theme |> spacing ]
-                [ viewValue functionValue
-                , column
-                    [ moveRight 10
-                    , smallSpacing config.state.theme |> spacing
-                    ]
-                    (argValues
-                        |> List.map viewValue
-                    )
-                ]
+            row []
+                (argValues
+                    |> List.map viewValue
+                )
 
 
 inlineBinaryOperators : Dict String String
