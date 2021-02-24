@@ -62,6 +62,12 @@ inferModuleDefinition refs moduleName moduleDef =
         |> Dict.toList
         |> List.map
             (\( valueName, valueDef ) ->
+                let
+                    _ =
+                        Debug.log
+                            (String.concat [ "Inferring types for ", moduleName |> Path.toString Name.toTitleCase ".", ".", valueName |> Name.toCamelCase, " of size" ])
+                            (valueDef.value.body |> Value.countValueNodes)
+                in
                 inferValueDefinition refs valueDef.value
                     |> Result.map (AccessControlled valueDef.access)
                     |> Result.map (Tuple.pair valueName)
@@ -151,16 +157,26 @@ inferValueDefinition refs def =
 
         constraints : ConstraintSet
         constraints =
-            constrainDefinition
-                (MetaType.variableByIndex 0)
-                { refs = refs
-                , vars = Dict.empty
-                }
-                annotatedDef
+            let
+                cs =
+                    constrainDefinition
+                        (MetaType.variableByIndex 0)
+                        { refs = refs
+                        , vars = Dict.empty
+                        }
+                        annotatedDef
+
+                _ =
+                    Debug.log "Generated constraints" (cs |> ConstraintSet.toList |> List.length)
+            in
+            cs
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
         solution =
             solve refs constraints
+
+        _ =
+            Debug.log "Generated solutions" (solution |> Result.map (Tuple.second >> Solve.toList) |> Result.withDefault [] |> List.length)
     in
     solution
         |> Result.map (applySolutionToAnnotatedDefinition annotatedDef)

@@ -10,7 +10,7 @@
     "test:integration:gen": "node dist/morphir elm gen -i ./tests-integration/generated/morphir-ir.json -o ./tests-integration/generated/refModel/src/scala/ -t Scala ",
     "test:integration:make": "node dist/morphir elm make -p ./tests-integration/reference-model -o ./tests-integration/generated/morphir-ir.json",
     "test": "elm-test",
-    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js --optimize && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js --optimize",
+    "make-cli": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js",
     "make-cli-dev": "cd cli && elm make src/Morphir/Elm/CLI.elm --output Morphir.Elm.CLI.js && elm make src/Morphir/Elm/DaprCLI.elm --output Morphir.Elm.DaprCLI.js",
     "make-dev-server": "cd cli && elm make src/Morphir/Web/DevelopApp.elm --output=web/index.html",
     "make-insight-api": "cd cli && elm make src/Morphir/Web/Insight.elm --output=web/insight.js",
@@ -64,6 +64,7 @@
     "commander": "^4.1.1",
     "express": "^4.17.1",
     "fs-extra": "^9.0.1",
-    "get-stdin": "^8.0.0"
+    "get-stdin": "^8.0.0",
+    "log-timestamp": "^0.3.0"
   }
 }
