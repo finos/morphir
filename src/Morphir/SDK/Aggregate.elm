@@ -154,16 +154,15 @@ first element is a function that defines the aggregation key, the second element
 out certain rows from the aggregation and the third argument is the aggregation operation to apply. Usage:
 
         testDataSet =
-            DataSet.fromList
-                [ TestInput1 "k1_1" "k2_1" 1
-                , TestInput1 "k1_1" "k2_1" 2
-                , TestInput1 "k1_1" "k2_2" 3
-                , TestInput1 "k1_1" "k2_2" 4
-                , TestInput1 "k1_2" "k2_1" 5
-                , TestInput1 "k1_2" "k2_1" 6
-                , TestInput1 "k1_2" "k2_2" 7
-                , TestInput1 "k1_2" "k2_2" 8
-                ]
+            [ TestInput1 "k1_1" "k2_1" 1
+            , TestInput1 "k1_1" "k2_1" 2
+            , TestInput1 "k1_1" "k2_2" 3
+            , TestInput1 "k1_1" "k2_2" 4
+            , TestInput1 "k1_2" "k2_1" 5
+            , TestInput1 "k1_2" "k2_1" 6
+            , TestInput1 "k1_2" "k2_2" 7
+            , TestInput1 "k1_2" "k2_2" 8
+            ]
 
         testDataSet
             |> aggregateMap
@@ -172,16 +171,15 @@ out certain rows from the aggregation and the third argument is the aggregation 
                         ( input, totalValue / input.value )
                     )
             {- ==
-                DataSet.fromList
-                    [ ( TestInput1 "k1_1" "k2_1" 1, 10 / 1 )
-                    , ( TestInput1 "k1_1" "k2_1" 2, 10 / 2 )
-                    , ( TestInput1 "k1_1" "k2_2" 3, 10 / 3 )
-                    , ( TestInput1 "k1_1" "k2_2" 4, 10 / 4 )
-                    , ( TestInput1 "k1_2" "k2_1" 5, 26 / 5 )
-                    , ( TestInput1 "k1_2" "k2_1" 6, 26 / 6 )
-                    , ( TestInput1 "k1_2" "k2_2" 7, 26 / 7 )
-                    , ( TestInput1 "k1_2" "k2_2" 8, 26 / 8 )
-                    ]
+                [ ( TestInput1 "k1_1" "k2_1" 1, 10 / 1 )
+                , ( TestInput1 "k1_1" "k2_1" 2, 10 / 2 )
+                , ( TestInput1 "k1_1" "k2_2" 3, 10 / 3 )
+                , ( TestInput1 "k1_1" "k2_2" 4, 10 / 4 )
+                , ( TestInput1 "k1_2" "k2_1" 5, 26 / 5 )
+                , ( TestInput1 "k1_2" "k2_1" 6, 26 / 6 )
+                , ( TestInput1 "k1_2" "k2_2" 7, 26 / 7 )
+                , ( TestInput1 "k1_2" "k2_2" 8, 26 / 8 )
+                ]
             -}
 
 -}
@@ -206,16 +204,15 @@ first element is a function that defines the aggregation key, the second element
 out certain rows from the aggregation and the third argument is the aggregation operation to apply. Usage:
 
         testDataSet =
-            DataSet.fromList
-                [ TestInput1 "k1_1" "k2_1" 1
-                , TestInput1 "k1_1" "k2_1" 2
-                , TestInput1 "k1_1" "k2_2" 3
-                , TestInput1 "k1_1" "k2_2" 4
-                , TestInput1 "k1_2" "k2_1" 5
-                , TestInput1 "k1_2" "k2_1" 6
-                , TestInput1 "k1_2" "k2_2" 7
-                , TestInput1 "k1_2" "k2_2" 8
-                ]
+            [ TestInput1 "k1_1" "k2_1" 1
+            , TestInput1 "k1_1" "k2_1" 2
+            , TestInput1 "k1_1" "k2_2" 3
+            , TestInput1 "k1_1" "k2_2" 4
+            , TestInput1 "k1_2" "k2_1" 5
+            , TestInput1 "k1_2" "k2_1" 6
+            , TestInput1 "k1_2" "k2_2" 7
+            , TestInput1 "k1_2" "k2_2" 8
+            ]
 
         testDataSet
             |> aggregateMap2
@@ -225,16 +222,15 @@ out certain rows from the aggregation and the third argument is the aggregation 
                     ( input, totalValue * maxValue / input.value )
                 )
             {- ==
-                DataSet.fromList
-                    [ ( TestInput1 "k1_1" "k2_1" 1, 10 * 6 / 1 )
-                    , ( TestInput1 "k1_1" "k2_1" 2, 10 * 6 / 2 )
-                    , ( TestInput1 "k1_1" "k2_2" 3, 10 * 8 / 3 )
-                    , ( TestInput1 "k1_1" "k2_2" 4, 10 * 8 / 4 )
-                    , ( TestInput1 "k1_2" "k2_1" 5, 26 * 6 / 5 )
-                    , ( TestInput1 "k1_2" "k2_1" 6, 26 * 6 / 6 )
-                    , ( TestInput1 "k1_2" "k2_2" 7, 26 * 8 / 7 )
-                    , ( TestInput1 "k1_2" "k2_2" 8, 26 * 8 / 8 )
-                    ]
+                [ ( TestInput1 "k1_1" "k2_1" 1, 10 * 6 / 1 )
+                , ( TestInput1 "k1_1" "k2_1" 2, 10 * 6 / 2 )
+                , ( TestInput1 "k1_1" "k2_2" 3, 10 * 8 / 3 )
+                , ( TestInput1 "k1_1" "k2_2" 4, 10 * 8 / 4 )
+                , ( TestInput1 "k1_2" "k2_1" 5, 26 * 6 / 5 )
+                , ( TestInput1 "k1_2" "k2_1" 6, 26 * 6 / 6 )
+                , ( TestInput1 "k1_2" "k2_2" 7, 26 * 8 / 7 )
+                , ( TestInput1 "k1_2" "k2_2" 8, 26 * 8 / 8 )
+                ]
             -}
 
 -}
@@ -268,16 +264,15 @@ first element is a function that defines the aggregation key, the second element
 out certain rows from the aggregation and the third argument is the aggregation operation to apply. Usage:
 
         testDataSet =
-            DataSet.fromList
-                [ TestInput1 "k1_1" "k2_1" 1
-                , TestInput1 "k1_1" "k2_1" 2
-                , TestInput1 "k1_1" "k2_2" 3
-                , TestInput1 "k1_1" "k2_2" 4
-                , TestInput1 "k1_2" "k2_1" 5
-                , TestInput1 "k1_2" "k2_1" 6
-                , TestInput1 "k1_2" "k2_2" 7
-                , TestInput1 "k1_2" "k2_2" 8
-                ]
+            [ TestInput1 "k1_1" "k2_1" 1
+            , TestInput1 "k1_1" "k2_1" 2
+            , TestInput1 "k1_1" "k2_2" 3
+            , TestInput1 "k1_1" "k2_2" 4
+            , TestInput1 "k1_2" "k2_1" 5
+            , TestInput1 "k1_2" "k2_1" 6
+            , TestInput1 "k1_2" "k2_2" 7
+            , TestInput1 "k1_2" "k2_2" 8
+            ]
 
         testDataSet
             |> aggregateMap3
@@ -288,16 +283,15 @@ out certain rows from the aggregation and the third argument is the aggregation 
                     ( input, totalValue * maxValue / input.value + minValue )
                 )
             {- ==
-                DataSet.fromList
-                    [ ( TestInput1 "k1_1" "k2_1" 1, 10 * 6 / 1 + 1 )
-                    , ( TestInput1 "k1_1" "k2_1" 2, 10 * 6 / 2 + 1 )
-                    , ( TestInput1 "k1_1" "k2_2" 3, 10 * 8 / 3 + 3 )
-                    , ( TestInput1 "k1_1" "k2_2" 4, 10 * 8 / 4 + 3 )
-                    , ( TestInput1 "k1_2" "k2_1" 5, 26 * 6 / 5 + 5 )
-                    , ( TestInput1 "k1_2" "k2_1" 6, 26 * 6 / 6 + 5 )
-                    , ( TestInput1 "k1_2" "k2_2" 7, 26 * 8 / 7 + 7 )
-                    , ( TestInput1 "k1_2" "k2_2" 8, 26 * 8 / 8 + 7 )
-                    ]
+                [ ( TestInput1 "k1_1" "k2_1" 1, 10 * 6 / 1 + 1 )
+                , ( TestInput1 "k1_1" "k2_1" 2, 10 * 6 / 2 + 1 )
+                , ( TestInput1 "k1_1" "k2_2" 3, 10 * 8 / 3 + 3 )
+                , ( TestInput1 "k1_1" "k2_2" 4, 10 * 8 / 4 + 3 )
+                , ( TestInput1 "k1_2" "k2_1" 5, 26 * 6 / 5 + 5 )
+                , ( TestInput1 "k1_2" "k2_1" 6, 26 * 6 / 6 + 5 )
+                , ( TestInput1 "k1_2" "k2_2" 7, 26 * 8 / 7 + 7 )
+                , ( TestInput1 "k1_2" "k2_2" 8, 26 * 8 / 8 + 7 )
+                ]
             -}
 
 -}
