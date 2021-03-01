@@ -54,3 +54,7 @@ orange =
 
 gray =
     Element.rgb255 141 141 141
+
+
+silver =
+    Element.rgb255 192 192 192

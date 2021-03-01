@@ -2,6 +2,7 @@ module Morphir.Type.InferTests exposing (..)
 
 import Dict exposing (Dict)
 import Expect
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -17,15 +18,15 @@ import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Type.Class as Class
 import Morphir.Type.Constraint exposing (Constraint, class, equality)
 import Morphir.Type.ConstraintSet as ConstraintSet
-import Morphir.Type.Infer as Infer exposing (TypeError(..), UnificationError(..))
+import Morphir.Type.Infer as Infer exposing (TypeError(..))
 import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
 import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variable)
-import Morphir.Type.SolutionMap as SolutionMap
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variableByIndex)
+import Morphir.Type.Solve as Solve exposing (UnificationError(..), UnificationErrorType(..))
 import Test exposing (Test, describe, test)
 
 
-testReferences : Dict PackageName (Package.Specification ())
+testReferences : IR
 testReferences =
     Dict.fromList
         [ ( [ [ "morphir" ], [ "s", "d", "k" ] ]
@@ -69,6 +70,7 @@ testReferences =
           , BooksAndRecordsTests.packageSpec
           )
         ]
+        |> IR.fromPackageSpecifications
 
 
 positiveOutcomes : List (Value () (Type ()))
@@ -179,12 +181,12 @@ positiveOutcomes =
         )
         (Value.IfThenElse (floatType ())
             (Value.Apply (boolType ())
-                (Value.FieldFunction (Type.Function () (fooBarRecordType "t7_1") (boolType ())) [ "foo" ])
-                (Value.Variable (fooBarRecordType "t7_1") [ "rec" ])
+                (Value.FieldFunction (Type.Function () fooBarBazRecordType (boolType ())) [ "foo" ])
+                (Value.Variable fooBarBazRecordType [ "rec" ])
             )
             (Value.Apply (floatType ())
-                (Value.FieldFunction (Type.Function () (fooBarRecordType "t7_1") (floatType ())) [ "bar" ])
-                (Value.Variable (fooBarRecordType "t7_1") [ "rec" ])
+                (Value.FieldFunction (Type.Function () fooBarBazRecordType (floatType ())) [ "bar" ])
+                (Value.Variable fooBarBazRecordType [ "rec" ])
             )
             (Value.Literal (floatType ()) (FloatLiteral 2))
         )
@@ -375,14 +377,14 @@ negativeOutcomes =
             (Value.Literal 2 (FloatLiteral 1))
             (Value.Literal 3 (IntLiteral 2))
             (Value.Literal 4 (IntLiteral 3))
-      , CouldNotUnify RefMismatch MetaType.boolType MetaType.floatType
+      , UnifyError (CouldNotUnify RefMismatch MetaType.boolType MetaType.floatType)
       )
     , ( Value.List 1
             [ Value.Literal 2 (IntLiteral 2)
             , Value.Literal 3 (FloatLiteral 3)
             , Value.Literal 4 (BoolLiteral False)
             ]
-      , CouldNotUnify RefMismatch MetaType.floatType MetaType.boolType
+      , UnifyError (CouldNotUnify RefMismatch MetaType.floatType MetaType.boolType)
       )
     ]
 
@@ -485,14 +487,14 @@ addSolutionTests =
         scenarios : List ( List ( Variable, MetaType ), ( Variable, MetaType ), List ( Variable, MetaType ) )
         scenarios =
             [ ( []
-              , ( variable 1, MetaVar (variable 1) )
-              , [ ( variable 1, MetaVar (variable 1) )
+              , ( variableByIndex 1, MetaVar (variableByIndex 1) )
+              , [ ( variableByIndex 1, MetaVar (variableByIndex 1) )
                 ]
               )
-            , ( [ ( variable 1, MetaVar (variable 2) )
+            , ( [ ( variableByIndex 1, MetaVar (variableByIndex 2) )
                 ]
-              , ( variable 1, MetaVar (variable 2) )
-              , [ ( variable 1, MetaVar (variable 2) )
+              , ( variableByIndex 1, MetaVar (variableByIndex 2) )
+              , [ ( variableByIndex 1, MetaVar (variableByIndex 2) )
                 ]
               )
             ]
@@ -504,9 +506,9 @@ addSolutionTests =
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
                             solutionMap
-                                |> SolutionMap.fromList
-                                |> Infer.addSolution (MetaType.variable 0) testReferences newVar newSolution
-                                |> Expect.equal (Ok (SolutionMap.fromList expectedSolutionMap))
+                                |> Solve.fromList
+                                |> Solve.addSolution testReferences newVar newSolution
+                                |> Expect.equal (Ok (Solve.fromList expectedSolutionMap))
                         )
                 )
         )
@@ -516,7 +518,7 @@ solvePositiveTests : Test
 solvePositiveTests =
     let
         t i =
-            variable i
+            variableByIndex i
 
         tvar i =
             MetaVar (t i)
@@ -576,7 +578,8 @@ solvePositiveTests =
             , ( [ class (tvar 1) Class.Number
                 , equality (tvar 1) MetaType.intType
                 ]
-              , []
+              , [ class MetaType.intType Class.Number
+                ]
               , [ ( t 1, MetaType.intType )
                 ]
               )
@@ -588,8 +591,8 @@ solvePositiveTests =
                 (\index ( constraints, residualConstraints, expectedSolutionMap ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.solve (MetaType.variable 0) testReferences (ConstraintSet.fromList constraints)
-                                |> Expect.equal (Ok ( ConstraintSet.fromList residualConstraints, SolutionMap.fromList expectedSolutionMap ))
+                            Infer.solve testReferences (ConstraintSet.fromList constraints)
+                                |> Expect.equal (Ok ( ConstraintSet.fromList residualConstraints, Solve.fromList expectedSolutionMap ))
                         )
                 )
         )
@@ -599,7 +602,7 @@ solveNegativeTests : Test
 solveNegativeTests =
     let
         t i =
-            variable i
+            variableByIndex i
 
         tvar i =
             MetaVar (t i)
@@ -619,7 +622,7 @@ solveNegativeTests =
                 (\index ( constraints, expectedError ) ->
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.solve (MetaType.variable 0) testReferences (ConstraintSet.fromList constraints)
+                            Infer.solve testReferences (ConstraintSet.fromList constraints)
                                 |> Expect.equal (Err expectedError)
                         )
                 )
