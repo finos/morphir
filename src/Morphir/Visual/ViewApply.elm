@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, column, fill, moveRight, padding, row, spacing, text, width)
+import Element exposing (Element, centerX, column, fill, moveRight, moveUp, padding, row, spacing, text, width)
 import Element.Border as Border
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
@@ -65,6 +65,7 @@ view config viewValue functionValue argValues =
                             [ centerX
                             , Border.solid
                             , Border.widthEach { bottom = 0, left = 0, right = 0, top = 1 }
+                            , moveUp 1
                             , smallPadding config.state.theme |> padding
                             ]
                             [ viewValue argValues2
