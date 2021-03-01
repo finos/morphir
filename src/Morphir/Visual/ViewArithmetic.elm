@@ -32,15 +32,7 @@ view config viewValue arithmeticOperatorTree =
                             (view config viewValue)
                         |> List.indexedMap
                             (\i b ->
-                                if sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ b, separator ]
-
-                                else if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
+                                if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
                                     row
                                         [ padding 2
                                         , spacing 5
@@ -139,15 +131,7 @@ view config viewValue arithmeticOperatorTree =
                                                     (view config viewValue)
                                                 |> List.indexedMap
                                                     (\i b ->
-                                                        if sameInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
-                                                            row
-                                                                [ padding 2
-                                                                , spacing 5
-                                                                , centerX
-                                                                ]
-                                                                [ b, separator ]
-
-                                                        else if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
+                                                        if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
                                                             row
                                                                 [ padding 2
                                                                 , spacing 5
@@ -323,41 +307,6 @@ riseInPrecedence arithmeticOperatorTrees index currentPointer currentPrecedenceV
 
                     ArithmeticDivisionBranch [ arithmeticOperatorTree, arithmeticOperatorTree1 ] ->
                         if currentPrecedence "Basics.divide" > currentPrecedence (functionName previousOperator) then
-                            True
-
-                        else
-                            False
-
-                    _ ->
-                        False
-
-            Nothing ->
-                False
-
-
-sameInPrecedence : List ArithmeticOperatorTree -> Int -> Int -> Int -> ArithmeticOperator -> Bool
-sameInPrecedence arithmeticOperatorTrees index currentPointer currentPrecedenceValue previousOperator =
-    if currentPointer < index then
-        riseInPrecedence (List.drop 1 arithmeticOperatorTrees) index (currentPointer + 1) currentPrecedenceValue previousOperator
-
-    else
-        case List.head arithmeticOperatorTrees of
-            Just a ->
-                case a of
-                    ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees1 ->
-                        case arithmeticOperator of
-                            _ ->
-                                if currentPrecedence (functionName arithmeticOperator) == currentPrecedence (functionName previousOperator) then
-                                    True
-
-                                else
-                                    False
-
-                    ArithmeticValueLeaf typedValue ->
-                        riseInPrecedence (List.drop 2 arithmeticOperatorTrees) index (currentPointer + 2) currentPrecedenceValue previousOperator
-
-                    ArithmeticDivisionBranch [ arithmeticOperatorTree, arithmeticOperatorTree1 ] ->
-                        if currentPrecedence "Basics.divide" == currentPrecedence (functionName previousOperator) then
                             True
 
                         else
