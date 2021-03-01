@@ -9,7 +9,7 @@ import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config exposing (Config)
-import Morphir.Visual.Theme exposing (mediumPadding, smallSpacing)
+import Morphir.Visual.Theme exposing (mediumPadding, smallPadding, smallSpacing)
 
 
 view : Config msg -> (Value ta (Type ta) -> Element msg) -> Value ta (Type ta) -> List (Value ta (Type ta)) -> Element msg
@@ -48,7 +48,31 @@ view config viewValue functionValue argValues =
                         , localName |> Name.toCamelCase
                         ]
             in
-            if Dict.member functionName inlineBinaryOperators then
+            if Maybe.withDefault "" (Dict.get functionName inlineBinaryOperators) == "/" then
+                row [ centerX, width fill, spacing 5 ]
+                    [ column [ centerX, width fill ]
+                        [ row [ centerX, width fill ]
+                            [ row
+                                [ smallSpacing config.state.theme |> spacing
+                                , smallPadding config.state.theme |> padding
+                                , Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+                                , centerX
+                                ]
+                                [ viewValue argValues1
+                                ]
+                            ]
+                        , row
+                            [ centerX
+                            , Border.solid
+                            , Border.widthEach { bottom = 0, left = 0, right = 0, top = 1 }
+                            , smallPadding config.state.theme |> padding
+                            ]
+                            [ viewValue argValues2
+                            ]
+                        ]
+                    ]
+
+            else if Dict.member functionName inlineBinaryOperators then
                 row
                     [ smallSpacing config.state.theme |> spacing ]
                     [ viewValue argValues1

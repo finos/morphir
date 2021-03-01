@@ -138,6 +138,8 @@ viewValueByLanguageFeature config value =
                     el
                         [ htmlAttribute (onOver (\event -> config.handlers.onHoverOver event.clientPos variableValue))
                         , htmlAttribute (onLeave (\event -> config.handlers.onHoverLeave event.clientPos Nothing))
+                        , width fill
+                        , center
                         ]
                         (text (nameToText name))
 
