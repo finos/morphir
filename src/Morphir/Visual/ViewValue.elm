@@ -43,7 +43,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
         definitionElem =
             definition config
                 (nameToText valueName)
-                (viewValue config (Tuple.first (valueDef.body |> indexedMapValue Tuple.pair 0)))
+                (viewValue config (valueDef.body |> toVisualTypedValue))
     in
     Element.column [ mediumSpacing config.state.theme |> spacing ]
         [ definitionElem
@@ -60,7 +60,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
                         (\( ( _, _, localName ) as fqName, valDef ) ->
                             Element.column
                                 [ smallSpacing config.state.theme |> spacing ]
-                                [ definition config (nameToText localName) (viewValue config (Tuple.first (valDef.body |> indexedMapValue Tuple.pair 0)))
+                                [ definition config (nameToText localName) (viewValue config (valDef.body |> toVisualTypedValue))
                                 , Element.el
                                     [ Font.bold
                                     , Border.solid
@@ -134,10 +134,10 @@ viewValueByLanguageFeature config value =
                             Dict.get name config.state.variables
                     in
                     el
-                        [ onMouseEnter (config.handlers.onHoverOver name index variableValue)
-                        , onMouseLeave (config.handlers.onHoverLeave name index Nothing)
+                        [ onMouseEnter (config.handlers.onHoverOver index variableValue)
+                        , onMouseLeave (config.handlers.onHoverLeave index)
                         , Element.below
-                            (if config.state.popupVariables.variableName == name && config.state.popupVariables.variableIndex == index then
+                            (if config.state.popupVariables.variableIndex == index then
                                 el [ smallPadding config.state.theme |> padding ] (viewPopup config)
 
                              else
@@ -259,8 +259,7 @@ viewPopup config =
                                 (\typedValue ->
                                     typedValue
                                         |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)
-                                        |> indexedMapValue Tuple.pair 0
-                                        |> Tuple.first
+                                        |> toVisualTypedValue
                                         |> Ok
                                 )
                 in
@@ -304,3 +303,10 @@ viewPopup config =
             Nothing ->
                 el [] (text "")
         ]
+
+
+toVisualTypedValue : TypedValue -> VisualTypedValue
+toVisualTypedValue typedValue =
+    typedValue
+        |> indexedMapValue Tuple.pair 0
+        |> Tuple.first

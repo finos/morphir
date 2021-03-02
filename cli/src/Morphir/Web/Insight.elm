@@ -88,7 +88,8 @@ type Msg
     = FunctionNameReceived String
     | FunctionArgumentsReceived Decode.Value
     | ExpandReference FQName Bool
-    | ExpandVariable Name Int (Maybe RawValue)
+    | ExpandVariable Int (Maybe RawValue)
+    | ShrinkVariable Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -111,8 +112,7 @@ update msg model =
             let
                 popupScreen : PopupScreenRecord
                 popupScreen =
-                    { variableName = []
-                    , variableIndex = 0
+                    { variableIndex = 0
                     , variableValue = Nothing
                     }
             in
@@ -191,15 +191,37 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        ExpandVariable varName varIndex maybeRawValue ->
+        ExpandVariable varIndex maybeRawValue ->
             case model.modelState of
                 FunctionsSet visualizationState ->
                     let
                         popupScreen : PopupScreenRecord
                         popupScreen =
-                            { variableName = varName
-                            , variableIndex = varIndex
+                            { variableIndex = varIndex
                             , variableValue = maybeRawValue
+                            }
+                    in
+                    ( { model
+                        | modelState =
+                            FunctionsSet
+                                { visualizationState
+                                    | popupVariables = popupScreen
+                                }
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ShrinkVariable varIndex ->
+            case model.modelState of
+                FunctionsSet visualizationState ->
+                    let
+                        popupScreen : PopupScreenRecord
+                        popupScreen =
+                            { variableIndex = varIndex
+                            , variableValue = Nothing
                             }
                     in
                     ( { model
@@ -265,7 +287,7 @@ view model =
                     , handlers =
                         { onReferenceClicked = ExpandReference
                         , onHoverOver = ExpandVariable
-                        , onHoverLeave = ExpandVariable
+                        , onHoverLeave = ShrinkVariable
                         }
                     }
 
