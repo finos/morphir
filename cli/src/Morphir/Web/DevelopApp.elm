@@ -93,7 +93,7 @@ type Msg
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
     | ExpandReference FQName Bool
-    | ExpandVariable ( Float, Float ) (Maybe RawValue)
+    | ExpandVariable Name Int (Maybe RawValue)
     | ValueFilterChanged String
     | ArgValueUpdated FQName Name RawValue
     | InvalidArgValue FQName Name String
@@ -148,7 +148,7 @@ update msg model =
             , cmd
             )
 
-        ExpandReference fqn bool ->
+        ExpandReference fqn isFunctionPresent ->
             ( model
             , Cmd.none
             )
@@ -173,7 +173,7 @@ update msg model =
         InvalidArgValue fQName argName string ->
             ( model, Cmd.none )
 
-        ExpandVariable ( clientX, clientY ) rawValue ->
+        ExpandVariable varName varIndex maybeRawValue ->
             ( model, Cmd.none )
 
 
@@ -572,8 +572,8 @@ viewValue model distribution valueFQName valueDef =
     let
         popupScreen : PopupScreenRecord
         popupScreen =
-            { clientX = 0
-            , clientY = 0
+            { variableName = []
+            , variableIndex = 0
             , variableValue = Nothing
             }
 

@@ -14,10 +14,10 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..), indexedMapValue)
 import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
-import Morphir.Visual.Common exposing (definition, nameToText)
+import Morphir.Visual.Common exposing (VisualTypedValue, definition, nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Config as Config exposing (Config)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
@@ -43,7 +43,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
         definitionElem =
             definition config
                 (nameToText valueName)
-                (viewValue config valueDef.body)
+                (viewValue config (Tuple.first (valueDef.body |> indexedMapValue Tuple.pair 0)))
     in
     Element.column [ mediumSpacing config.state.theme |> spacing ]
         [ definitionElem
@@ -60,7 +60,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
                         (\( ( _, _, localName ) as fqName, valDef ) ->
                             Element.column
                                 [ smallSpacing config.state.theme |> spacing ]
-                                [ definition config (nameToText localName) (viewValue config valDef.body)
+                                [ definition config (nameToText localName) (viewValue config (Tuple.first (valDef.body |> indexedMapValue Tuple.pair 0)))
                                 , Element.el
                                     [ Font.bold
                                     , Border.solid
@@ -77,17 +77,17 @@ viewDefinition config ( _, _, valueName ) valueDef =
         ]
 
 
-viewValue : Config msg -> TypedValue -> Element msg
+viewValue : Config msg -> VisualTypedValue -> Element msg
 viewValue config value =
     viewValueByValueType config value
 
 
-viewValueByValueType : Config msg -> TypedValue -> Element msg
+viewValueByValueType : Config msg -> VisualTypedValue -> Element msg
 viewValueByValueType config typedValue =
     let
         valueType : Type ()
         valueType =
-            Value.valueAttribute typedValue
+            Value.valueAttribute typedValue |> Tuple.second
     in
     if valueType == Basics.boolType () then
         let
@@ -109,7 +109,7 @@ viewValueByValueType config typedValue =
         viewValueByLanguageFeature config typedValue
 
 
-viewValueByLanguageFeature : Config msg -> TypedValue -> Element msg
+viewValueByLanguageFeature : Config msg -> VisualTypedValue -> Element msg
 viewValueByLanguageFeature config value =
     let
         valueElem : Element msg
@@ -124,20 +124,20 @@ viewValueByLanguageFeature config value =
                 Value.Tuple tpe elems ->
                     ViewTuple.view config (viewValue config) elems
 
-                Value.List (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ]) items ->
+                Value.List ( index, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
                     ViewList.view config (viewValue config) itemType items
 
-                Value.Variable tpe name ->
+                Value.Variable ( index, tpe ) name ->
                     let
                         variableValue : Maybe RawValue
                         variableValue =
                             Dict.get name config.state.variables
                     in
                     el
-                        [ onMouseEnter (config.handlers.onHoverOver name variableValue)
-                        , onMouseLeave (config.handlers.onHoverLeave name Nothing)
+                        [ onMouseEnter (config.handlers.onHoverOver name index variableValue)
+                        , onMouseLeave (config.handlers.onHoverLeave name index Nothing)
                         , Element.below
-                            (if config.state.popupVariables.variableName == name then
+                            (if config.state.popupVariables.variableName == name && config.state.popupVariables.variableIndex == index then
                                 el [ smallPadding config.state.theme |> padding ] (viewPopup config)
 
                              else
@@ -161,7 +161,7 @@ viewValueByLanguageFeature config value =
 
                 Value.LetDefinition tpe _ _ _ ->
                     let
-                        unnest : Config msg -> Value () (Type ()) -> ( List ( Name, Element msg ), Element msg )
+                        unnest : Config msg -> VisualTypedValue -> ( List ( Name, Element msg ), Element msg )
                         unnest conf v =
                             case v of
                                 Value.LetDefinition _ defName def inVal ->
@@ -232,7 +232,7 @@ viewValueByLanguageFeature config value =
                             , Border.rounded 6
                             , width fill
                             ]
-                            (XRayView.viewValue XRayView.viewType other)
+                            (XRayView.viewValue XRayView.viewType (other |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
                         ]
     in
     valueElem
@@ -252,13 +252,15 @@ viewPopup config =
                                 (Distribution.lookupPackageSpecification config.irContext.distribution)
                             |> IR.fromPackageSpecifications
 
-                    typedVal : Result TypeError TypedValue
+                    typedVal : Result TypeError VisualTypedValue
                     typedVal =
                         Infer.inferValue references value
                             |> Result.andThen
                                 (\typedValue ->
                                     typedValue
                                         |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)
+                                        |> indexedMapValue Tuple.pair 0
+                                        |> Tuple.first
                                         |> Ok
                                 )
                 in

@@ -3,11 +3,12 @@ module Morphir.Visual.Components.AritmeticExpressions exposing (..)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Value as Value exposing (TypedValue)
+import Morphir.Visual.Common exposing (VisualTypedValue)
 
 
 type ArithmeticOperatorTree
     = ArithmeticOperatorBranch ArithmeticOperator (List ArithmeticOperatorTree)
-    | ArithmeticValueLeaf TypedValue
+    | ArithmeticValueLeaf VisualTypedValue
     | ArithmeticDivisionBranch (List ArithmeticOperatorTree)
 
 
@@ -17,7 +18,7 @@ type ArithmeticOperator
     | Multiply
 
 
-fromArithmeticTypedValue : TypedValue -> ArithmeticOperatorTree
+fromArithmeticTypedValue : VisualTypedValue -> ArithmeticOperatorTree
 fromArithmeticTypedValue typedValue =
     case typedValue of
         Value.Apply _ fun arg ->
@@ -55,7 +56,7 @@ fromArithmeticTypedValue typedValue =
             ArithmeticValueLeaf typedValue
 
 
-helperArithmeticTreeBuilderRecursion : TypedValue -> String -> List ArithmeticOperatorTree
+helperArithmeticTreeBuilderRecursion : VisualTypedValue -> String -> List ArithmeticOperatorTree
 helperArithmeticTreeBuilderRecursion value operatorName =
     case value of
         Value.Apply _ fun arg ->

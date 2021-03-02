@@ -88,7 +88,7 @@ type Msg
     = FunctionNameReceived String
     | FunctionArgumentsReceived Decode.Value
     | ExpandReference FQName Bool
-    | ExpandVariable Name (Maybe RawValue)
+    | ExpandVariable Name Int (Maybe RawValue)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -112,6 +112,7 @@ update msg model =
                 popupScreen : PopupScreenRecord
                 popupScreen =
                     { variableName = []
+                    , variableIndex = 0
                     , variableValue = Nothing
                     }
             in
@@ -190,13 +191,14 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        ExpandVariable varName maybeRawValue ->
+        ExpandVariable varName varIndex maybeRawValue ->
             case model.modelState of
                 FunctionsSet visualizationState ->
                     let
                         popupScreen : PopupScreenRecord
                         popupScreen =
                             { variableName = varName
+                            , variableIndex = varIndex
                             , variableValue = maybeRawValue
                             }
                     in
