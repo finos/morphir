@@ -4,14 +4,13 @@ import Dict exposing (Dict)
 import Element exposing (Element, column, fill, moveRight, padding, row, spacing, text, width)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
-import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Common exposing (VisualTypedValue, nameToText)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (mediumPadding, smallSpacing)
 
 
-view : Config msg -> (Value ta (Type ta) -> Element msg) -> Value ta (Type ta) -> List (Value ta (Type ta)) -> Element msg
+view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> List VisualTypedValue -> Element msg
 view config viewValue functionValue argValues =
     case ( functionValue, argValues ) of
         ( Value.Reference _ ( _, _, ("is" :: _) as localName ), [ argValue ] ) ->

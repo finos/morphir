@@ -7,11 +7,12 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Visual.Common exposing (VisualTypedValue)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 
 
-view : Config msg -> (Value () (Type ()) -> Element msg) -> Type () -> List (Value () (Type ())) -> Element msg
+view : Config msg -> (VisualTypedValue -> Element msg) -> Type () -> List VisualTypedValue -> Element msg
 view config viewValue itemType items =
     if List.isEmpty items then
         el []

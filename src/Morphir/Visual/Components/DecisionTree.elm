@@ -5,8 +5,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes
-import Morphir.IR.Value exposing (RawValue, TypedValue)
-import Morphir.Visual.Common exposing (element)
+import Morphir.Visual.Common exposing (VisualTypedValue, element)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing)
 import Svg
@@ -15,11 +14,11 @@ import Svg.Attributes
 
 type Node
     = Branch BranchNode
-    | Leaf TypedValue
+    | Leaf VisualTypedValue
 
 
 type alias BranchNode =
-    { condition : TypedValue
+    { condition : VisualTypedValue
     , conditionValue : Maybe Bool
     , thenBranch : Node
     , elseBranch : Node
@@ -91,12 +90,12 @@ toCssColor (Color r g b) =
     String.concat [ "rgb(", String.fromInt r, ",", String.fromInt g, ",", String.fromInt b, ")" ]
 
 
-layout : Config msg -> (TypedValue -> Element msg) -> Node -> Element msg
+layout : Config msg -> (VisualTypedValue -> Element msg) -> Node -> Element msg
 layout config viewValue rootNode =
     layoutHelp config NotHighlighted viewValue rootNode
 
 
-layoutHelp : Config msg -> HighlightState -> (TypedValue -> Element msg) -> Node -> Element msg
+layoutHelp : Config msg -> HighlightState -> (VisualTypedValue -> Element msg) -> Node -> Element msg
 layoutHelp config highlightState viewValue rootNode =
     let
         depthOf : (BranchNode -> Node) -> Node -> Int
