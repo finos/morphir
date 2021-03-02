@@ -115,13 +115,13 @@ viewValueByLanguageFeature config value =
         valueElem : Element msg
         valueElem =
             case value of
-                Value.Literal literalType literal ->
+                Value.Literal _ literal ->
                     ViewLiteral.view literal
 
-                Value.Constructor tpe fQName ->
+                Value.Constructor _ fQName ->
                     ViewReference.view config (viewValue config) fQName
 
-                Value.Tuple tpe elems ->
+                Value.Tuple _ elems ->
                     ViewTuple.view config (viewValue config) elems
 
                 Value.List ( index, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
@@ -146,10 +146,10 @@ viewValueByLanguageFeature config value =
                         ]
                         (text (nameToText name))
 
-                Value.Reference tpe fQName ->
+                Value.Reference _ fQName ->
                     ViewReference.view config (viewValue config) fQName
 
-                Value.Field tpe subjectValue fieldName ->
+                Value.Field _ subjectValue fieldName ->
                     ViewField.view (viewValue config) subjectValue fieldName
 
                 Value.Apply _ fun arg ->
@@ -159,7 +159,7 @@ viewValueByLanguageFeature config value =
                     in
                     ViewApply.view config (viewValue config) function args
 
-                Value.LetDefinition tpe _ _ _ ->
+                Value.LetDefinition _ _ _ _ ->
                     let
                         unnest : Config msg -> VisualTypedValue -> ( List ( Name, Element msg ), Element msg )
                         unnest conf v =
