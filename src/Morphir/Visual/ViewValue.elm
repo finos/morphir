@@ -48,7 +48,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
                 (viewValue config valueDef.body)
     in
     Element.column [ mediumSpacing config.state.theme |> spacing ]
-        [ el [ Element.inFront (viewPopup config) ] definitionElem
+        [ definitionElem
         , if Dict.isEmpty config.state.expandedFunctions then
             Element.none
 
@@ -136,8 +136,15 @@ viewValueByLanguageFeature config value =
                             Dict.get name config.state.variables
                     in
                     el
-                        [ htmlAttribute (onOver (\event -> config.handlers.onHoverOver event.clientPos variableValue))
-                        , htmlAttribute (onLeave (\event -> config.handlers.onHoverLeave event.clientPos Nothing))
+                        [ htmlAttribute (onOver (\event -> config.handlers.onHoverOver name variableValue))
+                        , htmlAttribute (onLeave (\event -> config.handlers.onHoverLeave name Nothing))
+                        , Element.below
+                            (if config.state.popupVariables.variableName == name then
+                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
+
+                             else
+                                Element.none
+                            )
                         ]
                         (text (nameToText name))
 
@@ -273,8 +280,6 @@ viewPopup config =
                             , mediumPadding config.state.theme |> padding
                             , htmlAttribute (style "position" "absolute")
                             , htmlAttribute (style "transition" "all 0.2s ease-in-out")
-                            , htmlAttribute (style "top" (String.fromFloat config.state.popupVariables.clientY ++ "px"))
-                            , htmlAttribute (style "left" (String.fromFloat config.state.popupVariables.clientX ++ "px"))
                             ]
                             (viewValue config typedValue)
 
@@ -293,8 +298,6 @@ viewPopup config =
                             , mediumPadding config.state.theme |> padding
                             , htmlAttribute (style "position" "absolute")
                             , htmlAttribute (style "transition" "all 0.2s ease-in-out")
-                            , htmlAttribute (style "top" (String.fromFloat config.state.popupVariables.clientY ++ "px"))
-                            , htmlAttribute (style "left" (String.fromFloat config.state.popupVariables.clientX ++ "px"))
                             ]
                             (text (Infer.typeErrorToMessage error))
 
