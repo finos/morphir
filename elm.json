@@ -60,7 +60,6 @@
         "elm-explorations/test": "1.2.2 <= v < 2.0.0",
         "justinmimbs/date": "3.2.1 <= v < 4.0.0",
         "mdgriffith/elm-ui": "1.1.8 <= v < 2.0.0",
-        "mpizenberg/elm-pointer-events": "4.0.2 <= v < 5.0.0",
         "pzp1997/assoc-list": "1.0.0 <= v < 2.0.0",
         "stil4m/elm-syntax": "7.2.1 <= v < 8.0.0"
     },

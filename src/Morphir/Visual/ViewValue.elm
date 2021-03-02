@@ -4,10 +4,9 @@ import Dict exposing (Dict)
 import Element exposing (Element, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events exposing (onClick)
+import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
-import Html.Events.Extra.Mouse exposing (onLeave, onOver)
 import Morphir.Elm.Frontend as Frontend
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
@@ -17,7 +16,6 @@ import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
 import Morphir.Type.Infer as Infer exposing (TypeError)
-import Morphir.Type.MetaTypeMapping as MetaTypeMapping
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (definition, nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
@@ -136,8 +134,8 @@ viewValueByLanguageFeature config value =
                             Dict.get name config.state.variables
                     in
                     el
-                        [ htmlAttribute (onOver (\event -> config.handlers.onHoverOver name variableValue))
-                        , htmlAttribute (onLeave (\event -> config.handlers.onHoverLeave name Nothing))
+                        [ onMouseEnter (config.handlers.onHoverOver name variableValue)
+                        , onMouseLeave (config.handlers.onHoverLeave name Nothing)
                         , Element.below
                             (if config.state.popupVariables.variableName == name then
                                 el [ smallPadding config.state.theme |> padding ] (viewPopup config)
