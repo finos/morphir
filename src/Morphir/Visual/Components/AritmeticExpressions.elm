@@ -48,7 +48,7 @@ fromArithmeticTypedValue typedValue =
                             ArithmeticOperatorBranch Multiply (helperArithmeticTreeBuilderRecursion arg1 operatorName ++ helperArithmeticTreeBuilderRecursion arg2 operatorName)
 
                         _ ->
-                            fromArithmeticTypedValue typedValue
+                            ArithmeticValueLeaf typedValue
 
                 _ ->
                     ArithmeticValueLeaf typedValue
@@ -80,11 +80,8 @@ helperArithmeticTreeBuilderRecursion value operatorName =
                         "Basics.divide" ->
                             [ ArithmeticDivisionBranch ([ ArithmeticValueLeaf arg1 ] ++ helperArithmeticTreeBuilderRecursion arg2 operatorName) ]
 
-                        "Basics.float" ->
-                            []
-
                         _ ->
-                            helperArithmeticTreeBuilderRecursion value operatorName
+                            [ ArithmeticValueLeaf value ]
 
                 _ ->
                     [ ArithmeticValueLeaf value ]
