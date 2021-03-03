@@ -143,6 +143,8 @@ viewValueByLanguageFeature config value =
                              else
                                 Element.none
                             )
+                        , width fill
+                        , center
                         ]
                         (text (nameToText name))
 

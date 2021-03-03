@@ -1,10 +1,12 @@
 module Morphir.Visual.Components.DecisionTree exposing (BranchNode, LeftOrRight(..), Node(..), downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
 
 import Element exposing (Attribute, Color, Element, alignLeft, alignTop, centerX, centerY, column, el, fill, height, html, padding, paddingEach, paddingXY, rgb255, row, shrink, spacing, text, width)
+import Element.Background
 import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
-import Html.Attributes
+import Html.Attributes exposing (style)
+import Morphir.IR.Value exposing (RawValue, TypedValue)
 import Morphir.Visual.Common exposing (VisualTypedValue, element)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing)
@@ -58,6 +60,20 @@ highlighStateToColor state =
 
         NotHighlighted ->
             highlightColor.default
+
+
+highlightStateToBackground : HighlightState -> String
+highlightStateToBackground state =
+    case state of
+        Highlighted bool ->
+            if bool then
+                "none"
+
+            else
+                "repeating-linear-gradient( 45deg, #565656, #9a9595 10px, #656565 10px, #797979 20px )"
+
+        NotHighlighted ->
+            "none"
 
 
 highlighStateToBorderWidth : HighlightState -> Int
@@ -153,6 +169,7 @@ layoutHelp config highlightState viewValue rootNode =
                     , Border.rounded 6
                     , Border.color (conditionState |> highlighStateToColor |> toElementColor)
                     , mediumPadding config.state.theme |> padding
+                    , Element.htmlAttribute (style "background" (conditionState |> highlightStateToBackground))
                     ]
                     (viewValue branch.condition)
                 )
@@ -179,6 +196,7 @@ layoutHelp config highlightState viewValue rootNode =
                 , Border.rounded 6
                 , Border.color (highlightState |> highlighStateToColor |> toElementColor)
                 , mediumPadding config.state.theme |> padding
+                , Element.htmlAttribute (style "background" (highlightState |> highlightStateToBackground))
                 ]
                 (viewValue value)
 
