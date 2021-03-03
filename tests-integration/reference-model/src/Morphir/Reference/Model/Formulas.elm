@@ -6,12 +6,12 @@ lawOfGravitation :
     -> Float
     -> Float -- not perfect
 lawOfGravitation f1 f2 =
-    f1 + f2
+    (f1 + f2) * 10
 
 
 lawOfGravitation2 : Float -> Float -> Float -> Float
 lawOfGravitation2 f1 f2 f3 =
-    f1 + f2 / f3
+    (f1 + f2) / f3
 
 
 lawOfGravitation19 : Float -> Float -> Float -> Float
@@ -21,7 +21,7 @@ lawOfGravitation19 f1 f2 f3 =
 
 lawOfGravitation3 : Float -> Float -> Float -> Float
 lawOfGravitation3 f1 f2 f3 =
-    f1 + f2 / f3 + 10 * 3
+    f1 + f2 / (f3 + 10) * 3
 
 
 lawOfGravitation4 : Float -> Float -> Float -> Float -> Float
@@ -31,7 +31,7 @@ lawOfGravitation4 f1 f2 f3 f4 =
 
 lawOfGravitation5 : Float -> Float -> Float -> Float -> Float -> Float
 lawOfGravitation5 f1 f2 f3 f4 f5 =
-    f1 + (f2 * f5) / f3 * f4
+    (f1 + f2) * f5 / f3 * f4
 
 
 lawOfGravitation6 : Float -> Float -> Float -> Float -> Float -> Float -> Float -> Float

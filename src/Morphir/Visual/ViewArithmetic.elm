@@ -54,7 +54,7 @@ view config viewValue arithmeticOperatorTree =
                                         , spacing 5
                                         , centerX
                                         ]
-                                        [ text "(", b, text ")", separator ]
+                                        [ b, separator ]
 
                                 else if riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator then
                                     row
@@ -62,7 +62,7 @@ view config viewValue arithmeticOperatorTree =
                                         , spacing 5
                                         , centerX
                                         ]
-                                        [ text "(", b, text ")" ]
+                                        [ b ]
 
                                 else if i < List.length arithmeticOperatorTrees - 1 then
                                     row
@@ -153,7 +153,7 @@ view config viewValue arithmeticOperatorTree =
                                                                 , spacing 5
                                                                 , centerX
                                                                 ]
-                                                                [ text "(", b, text ")", separator ]
+                                                                [ b, separator ]
 
                                                         else if riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator then
                                                             row
@@ -161,7 +161,7 @@ view config viewValue arithmeticOperatorTree =
                                                                 , spacing 5
                                                                 , centerX
                                                                 ]
-                                                                [ text "(", b, text ")" ]
+                                                                [ b ]
 
                                                         else if i < List.length arithmeticOperatorTrees - 1 then
                                                             row
