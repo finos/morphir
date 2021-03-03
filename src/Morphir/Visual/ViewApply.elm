@@ -81,13 +81,23 @@ view config viewValue functionValue argValues =
                     ]
 
             else
-                Element.none
+                row
+                    [ smallSpacing config.state.theme |> spacing ]
+                    [ viewValue argValues1
+                    , viewValue functionValue
+                    , viewValue argValues2
+                    ]
 
         _ ->
             column [ smallSpacing config.state.theme |> spacing ]
-                (argValues
-                    |> List.map viewValue
-                )
+                [ column [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
+                    [ viewValue functionValue
+                    ]
+                , column [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
+                    (argValues
+                        |> List.map viewValue
+                    )
+                ]
 
 
 inlineBinaryOperators : Dict String String
