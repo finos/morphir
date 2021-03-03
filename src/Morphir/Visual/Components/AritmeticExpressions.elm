@@ -51,7 +51,7 @@ fromArithmeticTypedValue typedValue =
                             fromArithmeticTypedValue typedValue
 
                 _ ->
-                    fromArithmeticTypedValue typedValue
+                    ArithmeticValueLeaf typedValue
 
         _ ->
             ArithmeticValueLeaf typedValue
@@ -87,7 +87,7 @@ helperArithmeticTreeBuilderRecursion value operatorName =
                             helperArithmeticTreeBuilderRecursion value operatorName
 
                 _ ->
-                    helperArithmeticTreeBuilderRecursion value operatorName
+                    [ ArithmeticValueLeaf value ]
 
         _ ->
             [ ArithmeticValueLeaf value ]
