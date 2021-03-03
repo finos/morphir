@@ -33,14 +33,13 @@ type alias VisualState =
 
 type alias EventHandlers msg =
     { onReferenceClicked : FQName -> Bool -> msg
-    , onHoverOver : ( Float, Float ) -> Maybe RawValue -> msg
-    , onHoverLeave : ( Float, Float ) -> Maybe RawValue -> msg
+    , onHoverOver : Int -> Maybe RawValue -> msg
+    , onHoverLeave : Int -> msg
     }
 
 
 type alias PopupScreenRecord =
-    { clientX : Float
-    , clientY : Float
+    { variableIndex : Int
     , variableValue : Maybe RawValue
     }
 

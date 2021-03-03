@@ -7,7 +7,7 @@ import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes exposing (style)
 import Morphir.IR.Value exposing (RawValue, TypedValue)
-import Morphir.Visual.Common exposing (element)
+import Morphir.Visual.Common exposing (VisualTypedValue, element)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing)
 import Svg
@@ -16,11 +16,11 @@ import Svg.Attributes
 
 type Node
     = Branch BranchNode
-    | Leaf TypedValue
+    | Leaf VisualTypedValue
 
 
 type alias BranchNode =
-    { condition : TypedValue
+    { condition : VisualTypedValue
     , conditionValue : Maybe Bool
     , thenBranch : Node
     , elseBranch : Node
@@ -38,12 +38,15 @@ highlightColor =
     , default = Color 120 120 120
     }
 
+
 type Color
     = Color Int Int Int
+
 
 type HighlightState
     = Highlighted Bool
     | NotHighlighted
+
 
 highlighStateToColor : HighlightState -> Color
 highlighStateToColor state =
@@ -58,6 +61,7 @@ highlighStateToColor state =
         NotHighlighted ->
             highlightColor.default
 
+
 highlightStateToBackground : HighlightState -> String
 highlightStateToBackground state =
     case state of
@@ -69,7 +73,7 @@ highlightStateToBackground state =
                 "repeating-linear-gradient( 45deg, #565656, #9a9595 10px, #656565 10px, #797979 20px )"
 
         NotHighlighted ->
-             "none"
+            "none"
 
 
 highlighStateToBorderWidth : HighlightState -> Int
@@ -102,12 +106,12 @@ toCssColor (Color r g b) =
     String.concat [ "rgb(", String.fromInt r, ",", String.fromInt g, ",", String.fromInt b, ")" ]
 
 
-layout : Config msg -> (TypedValue -> Element msg) -> Node -> Element msg
+layout : Config msg -> (VisualTypedValue -> Element msg) -> Node -> Element msg
 layout config viewValue rootNode =
     layoutHelp config NotHighlighted viewValue rootNode
 
 
-layoutHelp : Config msg -> HighlightState -> (TypedValue -> Element msg) -> Node -> Element msg
+layoutHelp : Config msg -> HighlightState -> (VisualTypedValue -> Element msg) -> Node -> Element msg
 layoutHelp config highlightState viewValue rootNode =
     let
         depthOf : (BranchNode -> Node) -> Node -> Int
@@ -165,8 +169,7 @@ layoutHelp config highlightState viewValue rootNode =
                     , Border.rounded 6
                     , Border.color (conditionState |> highlighStateToColor |> toElementColor)
                     , mediumPadding config.state.theme |> padding
-                    , Element.htmlAttribute (style "background" (conditionState |> highlightStateToBackground) )
-
+                    , Element.htmlAttribute (style "background" (conditionState |> highlightStateToBackground))
                     ]
                     (viewValue branch.condition)
                 )
@@ -193,7 +196,7 @@ layoutHelp config highlightState viewValue rootNode =
                 , Border.rounded 6
                 , Border.color (highlightState |> highlighStateToColor |> toElementColor)
                 , mediumPadding config.state.theme |> padding
-                , Element.htmlAttribute (style "background" (highlightState |> highlightStateToBackground) )
+                , Element.htmlAttribute (style "background" (highlightState |> highlightStateToBackground))
                 ]
                 (viewValue value)
 

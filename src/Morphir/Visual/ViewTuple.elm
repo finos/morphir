@@ -7,7 +7,7 @@ import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (smallSpacing)
 
 
-view : Config msg -> (Value ta (Type ta) -> Element msg) -> List (Value ta (Type ta)) -> Element msg
+view : Config msg -> (Value ta ( Int, Type ta ) -> Element msg) -> List (Value ta ( Int, Type ta )) -> Element msg
 view config viewValue elems =
     let
         tupleCase : String

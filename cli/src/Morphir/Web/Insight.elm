@@ -1,7 +1,6 @@
 port module Morphir.Web.Insight exposing (Model, Msg(..), init, main, receiveFunctionArguments, receiveFunctionName, subscriptions, update, view)
 
 import Browser
-import Browser.Dom exposing (getViewport)
 import Dict exposing (Dict)
 import Element exposing (padding, spacing)
 import Element.Font as Font
@@ -20,7 +19,6 @@ import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme, ThemeConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Theme.Codec exposing (decodeThemeConfig)
 import Morphir.Visual.ViewValue as ViewValue
-import Task
 
 
 
@@ -90,8 +88,8 @@ type Msg
     = FunctionNameReceived String
     | FunctionArgumentsReceived Decode.Value
     | ExpandReference FQName Bool
-    | ExpandVariable ( Float, Float ) (Maybe RawValue)
-    | SetPopupView ( Float, Float ) (Maybe RawValue)
+    | ExpandVariable Int (Maybe RawValue)
+    | ShrinkVariable Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -114,8 +112,7 @@ update msg model =
             let
                 popupScreen : PopupScreenRecord
                 popupScreen =
-                    { clientX = 0
-                    , clientY = 0
+                    { variableIndex = 0
                     , variableValue = Nothing
                     }
             in
@@ -194,22 +191,37 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        ExpandVariable ( clientX, clientY ) maybeRawValue ->
-            let
-                scrollPosition =
-                    Task.perform (\viewports -> SetPopupView ( viewports.viewport.x + clientX, viewports.viewport.y + clientY ) maybeRawValue) getViewport
-            in
-            ( model, scrollPosition )
-
-        SetPopupView ( clientX, clientY ) maybeRawValue ->
+        ExpandVariable varIndex maybeRawValue ->
             case model.modelState of
                 FunctionsSet visualizationState ->
                     let
                         popupScreen : PopupScreenRecord
                         popupScreen =
-                            { clientX = clientX
-                            , clientY = clientY
+                            { variableIndex = varIndex
                             , variableValue = maybeRawValue
+                            }
+                    in
+                    ( { model
+                        | modelState =
+                            FunctionsSet
+                                { visualizationState
+                                    | popupVariables = popupScreen
+                                }
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ShrinkVariable varIndex ->
+            case model.modelState of
+                FunctionsSet visualizationState ->
+                    let
+                        popupScreen : PopupScreenRecord
+                        popupScreen =
+                            { variableIndex = varIndex
+                            , variableValue = Nothing
                             }
                     in
                     ( { model
@@ -275,7 +287,7 @@ view model =
                     , handlers =
                         { onReferenceClicked = ExpandReference
                         , onHoverOver = ExpandVariable
-                        , onHoverLeave = ExpandVariable
+                        , onHoverLeave = ShrinkVariable
                         }
                     }
 
