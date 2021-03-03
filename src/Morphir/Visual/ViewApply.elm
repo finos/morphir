@@ -84,7 +84,7 @@ view config viewValue functionValue argValues =
                 Element.none
 
         _ ->
-            row []
+            column [ smallSpacing config.state.theme |> spacing ]
                 (argValues
                     |> List.map viewValue
                 )

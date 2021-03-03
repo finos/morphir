@@ -136,8 +136,6 @@ viewValueByLanguageFeature config value =
                     el
                         [ onMouseEnter (config.handlers.onHoverOver index variableValue)
                         , onMouseLeave (config.handlers.onHoverLeave index)
-                        , width fill
-                        , center
                         , Element.below
                             (if config.state.popupVariables.variableIndex == index then
                                 el [ smallPadding config.state.theme |> padding ] (viewPopup config)
