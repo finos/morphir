@@ -1,4 +1,6 @@
 # morphir-elm
+<img src="docs/assets/2020_Morphir_Logo_Horizontal.svg"></img>
+![morphir-elm](docs/assets/2020_Morphir_Logo_Horizontal.svg)
 
 [Morphir](https://github.com/finos/morphir) is a multi-language system built on a data format that captures an 
 application's domain model and business logic in a technology agnostic manner. This repo contains tools that
