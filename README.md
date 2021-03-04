@@ -1,5 +1,5 @@
 # morphir-elm
-<img src="docs/assets/2020_Morphir_Logo_Horizontal.svg"></img>
+<img style="width: 200px" src="docs/assets/2020_Morphir_Logo_Horizontal.svg"></img>
 ![morphir-elm](docs/assets/2020_Morphir_Logo_Horizontal.svg)
 
 [Morphir](https://github.com/finos/morphir) is a multi-language system built on a data format that captures an 
