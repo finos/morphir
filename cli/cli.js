@@ -13,16 +13,16 @@ const fsWriteFile = util.promisify(fs.writeFile)
 const worker = require('./Morphir.Elm.CLI').Elm.Morphir.Elm.CLI.init()
 
 
-async function make(projectDir) {
+async function make(projectDir, options) {
     const morphirJsonPath = path.join(projectDir, 'morphir.json')
     const morphirJsonContent = await readFile(morphirJsonPath)
     const morphirJson = JSON.parse(morphirJsonContent.toString())
     const sourceFiles = await readElmSources(path.join(projectDir, morphirJson.sourceDirectory))
-    const packageDef = await packageDefinitionFromSource(morphirJson, sourceFiles)
+    const packageDef = await packageDefinitionFromSource(morphirJson, sourceFiles, options)
     return packageDef
 }
 
-async function packageDefinitionFromSource(morphirJson, sourceFiles) {
+async function packageDefinitionFromSource(morphirJson, sourceFiles, options) {
     return new Promise((resolve, reject) => {
         worker.ports.jsonDecodeError.subscribe(err => {
             reject(err)
@@ -36,7 +36,12 @@ async function packageDefinitionFromSource(morphirJson, sourceFiles) {
             }
         })
 
-        worker.ports.packageDefinitionFromSource.send([morphirJson, sourceFiles])
+        const opts =
+        {
+            typesOnly: options.typesOnly
+        }
+
+        worker.ports.packageDefinitionFromSource.send([opts, morphirJson, sourceFiles])
     })
 }
 
@@ -97,11 +102,11 @@ async function gen(input, outputPath, options) {
     return Promise.all(writePromises.concat(deletePromises))
 }
 
-async function copyRecursiveSync(src, dest) {
-    var exists = fs.existsSync(src);
+function copyRecursiveSync(src, dest) {
+    const exists = fs.existsSync(src);
     if (exists) {
-        var stats = exists && fs.statSync(src);
-        var isDirectory = exists && stats.isDirectory();
+        const stats = exists && fs.statSync(src);
+        const isDirectory = exists && stats.isDirectory();
         if (isDirectory) {
             if (!fs.existsSync(dest))
                 fs.mkdirSync(dest);

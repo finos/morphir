@@ -65,14 +65,10 @@ highlighStateToColor state =
 highlightStateToBackground : HighlightState -> String
 highlightStateToBackground state =
     case state of
-        Highlighted bool ->
-            if bool then
-                "none"
-
-            else
-                "repeating-linear-gradient( 45deg, #565656, #9a9595 10px, #656565 10px, #797979 20px )"
-
         NotHighlighted ->
+            "repeating-linear-gradient( 45deg, #565656, #9a9595 10px, #656565 10px, #797979 20px )"
+
+        _ ->
             "none"
 
 
