@@ -78,7 +78,7 @@ async function gen(input, outputPath, options) {
     await mkdir(outputPath, { recursive: true })
     const morphirIrJson = await readFile(path.resolve(input))
     const fileMap = await generate(options, JSON.parse(morphirIrJson.toString()))
-    const sourceDirectory = path.join(path.dirname(__dirname), 'redistributable', `${options["target"]}`)
+
 
     const writePromises =
         fileMap.map(async ([[dirPath, fileName], content]) => {
@@ -98,8 +98,21 @@ async function gen(input, outputPath, options) {
             console.log(`DELETE - ${fileToDelete}`)
             return fs.unlinkSync(fileToDelete)
         })
-    const copyDirectoriesRecursive = await copyRecursiveSync(sourceDirectory, outputPath)
+    copyRedistributables(options, outputPath)
     return Promise.all(writePromises.concat(deletePromises))
+}
+
+function copyRedistributables(options, outputPath) {
+    const copyFiles = (src, dest) => {
+        const sourceDirectory = path.join(path.dirname(__dirname), 'redistributable', src)
+        copyRecursiveSync(sourceDirectory, outputPath)
+    }
+    if (options.target == 'SpringBoot') {
+        copyFiles('SpringBoot', outputPath)
+    } else if (options.target == 'Scala' && options.copyDeps) {
+        copyFiles('Scala/sdk/src', outputPath)
+        copyFiles(`Scala/sdk/src-${options.targetVersion}`, outputPath)
+    }
 }
 
 function copyRecursiveSync(src, dest) {
@@ -116,6 +129,7 @@ function copyRecursiveSync(src, dest) {
             });
         } else {
             fs.copyFileSync(src, dest);
+            console.log(`COPY - ${dest}`)
         }
     }
 }
