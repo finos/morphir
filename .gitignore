@@ -7,3 +7,4 @@ dist
 morphir-ir.json
 generated/
 out/
+redistributable/Scala
