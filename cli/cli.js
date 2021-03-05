@@ -129,6 +129,7 @@ function copyRecursiveSync(src, dest) {
             });
         } else {
             fs.copyFileSync(src, dest);
+            console.log(`COPY - ${dest}`)
         }
     }
 }
