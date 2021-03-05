@@ -3,9 +3,6 @@ module Morphir.Visual.ViewArithmetic exposing (..)
 import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, padding, paddingEach, rgb, row, spacing, text, width)
 import Element.Border as Border
-import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Type as Type
-import Morphir.IR.Value exposing (RawValue, TypedValue, Value(..))
 import Morphir.Visual.Common exposing (VisualTypedValue)
 import Morphir.Visual.Components.AritmeticExpressions exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
 import Morphir.Visual.Config exposing (Config)
@@ -16,72 +13,70 @@ view : Config msg -> (VisualTypedValue -> Element msg) -> ArithmeticOperatorTree
 view config viewValue arithmeticOperatorTree =
     case arithmeticOperatorTree of
         ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees ->
-            case arithmeticOperator of
-                _ ->
-                    let
-                        separator =
+            let
+                separator =
+                    row
+                        [ spacing 5
+                        , width Element.fill
+                        , centerX
+                        ]
+                        [ text (Maybe.withDefault "" (Dict.get (functionNameHelper arithmeticOperator) inlineBinaryOperators))
+                        ]
+            in
+            arithmeticOperatorTrees
+                |> List.map
+                    (view config viewValue)
+                |> List.indexedMap
+                    (\i b ->
+                        if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
                             row
-                                [ spacing 5
-                                , width Element.fill
+                                [ padding 2
+                                , spacing 5
                                 , centerX
                                 ]
-                                [ text (Maybe.withDefault "" (Dict.get (functionNameHelper arithmeticOperator) inlineBinaryOperators))
+                                [ text "(", b, text ")", separator ]
+
+                        else if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator then
+                            row
+                                [ padding 2
+                                , spacing 5
+                                , centerX
                                 ]
-                    in
-                    arithmeticOperatorTrees
-                        |> List.map
-                            (view config viewValue)
-                        |> List.indexedMap
-                            (\i b ->
-                                if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ text "(", b, text ")", separator ]
+                                [ text "(", b, text ")" ]
 
-                                else if dropInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ text "(", b, text ")" ]
+                        else if riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
+                            row
+                                [ padding 2
+                                , spacing 5
+                                , centerX
+                                ]
+                                [ b, separator ]
 
-                                else if riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator && i < List.length arithmeticOperatorTrees - 1 then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ b, separator ]
+                        else if riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator then
+                            row
+                                [ padding 2
+                                , spacing 5
+                                , centerX
+                                ]
+                                [ b ]
 
-                                else if riseInPrecedence arithmeticOperatorTrees i 0 (currentPrecedence (functionName arithmeticOperator)) arithmeticOperator then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ b ]
+                        else if i < List.length arithmeticOperatorTrees - 1 then
+                            row
+                                [ padding 2
+                                , spacing 5
+                                , centerX
+                                ]
+                                [ b, separator ]
 
-                                else if i < List.length arithmeticOperatorTrees - 1 then
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ b, separator ]
-
-                                else
-                                    row
-                                        [ padding 2
-                                        , spacing 5
-                                        , centerX
-                                        ]
-                                        [ b ]
-                            )
-                        |> Element.row [ spacing 5, width Element.fill, centerX ]
+                        else
+                            row
+                                [ padding 2
+                                , spacing 5
+                                , centerX
+                                ]
+                                [ b ]
+                    )
+                |> Element.row [ spacing 5, width Element.fill, centerX ]
 
         ArithmeticDivisionBranch [ arithmeticOperatorTree1, arithmeticOperatorTree2 ] ->
             case arithmeticOperatorTree1 of
