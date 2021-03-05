@@ -107,6 +107,6 @@ For more details on ports [Ports](https://guide.elm-lang.org/interop/ports.html)
   
 - This file has all the functions of encoding and decoding of elm data types.
 
-###Example file 
+###Example File
 If you are still confused like how to write code for all that steps, you can have a look at example file.
 [Insight API Example File](https://github.com/finos/morphir-elm/blob/master/cli/web/insight.html).
