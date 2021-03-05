@@ -13,7 +13,8 @@ program
     .description('Generate code from Morphir IR')
     .option('-i, --input <path>', 'Source location where the Morphir IR will be loaded from.', 'morphir-ir.json')
     .option('-o, --output <path>', 'Target location where the generated code will be saved.', './dist')
-    .option('-t, --target <type>', 'Language to Generate (Scala | SpringBoot | cypher | triples', 'Scala')
+    .option('-t, --target <type>', 'Language to Generate (Scala | SpringBoot | cypher | triples).', 'Scala')
+    .option('-tv, --target-version <version>', 'Language version to Generate.', '2.11')
     .option('-c, --copy-deps', 'Copy the dependencies used by the generated code to the output path.', false)
     .parse(process.argv)
 
