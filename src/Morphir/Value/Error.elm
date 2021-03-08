@@ -13,6 +13,7 @@ type Error
     | LambdaArgumentDidNotMatch PatternMismatch
     | BindPatternDidNotMatch (Value () ()) PatternMismatch
     | UnexpectedArguments (List (Value () ()))
+    | UnexpectedOperator String
     | ExpectedLiteral (Value () ())
     | ExpectedBoolLiteral Literal
     | IfThenElseConditionShouldEvaluateToBool (Value () ()) (Value () ())
