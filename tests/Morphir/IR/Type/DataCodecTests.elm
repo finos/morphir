@@ -1,15 +1,15 @@
-module Morphir.IR.JsonDecoderTest exposing (decodeDataTest)
+module Morphir.IR.Type.DataCodecTests exposing (decodeDataTest)
 
 import Expect exposing (Expectation)
 import Json.Decode as Decode
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.DataCodec exposing (decodeData, encodeData)
 import Morphir.IR.FQName exposing (fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
 import Morphir.IR.SDK.Char exposing (charType)
 import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type.DataCodec exposing (decodeData, encodeData)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.IR.ValueFuzzer exposing (floatFuzzer, intFuzzer)
 import Test exposing (Test, describe, fuzz, test)

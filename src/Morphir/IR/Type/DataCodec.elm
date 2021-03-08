@@ -1,4 +1,4 @@
-module Morphir.IR.DataCodec exposing (decodeData, encodeData)
+module Morphir.IR.Type.DataCodec exposing (decodeData, encodeData)
 
 import Json.Decode as Decode
 import Json.Encode as Encode
