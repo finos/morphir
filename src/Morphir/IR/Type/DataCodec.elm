@@ -14,6 +14,39 @@ encodeData ir tpe =
     case tpe of
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
             case ( moduleName, localName, args ) of
+                ( [ [ "basics" ] ], [ "bool" ], [] ) ->
+                    Ok
+                        (\value ->
+                            case value of
+                                Value.Literal _ (BoolLiteral v) ->
+                                    Encode.bool v
+
+                                _ ->
+                                    Encode.null
+                        )
+
+                ( [ [ "char" ] ], [ "char" ], [] ) ->
+                    Ok
+                        (\value ->
+                            case value of
+                                Value.Literal _ (CharLiteral v) ->
+                                    Encode.string (String.fromChar v)
+
+                                _ ->
+                                    Encode.null
+                        )
+
+                ( [ [ "string" ] ], [ "string" ], [] ) ->
+                    Ok
+                        (\value ->
+                            case value of
+                                Value.Literal _ (StringLiteral v) ->
+                                    Encode.string v
+
+                                _ ->
+                                    Encode.null
+                        )
+
                 ( [ [ "basics" ] ], [ "int" ], [] ) ->
                     Ok
                         (\value ->
@@ -35,6 +68,18 @@ encodeData ir tpe =
                                 _ ->
                                     Encode.null
                         )
+
+                ( [ [ "list" ] ], [ "list" ], [ itemType ] ) ->
+                    encodeData ir itemType
+                        |> Result.map
+                            (\encodeItem value ->
+                                case value of
+                                    Value.List _ items ->
+                                        Encode.list encodeItem items
+
+                                    _ ->
+                                        Encode.null
+                            )
 
                 _ ->
                     Debug.todo "implement"
@@ -85,7 +130,18 @@ decodeData ir tpe =
                     Ok (Decode.map (\value -> Value.Literal () (FloatLiteral value)) Decode.float)
 
                 ( [ [ "char" ] ], [ "char" ], [] ) ->
-                    Ok (Decode.map (\value -> Value.Literal () (StringLiteral value)) Decode.string)
+                    Ok
+                        (Decode.string
+                            |> Decode.andThen
+                                (\value ->
+                                    case value |> String.uncons of
+                                        Just ( firstChar, _ ) ->
+                                            Decode.succeed (Value.Literal () (CharLiteral firstChar))
+
+                                        Nothing ->
+                                            Decode.fail "Expected char but found empty string."
+                                )
+                        )
 
                 ( [ [ "string" ] ], [ "string" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (StringLiteral value)) Decode.string)

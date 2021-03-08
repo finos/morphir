@@ -1,17 +1,19 @@
 module Morphir.IR.Type.DataCodecTests exposing (decodeDataTest)
 
 import Expect exposing (Expectation)
+import Fuzz
 import Json.Decode as Decode
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName exposing (fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
 import Morphir.IR.SDK.Char exposing (charType)
+import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.DataCodec exposing (decodeData, encodeData)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
-import Morphir.IR.ValueFuzzer exposing (floatFuzzer, intFuzzer)
+import Morphir.IR.ValueFuzzer exposing (boolFuzzer, charFuzzer, floatFuzzer, intFuzzer, listFuzzer, stringFuzzer)
 import Test exposing (Test, describe, fuzz, test)
 
 
@@ -55,62 +57,14 @@ decodeDataTest =
             Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ intType () ]
     in
     describe "JsonDecoderTest"
-        [ test "BoolDecoder"
-            (\_ ->
-                case decodeData ir (boolType ()) of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "true") (Ok (Value.literal () (BoolLiteral True)))
-
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
+        [ fuzz boolFuzzer "Bool" (encodeDecodeTest (boolType ()))
         , fuzz intFuzzer "Int" (encodeDecodeTest (intType ()))
         , fuzz floatFuzzer "Float" (encodeDecodeTest (floatType ()))
-        , test "CharDecoder"
-            (\_ ->
-                case decodeData ir (charType ()) of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "\"a\"") (Ok (Value.literal () (StringLiteral "a")))
-
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
-        , test "StringDecoder"
-            (\_ ->
-                case decodeData ir (stringType ()) of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "\"Hello\"") (Ok (Value.literal () (StringLiteral "Hello")))
-
-                    Err error ->
-                        Expect.equal "Cannot Decode this type" error
-            )
-
-        --, test "ListDecoder"
-        --    (\_ ->
-        --        case decodeData (listType () (floatType ())) of
-        --            Ok decoder ->
-        --                Expect.equal (Decode.decodeString decoder "[1.1,2.3,3.5]")
-        --                    (Ok
-        --                        (Value.List ()
-        --                            [ Value.Literal () (FloatLiteral 1.1)
-        --                            , Value.Literal () (FloatLiteral 2.3)
-        --                            , Value.Literal () (FloatLiteral 3.5)
-        --                            ]
-        --                        )
-        --                    )
-        --
-        --            Err error ->
-        --                Expect.equal "Cannot Decode this type" error
-        --    )
-        , test "IntListDecoder"
-            (\_ ->
-                case decodeData ir intListType of
-                    Ok decoder ->
-                        Expect.equal (Decode.decodeString decoder "[]") (Ok (Value.List () []))
-
-                    Err error ->
-                        Expect.fail error
-            )
+        , fuzz charFuzzer "Char" (encodeDecodeTest (charType ()))
+        , fuzz stringFuzzer "String" (encodeDecodeTest (stringType ()))
+        , fuzz (listFuzzer stringFuzzer) "List String" (encodeDecodeTest (listType () (stringType ())))
+        , fuzz (listFuzzer intFuzzer) "List Int" (encodeDecodeTest (listType () (intType ())))
+        , fuzz (listFuzzer floatFuzzer) "List Float" (encodeDecodeTest (listType () (floatType ())))
         , test "RecordDecoder"
             (\_ ->
                 case decodeData ir recordType of
@@ -122,7 +76,7 @@ decodeDataTest =
                                     , ( [ "bar" ], Value.Literal () (BoolLiteral True) )
                                     , ( [ "baz" ], Value.Literal () (IntLiteral 99) )
                                     , ( [ "bee" ], Value.Literal () (FloatLiteral 49.56) )
-                                    , ( [ "ball" ], Value.Literal () (StringLiteral "c") )
+                                    , ( [ "ball" ], Value.Literal () (CharLiteral 'c') )
                                     ]
                                 )
                             )
