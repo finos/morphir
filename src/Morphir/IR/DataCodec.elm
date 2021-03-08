@@ -2,14 +2,15 @@ module Morphir.IR.DataCodec exposing (decodeData, encodeData)
 
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Morphir.IR exposing (IR)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
-import Morphir.IR.Type as Type exposing (ResolvedType, Type)
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 
 
-encodeData : ResolvedType -> Result String (RawValue -> Encode.Value)
-encodeData tpe =
+encodeData : IR -> Type ta -> Result String (RawValue -> Encode.Value)
+encodeData ir tpe =
     case tpe of
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
             case ( moduleName, localName, args ) of
@@ -42,8 +43,8 @@ encodeData tpe =
             Debug.todo "implement"
 
 
-decodeData : ResolvedType -> Result String (Decode.Decoder RawValue)
-decodeData tpe =
+decodeData : IR -> Type ta -> Result String (Decode.Decoder RawValue)
+decodeData ir tpe =
     case tpe of
         Type.Record _ fields ->
             fields
@@ -52,7 +53,7 @@ decodeData tpe =
                         resultSoFar
                             |> Result.andThen
                                 (\decoderSoFar ->
-                                    decodeData field.tpe
+                                    decodeData ir field.tpe
                                         |> Result.map
                                             (\fieldDecoder ->
                                                 decoderSoFar
@@ -90,7 +91,7 @@ decodeData tpe =
                     Ok (Decode.map (\value -> Value.Literal () (StringLiteral value)) Decode.string)
 
                 ( [ [ "list" ] ], [ "list" ], [ itemType ] ) ->
-                    decodeData itemType
+                    decodeData ir itemType
                         |> Result.map
                             (\itemDecoder ->
                                 Decode.list itemDecoder
@@ -110,7 +111,7 @@ decodeData tpe =
                         resultSoFar
                             |> Result.andThen
                                 (\decoderSoFar ->
-                                    decodeData argValue
+                                    decodeData ir argValue
                                         |> Result.map
                                             (\fieldDecoder ->
                                                 decoderSoFar

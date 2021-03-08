@@ -2,47 +2,53 @@ module Morphir.IR.JsonDecoderTest exposing (decodeDataTest)
 
 import Expect exposing (Expectation)
 import Json.Decode as Decode
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.DataCodec exposing (decodeData, encodeData)
 import Morphir.IR.FQName exposing (fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
 import Morphir.IR.SDK.Char exposing (charType)
 import Morphir.IR.SDK.String exposing (stringType)
-import Morphir.IR.Type as Type exposing (ResolvedType, Type)
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.IR.ValueFuzzer exposing (floatFuzzer, intFuzzer)
 import Test exposing (Test, describe, fuzz, test)
 
 
+ir : IR
+ir =
+    IR.empty
+
+
 decodeDataTest : Test
 decodeDataTest =
     let
-        recordType : ResolvedType
+        recordType : Type ()
         recordType =
-            Type.Record Nothing
-                [ Type.Field [ "foo" ] (stringType Nothing)
-                , Type.Field [ "bar" ] (boolType Nothing)
-                , Type.Field [ "baz" ] (intType Nothing)
-                , Type.Field [ "bee" ] (floatType Nothing)
-                , Type.Field [ "ball" ] (charType Nothing)
+            Type.Record ()
+                [ Type.Field [ "foo" ] (stringType ())
+                , Type.Field [ "bar" ] (boolType ())
+                , Type.Field [ "baz" ] (intType ())
+                , Type.Field [ "bee" ] (floatType ())
+                , Type.Field [ "ball" ] (charType ())
                 ]
 
-        emptyRecordType : ResolvedType
+        emptyRecordType : Type ()
         emptyRecordType =
-            Type.Record Nothing []
+            Type.Record () []
 
-        tupleType : ResolvedType
+        tupleType : Type ()
         tupleType =
-            Type.Tuple Nothing
-                [ intType Nothing, boolType Nothing, floatType Nothing, charType Nothing, stringType Nothing ]
+            Type.Tuple ()
+                [ intType (), boolType (), floatType (), charType (), stringType () ]
 
-        emptyTupleType : ResolvedType
+        emptyTupleType : Type ()
         emptyTupleType =
-            Type.Tuple Nothing []
+            Type.Tuple () []
 
-        intListType : ResolvedType
+        intListType : Type ()
         intListType =
-            Type.Reference Nothing (fqn "Morphir.SDK" "List" "List") [ intType Nothing ]
+            Type.Reference () (fqn "Morphir.SDK" "List" "List") [ intType () ]
 
         mayBeType : Type ()
         mayBeType =
@@ -51,18 +57,18 @@ decodeDataTest =
     describe "JsonDecoderTest"
         [ test "BoolDecoder"
             (\_ ->
-                case decodeData (boolType Nothing) of
+                case decodeData ir (boolType ()) of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "true") (Ok (Value.literal () (BoolLiteral True)))
 
                     Err error ->
                         Expect.equal "Cannot Decode this type" error
             )
-        , fuzz intFuzzer "Int" (encodeDecodeTest (intType Nothing))
-        , fuzz floatFuzzer "Float" (encodeDecodeTest (floatType Nothing))
+        , fuzz intFuzzer "Int" (encodeDecodeTest (intType ()))
+        , fuzz floatFuzzer "Float" (encodeDecodeTest (floatType ()))
         , test "CharDecoder"
             (\_ ->
-                case decodeData (charType Nothing) of
+                case decodeData ir (charType ()) of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "\"a\"") (Ok (Value.literal () (StringLiteral "a")))
 
@@ -71,7 +77,7 @@ decodeDataTest =
             )
         , test "StringDecoder"
             (\_ ->
-                case decodeData (stringType Nothing) of
+                case decodeData ir (stringType ()) of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "\"Hello\"") (Ok (Value.literal () (StringLiteral "Hello")))
 
@@ -98,7 +104,7 @@ decodeDataTest =
         --    )
         , test "IntListDecoder"
             (\_ ->
-                case decodeData intListType of
+                case decodeData ir intListType of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "[]") (Ok (Value.List () []))
 
@@ -107,7 +113,7 @@ decodeDataTest =
             )
         , test "RecordDecoder"
             (\_ ->
-                case decodeData recordType of
+                case decodeData ir recordType of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "{ \"foo\" : \"Hello\", \"bar\" : true, \"baz\" : 99, \"bee\" : 49.56, \"ball\" : \"c\" }")
                             (Ok
@@ -126,7 +132,7 @@ decodeDataTest =
             )
         , test "EmptyRecordDecoder"
             (\_ ->
-                case decodeData emptyRecordType of
+                case decodeData ir emptyRecordType of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "{}")
                             (Ok
@@ -160,7 +166,7 @@ decodeDataTest =
         --    )
         , test "EmptyTupleDecoder"
             (\_ ->
-                case decodeData emptyTupleType of
+                case decodeData ir emptyTupleType of
                     Ok decoder ->
                         Expect.equal (Decode.decodeString decoder "[]")
                             (Ok
@@ -203,7 +209,7 @@ decodeDataTest =
         ]
 
 
-encodeDecodeTest : ResolvedType -> RawValue -> Expectation
+encodeDecodeTest : Type ta -> RawValue -> Expectation
 encodeDecodeTest tpe value =
     Result.map2
         (\encode decoder ->
@@ -211,6 +217,6 @@ encodeDecodeTest tpe value =
                 |> Decode.decodeValue decoder
                 |> Expect.equal (Ok value)
         )
-        (encodeData tpe)
-        (decodeData tpe)
+        (encodeData ir tpe)
+        (decodeData ir tpe)
         |> Result.withDefault (Expect.fail ("Could not create codec for " ++ Debug.toString tpe))

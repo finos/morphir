@@ -16,7 +16,7 @@
 
 
 module Morphir.IR.Type exposing
-    ( Type(..), ResolvedType
+    ( Type(..)
     , variable, reference, tuple, record, extensibleRecord, function, unit
     , Field, mapFieldName, mapFieldType
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
@@ -94,7 +94,7 @@ Here is the full definition for reference:
 
 # Type Expression
 
-@docs Type, ResolvedType
+@docs Type
 
 
 ## Creation
@@ -201,13 +201,6 @@ type Type a
     | ExtensibleRecord a Name (List (Field a))
     | Function a (Type a) (Type a)
     | Unit a
-
-
-{-| A type expression annotated with its definition. Only references will have a definition
-and even some of those will refer to built-in types with no definition.
--}
-type alias ResolvedType =
-    Type (Maybe (Definition ()))
 
 
 {-| An opaque representation of a field. It's made up of a name and a type.
