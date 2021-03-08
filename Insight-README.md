@@ -73,7 +73,6 @@ For more details on interoperability [JavaScript Interoperability ](https://guid
           ,  config : { fontSize : 14 }
           }
    });
-
 ```
  - Distribution field in the flag is same what we are getting from morphir-ir.json file. No need to change anything store the data of file into a variable and simply pass it.
  - Config field is basically used to take the control on styling part dynamically. Padding and spacing between elements will change accordingly when you change the font size.You can simply skip this field if you don't want. 
@@ -103,8 +102,6 @@ For more details on ports [Ports](https://guide.elm-lang.org/interop/ports.html)
 ```
 - For more details of encoding like how to encode `list, tuple, and record`
 [Encoding Decoding File](https://github.com/finos/morphir-elm/blob/master/src/Morphir/IR/Value/Codec.elm)
-  
-  
 - This file has all the functions of encoding and decoding of elm data types.
 
 ###Example File
