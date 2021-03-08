@@ -9,11 +9,12 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
 import Morphir.IR.SDK.Char exposing (charType)
 import Morphir.IR.SDK.List exposing (listType)
+import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.DataCodec exposing (decodeData, encodeData)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
-import Morphir.IR.ValueFuzzer exposing (boolFuzzer, charFuzzer, floatFuzzer, intFuzzer, listFuzzer, stringFuzzer)
+import Morphir.IR.ValueFuzzer exposing (boolFuzzer, charFuzzer, floatFuzzer, intFuzzer, listFuzzer, maybeFuzzer, recordFuzzer, stringFuzzer)
 import Test exposing (Test, describe, fuzz, test)
 
 
@@ -65,6 +66,10 @@ decodeDataTest =
         , fuzz (listFuzzer stringFuzzer) "List String" (encodeDecodeTest (listType () (stringType ())))
         , fuzz (listFuzzer intFuzzer) "List Int" (encodeDecodeTest (listType () (intType ())))
         , fuzz (listFuzzer floatFuzzer) "List Float" (encodeDecodeTest (listType () (floatType ())))
+        , fuzz (maybeFuzzer floatFuzzer) "Maybe Float" (encodeDecodeTest (maybeType () (floatType ())))
+        , fuzz (recordFuzzer []) "empty record" (encodeDecodeTest (Type.Record () []))
+
+        --, fuzz (recordFuzzer []) "record with 5 fields" (encodeDecodeTest (Type.Record () []))
         , test "RecordDecoder"
             (\_ ->
                 case decodeData ir recordType of
@@ -132,34 +137,6 @@ decodeDataTest =
                     Err error ->
                         Expect.equal "Cannot Decode this type" error
             )
-
-        --, test "MaybeDecoderForNothing"
-        --    (\_ ->
-        --        case decodeData mayBeType of
-        --            Ok decoder ->
-        --                Expect.equal (Decode.decodeString decoder "null")
-        --                    (Ok
-        --                        (Value.Constructor () (fqn "Morphir.SDK" "Maybe" "Nothing"))
-        --                    )
-        --
-        --            Err error ->
-        --                Expect.equal "Cannot Decode this type" error
-        --    )
-        --, test "MaybeDecoderForJust"
-        --    (\_ ->
-        --        case decodeData mayBeType of
-        --            Ok decoder ->
-        --                Expect.equal (Decode.decodeString decoder "13")
-        --                    (Ok
-        --                        (Value.Apply ()
-        --                            (Value.Constructor () (fqn "Morphir.SDK" "Maybe" "Just"))
-        --                            (Value.Literal () (IntLiteral 13))
-        --                        )
-        --                    )
-        --
-        --            Err error ->
-        --                Expect.equal "Cannot Decode this type" error
-        --    )
         ]
 
 

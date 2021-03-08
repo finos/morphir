@@ -1,7 +1,8 @@
-module Morphir.IR.ValueFuzzer exposing (boolFuzzer, charFuzzer, floatFuzzer, intFuzzer, listFuzzer, stringFuzzer)
+module Morphir.IR.ValueFuzzer exposing (boolFuzzer, charFuzzer, floatFuzzer, intFuzzer, listFuzzer, maybeFuzzer, recordFuzzer, stringFuzzer)
 
 import Fuzz exposing (Fuzzer)
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue)
 
 
@@ -39,3 +40,33 @@ listFuzzer : Fuzzer RawValue -> Fuzzer RawValue
 listFuzzer itemFuzzer =
     Fuzz.list itemFuzzer
         |> Fuzz.map (Value.List ())
+
+
+maybeFuzzer : Fuzzer RawValue -> Fuzzer RawValue
+maybeFuzzer itemFuzzer =
+    Fuzz.maybe itemFuzzer
+        |> Fuzz.map
+            (\item ->
+                case item of
+                    Just v ->
+                        Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) v
+
+                    Nothing ->
+                        Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )
+            )
+
+
+recordFuzzer : List ( Name, Fuzzer RawValue ) -> Fuzzer RawValue
+recordFuzzer fieldFuzzers =
+    fieldFuzzers
+        |> List.foldr
+            (\( fieldName, fieldFuzzer ) fuzzerSoFar ->
+                Fuzz.map2
+                    (\fieldsSoFar fieldValue ->
+                        ( fieldName, fieldValue ) :: fieldsSoFar
+                    )
+                    fuzzerSoFar
+                    fieldFuzzer
+            )
+            (Fuzz.constant [])
+        |> Fuzz.map (Value.Record ())
