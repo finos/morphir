@@ -17,24 +17,25 @@
 
 port module Morphir.Elm.CLI exposing (..)
 
-import Dict
+import Dict exposing (Dict)
 import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
 import Morphir.Compiler as Compiler
 import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
-import Morphir.Elm.Frontend.Codec exposing (decodePackageInfo)
+import Morphir.Elm.Frontend.Codec as FrontendCodec exposing (decodePackageInfo)
 import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.Package as Package
+import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type exposing (Type)
 import Morphir.Type.Infer as Infer
 import Morphir.Type.MetaTypeMapping as MetaTypeMapping
 
 
-port packageDefinitionFromSource : (( Decode.Value, List SourceFile ) -> msg) -> Sub msg
+port packageDefinitionFromSource : (( Decode.Value, Decode.Value, List SourceFile ) -> msg) -> Sub msg
 
 
 port packageDefinitionFromSourceResult : Encode.Value -> Cmd msg
@@ -50,7 +51,7 @@ port generateResult : Encode.Value -> Cmd msg
 
 
 type Msg
-    = PackageDefinitionFromSource ( Decode.Value, List SourceFile )
+    = PackageDefinitionFromSource ( Decode.Value, Decode.Value, List SourceFile )
     | Generate ( Decode.Value, Decode.Value )
 
 
@@ -66,13 +67,20 @@ main =
 update : Msg -> () -> ( (), Cmd Msg )
 update msg model =
     case msg of
-        PackageDefinitionFromSource ( packageInfoJson, sourceFiles ) ->
-            case Decode.decodeValue decodePackageInfo packageInfoJson of
-                Ok packageInfo ->
+        PackageDefinitionFromSource ( optionsJson, packageInfoJson, sourceFiles ) ->
+            let
+                inputResult : Result Decode.Error ( Frontend.Options, PackageInfo )
+                inputResult =
+                    Result.map2 Tuple.pair
+                        (Decode.decodeValue FrontendCodec.decodeOptions optionsJson)
+                        (Decode.decodeValue FrontendCodec.decodePackageInfo packageInfoJson)
+            in
+            case inputResult of
+                Ok ( opts, packageInfo ) ->
                     let
                         frontendResult : Result (List Compiler.Error) (Package.Definition Frontend.SourceLocation Frontend.SourceLocation)
                         frontendResult =
-                            Frontend.mapSource packageInfo Dict.empty sourceFiles
+                            Frontend.mapSource opts packageInfo Dict.empty sourceFiles
 
                         typedResult : Result (List Compiler.Error) (Package.Definition () ( Frontend.SourceLocation, Type () ))
                         typedResult =
@@ -86,14 +94,15 @@ update msg model =
                                                     |> Package.definitionToSpecificationWithPrivate
                                                     |> Package.mapSpecificationAttributes (\_ -> ())
 
-                                            references : MetaTypeMapping.References
-                                            references =
+                                            ir : IR
+                                            ir =
                                                 Frontend.defaultDependencies
                                                     |> Dict.insert packageInfo.name thisPackageSpec
+                                                    |> IR.fromPackageSpecifications
                                         in
                                         packageDef
                                             |> Package.mapDefinitionAttributes (\_ -> ()) identity
-                                            |> Infer.inferPackageDefinition references
+                                            |> Infer.inferPackageDefinition ir
                                     )
                     in
                     ( model

@@ -1,42 +1,44 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, column, fill, moveRight, paddingEach, row, spacing, text, width)
+import Element exposing (Element, centerX, column, fill, moveRight, moveUp, padding, row, spacing, text, width)
+import Element.Border as Border
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
-import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Common exposing (VisualTypedValue, nameToText)
+import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (mediumPadding, smallPadding, smallSpacing)
 
 
-view : (Value ta (Type ta) -> Element msg) -> Value ta (Type ta) -> List (Value ta (Type ta)) -> Element msg
-view viewValue functionValue argValues =
+view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> List VisualTypedValue -> Element msg
+view config viewValue functionValue argValues =
     case ( functionValue, argValues ) of
         ( Value.Reference _ ( _, _, ("is" :: _) as localName ), [ argValue ] ) ->
             row
                 [ width fill
-                , spacing 10
+                , smallSpacing config.state.theme |> spacing
                 ]
                 [ viewValue argValue
                 , text (nameToText localName)
                 ]
 
         ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "negate" ] ), [ argValue ] ) ->
-            row [ spacing 3 ]
+            row [ smallSpacing config.state.theme |> spacing ]
                 [ text "- ("
                 , viewValue argValue
                 , text ")"
                 ]
 
         ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "abs" ] ), [ argValue ] ) ->
-            row [ spacing 3 ]
+            row [ smallSpacing config.state.theme |> spacing ]
                 [ text "abs ("
                 , viewValue argValue
                 , text ")"
                 ]
 
         -- possibly binary operator
-        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ), [ argValue1, argValue2 ] ) ->
+        ( Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ), [ argValues1, argValues2 ] ) ->
             let
                 functionName : String
                 functionName =
@@ -45,41 +47,53 @@ view viewValue functionValue argValues =
                         , localName |> Name.toCamelCase
                         ]
             in
-            inlineBinaryOperators
-                |> Dict.get functionName
-                |> Maybe.map
-                    (\functionText ->
-                        row
-                            [ width fill
-                            , spacing 5
+            if Maybe.withDefault "" (Dict.get functionName inlineBinaryOperators) == "/" then
+                row [ centerX, width fill, spacing 5 ]
+                    [ column [ centerX, width fill ]
+                        [ row [ centerX, width fill ]
+                            [ row
+                                [ smallSpacing config.state.theme |> spacing
+                                , smallPadding config.state.theme |> padding
+                                , Border.widthEach { bottom = 1, left = 0, right = 0, top = 0 }
+                                , centerX
+                                ]
+                                [ viewValue argValues1
+                                ]
                             ]
-                            [ viewValue argValue1
-                            , text functionText
-                            , viewValue argValue2
+                        , row
+                            [ centerX
+                            , Border.solid
+                            , Border.widthEach { bottom = 0, left = 0, right = 0, top = 1 }
+                            , moveUp 1
+                            , smallPadding config.state.theme |> padding
                             ]
-                    )
-                |> Maybe.withDefault
-                    (column
-                        [ spacing 10 ]
-                        [ viewValue functionValue
-                        , column
-                            [ paddingEach { left = 10, right = 0, top = 0, bottom = 0 }
-                            , spacing 10
+                            [ viewValue argValues2
                             ]
-                            (argValues
-                                |> List.map viewValue
-                            )
                         ]
-                    )
+                    ]
+
+            else if Dict.member functionName inlineBinaryOperators then
+                row
+                    [ smallSpacing config.state.theme |> spacing ]
+                    [ viewValue argValues1
+                    , text (Maybe.withDefault "" (Dict.get functionName inlineBinaryOperators))
+                    , viewValue argValues2
+                    ]
+
+            else
+                row
+                    [ smallSpacing config.state.theme |> spacing ]
+                    [ viewValue argValues1
+                    , viewValue functionValue
+                    , viewValue argValues2
+                    ]
 
         _ ->
-            column
-                [ spacing 10 ]
-                [ viewValue functionValue
-                , column
-                    [ moveRight 10
-                    , spacing 10
+            column [ smallSpacing config.state.theme |> spacing ]
+                [ column [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
+                    [ viewValue functionValue
                     ]
+                , column [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
                     (argValues
                         |> List.map viewValue
                     )

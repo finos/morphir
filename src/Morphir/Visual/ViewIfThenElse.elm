@@ -3,18 +3,18 @@ module Morphir.Visual.ViewIfThenElse exposing (view)
 import Dict exposing (Dict)
 import Element exposing (Element)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (TypedValue, Value)
+import Morphir.Visual.Common exposing (VisualTypedValue)
 import Morphir.Visual.Components.DecisionTree as DecisionTree exposing (LeftOrRight(..))
 import Morphir.Visual.Config as Config exposing (Config)
 
 
-view : Config msg -> (TypedValue -> Element msg) -> Value () (Type ()) -> Element msg
+view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> Element msg
 view config viewValue value =
-    DecisionTree.layout viewValue (valueToTree config True value)
+    DecisionTree.layout config viewValue (valueToTree config True value)
 
 
-valueToTree : Config msg -> Bool -> TypedValue -> DecisionTree.Node
+valueToTree : Config msg -> Bool -> VisualTypedValue -> DecisionTree.Node
 valueToTree config doEval value =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->

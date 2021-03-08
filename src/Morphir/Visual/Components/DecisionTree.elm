@@ -1,23 +1,26 @@
 module Morphir.Visual.Components.DecisionTree exposing (BranchNode, LeftOrRight(..), Node(..), downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
 
 import Element exposing (Attribute, Color, Element, alignLeft, alignTop, centerX, centerY, column, el, fill, height, html, padding, paddingEach, paddingXY, rgb255, row, shrink, spacing, text, width)
+import Element.Background
 import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
-import Html.Attributes
+import Html.Attributes exposing (style)
 import Morphir.IR.Value exposing (RawValue, TypedValue)
-import Morphir.Visual.Common exposing (element)
+import Morphir.Visual.Common exposing (VisualTypedValue, element)
+import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing)
 import Svg
 import Svg.Attributes
 
 
 type Node
     = Branch BranchNode
-    | Leaf TypedValue
+    | Leaf VisualTypedValue
 
 
 type alias BranchNode =
-    { condition : TypedValue
+    { condition : VisualTypedValue
     , conditionValue : Maybe Bool
     , thenBranch : Node
     , elseBranch : Node
@@ -45,8 +48,8 @@ type HighlightState
     | NotHighlighted
 
 
-highlighStateToColor : HighlightState -> Color
-highlighStateToColor state =
+highlightStateToColor : HighlightState -> Color
+highlightStateToColor state =
     case state of
         Highlighted bool ->
             if bool then
@@ -59,8 +62,18 @@ highlighStateToColor state =
             highlightColor.default
 
 
-highlighStateToBorderWidth : HighlightState -> Int
-highlighStateToBorderWidth state =
+highlightStateToBackground : HighlightState -> String
+highlightStateToBackground state =
+    case state of
+        NotHighlighted ->
+            "repeating-linear-gradient( 45deg, #565656, #9a9595 10px, #656565 10px, #797979 20px )"
+
+        _ ->
+            "none"
+
+
+highlightStateToBorderWidth : HighlightState -> Int
+highlightStateToBorderWidth state =
     case state of
         Highlighted _ ->
             4
@@ -69,8 +82,8 @@ highlighStateToBorderWidth state =
             2
 
 
-highlighStateToFontWeight : HighlightState -> Attribute msg
-highlighStateToFontWeight state =
+highlightStateToFontWeight : HighlightState -> Attribute msg
+highlightStateToFontWeight state =
     case state of
         Highlighted _ ->
             Font.bold
@@ -89,13 +102,13 @@ toCssColor (Color r g b) =
     String.concat [ "rgb(", String.fromInt r, ",", String.fromInt g, ",", String.fromInt b, ")" ]
 
 
-layout : (TypedValue -> Element msg) -> Node -> Element msg
-layout viewValue rootNode =
-    layoutHelp NotHighlighted viewValue rootNode
+layout : Config msg -> (VisualTypedValue -> Element msg) -> Node -> Element msg
+layout config viewValue rootNode =
+    layoutHelp config NotHighlighted viewValue rootNode
 
 
-layoutHelp : HighlightState -> (TypedValue -> Element msg) -> Node -> Element msg
-layoutHelp highlightState viewValue rootNode =
+layoutHelp : Config msg -> HighlightState -> (VisualTypedValue -> Element msg) -> Node -> Element msg
+layoutHelp config highlightState viewValue rootNode =
     let
         depthOf : (BranchNode -> Node) -> Node -> Int
         depthOf f node =
@@ -146,43 +159,46 @@ layoutHelp highlightState viewValue rootNode =
             in
             -- TODO: choose vertical/horizontal left/right layout based on some heuristics
             horizontalLayout
+                config
                 (el
-                    [ conditionState |> highlighStateToBorderWidth |> Border.width
-                    , Border.rounded 7
-                    , Border.color (conditionState |> highlighStateToColor |> toElementColor)
-                    , padding 10
+                    [ conditionState |> highlightStateToBorderWidth |> Border.width
+                    , Border.rounded 6
+                    , Border.color (conditionState |> highlightStateToColor |> toElementColor)
+                    , mediumPadding config.state.theme |> padding
+                    , Element.htmlAttribute (style "background" (conditionState |> highlightStateToBackground))
                     ]
                     (viewValue branch.condition)
                 )
                 (el
-                    [ Font.color (thenState |> highlighStateToColor |> toElementColor)
-                    , thenState |> highlighStateToFontWeight
+                    [ Font.color (thenState |> highlightStateToColor |> toElementColor)
+                    , thenState |> highlightStateToFontWeight
                     ]
                     (text "Yes")
                 )
                 thenState
-                (layoutHelp thenState viewValue branch.thenBranch)
+                (layoutHelp config thenState viewValue branch.thenBranch)
                 (el
-                    [ Font.color (elseState |> highlighStateToColor |> toElementColor)
-                    , elseState |> highlighStateToFontWeight
+                    [ Font.color (elseState |> highlightStateToColor |> toElementColor)
+                    , elseState |> highlightStateToFontWeight
                     ]
                     (text "No")
                 )
                 elseState
-                (layoutHelp elseState viewValue branch.elseBranch)
+                (layoutHelp config elseState viewValue branch.elseBranch)
 
         Leaf value ->
             el
-                [ highlightState |> highlighStateToBorderWidth |> Border.width
-                , Border.rounded 7
-                , Border.color (highlightState |> highlighStateToColor |> toElementColor)
-                , padding 10
+                [ highlightState |> highlightStateToBorderWidth |> Border.width
+                , Border.rounded 6
+                , Border.color (highlightState |> highlightStateToColor |> toElementColor)
+                , mediumPadding config.state.theme |> padding
+                , Element.htmlAttribute (style "background" (highlightState |> highlightStateToBackground))
                 ]
                 (viewValue value)
 
 
-horizontalLayout : Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
-horizontalLayout condition branch1Label branch1State branch1 branch2Label branch2State branch2 =
+horizontalLayout : Config msg -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
+horizontalLayout config condition branch1Label branch1State branch1 branch2Label branch2State branch2 =
     row
         []
         [ column
@@ -201,16 +217,16 @@ horizontalLayout condition branch1Label branch1State branch1 branch2Label branch
                         [ alignLeft
                         , height fill
                         , width fill
-                        , spacing 10
+                        , smallSpacing config.state.theme |> spacing
                         ]
                         [ el
-                            [ paddingEach { noPadding | left = 10 }
+                            [ paddingEach { noPadding | left = mediumPadding config.state.theme }
                             , height fill
                             ]
-                            (downArrow branch1State)
+                            (downArrow config branch1State)
                         , el
                             [ centerY
-                            , paddingXY 0 15
+                            , paddingXY 0 (mediumPadding config.state.theme)
                             ]
                             branch1Label
                         ]
@@ -221,18 +237,18 @@ horizontalLayout condition branch1Label branch1State branch1 branch2Label branch
                     ]
                     [ el
                         [ width fill
-                        , paddingEach { noPadding | top = 10 }
+                        , paddingEach { noPadding | top = mediumPadding config.state.theme }
                         ]
-                        (rightArrow branch2State)
+                        (rightArrow config branch2State)
                     , el
                         [ centerX
-                        , paddingXY 20 5
+                        , mediumPadding config.state.theme |> padding
                         ]
                         branch2Label
                     ]
                 ]
             , el
-                [ paddingEach { noPadding | right = 40 }
+                [ paddingEach { noPadding | right = mediumPadding config.state.theme }
                 ]
                 branch1
             ]
@@ -243,8 +259,8 @@ horizontalLayout condition branch1Label branch1State branch1 branch2Label branch
         ]
 
 
-verticalLayout : Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
-verticalLayout condition branch1Label branch1State branch1 branch2Label branch2State branch2 =
+verticalLayout : Config msg -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
+verticalLayout config condition branch1Label branch1State branch1 branch2Label branch2State branch2 =
     column
         []
         [ row []
@@ -257,16 +273,16 @@ verticalLayout condition branch1Label branch1State branch1 branch2Label branch2S
                     [ alignLeft
                     , height fill
                     , width fill
-                    , spacing 10
+                    , mediumSpacing config.state.theme |> spacing
                     ]
                     [ el
-                        [ paddingEach { noPadding | left = 10 }
+                        [ paddingEach { noPadding | left = mediumPadding config.state.theme }
                         , height fill
                         ]
-                        (downArrow branch1State)
+                        (downArrow config branch1State)
                     , el
                         [ centerY
-                        , paddingXY 0 10
+                        , paddingXY 0 (mediumPadding config.state.theme)
                         ]
                         branch1Label
                     ]
@@ -274,20 +290,20 @@ verticalLayout condition branch1Label branch1State branch1 branch2Label branch2S
             , column [ alignTop ]
                 [ el
                     [ width fill
-                    , paddingEach { noPadding | top = 5 }
+                    , paddingEach { noPadding | top = mediumPadding config.state.theme }
                     ]
-                    (rightArrow branch2State)
-                , el [ centerX, paddingXY 10 0 ]
+                    (rightArrow config branch2State)
+                , el [ centerX, paddingXY (mediumPadding config.state.theme) 0 ]
                     branch2Label
                 ]
-            , el [ alignTop, paddingEach { noPadding | bottom = 20 } ] branch2
+            , el [ alignTop, paddingEach { noPadding | bottom = mediumPadding config.state.theme } ] branch2
             ]
         , branch1
         ]
 
 
-rightArrow : HighlightState -> Element msg
-rightArrow highlightState =
+rightArrow : Config msg -> HighlightState -> Element msg
+rightArrow config highlightState =
     el
         [ width fill
         , height fill
@@ -299,7 +315,7 @@ rightArrow highlightState =
                 ]
                 [ Html.tr []
                     [ Html.td
-                        [ Html.Attributes.style "border-bottom" (String.concat [ "solid ", highlightState |> highlighStateToBorderWidth |> String.fromInt, "px ", highlightState |> highlighStateToColor |> toCssColor ])
+                        [ Html.Attributes.style "border-bottom" (String.concat [ "solid ", highlightState |> highlightStateToBorderWidth |> String.fromInt, "px ", highlightState |> highlightStateToColor |> toCssColor ])
                         , Html.Attributes.style "width" "100%"
                         ]
                         []
@@ -308,7 +324,7 @@ rightArrow highlightState =
                         [ element
                             (el
                                 [ centerY ]
-                                (html (rightArrowHead highlightState))
+                                (html (rightArrowHead config highlightState))
                             )
                         ]
                     ]
@@ -320,8 +336,8 @@ rightArrow highlightState =
         )
 
 
-downArrow : HighlightState -> Element msg
-downArrow highlightState =
+downArrow : Config msg -> HighlightState -> Element msg
+downArrow config highlightState =
     el
         [ width fill
         , height fill
@@ -332,7 +348,7 @@ downArrow highlightState =
                 , Html.Attributes.style "height" "100%"
                 ]
                 [ Html.tr [ Html.Attributes.style "height" "100%" ]
-                    [ Html.td [ Html.Attributes.style "border-right" (String.concat [ "solid ", highlightState |> highlighStateToBorderWidth |> String.fromInt, "px ", highlightState |> highlighStateToColor |> toCssColor ]) ] []
+                    [ Html.td [ Html.Attributes.style "border-right" (String.concat [ "solid ", highlightState |> highlightStateToBorderWidth |> String.fromInt, "px ", highlightState |> highlightStateToColor |> toCssColor ]) ] []
                     , Html.td [] []
                     ]
                 , Html.tr []
@@ -341,7 +357,7 @@ downArrow highlightState =
                         [ element
                             (el
                                 [ centerX ]
-                                (html (downArrowHead highlightState))
+                                (html (downArrowHead config highlightState))
                             )
                         ]
                     ]
@@ -350,55 +366,55 @@ downArrow highlightState =
         )
 
 
-rightArrowHead : HighlightState -> Html msg
-rightArrowHead highlightState =
+rightArrowHead : Config msg -> HighlightState -> Html msg
+rightArrowHead config highlightState =
     Svg.svg
         [ Svg.Attributes.width
             (if highlightState == NotHighlighted then
-                "10"
+                String.fromInt (mediumSpacing config.state.theme)
 
              else
-                "15"
+                String.fromInt (mediumSpacing config.state.theme)
             )
         , Svg.Attributes.height
             (if highlightState == NotHighlighted then
-                "10"
+                String.fromInt (mediumSpacing config.state.theme)
 
              else
-                "15"
+                String.fromInt (mediumSpacing config.state.theme)
             )
         , Svg.Attributes.viewBox "0 0 200 200"
         ]
         [ Svg.polygon
             [ Svg.Attributes.points "0,0 200,100 0,200"
-            , Svg.Attributes.style ("fill:" ++ (highlightState |> highlighStateToColor |> toCssColor))
+            , Svg.Attributes.style ("fill:" ++ (highlightState |> highlightStateToColor |> toCssColor))
             ]
             []
         ]
 
 
-downArrowHead : HighlightState -> Html msg
-downArrowHead highlightState =
+downArrowHead : Config msg -> HighlightState -> Html msg
+downArrowHead config highlightState =
     Svg.svg
         [ Svg.Attributes.width
             (if highlightState == NotHighlighted then
-                "10"
+                String.fromInt (mediumSpacing config.state.theme)
 
              else
-                "15"
+                String.fromInt (mediumSpacing config.state.theme)
             )
         , Svg.Attributes.height
             (if highlightState == NotHighlighted then
-                "10"
+                String.fromInt (mediumSpacing config.state.theme)
 
              else
-                "15"
+                String.fromInt (mediumSpacing config.state.theme)
             )
         , Svg.Attributes.viewBox "0 0 200 200"
         ]
         [ Svg.polygon
             [ Svg.Attributes.points "0,0 100,200 200,0"
-            , Svg.Attributes.style ("fill:" ++ (highlightState |> highlighStateToColor |> toCssColor))
+            , Svg.Attributes.style ("fill:" ++ (highlightState |> highlightStateToColor |> toCssColor))
             ]
             []
         ]

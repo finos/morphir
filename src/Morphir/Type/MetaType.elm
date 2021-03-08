@@ -3,6 +3,7 @@ module Morphir.Type.MetaType exposing (..)
 import Dict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName, fqn)
 import Morphir.IR.Name as Name exposing (Name)
+import Set exposing (Set)
 
 
 type MetaType
@@ -19,8 +20,8 @@ type MetaType
 toString : MetaType -> String
 toString metaType =
     case metaType of
-        MetaVar ( i, j ) ->
-            "var_" ++ String.fromInt i ++ "_" ++ String.fromInt j
+        MetaVar ( n, i, j ) ->
+            "var_" ++ n ++ "_" ++ String.fromInt i ++ "_" ++ String.fromInt j
 
         MetaRef fQName ->
             FQName.toString fQName
@@ -32,8 +33,8 @@ toString metaType =
             let
                 prefix =
                     case extends of
-                        Just ( i, j ) ->
-                            "var_" ++ String.fromInt i ++ "_" ++ String.fromInt j ++ " | "
+                        Just ( n, i, j ) ->
+                            "var_" ++ n ++ "_" ++ String.fromInt i ++ "_" ++ String.fromInt j ++ " | "
 
                         Nothing ->
                             ""
@@ -67,72 +68,137 @@ toString metaType =
 
 
 type alias Variable =
-    ( Int, Int )
+    ( String, Int, Int )
 
 
-variable : Int -> Variable
-variable i =
-    ( i, 0 )
+nextVar : Variable -> Variable
+nextVar ( n, i, s ) =
+    ( n, i, s + 1 )
+
+
+variableByIndex : Int -> Variable
+variableByIndex i =
+    ( "t", i, 0 )
+
+
+variableByName : Name -> Variable
+variableByName name =
+    ( name |> Name.toCamelCase, 0, 0 )
 
 
 subVariable : Variable -> Variable
-subVariable ( i, s ) =
-    ( i, s + 1 )
+subVariable ( n, i, s ) =
+    ( n, i, s + 1 )
 
 
 toName : Variable -> Name
-toName ( i, s ) =
-    [ "t", String.fromInt i, String.fromInt s ]
+toName ( n, i, s ) =
+    [ n, String.fromInt i, String.fromInt s ]
+
+
+variables : MetaType -> Set Variable
+variables metaType =
+    case metaType of
+        MetaVar variable ->
+            Set.singleton variable
+
+        MetaRef fQName ->
+            Set.empty
+
+        MetaTuple elems ->
+            elems
+                |> List.foldl
+                    (\t vars -> Set.union vars (variables t))
+                    Set.empty
+
+        MetaRecord maybeVar fields ->
+            let
+                aliasVars =
+                    case maybeVar of
+                        Just var ->
+                            Set.singleton var
+
+                        Nothing ->
+                            Set.empty
+
+                fieldVars =
+                    fields
+                        |> Dict.toList
+                        |> List.foldl
+                            (\( _, t ) vars -> Set.union vars (variables t))
+                            Set.empty
+            in
+            Set.union aliasVars fieldVars
+
+        MetaApply fun arg ->
+            Set.union
+                (variables fun)
+                (variables arg)
+
+        MetaFun arg return ->
+            Set.union
+                (variables arg)
+                (variables return)
+
+        MetaUnit ->
+            Set.empty
+
+        MetaAlias _ t ->
+            variables t
 
 
 substituteVariable : Variable -> MetaType -> MetaType -> MetaType
 substituteVariable var replacement original =
-    case original of
-        MetaVar thisVar ->
-            if thisVar == var then
-                replacement
+    if variables original |> Set.member var then
+        case original of
+            MetaVar thisVar ->
+                if thisVar == var then
+                    replacement
 
-            else
-                original
+                else
+                    original
 
-        MetaTuple metaElems ->
-            MetaTuple
-                (metaElems
-                    |> List.map (substituteVariable var replacement)
-                )
-
-        MetaRecord extends metaFields ->
-            if extends == Just var then
-                replacement
-
-            else
-                MetaRecord extends
-                    (metaFields
-                        |> Dict.map
-                            (\_ fieldType ->
-                                substituteVariable var replacement fieldType
-                            )
+            MetaTuple metaElems ->
+                MetaTuple
+                    (metaElems
+                        |> List.map (substituteVariable var replacement)
                     )
 
-        MetaApply metaFun metaArg ->
-            MetaApply
-                (substituteVariable var replacement metaFun)
-                (substituteVariable var replacement metaArg)
+            MetaRecord extends metaFields ->
+                if extends == Just var then
+                    replacement
 
-        MetaFun metaFun metaArg ->
-            MetaFun
-                (substituteVariable var replacement metaFun)
-                (substituteVariable var replacement metaArg)
+                else
+                    MetaRecord extends
+                        (metaFields
+                            |> Dict.map
+                                (\_ fieldType ->
+                                    substituteVariable var replacement fieldType
+                                )
+                        )
 
-        MetaRef _ ->
-            original
+            MetaApply metaFun metaArg ->
+                MetaApply
+                    (substituteVariable var replacement metaFun)
+                    (substituteVariable var replacement metaArg)
 
-        MetaUnit ->
-            original
+            MetaFun metaFun metaArg ->
+                MetaFun
+                    (substituteVariable var replacement metaFun)
+                    (substituteVariable var replacement metaArg)
 
-        MetaAlias alias subject ->
-            MetaAlias alias
-                (substituteVariable var replacement subject)
+            MetaRef _ ->
+                original
+
+            MetaUnit ->
+                original
+
+            MetaAlias alias subject ->
+                MetaAlias alias
+                    (substituteVariable var replacement subject)
+
+    else
+        original
 
 
 substituteVariables : List ( Variable, MetaType ) -> MetaType -> MetaType

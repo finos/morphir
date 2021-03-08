@@ -1,20 +1,26 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition)
 
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, rgb, spacing, text, width)
+import Element exposing (Element, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events exposing (onClick)
+import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
+import Html.Attributes exposing (style)
+import Morphir.Elm.Frontend as Frontend
+import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..), indexedMapValue)
+import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
-import Morphir.Visual.Common exposing (definition, nameToText)
+import Morphir.Visual.Common exposing (VisualTypedValue, definition, nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Config as Config exposing (Config)
+import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -25,7 +31,7 @@ import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.Theme.Light exposing (gray)
+import Morphir.Web.Theme.Light exposing (gray, silver)
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
@@ -33,57 +39,55 @@ viewDefinition config ( _, _, valueName ) valueDef =
     let
         _ =
             Debug.log "variables" config.state.variables
+
+        definitionElem =
+            definition config
+                (nameToText valueName)
+                (viewValue config (valueDef.body |> toVisualTypedValue))
     in
-    Element.column [ spacing 20 ]
-        [ definition
-            (nameToText valueName)
-            (viewValue config valueDef.body)
+    Element.column [ mediumSpacing config.state.theme |> spacing ]
+        [ definitionElem
         , if Dict.isEmpty config.state.expandedFunctions then
             Element.none
 
           else
             Element.column
-                [ spacing 20 ]
-                [ Element.column
-                    [ spacing 20
-                    ]
-                    (config.state.expandedFunctions
-                        |> Dict.toList
-                        |> List.reverse
-                        |> List.map
-                            (\( ( _, _, localName ) as fqName, valDef ) ->
-                                Element.column
-                                    [ spacing 10
+                [ mediumSpacing config.state.theme |> spacing ]
+                (config.state.expandedFunctions
+                    |> Dict.toList
+                    |> List.reverse
+                    |> List.map
+                        (\( ( _, _, localName ) as fqName, valDef ) ->
+                            Element.column
+                                [ smallSpacing config.state.theme |> spacing ]
+                                [ definition config (nameToText localName) (viewValue config (valDef.body |> toVisualTypedValue))
+                                , Element.el
+                                    [ Font.bold
+                                    , Border.solid
+                                    , Border.rounded 4
+                                    , Background.color silver
+                                    , smallPadding config.state.theme |> padding
+                                    , smallSpacing config.state.theme |> spacing
+                                    , onClick (config.handlers.onReferenceClicked fqName True)
                                     ]
-                                    [ definition (nameToText localName)
-                                        (viewValue config valDef.body)
-                                    , Element.column
-                                        [ Font.bold
-                                        , Border.solid
-                                        , Border.rounded 5
-                                        , Background.color gray
-                                        , Element.padding 10
-                                        , onClick (config.handlers.onReferenceClicked fqName True)
-                                        ]
-                                        [ Element.text "Close" ]
-                                    ]
-                            )
-                    )
-                ]
+                                    (Element.text "Close")
+                                ]
+                        )
+                )
         ]
 
 
-viewValue : Config msg -> TypedValue -> Element msg
+viewValue : Config msg -> VisualTypedValue -> Element msg
 viewValue config value =
     viewValueByValueType config value
 
 
-viewValueByValueType : Config msg -> TypedValue -> Element msg
+viewValueByValueType : Config msg -> VisualTypedValue -> Element msg
 viewValueByValueType config typedValue =
     let
         valueType : Type ()
         valueType =
-            Value.valueAttribute typedValue
+            Value.valueAttribute typedValue |> Tuple.second
     in
     if valueType == Basics.boolType () then
         let
@@ -91,7 +95,7 @@ viewValueByValueType config typedValue =
             boolOperatorTree =
                 BoolOperatorTree.fromTypedValue typedValue
         in
-        ViewBoolOperatorTree.view (viewValueByLanguageFeature config) boolOperatorTree
+        ViewBoolOperatorTree.view config (viewValueByLanguageFeature config) boolOperatorTree
 
     else if Basics.isNumber valueType then
         let
@@ -99,38 +103,55 @@ viewValueByValueType config typedValue =
             arithmeticOperatorTree =
                 ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
         in
-        ViewArithmetic.view (viewValueByLanguageFeature config) arithmeticOperatorTree
+        ViewArithmetic.view config (viewValueByLanguageFeature config) arithmeticOperatorTree
 
     else
         viewValueByLanguageFeature config typedValue
 
 
-viewValueByLanguageFeature : Config msg -> TypedValue -> Element msg
+viewValueByLanguageFeature : Config msg -> VisualTypedValue -> Element msg
 viewValueByLanguageFeature config value =
     let
         valueElem : Element msg
         valueElem =
             case value of
-                Value.Literal literalType literal ->
+                Value.Literal _ literal ->
                     ViewLiteral.view literal
 
-                Value.Constructor tpe fQName ->
+                Value.Constructor _ fQName ->
                     ViewReference.view config (viewValue config) fQName
 
-                Value.Tuple tpe elems ->
-                    ViewTuple.view (viewValue config) elems
+                Value.Tuple _ elems ->
+                    ViewTuple.view config (viewValue config) elems
 
-                Value.List (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ]) items ->
+                Value.List ( index, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
                     ViewList.view config (viewValue config) itemType items
 
-                Value.Variable tpe name ->
-                    el []
+                Value.Variable ( index, tpe ) name ->
+                    let
+                        variableValue : Maybe RawValue
+                        variableValue =
+                            Dict.get name config.state.variables
+                    in
+                    el
+                        [ onMouseEnter (config.handlers.onHoverOver index variableValue)
+                        , onMouseLeave (config.handlers.onHoverLeave index)
+                        , Element.below
+                            (if config.state.popupVariables.variableIndex == index then
+                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
+
+                             else
+                                Element.none
+                            )
+                        , width fill
+                        , center
+                        ]
                         (text (nameToText name))
 
-                Value.Reference tpe fQName ->
+                Value.Reference _ fQName ->
                     ViewReference.view config (viewValue config) fQName
 
-                Value.Field tpe subjectValue fieldName ->
+                Value.Field _ subjectValue fieldName ->
                     ViewField.view (viewValue config) subjectValue fieldName
 
                 Value.Apply _ fun arg ->
@@ -138,11 +159,11 @@ viewValueByLanguageFeature config value =
                         ( function, args ) =
                             Value.uncurryApply fun arg
                     in
-                    ViewApply.view (viewValue config) function args
+                    ViewApply.view config (viewValue config) function args
 
-                Value.LetDefinition tpe _ _ _ ->
+                Value.LetDefinition _ _ _ _ ->
                     let
-                        unnest : Config msg -> Value () (Type ()) -> ( List ( Name, Element msg ), Element msg )
+                        unnest : Config msg -> VisualTypedValue -> ( List ( Name, Element msg ), Element msg )
                         unnest conf v =
                             case v of
                                 Value.LetDefinition _ defName def inVal ->
@@ -178,21 +199,17 @@ viewValueByLanguageFeature config value =
                         ( definitions, inValueElem ) =
                             unnest config value
                     in
-                    column
-                        [ spacing 20 ]
+                    Element.column
+                        [ mediumSpacing config.state.theme |> spacing ]
                         [ inValueElem
-                        , column
-                            [ spacing 20
-                            ]
+                        , Element.column
+                            [ mediumSpacing config.state.theme |> spacing ]
                             (definitions
                                 |> List.map
                                     (\( defName, defElem ) ->
-                                        column
-                                            [ spacing 10
-                                            ]
-                                            [ definition (nameToText defName)
-                                                defElem
-                                            ]
+                                        Element.column
+                                            [ mediumSpacing config.state.theme |> spacing ]
+                                            [ definition config (nameToText defName) defElem ]
                                     )
                             )
                         ]
@@ -203,23 +220,95 @@ viewValueByLanguageFeature config value =
                 other ->
                     Element.column
                         [ Background.color (rgb 1 0.6 0.6)
-                        , Element.padding 5
-                        , Border.rounded 3
+                        , smallPadding config.state.theme |> padding
+                        , Border.rounded 6
                         ]
                         [ Element.el
-                            [ Element.padding 5
+                            [ smallPadding config.state.theme |> padding
                             , Font.bold
-
-                            --, Font.color (rgb 1 1 1)
                             ]
                             (Element.text "No visual mapping found for:")
                         , Element.el
                             [ Background.color (rgb 1 1 1)
-                            , Element.padding 5
-                            , Border.rounded 3
+                            , smallPadding config.state.theme |> padding
+                            , Border.rounded 6
                             , width fill
                             ]
-                            (XRayView.viewValue XRayView.viewType other)
+                            (XRayView.viewValue XRayView.viewType (other |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
                         ]
     in
     valueElem
+
+
+viewPopup : Config msg -> Element msg
+viewPopup config =
+    Element.column []
+        [ case config.state.popupVariables.variableValue of
+            Just value ->
+                let
+                    references : IR
+                    references =
+                        Frontend.defaultDependencies
+                            |> Dict.insert
+                                (Distribution.lookupPackageName config.irContext.distribution)
+                                (Distribution.lookupPackageSpecification config.irContext.distribution)
+                            |> IR.fromPackageSpecifications
+
+                    typedVal : Result TypeError VisualTypedValue
+                    typedVal =
+                        Infer.inferValue references value
+                            |> Result.andThen
+                                (\typedValue ->
+                                    typedValue
+                                        |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)
+                                        |> toVisualTypedValue
+                                        |> Ok
+                                )
+                in
+                case typedVal of
+                    Ok typedValue ->
+                        el
+                            [ Border.shadow
+                                { offset = ( 2, 2 )
+                                , size = 2
+                                , blur = 2
+                                , color = gray
+                                }
+                            , Background.color silver
+                            , Font.bold
+                            , Border.rounded 4
+                            , Font.center
+                            , mediumPadding config.state.theme |> padding
+                            , htmlAttribute (style "position" "absolute")
+                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
+                            ]
+                            (viewValue config typedValue)
+
+                    Err error ->
+                        el
+                            [ Border.shadow
+                                { offset = ( 2, 2 )
+                                , size = 2
+                                , blur = 2
+                                , color = gray
+                                }
+                            , Background.color silver
+                            , Font.bold
+                            , Border.rounded 4
+                            , Font.center
+                            , mediumPadding config.state.theme |> padding
+                            , htmlAttribute (style "position" "absolute")
+                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
+                            ]
+                            (text (Infer.typeErrorToMessage error))
+
+            Nothing ->
+                el [] (text "")
+        ]
+
+
+toVisualTypedValue : TypedValue -> VisualTypedValue
+toVisualTypedValue typedValue =
+    typedValue
+        |> indexedMapValue Tuple.pair 0
+        |> Tuple.first

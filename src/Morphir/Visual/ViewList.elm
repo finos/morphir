@@ -1,26 +1,28 @@
 module Morphir.Visual.ViewList exposing (view)
 
 import Dict
-import Element exposing (Element, centerX, centerY, el, fill, height, indexedTable, none, paddingXY, spacing, table, text, width)
+import Element exposing (Element, centerX, centerY, el, fill, height, indexedTable, none, padding, spacing, table, text, width)
 import Element.Border as Border
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Visual.Common exposing (VisualTypedValue)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 
 
-view : Config msg -> (Value () (Type ()) -> Element msg) -> Type () -> List (Value () (Type ())) -> Element msg
+view : Config msg -> (VisualTypedValue -> Element msg) -> Type () -> List VisualTypedValue -> Element msg
 view config viewValue itemType items =
     if List.isEmpty items then
         el []
-            (text "[]")
+            (text "[ ]")
 
     else
         case itemType of
             Type.Record _ fields ->
                 indexedTable
-                    []
+                    [ centerX, centerY ]
                     { data =
                         items
                             |> List.map
@@ -34,14 +36,14 @@ view config viewValue itemType items =
                                     { header =
                                         el
                                             [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
-                                            , paddingXY 10 5
+                                            , smallPadding config.state.theme |> padding
                                             ]
-                                            (text (field.name |> Name.toHumanWords |> String.join " "))
+                                            (el [ centerY, centerX ] (text (field.name |> Name.toHumanWords |> String.join " ")))
                                     , width = fill
                                     , view =
                                         \rowIndex item ->
                                             el
-                                                [ paddingXY 10 5
+                                                [ smallPadding config.state.theme |> padding
                                                 , width fill
                                                 , height fill
                                                 ]
@@ -73,7 +75,7 @@ view config viewValue itemType items =
 
             _ ->
                 table
-                    [ spacing 10
+                    [ smallSpacing config.state.theme |> spacing
                     ]
                     { data = items
                     , columns =
