@@ -134,6 +134,25 @@ encodeData ir tpe =
                                 Encode.null
                     )
 
+        Type.Tuple _ elemTypes ->
+            elemTypes
+                |> List.map (encodeData ir)
+                |> ListOfResults.liftFirstError
+                |> Result.map
+                    (\elemEncoders value ->
+                        case value of
+                            Value.Tuple _ elems ->
+                                Encode.list identity
+                                    (List.map2
+                                        identity
+                                        elemEncoders
+                                        elems
+                                    )
+
+                            _ ->
+                                Encode.null
+                    )
+
         _ ->
             Debug.todo "implement"
 
@@ -223,11 +242,12 @@ decodeData ir tpe =
                 _ ->
                     Debug.todo "Todo Custom Type"
 
-        Type.Tuple _ args ->
-            args
+        Type.Tuple _ elemTypes ->
+            elemTypes
                 |> List.foldr
-                    (\argValue resultSoFar ->
-                        resultSoFar
+                    (\argValue ( index, resultSoFar ) ->
+                        ( index - 1
+                        , resultSoFar
                             |> Result.andThen
                                 (\decoderSoFar ->
                                     decodeData ir argValue
@@ -236,7 +256,7 @@ decodeData ir tpe =
                                                 decoderSoFar
                                                     |> Decode.andThen
                                                         (\fieldValuesSoFar ->
-                                                            fieldDecoder
+                                                            Decode.index index fieldDecoder
                                                                 |> Decode.map
                                                                     (\fieldValue ->
                                                                         fieldValue :: fieldValuesSoFar
@@ -244,9 +264,11 @@ decodeData ir tpe =
                                                         )
                                             )
                                 )
+                        )
                     )
-                    (Ok (Decode.succeed []))
-                |> Result.map (\decoder -> Decode.map (Value.Tuple ()) decoder)
+                    ( List.length elemTypes - 1, Ok (Decode.succeed []) )
+                |> Tuple.second
+                |> Result.map (Decode.map (Value.Tuple ()))
 
         _ ->
             Err "Cannot Decode this type"
