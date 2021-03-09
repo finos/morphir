@@ -6,6 +6,7 @@ import Json.Encode as Encode
 import Morphir.IR exposing (IR)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.SDK.Maybe exposing (just, nothing)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
@@ -212,10 +213,10 @@ decodeData ir tpe =
                                         (\item ->
                                             case item of
                                                 Just v ->
-                                                    Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) v
+                                                    just () v
 
                                                 Nothing ->
-                                                    Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )
+                                                    nothing ()
                                         )
                             )
 

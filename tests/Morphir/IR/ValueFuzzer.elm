@@ -3,6 +3,7 @@ module Morphir.IR.ValueFuzzer exposing (boolFuzzer, charFuzzer, floatFuzzer, int
 import Fuzz exposing (Fuzzer)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
+import Morphir.IR.SDK.Maybe exposing (just, nothing)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue)
 
 
@@ -49,10 +50,10 @@ maybeFuzzer itemFuzzer =
             (\item ->
                 case item of
                     Just v ->
-                        Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) v
+                        just () v
 
                     Nothing ->
-                        Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )
+                        nothing ()
             )
 
 
