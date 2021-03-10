@@ -165,7 +165,6 @@ layoutHelp config highlightState viewValue rootNode =
                     , Border.rounded 6
                     , Border.color (conditionState |> highlighStateToColor |> toElementColor)
                     , mediumPadding config.state.theme |> padding
-                    , Element.htmlAttribute (style "background" (conditionState |> highlightStateToBackground))
                     ]
                     (viewValue branch.condition)
                 )
@@ -192,7 +191,6 @@ layoutHelp config highlightState viewValue rootNode =
                 , Border.rounded 6
                 , Border.color (highlightState |> highlighStateToColor |> toElementColor)
                 , mediumPadding config.state.theme |> padding
-                , Element.htmlAttribute (style "background" (highlightState |> highlightStateToBackground))
                 ]
                 (viewValue value)
 
