@@ -79,9 +79,9 @@ update msg model =
             case Decode.decodeValue decodePackageInfo packageInfoJson of
                 Ok pkgInfo ->
                     let
-                        packageDefResult : Result Frontend.Errors (Package.Definition ()())
+                        packageDefResult : Result Frontend.Errors (Package.Definition () ())
                         packageDefResult =
-                            Frontend.packageDefinitionFromSource pkgInfo Dict.empty sourceFiles
+                            Frontend.packageDefinitionFromSource (Frontend.Options False) pkgInfo Dict.empty sourceFiles
                                 |> Result.map Package.eraseDefinitionAttributes
 
                         result =
@@ -106,7 +106,7 @@ type alias StatefulAppArgs extra =
     }
 
 
-daprSource : Path -> Package.Definition () ()-> String
+daprSource : Path -> Package.Definition () () -> String
 daprSource pkgPath pkgDef =
     let
         appFiles : List File
@@ -228,7 +228,7 @@ mapPublic f acsCtrl =
             Nothing
 
 
-encodeResult : (Frontend.Errors -> Encode.Value) -> (Package.Definition () ()-> Encode.Value) -> Result Frontend.Errors IrAndElmBackendResult -> Encode.Value
+encodeResult : (Frontend.Errors -> Encode.Value) -> (Package.Definition () () -> Encode.Value) -> Result Frontend.Errors IrAndElmBackendResult -> Encode.Value
 encodeResult encodeError encodeValue result =
     case result of
         Ok a ->

@@ -41,6 +41,12 @@ import Set
 import Test exposing (..)
 
 
+opts : Frontend.Options
+opts =
+    { typesOnly = False
+    }
+
+
 frontendTest : Test
 frontendTest =
     let
@@ -218,7 +224,7 @@ frontendTest =
     in
     test "first" <|
         \_ ->
-            Frontend.packageDefinitionFromSource packageInfo Dict.empty [ sourceA, sourceB, sourceC ]
+            Frontend.packageDefinitionFromSource opts packageInfo Dict.empty [ sourceA, sourceB, sourceC ]
                 |> Result.map Package.eraseDefinitionAttributes
                 |> Expect.equal (Ok expected)
 
@@ -315,7 +321,7 @@ valueTests =
         checkIR valueSource expectedValueIR =
             test valueSource <|
                 \_ ->
-                    Frontend.packageDefinitionFromSource packageInfo deps [ barSource, moduleSource valueSource ]
+                    Frontend.packageDefinitionFromSource opts packageInfo deps [ barSource, moduleSource valueSource ]
                         |> Result.map Package.eraseDefinitionAttributes
                         |> Result.mapError
                             (\errors ->
