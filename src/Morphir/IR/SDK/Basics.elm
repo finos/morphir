@@ -266,6 +266,19 @@ nativeFunctions =
                 )
             )
       )
+    , ( "toFloat"
+      , Native.unaryStrict
+            (Native.mapLiteral
+                (\lit ->
+                    case lit of
+                        IntLiteral v ->
+                            Ok (FloatLiteral (toFloat v))
+
+                        _ ->
+                            Err (ExpectedBoolLiteral lit)
+                )
+            )
+      )
     ]
 
 
@@ -393,7 +406,7 @@ isNumber tpe =
 
 
 evaluateNumberArithmetic : Value () () -> Value () () -> String -> Result Error (Value () ())
-evaluateNumberArithmetic num1 num2 operator =
+evaluateNumberArithmetic arg1 arg2 operator =
     let
         evalNumber v1 v2 literal =
             case operator of
@@ -409,7 +422,7 @@ evaluateNumberArithmetic num1 num2 operator =
                 _ ->
                     Err (UnexpectedOperator operator)
     in
-    case ( num1, num2 ) of
+    case ( arg1, arg2 ) of
         ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
             evalNumber v1 v2 FloatLiteral
 
@@ -423,7 +436,7 @@ evaluateNumberArithmetic num1 num2 operator =
             evalNumber (toFloat v1) v2 FloatLiteral
 
         _ ->
-            Err (ExpectedNumberTypeArguments [ num1, num2 ])
+            Err (ExpectedNumberTypeArguments [ arg1, arg2 ])
 
 
 evaluateBooleanArithmetic : Value () () -> Value () () -> String -> Result Error (Value () ())
