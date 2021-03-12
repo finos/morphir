@@ -2,6 +2,7 @@ module Morphir.Value.Native exposing
     ( Function
     , Eval
     , unaryLazy, unaryStrict, binaryLazy, binaryStrict, mapLiteral
+    , boolLiteral, charLiteral, expectLiteral, floatLiteral, intLiteral, oneOf, returnLiteral, strictEval1, strictEval2, stringLiteral
     )
 
 {-| This module contains an API and some tools to implement native functions. Native functions are functions that are
@@ -38,8 +39,8 @@ Various utilities to help with implementing native functions.
 
 -}
 
-import Morphir.IR.Literal exposing (Literal)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Value.Error exposing (Error(..))
 
 
@@ -164,3 +165,115 @@ mapLiteral f eval value =
 
         _ ->
             Err (ExpectedLiteral value)
+
+
+expectLiteral : (Literal -> Result Error a) -> RawValue -> Result Error a
+expectLiteral decodeLiteral value =
+    case value of
+        Value.Literal _ lit ->
+            decodeLiteral lit
+
+        _ ->
+            Err (ExpectedLiteral value)
+
+
+boolLiteral : Literal -> Result Error Bool
+boolLiteral lit =
+    case lit of
+        BoolLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedBoolLiteral lit)
+
+
+intLiteral : Literal -> Result Error Int
+intLiteral lit =
+    case lit of
+        IntLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedBoolLiteral lit)
+
+
+floatLiteral : Literal -> Result Error Float
+floatLiteral lit =
+    case lit of
+        FloatLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedBoolLiteral lit)
+
+
+charLiteral : Literal -> Result Error Char
+charLiteral lit =
+    case lit of
+        CharLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedBoolLiteral lit)
+
+
+stringLiteral : Literal -> Result Error String
+stringLiteral lit =
+    case lit of
+        StringLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedBoolLiteral lit)
+
+
+returnLiteral : (a -> Literal) -> a -> RawValue
+returnLiteral toLit a =
+    Value.Literal () (toLit a)
+
+
+strictEval1 : (a -> b) -> (RawValue -> Result Error a) -> (b -> RawValue) -> Function
+strictEval1 f decodeA encodeB eval args =
+    case args of
+        [ arg1 ] ->
+            Result.map
+                (\a ->
+                    encodeB (f a)
+                )
+                (eval arg1 |> Result.andThen decodeA)
+
+        _ ->
+            Err (UnexpectedArguments args)
+
+
+strictEval2 : (a -> b -> c) -> (RawValue -> Result Error a) -> (RawValue -> Result Error b) -> (c -> RawValue) -> Function
+strictEval2 f decodeA decodeB encodeC eval args =
+    case args of
+        [ arg1, arg2 ] ->
+            Result.map2
+                (\a b ->
+                    encodeC (f a b)
+                )
+                (eval arg1 |> Result.andThen decodeA)
+                (eval arg2 |> Result.andThen decodeB)
+
+        _ ->
+            Err (UnexpectedArguments args)
+
+
+oneOf : List Function -> Function
+oneOf funs =
+    funs
+        |> List.foldl
+            (\nextFun funSoFar ->
+                \eval args ->
+                    case funSoFar eval args of
+                        Ok result ->
+                            Ok result
+
+                        Err _ ->
+                            nextFun eval args
+            )
+            (\eval args ->
+                Err NotImplemented
+            )

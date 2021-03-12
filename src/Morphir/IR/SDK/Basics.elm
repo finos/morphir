@@ -27,7 +27,7 @@ import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native
+import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, expectLiteral, floatLiteral, intLiteral, oneOf, returnLiteral, strictEval1, strictEval2, stringLiteral)
 
 
 moduleName : ModuleName
@@ -127,144 +127,80 @@ moduleSpec =
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
     [ ( "not"
-      , Native.unaryStrict
-            (Native.mapLiteral
-                (\lit ->
-                    case lit of
-                        BoolLiteral v ->
-                            Ok (BoolLiteral (not v))
-
-                        _ ->
-                            Err (ExpectedBoolLiteral lit)
-                )
-            )
+      , strictEval1 not (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "and"
-      , Native.binaryLazy
-            (\eval arg1 arg2 ->
-                eval arg1
-                    |> Result.andThen
-                        (\a1 ->
-                            case a1 of
-                                Value.Literal _ (BoolLiteral False) ->
-                                    Ok (Value.Literal () (BoolLiteral False))
-
-                                Value.Literal _ (BoolLiteral True) ->
-                                    eval arg2
-
-                                _ ->
-                                    Err (ExpectedLiteral arg1)
-                        )
-            )
+      , strictEval2 (&&) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "or"
-      , Native.binaryLazy
-            (\eval arg1 arg2 ->
-                eval arg1
-                    |> Result.andThen
-                        (\a1 ->
-                            case a1 of
-                                Value.Literal _ (BoolLiteral True) ->
-                                    Ok (Value.Literal () (BoolLiteral True))
-
-                                Value.Literal _ (BoolLiteral False) ->
-                                    eval arg2
-
-                                _ ->
-                                    Err (ExpectedLiteral arg1)
-                        )
-            )
+      , strictEval2 (||) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "xor"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (BoolLiteral v1), Value.Literal _ (BoolLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (xor v1 v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , strictEval2 xor (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "add"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                evaluateNumberArithmetic arg1 arg2 "+"
-            )
+      , oneOf
+            [ strictEval2 (+) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval2 (+) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     , ( "subtract"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                evaluateNumberArithmetic arg1 arg2 "-"
-            )
+      , oneOf
+            [ strictEval2 (-) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval2 (-) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     , ( "multiply"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                evaluateNumberArithmetic arg1 arg2 "*"
-            )
+      , oneOf
+            [ strictEval2 (*) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval2 (*) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     , ( "divide"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-                        Ok (Value.Literal () (FloatLiteral (v1 / v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , strictEval2 (/) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
       )
     , ( "integerDivide"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-                        Ok (Value.Literal () (IntLiteral (v1 // v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , strictEval2 (//) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
       )
     , ( "equal"
       , Native.binaryStrict
             (\arg1 arg2 ->
-                evaluateBooleanArithmetic arg1 arg2 "="
+                -- We use structural equality similar to Elm with the difference that Elm fails when you try to compare
+                -- two functions but we will actually compare if the implementations are the same.
+                Ok (Value.Literal () (BoolLiteral (arg1 == arg2)))
             )
       )
     , ( "notEqual"
       , Native.binaryStrict
             (\arg1 arg2 ->
-                evaluateBooleanArithmetic arg1 arg2 "/="
+                -- We use structural equality similar to Elm with the difference that Elm fails when you try to compare
+                -- two functions but we will actually compare if the implementations are the same.
+                Ok (Value.Literal () (BoolLiteral (arg1 /= arg2)))
             )
       )
     , ( "lessThan"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                evaluateBooleanArithmetic arg1 arg2 "<"
-            )
+      , oneOf
+            -- TODO: this is only a limited subset of comparable values, we should implement for all
+            [ strictEval2 (<) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (<) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (<) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (<) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            ]
       )
     , ( "greaterThan"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                evaluateBooleanArithmetic arg1 arg2 ">"
-            )
+      , oneOf
+            -- TODO: this is only a limited subset of comparable values, we should implement for all
+            [ strictEval2 (>) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (>) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (>) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (>) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            ]
       )
     , ( "abs"
-      , Native.unaryStrict
-            (Native.mapLiteral
-                (\lit ->
-                    case lit of
-                        IntLiteral v ->
-                            Ok (IntLiteral (abs v))
-
-                        FloatLiteral v ->
-                            Ok (FloatLiteral (abs v))
-
-                        _ ->
-                            Err (ExpectedBoolLiteral lit)
-                )
-            )
+      , oneOf
+            [ strictEval1 abs (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval1 abs (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     ]
 
