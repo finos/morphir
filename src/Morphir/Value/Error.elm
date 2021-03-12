@@ -3,6 +3,7 @@ module Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value exposing (Pattern, Value)
 
 
@@ -24,6 +25,7 @@ type Error
     | ErrorWhileEvaluatingReference FQName Error
     | ErrorWhileEvaluatingVariable Name Error
     | ExpectedNumberTypeArguments (List (Value () ()))
+    | NotImplemented
 
 
 type PatternMismatch
