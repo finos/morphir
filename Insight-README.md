@@ -93,11 +93,11 @@ For more details on ports [Ports](https://guide.elm-lang.org/interop/ports.html)
 - You need to send type information of arguments along with its values otherwise it won't be accepted.
 - If function signature is :
 ``` 
-    limitTracking : Int -> Int -> Float -> Float -> Float -> List TrackingAdvantage
+    limitTracking : Float -> Float -> Float -> Float -> Float -> List TrackingAdvantage
 ```
-- It means it is expecting 2 arguments of type int and 3 arguments of type float and returning a List type.
+- It means it is expecting 5 arguments of float type and returning a List type.
 ``` 
-    var argsList = [["literal",{},["int_literal", 14]],["literal",{},["int_literal", 4]],["literal",{},["float_literal", 13.5]],["literal",{},["float_literal", 36.3]],["literal",{},["float_literal", 62.3]]];
+    var argsList = [["literal",{},["float_literal", 14]],["literal",{},["float_literal", 4]],["literal",{},["float_literal", 13.5]],["literal",{},["float_literal", 36.3]],["literal",{},["float_literal", 62.3]]];
     app.ports.receiveFunctionArguments.send(argsList);
 ```
 - For more details of encoding like how to encode `list, tuple, and record`
