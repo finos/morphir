@@ -1,12 +1,9 @@
 {-
    Copyright 2020 Morgan Stanley
-
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
-
        http://www.apache.org/licenses/LICENSE-2.0
-
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,8 +23,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native
+import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, expectLiteral, floatLiteral, intLiteral, oneOf, returnLiteral, strictEval1, strictEval2, stringLiteral)
 
 
 moduleName : ModuleName
@@ -127,157 +123,91 @@ moduleSpec =
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
     [ ( "not"
-      , Native.unaryStrict
-            (Native.mapLiteral
-                (\lit ->
-                    case lit of
-                        BoolLiteral v ->
-                            Ok (BoolLiteral (not v))
-
-                        _ ->
-                            Err (ExpectedBoolLiteral lit)
-                )
-            )
+      , strictEval1 not (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "and"
-      , Native.binaryLazy
-            (\eval arg1 arg2 ->
-                eval arg1
-                    |> Result.andThen
-                        (\a1 ->
-                            case a1 of
-                                Value.Literal _ (BoolLiteral False) ->
-                                    Ok (Value.Literal () (BoolLiteral False))
-
-                                Value.Literal _ (BoolLiteral True) ->
-                                    eval arg2
-
-                                _ ->
-                                    Err (ExpectedLiteral arg1)
-                        )
-            )
+      , strictEval2 (&&) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "or"
-      , Native.binaryLazy
-            (\eval arg1 arg2 ->
-                eval arg1
-                    |> Result.andThen
-                        (\a1 ->
-                            case a1 of
-                                Value.Literal _ (BoolLiteral True) ->
-                                    Ok (Value.Literal () (BoolLiteral True))
-
-                                Value.Literal _ (BoolLiteral False) ->
-                                    eval arg2
-
-                                _ ->
-                                    Err (ExpectedLiteral arg1)
-                        )
-            )
+      , strictEval2 (||) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "xor"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (BoolLiteral v1), Value.Literal _ (BoolLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (xor v1 v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , strictEval2 xor (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "add"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                evaluateNumberArithmetic arg1 arg2 "+"
-            )
+      , oneOf
+            [ strictEval2 (+) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval2 (+) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     , ( "subtract"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                evaluateNumberArithmetic arg1 arg2 "-"
-            )
+      , oneOf
+            [ strictEval2 (-) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval2 (-) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     , ( "multiply"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                evaluateNumberArithmetic arg1 arg2 "*"
-            )
+      , oneOf
+            [ strictEval2 (*) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval2 (*) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     , ( "divide"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-                        Ok (Value.Literal () (FloatLiteral (v1 / v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , strictEval2 (/) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
       )
     , ( "integerDivide"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-                        Ok (Value.Literal () (IntLiteral (v1 // v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , strictEval2 (//) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
       )
     , ( "equal"
       , Native.binaryStrict
             (\arg1 arg2 ->
-                evaluateEqualArithmetic arg1 arg2 "="
+                -- We use structural equality similar to Elm with the difference that Elm fails when you try to compare
+                -- two functions but we will actually compare if the implementations are the same.
+                Ok (Value.Literal () (BoolLiteral (arg1 == arg2)))
             )
       )
     , ( "notEqual"
       , Native.binaryStrict
             (\arg1 arg2 ->
-                evaluateEqualArithmetic arg1 arg2 "/="
+                -- We use structural equality similar to Elm with the difference that Elm fails when you try to compare
+                -- two functions but we will actually compare if the implementations are the same.
+                Ok (Value.Literal () (BoolLiteral (arg1 /= arg2)))
             )
       )
     , ( "lessThan"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                evaluateBooleanArithmetic arg1 arg2 "<"
-            )
+      , oneOf
+            -- TODO: this is only a limited subset of comparable values, we should implement for all
+            [ strictEval2 (<) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (<) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (<) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (<) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            ]
       )
     , ( "greaterThan"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                evaluateBooleanArithmetic arg1 arg2 ">"
-            )
+      , oneOf
+            -- TODO: this is only a limited subset of comparable values, we should implement for all
+            [ strictEval2 (>) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (>) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (>) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
+            , strictEval2 (>) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            ]
       )
     , ( "abs"
-      , Native.unaryStrict
-            (Native.mapLiteral
-                (\lit ->
-                    case lit of
-                        IntLiteral v ->
-                            Ok (IntLiteral (abs v))
-
-                        FloatLiteral v ->
-                            Ok (FloatLiteral (abs v))
-
-                        _ ->
-                            Err (ExpectedBoolLiteral lit)
-                )
-            )
+      , oneOf
+            [ strictEval1 abs (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval1 abs (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     , ( "toFloat"
-      , Native.unaryStrict
-            (Native.mapLiteral
-                (\lit ->
-                    case lit of
-                        IntLiteral v ->
-                            Ok (FloatLiteral (toFloat v))
-
-                        _ ->
-                            Err (ExpectedBoolLiteral lit)
-                )
-            )
+      , oneOf
+            [ strictEval1 toFloat (expectLiteral intLiteral) (returnLiteral FloatLiteral)
+            ]
+      )
+    , ( "negate"
+      , oneOf
+            [ strictEval1 Basics.negate (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval1 Basics.negate (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     ]
 
@@ -403,101 +333,3 @@ isNumber tpe =
 
         _ ->
             False
-
-
-evaluateNumberArithmetic : Value () () -> Value () () -> String -> Result Error (Value () ())
-evaluateNumberArithmetic arg1 arg2 operator =
-    let
-        evalNumber v1 v2 literal =
-            case operator of
-                "+" ->
-                    Ok (Value.Literal () (literal (v1 + v2)))
-
-                "-" ->
-                    Ok (Value.Literal () (literal (v1 - v2)))
-
-                "*" ->
-                    Ok (Value.Literal () (literal (v1 * v2)))
-
-                _ ->
-                    Err (UnexpectedOperator operator)
-    in
-    case ( arg1, arg2 ) of
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalNumber v1 v2 FloatLiteral
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalNumber v1 v2 IntLiteral
-
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalNumber v1 (toFloat v2) FloatLiteral
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalNumber (toFloat v1) v2 FloatLiteral
-
-        _ ->
-            Err (ExpectedNumberTypeArguments [ arg1, arg2 ])
-
-
-evaluateBooleanArithmetic : Value () () -> Value () () -> String -> Result Error (Value () ())
-evaluateBooleanArithmetic arg1 arg2 operator =
-    let
-        evalBool : comparable -> comparable -> Result Error (Value () ())
-        evalBool v1 v2 =
-            case operator of
-                ">" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 > v2)))
-
-                "<" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 < v2)))
-
-                _ ->
-                    Err (UnexpectedOperator operator)
-    in
-    case ( arg1, arg2 ) of
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalBool v1 v2
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalBool v1 v2
-
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalBool v1 (toFloat v2)
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalBool (toFloat v1) v2
-
-        ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
-            evalBool v1 v2
-
-        ( Value.Literal _ (StringLiteral v1), Value.Literal _ (StringLiteral v2) ) ->
-            evalBool v1 v2
-
-        _ ->
-            Err (UnexpectedArguments [ arg1, arg2 ])
-
-
-evaluateEqualArithmetic : Value () () -> Value () () -> String -> Result Error (Value () ())
-evaluateEqualArithmetic arg1 arg2 operator =
-    let
-        evalEqual : eq -> eq -> Result Error (Value () ())
-        evalEqual v1 v2 =
-            case operator of
-                "=" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 == v2)))
-
-                "/=" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 /= v2)))
-
-                _ ->
-                    Err (UnexpectedOperator operator)
-    in
-    case ( arg1, arg2 ) of
-        ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
-            evalEqual v1 v2
-
-        ( Value.Literal _ (StringLiteral v1), Value.Literal _ (StringLiteral v2) ) ->
-            evalEqual v1 v2
-
-        _ ->
-            evalEqual arg1 arg2
