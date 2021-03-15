@@ -10,6 +10,7 @@ import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
+import Morphir.IR.SDK.Basics exposing (floatType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.ListOfResults as ListOfResults
@@ -1002,6 +1003,7 @@ applySolutionToAnnotatedDefinition annotatedDef ( residualConstraints, solutionM
                     |> Maybe.withDefault (metaVar |> MetaType.toName |> Type.Variable ())
                 )
             )
+        |> (\valDef -> { valDef | body = valDef.body |> fixNumberLiterals })
 
 
 applySolutionToAnnotatedValue : Value () ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> TypedValue va
@@ -1015,6 +1017,25 @@ applySolutionToAnnotatedValue annotatedValue ( residualConstraints, solutionMap 
                     |> Maybe.map (metaTypeToConcreteType solutionMap)
                     |> Maybe.withDefault (metaVar |> MetaType.toName |> Type.Variable ())
                 )
+            )
+        |> fixNumberLiterals
+
+
+fixNumberLiterals : Value ta ( va, Type () ) -> Value ta ( va, Type () )
+fixNumberLiterals typedValue =
+    typedValue
+        |> Value.rewriteValue
+            (\value ->
+                case value of
+                    Value.Literal ( va, tpe ) (IntLiteral v) ->
+                        if tpe == floatType () then
+                            Value.Literal ( va, tpe ) (FloatLiteral (toFloat v)) |> Just
+
+                        else
+                            Nothing
+
+                    _ ->
+                        Nothing
             )
 
 
