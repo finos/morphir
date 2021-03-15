@@ -182,6 +182,5 @@ nativeFunctions =
             )
       )
     , ( "map", eval2 List.map expectFun1 expectList returnResultList )
-    , ( "filter", eval2 List.filter expectFun1 expectList returnResultList )
     , ( "append", eval2 List.append expectList expectList returnList )
     ]
