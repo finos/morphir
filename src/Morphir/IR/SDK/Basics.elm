@@ -1,12 +1,9 @@
 {-
    Copyright 2020 Morgan Stanley
-
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
-
        http://www.apache.org/licenses/LICENSE-2.0
-
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,7 +23,6 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, expectLiteral, floatLiteral, intLiteral, oneOf, returnLiteral, strictEval1, strictEval2, stringLiteral)
 
 
@@ -202,6 +198,17 @@ nativeFunctions =
             , strictEval1 abs (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
             ]
       )
+    , ( "toFloat"
+      , oneOf
+            [ strictEval1 toFloat (expectLiteral intLiteral) (returnLiteral FloatLiteral)
+            ]
+      )
+    , ( "negate"
+      , oneOf
+            [ strictEval1 Basics.negate (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval1 Basics.negate (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
+      )
     ]
 
 
@@ -326,80 +333,3 @@ isNumber tpe =
 
         _ ->
             False
-
-
-evaluateNumberArithmetic : Value () () -> Value () () -> String -> Result Error (Value () ())
-evaluateNumberArithmetic num1 num2 operator =
-    let
-        evalNumber v1 v2 opr literal =
-            case opr of
-                "+" ->
-                    v1 + v2 |> literal |> Value.Literal () |> Ok
-
-                "-" ->
-                    v1 - v2 |> literal |> Value.Literal () |> Ok
-
-                "*" ->
-                    v1 * v2 |> literal |> Value.Literal () |> Ok
-
-                _ ->
-                    Err (UnexpectedOperator opr)
-    in
-    case ( num1, num2 ) of
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalNumber v1 v2 operator FloatLiteral
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalNumber v1 v2 operator IntLiteral
-
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalNumber v1 (toFloat v2) operator FloatLiteral
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalNumber (toFloat v1) v2 operator FloatLiteral
-
-        _ ->
-            Err (ExpectedNumberTypeArguments [ num1, num2 ])
-
-
-evaluateBooleanArithmetic : Value () () -> Value () () -> String -> Result Error (Value () ())
-evaluateBooleanArithmetic num1 num2 operator =
-    let
-        evalBool v1 v2 opr =
-            case opr of
-                ">" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 > v2)))
-
-                "<" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 < v2)))
-
-                "=" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 == v2)))
-
-                "/=" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 /= v2)))
-
-                _ ->
-                    Err (UnexpectedOperator opr)
-    in
-    case ( num1, num2 ) of
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalBool v1 v2 operator
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalBool v1 v2 operator
-
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalBool v1 (toFloat v2) operator
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalBool (toFloat v1) v2 operator
-
-        ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
-            evalBool v1 v2 operator
-
-        ( Value.Literal _ (StringLiteral v1), Value.Literal _ (StringLiteral v2) ) ->
-            evalBool v1 v2 operator
-
-        _ ->
-            Err (UnexpectedArguments [ num1, num2 ])

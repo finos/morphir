@@ -70,12 +70,12 @@ For more details on interoperability [JavaScript Interoperability ](https://guid
    node: document.getElementById('app'),
    flags: {
              distribution : distribution 
-          ,  config : { fontSize : 14 }
+          ,  config : { fontSize : 12 , decimalDigit : 2}
           }
    });
 ```
- - Distribution field in the flag is same what we are getting from morphir-ir.json file. No need to change anything store the data of file into a variable and simply pass it.
- - Config field is basically used to take the control on styling part dynamically. Padding and spacing between elements will change accordingly when you change the font size.You can simply skip this field if you don't want. 
+ - Distribution field in the flag is same what we are getting from morphir-ir.json file. No need to change anything store the data of json file into a variable(Name - distribution) and simply pass it in distribution field.
+ - Config field is used to take the control over styling part. Padding and spacing between elements will adjust accordingly when you change the font size. Here, decimalDigit is used to set precision of numbers. You can simply skip any of these field if you don't want.Then these fields will initialize with default values fontSize = 12 and decimalDigit = 2.
    
 For more details on flags [Flags](https://guide.elm-lang.org/interop/flags.html)
 
@@ -95,15 +95,15 @@ For more details on ports [Ports](https://guide.elm-lang.org/interop/ports.html)
 ``` 
     limitTracking : Float -> Float -> Float -> Float -> Float -> List TrackingAdvantage
 ```
-- It means it is expecting 5 arguments of type float and returning a List type.
+- It means it is expecting 5 arguments of float type and returning a List type.
 ``` 
-    var argsList = [["literal",{},["float_literal", 14]],["literal",{},["float_literal", 4.5]],["literal",{},["float_literal", 13.5]],["literal",{},["float_literal", 36.3]],["literal",{},["float_literal", 62.3]]];
+    var argsList = [["literal",{},["float_literal", 14]],["literal",{},["float_literal", 4]],["literal",{},["float_literal", 13.5]],["literal",{},["float_literal", 36.3]],["literal",{},["float_literal", 62.3]]];
     app.ports.receiveFunctionArguments.send(argsList);
 ```
 - For more details of encoding like how to encode `list, tuple, and record`
 [Encoding Decoding File](https://github.com/finos/morphir-elm/blob/master/src/Morphir/IR/Value/Codec.elm)
 - This file has all the functions of encoding and decoding of elm data types.
 
-###Example File
-If you are still confused like how to write code for all that steps, you can have a look at example file.
+### Example File
+- If you are still confused like how to write code for all that steps, you can have a look at example file.
 [Insight API Example File](https://github.com/finos/morphir-elm/blob/master/cli/web/insight.html).

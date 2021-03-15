@@ -116,7 +116,7 @@ viewValueByLanguageFeature config value =
         valueElem =
             case value of
                 Value.Literal _ literal ->
-                    ViewLiteral.view literal
+                    ViewLiteral.view config literal
 
                 Value.Constructor _ fQName ->
                     ViewReference.view config (viewValue config) fQName
