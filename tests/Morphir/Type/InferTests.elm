@@ -7,7 +7,7 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
-import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
@@ -362,10 +362,10 @@ positiveOutcomes =
     -- number type class
     , Value.IfThenElse (floatType ())
         (Value.Literal (boolType ()) (BoolLiteral False))
-        (Value.Literal (floatType ()) (IntLiteral 2))
+        (Value.Literal (floatType ()) (FloatLiteral 2))
         (Value.Literal (floatType ()) (FloatLiteral 3))
     , Value.List (listType () (floatType ()))
-        [ Value.Literal (floatType ()) (IntLiteral 2)
+        [ Value.Literal (floatType ()) (FloatLiteral 2)
         , Value.Literal (floatType ()) (FloatLiteral 3)
         ]
     ]

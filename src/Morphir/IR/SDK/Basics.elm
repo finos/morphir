@@ -26,7 +26,6 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, eval1, eval2, expectLiteral, floatLiteral, intLiteral, oneOf, returnLiteral, stringLiteral)
 
 
@@ -200,6 +199,17 @@ nativeFunctions =
       , oneOf
             [ eval1 abs (expectLiteral intLiteral) (returnLiteral IntLiteral)
             , eval1 abs (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
+      )
+    , ( "toFloat"
+      , oneOf
+            [ strictEval1 toFloat (expectLiteral intLiteral) (returnLiteral FloatLiteral)
+            ]
+      )
+    , ( "negate"
+      , oneOf
+            [ strictEval1 Basics.negate (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , strictEval1 Basics.negate (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
             ]
       )
     ]
