@@ -203,13 +203,13 @@ nativeFunctions =
       )
     , ( "toFloat"
       , oneOf
-            [ strictEval1 toFloat (expectLiteral intLiteral) (returnLiteral FloatLiteral)
+            [ eval1 toFloat (expectLiteral intLiteral) (returnLiteral FloatLiteral)
             ]
       )
     , ( "negate"
       , oneOf
-            [ strictEval1 Basics.negate (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , strictEval1 Basics.negate (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval1 Basics.negate (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval1 Basics.negate (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
             ]
       )
     ]
@@ -328,88 +328,11 @@ composeRight a =
 isNumber : Type ta -> Bool
 isNumber tpe =
     case tpe of
-        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
+        Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
             True
 
-        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
+        Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
             True
 
         _ ->
             False
-
-
-evaluateNumberArithmetic : Value () () -> Value () () -> String -> Result Error (Value () ())
-evaluateNumberArithmetic num1 num2 operator =
-    let
-        evalNumber v1 v2 opr literal =
-            case opr of
-                "+" ->
-                    v1 + v2 |> literal |> Value.Literal () |> Ok
-
-                "-" ->
-                    v1 - v2 |> literal |> Value.Literal () |> Ok
-
-                "*" ->
-                    v1 * v2 |> literal |> Value.Literal () |> Ok
-
-                _ ->
-                    Err (UnexpectedOperator opr)
-    in
-    case ( num1, num2 ) of
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalNumber v1 v2 operator FloatLiteral
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalNumber v1 v2 operator IntLiteral
-
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalNumber v1 (toFloat v2) operator FloatLiteral
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalNumber (toFloat v1) v2 operator FloatLiteral
-
-        _ ->
-            Err (ExpectedNumberTypeArguments [ num1, num2 ])
-
-
-evaluateBooleanArithmetic : Value () () -> Value () () -> String -> Result Error (Value () ())
-evaluateBooleanArithmetic num1 num2 operator =
-    let
-        evalBool v1 v2 opr =
-            case opr of
-                ">" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 > v2)))
-
-                "<" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 < v2)))
-
-                "=" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 == v2)))
-
-                "/=" ->
-                    Ok (Value.Literal () (BoolLiteral (v1 /= v2)))
-
-                _ ->
-                    Err (UnexpectedOperator opr)
-    in
-    case ( num1, num2 ) of
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalBool v1 v2 operator
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalBool v1 v2 operator
-
-        ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-            evalBool v1 (toFloat v2) operator
-
-        ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-            evalBool (toFloat v1) v2 operator
-
-        ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
-            evalBool v1 v2 operator
-
-        ( Value.Literal _ (StringLiteral v1), Value.Literal _ (StringLiteral v2) ) ->
-            evalBool v1 v2 operator
-
-        _ ->
-            Err (UnexpectedArguments [ num1, num2 ])
