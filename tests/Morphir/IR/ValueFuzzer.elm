@@ -1,15 +1,18 @@
 module Morphir.IR.ValueFuzzer exposing (boolFuzzer, charFuzzer, floatFuzzer, fromType, intFuzzer, listFuzzer, maybeFuzzer, recordFuzzer, stringFuzzer, tupleFuzzer)
 
+import Dict exposing (Dict)
 import Fuzz exposing (Fuzzer)
-import Morphir.IR exposing (IR)
+import Morphir.IR as IR exposing (IR)
+import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Path exposing (Path)
 import Morphir.IR.SDK.Maybe exposing (just, nothing)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue)
 
 
-fromType : IR -> Type ta -> Fuzzer RawValue
+fromType : IR -> Type () -> Fuzzer RawValue
 fromType ir tpe =
     case tpe of
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
@@ -37,6 +40,51 @@ fromType ir tpe =
 
                 _ ->
                     Debug.todo "implement"
+
+        Type.Reference _ (( typePackageName, typeModuleName, _ ) as fQName) typeArgs ->
+            -- Handle references that are not part of the SDK
+            ir
+                |> IR.lookupTypeSpecification fQName
+                |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
+                |> Result.andThen
+                    (\typeSpec ->
+                        case typeSpec of
+                            Type.TypeAliasSpecification typeArgNames typeExp ->
+                                let
+                                    argVariables : Dict Name (Type ())
+                                    argVariables =
+                                        List.map2 Tuple.pair typeArgNames typeArgs
+                                            |> Dict.fromList
+                                in
+                                typeExp |> Type.substituteTypeVariables argVariables |> fromType ir
+
+                            Type.OpaqueTypeSpecification _ ->
+                                Debug.todo "implement"
+
+                            Type.CustomTypeSpecification typeArgNames ctors ->
+                                let
+                                    argVariables : Dict Name (Type ())
+                                    argVariables =
+                                        List.map2 Tuple.pair typeArgNames typeArgs
+                                            |> Dict.fromList
+                                in
+                                ctors
+                                    |> Dict.toList
+                                    |> List.map
+                                        (\( ctorName, argTypes ) ->
+                                            ( ctorName
+                                            , argTypes
+                                                |> List.map
+                                                    (\( _, argType ) ->
+                                                        fromType ir
+                                                            (argType
+                                                                |> Type.substituteTypeVariables argVariables
+                                                            )
+                                                    )
+                                            )
+                                        )
+                                    |> customFuzzer typePackageName typeModuleName
+                    )
 
         Type.Record _ fieldTypes ->
             recordFuzzer (fieldTypes |> List.map (\field -> ( field.name, fromType ir field.tpe )))
@@ -128,3 +176,20 @@ recordFuzzer fieldFuzzers =
             )
             (Fuzz.constant [])
         |> Fuzz.map (Value.Record ())
+
+
+customFuzzer : Path -> Path -> List ( Name, List (Fuzzer RawValue) ) -> Fuzzer RawValue
+customFuzzer packageName moduleName ctorFuzzers =
+    ctorFuzzers
+        |> List.map
+            (\( ctorName, argFuzzers ) ->
+                argFuzzers
+                    |> List.foldl
+                        (\argFuzzer ctorSoFar ->
+                            Fuzz.map2 (Value.Apply ())
+                                ctorSoFar
+                                argFuzzer
+                        )
+                        (Fuzz.constant (Value.Constructor () ( packageName, moduleName, ctorName )))
+            )
+        |> Fuzz.oneOf

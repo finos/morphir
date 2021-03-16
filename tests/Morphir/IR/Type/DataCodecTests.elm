@@ -1,5 +1,6 @@
 module Morphir.IR.Type.DataCodecTests exposing (decodeDataTest)
 
+import Dict
 import Expect exposing (Expectation)
 import Json.Decode as Decode
 import Morphir.IR as IR exposing (IR)
@@ -16,7 +17,41 @@ import Test exposing (Test, describe, fuzz)
 
 ir : IR
 ir =
-    IR.empty
+    Dict.fromList
+        [ ( [ [ "my" ] ]
+          , { modules =
+                Dict.fromList
+                    [ ( [ [ "mod" ] ]
+                      , { types =
+                            Dict.fromList
+                                [ ( [ "alias", "1" ]
+                                  , { doc = ""
+                                    , value =
+                                        Type.TypeAliasSpecification [ [ "a" ] ]
+                                            (Type.Variable () [ "a" ])
+                                    }
+                                  )
+                                , ( [ "custom" ]
+                                  , { doc = ""
+                                    , value =
+                                        Type.CustomTypeSpecification [ [ "a" ] ]
+                                            (Dict.fromList
+                                                [ ( [ "custom", "zero" ], [] )
+                                                , ( [ "custom", "one" ], [ ( [ "one" ], intType () ) ] )
+                                                , ( [ "custom", "two" ], [ ( [ "one" ], Type.Variable () [ "a" ] ), ( [ "two" ], boolType () ) ] )
+                                                ]
+                                            )
+                                    }
+                                  )
+                                ]
+                        , values = Dict.empty
+                        }
+                      )
+                    ]
+            }
+          )
+        ]
+        |> IR.fromPackageSpecifications
 
 
 decodeDataTest : Test
@@ -37,6 +72,8 @@ decodeDataTest =
         , encodeDecodeTest (Type.Tuple () [])
         , encodeDecodeTest (Type.Tuple () [ intType () ])
         , encodeDecodeTest (Type.Tuple () [ intType (), boolType () ])
+        , encodeDecodeTest (Type.Reference () ( [ [ "my" ] ], [ [ "mod" ] ], [ "alias", "1" ] ) [ intType () ])
+        , encodeDecodeTest (Type.Reference () ( [ [ "my" ] ], [ [ "mod" ] ], [ "custom" ] ) [ charType () ])
         ]
 
 

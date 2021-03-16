@@ -130,7 +130,7 @@ encodeData ir tpe =
                             Type.OpaqueTypeSpecification _ ->
                                 Err (String.concat [ "Cannot serialize opaque type: ", FQName.toString fQName ])
 
-                            Type.CustomTypeSpecification typeArgNames ctors ->
+                            Type.CustomTypeSpecification typeArgNames constructors ->
                                 let
                                     argVariables : Dict Name (Type ())
                                     argVariables =
@@ -141,26 +141,26 @@ encodeData ir tpe =
                                     encode value =
                                         let
                                             encodeConstructor : RawValue -> List RawValue -> Result String Encode.Value
-                                            encodeConstructor bottomFun ctorArgs =
+                                            encodeConstructor bottomFun constructorArgs =
                                                 case bottomFun of
-                                                    Value.Constructor _ ( ctorPackageName, ctorModuleName, ctorLocalName ) ->
-                                                        if ( ctorPackageName, ctorModuleName ) == ( typePackageName, typeModuleName ) then
-                                                            ctors
-                                                                |> Dict.get ctorLocalName
-                                                                |> Result.fromMaybe (String.concat [ "Constructor '", Name.toTitleCase ctorLocalName, "' in type '", FQName.toString fQName, "' not found." ])
+                                                    Value.Constructor _ ( constructorPackageName, constructorModuleName, constructorLocalName ) ->
+                                                        if ( constructorPackageName, constructorModuleName ) == ( typePackageName, typeModuleName ) then
+                                                            constructors
+                                                                |> Dict.get constructorLocalName
+                                                                |> Result.fromMaybe (String.concat [ "Constructor '", Name.toTitleCase constructorLocalName, "' in type '", FQName.toString fQName, "' not found." ])
                                                                 |> Result.andThen
-                                                                    (\ctorArgTypes ->
-                                                                        ctorArgTypes
+                                                                    (\constructorArgTypes ->
+                                                                        constructorArgTypes
                                                                             |> List.map (Tuple.second >> Type.substituteTypeVariables argVariables >> encodeData ir)
                                                                             |> ListOfResults.liftFirstError
                                                                             |> Result.andThen
-                                                                                (\ctorArgEncoders ->
-                                                                                    List.map2 identity ctorArgEncoders ctorArgs
+                                                                                (\constructorArgEncoders ->
+                                                                                    List.map2 identity constructorArgEncoders constructorArgs
                                                                                         |> ListOfResults.liftFirstError
                                                                                         |> Result.map
                                                                                             (\encodedArgs ->
                                                                                                 Encode.list identity
-                                                                                                    (Encode.string (Name.toCamelCase ctorLocalName) :: encodedArgs)
+                                                                                                    (Encode.string (Name.toCamelCase constructorLocalName) :: encodedArgs)
                                                                                             )
                                                                                 )
                                                                     )
@@ -324,7 +324,7 @@ decodeData ir tpe =
                             Type.OpaqueTypeSpecification _ ->
                                 Err (String.concat [ "Cannot serialize opaque type: ", FQName.toString fQName ])
 
-                            Type.CustomTypeSpecification typeArgNames ctors ->
+                            Type.CustomTypeSpecification typeArgNames constructors ->
                                 let
                                     argVariables : Dict Name (Type ())
                                     argVariables =
@@ -335,18 +335,18 @@ decodeData ir tpe =
                                     |> Decode.andThen
                                         (\tag ->
                                             let
-                                                ctorLocalName : Name
-                                                ctorLocalName =
+                                                constructorLocalName : Name
+                                                constructorLocalName =
                                                     Name.fromString tag
 
                                                 decoderResult : Result String (Decode.Decoder RawValue)
                                                 decoderResult =
-                                                    ctors
-                                                        |> Dict.get ctorLocalName
-                                                        |> Result.fromMaybe (String.concat [ "Constructor '", Name.toTitleCase ctorLocalName, "' in type '", FQName.toString fQName, "' not found." ])
+                                                    constructors
+                                                        |> Dict.get constructorLocalName
+                                                        |> Result.fromMaybe (String.concat [ "Constructor '", Name.toTitleCase constructorLocalName, "' in type '", FQName.toString fQName, "' not found." ])
                                                         |> Result.andThen
-                                                            (\ctorArgTypes ->
-                                                                ctorArgTypes
+                                                            (\constructorArgTypes ->
+                                                                constructorArgTypes
                                                                     |> List.foldl
                                                                         (\( _, argType ) ( index, resultSoFar ) ->
                                                                             ( index + 1
@@ -369,7 +369,7 @@ decodeData ir tpe =
                                                                                     )
                                                                             )
                                                                         )
-                                                                        ( 1, Ok (Decode.succeed (Value.Constructor () ( typePackageName, typeModuleName, ctorLocalName ))) )
+                                                                        ( 1, Ok (Decode.succeed (Value.Constructor () ( typePackageName, typeModuleName, constructorLocalName ))) )
                                                                     |> Tuple.second
                                                             )
                                             in
