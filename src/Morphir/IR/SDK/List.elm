@@ -31,7 +31,7 @@ import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native
+import Morphir.Value.Native as Native exposing (eval2, expectFun1, expectList, returnList, returnResultList)
 
 
 moduleName : ModuleName
@@ -124,31 +124,6 @@ construct a =
     Value.Reference a (toFQName moduleName "construct")
 
 
-nativeMap : Native.Function
-nativeMap eval args =
-    case args of
-        [ arg1, arg2 ] ->
-            eval arg2
-                |> Result.andThen
-                    (\evaluatedArg2 ->
-                        case evaluatedArg2 of
-                            Value.List _ items ->
-                                items
-                                    |> List.map
-                                        (\item ->
-                                            eval (Value.Apply () arg1 item)
-                                        )
-                                    |> ListOfResults.liftFirstError
-                                    |> Result.map (Value.List ())
-
-                            _ ->
-                                Err (UnexpectedArguments args)
-                    )
-
-        _ ->
-            Err (UnexpectedArguments args)
-
-
 nativeAppend : Native.Function
 nativeAppend eval args =
     case args of
@@ -206,6 +181,6 @@ nativeFunctions =
                         Err (UnexpectedArguments [ arg ])
             )
       )
-    , ( "map", nativeMap )
-    , ( "append", nativeAppend )
+    , ( "map", eval2 List.map expectFun1 expectList returnResultList )
+    , ( "append", eval2 List.append expectList expectList returnList )
     ]

@@ -1,9 +1,12 @@
 {-
    Copyright 2020 Morgan Stanley
+
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
+
        http://www.apache.org/licenses/LICENSE-2.0
+
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,7 +26,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, expectLiteral, floatLiteral, intLiteral, oneOf, returnLiteral, strictEval1, strictEval2, stringLiteral)
+import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, eval1, eval2, expectLiteral, floatLiteral, intLiteral, oneOf, returnLiteral, stringLiteral)
 
 
 moduleName : ModuleName
@@ -123,40 +126,40 @@ moduleSpec =
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
     [ ( "not"
-      , strictEval1 not (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval1 not (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "and"
-      , strictEval2 (&&) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval2 (&&) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "or"
-      , strictEval2 (||) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval2 (||) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "xor"
-      , strictEval2 xor (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval2 xor (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "add"
       , oneOf
-            [ strictEval2 (+) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , strictEval2 (+) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval2 (+) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval2 (+) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
             ]
       )
     , ( "subtract"
       , oneOf
-            [ strictEval2 (-) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , strictEval2 (-) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval2 (-) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval2 (-) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
             ]
       )
     , ( "multiply"
       , oneOf
-            [ strictEval2 (*) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , strictEval2 (*) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval2 (*) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval2 (*) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
             ]
       )
     , ( "divide"
-      , strictEval2 (/) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+      , eval2 (/) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
       )
     , ( "integerDivide"
-      , strictEval2 (//) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+      , eval2 (//) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
       )
     , ( "equal"
       , Native.binaryStrict
@@ -177,36 +180,36 @@ nativeFunctions =
     , ( "lessThan"
       , oneOf
             -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ strictEval2 (<) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
-            , strictEval2 (<) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
-            , strictEval2 (<) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
-            , strictEval2 (<) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            [ eval2 (<) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
+            , eval2 (<) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
+            , eval2 (<) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
+            , eval2 (<) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
             ]
       )
     , ( "greaterThan"
       , oneOf
             -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ strictEval2 (>) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
-            , strictEval2 (>) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
-            , strictEval2 (>) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
-            , strictEval2 (>) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            [ eval2 (>) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
+            , eval2 (>) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
+            , eval2 (>) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
+            , eval2 (>) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
             ]
       )
     , ( "abs"
       , oneOf
-            [ strictEval1 abs (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , strictEval1 abs (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval1 abs (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval1 abs (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
             ]
       )
     , ( "toFloat"
       , oneOf
-            [ strictEval1 toFloat (expectLiteral intLiteral) (returnLiteral FloatLiteral)
+            [ eval1 toFloat (expectLiteral intLiteral) (returnLiteral FloatLiteral)
             ]
       )
     , ( "negate"
       , oneOf
-            [ strictEval1 Basics.negate (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , strictEval1 Basics.negate (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval1 Basics.negate (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval1 Basics.negate (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
             ]
       )
     ]
@@ -325,10 +328,10 @@ composeRight a =
 isNumber : Type ta -> Bool
 isNumber tpe =
     case tpe of
-        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
+        Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
             True
 
-        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
+        Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
             True
 
         _ ->
