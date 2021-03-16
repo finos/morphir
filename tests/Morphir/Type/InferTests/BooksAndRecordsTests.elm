@@ -135,13 +135,13 @@ positiveOutcomes =
                         )
                         (Value.Literal (floatType ()) (FloatLiteral 1))
                     )
-                    (Value.Literal (floatType ()) (IntLiteral 0))
+                    (Value.Literal (floatType ()) (FloatLiteral 0))
                 )
                 (Value.Apply dealEventType
                     (Value.Constructor (tFun (floatType ()) dealEventType)
                         (fqn "BooksAndRecords" "BooksAndRecords" "InvalidPrice")
                     )
-                    (Value.Literal (floatType ()) (IntLiteral 1))
+                    (Value.Literal (floatType ()) (FloatLiteral 1))
                 )
                 dealOpened3
     in
