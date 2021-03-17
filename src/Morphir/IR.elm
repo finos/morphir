@@ -18,6 +18,7 @@
 module Morphir.IR exposing
     ( IR
     , fromPackageSpecifications, fromDistribution
+    , typeSpecifications
     , lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification
     , empty
     )
@@ -34,6 +35,7 @@ module Morphir.IR exposing
 
 # Lookups
 
+@docs typeSpecifications
 @docs lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification
 
 
@@ -156,6 +158,13 @@ fromPackageSpecifications packageSpecs =
     , typeSpecifications = flatten packageTypeSpecifications
     , typeConstructors = flatten packageTypeConstructors
     }
+
+
+{-| Get all type specifications.
+-}
+typeSpecifications : IR -> Dict FQName (Type.Specification ())
+typeSpecifications ir =
+    ir.typeSpecifications
 
 
 {-| Look up a value specification by fully-qualified name. Dependencies will be included in the search.
