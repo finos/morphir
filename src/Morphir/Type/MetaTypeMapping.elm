@@ -7,7 +7,7 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaAlias, metaApply, metaFun, metaRecord, metaRef, metaTuple, metaUnit, metaVar)
 import Morphir.Type.Solve as SolutionMap exposing (SolutionMap)
 import Set exposing (Set)
 
@@ -25,7 +25,7 @@ lookupConstructor baseVar ir ctorFQN =
         |> IR.lookupTypeConstructor ctorFQN
         |> Maybe.map
             (\( typeFQN, paramNames, ctorArgs ) ->
-                ctorToMetaType baseVar ir (MetaRef typeFQN) paramNames (ctorArgs |> List.map Tuple.second)
+                ctorToMetaType baseVar ir (metaRef typeFQN) paramNames (ctorArgs |> List.map Tuple.second)
             )
         |> Result.fromMaybe (CouldNotFindConstructor ctorFQN)
 
@@ -63,13 +63,13 @@ metaTypeToConcreteType solutionMap metaType =
                 |> Maybe.map (metaTypeToConcreteType solutionMap)
                 |> Maybe.withDefault (metaVar |> MetaType.toName |> Type.Variable ())
 
-        MetaTuple metaElems ->
+        MetaTuple _ metaElems ->
             Type.Tuple ()
                 (metaElems
                     |> List.map (metaTypeToConcreteType solutionMap)
                 )
 
-        MetaRecord extends metaFields ->
+        MetaRecord _ extends metaFields ->
             case extends of
                 Nothing ->
                     Type.Record ()
@@ -94,11 +94,11 @@ metaTypeToConcreteType solutionMap metaType =
                                 )
                         )
 
-        MetaApply _ _ ->
+        MetaApply _ _ _ ->
             let
                 uncurry mt =
                     case mt of
-                        MetaApply mf ma ->
+                        MetaApply _ mf ma ->
                             let
                                 ( f, args ) =
                                     uncurry mf
@@ -125,7 +125,7 @@ metaTypeToConcreteType solutionMap metaType =
                 other ->
                     metaTypeToConcreteType solutionMap other
 
-        MetaFun argType returnType ->
+        MetaFun _ argType returnType ->
             Type.Function ()
                 (metaTypeToConcreteType solutionMap argType)
                 (metaTypeToConcreteType solutionMap returnType)
@@ -148,15 +148,15 @@ concreteTypeToMetaType baseVar ir varToMeta tpe =
                 |> Dict.get varName
                 -- this should never happen
                 |> Maybe.withDefault baseVar
-                |> MetaVar
+                |> metaVar
 
         Type.Reference _ fQName args ->
             let
                 resolveAliases : FQName -> MetaType
                 resolveAliases fqn =
                     lookupAliasedType baseVar ir fqn
-                        |> Result.map (concreteTypeToMetaType baseVar ir varToMeta >> MetaAlias fqn)
-                        |> Result.withDefault (MetaRef fqn)
+                        |> Result.map (concreteTypeToMetaType baseVar ir varToMeta >> metaAlias fqn)
+                        |> Result.withDefault (metaRef fqn)
 
                 curry : List (Type ()) -> MetaType
                 curry argsReversed =
@@ -165,20 +165,20 @@ concreteTypeToMetaType baseVar ir varToMeta tpe =
                             resolveAliases fQName
 
                         lastArg :: initArgsReversed ->
-                            MetaApply
+                            metaApply
                                 (curry initArgsReversed)
                                 (concreteTypeToMetaType baseVar ir varToMeta lastArg)
             in
             curry (args |> List.reverse)
 
         Type.Tuple _ elemTypes ->
-            MetaTuple
+            metaTuple
                 (elemTypes
                     |> List.map (concreteTypeToMetaType baseVar ir varToMeta)
                 )
 
         Type.Record _ fieldTypes ->
-            MetaRecord Nothing
+            metaRecord Nothing
                 (fieldTypes
                     |> List.map
                         (\field ->
@@ -188,7 +188,7 @@ concreteTypeToMetaType baseVar ir varToMeta tpe =
                 )
 
         Type.ExtensibleRecord _ subjectName fieldTypes ->
-            MetaRecord
+            metaRecord
                 (varToMeta
                     |> Dict.get subjectName
                 )
@@ -201,12 +201,12 @@ concreteTypeToMetaType baseVar ir varToMeta tpe =
                 )
 
         Type.Function _ argType returnType ->
-            MetaFun
+            metaFun
                 (concreteTypeToMetaType baseVar ir varToMeta argType)
                 (concreteTypeToMetaType baseVar ir varToMeta returnType)
 
         Type.Unit _ ->
-            MetaUnit
+            metaUnit
 
 
 ctorToMetaType : Variable -> IR -> MetaType -> List Name -> List (Type ()) -> MetaType
@@ -235,18 +235,18 @@ ctorToMetaType baseVar ir baseType paramNames ctorArgs =
                     paramNames
                         |> List.foldl
                             (\paramName metaTypeSoFar ->
-                                MetaApply metaTypeSoFar
+                                metaApply metaTypeSoFar
                                     (varToMeta
                                         |> Dict.get paramName
                                         -- this should never happen
                                         |> Maybe.withDefault baseVar
-                                        |> MetaVar
+                                        |> metaVar
                                     )
                             )
                             baseType
 
                 firstCtorArg :: restOfCtorArgs ->
-                    MetaFun
+                    metaFun
                         (concreteTypeToMetaType baseVar ir varToMeta firstCtorArg)
                         (recurse restOfCtorArgs)
     in

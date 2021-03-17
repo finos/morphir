@@ -1,4 +1,4 @@
-module Morphir.Type.MetaType exposing (..)
+module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, floatType, intType, listType, metaAlias, metaApply, metaFun, metaRecord, metaRef, metaTuple, metaUnit, metaVar, stringType, subVariable, substituteVariable, substituteVariables, toName, toString, variableByIndex, variables)
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName, fqn)
@@ -9,12 +9,76 @@ import Set exposing (Set)
 type MetaType
     = MetaVar Variable
     | MetaRef FQName
-    | MetaTuple (List MetaType)
-    | MetaRecord (Maybe Variable) (Dict Name MetaType)
-    | MetaApply MetaType MetaType
-    | MetaFun MetaType MetaType
+    | MetaTuple (Set Variable) (List MetaType)
+    | MetaRecord (Set Variable) (Maybe Variable) (Dict Name MetaType)
+    | MetaApply (Set Variable) MetaType MetaType
+    | MetaFun (Set Variable) MetaType MetaType
     | MetaUnit
     | MetaAlias FQName MetaType
+
+
+metaVar : Variable -> MetaType
+metaVar =
+    MetaVar
+
+
+metaRef : FQName -> MetaType
+metaRef =
+    MetaRef
+
+
+metaTuple : List MetaType -> MetaType
+metaTuple elems =
+    let
+        vars =
+            elems |> List.map variables |> List.foldl Set.union Set.empty
+    in
+    MetaTuple vars elems
+
+
+metaRecord : Maybe Variable -> Dict Name MetaType -> MetaType
+metaRecord extends fields =
+    let
+        fieldVars =
+            fields
+                |> Dict.toList
+                |> List.map (Tuple.second >> variables)
+                |> List.foldl Set.union Set.empty
+
+        vars =
+            extends
+                |> Maybe.map (\eVar -> fieldVars |> Set.insert eVar)
+                |> Maybe.withDefault fieldVars
+    in
+    MetaRecord vars extends fields
+
+
+metaApply : MetaType -> MetaType -> MetaType
+metaApply fun arg =
+    let
+        vars =
+            Set.union (variables fun) (variables arg)
+    in
+    MetaApply vars fun arg
+
+
+metaFun : MetaType -> MetaType -> MetaType
+metaFun arg body =
+    let
+        vars =
+            Set.union (variables arg) (variables body)
+    in
+    MetaFun vars arg body
+
+
+metaUnit : MetaType
+metaUnit =
+    MetaUnit
+
+
+metaAlias : FQName -> MetaType -> MetaType
+metaAlias =
+    MetaAlias
 
 
 toString : MetaType -> String
@@ -26,10 +90,10 @@ toString metaType =
         MetaRef fQName ->
             FQName.toString fQName
 
-        MetaTuple metaTypes ->
+        MetaTuple _ metaTypes ->
             String.concat [ "( ", metaTypes |> List.map toString |> String.join ", ", " )" ]
 
-        MetaRecord extends fields ->
+        MetaRecord _ extends fields ->
             let
                 prefix =
                     case extends of
@@ -49,15 +113,15 @@ toString metaType =
             in
             String.concat [ "{ ", prefix, fieldStrings |> String.join ", ", " }" ]
 
-        MetaApply funType argType ->
+        MetaApply _ funType argType ->
             case argType of
-                MetaApply _ _ ->
+                MetaApply _ _ _ ->
                     String.concat [ toString funType, " (", toString argType, ")" ]
 
                 _ ->
                     String.concat [ toString funType, " ", toString argType ]
 
-        MetaFun argType returnType ->
+        MetaFun _ argType returnType ->
             String.concat [ toString argType, " -> ", toString returnType ]
 
         MetaUnit ->
@@ -102,43 +166,20 @@ variables metaType =
         MetaVar variable ->
             Set.singleton variable
 
-        MetaRef fQName ->
+        MetaRef _ ->
             Set.empty
 
-        MetaTuple elems ->
-            elems
-                |> List.foldl
-                    (\t vars -> Set.union vars (variables t))
-                    Set.empty
+        MetaTuple vars _ ->
+            vars
 
-        MetaRecord maybeVar fields ->
-            let
-                aliasVars =
-                    case maybeVar of
-                        Just var ->
-                            Set.singleton var
+        MetaRecord vars _ _ ->
+            vars
 
-                        Nothing ->
-                            Set.empty
+        MetaApply vars _ _ ->
+            vars
 
-                fieldVars =
-                    fields
-                        |> Dict.toList
-                        |> List.foldl
-                            (\( _, t ) vars -> Set.union vars (variables t))
-                            Set.empty
-            in
-            Set.union aliasVars fieldVars
-
-        MetaApply fun arg ->
-            Set.union
-                (variables fun)
-                (variables arg)
-
-        MetaFun arg return ->
-            Set.union
-                (variables arg)
-                (variables return)
+        MetaFun vars _ _ ->
+            vars
 
         MetaUnit ->
             Set.empty
@@ -158,18 +199,18 @@ substituteVariable var replacement original =
                 else
                     original
 
-            MetaTuple metaElems ->
-                MetaTuple
+            MetaTuple _ metaElems ->
+                metaTuple
                     (metaElems
                         |> List.map (substituteVariable var replacement)
                     )
 
-            MetaRecord extends metaFields ->
+            MetaRecord _ extends metaFields ->
                 if extends == Just var then
                     replacement
 
                 else
-                    MetaRecord extends
+                    metaRecord extends
                         (metaFields
                             |> Dict.map
                                 (\_ fieldType ->
@@ -177,14 +218,14 @@ substituteVariable var replacement original =
                                 )
                         )
 
-            MetaApply metaFun metaArg ->
-                MetaApply
-                    (substituteVariable var replacement metaFun)
+            MetaApply _ metaFunc metaArg ->
+                metaApply
+                    (substituteVariable var replacement metaFunc)
                     (substituteVariable var replacement metaArg)
 
-            MetaFun metaFun metaArg ->
-                MetaFun
-                    (substituteVariable var replacement metaFun)
+            MetaFun _ metaFunc metaArg ->
+                metaFun
+                    (substituteVariable var replacement metaFunc)
                     (substituteVariable var replacement metaArg)
 
             MetaRef _ ->
@@ -239,4 +280,4 @@ floatType =
 
 listType : MetaType -> MetaType
 listType itemType =
-    MetaApply (MetaRef (fqn "Morphir.SDK" "List" "List")) itemType
+    metaApply (MetaRef (fqn "Morphir.SDK" "List" "List")) itemType

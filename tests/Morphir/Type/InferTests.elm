@@ -21,7 +21,7 @@ import Morphir.Type.ConstraintSet as ConstraintSet
 import Morphir.Type.Infer as Infer exposing (TypeError(..))
 import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
 import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variableByIndex)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaTuple, variableByIndex)
 import Morphir.Type.Solve as Solve exposing (UnificationError(..), UnificationErrorType(..))
 import Test exposing (Test, describe, test)
 
@@ -550,23 +550,23 @@ solvePositiveTests =
               , [ ( t 1, tvar 2 )
                 ]
               )
-            , ( [ equality (tvar 1) (MetaTuple [ tvar 5, tvar 4 ])
+            , ( [ equality (tvar 1) (metaTuple [ tvar 5, tvar 4 ])
                 , equality (tvar 5) (ref "int")
                 , equality (tvar 4) (ref "bool")
                 , equality (tvar 6) (ref "int")
                 , equality (tvar 7) (ref "int")
                 , equality (tvar 6) (tvar 3)
                 , equality (tvar 7) (tvar 3)
-                , equality (tvar 2) (MetaTuple [ tvar 1, tvar 3 ])
+                , equality (tvar 2) (metaTuple [ tvar 1, tvar 3 ])
                 ]
               , []
-              , [ ( t 1, MetaTuple [ ref "int", ref "bool" ] )
+              , [ ( t 1, metaTuple [ ref "int", ref "bool" ] )
                 , ( t 5, ref "int" )
                 , ( t 4, ref "bool" )
                 , ( t 6, ref "int" )
                 , ( t 7, ref "int" )
                 , ( t 3, ref "int" )
-                , ( t 2, MetaTuple [ MetaTuple [ ref "int", ref "bool" ], ref "int" ] )
+                , ( t 2, metaTuple [ metaTuple [ ref "int", ref "bool" ], ref "int" ] )
                 ]
               )
             , ( [ class (tvar 1) Class.Number

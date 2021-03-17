@@ -3,7 +3,7 @@ module Morphir.Type.SolveTests exposing (..)
 import Dict
 import Expect
 import Morphir.IR as IR
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variableByIndex)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, variableByIndex)
 import Morphir.Type.Solve as Solve exposing (SolutionMap)
 import Test exposing (Test, describe, test)
 
@@ -33,22 +33,22 @@ substituteVariableTests =
             )
         , assert "substitute extensible record"
             (Solve.fromList
-                [ ( variableByIndex 0, MetaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]) )
+                [ ( variableByIndex 0, metaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]) )
                 ]
             )
-            ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+            ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
             (Solve.fromList
-                [ ( variableByIndex 0, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+                [ ( variableByIndex 0, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
                 ]
             )
         , assert "substitute wrapped extensible record"
             (Solve.fromList
-                [ ( variableByIndex 0, MetaFun (MetaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) (MetaVar (variableByIndex 4)) )
+                [ ( variableByIndex 0, metaFun (metaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) (MetaVar (variableByIndex 4)) )
                 ]
             )
-            ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+            ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
             (Solve.fromList
-                [ ( variableByIndex 0, MetaFun (MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]))) (MetaVar (variableByIndex 4)) )
+                [ ( variableByIndex 0, metaFun (MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]))) (MetaVar (variableByIndex 4)) )
                 ]
             )
         ]
@@ -69,35 +69,35 @@ addSolutionTests =
     describe "addSolution"
         [ assert "substitute extensible record"
             (Solve.fromList
-                [ ( variableByIndex 0, MetaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]) )
+                [ ( variableByIndex 0, metaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]) )
                 ]
             )
-            ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+            ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
             (Solve.fromList
-                [ ( variableByIndex 0, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
-                , ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+                [ ( variableByIndex 0, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+                , ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
                 ]
             )
         , assert "substitute extensible record reversed"
             (Solve.fromList
-                [ ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+                [ ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
                 ]
             )
-            ( variableByIndex 0, MetaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]) )
+            ( variableByIndex 0, metaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]) )
             (Solve.fromList
-                [ ( variableByIndex 0, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
-                , ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+                [ ( variableByIndex 0, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+                , ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
                 ]
             )
         , assert "substitute wrapped extensible record reversed"
             (Solve.fromList
-                [ ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+                [ ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
                 ]
             )
-            ( variableByIndex 0, MetaFun (MetaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) (MetaVar (variableByIndex 4)) )
+            ( variableByIndex 0, metaFun (metaRecord (Just (variableByIndex 1)) (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) (MetaVar (variableByIndex 4)) )
             (Solve.fromList
-                [ ( variableByIndex 0, MetaFun (MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]))) (MetaVar (variableByIndex 4)) )
-                , ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (MetaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
+                [ ( variableByIndex 0, metaFun (MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ]))) (MetaVar (variableByIndex 4)) )
+                , ( variableByIndex 1, MetaAlias ( [ [ "a" ] ], [ [ "b" ] ], [ "c" ] ) (metaRecord Nothing (Dict.fromList [ ( [ "foo" ], MetaVar (variableByIndex 3) ) ])) )
                 ]
             )
         ]
