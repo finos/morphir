@@ -7,12 +7,15 @@ import Element.Font as Font
 import Html exposing (Html)
 import Json.Decode as Decode exposing (Decoder, string)
 import Morphir.Compiler.Codec as CompilerCodec
+import Morphir.IR as IR exposing (IR, fromDistribution)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.QName as QName exposing (QName(..))
-import Morphir.IR.Value exposing (RawValue, Value)
-import Morphir.IR.Value.Codec as ValueCodec
+import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type.DataCodec exposing (decodeData)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.ListOfResults exposing (liftFirstError)
 import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
@@ -146,11 +149,39 @@ update msg model =
 
         FunctionArgumentsReceived jsonList ->
             let
+                getIR : IR
+                getIR =
+                    case getDistribution of
+                        Just distribution ->
+                            fromDistribution distribution
+
+                        Nothing ->
+                            IR.empty
+
+                getTypes : Type ()
+                getTypes =
+                    case model.modelState of
+                        FunctionsSet visualizationState ->
+                            List.map (\( name, _, tpe ) -> tpe) visualizationState.functionDefinition.inputTypes |> Type.Tuple ()
+
+                        _ ->
+                            Type.Unit ()
+
+                jsonDecoder : Result String (Decoder RawValue)
                 jsonDecoder =
-                    Decode.list (ValueCodec.decodeValue (Decode.succeed ()) (Decode.succeed ()))
+                    decodeData getIR getTypes
             in
-            case jsonList |> Decode.decodeValue jsonDecoder of
-                Ok updatedArgValues ->
+            case jsonDecoder |> Result.andThen (\decoder -> jsonList |> Decode.decodeValue decoder |> Result.mapError Decode.errorToString) of
+                Ok tupleList ->
+                    let
+                        updatedArgValues =
+                            case tupleList of
+                                Value.Tuple _ list ->
+                                    list
+
+                                _ ->
+                                    []
+                    in
                     case model.modelState of
                         FunctionsSet visualizationState ->
                             ( { model | modelState = FunctionsSet { visualizationState | functionArguments = updatedArgValues } }
