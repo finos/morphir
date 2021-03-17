@@ -6,7 +6,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Type.Constraint exposing (Constraint(..))
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaApply, metaFun, metaRecord, metaRef, metaTuple)
 
 
 type SolutionMap
@@ -168,19 +168,19 @@ unifyMetaType refs aliases metaType1 metaType2 =
             MetaVar var1 ->
                 unifyVariable aliases var1 metaType2
 
-            MetaTuple elems1 ->
+            MetaTuple _ elems1 ->
                 unifyTuple refs aliases elems1 metaType2
 
             MetaRef ref1 ->
                 unifyRef refs aliases ref1 metaType2
 
-            MetaApply fun1 arg1 ->
+            MetaApply _ fun1 arg1 ->
                 unifyApply refs aliases fun1 arg1 metaType2
 
-            MetaFun arg1 return1 ->
+            MetaFun _ arg1 return1 ->
                 unifyFun refs aliases arg1 return1 metaType2
 
-            MetaRecord extends1 fields1 ->
+            MetaRecord _ extends1 fields1 ->
                 unifyRecord refs aliases extends1 fields1 metaType2
 
             MetaUnit ->
@@ -199,9 +199,9 @@ unifyTuple : IR -> List FQName -> List MetaType -> MetaType -> Result Unificatio
 unifyTuple refs aliases elems1 metaType2 =
     case metaType2 of
         MetaVar var2 ->
-            unifyVariable aliases var2 (MetaTuple elems1)
+            unifyVariable aliases var2 (metaTuple elems1)
 
-        MetaTuple elems2 ->
+        MetaTuple _ elems2 ->
             if List.length elems1 == List.length elems2 then
                 List.map2 (unifyMetaType refs aliases) elems1 elems2
                     |> ListOfResults.liftAllErrors
@@ -209,10 +209,10 @@ unifyTuple refs aliases elems1 metaType2 =
                     |> Result.andThen (concatSolutions refs)
 
             else
-                Err (CouldNotUnify TuplesOfDifferentSize (MetaTuple elems1) metaType2)
+                Err (CouldNotUnify TuplesOfDifferentSize (metaTuple elems1) metaType2)
 
         _ ->
-            Err (CouldNotUnify NoUnificationRule (MetaTuple elems1) metaType2)
+            Err (CouldNotUnify NoUnificationRule (metaTuple elems1) metaType2)
 
 
 unifyRef : IR -> List FQName -> FQName -> MetaType -> Result UnificationError SolutionMap
@@ -222,20 +222,20 @@ unifyRef refs aliases ref1 metaType2 =
             unifyRef refs (alias :: aliases) ref1 subject2
 
         MetaVar var2 ->
-            unifyVariable aliases var2 (MetaRef ref1)
+            unifyVariable aliases var2 (metaRef ref1)
 
         MetaRef ref2 ->
             if ref1 == ref2 then
                 Ok emptySolution
 
             else
-                Err (CouldNotUnify RefMismatch (MetaRef ref1) metaType2)
+                Err (CouldNotUnify RefMismatch (metaRef ref1) metaType2)
 
-        MetaRecord extends2 fields2 ->
-            unifyRecord refs aliases extends2 fields2 (MetaRef ref1)
+        MetaRecord _ extends2 fields2 ->
+            unifyRecord refs aliases extends2 fields2 (metaRef ref1)
 
         _ ->
-            Err (CouldNotUnify NoUnificationRule (MetaRef ref1) metaType2)
+            Err (CouldNotUnify NoUnificationRule (metaRef ref1) metaType2)
 
 
 unifyApply : IR -> List FQName -> MetaType -> MetaType -> MetaType -> Result UnificationError SolutionMap
@@ -245,9 +245,9 @@ unifyApply refs aliases fun1 arg1 metaType2 =
             unifyApply refs (alias :: aliases) fun1 arg1 subject2
 
         MetaVar var2 ->
-            unifyVariable aliases var2 (MetaApply fun1 arg1)
+            unifyVariable aliases var2 (metaApply fun1 arg1)
 
-        MetaApply fun2 arg2 ->
+        MetaApply _ fun2 arg2 ->
             Result.andThen identity
                 (Result.map2 (mergeSolutions refs)
                     (unifyMetaType refs aliases fun1 fun2)
@@ -255,7 +255,7 @@ unifyApply refs aliases fun1 arg1 metaType2 =
                 )
 
         _ ->
-            Err (CouldNotUnify NoUnificationRule (MetaApply fun1 arg1) metaType2)
+            Err (CouldNotUnify NoUnificationRule (metaApply fun1 arg1) metaType2)
 
 
 unifyFun : IR -> List FQName -> MetaType -> MetaType -> MetaType -> Result UnificationError SolutionMap
@@ -265,9 +265,9 @@ unifyFun refs aliases arg1 return1 metaType2 =
             unifyFun refs (alias :: aliases) arg1 return1 subject2
 
         MetaVar var2 ->
-            unifyVariable aliases var2 (MetaFun arg1 return1)
+            unifyVariable aliases var2 (metaFun arg1 return1)
 
-        MetaFun arg2 return2 ->
+        MetaFun _ arg2 return2 ->
             Result.andThen identity
                 (Result.map2 (mergeSolutions refs)
                     (unifyMetaType refs aliases arg1 arg2)
@@ -275,7 +275,7 @@ unifyFun refs aliases arg1 return1 metaType2 =
                 )
 
         _ ->
-            Err (CouldNotUnify NoUnificationRule (MetaFun arg1 return1) metaType2)
+            Err (CouldNotUnify NoUnificationRule (metaFun arg1 return1) metaType2)
 
 
 unifyRecord : IR -> List FQName -> Maybe Variable -> Dict Name MetaType -> MetaType -> Result UnificationError SolutionMap
@@ -285,9 +285,9 @@ unifyRecord refs aliases extends1 fields1 metaType2 =
             unifyRecord refs (alias :: aliases) extends1 fields1 subject2
 
         MetaVar var2 ->
-            unifyVariable aliases var2 (MetaRecord extends1 fields1)
+            unifyVariable aliases var2 (metaRecord extends1 fields1)
 
-        MetaRecord extends2 fields2 ->
+        MetaRecord _ extends2 fields2 ->
             unifyFields refs extends1 fields1 extends2 fields2
                 |> Result.andThen
                     (\( newFields, fieldSolutions ) ->
@@ -297,7 +297,7 @@ unifyRecord refs aliases extends1 fields1 metaType2 =
                                     refs
                                     fieldSolutions
                                     (singleSolution extendsVar1
-                                        (wrapInAliases aliases (MetaRecord extends2 newFields))
+                                        (wrapInAliases aliases (metaRecord extends2 newFields))
                                     )
 
                             Nothing ->
@@ -307,7 +307,7 @@ unifyRecord refs aliases extends1 fields1 metaType2 =
                                             refs
                                             fieldSolutions
                                             (singleSolution extendsVar2
-                                                (wrapInAliases aliases (MetaRecord extends1 newFields))
+                                                (wrapInAliases aliases (metaRecord extends1 newFields))
                                             )
 
                                     Nothing ->
@@ -315,7 +315,7 @@ unifyRecord refs aliases extends1 fields1 metaType2 =
                     )
 
         _ ->
-            Err (CouldNotUnify NoUnificationRule (MetaRecord extends1 fields1) metaType2)
+            Err (CouldNotUnify NoUnificationRule (metaRecord extends1 fields1) metaType2)
 
 
 unifyFields : IR -> Maybe Variable -> Dict Name MetaType -> Maybe Variable -> Dict Name MetaType -> Result UnificationError ( Dict Name MetaType, SolutionMap )
@@ -355,10 +355,10 @@ unifyFields refs oldExtends oldFields newExtends newFields =
                 (Dict.union extraOldFields extraNewFields)
     in
     if oldExtends == Nothing && not (Dict.isEmpty extraNewFields) then
-        Err (CouldNotUnify FieldMismatch (MetaRecord oldExtends oldFields) (MetaRecord newExtends newFields))
+        Err (CouldNotUnify FieldMismatch (metaRecord oldExtends oldFields) (metaRecord newExtends newFields))
 
     else if newExtends == Nothing && not (Dict.isEmpty extraOldFields) then
-        Err (CouldNotUnify FieldMismatch (MetaRecord oldExtends oldFields) (MetaRecord newExtends newFields))
+        Err (CouldNotUnify FieldMismatch (metaRecord oldExtends oldFields) (metaRecord newExtends newFields))
 
     else
         fieldSolutionsResult
