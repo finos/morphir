@@ -2,7 +2,7 @@ module Morphir.Graph.Grapher exposing
     ( Node(..), Verb(..), Edge, GraphEntry(..), Graph
     , mapDistribution, mapPackageDefinition, mapModuleTypes, mapModuleValues, mapTypeDefinition, mapValueDefinition
     , graphEntryToComparable, nodeType, verbToString, nodeFQN
-    , fqnToString
+    , asEnum, edgeFromTuple, edgeToTuple, fqnToString
     )
 
 {-| The Grapher module analyses a distribution to build a graph for dependency and lineage tracking purposes.
@@ -552,6 +552,24 @@ nodeToKey node =
 
         _ ->
             referenceToKey (nodeFQN node)
+
+
+{-| Converte Edge record to tuple
+-}
+edgeToTuple : Edge -> ( Node, Verb, Node )
+edgeToTuple edge =
+    ( edge.subject, edge.verb, edge.object )
+
+
+{-| Converte Edge record to tuple
+-}
+edgeFromTuple : ( Node, Verb, Node ) -> Edge
+edgeFromTuple tuple =
+    let
+        ( subject, verb, object ) =
+            tuple
+    in
+    Edge subject verb object
 
 
 {-| Utility for dealing with comparable.
