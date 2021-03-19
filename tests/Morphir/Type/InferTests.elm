@@ -21,7 +21,7 @@ import Morphir.Type.ConstraintSet as ConstraintSet
 import Morphir.Type.Infer as Infer exposing (TypeError(..))
 import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
 import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaTuple, variableByIndex)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaRef, metaTuple, variableByIndex)
 import Morphir.Type.Solve as Solve exposing (UnificationError(..), UnificationErrorType(..))
 import Test exposing (Test, describe, test)
 
@@ -524,7 +524,7 @@ solvePositiveTests =
             MetaVar (t i)
 
         ref n =
-            MetaRef (fQName [] [] [ n ])
+            metaRef (fQName [] [] [ n ]) []
 
         scenarios : List ( List Constraint, List Constraint, List ( Variable, MetaType ) )
         scenarios =

@@ -17,7 +17,7 @@ import Morphir.ListOfResults as ListOfResults
 import Morphir.Type.Class as Class exposing (Class)
 import Morphir.Type.Constraint exposing (Constraint(..), class, equality)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaTuple, metaUnit, metaVar)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaTuple, metaUnit, metaVar, variableByName)
 import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.Solve as Solve exposing (SolutionMap(..), UnificationError(..), UnificationErrorType(..))
 import Set exposing (Set)
@@ -251,8 +251,13 @@ constrainDefinition baseVar ir vars def =
 
         varToMeta : Dict Name Variable
         varToMeta =
-            concreteVarsToMetaVars baseVar
-                (Set.union inputTypeVars outputTypeVars)
+            Set.union inputTypeVars outputTypeVars
+                |> Set.toList
+                |> List.map
+                    (\varName ->
+                        ( varName, variableByName varName )
+                    )
+                |> Dict.fromList
 
         inputConstraints : ConstraintSet
         inputConstraints =
