@@ -1,4 +1,4 @@
-module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, floatType, intType, listType, metaAlias, metaApply, metaFun, metaRecord, metaRef, metaTuple, metaUnit, metaVar, stringType, subVariable, substituteVariable, substituteVariables, toName, toString, variableByIndex, variables)
+module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, floatType, intType, isNamedVariable, listType, metaAlias, metaFun, metaRecord, metaRef, metaTuple, metaUnit, metaVar, stringType, subVariable, substituteVariable, substituteVariables, toName, toString, variableByIndex, variableByName, variables, wrapInAliases)
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName, fqn)
@@ -8,13 +8,11 @@ import Set exposing (Set)
 
 type MetaType
     = MetaVar Variable
-    | MetaRef FQName
+    | MetaRef (Set Variable) FQName (List MetaType) (Maybe MetaType)
     | MetaTuple (Set Variable) (List MetaType)
     | MetaRecord (Set Variable) (Maybe Variable) (Dict Name MetaType)
-    | MetaApply (Set Variable) MetaType MetaType
     | MetaFun (Set Variable) MetaType MetaType
     | MetaUnit
-    | MetaAlias FQName MetaType
 
 
 metaVar : Variable -> MetaType
@@ -22,9 +20,13 @@ metaVar =
     MetaVar
 
 
-metaRef : FQName -> MetaType
-metaRef =
-    MetaRef
+metaRef : FQName -> List MetaType -> MetaType
+metaRef fQName args =
+    let
+        vars =
+            args |> List.map variables |> List.foldl Set.union Set.empty
+    in
+    MetaRef vars fQName args Nothing
 
 
 metaTuple : List MetaType -> MetaType
@@ -53,15 +55,6 @@ metaRecord extends fields =
     MetaRecord vars extends fields
 
 
-metaApply : MetaType -> MetaType -> MetaType
-metaApply fun arg =
-    let
-        vars =
-            Set.union (variables fun) (variables arg)
-    in
-    MetaApply vars fun arg
-
-
 metaFun : MetaType -> MetaType -> MetaType
 metaFun arg body =
     let
@@ -76,19 +69,49 @@ metaUnit =
     MetaUnit
 
 
-metaAlias : FQName -> MetaType -> MetaType
-metaAlias =
-    MetaAlias
+metaAlias : FQName -> List MetaType -> MetaType -> MetaType
+metaAlias fQName args tpe =
+    let
+        vars =
+            args
+                |> List.map variables
+                |> List.foldl Set.union Set.empty
+                |> Set.union (variables tpe)
+    in
+    MetaRef vars fQName args (Just tpe)
+
+
+wrapInAliases : List ( FQName, List MetaType ) -> MetaType -> MetaType
+wrapInAliases aliases tpe =
+    case aliases of
+        [] ->
+            tpe
+
+        ( alias, aliasArgs ) :: restOfAliases ->
+            metaAlias alias aliasArgs (wrapInAliases restOfAliases tpe)
 
 
 toString : MetaType -> String
 toString metaType =
     case metaType of
-        MetaVar ( n, i, j ) ->
-            "var_" ++ n ++ "_" ++ String.fromInt i ++ "_" ++ String.fromInt j
+        MetaVar var ->
+            "var_" ++ (toName var |> Name.toSnakeCase)
 
-        MetaRef fQName ->
-            FQName.toString fQName
+        MetaRef _ fQName args maybeAliasedType ->
+            let
+                refString =
+                    if List.isEmpty args then
+                        FQName.toString fQName
+
+                    else
+                        String.join " " [ FQName.toString fQName, args |> List.map (\arg -> String.concat [ "(", toString arg, ")" ]) |> String.join " " ]
+            in
+            case maybeAliasedType of
+                Just aliasedType ->
+                    String.concat [ refString, " = ", toString aliasedType ]
+
+                Nothing ->
+                    refString
 
         MetaTuple _ metaTypes ->
             String.concat [ "( ", metaTypes |> List.map toString |> String.join ", ", " )" ]
@@ -97,8 +120,8 @@ toString metaType =
             let
                 prefix =
                     case extends of
-                        Just ( n, i, j ) ->
-                            "var_" ++ n ++ "_" ++ String.fromInt i ++ "_" ++ String.fromInt j ++ " | "
+                        Just var ->
+                            "var_" ++ (toName var |> Name.toSnakeCase)
 
                         Nothing ->
                             ""
@@ -113,26 +136,15 @@ toString metaType =
             in
             String.concat [ "{ ", prefix, fieldStrings |> String.join ", ", " }" ]
 
-        MetaApply _ funType argType ->
-            case argType of
-                MetaApply _ _ _ ->
-                    String.concat [ toString funType, " (", toString argType, ")" ]
-
-                _ ->
-                    String.concat [ toString funType, " ", toString argType ]
-
         MetaFun _ argType returnType ->
             String.concat [ toString argType, " -> ", toString returnType ]
 
         MetaUnit ->
             "()"
 
-        MetaAlias alias targetType ->
-            String.concat [ toString targetType, " as ", FQName.toString alias ]
-
 
 type alias Variable =
-    ( String, Int, Int )
+    ( Name, Int, Int )
 
 
 nextVar : Variable -> Variable
@@ -142,12 +154,17 @@ nextVar ( n, i, s ) =
 
 variableByIndex : Int -> Variable
 variableByIndex i =
-    ( "t", i, 0 )
+    ( [], i, 0 )
 
 
 variableByName : Name -> Variable
 variableByName name =
-    ( name |> Name.toCamelCase, 0, 0 )
+    ( name, 0, 0 )
+
+
+isNamedVariable : Variable -> Bool
+isNamedVariable ( name, _, _ ) =
+    not (List.isEmpty name)
 
 
 subVariable : Variable -> Variable
@@ -157,7 +174,14 @@ subVariable ( n, i, s ) =
 
 toName : Variable -> Name
 toName ( n, i, s ) =
-    [ n, String.fromInt i, String.fromInt s ]
+    if List.isEmpty n then
+        [ "t", String.fromInt i, String.fromInt s ]
+
+    else if i > 0 || s > 0 then
+        n ++ [ String.fromInt i, String.fromInt s ]
+
+    else
+        n
 
 
 variables : MetaType -> Set Variable
@@ -166,8 +190,8 @@ variables metaType =
         MetaVar variable ->
             Set.singleton variable
 
-        MetaRef _ ->
-            Set.empty
+        MetaRef vars _ _ _ ->
+            vars
 
         MetaTuple vars _ ->
             vars
@@ -175,17 +199,11 @@ variables metaType =
         MetaRecord vars _ _ ->
             vars
 
-        MetaApply vars _ _ ->
-            vars
-
         MetaFun vars _ _ ->
             vars
 
         MetaUnit ->
             Set.empty
-
-        MetaAlias _ t ->
-            variables t
 
 
 substituteVariable : Variable -> MetaType -> MetaType -> MetaType
@@ -218,25 +236,28 @@ substituteVariable var replacement original =
                                 )
                         )
 
-            MetaApply _ metaFunc metaArg ->
-                metaApply
-                    (substituteVariable var replacement metaFunc)
-                    (substituteVariable var replacement metaArg)
-
             MetaFun _ metaFunc metaArg ->
                 metaFun
                     (substituteVariable var replacement metaFunc)
                     (substituteVariable var replacement metaArg)
 
-            MetaRef _ ->
-                original
+            MetaRef _ fQName args maybeAliasedType ->
+                case maybeAliasedType of
+                    Just aliasedType ->
+                        metaAlias fQName
+                            (args
+                                |> List.map (substituteVariable var replacement)
+                            )
+                            (substituteVariable var replacement aliasedType)
+
+                    Nothing ->
+                        metaRef fQName
+                            (args
+                                |> List.map (substituteVariable var replacement)
+                            )
 
             MetaUnit ->
                 original
-
-            MetaAlias alias subject ->
-                MetaAlias alias
-                    (substituteVariable var replacement subject)
 
     else
         original
@@ -255,29 +276,29 @@ substituteVariables replacements original =
 
 boolType : MetaType
 boolType =
-    MetaRef (fqn "Morphir.SDK" "Basics" "Bool")
+    metaRef (fqn "Morphir.SDK" "Basics" "Bool") []
 
 
 charType : MetaType
 charType =
-    MetaRef (fqn "Morphir.SDK" "Char" "Char")
+    metaRef (fqn "Morphir.SDK" "Char" "Char") []
 
 
 stringType : MetaType
 stringType =
-    MetaRef (fqn "Morphir.SDK" "String" "String")
+    metaRef (fqn "Morphir.SDK" "String" "String") []
 
 
 intType : MetaType
 intType =
-    MetaRef (fqn "Morphir.SDK" "Basics" "Int")
+    metaRef (fqn "Morphir.SDK" "Basics" "Int") []
 
 
 floatType : MetaType
 floatType =
-    MetaRef (fqn "Morphir.SDK" "Basics" "Float")
+    metaRef (fqn "Morphir.SDK" "Basics" "Float") []
 
 
 listType : MetaType -> MetaType
 listType itemType =
-    metaApply (MetaRef (fqn "Morphir.SDK" "List" "List")) itemType
+    metaRef (fqn "Morphir.SDK" "List" "List") [ itemType ]
