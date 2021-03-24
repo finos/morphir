@@ -21,7 +21,7 @@ enterprises. The result of processing is a [Graph](#Graph), which is a collectio
 
 # Utilities
 
-@docs graphEntryToComparable, nodeType, verbToString, nodeFQN
+@docs graphEntryToComparable, nodeType, verbToString, nodeFQN, getNodeType
 
 -}
 
@@ -194,7 +194,7 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                             fieldType =
                                                 case field.tpe of
                                                     -- Catches Maybes
-                                                    Type.Reference _ typeFqn [Type.Reference _ child _] ->
+                                                    Type.Reference _ typeFqn [ Type.Reference _ child _ ] ->
                                                         Type child
 
                                                     Type.Reference _ typeFqn _ ->
@@ -595,6 +595,7 @@ graphEntryToComparable entry =
         EdgeEntry edge ->
             "EdgeEntry: " ++ edgeToString edge
 
+
 {-| Finds the IsA relation to a Type for a given Node
 -}
 getNodeType : Node -> Graph -> Maybe FQName
@@ -614,5 +615,3 @@ getNodeType node graph =
                         Nothing
             )
         |> List.head
-
-
