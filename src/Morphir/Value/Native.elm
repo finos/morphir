@@ -1,8 +1,8 @@
 module Morphir.Value.Native exposing
     ( Function
     , Eval
-    , unaryLazy, unaryStrict, binaryLazy, binaryStrict, mapLiteral
-    , boolLiteral, charLiteral, eval1, eval2, expectFun1, expectList, expectLiteral, floatLiteral, intLiteral, oneOf, returnList, returnLiteral, returnResultList, stringLiteral
+    , unaryLazy, unaryStrict, binaryLazy, binaryStrict, mapLiteral, boolLiteral, charLiteral, eval1, eval2, expectFun1
+    , expectList, expectLiteral, floatLiteral, intLiteral, oneOf, returnList, returnLiteral, returnResultList, stringLiteral
     )
 
 {-| This module contains an API and some tools to implement native functions. Native functions are functions that are
@@ -35,7 +35,8 @@ example the predicate in a `filter` will need to be evaluated on each item in th
 
 Various utilities to help with implementing native functions.
 
-@docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, mapLiteral
+@docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, mapLiteral, boolLiteral, charLiteral, eval1, eval2, expectFun1
+@docs expectList, expectLiteral, floatLiteral, intLiteral, oneOf, returnList, returnLiteral, returnResultList, stringLiteral
 
 -}
 
@@ -168,6 +169,7 @@ mapLiteral f eval value =
             Err (ExpectedLiteral value)
 
 
+{-| -}
 expectLiteral : (Literal -> Result Error a) -> Eval -> RawValue -> Result Error a
 expectLiteral decodeLiteral eval value =
     case eval value of
@@ -181,6 +183,7 @@ expectLiteral decodeLiteral eval value =
             Err error
 
 
+{-| -}
 expectList : Eval -> RawValue -> Result Error (List RawValue)
 expectList eval value =
     case value of
@@ -191,6 +194,7 @@ expectList eval value =
             Err (ExpectedLiteral value)
 
 
+{-| -}
 expectFun1 : Eval -> RawValue -> Result Error (RawValue -> Result Error RawValue)
 expectFun1 eval fun =
     Ok
@@ -199,6 +203,7 @@ expectFun1 eval fun =
         )
 
 
+{-| -}
 boolLiteral : Literal -> Result Error Bool
 boolLiteral lit =
     case lit of
@@ -209,6 +214,7 @@ boolLiteral lit =
             Err (ExpectedBoolLiteral lit)
 
 
+{-| -}
 intLiteral : Literal -> Result Error Int
 intLiteral lit =
     case lit of
@@ -219,6 +225,7 @@ intLiteral lit =
             Err (ExpectedBoolLiteral lit)
 
 
+{-| -}
 floatLiteral : Literal -> Result Error Float
 floatLiteral lit =
     case lit of
@@ -229,6 +236,7 @@ floatLiteral lit =
             Err (ExpectedBoolLiteral lit)
 
 
+{-| -}
 charLiteral : Literal -> Result Error Char
 charLiteral lit =
     case lit of
@@ -239,6 +247,7 @@ charLiteral lit =
             Err (ExpectedBoolLiteral lit)
 
 
+{-| -}
 stringLiteral : Literal -> Result Error String
 stringLiteral lit =
     case lit of
@@ -249,11 +258,13 @@ stringLiteral lit =
             Err (ExpectedBoolLiteral lit)
 
 
+{-| -}
 returnLiteral : (a -> Literal) -> a -> Result Error RawValue
 returnLiteral toLit a =
     Ok (Value.Literal () (toLit a))
 
 
+{-| -}
 returnResultList : List (Result Error RawValue) -> Result Error RawValue
 returnResultList listOfValueResults =
     listOfValueResults
@@ -261,11 +272,13 @@ returnResultList listOfValueResults =
         |> Result.map (Value.List ())
 
 
+{-| -}
 returnList : List RawValue -> Result Error RawValue
 returnList list =
     Ok (Value.List () list)
 
 
+{-| -}
 eval1 : (a -> b) -> (Eval -> RawValue -> Result Error a) -> (b -> Result Error RawValue) -> Function
 eval1 f decodeA encodeB eval args =
     case args of
@@ -280,6 +293,7 @@ eval1 f decodeA encodeB eval args =
             Err (UnexpectedArguments args)
 
 
+{-| -}
 eval2 : (a -> b -> c) -> (Eval -> RawValue -> Result Error a) -> (Eval -> RawValue -> Result Error b) -> (c -> Result Error RawValue) -> Function
 eval2 f decodeA decodeB encodeC eval args =
     case args of
@@ -297,6 +311,7 @@ eval2 f decodeA decodeB encodeC eval args =
             Err (UnexpectedArguments args)
 
 
+{-| -}
 oneOf : List Function -> Function
 oneOf funs =
     funs
