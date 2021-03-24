@@ -9,6 +9,7 @@ import Json.Decode as Decode exposing (Decoder, string)
 import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.IR as IR exposing (IR, fromDistribution)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.QName as QName exposing (QName(..))
@@ -335,5 +336,5 @@ view model =
 decodeFlag : Decode.Decoder Flag
 decodeFlag =
     Decode.map2 Flag
-        (Decode.field "distribution" CompilerCodec.decodeIR)
+        (Decode.field "distribution" DistributionCodec.decodeVersionedDistribution)
         (Decode.field "config" decodeThemeConfig |> Decode.maybe)
