@@ -11,6 +11,7 @@ import Element.Input as Input exposing (labelHidden)
 import Http
 import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
@@ -509,7 +510,7 @@ httpMakeModel =
                         Ok result ->
                             ServerGetIRResponse result
                 )
-                CompilerCodec.decodeIR
+                DistributionCodec.decodeVersionedDistribution
         }
 
 
