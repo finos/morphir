@@ -140,7 +140,7 @@ update msg model =
                 cmd =
                     case model.route of
                         Module moduleName filter viewType ->
-                            Nav.pushUrl model.key
+                            Nav.replaceUrl model.key
                                 (makeURL moduleName (Just filterString) viewType)
 
                         _ ->
