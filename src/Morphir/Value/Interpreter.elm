@@ -184,9 +184,15 @@ evaluateValue references variables arguments value =
 
                             -- If this is a reference to another Morphir value we need to recursively evaluate those.
                             ValueReference referredValue ->
-                                evaluateValue references Dict.empty arguments referredValue
+                                arguments
+                                    |> List.map (evaluateValue references variables [])
+                                    |> ListOfResults.liftFirstError
                                     -- Wrap the error to make it easier to understand where it happened
                                     |> Result.mapError (ErrorWhileEvaluatingReference fQName)
+                                    |> Result.andThen
+                                        (\evaluatedArgs ->
+                                            evaluateValue references Dict.empty evaluatedArgs referredValue
+                                        )
                     )
 
         Value.Field _ subjectValue fieldName ->
