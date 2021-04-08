@@ -1,4 +1,4 @@
-module Morphir.Reference.Model.Issues.Issue407 exposing (..)
+module Morphir.Reference.Model.Issues.Issue407 exposing (BigRecord, foo, foo1, foo1Clash, foo1Clash2, foo2, foo3)
 
 
 type alias BigRecord =
@@ -40,6 +40,16 @@ foo1 =
 
 foo1Clash : Int -> Int -> BigRecord
 foo1Clash a0 =
+    BigRecord 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 a0
+
+
+foo1Clash2 : Int -> BigRecord
+foo1Clash2 =
+    let
+        a0 : Int
+        a0 =
+            22
+    in
     BigRecord 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 a0
 
 

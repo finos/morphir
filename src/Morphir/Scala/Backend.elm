@@ -648,15 +648,22 @@ mapFunctionBody distribution valueDef =
                                 [ Scala.ArgValue Nothing (mapValue inScopeVars applyArg)
                                 ]
 
-                Lambda a argPattern bodyValue ->
+                Lambda _ argPattern bodyValue ->
+                    let
+                        newInScopeVars : Set Name
+                        newInScopeVars =
+                            Set.union
+                                (Value.collectPatternVariables argPattern)
+                                inScopeVars
+                    in
                     case argPattern of
                         AsPattern tpe (WildcardPattern _) alias ->
                             Scala.Lambda
                                 [ ( alias |> Name.toCamelCase, Just (mapType tpe) ) ]
-                                (mapValue inScopeVars bodyValue)
+                                (mapValue newInScopeVars bodyValue)
 
                         _ ->
-                            Scala.MatchCases [ ( mapPattern argPattern, mapValue inScopeVars bodyValue ) ]
+                            Scala.MatchCases [ ( mapPattern argPattern, mapValue newInScopeVars bodyValue ) ]
 
                 LetDefinition _ _ _ _ ->
                     let
@@ -675,6 +682,12 @@ mapFunctionBody distribution valueDef =
 
                         ( defs, finalInValue ) =
                             flattenLetDef value
+
+                        newInScopeVars : Set Name
+                        newInScopeVars =
+                            Set.union
+                                (defs |> List.map Tuple.first |> Set.fromList)
+                                inScopeVars
                     in
                     Scala.Block
                         (defs
@@ -685,7 +698,7 @@ mapFunctionBody distribution valueDef =
                                             { modifiers = []
                                             , pattern = Scala.NamedMatch (mapValueName defName)
                                             , valueType = Just (mapType def.outputType)
-                                            , value = mapValue inScopeVars def.body
+                                            , value = mapValue newInScopeVars def.body
                                             }
 
                                     else
@@ -707,13 +720,20 @@ mapFunctionBody distribution valueDef =
                                             , returnType =
                                                 Just (mapType def.outputType)
                                             , body =
-                                                Just (mapValue inScopeVars def.body)
+                                                Just (mapValue newInScopeVars def.body)
                                             }
                                 )
                         )
-                        (mapValue inScopeVars finalInValue)
+                        (mapValue newInScopeVars finalInValue)
 
                 LetRecursion a defs inValue ->
+                    let
+                        newInScopeVars : Set Name
+                        newInScopeVars =
+                            Set.union
+                                (defs |> Dict.keys |> Set.fromList)
+                                inScopeVars
+                    in
                     Scala.Block
                         (defs
                             |> Dict.toList
@@ -741,22 +761,29 @@ mapFunctionBody distribution valueDef =
                                         , returnType =
                                             Just (mapType def.outputType)
                                         , body =
-                                            Just (mapValue inScopeVars def.body)
+                                            Just (mapValue newInScopeVars def.body)
                                         }
                                 )
                         )
-                        (mapValue inScopeVars inValue)
+                        (mapValue newInScopeVars inValue)
 
-                Destructure a bindPattern bindValue inValue ->
+                Destructure _ bindPattern bindValue inValue ->
+                    let
+                        newInScopeVars : Set Name
+                        newInScopeVars =
+                            Set.union
+                                (Value.collectPatternVariables bindPattern)
+                                inScopeVars
+                    in
                     Scala.Block
                         [ Scala.ValueDecl
                             { modifiers = []
                             , pattern = mapPattern bindPattern
                             , valueType = Nothing
-                            , value = mapValue inScopeVars bindValue
+                            , value = mapValue newInScopeVars bindValue
                             }
                         ]
-                        (mapValue inScopeVars inValue)
+                        (mapValue newInScopeVars inValue)
 
                 IfThenElse a condValue thenValue elseValue ->
                     Scala.IfElse (mapValue inScopeVars condValue) (mapValue inScopeVars thenValue) (mapValue inScopeVars elseValue)
@@ -766,7 +793,14 @@ mapFunctionBody distribution valueDef =
                         (cases
                             |> List.map
                                 (\( casePattern, caseValue ) ->
-                                    ( mapPattern casePattern, mapValue inScopeVars caseValue )
+                                    let
+                                        newInScopeVars : Set Name
+                                        newInScopeVars =
+                                            Set.union
+                                                (Value.collectPatternVariables casePattern)
+                                                inScopeVars
+                                    in
+                                    ( mapPattern casePattern, mapValue newInScopeVars caseValue )
                                 )
                             |> Scala.MatchCases
                         )
