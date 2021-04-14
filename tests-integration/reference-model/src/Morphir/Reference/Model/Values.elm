@@ -248,11 +248,28 @@ basicIfThenElse4 greenApple redApple amberApple greenPear redPear =
             ]
 
 
-basicPatternMatchWildcard : String -> Int
-basicPatternMatchWildcard s =
-    case s of
+basicPatternMatchWildcard : String -> String -> String -> Int
+basicPatternMatchWildcard s p q =
+    case ( s, p, q ) of
         _ ->
             1
+
+
+nestedPatternMatch : String -> String -> String -> String -> String -> Int
+nestedPatternMatch a b c d e =
+    case ( a, b ) of
+        ( "foo", "bar" ) ->
+            case ( d, e ) of
+                _ ->
+                    1
+
+        _ ->
+            case c of
+                "bar" ->
+                    2
+
+                _ ->
+                    3
 
 
 basicUpdateRecord : FooBarBazRecord -> FooBarBazRecord

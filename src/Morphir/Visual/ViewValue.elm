@@ -24,6 +24,7 @@ import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
 import Morphir.Visual.ViewLetDefinition as ViewLetDefinition
 import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
+import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 import Morphir.Visual.XRayView as XRayView
@@ -163,6 +164,9 @@ viewValueByLanguageFeature ctx argumentValues value =
 
         Value.IfThenElse _ _ _ _ ->
             ViewIfThenElse.view ctx (viewValue ctx argumentValues) value Dict.empty
+
+        Value.PatternMatch tpe param patterns ->
+            ViewPatternMatch.view (viewValue ctx argumentValues) param patterns
 
         other ->
             Element.column

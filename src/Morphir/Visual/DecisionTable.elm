@@ -6,6 +6,7 @@ module Morphir.Visual.DecisionTable exposing (DecisionTable, Match)
 
 -}
 
+import Element exposing (Element)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 
@@ -16,6 +17,10 @@ type alias TypedValue =
 
 type alias TypedPattern =
     Value.Pattern (Type ())
+
+
+
+--
 
 
 {-| Represents a decision table. It has two fields:
@@ -42,3 +47,26 @@ which is a function that takes some input and returns a boolean.
 type Match
     = Pattern TypedPattern
     | Guard TypedValue
+
+
+displayTable : DecisionTable -> Element msg
+displayTable table =
+    tableHelp table.decomposeInput table.rules
+
+
+tableHelp : List TypedValue -> List ( List Match, TypedValue ) -> Element msg
+tableHelp headerFunctions rows =
+    Element.none
+
+
+
+{- getDecomposedValues : List TypedValue -> List TypedValue -> List TypedValue
+   getDecomposedValues input decomposeFunction =
+       case input of
+           [] ->
+               []
+           head :: tail ->
+               case decomposeFunction of
+                   decompHead :: decompTail ->
+
+-}
