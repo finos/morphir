@@ -17,7 +17,7 @@ npm run build
 
 ## Translate Elm sources to Morphir IR
 
-For detailed instructions refer to [morphir-elm installation](Readme.md)
+For detailed instructions refer to [morphir-elm installation](Readme.md).
 
 Example:
 If we have a file with module name defined as: 

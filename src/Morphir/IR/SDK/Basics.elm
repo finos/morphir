@@ -26,8 +26,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native
+import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, eval1, eval2, expectLiteral, floatLiteral, intLiteral, oneOf, returnLiteral, stringLiteral)
 
 
 moduleName : ModuleName
@@ -127,192 +126,91 @@ moduleSpec =
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
     [ ( "not"
-      , Native.unaryStrict
-            (Native.mapLiteral
-                (\lit ->
-                    case lit of
-                        BoolLiteral v ->
-                            Ok (BoolLiteral (not v))
-
-                        _ ->
-                            Err (ExpectedBoolLiteral lit)
-                )
-            )
+      , eval1 not (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "and"
-      , Native.binaryLazy
-            (\eval arg1 arg2 ->
-                eval arg1
-                    |> Result.andThen
-                        (\a1 ->
-                            case a1 of
-                                Value.Literal _ (BoolLiteral False) ->
-                                    Ok (Value.Literal () (BoolLiteral False))
-
-                                Value.Literal _ (BoolLiteral True) ->
-                                    eval arg2
-
-                                _ ->
-                                    Err (ExpectedLiteral arg1)
-                        )
-            )
+      , eval2 (&&) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "or"
-      , Native.binaryLazy
-            (\eval arg1 arg2 ->
-                eval arg1
-                    |> Result.andThen
-                        (\a1 ->
-                            case a1 of
-                                Value.Literal _ (BoolLiteral True) ->
-                                    Ok (Value.Literal () (BoolLiteral True))
-
-                                Value.Literal _ (BoolLiteral False) ->
-                                    eval arg2
-
-                                _ ->
-                                    Err (ExpectedLiteral arg1)
-                        )
-            )
+      , eval2 (||) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "xor"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (BoolLiteral v1), Value.Literal _ (BoolLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (xor v1 v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , eval2 xor (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
       )
     , ( "add"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-                        Ok (Value.Literal () (FloatLiteral (v1 + v2)))
-
-                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-                        Ok (Value.Literal () (IntLiteral (v1 + v2)))
-
-                    _ ->
-                        Err (ExpectedNumberTypeArguments [ arg1, arg2 ])
-            )
+      , oneOf
+            [ eval2 (+) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval2 (+) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     , ( "subtract"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-                        Ok (Value.Literal () (FloatLiteral (v1 - v2)))
-
-                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-                        Ok (Value.Literal () (IntLiteral (v1 - v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , oneOf
+            [ eval2 (-) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval2 (-) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     , ( "multiply"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-                        Ok (Value.Literal () (FloatLiteral (v1 * v2)))
-
-                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-                        Ok (Value.Literal () (IntLiteral (v1 * v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , oneOf
+            [ eval2 (*) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval2 (*) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     , ( "divide"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-                        Ok (Value.Literal () (FloatLiteral (v1 / v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , eval2 (/) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
       )
     , ( "integerDivide"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-                        Ok (Value.Literal () (IntLiteral (v1 // v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , eval2 (//) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
       )
     , ( "equal"
       , Native.binaryStrict
             (\arg1 arg2 ->
+                -- We use structural equality similar to Elm with the difference that Elm fails when you try to compare
+                -- two functions but we will actually compare if the implementations are the same.
                 Ok (Value.Literal () (BoolLiteral (arg1 == arg2)))
             )
       )
     , ( "notEqual"
       , Native.binaryStrict
             (\arg1 arg2 ->
+                -- We use structural equality similar to Elm with the difference that Elm fails when you try to compare
+                -- two functions but we will actually compare if the implementations are the same.
                 Ok (Value.Literal () (BoolLiteral (arg1 /= arg2)))
             )
       )
     , ( "lessThan"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (v1 < v2)))
-
-                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (v1 < v2)))
-
-                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (v1 < toFloat v2)))
-
-                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (toFloat v1 < v2)))
-
-                    ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (v1 < v2)))
-
-                    ( Value.Literal _ (StringLiteral v1), Value.Literal _ (StringLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (v1 < v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , oneOf
+            -- TODO: this is only a limited subset of comparable values, we should implement for all
+            [ eval2 (<) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
+            , eval2 (<) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
+            , eval2 (<) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
+            , eval2 (<) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            ]
       )
     , ( "greaterThan"
-      , Native.binaryStrict
-            (\arg1 arg2 ->
-                case ( arg1, arg2 ) of
-                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (v1 > v2)))
-
-                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (v1 > v2)))
-
-                    ( Value.Literal _ (FloatLiteral v1), Value.Literal _ (IntLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (v1 > toFloat v2)))
-
-                    ( Value.Literal _ (IntLiteral v1), Value.Literal _ (FloatLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (toFloat v1 > v2)))
-
-                    ( Value.Literal _ (CharLiteral v1), Value.Literal _ (CharLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (v1 > v2)))
-
-                    ( Value.Literal _ (StringLiteral v1), Value.Literal _ (StringLiteral v2) ) ->
-                        Ok (Value.Literal () (BoolLiteral (v1 > v2)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg1, arg2 ])
-            )
+      , oneOf
+            -- TODO: this is only a limited subset of comparable values, we should implement for all
+            [ eval2 (>) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
+            , eval2 (>) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
+            , eval2 (>) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
+            , eval2 (>) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            ]
+      )
+    , ( "abs"
+      , oneOf
+            [ eval1 abs (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval1 abs (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
+      )
+    , ( "toFloat"
+      , oneOf
+            [ eval1 toFloat (expectLiteral intLiteral) (returnLiteral FloatLiteral)
+            ]
+      )
+    , ( "negate"
+      , oneOf
+            [ eval1 Basics.negate (expectLiteral intLiteral) (returnLiteral IntLiteral)
+            , eval1 Basics.negate (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            ]
       )
     ]
 
@@ -430,10 +328,10 @@ composeRight a =
 isNumber : Type ta -> Bool
 isNumber tpe =
     case tpe of
-        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
+        Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
             True
 
-        Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
+        Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
             True
 
         _ ->

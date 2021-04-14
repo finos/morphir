@@ -1,30 +1,33 @@
-module Morphir.Visual.XRayView exposing (NodeType(..), TreeNode(..), childNodes, noPadding, patternToNode, valueToNode, viewConstructorName, viewLiteral, viewPatternAsHeader, viewReferenceName, viewTreeNode, viewValue, viewValueAsHeader, viewValueDefinition)
+module Morphir.Visual.XRayView exposing (NodeType(..), TreeNode(..), childNodes, noPadding, patternToNode, valueToNode, viewConstructorName, viewLiteral, viewPatternAsHeader, viewReferenceName, viewTreeNode, viewType, viewValue, viewValueAsHeader, viewValueDefinition)
 
 import Dict
-import Element exposing (Element, column, el, paddingEach, paddingXY, rgb, row, spacing, text)
+import Element exposing (Element, alignRight, column, el, fill, padding, paddingEach, paddingXY, rgb, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, Value)
 import Morphir.Visual.Common exposing (grayScale)
 
 
-viewValueDefinition accessControlledValueDef =
-    viewValue accessControlledValueDef.value.body
+viewValueDefinition : (va -> Element msg) -> AccessControlled (Value.Definition ta va) -> Element msg
+viewValueDefinition viewValueAttr accessControlledValueDef =
+    viewValue viewValueAttr accessControlledValueDef.value.body
 
 
-viewValue : Value ta va -> Element msg
-viewValue value =
+viewValue : (va -> Element msg) -> Value ta va -> Element msg
+viewValue viewValueAttr value =
     el
         [ Font.family [ Font.monospace ]
         , Font.color (grayScale 0.3)
         ]
         (value
             |> valueToNode Nothing
-            |> viewTreeNode
+            |> viewTreeNode viewValueAttr
         )
 
 
@@ -44,27 +47,36 @@ childNodes treeNode =
             treeNodes
 
 
-viewTreeNode : TreeNode ta va -> Element msg
-viewTreeNode (TreeNode maybeTag nodeType treeNodes) =
+viewTreeNode : (va -> Element msg) -> TreeNode ta va -> Element msg
+viewTreeNode viewValueAttr (TreeNode maybeTag nodeType treeNodes) =
     let
-        viewHeaderAndChildren : Element msg -> List (Element msg) -> Element msg
-        viewHeaderAndChildren header children =
+        viewHeaderAndChildren : Element msg -> Element msg -> List (Element msg) -> Element msg
+        viewHeaderAndChildren header attr children =
             column
-                [ spacing 5 ]
-                [ case maybeTag of
-                    Just tag ->
-                        row [ spacing 5 ]
-                            [ el
-                                [ Font.color (grayScale 0.7)
+                [ width fill, spacing 5 ]
+                [ row [ width fill, spacing 5 ]
+                    [ case maybeTag of
+                        Just tag ->
+                            row [ spacing 5 ]
+                                [ el
+                                    [ Font.color (grayScale 0.7)
+                                    ]
+                                    (text tag)
+                                , header
                                 ]
-                                (text tag)
-                            , header
-                            ]
 
-                    Nothing ->
-                        header
+                        Nothing ->
+                            header
+                    , el
+                        [ paddingXY 10 2
+                        , Background.color (rgb 1 0.9 0.8)
+                        , Border.rounded 3
+                        ]
+                        attr
+                    ]
                 , column
-                    [ paddingEach { noPadding | left = 20 }
+                    [ width fill
+                    , paddingEach { noPadding | left = 20 }
                     ]
                     children
                 ]
@@ -73,12 +85,14 @@ viewTreeNode (TreeNode maybeTag nodeType treeNodes) =
         ValueNode value ->
             viewHeaderAndChildren
                 (viewValueAsHeader value)
-                (List.map viewTreeNode treeNodes)
+                (value |> Value.valueAttribute |> viewValueAttr)
+                (List.map (viewTreeNode viewValueAttr) treeNodes)
 
         PatternNode pattern ->
             viewHeaderAndChildren
                 (viewPatternAsHeader pattern)
-                (List.map viewTreeNode treeNodes)
+                (pattern |> Value.patternAttribute |> viewValueAttr)
+                (List.map (viewTreeNode viewValueAttr) treeNodes)
 
 
 viewValueAsHeader : Value ta va -> Element msg
@@ -248,25 +262,11 @@ valueToNode tag value =
                 [ valueToNode (Just "subject") subject ]
 
         Value.Apply _ fun arg ->
-            let
-                ( bottomFun, args ) =
-                    Value.uncurryApply fun arg
-
-                funChild =
-                    valueToNode (Just "func") bottomFun
-
-                argsChild =
-                    args
-                        |> List.indexedMap
-                            (\index argChild ->
-                                valueToNode
-                                    (Just (String.join " " [ "arg", String.fromInt (index + 1) ]))
-                                    argChild
-                            )
-            in
             TreeNode tag
                 (ValueNode value)
-                (funChild :: argsChild)
+                [ valueToNode (Just "fun") fun
+                , valueToNode (Just "arg") arg
+                ]
 
         Value.Lambda _ arg body ->
             TreeNode tag
@@ -410,24 +410,14 @@ patternToNode maybeTag pattern =
                 []
 
 
-viewReferenceName ( packageName, moduleName, localName ) =
+viewReferenceName ( _, _, localName ) =
     text
-        (String.join " "
-            [ packageName |> Path.toString Name.toTitleCase "."
-            , moduleName |> Path.toString Name.toTitleCase "."
-            , localName |> Name.toCamelCase
-            ]
-        )
+        (localName |> Name.toCamelCase)
 
 
-viewConstructorName ( packageName, moduleName, localName ) =
+viewConstructorName ( _, _, localName ) =
     text
-        (String.join " "
-            [ packageName |> Path.toString Name.toTitleCase "."
-            , moduleName |> Path.toString Name.toTitleCase "."
-            , localName |> Name.toTitleCase
-            ]
-        )
+        (localName |> Name.toTitleCase)
 
 
 viewLiteral : Literal -> Element msg
@@ -455,3 +445,64 @@ viewLiteral lit =
 
 noPadding =
     { left = 0, right = 0, top = 0, bottom = 0 }
+
+
+viewType : Type () -> Element msg
+viewType tpe =
+    case tpe of
+        Type.Variable _ varName ->
+            text (Name.toCamelCase varName)
+
+        Type.Reference _ ( _, _, localName ) argTypes ->
+            if List.isEmpty argTypes then
+                text (localName |> Name.toTitleCase)
+
+            else
+                row [ spacing 6 ]
+                    (List.concat
+                        [ [ text (localName |> Name.toTitleCase) ]
+                        , argTypes |> List.map viewType
+                        ]
+                    )
+
+        Type.Tuple a elems ->
+            let
+                elemsView =
+                    elems
+                        |> List.map viewType
+                        |> List.intersperse (text ", ")
+                        |> row []
+            in
+            row [] [ text "( ", elemsView, text " )" ]
+
+        Type.Record a fields ->
+            let
+                fieldsView =
+                    fields
+                        |> List.map
+                            (\field ->
+                                row [] [ text (Name.toCamelCase field.name), text " : ", viewType field.tpe ]
+                            )
+                        |> List.intersperse (text ", ")
+                        |> row []
+            in
+            row [] [ text "{ ", fieldsView, text " }" ]
+
+        Type.ExtensibleRecord a varName fields ->
+            let
+                fieldsView =
+                    fields
+                        |> List.map
+                            (\field ->
+                                row [] [ text (Name.toCamelCase field.name), text " : ", viewType field.tpe ]
+                            )
+                        |> List.intersperse (text ", ")
+                        |> row []
+            in
+            row [] [ text "{ ", text (Name.toCamelCase varName), text " | ", fieldsView, text " }" ]
+
+        Type.Function _ argType returnType ->
+            row [] [ viewType argType, text " -> ", viewType returnType ]
+
+        Type.Unit _ ->
+            text "()"
