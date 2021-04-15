@@ -28,6 +28,7 @@ import Morphir.Visual.ViewField as ViewField
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
 import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
+import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 import Morphir.Visual.XRayView as XRayView
@@ -216,6 +217,9 @@ viewValueByLanguageFeature config value =
 
                 Value.IfThenElse _ _ _ _ ->
                     ViewIfThenElse.view config (viewValue config) value
+
+                Value.PatternMatch tpe param patterns ->
+                    ViewPatternMatch.view config (viewValue config) param patterns
 
                 other ->
                     Element.column
