@@ -57,11 +57,17 @@ function makeInsightAPI() {
     return make('cli', 'src/Morphir/Web/Insight.elm', 'web/insight.js')
 }
 
+function makeTryMorphir() {
+    return make('cli', 'src/Morphir/Web/TryMorphir.elm', 'web/try-morphir.html')
+}
+
+
 const build =
     series(
         makeCLI,
         makeDevServer,
-        makeInsightAPI
+        makeInsightAPI,
+        makeTryMorphir
     )
 
 exports.clean = clean;
