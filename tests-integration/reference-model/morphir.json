@@ -2,22 +2,7 @@
     "name": "Morphir.Reference.Model",
     "sourceDirectory": "src",
     "exposedModules": [
-        "BooksAndRecords",
-        "Types",
-        "Values",
-        "Formulas",
         "Insight.UseCase1",
-        "Issues.Issue210",
-        "Issues.Issue227",
-        "Issues.Issue273",
-        "Issues.Issue330",
-        "Issues.Issue331",
-        "Issues.Issue333",
-        "Issues.Issue349",
-        "Issues.Issue350",
-        "Issues.Issue364",
-        "Issues.Issue373",
-        "Issues.Issue401",
-        "Issues.Issue407"
+        "Issues.Issue410"
     ]
 }
