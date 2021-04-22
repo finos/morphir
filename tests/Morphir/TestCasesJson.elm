@@ -18639,27 +18639,33 @@ sampleTestSuite =
         [
           {
             "inputs" : [ 4 , 5 ],
-            "expectedOutput" : 9
+            "expectedOutput" : 9,
+            "description" : "Add"
           },
           {
             "inputs" : [ 14 , 15 ],
-            "expectedOutput" : 29
+            "expectedOutput" : 29,
+            "description" : "Add"
           },
           {
             "inputs" : [ 12 , 26 ],
-            "expectedOutput" : 38
+            "expectedOutput" : 38,
+            "description" : "Add"
           },
           {
             "inputs" : [ 122 , 126 ],
-            "expectedOutput" : 248
+            "expectedOutput" : 248,
+            "description" : "Add"
           },
           {
             "inputs" : [ 10 , 1 ],
-            "expectedOutput" : 11
+            "expectedOutput" : 11,
+            "description" : "Add"
           },
           {
             "inputs" : [ -10 , 1 ],
-            "expectedOutput" : -9
+            "expectedOutput" : -9,
+            "description" : "Add"
           }
         ]
       ],
@@ -18672,7 +18678,8 @@ sampleTestSuite =
         [
           {
             "inputs" : [ 0 , 5.5 , 0 , 12 , 13 ],
-            "expectedOutput" : []
+            "expectedOutput" : [],
+            "description" : "List of Tracking Advantage"
           },
           {
             "inputs" : [ 10 , 5.5 , 10 , 12 , 13 ],
@@ -18685,7 +18692,8 @@ sampleTestSuite =
                 , "code" : "987654321"
                 , "velocity" : 6.6
                 }
-            ]
+            ],
+            "description" : "List of Tracking Advantage"
           },
           {
             "inputs" : [ -10 , -5.5 , 10 , 12 , -13 ],
@@ -18706,7 +18714,8 @@ sampleTestSuite =
                 , "code" : "987654321"
                 , "velocity" : 12
                 }
-            ]
+            ],
+            "description" : "List of Tracking Advantage"
           }
         ]
       ]
@@ -18717,28 +18726,22 @@ expectedTestSuite : TestSuite
 expectedTestSuite =
     Dict.fromList
         [ ( ( [ [ "morphir" ], [ "reference" ], [ "model" ] ], [ [ "insight" ], [ "use", "case", "1" ] ], [ "limit", "tracking" ] )
-          , [ { expectedOutput = List () []
+          , [ { description = "List of Tracking Advantage"
+              , expectedOutput = List () []
               , inputs =
-                    Dict.fromList
-                        [ ( [ "bet", "deviation", "threshold" ], Literal () (FloatLiteral 0) )
-                        , ( [ "focal", "d", "r", "v" ], Literal () (FloatLiteral 5.5) )
-                        , ( [ "focal", "u", "r", "v" ], Literal () (FloatLiteral 0) )
-                        , ( [ "point", "d", "r", "v" ], Literal () (FloatLiteral 13) )
-                        , ( [ "point", "u", "r", "v" ], Literal () (FloatLiteral 12) )
-                        ]
+                    [ Literal () (FloatLiteral 0)
+                    , Literal () (FloatLiteral 5.5)
+                    , Literal () (FloatLiteral 0)
+                    , Literal () (FloatLiteral 12)
+                    , Literal () (FloatLiteral 13)
+                    ]
               }
-            , { expectedOutput =
+            , { description = "List of Tracking Advantage"
+              , expectedOutput =
                     List ()
                         [ Record ()
                             [ ( [ "direction" ]
-                              , Constructor ()
-                                    ( [ [ "morphir" ]
-                                      , [ "reference" ]
-                                      , [ "model" ]
-                                      ]
-                                    , [ [ "insight" ], [ "use", "case", "1" ] ]
-                                    , [ "up" ]
-                                    )
+                              , Constructor () ( [ [ "morphir" ], [ "reference" ], [ "model" ] ], [ [ "insight" ], [ "use", "case", "1" ] ], [ "up" ] )
                               )
                             , ( [ "code" ], Literal () (StringLiteral "123456789") )
                             , ( [ "velocity" ], Literal () (FloatLiteral -13) )
@@ -18752,15 +18755,15 @@ expectedTestSuite =
                             ]
                         ]
               , inputs =
-                    Dict.fromList
-                        [ ( [ "bet", "deviation", "threshold" ], Literal () (FloatLiteral 10) )
-                        , ( [ "focal", "d", "r", "v" ], Literal () (FloatLiteral 5.5) )
-                        , ( [ "focal", "u", "r", "v" ], Literal () (FloatLiteral 10) )
-                        , ( [ "point", "d", "r", "v" ], Literal () (FloatLiteral 13) )
-                        , ( [ "point", "u", "r", "v" ], Literal () (FloatLiteral 12) )
-                        ]
+                    [ Literal () (FloatLiteral 10)
+                    , Literal () (FloatLiteral 5.5)
+                    , Literal () (FloatLiteral 10)
+                    , Literal () (FloatLiteral 12)
+                    , Literal () (FloatLiteral 13)
+                    ]
               }
-            , { expectedOutput =
+            , { description = "List of Tracking Advantage"
+              , expectedOutput =
                     List ()
                         [ Record ()
                             [ ( [ "direction" ]
@@ -18792,34 +18795,39 @@ expectedTestSuite =
                             ]
                         ]
               , inputs =
-                    Dict.fromList
-                        [ ( [ "bet", "deviation", "threshold" ], Literal () (FloatLiteral 10) )
-                        , ( [ "focal", "d", "r", "v" ], Literal () (FloatLiteral -5.5) )
-                        , ( [ "focal", "u", "r", "v" ], Literal () (FloatLiteral -10) )
-                        , ( [ "point", "d", "r", "v" ], Literal () (FloatLiteral -13) )
-                        , ( [ "point", "u", "r", "v" ], Literal () (FloatLiteral 12) )
-                        ]
+                    [ Literal () (FloatLiteral -10)
+                    , Literal () (FloatLiteral -5.5)
+                    , Literal () (FloatLiteral 10)
+                    , Literal () (FloatLiteral 12)
+                    , Literal () (FloatLiteral -13)
+                    ]
               }
             ]
           )
         , ( ( [ [ "morphir" ], [ "reference" ], [ "model" ] ], [ [ "issues" ], [ "issue", "410" ] ], [ "add", "function" ] )
-          , [ { expectedOutput = Literal () (IntLiteral 9)
-              , inputs = Dict.fromList [ ( [ "num", "1" ], Literal () (IntLiteral 4) ), ( [ "num", "2" ], Literal () (IntLiteral 5) ) ]
+          , [ { description = "Add"
+              , expectedOutput = Literal () (IntLiteral 9)
+              , inputs = [ Literal () (IntLiteral 4), Literal () (IntLiteral 5) ]
               }
-            , { expectedOutput = Literal () (IntLiteral 29)
-              , inputs = Dict.fromList [ ( [ "num", "1" ], Literal () (IntLiteral 14) ), ( [ "num", "2" ], Literal () (IntLiteral 15) ) ]
+            , { description = "Add"
+              , expectedOutput = Literal () (IntLiteral 29)
+              , inputs = [ Literal () (IntLiteral 14), Literal () (IntLiteral 15) ]
               }
-            , { expectedOutput = Literal () (IntLiteral 38)
-              , inputs = Dict.fromList [ ( [ "num", "1" ], Literal () (IntLiteral 12) ), ( [ "num", "2" ], Literal () (IntLiteral 26) ) ]
+            , { description = "Add"
+              , expectedOutput = Literal () (IntLiteral 38)
+              , inputs = [ Literal () (IntLiteral 12), Literal () (IntLiteral 26) ]
               }
-            , { expectedOutput = Literal () (IntLiteral 248)
-              , inputs = Dict.fromList [ ( [ "num", "1" ], Literal () (IntLiteral 122) ), ( [ "num", "2" ], Literal () (IntLiteral 126) ) ]
+            , { description = "Add"
+              , expectedOutput = Literal () (IntLiteral 248)
+              , inputs = [ Literal () (IntLiteral 122), Literal () (IntLiteral 126) ]
               }
-            , { expectedOutput = Literal () (IntLiteral 11)
-              , inputs = Dict.fromList [ ( [ "num", "1" ], Literal () (IntLiteral 10) ), ( [ "num", "2" ], Literal () (IntLiteral 1) ) ]
+            , { description = "Add"
+              , expectedOutput = Literal () (IntLiteral 11)
+              , inputs = [ Literal () (IntLiteral 10), Literal () (IntLiteral 1) ]
               }
-            , { expectedOutput = Literal () (IntLiteral -9)
-              , inputs = Dict.fromList [ ( [ "num", "1" ], Literal () (IntLiteral -10) ), ( [ "num", "2" ], Literal () (IntLiteral 1) ) ]
+            , { description = "Add"
+              , expectedOutput = Literal () (IntLiteral -9)
+              , inputs = [ Literal () (IntLiteral -10), Literal () (IntLiteral 1) ]
               }
             ]
           )

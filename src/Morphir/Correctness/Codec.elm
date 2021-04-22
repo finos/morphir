@@ -1,13 +1,11 @@
 module Morphir.Correctness.Codec exposing (..)
 
 import Dict
-import Json.Decode as Decode
-import Json.Encode as Encode
+import Json.Decode as Decode exposing (string)
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.FQName.Codec as FQName exposing (decodeFQName)
-import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.DataCodec as DataCodec
 import Morphir.IR.Value as Value
 
@@ -99,7 +97,7 @@ decodeTestCase ir valueSpec =
                 Err error ->
                     Decode.fail error
     in
-    Decode.map2 Morphir.Correctness.Test.TestCase
+    Decode.map3 Morphir.Correctness.Test.TestCase
         (Decode.field "inputs"
             (valueSpec.inputs
                 |> List.foldl
@@ -113,14 +111,15 @@ decodeTestCase ir valueSpec =
                                             |> resultToFailure
                                             |> Decode.map
                                                 (\input ->
-                                                    inputsSoFar |> Dict.insert argName input
+                                                    List.append inputsSoFar [ input ]
                                                 )
                                         )
                                 )
                         )
                     )
-                    ( 0, Decode.succeed Dict.empty )
+                    ( 0, Decode.succeed [] )
                 |> Tuple.second
             )
         )
         (Decode.field "expectedOutput" (DataCodec.decodeData ir valueSpec.output |> resultToFailure))
+        (Decode.field "description" string)

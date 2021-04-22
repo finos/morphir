@@ -292,7 +292,7 @@ view model =
 
         FunctionsSet visualizationState ->
             let
-                validArgValues : Dict Name (Value () ())
+                validArgValues : Dict Name RawValue
                 validArgValues =
                     List.map2
                         (\( argName, _, _ ) argValue ->

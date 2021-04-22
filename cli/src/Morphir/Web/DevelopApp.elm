@@ -1,9 +1,9 @@
-module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Route(..), ServerState(..), ViewType(..), httpMakeModel, init, main, makeURL, noBorderWidth, routeParser, scaled, subscriptions, toRoute, update, view, viewAsCard, viewBody, viewHeader, viewModuleControls, viewTitle, viewTypeFromString, viewValue)
+module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Route(..), ServerState(..), ViewType(..), httpMakeModel, init, main, makeURL, routeParser, scaled, subscriptions, toRoute, update, view, viewAsCard, viewBody, viewHeader, viewModuleControls, viewTitle, viewTypeFromString, viewValue)
 
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, centerX, centerY, column, el, fill, height, image, layout, link, minimum, none, padding, paddingXY, px, rgb, row, scrollbarX, scrollbars, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignTop, centerX, centerY, column, el, fill, height, image, layout, link, minimum, none, padding, paddingXY, px, rgb, row, scrollbars, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -11,16 +11,16 @@ import Element.Input as Input exposing (labelHidden)
 import Http
 import Morphir.Correctness.Codec exposing (decodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
-import Morphir.Elm.Frontend as Frontend
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path
-import Morphir.IR.QName as QName
+import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value, indexedMapValue)
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
@@ -64,6 +64,7 @@ type alias Model =
     , serverState : ServerState
     , argState : Dict FQName (Dict Name RawValue)
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
+    , popupVariables : PopupScreenRecord
     , testSuite : TestSuite
     }
 
@@ -87,6 +88,7 @@ init flags url key =
       , serverState = ServerReady
       , argState = Dict.empty
       , expandedValues = Dict.empty
+      , popupVariables = { variableIndex = 0, variableValue = Nothing }
       , testSuite = Dict.empty
       }
     , Cmd.batch [ httpMakeModel ]
@@ -160,8 +162,31 @@ update msg model =
             , cmd
             )
 
-        ExpandReference fqn isFunctionPresent ->
-            ( model, Cmd.none )
+        ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
+            if model.expandedValues |> Dict.member ( fQName, localName ) then
+                case isFunctionPresent of
+                    True ->
+                        ( { model | expandedValues = model.expandedValues |> Dict.remove ( fQName, localName ) }, Cmd.none )
+
+                    False ->
+                        ( model, Cmd.none )
+
+            else
+                ( { model
+                    | expandedValues =
+                        Distribution.lookupValueDefinition (QName moduleName localName)
+                            (case model.irState of
+                                IRLoaded distribution ->
+                                    distribution
+
+                                _ ->
+                                    Library [] Dict.empty Package.emptyDefinition
+                            )
+                            |> Maybe.map (\valueDef -> model.expandedValues |> Dict.insert ( fQName, localName ) valueDef)
+                            |> Maybe.withDefault model.expandedValues
+                  }
+                , Cmd.none
+                )
 
         ArgValueUpdated fQName argName rawValue ->
             ( { model
@@ -184,10 +209,10 @@ update msg model =
             ( model, Cmd.none )
 
         ExpandVariable varIndex maybeRawValue ->
-            ( model, Cmd.none )
+            ( { model | popupVariables = { variableIndex = varIndex, variableValue = maybeRawValue } }, Cmd.none )
 
         ShrinkVariable varIndex ->
-            ( model, Cmd.none )
+            ( { model | popupVariables = { variableIndex = varIndex, variableValue = Nothing } }, Cmd.none )
 
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = testSuite }
@@ -462,11 +487,7 @@ viewBody model =
                                                                 )
                                                                 (case viewType of
                                                                     InsightView ->
-                                                                        viewValue
-                                                                            model
-                                                                            distribution
-                                                                            valueFQName
-                                                                            accessControlledValueDef.value
+                                                                        viewValue model distribution valueFQName accessControlledValueDef.value
 
                                                                     XRayView ->
                                                                         XRayView.viewValueDefinition XRayView.viewType accessControlledValueDef
@@ -486,63 +507,132 @@ viewBody model =
                 NotFound ->
                     text "Route not found"
 
-                Function (( _, moduleName, localName ) as fQName) ->
+                Function (( packagesName, moduleName, localName ) as fQName) ->
                     let
-                        references : IR
-                        references =
-                            IR.fromDistribution distribution
-
-                        popupScreen : PopupScreenRecord
-                        popupScreen =
-                            { variableIndex = 0
-                            , variableValue = Nothing
-                            }
-
-                        config : Config Msg
-                        config =
-                            { irContext =
-                                { distribution = distribution
-                                , references = Interpreter.referencesForDistribution distribution
-                                }
-                            , state =
-                                { expandedFunctions = Dict.empty
-                                , variables = Dict.empty
-                                , popupVariables = popupScreen
-                                , theme = Theme.fromConfig Nothing
-                                }
-                            , handlers =
-                                { onReferenceClicked = ExpandReference
-                                , onHoverOver = ExpandVariable
-                                , onHoverLeave = ShrinkVariable
-                                }
-                            }
-
                         testCases : TestCases
                         testCases =
                             Dict.get fQName model.testSuite
                                 |> Maybe.withDefault []
 
-                        functionView : Element Msg
-                        functionView =
-                            Distribution.lookupValueDefinition (QName.fromName moduleName localName) distribution
+                        inputTypeNames : List Name
+                        inputTypeNames =
+                            Distribution.lookupValueSpecification packagesName moduleName localName distribution
                                 |> Maybe.map
-                                    (\valueDef ->
-                                        viewValue model distribution fQName valueDef
+                                    (\valueSpec ->
+                                        valueSpec.inputs
+                                            |> List.map (\( name, tpe ) -> name)
                                     )
-                                |> Maybe.withDefault (text (String.join " " [ "Module", [ moduleName |> Path.toString Name.toTitleCase "." ] |> String.join ".", "not found" ]))
+                                |> Maybe.withDefault []
                     in
                     Element.column [ padding 10, spacing 10 ]
-                        [ Element.column [ spacing 10, padding 10 ]
-                            [ el [ Font.bold, Font.size (scaled 2) ] (text "TestCases :")
-                            , el [ centerY, centerX, width fill, height fill ] (viewTable config references testCases)
-                            ]
-                        , Element.column [ spacing 10, padding 10 ]
-                            [ el [ Font.bold, Font.size (scaled 2) ] (text "Function :")
-                            , el [ centerY, centerX ] functionView
-                            ]
-
-                        --viewAsCard (text "Function :") functionView
+                        [ el [ Font.bold, Font.size (scaled 4) ] (text "TestCases :")
+                        , viewSectionWise distribution fQName testCases inputTypeNames model
                         ]
+
+
+viewSectionWise : Distribution -> FQName -> TestCases -> List Name -> Model -> Element Msg
+viewSectionWise distribution fQName testCases inputTypesName model =
+    let
+        config : Config Msg
+        config =
+            { irContext =
+                { distribution = distribution
+                , references = Interpreter.referencesForDistribution distribution
+                }
+            , state =
+                { expandedFunctions = Dict.empty
+                , variables = Dict.empty
+                , popupVariables = model.popupVariables
+                , theme = Theme.fromConfig Nothing
+                }
+            , handlers =
+                { onReferenceClicked = ExpandReference
+                , onHoverOver = ExpandVariable
+                , onHoverLeave = ShrinkVariable
+                }
+            }
+
+        references : IR
+        references =
+            IR.fromDistribution distribution
+    in
+    List.indexedMap Tuple.pair testCases
+        |> List.map
+            (\( index, testcase ) ->
+                column [ spacing 5, padding 5 ]
+                    [ el [ Font.bold, Font.size (scaled 3) ] (text ("TestCase " ++ String.fromInt index ++ " :"))
+                    , el [ Font.bold, Font.size (scaled 2), spacing 5, padding 5 ] (text "Input :")
+                    , List.map2 Tuple.pair inputTypesName testcase.inputs
+                        |> List.map
+                            (\( name, rawValue ) ->
+                                column
+                                    [ spacing 5, padding 5, width fill, height fill ]
+                                    [ el [ Font.bold ]
+                                        (text
+                                            (String.append
+                                                (Name.toHumanWords name
+                                                    |> String.join ""
+                                                )
+                                                " : "
+                                            )
+                                        )
+                                    , viewTestCase config references rawValue
+                                    ]
+                            )
+                        |> column [ spacing 5, padding 5 ]
+                    , column [ spacing 5, padding 5 ]
+                        [ el [ Font.bold, Font.size (scaled 2) ] (text "Output :")
+                        , el [ spacing 5, padding 5 ] (viewTestCase config references testcase.expectedOutput)
+                        ]
+                    , column [ spacing 5, padding 5 ]
+                        [ el [ Font.bold, Font.size (scaled 2) ] (text "Description :")
+                        , el [ spacing 5, padding 5 ] (text testcase.description)
+                        ]
+                    , Element.column [ spacing 10, padding 10 ]
+                        [ el [ Font.bold, Font.size (scaled 4) ] (text "Function :")
+                        , el [ centerY, centerX ] (newFunctionView distribution fQName testcase model)
+                        ]
+                    ]
+            )
+        |> column [ spacing 5, padding 5 ]
+
+
+newFunctionView : Distribution -> FQName -> TestCase -> Model -> Element Msg
+newFunctionView distribution fQName testcase model =
+    Distribution.lookupValueDefinition (QName.fromName (FQName.getModulePath fQName) (FQName.getLocalName fQName)) distribution
+        |> Maybe.map
+            (\valueDef ->
+                viewValue
+                    { model
+                        | argState =
+                            Dict.insert
+                                fQName
+                                (List.map2
+                                    (\( name, _, tpe ) rawValue ->
+                                        ( name, rawValue )
+                                    )
+                                    valueDef.inputTypes
+                                    testcase.inputs
+                                    |> Dict.fromList
+                                )
+                                Dict.empty
+                    }
+                    distribution
+                    fQName
+                    valueDef
+            )
+        |> Maybe.withDefault
+            (text
+                (String.join " "
+                    [ "Module"
+                    , [ FQName.getModulePath fQName
+                            |> Path.toString Name.toTitleCase "."
+                      ]
+                        |> String.join "."
+                    , "not found"
+                    ]
+                )
+            )
 
 
 viewTable : Config Msg -> IR -> TestCases -> Element Msg
@@ -551,71 +641,81 @@ viewTable config references testCases =
         { data = testCases
         , columns =
             [ { header =
-                    el
-                        [ Border.width 2
-                        , padding 5
-                        , centerY
-                        , centerX
-                        , Font.bold
+                    Element.column [ width fill, height fill ]
+                        [ el
+                            [ Border.widthEach { bottom = 2, top = 0, right = 0, left = 0 }
+                            , Font.bold
+                            , width fill
+                            , height fill
+                            ]
+                            (el
+                                [ centerY
+                                , centerX
+                                , padding 5
+                                ]
+                                (text "Inputs")
+                            )
                         ]
-                        (el [ centerY, centerX ] (text "Inputs"))
+                        |> el
+                            [ Border.width 2
+                            , Font.bold
+                            ]
               , width = fill
               , view =
                     \testcase ->
-                        el [ centerY, centerX, Border.widthEach { bottom = 2, top = 0, right = 2, left = 2 }, width fill, height fill ]
-                            (viewInputTestCase config
-                                references
-                                (testcase.inputs
-                                    |> Dict.toList
-                                 --|> List.map (\( name, rawValue ) -> rawValue)
+                        el [ padding 5, Border.widthEach { bottom = 2, top = 0, right = 2, left = 2 }, width fill, height fill ]
+                            (List.map
+                                (\singleInput ->
+                                    viewTestCase config
+                                        references
+                                        singleInput
                                 )
+                                testcase.inputs
+                                |> row [ spacing 5, padding 5, centerX, centerY ]
                             )
               }
             , { header =
                     el
                         [ Border.widthEach { bottom = 2, top = 2, right = 2, left = 0 }
                         , padding 5
-                        , centerX
-                        , centerY
                         , Font.bold
+                        , width fill
+                        , height fill
                         ]
                         (el [ centerY, centerX ] (text "Outputs"))
               , width = fill
               , view =
                     \testcase ->
-                        el [ centerY, centerX, Border.widthEach { bottom = 2, top = 0, right = 2, left = 0 }, width fill, height fill ]
-                            (viewOutputTestCase config references testcase.expectedOutput)
+                        el [ Border.widthEach { bottom = 2, top = 0, right = 2, left = 0 }, width fill, height fill ]
+                            (viewTestCase config references testcase.expectedOutput)
+              }
+            , { header =
+                    el
+                        [ Border.widthEach { bottom = 2, top = 2, right = 2, left = 0 }
+                        , padding 5
+                        , Font.bold
+                        , width fill
+                        , height fill
+                        ]
+                        (el [ centerY, centerX ] (text "Description"))
+              , width = fill
+              , view =
+                    \testcase ->
+                        el [ Border.widthEach { bottom = 2, top = 0, right = 2, left = 0 }, width fill, height fill ]
+                            (el [ centerY, centerX ] (text testcase.description))
               }
             ]
         }
 
 
-viewOutputTestCase : Config Msg -> IR -> RawValue -> Element Msg
-viewOutputTestCase config references rawValue =
+viewTestCase : Config Msg -> IR -> RawValue -> Element Msg
+viewTestCase config references rawValue =
     case rawToVisualTypedValue references rawValue of
         Ok typedValue ->
             el [ centerX, centerY ] (ViewValue.viewValue config typedValue)
 
         Err error ->
             el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
-
-
-viewInputTestCase : Config Msg -> IR -> List ( Name, RawValue ) -> Element Msg
-viewInputTestCase config references rawValue =
-    rawValue
-        |> List.map
-            (\( name, singleRawValue ) ->
-                case rawToVisualTypedValue references singleRawValue of
-                    Ok typedValue ->
-                        column [ spacing 10, padding 5, centerX ]
-                            [ el [ centerX, Font.bold ] (text (Name.toHumanWords name |> String.join ""))
-                            , el [ centerX, centerY ] (ViewValue.viewValue config typedValue)
-                            ]
-
-                    Err error ->
-                        el [] (text (Infer.typeErrorToMessage error))
-            )
-        |> row [ spacing 5, padding 5, centerX ]
 
 
 viewArgumentEditors : Model -> FQName -> Value.Definition () (Type ()) -> Element Msg
@@ -750,13 +850,7 @@ makeURL moduleName filterString viewType =
 viewValue : Model -> Distribution -> FQName -> Value.Definition () (Type ()) -> Element Msg
 viewValue model distribution valueFQName valueDef =
     let
-        popupScreen : PopupScreenRecord
-        popupScreen =
-            { variableIndex = 0
-            , variableValue = Nothing
-            }
-
-        validArgValues : Dict Name (Value () ())
+        validArgValues : Dict Name RawValue
         validArgValues =
             model.argState
                 |> Dict.get valueFQName
@@ -769,9 +863,9 @@ viewValue model distribution valueFQName valueDef =
                 , references = Interpreter.referencesForDistribution distribution
                 }
             , state =
-                { expandedFunctions = Dict.empty
+                { expandedFunctions = model.expandedValues |> Dict.toList |> List.map (\( ( fQName, name ), rawValue ) -> ( fQName, rawValue )) |> Dict.fromList
                 , variables = validArgValues
-                , popupVariables = popupScreen
+                , popupVariables = model.popupVariables
                 , theme = Theme.fromConfig Nothing
                 }
             , handlers =
@@ -817,11 +911,3 @@ viewAsCard header content =
             ]
             content
         ]
-
-
-noBorderWidth =
-    { top = 0
-    , right = 0
-    , bottom = 0
-    , left = 0
-    }
