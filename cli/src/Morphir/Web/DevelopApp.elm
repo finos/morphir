@@ -907,7 +907,6 @@ viewAsCard header content =
             , padding 5
             , height fill
             , width fill
-            , scrollbars
             ]
             content
         ]

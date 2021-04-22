@@ -21,9 +21,6 @@ type alias TestSuite =
 
 
 
+-- URLs for Testing TestSuites
 -- http://localhost:8000/function/Morphir.Reference.Model:Insight.UseCase1:limitTracking
 -- http://localhost:8000/function/Morphir.Reference.Model:Issues.Issue410:addFunction
--- Test suite will be Dictionary of function name + testcases attached with it
--- FQName is complete name of the function
--- Test case is basically record of input and expected output
--- Input is dictionary of argument name and value associated with it.
