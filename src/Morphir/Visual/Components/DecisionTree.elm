@@ -1,15 +1,14 @@
 module Morphir.Visual.Components.DecisionTree exposing (BranchNode, LeftOrRight(..), Node(..), downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
 
 import Element exposing (Attribute, Color, Element, alignLeft, alignTop, centerX, centerY, column, el, fill, height, html, padding, paddingEach, paddingXY, rgb255, row, shrink, spacing, text, width)
-import Element.Background
 import Element.Border as Border
 import Element.Font as Font
 import Html exposing (Html)
-import Html.Attributes exposing (style)
-import Morphir.IR.Value exposing (RawValue, TypedValue)
-import Morphir.Visual.Common exposing (VisualTypedValue, element)
+import Html.Attributes
+import Morphir.Visual.Common exposing (element)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing)
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 import Svg
 import Svg.Attributes
 

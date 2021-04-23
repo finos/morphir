@@ -15,7 +15,10 @@
 -}
 
 
-module Morphir.IR.FQName exposing (FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn, toString)
+module Morphir.IR.FQName exposing
+    ( FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn, toString
+    , fromString
+    )
 
 {-| Module to work with fully-qualified names. A qualified name is a combination of a package path, a module path and a local name.
 
@@ -89,3 +92,18 @@ toString ( p, m, l ) =
         , Path.toString Name.toTitleCase "." m
         , Name.toCamelCase l
         ]
+
+
+{-| Parse a string into a FQName using splitter as the separator between package, module and local names.
+-}
+fromString : String -> String -> FQName
+fromString fqNameString splitter =
+    case fqNameString |> String.split splitter of
+        [ moduleNameString, packageNameString, localNameString ] ->
+            ( Path.fromString moduleNameString
+            , Path.fromString packageNameString
+            , Name.fromString localNameString
+            )
+
+        _ ->
+            ( [ [] ], [], [] )

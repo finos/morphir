@@ -1,0 +1,91 @@
+[
+  [
+    [ [ [ "morphir" ], [ "reference" ], [ "model" ] ]
+    , [ [ "issues" ], [ "issue", "410" ] ]
+    , [ "add", "function" ]
+    ]
+  ,
+    [
+      {
+        "inputs" : [ 4 , 5 ],
+        "expectedOutput" : 9,
+        "description" : "Add"
+      },
+      {
+        "inputs" : [ 14 , 15 ],
+        "expectedOutput" : 29,
+        "description" : "Add"
+      },
+      {
+        "inputs" : [ 12 , 26 ],
+        "expectedOutput" : 38,
+        "description" : "Add"
+      },
+      {
+        "inputs" : [ 122 , 126 ],
+        "expectedOutput" : 248,
+        "description" : "Add"
+      },
+      {
+        "inputs" : [ 10 , 1 ],
+        "expectedOutput" : 11,
+        "description" : "Add"
+      },
+      {
+        "inputs" : [ -10 , 1 ],
+        "expectedOutput" : -9,
+        "description" : "Add"
+      }
+    ]
+  ],
+  [
+    [ [ [ "morphir" ], [ "reference" ], [ "model" ] ]
+    , [ [ "insight" ], [ "use", "case", "1" ] ]
+    , [ "limit", "tracking" ]
+    ]
+    ,
+    [
+      {
+        "inputs" : [ 10 , 0 , 0 , 12 , 13 ],
+        "expectedOutput" : [],
+        "description" : "List of Tracking Advantage"
+      },
+      {
+        "inputs" : [ 10 , 5.5 , 10 , 12 , 13 ],
+        "expectedOutput" : [
+          { "direction" : ["Up"]
+          , "code" : "123456789"
+          , "velocity" : -13
+          },
+          { "direction" : ["Down"]
+          , "code" : "987654321"
+          , "velocity" : 6.6
+          }
+        ],
+        "description" : "List of Tracking Advantage"
+      },
+      {
+        "inputs" : [ -10 , -5.5 , 10 , 12 , -13 ],
+        "expectedOutput" : [
+          { "direction" : ["Up"]
+          , "code" : "123456789"
+          , "velocity" : 6.6
+          },
+          { "direction" : ["Down"]
+          , "code" : "987654321"
+          , "velocity" : 13
+          },
+          { "direction" : ["Up"]
+          , "code" : "123456789"
+          , "velocity" : 12
+          },
+          { "direction" : ["Down"]
+          , "code" : "987654321"
+          , "velocity" : 12
+          }
+        ],
+        "description" : "List of Tracking Advantage"
+      }
+    ]
+  ]
+]

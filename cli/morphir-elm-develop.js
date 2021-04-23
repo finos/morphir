@@ -43,6 +43,13 @@ app.get('/server/morphir-ir.json', wrap(async (req, res, next) => {
   res.send(morphirJson)
 }))
 
+app.get('/server/morphir-tests.json', wrap(async (req, res, next) => {
+  const morphirTestsJsonPath = path.join(program.projectDir, 'morphir-tests.json')
+  const morphirTestsJsonContent = await readFile(morphirTestsJsonPath)
+  const morphirTestsJson = JSON.parse(morphirTestsJsonContent.toString())
+  res.send(morphirTestsJson)
+}))
+
 app.listen(port, () => {
   console.log(`Developer server listening at http://localhost:${port}`)
 })

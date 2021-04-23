@@ -1,12 +1,10 @@
-module Morphir.Visual.Common exposing (VisualTypedValue, cssClass, definition, element, grayScale, nameToText)
+module Morphir.Visual.Common exposing (cssClass, definition, element, grayScale, nameToText)
 
 import Element exposing (Attribute, Color, Element, column, el, height, paddingEach, rgb, row, shrink, spacing, text, width)
 import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes exposing (class)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value exposing (Value)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing)
 
@@ -51,7 +49,3 @@ definition config header body =
         , el [ paddingEach { left = mediumPadding config.state.theme, right = mediumPadding config.state.theme, top = 0, bottom = 0 } ]
             body
         ]
-
-
-type alias VisualTypedValue =
-    Value () ( Int, Type () )

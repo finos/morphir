@@ -4,9 +4,9 @@ import Dict exposing (Dict)
 import Element exposing (Element)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Value as Value exposing (TypedValue, Value)
-import Morphir.Visual.Common exposing (VisualTypedValue)
 import Morphir.Visual.Components.DecisionTree as DecisionTree exposing (LeftOrRight(..))
 import Morphir.Visual.Config as Config exposing (Config)
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
 view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> Element msg
