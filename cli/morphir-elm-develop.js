@@ -23,11 +23,14 @@ const port = program.port
 
 const wrap = fn => (...args) => fn(...args).catch(args[2])
 
+const webDir = path.join(__dirname, 'web')
+const indexHtml = path.join(webDir, 'index.html')
+
 app.get('/', (req, res) => {
-  res.redirect('index.html')
+  res.sendFile(indexHtml)
 })
 
-app.use(express.static(path.join(__dirname, 'web')))
+app.use(express.static(webDir))
 
 app.get('/server/morphir.json', wrap(async (req, res, next) => {
   const morphirJsonPath = path.join(program.projectDir, 'morphir.json')
@@ -49,6 +52,10 @@ app.get('/server/morphir-tests.json', wrap(async (req, res, next) => {
   const morphirTestsJson = JSON.parse(morphirTestsJsonContent.toString())
   res.send(morphirTestsJson)
 }))
+
+app.get('*', (req, res) => {
+  res.sendFile(indexHtml)
+})
 
 app.listen(port, () => {
   console.log(`Developer server listening at http://localhost:${port}`)
