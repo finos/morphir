@@ -3,14 +3,14 @@ module Morphir.Visual.ViewPatternMatch exposing (..)
 import Element exposing (Attribute, Column, Element, fill, row, spacing, table, text, width)
 import List exposing (concat)
 import Morphir.IR.Literal as Value
-import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, TypedValue, Value)
-import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Common exposing (VisualTypedValue, nameToText)
 import Morphir.Visual.Config exposing (Config)
-import Morphir.Visual.DecisionTable as DecisionTable exposing (DecisionTable)
+import Morphir.Visual.DecisionTable as DecisionTable exposing (DecisionTable, Match)
 
 
-view : Config msg -> (Value ta ( Int, Type ta ) -> Element msg) -> Value va ( int, Type ta ) -> List ( Pattern pa, Value va ( int, Type ta ) ) -> Element msg
+view : Config msg -> (Value ta ( Int, Type ta ) -> Element msg) -> Value ta ( Int, Type ta ) -> List ( Pattern pa, Value ta ( Int, Type ta ) ) -> Element msg
 view config viewValue param patterns =
     table [ spacing 10 ]
         { data = examples
@@ -98,6 +98,35 @@ generateColumns param patterns =
 
 
 
+--getType : Value ta va -> ta
+--getType (Value ta va) =
+--    ta
+--
+--
+
+
+getDecomposedInput : Value ta va -> TypedValue
+getDecomposedInput param =
+    case param of
+        Value.Variable ta name ->
+            [ Value.Variable ta name ]
+
+        --todo: extract nested parameters for nested pattern matches
+        Value.Tuple ta list ->
+            [ param ]
+
+        _ ->
+            []
+
+
+getRules : List ( Pattern pa, TypedValue ) -> List (List ( Match, TypedValue ))
+getRules patterns =
+    []
+
+
+
+--toDecisionTable : Value ta va -> List (Pattern pa, Value ta va ) -> DecisionTable
+--toDecisionTable param patterns =
 --case param of
 --    Value.Variable ta name ->
 --        [ Column (text (nameToText name)) fill (\example -> text "foo") ]

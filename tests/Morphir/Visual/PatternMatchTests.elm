@@ -3,13 +3,23 @@ module Morphir.Visual.PatternMatchTests exposing (..)
 import Element exposing (Attribute, Column, Element, fill, row, spacing, table, text, width)
 import Expect
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Value as Value exposing (Pattern, Value)
-import Morphir.Visual.ViewPatternMatch exposing (flattenTree, generateColumns)
+import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
+import Morphir.Visual.ViewPatternMatch exposing (generateColumns, getDecomposedInput)
 import Test exposing (..)
 
 
-tests : Test
-tests =
+decomposedInputTests : Test
+decomposedInputTests =
+    describe "extraction of parameters in pattern match"
+        [ test "test"
+            (\_ ->
+                getDecomposedInput Value.Variable |> Expect.equal []
+            )
+        ]
+
+
+columnTests : Test
+columnTests =
     describe "PatternMatch.columns"
         [ test "single"
             (\_ ->

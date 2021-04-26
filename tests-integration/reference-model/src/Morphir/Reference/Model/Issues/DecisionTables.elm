@@ -20,14 +20,28 @@ doublePatternMatch a b =
         _ ->
             2
 
+
 triplePatternMatch : String -> string -> String -> Int
 triplePatternMatch a b c =
-    case (a, b, c) of
-        ("a", "b", "c") ->
+    case ( a, b, c ) of
+        ( "a", "b", "c" ) ->
             1
+
         _ ->
             2
 
+
+testPatternMatch : Int -> Int -> String
+testPatternMatch a b =
+    case ( a, b ) of
+        ( 1, 1 ) ->
+            "1"
+
+        ( 2, 2 ) ->
+            "2"
+
+        _ ->
+            "3"
 
 
 nestedPatternMatch : String -> String -> String -> String -> String -> Int
