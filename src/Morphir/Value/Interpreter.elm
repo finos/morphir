@@ -10,12 +10,10 @@ takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
 import Dict exposing (Dict)
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
-import Morphir.IR.QName exposing (QName(..))
-import Morphir.IR.SDK as SDK
+import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value, toRawValue)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
@@ -77,19 +75,29 @@ evaluateValue nativeFunctions ir variables arguments value =
             -- Literals cannot be evaluated any further
             Ok value
 
-        Value.Constructor _ _ ->
-            -- Constructor cannot be evaluated any further
-            let
-                applyArgs : RawValue -> List RawValue -> RawValue
-                applyArgs subject argsReversed =
-                    case argsReversed of
-                        [] ->
-                            subject
+        Value.Constructor _ fQName ->
+            case ir |> IR.lookupTypeSpecification (ir |> IR.resolveAliases fQName) of
+                Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
+                    Ok
+                        (Value.Record ()
+                            (List.map2 Tuple.pair
+                                (fields |> List.map .name)
+                                arguments
+                            )
+                        )
 
-                        lastArg :: restOfArgsReversed ->
-                            Value.Apply () (applyArgs subject restOfArgsReversed) lastArg
-            in
-            Ok (applyArgs value (List.reverse arguments))
+                _ ->
+                    let
+                        applyArgs : RawValue -> List RawValue -> RawValue
+                        applyArgs subject argsReversed =
+                            case argsReversed of
+                                [] ->
+                                    subject
+
+                                lastArg :: restOfArgsReversed ->
+                                    Value.Apply () (applyArgs subject restOfArgsReversed) lastArg
+                    in
+                    Ok (applyArgs value (List.reverse arguments))
 
         Value.Tuple _ elems ->
             -- For a tuple we need to evaluate each element and return them wrapped back into a tuple

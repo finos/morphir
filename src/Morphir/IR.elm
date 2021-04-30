@@ -19,7 +19,7 @@ module Morphir.IR exposing
     ( IR
     , fromPackageSpecifications, fromDistribution
     , lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification, lookupValueDefinition
-    , empty
+    , empty, resolveAliases
     )
 
 {-| This module contains data structures and functions to make working with the IR easier and more efficient.
@@ -39,7 +39,7 @@ module Morphir.IR exposing
 
 # Utilities
 
-@docs empty
+@docs empty, resolveAliases
 
 -}
 
@@ -219,3 +219,21 @@ lookupTypeConstructor : FQName -> IR -> Maybe ( FQName, List Name, List ( Name, 
 lookupTypeConstructor fqn ir =
     ir.typeConstructors
         |> Dict.get fqn
+
+
+{-| Follow direct aliases until the leaf type is found.
+-}
+resolveAliases : FQName -> IR -> FQName
+resolveAliases fQName ir =
+    ir
+        |> lookupTypeSpecification fQName
+        |> Maybe.map
+            (\typeSpec ->
+                case typeSpec of
+                    Type.TypeAliasSpecification _ (Type.Reference _ aliasFQName _) ->
+                        aliasFQName
+
+                    _ ->
+                        fQName
+            )
+        |> Maybe.withDefault fQName
