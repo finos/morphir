@@ -18,7 +18,7 @@
 module Morphir.IR exposing
     ( IR
     , fromPackageSpecifications, fromDistribution
-    , lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification
+    , lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification, lookupValueDefinition
     , empty
     )
 
@@ -34,7 +34,7 @@ module Morphir.IR exposing
 
 # Lookups
 
-@docs lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification
+@docs lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification, lookupValueDefinition
 
 
 # Utilities
@@ -56,6 +56,7 @@ import Morphir.IR.Value as Value
 -}
 type alias IR =
     { valueSpecifications : Dict FQName (Value.Specification ())
+    , valueDefinitions : Dict FQName (Value.Definition () (Type ()))
     , typeSpecifications : Dict FQName (Type.Specification ())
     , typeConstructors : Dict FQName ( FQName, List Name, List ( Name, Type () ) )
     }
@@ -66,6 +67,7 @@ type alias IR =
 empty : IR
 empty =
     { valueSpecifications = Dict.empty
+    , valueDefinitions = Dict.empty
     , typeSpecifications = Dict.empty
     , typeConstructors = Dict.empty
     }
@@ -81,8 +83,29 @@ fromDistribution (Distribution.Library libraryName dependencies packageDef) =
         packageSpecs =
             dependencies
                 |> Dict.insert libraryName (packageDef |> Package.definitionToSpecificationWithPrivate)
+
+        specificationsOnly : IR
+        specificationsOnly =
+            fromPackageSpecifications packageSpecs
+
+        packageValueDefinitions : Dict FQName (Value.Definition () (Type ()))
+        packageValueDefinitions =
+            packageDef.modules
+                |> Dict.toList
+                |> List.concatMap
+                    (\( moduleName, moduleDef ) ->
+                        moduleDef.value.values
+                            |> Dict.toList
+                            |> List.map
+                                (\( valueName, valueDef ) ->
+                                    ( ( libraryName, moduleName, valueName ), valueDef.value )
+                                )
+                    )
+                |> Dict.fromList
     in
-    fromPackageSpecifications packageSpecs
+    { specificationsOnly
+        | valueDefinitions = packageValueDefinitions
+    }
 
 
 {-| Turn a dictionary of package specifications into an `IR`.
@@ -141,21 +164,23 @@ fromPackageSpecifications packageSpecs =
                                             []
                                 )
                     )
-
-        flatten : (PackageName -> Package.Specification () -> List ( FQName, a )) -> Dict FQName a
-        flatten f =
-            packageSpecs
-                |> Dict.toList
-                |> List.concatMap
-                    (\( packageName, packageSpec ) ->
-                        f packageName packageSpec
-                    )
-                |> Dict.fromList
     in
-    { valueSpecifications = flatten packageValueSpecifications
-    , typeSpecifications = flatten packageTypeSpecifications
-    , typeConstructors = flatten packageTypeConstructors
+    { valueSpecifications = flattenPackages packageSpecs packageValueSpecifications
+    , valueDefinitions = Dict.empty
+    , typeSpecifications = flattenPackages packageSpecs packageTypeSpecifications
+    , typeConstructors = flattenPackages packageSpecs packageTypeConstructors
     }
+
+
+flattenPackages : Dict PackageName p -> (PackageName -> p -> List ( FQName, r )) -> Dict FQName r
+flattenPackages packages f =
+    packages
+        |> Dict.toList
+        |> List.concatMap
+            (\( packageName, package ) ->
+                f packageName package
+            )
+        |> Dict.fromList
 
 
 {-| Look up a value specification by fully-qualified name. Dependencies will be included in the search.
@@ -163,6 +188,14 @@ fromPackageSpecifications packageSpecs =
 lookupValueSpecification : FQName -> IR -> Maybe (Value.Specification ())
 lookupValueSpecification fqn ir =
     ir.valueSpecifications
+        |> Dict.get fqn
+
+
+{-| Look up a value definition by fully-qualified name. Dependencies will not be included in the search.
+-}
+lookupValueDefinition : FQName -> IR -> Maybe (Value.Definition () (Type ()))
+lookupValueDefinition fqn ir =
+    ir.valueDefinitions
         |> Dict.get fqn
 
 

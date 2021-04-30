@@ -10,11 +10,11 @@ import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.QName exposing (QName(..))
+import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, toRawValue)
+import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Type.Infer as Infer
-import Morphir.Value.Error exposing (Error)
-import Morphir.Value.Interpreter as Interpreter exposing (evaluateFunctionValue, referencesForDistribution)
+import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ViewValue as ViewValue
@@ -91,7 +91,7 @@ viewSectionWise handlers distribution testCases model =
         config index =
             { irContext =
                 { distribution = distribution
-                , references = Interpreter.referencesForDistribution distribution
+                , nativeFunctions = SDK.nativeFunctions
                 }
             , state =
                 { expandedFunctions =
@@ -216,7 +216,7 @@ viewTestCase config references rawValue =
 
 evaluateOutput : Config msg -> IR -> TestCase -> Distribution -> FQName -> Element msg
 evaluateOutput config ir testCase distribution fQName =
-    case evaluateFunctionValue distribution fQName testCase.inputs of
+    case evaluateFunctionValue SDK.nativeFunctions ir fQName testCase.inputs of
         Ok rawValue ->
             if rawValue == testCase.expectedOutput then
                 el [ Font.heavy, Font.color (Element.rgb255 100 180 100) ] (viewTestCase config ir rawValue)
