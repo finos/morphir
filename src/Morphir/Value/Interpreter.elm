@@ -1,6 +1,7 @@
 module Morphir.Value.Interpreter exposing
     ( evaluate, evaluateValue, referencesForDistribution
     , Reference(..)
+    , evaluateFunctionValue
     )
 
 {-| This module contains an interpreter for Morphir expressions. The interpreter takes a piece of logic as input,
@@ -17,12 +18,13 @@ takes a `Value` and returns a `Value` (or an error for invalid expressions):
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
+import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.SDK as SDK
-import Morphir.IR.Value as Value exposing (Pattern, Value)
+import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value, toRawValue)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
 import Morphir.Value.Native as Native
@@ -31,14 +33,14 @@ import Morphir.Value.Native as Native
 {-| Dictionary of variable name to value.
 -}
 type alias Variables =
-    Dict Name (Value () ())
+    Dict Name RawValue
 
 
 {-| Reference to an other value. The other value can either be another Morphir `Value` or a native function.
 -}
 type Reference
     = NativeReference Native.Function
-    | ValueReference (Value () ())
+    | ValueReference RawValue
 
 
 {-| Translate a distribution into references that can be fed into the interpreter to be used during evaluation.
@@ -79,6 +81,36 @@ referencesForDistribution distribution =
             Dict.union packageReferences sdkReferences
 
 
+evaluateFunctionValue : Distribution -> FQName -> List RawValue -> Result Error RawValue
+evaluateFunctionValue distribution (( packagePath, modulePath, localName ) as fQName) variableValues =
+    let
+        references =
+            referencesForDistribution distribution
+
+        variables : Dict Name RawValue
+        variables =
+            Distribution.lookupValueDefinition (QName modulePath localName) distribution
+                |> Maybe.map
+                    (\valueDef ->
+                        List.map2 Tuple.pair
+                            (valueDef.inputTypes
+                                |> List.map (\( name, _, tpe ) -> name)
+                            )
+                            variableValues
+                            |> Dict.fromList
+                    )
+                |> Maybe.withDefault Dict.empty
+
+        value : RawValue
+        value =
+            Distribution.lookupValueDefinition (QName modulePath localName) distribution
+                |> Maybe.map
+                    (\valueDef -> valueDef.body |> toRawValue)
+                |> Maybe.withDefault (Value.Unit ())
+    in
+    evaluateValue references variables [] value
+
+
 {-| Evaluates a value expression and returns another value expression or an error. You can also pass in other values
 by fully-qualified name that will be used for lookup if the expression contains references.
 
@@ -91,7 +123,7 @@ by fully-qualified name that will be used for lookup if the expression contains 
         -- (Value.Literal () (BoolLiteral False))
 
 -}
-evaluate : Dict FQName Reference -> Value () () -> Result Error (Value () ())
+evaluate : Dict FQName Reference -> RawValue -> Result Error RawValue
 evaluate references value =
     evaluateValue references Dict.empty [] value
 
@@ -99,7 +131,7 @@ evaluate references value =
 {-| Evaluates a value expression recursively in a single pass while keeping track of variables and arguments along the
 evaluation.
 -}
-evaluateValue : Dict FQName Reference -> Variables -> List (Value () ()) -> Value () () -> Result Error (Value () ())
+evaluateValue : Dict FQName Reference -> Variables -> List RawValue -> RawValue -> Result Error RawValue
 evaluateValue references variables arguments value =
     case value of
         Value.Literal _ _ ->
@@ -415,7 +447,7 @@ evaluateValue references variables arguments value =
 {-| Matches a value against a pattern recursively. It either returns an error if there is a mismatch or a dictionary of
 variable names to values extracted out of the pattern.
 -}
-matchPattern : Pattern () -> Value () () -> Result PatternMismatch Variables
+matchPattern : Pattern () -> RawValue -> Result PatternMismatch Variables
 matchPattern pattern value =
     let
         error : Result PatternMismatch Variables

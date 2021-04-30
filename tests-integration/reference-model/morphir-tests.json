@@ -8,7 +8,7 @@
     [
       {
         "inputs" : [ 4 , 5 ],
-        "expectedOutput" : 9,
+        "expectedOutput" : 10,
         "description" : "Add"
       },
       {

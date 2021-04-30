@@ -58,3 +58,11 @@ gray =
 
 silver =
     Element.rgb255 192 192 192
+
+
+black =
+    Element.rgb255 0 0 0
+
+
+white =
+    Element.rgb255 255 255 255
