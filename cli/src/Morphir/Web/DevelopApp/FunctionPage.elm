@@ -11,9 +11,10 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue)
+import Morphir.IR.Value as Value exposing (RawValue, toRawValue)
 import Morphir.Type.Infer as Infer
-import Morphir.Value.Interpreter as Interpreter
+import Morphir.Value.Error exposing (Error)
+import Morphir.Value.Interpreter as Interpreter exposing (evaluateFunctionValue, referencesForDistribution)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ViewValue as ViewValue
@@ -66,9 +67,18 @@ viewTitle model =
 
 viewPage : Handlers msg -> TestCases -> Distribution -> Model -> Element msg
 viewPage handlers testCases distribution model =
+    Element.column [ padding 10, spacing 10 ]
+        [ el [ Font.bold ] (text (viewTitle model))
+        , el [ Font.bold, Font.size (scaled 4) ] (text "TestCases :")
+        , viewSectionWise handlers distribution testCases model
+        ]
+
+
+viewSectionWise : Handlers msg -> Distribution -> TestCases -> Model -> Element msg
+viewSectionWise handlers distribution testCases model =
     let
-        inputTypeNames : List Name
-        inputTypeNames =
+        inputTypesName : List Name
+        inputTypesName =
             Distribution.lookupValueSpecification (FQName.getPackagePath model.functionName) (FQName.getModulePath model.functionName) (FQName.getLocalName model.functionName) distribution
                 |> Maybe.map
                     (\valueSpec ->
@@ -76,17 +86,7 @@ viewPage handlers testCases distribution model =
                             |> List.map (\( name, tpe ) -> name)
                     )
                 |> Maybe.withDefault []
-    in
-    Element.column [ padding 10, spacing 10 ]
-        [ el [ Font.bold ] (text (viewTitle model))
-        , el [ Font.bold, Font.size (scaled 4) ] (text "TestCases :")
-        , viewSectionWise handlers distribution testCases inputTypeNames model
-        ]
 
-
-viewSectionWise : Handlers msg -> Distribution -> TestCases -> List Name -> Model -> Element msg
-viewSectionWise handlers distribution testCases inputTypesName model =
-    let
         config : Int -> Config msg
         config index =
             { irContext =
@@ -144,8 +144,12 @@ viewSectionWise handlers distribution testCases inputTypesName model =
                             )
                         |> column [ spacing 5, padding 5 ]
                     , column [ spacing 5, padding 5 ]
-                        [ el [ Font.bold, Font.size (scaled 2) ] (text "Output :")
+                        [ el [ Font.bold, Font.size (scaled 2) ] (text "Expected Output :")
                         , el [ spacing 5, padding 5 ] (viewTestCase (config index) references testcase.expectedOutput)
+                        ]
+                    , column [ spacing 5, padding 5 ]
+                        [ el [ Font.bold, Font.size (scaled 2) ] (text "Actual Output :")
+                        , el [ spacing 5, padding 5 ] (evaluateOutput (config index) references testcase distribution model.functionName)
                         ]
                     , column [ spacing 5, padding 5 ]
                         [ el [ Font.bold, Font.size (scaled 2) ] (text "Description :")
@@ -208,3 +212,17 @@ viewTestCase config references rawValue =
 
         Err error ->
             el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
+
+
+evaluateOutput : Config msg -> IR -> TestCase -> Distribution -> FQName -> Element msg
+evaluateOutput config ir testCase distribution fQName =
+    case evaluateFunctionValue distribution fQName testCase.inputs of
+        Ok rawValue ->
+            if rawValue == testCase.expectedOutput then
+                el [ Font.heavy, Font.color (Element.rgb255 100 180 100) ] (viewTestCase config ir rawValue)
+
+            else
+                el [ Font.heavy, Font.color (Element.rgb255 180 100 100) ] (viewTestCase config ir rawValue)
+
+        Err error ->
+            text (Debug.toString error)
