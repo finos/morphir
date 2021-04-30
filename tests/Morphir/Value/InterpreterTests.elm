@@ -1,30 +1,22 @@
 module Morphir.Value.InterpreterTests exposing (..)
 
-import Dict
 import Expect
+import Morphir.IR as IR
 import Morphir.IR.FQName exposing (fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Value as Value
-import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Interpreter exposing (Reference(..), evaluate)
+import Morphir.Value.Interpreter exposing (evaluate)
 import Test exposing (Test, describe, test)
 
 
 evaluateValueTests : Test
 evaluateValueTests =
     let
-        refs =
-            SDK.nativeFunctions
-                |> Dict.map
-                    (\_ fun ->
-                        NativeReference fun
-                    )
-
         positiveCheck desc input expectedOutput =
             test desc
                 (\_ ->
-                    evaluate refs input
+                    evaluate SDK.nativeFunctions IR.empty input
                         |> Expect.equal
                             (Ok expectedOutput)
                 )
@@ -32,7 +24,7 @@ evaluateValueTests =
         negativeCheck desc input errorMessage =
             test desc
                 (\_ ->
-                    evaluate refs input
+                    evaluate SDK.nativeFunctions IR.empty input
                         |> Expect.equal
                             (Err errorMessage)
                 )

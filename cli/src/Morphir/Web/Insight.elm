@@ -12,6 +12,7 @@ import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.QName as QName exposing (QName(..))
+import Morphir.IR.SDK as SDK
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.DataCodec exposing (decodeData)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
@@ -306,7 +307,7 @@ view model =
                 config =
                     { irContext =
                         { distribution = visualizationState.distribution
-                        , references = Interpreter.referencesForDistribution visualizationState.distribution
+                        , nativeFunctions = SDK.nativeFunctions
                         }
                     , state =
                         { expandedFunctions = visualizationState.expandedFunctions

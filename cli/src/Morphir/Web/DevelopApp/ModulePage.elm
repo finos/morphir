@@ -8,6 +8,7 @@ import Element.Input as Input exposing (labelHidden)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Value.Interpreter as Interpreter
@@ -210,7 +211,7 @@ viewValue handlers model distribution valueFQName valueDef =
         config =
             { irContext =
                 { distribution = distribution
-                , references = Interpreter.referencesForDistribution distribution
+                , nativeFunctions = SDK.nativeFunctions
                 }
             , state =
                 { expandedFunctions = model.expandedValues |> Dict.toList |> List.map (\( ( fQName, _ ), rawValue ) -> ( fQName, rawValue )) |> Dict.fromList
