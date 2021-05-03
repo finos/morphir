@@ -1,7 +1,7 @@
 module Morphir.Graph.Grapher exposing
     ( Node(..), Verb(..), Edge, GraphEntry(..), Graph
     , mapDistribution, mapPackageDefinition, mapModuleTypes, mapModuleValues, mapTypeDefinition, mapValueDefinition
-    , graphEntryToComparable, nodeType, verbToString, nodeFQN
+    , graphEntryToComparable, nodeType, verbToString, nodeFQN, getNodeType
     )
 
 {-| The Grapher module analyses a distribution to build a graph for dependency and lineage tracking purposes.
@@ -21,7 +21,7 @@ enterprises. The result of processing is a [Graph](#Graph), which is a collectio
 
 # Utilities
 
-@docs graphEntryToComparable, nodeType, verbToString, nodeFQN
+@docs graphEntryToComparable, nodeType, verbToString, nodeFQN, getNodeType
 
 -}
 
@@ -29,12 +29,12 @@ import Dict exposing (Dict)
 import List.Extra exposing (uniqueBy)
 import Morphir.IR.AccessControlled exposing (withPublicAccess)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
-import Morphir.IR.FQName as FQName exposing (FQName(..))
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
-import Morphir.IR.Type as Type exposing (Constructor(..), Specification(..), Type(..))
+import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value(..))
 
 
@@ -173,7 +173,7 @@ mapTypeDefinition : Package.PackageName -> Module.ModuleName -> Name -> Type.Def
 mapTypeDefinition packageName moduleName typeName typeDef =
     let
         fqn =
-            FQName packageName moduleName typeName
+            ( packageName, moduleName, typeName )
 
         triples =
             case typeDef of
@@ -189,10 +189,14 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                     (\field ->
                                         let
                                             fieldNode =
-                                                Field (FQName packageName moduleName typeName) field.name
+                                                Field ( packageName, moduleName, typeName ) field.name
 
                                             fieldType =
                                                 case field.tpe of
+                                                    -- Catches Maybes
+                                                    Type.Reference _ typeFqn [ Type.Reference _ child _ ] ->
+                                                        Type child
+
                                                     Type.Reference _ typeFqn _ ->
                                                         Type typeFqn
 
@@ -232,25 +236,24 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                             case accessControlledCtors |> withPublicAccess of
                                 Just ctors ->
                                     ctors
+                                        |> Dict.toList
                                         |> List.map
-                                            (\constructor ->
-                                                case constructor of
-                                                    Type.Constructor _ namesAndTypes ->
-                                                        namesAndTypes
-                                                            |> List.concatMap
-                                                                (\( _, tipe ) ->
-                                                                    leafType tipe
-                                                                        |> List.concatMap
-                                                                            (\leafFqn ->
-                                                                                let
-                                                                                    leafNode =
-                                                                                        Type leafFqn
-                                                                                in
-                                                                                [ NodeEntry leafNode
-                                                                                , EdgeEntry (Edge typeNode Unions leafNode)
-                                                                                ]
-                                                                            )
-                                                                )
+                                            (\( _, namesAndTypes ) ->
+                                                namesAndTypes
+                                                    |> List.concatMap
+                                                        (\( _, tipe ) ->
+                                                            leafType tipe
+                                                                |> List.concatMap
+                                                                    (\leafFqn ->
+                                                                        let
+                                                                            leafNode =
+                                                                                Type leafFqn
+                                                                        in
+                                                                        [ NodeEntry leafNode
+                                                                        , EdgeEntry (Edge typeNode Unions leafNode)
+                                                                        ]
+                                                                    )
+                                                        )
                                             )
                                         |> List.concat
 
@@ -289,7 +292,7 @@ mapValueDefinition packageName moduleName valueName valueDef nodeRegistry =
                     ]
 
         functionFqn =
-            FQName packageName moduleName valueName
+            ( packageName, moduleName, valueName )
 
         functionNode =
             Function functionFqn
@@ -485,7 +488,7 @@ nodeFQN node =
             fqn
 
         Unknown s ->
-            FQName [] [] [ s ]
+            ( [], [], [ s ] )
 
 
 {-| Utility for dealing with comparable.
@@ -591,3 +594,24 @@ graphEntryToComparable entry =
 
         EdgeEntry edge ->
             "EdgeEntry: " ++ edgeToString edge
+
+
+{-| Finds the IsA relation to a Type for a given Node
+-}
+getNodeType : Node -> Graph -> Maybe FQName
+getNodeType node graph =
+    graph
+        |> List.filterMap
+            (\e ->
+                case e of
+                    EdgeEntry edge ->
+                        if edge.subject == node && edge.verb == IsA then
+                            Just (nodeFQN edge.object)
+
+                        else
+                            Nothing
+
+                    _ ->
+                        Nothing
+            )
+        |> List.head

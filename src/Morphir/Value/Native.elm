@@ -1,7 +1,8 @@
 module Morphir.Value.Native exposing
     ( Function
     , Eval
-    , unaryLazy, unaryStrict, binaryLazy, binaryStrict, mapLiteral
+    , unaryLazy, unaryStrict, binaryLazy, binaryStrict, mapLiteral, boolLiteral, charLiteral, eval1, eval2, expectFun1
+    , expectList, expectLiteral, floatLiteral, intLiteral, oneOf, returnList, returnLiteral, returnResultList, stringLiteral
     )
 
 {-| This module contains an API and some tools to implement native functions. Native functions are functions that are
@@ -34,12 +35,14 @@ example the predicate in a `filter` will need to be evaluated on each item in th
 
 Various utilities to help with implementing native functions.
 
-@docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, mapLiteral
+@docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, mapLiteral, boolLiteral, charLiteral, eval1, eval2, expectFun1
+@docs expectList, expectLiteral, floatLiteral, intLiteral, oneOf, returnList, returnLiteral, returnResultList, stringLiteral
 
 -}
 
-import Morphir.IR.Literal exposing (Literal)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
 
 
@@ -164,3 +167,167 @@ mapLiteral f eval value =
 
         _ ->
             Err (ExpectedLiteral value)
+
+
+{-| -}
+expectLiteral : (Literal -> Result Error a) -> Eval -> RawValue -> Result Error a
+expectLiteral decodeLiteral eval value =
+    case eval value of
+        Ok (Value.Literal _ lit) ->
+            decodeLiteral lit
+
+        Ok _ ->
+            Err (ExpectedLiteral value)
+
+        Err error ->
+            Err error
+
+
+{-| -}
+expectList : Eval -> RawValue -> Result Error (List RawValue)
+expectList eval value =
+    case eval value of
+        Ok (Value.List _ values) ->
+            Ok values
+
+        Ok _ ->
+            Err (ExpectedLiteral value)
+
+        Err error ->
+            Err error
+
+
+{-| -}
+expectFun1 : Eval -> RawValue -> Result Error (RawValue -> Result Error RawValue)
+expectFun1 eval fun =
+    Ok
+        (\arg ->
+            eval (Value.Apply () fun arg)
+        )
+
+
+{-| -}
+boolLiteral : Literal -> Result Error Bool
+boolLiteral lit =
+    case lit of
+        BoolLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedBoolLiteral lit)
+
+
+{-| -}
+intLiteral : Literal -> Result Error Int
+intLiteral lit =
+    case lit of
+        IntLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedBoolLiteral lit)
+
+
+{-| -}
+floatLiteral : Literal -> Result Error Float
+floatLiteral lit =
+    case lit of
+        FloatLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedBoolLiteral lit)
+
+
+{-| -}
+charLiteral : Literal -> Result Error Char
+charLiteral lit =
+    case lit of
+        CharLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedBoolLiteral lit)
+
+
+{-| -}
+stringLiteral : Literal -> Result Error String
+stringLiteral lit =
+    case lit of
+        StringLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedBoolLiteral lit)
+
+
+{-| -}
+returnLiteral : (a -> Literal) -> a -> Result Error RawValue
+returnLiteral toLit a =
+    Ok (Value.Literal () (toLit a))
+
+
+{-| -}
+returnResultList : List (Result Error RawValue) -> Result Error RawValue
+returnResultList listOfValueResults =
+    listOfValueResults
+        |> ListOfResults.liftFirstError
+        |> Result.map (Value.List ())
+
+
+{-| -}
+returnList : List RawValue -> Result Error RawValue
+returnList list =
+    Ok (Value.List () list)
+
+
+{-| -}
+eval1 : (a -> b) -> (Eval -> RawValue -> Result Error a) -> (b -> Result Error RawValue) -> Function
+eval1 f decodeA encodeB eval args =
+    case args of
+        [ arg1 ] ->
+            Result.andThen
+                (\a ->
+                    encodeB (f a)
+                )
+                (decodeA eval arg1)
+
+        _ ->
+            Err (UnexpectedArguments args)
+
+
+{-| -}
+eval2 : (a -> b -> c) -> (Eval -> RawValue -> Result Error a) -> (Eval -> RawValue -> Result Error b) -> (c -> Result Error RawValue) -> Function
+eval2 f decodeA decodeB encodeC eval args =
+    case args of
+        [ arg1, arg2 ] ->
+            Result.andThen identity
+                (Result.map2
+                    (\a b ->
+                        encodeC (f a b)
+                    )
+                    (decodeA eval arg1)
+                    (decodeB eval arg2)
+                )
+
+        _ ->
+            Err (UnexpectedArguments args)
+
+
+{-| -}
+oneOf : List Function -> Function
+oneOf funs =
+    funs
+        |> List.foldl
+            (\nextFun funSoFar ->
+                \eval args ->
+                    case funSoFar eval args of
+                        Ok result ->
+                            Ok result
+
+                        Err _ ->
+                            nextFun eval args
+            )
+            (\eval args ->
+                Err NotImplemented
+            )

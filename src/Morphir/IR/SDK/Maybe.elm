@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK.Maybe exposing (..)
+module Morphir.IR.SDK.Maybe exposing (just, maybeType, moduleName, moduleSpec, nothing)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
@@ -24,7 +24,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
 
 
 moduleName : ModuleName
@@ -38,9 +38,11 @@ moduleSpec =
         Dict.fromList
             [ ( Name.fromString "Maybe"
               , CustomTypeSpecification [ Name.fromString "a" ]
-                    [ Type.Constructor (Name.fromString "Just") [ ( [ "value" ], Type.Variable () (Name.fromString "a") ) ]
-                    , Type.Constructor (Name.fromString "Nothing") []
-                    ]
+                    (Dict.fromList
+                        [ ( Name.fromString "Just", [ ( [ "value" ], Type.Variable () (Name.fromString "a") ) ] )
+                        , ( Name.fromString "Nothing", [] )
+                        ]
+                    )
                     |> Documented "Type that represents an optional value."
               )
             ]
@@ -98,3 +100,13 @@ moduleSpec =
 maybeType : a -> Type a -> Type a
 maybeType attributes itemType =
     Reference attributes (toFQName moduleName "Maybe") [ itemType ]
+
+
+just : va -> Value ta va -> Value ta va
+just va v =
+    Value.Apply va (Value.Reference va (toFQName moduleName "Just")) v
+
+
+nothing : va -> Value ta va
+nothing va =
+    Value.Reference va (toFQName moduleName "Nothing")

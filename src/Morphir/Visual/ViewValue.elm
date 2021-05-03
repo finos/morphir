@@ -1,49 +1,94 @@
-module Morphir.Visual.ViewValue exposing (viewDefinition)
+module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, text)
-import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.FQName exposing (FQName(..))
+import Element exposing (Element, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
+import Element.Font as Font exposing (..)
+import Html.Attributes exposing (style)
+import Morphir.Elm.Frontend as Frontend
+import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
-import Morphir.Value.Interpreter as Interpreter
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
+import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
-import Morphir.Visual.Common exposing (cssClass, nameToText)
-import Morphir.Visual.Context as Context exposing (Context)
+import Morphir.Visual.Common exposing (definition, nameToText)
+import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
+import Morphir.Visual.Config as Config exposing (Config)
+import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.ViewApply as ViewApply
+import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
 import Morphir.Visual.ViewField as ViewField
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
-import Morphir.Visual.ViewLetDefinition as ViewLetDefinition
 import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue, rawToVisualTypedValue, typedToVisualTypedValue)
+import Morphir.Visual.XRayView as XRayView
+import Morphir.Web.Theme.Light exposing (black, gray, silver, white)
 
 
-viewDefinition : Distribution -> Value.Definition () (Type ()) -> Dict Name RawValue -> Element msg
-viewDefinition distribution valueDef variables =
+viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
+viewDefinition config ( _, _, valueName ) valueDef =
     let
-        ctx : Context
-        ctx =
-            Context.fromDistributionAndVariables distribution variables
+        _ =
+            Debug.log "variables" config.state.variables
+
+        definitionElem =
+            definition config
+                (nameToText valueName)
+                (viewValue config (valueDef.body |> typedToVisualTypedValue))
     in
-    viewValue ctx variables valueDef.body
+    Element.column [ mediumSpacing config.state.theme |> spacing ]
+        [ definitionElem
+        , if Dict.isEmpty config.state.expandedFunctions then
+            Element.none
+
+          else
+            Element.column
+                [ mediumSpacing config.state.theme |> spacing ]
+                (config.state.expandedFunctions
+                    |> Dict.toList
+                    |> List.reverse
+                    |> List.map
+                        (\( ( _, _, localName ) as fqName, valDef ) ->
+                            Element.column
+                                [ smallSpacing config.state.theme |> spacing ]
+                                [ definition config (nameToText localName) (viewValue config (valDef.body |> typedToVisualTypedValue))
+                                , Element.el
+                                    [ Font.bold
+                                    , Border.solid
+                                    , Border.rounded 4
+                                    , Background.color silver
+                                    , smallPadding config.state.theme |> padding
+                                    , smallSpacing config.state.theme |> spacing
+                                    , onClick (config.handlers.onReferenceClicked fqName True)
+                                    ]
+                                    (Element.text "Close")
+                                ]
+                        )
+                )
+        ]
 
 
-viewValue : Context -> Dict Name RawValue -> TypedValue -> Element msg
-viewValue ctx argumentValues value =
-    viewValueByValueType ctx argumentValues value
+viewValue : Config msg -> VisualTypedValue -> Element msg
+viewValue config value =
+    viewValueByValueType config value
 
 
-viewValueByValueType : Context -> Dict Name RawValue -> TypedValue -> Element msg
-viewValueByValueType ctx argumentValues typedValue =
+viewValueByValueType : Config msg -> VisualTypedValue -> Element msg
+viewValueByValueType config typedValue =
     let
         valueType : Type ()
         valueType =
-            Value.valueAttribute typedValue
+            Value.valueAttribute typedValue |> Tuple.second
     in
     if valueType == Basics.boolType () then
         let
@@ -51,69 +96,200 @@ viewValueByValueType ctx argumentValues typedValue =
             boolOperatorTree =
                 BoolOperatorTree.fromTypedValue typedValue
         in
-        ViewBoolOperatorTree.view (viewValueByLanguageFeature ctx argumentValues) boolOperatorTree
+        ViewBoolOperatorTree.view config (viewValueByLanguageFeature config) boolOperatorTree
+
+    else if Basics.isNumber valueType then
+        let
+            arithmeticOperatorTree : ArithmeticOperatorTree
+            arithmeticOperatorTree =
+                ArithmeticOperatorTree.fromArithmeticTypedValue typedValue
+        in
+        ViewArithmetic.view config (viewValueByLanguageFeature config) arithmeticOperatorTree
 
     else
-        viewValueByLanguageFeature ctx argumentValues typedValue
+        viewValueByLanguageFeature config typedValue
 
 
-viewValueByLanguageFeature : Context -> Dict Name RawValue -> TypedValue -> Element msg
-viewValueByLanguageFeature ctx argumentValues value =
-    case value of
-        Value.Literal literalType literal ->
-            ViewLiteral.view literal
+viewValueByLanguageFeature : Config msg -> VisualTypedValue -> Element msg
+viewValueByLanguageFeature config value =
+    let
+        valueElem : Element msg
+        valueElem =
+            case value of
+                Value.Literal _ literal ->
+                    ViewLiteral.view config literal
 
-        Value.Constructor tpe fQName ->
-            ViewReference.view (viewValue ctx argumentValues) fQName
+                Value.Constructor _ fQName ->
+                    ViewReference.view config (viewValue config) fQName
 
-        Value.Tuple tpe elems ->
-            ViewTuple.view (viewValue ctx argumentValues) elems
+                Value.Tuple _ elems ->
+                    ViewTuple.view config (viewValue config) elems
 
-        Value.List (Type.Reference _ (FQName [ [ "morphir" ], [ "s", "d", "k" ] ] [ [ "list" ] ] [ "list" ]) [ itemType ]) items ->
-            ViewList.view ctx.distribution (viewValue ctx argumentValues) itemType items
+                Value.List ( index, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
+                    ViewList.view config (viewValue config) itemType items
 
-        Value.Variable tpe name ->
-            el []
-                (text (nameToText name))
+                Value.Variable ( index, tpe ) name ->
+                    let
+                        variableValue : Maybe RawValue
+                        variableValue =
+                            Dict.get name config.state.variables
+                    in
+                    el
+                        [ onMouseEnter (config.handlers.onHoverOver index variableValue)
+                        , onMouseLeave (config.handlers.onHoverLeave index)
+                        , Element.below
+                            (if config.state.popupVariables.variableIndex == index then
+                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
 
-        Value.Reference tpe fQName ->
-            ViewReference.view (viewValue ctx argumentValues) fQName
+                             else
+                                Element.none
+                            )
+                        , width fill
+                        , center
+                        ]
+                        (text (nameToText name))
 
-        Value.Field tpe subjectValue fieldName ->
-            ViewField.view (viewValue ctx argumentValues) subjectValue fieldName
+                Value.Reference _ fQName ->
+                    ViewReference.view config (viewValue config) fQName
 
-        Value.Apply _ fun arg ->
-            let
-                ( function, args ) =
-                    Value.uncurryApply fun arg
-            in
-            ViewApply.view (viewValue ctx argumentValues) function args
+                Value.Field _ subjectValue fieldName ->
+                    ViewField.view (viewValue config) subjectValue fieldName
 
-        Value.LetDefinition tpe _ _ _ ->
-            let
-                unnest : Value ta (Type ta) -> ( List ( Name, Value.Definition ta (Type ta) ), Value ta (Type ta) )
-                unnest v =
-                    case v of
-                        Value.LetDefinition _ defName def inVal ->
-                            let
-                                ( defs, bottomIn ) =
-                                    unnest inVal
-                            in
-                            ( ( defName, def ) :: defs, bottomIn )
+                Value.Apply _ fun arg ->
+                    let
+                        ( function, args ) =
+                            Value.uncurryApply fun arg
+                    in
+                    ViewApply.view config (viewValue config) function args
 
-                        notLet ->
-                            ( [], notLet )
+                Value.LetDefinition _ _ _ _ ->
+                    let
+                        unnest : Config msg -> VisualTypedValue -> ( List ( Name, Element msg ), Element msg )
+                        unnest conf v =
+                            case v of
+                                Value.LetDefinition _ defName def inVal ->
+                                    let
+                                        currentState =
+                                            conf.state
 
-                ( definitions, inValue ) =
-                    unnest value
-            in
-            ViewLetDefinition.view (viewValue ctx argumentValues) definitions inValue
+                                        newState =
+                                            { currentState
+                                                | variables =
+                                                    conf
+                                                        |> Config.evaluate
+                                                            (def
+                                                                |> Value.mapDefinitionAttributes (always ()) (always ())
+                                                                |> Value.definitionToValue
+                                                            )
+                                                        |> Result.map
+                                                            (\evaluatedDefValue ->
+                                                                currentState.variables
+                                                                    |> Dict.insert defName evaluatedDefValue
+                                                            )
+                                                        |> Result.withDefault currentState.variables
+                                            }
 
-        Value.IfThenElse _ _ _ _ ->
-            ViewIfThenElse.view ctx (viewValue ctx argumentValues) value Dict.empty
+                                        ( defs, bottomIn ) =
+                                            unnest { conf | state = newState } inVal
+                                    in
+                                    ( ( defName, viewValue conf def.body ) :: defs, bottomIn )
 
-        _ ->
-            Element.paragraph
-                [ cssClass "todo"
-                ]
-                [ Element.text "???" ]
+                                notLet ->
+                                    ( [], viewValue conf notLet )
+
+                        ( definitions, inValueElem ) =
+                            unnest config value
+                    in
+                    Element.column
+                        [ mediumSpacing config.state.theme |> spacing ]
+                        [ inValueElem
+                        , Element.column
+                            [ mediumSpacing config.state.theme |> spacing ]
+                            (definitions
+                                |> List.map
+                                    (\( defName, defElem ) ->
+                                        Element.column
+                                            [ mediumSpacing config.state.theme |> spacing ]
+                                            [ definition config (nameToText defName) defElem ]
+                                    )
+                            )
+                        ]
+
+                Value.IfThenElse _ _ _ _ ->
+                    ViewIfThenElse.view config (viewValue config) value
+
+                other ->
+                    Element.column
+                        [ Background.color (rgb 1 0.6 0.6)
+                        , smallPadding config.state.theme |> padding
+                        , Border.rounded 6
+                        ]
+                        [ Element.el
+                            [ smallPadding config.state.theme |> padding
+                            , Font.bold
+                            ]
+                            (Element.text "No visual mapping found for:")
+                        , Element.el
+                            [ Background.color (rgb 1 1 1)
+                            , smallPadding config.state.theme |> padding
+                            , Border.rounded 6
+                            , width fill
+                            ]
+                            (XRayView.viewValue XRayView.viewType (other |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
+                        ]
+    in
+    valueElem
+
+
+viewPopup : Config msg -> Element msg
+viewPopup config =
+    Element.column []
+        [ case config.state.popupVariables.variableValue of
+            Just rawValue ->
+                let
+                    visualTypedVal : Result TypeError VisualTypedValue
+                    visualTypedVal =
+                        rawToVisualTypedValue (IR.fromDistribution config.irContext.distribution) rawValue
+                in
+                case visualTypedVal of
+                    Ok visualTypedValue ->
+                        el
+                            [ Border.shadow
+                                { offset = ( 2, 2 )
+                                , size = 2
+                                , blur = 2
+                                , color = gray
+                                }
+                            , Background.color black
+                            , Font.bold
+                            , Font.color white
+                            , Border.rounded 4
+                            , Font.center
+                            , mediumPadding config.state.theme |> padding
+                            , htmlAttribute (style "position" "absolute")
+                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
+                            ]
+                            (viewValue config visualTypedValue)
+
+                    Err error ->
+                        el
+                            [ Border.shadow
+                                { offset = ( 2, 2 )
+                                , size = 2
+                                , blur = 2
+                                , color = gray
+                                }
+                            , Background.color black
+                            , Font.bold
+                            , Font.color white
+                            , Border.rounded 4
+                            , Font.center
+                            , mediumPadding config.state.theme |> padding
+                            , htmlAttribute (style "position" "absolute")
+                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
+                            ]
+                            (text (Infer.typeErrorToMessage error))
+
+            Nothing ->
+                el [] (text "")
+        ]

@@ -26,7 +26,7 @@ moduleSpec =
     , values =
         Dict.fromList
             [ vSpec "fromInt" [ ( "n", intType () ) ] (decimalType ())
-            , vSpec "fromFloat" [ ( "f", floatType () ) ] (maybeType () (decimalType ()))
+            , vSpec "fromFloat" [ ( "f", floatType () ) ] (decimalType ())
             , vSpec "fromString" [ ( "str", stringType () ) ] (maybeType () (decimalType ()))
             , vSpec "hundred" [ ( "n", intType () ) ] (decimalType ())
             , vSpec "thousand" [ ( "n", intType () ) ] (decimalType ())
@@ -41,15 +41,20 @@ moduleSpec =
             , vSpec "sub" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (decimalType ())
             , vSpec "negate" [ ( "value", decimalType () ) ] (decimalType ())
             , vSpec "mul" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (decimalType ())
-            , vSpec "truncate" [ ( "n", intType () ), ( "d", decimalType () ) ] (decimalType ())
-            , vSpec "round" [ ( "n", intType () ), ( "d", decimalType () ) ] (decimalType ())
+            , vSpec "div" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (maybeType () (decimalType ()))
+            , vSpec "divWithDefault" [ ( "default", decimalType () ), ( "a", decimalType () ), ( "b", decimalType () ) ] (maybeType () (decimalType ()))
+            , vSpec "truncate" [ ( "d", decimalType () ) ] (decimalType ())
+            , vSpec "round" [ ( "d", decimalType () ) ] (decimalType ())
             , vSpec "gt" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (boolType ())
+            , vSpec "gte" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (boolType ())
             , vSpec "eq" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (boolType ())
             , vSpec "neq" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (boolType ())
             , vSpec "lt" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (boolType ())
             , vSpec "lte" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (boolType ())
             , vSpec "compare" [ ( "a", decimalType () ), ( "b", decimalType () ) ] (orderType ())
             , vSpec "abs" [ ( "value", decimalType () ) ] (decimalType ())
+            , vSpec "shiftDecimalLeft" [ ( "n", intType () ), ( "value", decimalType () ) ] (decimalType ())
+            , vSpec "shiftDecimalRight" [ ( "n", intType () ), ( "value", decimalType () ) ] (decimalType ())
             , vSpec "zero" [] (decimalType ())
             , vSpec "one" [] (decimalType ())
             , vSpec "minusOne" [] (decimalType ())
@@ -60,3 +65,8 @@ moduleSpec =
 decimalType : a -> Type a
 decimalType attributes =
     Reference attributes (toFQName moduleName "Decimal") []
+
+
+roundingModeType : a -> Type a
+roundingModeType attributes =
+    Reference attributes (toFQName moduleName "RoundingMode") []

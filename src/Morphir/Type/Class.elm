@@ -13,7 +13,7 @@ member metaType class =
         targetType : MetaType -> MetaType
         targetType mt =
             case mt of
-                MetaAlias _ t ->
+                MetaRef _ _ _ (Just t) ->
                     targetType t
 
                 _ ->

@@ -24,7 +24,7 @@ module Morphir.IR.Value exposing
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-    , definitionToValue, rewriteValue, toRawValue
+    , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables
     )
 
 {-| In functional programming data and logic are treated the same way and we refer to both as values. This module
@@ -113,7 +113,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 @docs definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-@docs definitionToValue, rewriteValue, toRawValue
+@docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables
 
 -}
 
@@ -666,6 +666,14 @@ collectValueAttributes v =
 
 
 {-| -}
+countValueNodes : Value ta va -> Int
+countValueNodes value =
+    value
+        |> collectValueAttributes
+        |> List.length
+
+
+{-| -}
 collectPatternAttributes : Pattern a -> List a
 collectPatternAttributes p =
     case p of
@@ -767,6 +775,41 @@ collectVariables value =
                 |> Set.union (collectVariables valueToUpdate)
 
         _ ->
+            Set.empty
+
+
+{-| Collect all variables in a pattern.
+-}
+collectPatternVariables : Pattern va -> Set Name
+collectPatternVariables pattern =
+    case pattern of
+        WildcardPattern _ ->
+            Set.empty
+
+        AsPattern _ subject name ->
+            collectPatternVariables subject
+                |> Set.insert name
+
+        TuplePattern _ elemPatterns ->
+            elemPatterns
+                |> List.map collectPatternVariables
+                |> List.foldl Set.union Set.empty
+
+        ConstructorPattern _ _ argPatterns ->
+            argPatterns
+                |> List.map collectPatternVariables
+                |> List.foldl Set.union Set.empty
+
+        EmptyListPattern _ ->
+            Set.empty
+
+        HeadTailPattern _ headPattern tailPattern ->
+            Set.union (collectPatternVariables headPattern) (collectPatternVariables tailPattern)
+
+        LiteralPattern _ _ ->
+            Set.empty
+
+        UnitPattern _ ->
             Set.empty
 
 

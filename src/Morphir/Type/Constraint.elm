@@ -1,7 +1,7 @@
 module Morphir.Type.Constraint exposing (..)
 
 import Morphir.Type.Class exposing (Class)
-import Morphir.Type.MetaType as MetaType exposing (MetaType, Variable)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
 
 
 type Constraint
@@ -45,3 +45,13 @@ substitute var replacement constraint =
             Class
                 (metaType |> MetaType.substituteVariable var replacement)
                 cls
+
+
+isTrivial : Constraint -> Bool
+isTrivial constraint =
+    case constraint of
+        Equality metaType1 metaType2 ->
+            metaType1 == metaType2
+
+        Class _ _ ->
+            False

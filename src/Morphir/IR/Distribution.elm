@@ -1,6 +1,7 @@
 module Morphir.IR.Distribution exposing
     ( Distribution(..)
     , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
+    , lookupPackageSpecification, lookupPackageName
     , resolveTypeReference, resolveRecordConstructors
     )
 
@@ -22,6 +23,7 @@ information:
 # Lookups
 
 @docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
+@docs lookupPackageSpecification, lookupPackageName
 
 
 # Utilities
@@ -31,7 +33,7 @@ information:
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR.FQName as FQName exposing (FQName(..))
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName, lookupModuleDefinition)
@@ -75,7 +77,7 @@ lookupTypeSpecification packageName moduleName localName distribution =
 {-| Look up the base type name following aliases by package, module and local name in a distribution.
 -}
 lookupBaseTypeName : FQName -> Distribution -> Maybe FQName
-lookupBaseTypeName ((FQName packageName moduleName localName) as fQName) distribution =
+lookupBaseTypeName (( packageName, moduleName, localName ) as fQName) distribution =
     distribution
         |> lookupModuleSpecification packageName moduleName
         |> Maybe.andThen (Module.lookupTypeSpecification localName)
@@ -93,7 +95,7 @@ lookupBaseTypeName ((FQName packageName moduleName localName) as fQName) distrib
 {-| Resolve a type reference by looking up its specification and resolving type variables.
 -}
 resolveTypeReference : FQName -> List (Type ()) -> Distribution -> Result String (Type ())
-resolveTypeReference ((FQName packageName moduleName localName) as fQName) typeArgs distribution =
+resolveTypeReference (( packageName, moduleName, localName ) as fQName) typeArgs distribution =
     case lookupTypeSpecification packageName moduleName localName distribution of
         Just typeSpec ->
             case typeSpec of
@@ -132,7 +134,7 @@ resolveRecordConstructors value distribution =
                                 Value.uncurryApply fun lastArg
                         in
                         case bottomFun of
-                            Value.Constructor va (FQName packageName moduleName localName) ->
+                            Value.Constructor va ( packageName, moduleName, localName ) ->
                                 lookupTypeSpecification packageName moduleName localName distribution
                                     |> Maybe.andThen
                                         (\typeSpec ->
@@ -174,3 +176,23 @@ lookupValueDefinition (QName moduleName localName) distribution =
             packageDef
                 |> lookupModuleDefinition moduleName
                 |> Maybe.andThen (Module.lookupValueDefinition localName)
+
+
+{-| Get the package specification of a distribution.
+-}
+lookupPackageSpecification : Distribution -> Package.Specification ()
+lookupPackageSpecification distribution =
+    case distribution of
+        Library _ _ packageDef ->
+            packageDef
+                |> Package.definitionToSpecificationWithPrivate
+                |> Package.mapSpecificationAttributes (\_ -> ())
+
+
+{-| Get the package name of a distribution.
+-}
+lookupPackageName : Distribution -> PackageName
+lookupPackageName distribution =
+    case distribution of
+        Library packageName _ _ ->
+            packageName

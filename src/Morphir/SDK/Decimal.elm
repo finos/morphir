@@ -11,11 +11,12 @@ module Morphir.SDK.Decimal exposing
     , millionth
     , bps
     , toString
-    , toFloat
     , add
     , sub
     , negate
     , mul
+    , div
+    , divWithDefault
     , truncate
     , round
     , gt
@@ -25,7 +26,7 @@ module Morphir.SDK.Decimal exposing
     , lt
     , lte
     , compare
-    , abs
+    , abs, shiftDecimalLeft, shiftDecimalRight
     , zero
     , one
     , minusOne
@@ -60,7 +61,6 @@ module Morphir.SDK.Decimal exposing
 # Convert to
 
 @docs toString
-@docs toFloat
 
 
 # Arithmetic operations
@@ -69,6 +69,8 @@ module Morphir.SDK.Decimal exposing
 @docs sub
 @docs negate
 @docs mul
+@docs div
+@docs divWithDefault
 
 
 # Rounding
@@ -90,7 +92,7 @@ module Morphir.SDK.Decimal exposing
 
 # Misc operations
 
-@docs abs
+@docs abs, shiftDecimalLeft, shiftDecimalRight
 
 
 # Common Constants
@@ -101,6 +103,7 @@ module Morphir.SDK.Decimal exposing
 
 -}
 
+import Basics as B
 import Decimal as D
 
 
@@ -108,6 +111,14 @@ import Decimal as D
 -}
 type alias Decimal =
     D.Decimal
+
+
+type RoundingMode
+    = Down
+    | Up
+    | TowardsZero
+    | AlwaysFromZero
+    | HalfToEven
 
 
 {-| Converts an Int to a Decimal
@@ -119,7 +130,7 @@ fromInt n =
 
 {-| Converts a Float to a Decimal
 -}
-fromFloat : Float -> Maybe Decimal
+fromFloat : Float -> Decimal
 fromFloat f =
     D.fromFloat f
 
@@ -128,49 +139,49 @@ fromFloat f =
 -}
 hundred : Int -> Decimal
 hundred n =
-    D.fromIntWithExponent n 2
+    D.fromInt (100 * n)
 
 
 {-| Converts an Int to a Decimal that represents n thousands
 -}
 thousand : Int -> Decimal
 thousand n =
-    D.fromIntWithExponent n 3
+    D.fromInt (1000 * n)
 
 
 {-| Converts an Int to a Decimal that represents n millions.
 -}
 million : Int -> Decimal
 million n =
-    D.fromIntWithExponent n 6
+    D.fromInt (n * 1000000)
 
 
 {-| Converts an Int to a Decimal that represents n tenths.
 -}
 tenth : Int -> Decimal
 tenth n =
-    D.fromIntWithExponent n -1
+    D.fromFloat (toFloat n * 0.1)
 
 
 {-| Converts an Int to a Decimal that represents n hundredths.
 -}
 hundredth : Int -> Decimal
 hundredth n =
-    D.fromIntWithExponent n -2
+    D.fromFloat (toFloat n * 0.01)
 
 
 {-| Converts an Int to a Decimal that represents n basis points (i.e. 1/10 of % or a ten-thousandth
 -}
 bps : Int -> Decimal
 bps n =
-    D.fromIntWithExponent n -4
+    D.fromFloat (toFloat n * 0.0001)
 
 
 {-| Converts an Int to a Decimal that represents n millionth.
 -}
 millionth : Int -> Decimal
 millionth n =
-    D.fromIntWithExponent n -6
+    D.fromFloat (toFloat n * 0.000001)
 
 
 {-| Converts a String to a Maybe Decimal. The string shall be in the format [<sign>]<numbers>[.<numbers>][e<numbers>]
@@ -185,13 +196,6 @@ fromString str =
 toString : Decimal -> String
 toString decimalValue =
     D.toString decimalValue
-
-
-{-| Converts a Decimal to a Float
--}
-toFloat : Decimal -> Float
-toFloat d =
-    D.toFloat d
 
 
 {-| Addition
@@ -215,6 +219,34 @@ mul a b =
     D.mul a b
 
 
+{-| Divide two decimals
+-}
+div : Decimal -> Decimal -> Maybe Decimal
+div a b =
+    D.div a b
+
+
+{-| Divide two decimals providing a default for the cases the calculation fails, such as divide by zero or overflow/underflow.
+-}
+divWithDefault : Decimal -> Decimal -> Decimal -> Decimal
+divWithDefault default a b =
+    div a b |> Maybe.withDefault default
+
+
+{-| Shift the decimal n digits to the left.
+-}
+shiftDecimalLeft : Int -> Decimal -> Decimal
+shiftDecimalLeft n value =
+    fromFloat (10.0 ^ toFloat -n) |> mul value
+
+
+{-| Shift the decimal n digits to the right.
+-}
+shiftDecimalRight : Int -> Decimal -> Decimal
+shiftDecimalRight n value =
+    10 ^ n |> fromInt |> mul value
+
+
 {-| Changes the sign of a Decimal
 -}
 negate : Decimal -> Decimal
@@ -222,18 +254,18 @@ negate value =
     D.negate value
 
 
-{-| Truncates the Decimal to the specified decimal places
+{-| Truncates the Decimal to the nearest integer with `TowardsZero` mode
 -}
-truncate : Int -> Decimal -> Decimal
-truncate n d =
-    D.truncate n d
+truncate : Decimal -> Decimal
+truncate n =
+    D.truncate n
 
 
-{-| Rounds the Decimal to the specified decimal places
+{-| `round` to the nearest integer.
 -}
-round : Int -> Decimal -> Decimal
-round n d =
-    D.round n d
+round : Decimal -> Decimal
+round n =
+    D.round n
 
 
 {-| Absolute value (sets the sign as positive)
@@ -296,18 +328,18 @@ lte a b =
 -}
 zero : Decimal
 zero =
-    D.zero
+    D.fromInt 0
 
 
 {-| The number 1
 -}
 one : Decimal
 one =
-    D.one
+    D.fromInt 1
 
 
 {-| The number -1
 -}
 minusOne : Decimal
 minusOne =
-    D.minusOne
+    D.fromInt -1

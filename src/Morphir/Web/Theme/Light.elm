@@ -39,6 +39,8 @@ theme scaled =
                 , paddingXY 0 (scaled (3 - level))
                 ]
                 (text label)
+    , highlightColor =
+        blue
     }
 
 
@@ -52,3 +54,15 @@ orange =
 
 gray =
     Element.rgb255 141 141 141
+
+
+silver =
+    Element.rgb255 192 192 192
+
+
+black =
+    Element.rgb255 0 0 0
+
+
+white =
+    Element.rgb255 255 255 255
