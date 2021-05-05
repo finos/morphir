@@ -1,4 +1,7 @@
-module Morphir.Visual.DecisionTable exposing (DecisionTable, Match)
+module Morphir.Visual.DecisionTable exposing
+    ( DecisionTable, Match(..)
+    , TypedPattern, displayTable
+    )
 
 {-| This module contains a generic decision table representation that is relatively easy to map to a visualization.
 
@@ -6,9 +9,10 @@ module Morphir.Visual.DecisionTable exposing (DecisionTable, Match)
 
 -}
 
-import Element exposing (Element)
-import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
+import Element exposing (Column, Element, fill, spacing, table, text)
+import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Value as Value exposing (Pattern, Value, indexedMapValue)
+import Morphir.Visual.Common exposing (VisualTypedValue, nameToText)
 
 
 type alias TypedValue =
@@ -16,7 +20,7 @@ type alias TypedValue =
 
 
 type alias TypedPattern =
-    Value.Pattern (Type ())
+    Pattern (Type ())
 
 
 
@@ -49,24 +53,72 @@ type Match
     | Guard TypedValue
 
 
-displayTable : DecisionTable -> Element msg
-displayTable table =
-    tableHelp table.decomposeInput table.rules
+displayTable : (VisualTypedValue -> Element msg) -> DecisionTable -> Element msg
+displayTable viewValue table =
+    tableHelp viewValue table.decomposeInput table.rules
 
 
-tableHelp : List TypedValue -> List ( List Match, TypedValue ) -> Element msg
-tableHelp headerFunctions rows =
-    Element.none
+tableHelp : (VisualTypedValue -> Element msg) -> List TypedValue -> List ( List Match, TypedValue ) -> Element msg
+tableHelp viewValue headerFunctions rows =
+    table [ spacing 10 ]
+        { data = Debug.log "hi" rows
+        , columns = List.append (headerFunctions |> getColumnFromHeader viewValue 0) [ Column (text "Result") fill (\rules -> viewValue (toVisualTypedValue (Tuple.second rules))) ]
+        }
 
 
+getColumnFromHeader : (VisualTypedValue -> Element msg) -> Int -> List TypedValue -> List (Column ( List Match, TypedValue ) msg)
+getColumnFromHeader viewValue index decomposeInput =
+    case decomposeInput of
+        inputHead :: [] ->
+            columnHelper viewValue inputHead index
 
-{- getDecomposedValues : List TypedValue -> List TypedValue -> List TypedValue
-   getDecomposedValues input decomposeFunction =
-       case input of
-           [] ->
-               []
-           head :: tail ->
-               case decomposeFunction of
-                   decompHead :: decompTail ->
+        inputHead :: inputTail ->
+            List.concat [ columnHelper viewValue inputHead index, getColumnFromHeader viewValue (index + 1) inputTail ]
 
--}
+        _ ->
+            []
+
+
+columnHelper : (VisualTypedValue -> Element msg) -> TypedValue -> Int -> List (Column ( List Match, TypedValue ) msg)
+columnHelper viewValue header index =
+    case header of
+        Value.Variable _ name ->
+            [ Column (text (nameToText name)) fill (\rules -> getCaseFromIndex viewValue (Tuple.first rules |> List.drop index |> List.head)) ]
+
+        _ ->
+            []
+
+
+getCaseFromIndex : (VisualTypedValue -> Element msg) -> Maybe Match -> Element msg
+getCaseFromIndex viewValue rules =
+    case rules of
+        Just match ->
+            case match of
+                Pattern pattern ->
+                    case pattern of
+                        Value.WildcardPattern _ ->
+                            text "*"
+
+                        Value.LiteralPattern va literal ->
+                            let
+                                value : VisualTypedValue
+                                value =
+                                    toVisualTypedValue (Value.Literal va literal)
+                            in
+                            viewValue value
+
+                        _ ->
+                            text "other pattern"
+
+                _ ->
+                    text "guard"
+
+        Nothing ->
+            text "nothing"
+
+
+toVisualTypedValue : TypedValue -> VisualTypedValue
+toVisualTypedValue typedValue =
+    typedValue
+        |> indexedMapValue Tuple.pair 0
+        |> Tuple.first

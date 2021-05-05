@@ -24,15 +24,40 @@ doublePatternMatch a b =
 triplePatternMatch : String -> string -> String -> Int
 triplePatternMatch a b c =
     case ( a, b, c ) of
-        ( "a", "b", "c" ) ->
+        ( "a", _, "c" ) ->
             1
 
         _ ->
             2
 
 
-testPatternMatch : Int -> Int -> String
-testPatternMatch a b =
+foo : ( String, String )
+foo =
+    ( "a", "b" )
+
+
+bar : Int
+bar =
+    case foo of
+        ( "a", "b" ) ->
+            1
+
+        _ ->
+            2
+
+
+inline : Int
+inline =
+    case "hi" of
+        "hi" ->
+            1
+
+        _ ->
+            2
+
+
+multipleCasePatternMatch : Int -> Int -> String
+multipleCasePatternMatch a b =
     case ( a, b ) of
         ( 1, 1 ) ->
             "1"

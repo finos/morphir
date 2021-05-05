@@ -1,5 +1,6 @@
 module Morphir.Visual.ViewPatternMatch exposing (..)
 
+import Dict exposing (Dict)
 import Element exposing (Attribute, Column, Element, fill, row, spacing, table, text, width)
 import List exposing (concat)
 import Morphir.IR.Literal as Value
@@ -7,132 +8,94 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, TypedValue, Value)
 import Morphir.Visual.Common exposing (VisualTypedValue, nameToText)
 import Morphir.Visual.Config exposing (Config)
-import Morphir.Visual.DecisionTable as DecisionTable exposing (DecisionTable, Match)
+import Morphir.Visual.DecisionTable as DecisionTable exposing (DecisionTable, Match(..), TypedPattern)
 
 
-view : Config msg -> (Value ta ( Int, Type ta ) -> Element msg) -> Value ta ( Int, Type ta ) -> List ( Pattern pa, Value ta ( Int, Type ta ) ) -> Element msg
-view config viewValue param patterns =
-    table [ spacing 10 ]
-        { data = examples
-        , columns = generateColumns param patterns
-        }
+view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> List ( Pattern ( Int, Type () ), VisualTypedValue ) -> Element msg
+view config viewValue subject matches =
+    let
+        typedSubject : TypedValue
+        typedSubject =
+            toTypedValue subject
+
+        typedMatches : List ( TypedPattern, TypedValue )
+        typedMatches =
+            List.map (\( a, b ) -> ( toTypedPattern a, toTypedValue b )) matches
+
+        decisionTable : DecisionTable
+        decisionTable =
+            toDecisionTable typedSubject typedMatches
+    in
+    DecisionTable.displayTable viewValue decisionTable
 
 
-
---table [ spacing 10 ]
---    { data = examples
---    , columns =
---        [ { header = text "a"
---          , width = fill
---          , view = \example -> text example.a
---          }
---        , { header = text "b", width = fill, view = \example -> text example.b }
---        , { header = text "c", width = fill, view = \example -> text example.c }
---        , { header = text "d", width = fill, view = \example -> text example.d }
---        , { header = text "e", width = fill, view = \example -> text example.e }
---        , { header = text "Result", width = fill, view = \example -> text example.result }
---        ]
---    }
---decisionTable : DecisionTable
---decisionTable =
---    { decomposeInput = getHeaders param
---    , rules = []
---    }
---
---
---getHeaders : Value ta va -> List TypedValue
---getHeaders =
---    []
-
-
-type alias Example =
-    { a : String
-    , b : String
-    , c : String
-    , d : String
-    , e : String
-    , result : String
+toDecisionTable : TypedValue -> List ( TypedPattern, TypedValue ) -> DecisionTable
+toDecisionTable subject matches =
+    let
+        decomposedInput : List TypedValue
+        decomposedInput =
+            decomposeInput subject
+    in
+    { decomposeInput = decomposedInput
+    , rules = getRules decomposedInput matches
     }
 
 
-examples : List Example
-examples =
-    [ { a = "foo", b = "bar", c = "any", d = "any", e = "any", result = "1" }
-    , { a = "any", b = "any", c = "bar", d = "any", e = "any", result = "2" }
-    , { a = "any", b = "any", c = "any", d = "any", e = "any", result = "3" }
-    ]
+decomposeInput : TypedValue -> List TypedValue
+decomposeInput subject =
+    case subject of
+        Value.Variable _ _ ->
+            [ subject ]
+
+        Value.Tuple _ elems ->
+            elems |> List.concatMap decomposeInput
+
+        _ ->
+            [ subject ]
 
 
-
---flattenTree : Value ta va -> List ( Pattern pa, Value ta va ) -> List (Column record msg)
---flattenTree param patterns =
---    patterns |> List.concatMap (extractNestedPattern param)
---
---
---extractNestedPattern : Value ta va -> ( Pattern pa, Value ta va ) -> List (Column record msg)
---extractNestedPattern param pattern =
---    case pattern of
---        ( _, Value.PatternMatch pa nestedParam nestedPattern ) ->
---            flattenTree nestedParam nestedPattern
---
---        _ ->
---            generateColumn pattern param
+getRules : List TypedValue -> List ( TypedPattern, TypedValue ) -> List ( List Match, TypedValue )
+getRules subject matches =
+    matches |> List.concatMap (decomposePattern subject)
 
 
-generateColumn : List ( Pattern pa, Value ta va ) -> Value ta va -> List (Column record msg)
-generateColumn patterns param =
-    case param of
-        Value.Variable ta name ->
-            [ Column (text (nameToText name)) fill (\_ -> text "foo") ]
+decomposePattern : List TypedValue -> ( TypedPattern, TypedValue ) -> List ( List Match, TypedValue )
+decomposePattern subject match =
+    case match of
+        ( Value.WildcardPattern tpe, _ ) ->
+            let
+                wildcardMatch : Match
+                wildcardMatch =
+                    DecisionTable.Pattern (Tuple.first match)
+            in
+            [ ( List.repeat (List.length subject) wildcardMatch, Tuple.second match ) ]
 
-        Value.Tuple va elems ->
-            elems |> List.concatMap (generateColumn patterns)
+        ( Value.LiteralPattern tpe literal, _ ) ->
+            let
+                literalMatch : Match
+                literalMatch =
+                    DecisionTable.Pattern (Tuple.first match)
+            in
+            [ ( [ literalMatch ], Tuple.second match ) ]
+
+        ( Value.TuplePattern tpe matches, _ ) ->
+            let
+                tupleMatch : List Match
+                tupleMatch =
+                    List.map DecisionTable.Pattern matches
+            in
+            [ ( tupleMatch, Tuple.second match ) ]
 
         _ ->
             []
 
 
-generateColumns : Value ta va -> List ( Pattern pa, Value ta va ) -> List (Column record msg)
-generateColumns param patterns =
-    concat [ generateColumn patterns param, [ Column (text "Result") fill (\_ -> text "foo") ] ]
+toTypedValue : VisualTypedValue -> TypedValue
+toTypedValue visualTypedValue =
+    visualTypedValue
+        |> Value.mapValueAttributes (always ()) (always Tuple.second (Value.valueAttribute visualTypedValue))
 
 
-
---getType : Value ta va -> ta
---getType (Value ta va) =
---    ta
---
---
-
-
-getDecomposedInput : Value ta va -> TypedValue
-getDecomposedInput param =
-    case param of
-        Value.Variable ta name ->
-            [ Value.Variable ta name ]
-
-        --todo: extract nested parameters for nested pattern matches
-        Value.Tuple ta list ->
-            [ param ]
-
-        _ ->
-            []
-
-
-getRules : List ( Pattern pa, TypedValue ) -> List (List ( Match, TypedValue ))
-getRules patterns =
-    []
-
-
-
---toDecisionTable : Value ta va -> List (Pattern pa, Value ta va ) -> DecisionTable
---toDecisionTable param patterns =
---case param of
---    Value.Variable ta name ->
---        [ Column (text (nameToText name)) fill (\example -> text "foo") ]
---
---    Value.Tuple va elems ->
---        elems |> List.concatMap (generateColumns patterns)
---
---    _ ->
---        []
+toTypedPattern : Pattern ( Int, Type () ) -> TypedPattern
+toTypedPattern match =
+    match |> Value.mapPatternAttributes (always Tuple.second (Value.patternAttribute match))
