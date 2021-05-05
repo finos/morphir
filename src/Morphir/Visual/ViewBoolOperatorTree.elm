@@ -3,11 +3,10 @@ module Morphir.Visual.ViewBoolOperatorTree exposing (..)
 import Element exposing (Attribute, Element, centerX, centerY, fill, height, none, padding, spacing, width)
 import Element.Border
 import Element.Font as Font
-import Morphir.IR.Value exposing (TypedValue)
 import Morphir.Visual.BoolOperatorTree exposing (BoolOperator(..), BoolOperatorTree(..))
-import Morphir.Visual.Common exposing (VisualTypedValue)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
 view : Config msg -> (VisualTypedValue -> Element msg) -> BoolOperatorTree -> Element msg

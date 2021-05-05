@@ -186,12 +186,15 @@ expectLiteral decodeLiteral eval value =
 {-| -}
 expectList : Eval -> RawValue -> Result Error (List RawValue)
 expectList eval value =
-    case value of
-        Value.List _ values ->
+    case eval value of
+        Ok (Value.List _ values) ->
             Ok values
 
-        _ ->
+        Ok _ ->
             Err (ExpectedLiteral value)
+
+        Err error ->
+            Err error
 
 
 {-| -}

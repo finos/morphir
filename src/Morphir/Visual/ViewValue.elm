@@ -1,4 +1,4 @@
-module Morphir.Visual.ViewValue exposing (viewDefinition)
+module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
 import Dict exposing (Dict)
 import Element exposing (Element, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
@@ -14,10 +14,10 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..), indexedMapValue)
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
 import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
-import Morphir.Visual.Common exposing (VisualTypedValue, definition, nameToText)
+import Morphir.Visual.Common exposing (definition, nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Config as Config exposing (Config)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
@@ -31,8 +31,9 @@ import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue, rawToVisualTypedValue, typedToVisualTypedValue)
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.Theme.Light exposing (gray, silver)
+import Morphir.Web.Theme.Light exposing (black, gray, silver, white)
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
@@ -44,7 +45,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
         definitionElem =
             definition config
                 (nameToText valueName)
-                (viewValue config (valueDef.body |> toVisualTypedValue))
+                (viewValue config (valueDef.body |> typedToVisualTypedValue))
     in
     Element.column [ mediumSpacing config.state.theme |> spacing ]
         [ definitionElem
@@ -61,7 +62,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
                         (\( ( _, _, localName ) as fqName, valDef ) ->
                             Element.column
                                 [ smallSpacing config.state.theme |> spacing ]
-                                [ definition config (nameToText localName) (viewValue config (valDef.body |> toVisualTypedValue))
+                                [ definition config (nameToText localName) (viewValue config (valDef.body |> typedToVisualTypedValue))
                                 , Element.el
                                     [ Font.bold
                                     , Border.solid
@@ -248,29 +249,14 @@ viewPopup : Config msg -> Element msg
 viewPopup config =
     Element.column []
         [ case config.state.popupVariables.variableValue of
-            Just value ->
+            Just rawValue ->
                 let
-                    references : IR
-                    references =
-                        Frontend.defaultDependencies
-                            |> Dict.insert
-                                (Distribution.lookupPackageName config.irContext.distribution)
-                                (Distribution.lookupPackageSpecification config.irContext.distribution)
-                            |> IR.fromPackageSpecifications
-
-                    typedVal : Result TypeError VisualTypedValue
-                    typedVal =
-                        Infer.inferValue references value
-                            |> Result.andThen
-                                (\typedValue ->
-                                    typedValue
-                                        |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)
-                                        |> toVisualTypedValue
-                                        |> Ok
-                                )
+                    visualTypedVal : Result TypeError VisualTypedValue
+                    visualTypedVal =
+                        rawToVisualTypedValue (IR.fromDistribution config.irContext.distribution) rawValue
                 in
-                case typedVal of
-                    Ok typedValue ->
+                case visualTypedVal of
+                    Ok visualTypedValue ->
                         el
                             [ Border.shadow
                                 { offset = ( 2, 2 )
@@ -278,15 +264,16 @@ viewPopup config =
                                 , blur = 2
                                 , color = gray
                                 }
-                            , Background.color silver
+                            , Background.color black
                             , Font.bold
+                            , Font.color white
                             , Border.rounded 4
                             , Font.center
                             , mediumPadding config.state.theme |> padding
                             , htmlAttribute (style "position" "absolute")
                             , htmlAttribute (style "transition" "all 0.2s ease-in-out")
                             ]
-                            (viewValue config typedValue)
+                            (viewValue config visualTypedValue)
 
                     Err error ->
                         el
@@ -296,8 +283,9 @@ viewPopup config =
                                 , blur = 2
                                 , color = gray
                                 }
-                            , Background.color silver
+                            , Background.color black
                             , Font.bold
+                            , Font.color white
                             , Border.rounded 4
                             , Font.center
                             , mediumPadding config.state.theme |> padding
@@ -309,10 +297,3 @@ viewPopup config =
             Nothing ->
                 el [] (text "")
         ]
-
-
-toVisualTypedValue : TypedValue -> VisualTypedValue
-toVisualTypedValue typedValue =
-    typedValue
-        |> indexedMapValue Tuple.pair 0
-        |> Tuple.first
