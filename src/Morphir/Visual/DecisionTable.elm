@@ -12,7 +12,8 @@ module Morphir.Visual.DecisionTable exposing
 import Element exposing (Column, Element, fill, spacing, table, text)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, Value, indexedMapValue)
-import Morphir.Visual.Common exposing (VisualTypedValue, nameToText)
+import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
 type alias TypedValue =

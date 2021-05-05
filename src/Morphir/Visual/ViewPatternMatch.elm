@@ -6,9 +6,9 @@ import List exposing (concat)
 import Morphir.IR.Literal as Value
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, TypedValue, Value)
-import Morphir.Visual.Common exposing (VisualTypedValue, nameToText)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.DecisionTable as DecisionTable exposing (DecisionTable, Match(..), TypedPattern)
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
 view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> List ( Pattern ( Int, Type () ), VisualTypedValue ) -> Element msg
