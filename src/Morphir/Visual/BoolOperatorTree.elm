@@ -3,7 +3,7 @@ module Morphir.Visual.BoolOperatorTree exposing (..)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Value as Value exposing (TypedValue)
-import Morphir.Visual.Common exposing (VisualTypedValue)
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
 type BoolOperatorTree
