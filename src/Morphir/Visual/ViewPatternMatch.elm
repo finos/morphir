@@ -44,9 +44,6 @@ toDecisionTable subject matches =
 decomposeInput : TypedValue -> List TypedValue
 decomposeInput subject =
     case subject of
-        Value.Variable _ _ ->
-            [ subject ]
-
         Value.Tuple _ elems ->
             elems |> List.concatMap decomposeInput
 

@@ -9,10 +9,11 @@ module Morphir.Visual.DecisionTable exposing
 
 -}
 
-import Element exposing (Column, Element, fill, spacing, table, text)
+import Element exposing (Column, Element, el, fill, padding, rgb255, spacing, table, text)
+import Element.Background as Background
+import Element.Border as Border
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, Value, indexedMapValue)
-import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
@@ -61,9 +62,19 @@ displayTable viewValue table =
 
 tableHelp : (VisualTypedValue -> Element msg) -> List TypedValue -> List ( List Match, TypedValue ) -> Element msg
 tableHelp viewValue headerFunctions rows =
-    table [ spacing 10 ]
-        { data = Debug.log "hi" rows
-        , columns = List.append (headerFunctions |> getColumnFromHeader viewValue 0) [ Column (text "Result") fill (\rules -> viewValue (toVisualTypedValue (Tuple.second rules))) ]
+    table [ spacing 10, padding 10, Border.solid, Border.width 1 ]
+        { data = rows
+        , columns =
+            List.append (headerFunctions |> getColumnFromHeader viewValue 0)
+                [ Column
+                    (el
+                        [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
+                        ]
+                        (text "Result")
+                    )
+                    fill
+                    (\rules -> viewValue (toVisualTypedValue (Tuple.second rules)))
+                ]
         }
 
 
@@ -82,12 +93,20 @@ getColumnFromHeader viewValue index decomposeInput =
 
 columnHelper : (VisualTypedValue -> Element msg) -> TypedValue -> Int -> List (Column ( List Match, TypedValue ) msg)
 columnHelper viewValue header index =
-    case header of
-        Value.Variable _ name ->
-            [ Column (text (nameToText name)) fill (\rules -> getCaseFromIndex viewValue (Tuple.first rules |> List.drop index |> List.head)) ]
-
-        _ ->
-            []
+    let
+        head : VisualTypedValue
+        head =
+            toVisualTypedValue header
+    in
+    [ Column
+        (el
+            [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
+            ]
+            (viewValue head)
+        )
+        fill
+        (\rules -> getCaseFromIndex viewValue (Tuple.first rules |> List.drop index |> List.head))
+    ]
 
 
 getCaseFromIndex : (VisualTypedValue -> Element msg) -> Maybe Match -> Element msg
@@ -98,7 +117,7 @@ getCaseFromIndex viewValue rules =
                 Pattern pattern ->
                     case pattern of
                         Value.WildcardPattern _ ->
-                            text "*"
+                            el [ Background.color (rgb255 200 200 200) ] (text " ")
 
                         Value.LiteralPattern va literal ->
                             let
