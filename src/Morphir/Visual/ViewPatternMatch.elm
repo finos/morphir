@@ -83,6 +83,22 @@ decomposePattern subject match =
             in
             [ ( tupleMatch, Tuple.second match ) ]
 
+        ( Value.ConstructorPattern tpe fQName matches, _ ) ->
+            let
+                constructorMatch : Match
+                constructorMatch =
+                    DecisionTable.Pattern (Tuple.first match)
+            in
+            [ ( [ constructorMatch ], Tuple.second match ) ]
+
+        ( Value.AsPattern tpe pattern name, _ ) ->
+            let
+                asMatch : Match
+                asMatch =
+                    DecisionTable.Pattern (Tuple.first match)
+            in
+            [ ( [ asMatch ], Tuple.second match ) ]
+
         _ ->
             []
 

@@ -92,3 +92,90 @@ nestedPatternMatch a b c d e =
 
                 _ ->
                     5
+
+
+type Enum
+    = First
+    | Second String
+    | Third String Int
+
+
+myEnum : Enum
+myEnum =
+    Second "foo"
+
+
+type OtherEnum
+    = One Enum String
+
+
+enumPatternMatch : Enum -> Int
+enumPatternMatch enum =
+    case enum of
+        First ->
+            1
+
+        Second str ->
+            2
+
+        Second "specific value" ->
+            3
+
+        Third str int ->
+            4
+
+        _ ->
+            5
+
+
+nestedEnumPatternMatch : OtherEnum -> Int
+nestedEnumPatternMatch enum =
+    case enum of
+        One First str ->
+            1
+
+        One (Second str) str2 ->
+            2
+
+        One (Second "specific") "value" ->
+            3
+
+        One (Third str int) str2 ->
+            4
+
+        _ ->
+            5
+
+
+variableEnumPatternMatch : Int
+variableEnumPatternMatch =
+    case myEnum of
+        First ->
+            1
+
+        Second str ->
+            2
+
+        Second "specific value" ->
+            3
+
+        Third str int ->
+            4
+
+        _ ->
+            5
+
+
+
+--type alias Record =
+--    { x : Int
+--    , y : Int
+--    }
+--recordPatternMatch : Record -> String
+--recordPatternMatch record =
+--    case record of
+--        { x, y } -> <-- not supported in morphir
+--            "3"
+--
+--        _ ->
+--            "pass"
