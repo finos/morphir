@@ -9,11 +9,13 @@ module Morphir.Visual.DecisionTable exposing
 
 -}
 
-import Element exposing (Column, Element, el, fill, padding, rgb255, spacing, table, text)
+import Element exposing (Column, Element, el, fill, padding, rgb255, row, spacing, table, text)
 import Element.Background as Background
 import Element.Border as Border
+import Morphir.IR.FQName exposing (getLocalName)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Pattern, Value, indexedMapValue)
+import Morphir.IR.Value as Value exposing (Pattern(..), Value, indexedMapValue)
+import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
@@ -127,8 +129,27 @@ getCaseFromIndex viewValue rules =
                             in
                             viewValue value
 
+                        Value.ConstructorPattern tpe fQName matches ->
+                            let
+                                patternToMaybeMatch : Pattern (Type ()) -> Maybe Match
+                                patternToMaybeMatch input =
+                                    Just (patternToMatch input)
+
+                                maybeMatches : List (Maybe Match)
+                                maybeMatches =
+                                    List.map patternToMaybeMatch matches
+
+                                parsedMatches : List (Element msg)
+                                parsedMatches =
+                                    List.map (getCaseFromIndex viewValue) maybeMatches
+                            in
+                            row [ spacing 5, Border.widthEach { bottom = 0, top = 0, right = 0, left = 2 } ] (List.concat [ [ text (nameToText (getLocalName fQName)) ], parsedMatches ])
+
+                        Value.AsPattern tpe asPattern name ->
+                            getCaseFromIndex viewValue (Just (patternToMatch asPattern))
+
                         _ ->
-                            text "other pattern"
+                            text "pattern type not implemented"
 
                 _ ->
                     text "guard"
@@ -142,3 +163,13 @@ toVisualTypedValue typedValue =
     typedValue
         |> indexedMapValue Tuple.pair 0
         |> Tuple.first
+
+
+toTypedPattern : Pattern (Type ()) -> TypedPattern
+toTypedPattern match =
+    match |> Value.mapPatternAttributes (always (Value.patternAttribute match))
+
+
+patternToMatch : Pattern (Type ()) -> Match
+patternToMatch pattern =
+    Pattern (toTypedPattern pattern)
