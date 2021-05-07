@@ -1,12 +1,13 @@
 module Morphir.Web.DevelopApp.ModulePage exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, column, el, fill, height, link, paddingXY, rgb, row, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignRight, alignTop, column, el, fill, height, link, paddingXY, rgb, row, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input exposing (labelHidden)
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
@@ -128,11 +129,20 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
                                     Just
                                         (el [ alignTop ]
                                             (viewAsCard
-                                                (column [ spacing 5 ]
-                                                    [ valueName
-                                                        |> Name.toHumanWords
-                                                        |> String.join " "
-                                                        |> text
+                                                (column [ width fill, spacing 5 ]
+                                                    [ row [ width fill ]
+                                                        [ valueName
+                                                            |> Name.toHumanWords
+                                                            |> String.join " "
+                                                            |> text
+                                                        , link [ alignRight ]
+                                                            { url =
+                                                                String.concat [ "/function/", FQName.toString valueFQName ]
+                                                            , label =
+                                                                el [ Font.italic ]
+                                                                    (text "jump to test cases")
+                                                            }
+                                                        ]
                                                     , viewArgumentEditors handlers model valueFQName accessControlledValueDef.value
                                                     ]
                                                 )

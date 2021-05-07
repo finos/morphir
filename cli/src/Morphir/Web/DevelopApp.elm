@@ -127,9 +127,14 @@ update msg model =
             )
 
         HttpError httpError ->
-            ( { model | serverState = ServerHttpError httpError }
-            , Cmd.none
-            )
+            case model.irState of
+                IRLoaded _ ->
+                    ( model, Cmd.none )
+
+                _ ->
+                    ( { model | serverState = ServerHttpError httpError }
+                    , Cmd.none
+                    )
 
         ServerGetIRResponse distribution ->
             ( { model | irState = IRLoaded distribution }
