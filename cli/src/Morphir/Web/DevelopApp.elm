@@ -1,10 +1,9 @@
 module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Page(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, toRoute, update, view, viewBody, viewHeader, viewTitle)
 
-import Array exposing (Array)
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, px, rgb, row, spacing, text, width)
+import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, px, rgb, row, scrollbars, spacing, text, width)
 import Element.Background as Background
 import Element.Font as Font
 import Http
@@ -77,7 +76,7 @@ type Page
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key =
+init _ url key =
     ( { key = key
       , currentPage = toRoute url
       , theme = Light.theme scaled
@@ -127,9 +126,14 @@ update msg model =
             )
 
         HttpError httpError ->
-            ( { model | serverState = ServerHttpError httpError }
-            , Cmd.none
-            )
+            case model.irState of
+                IRLoaded _ ->
+                    ( model, Cmd.none )
+
+                _ ->
+                    ( { model | serverState = ServerHttpError httpError }
+                    , Cmd.none
+                    )
 
         ServerGetIRResponse distribution ->
             ( { model | irState = IRLoaded distribution }
@@ -216,7 +220,7 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        InvalidArgValue fQName argName string ->
+        InvalidArgValue _ _ _ ->
             ( model, Cmd.none )
 
         ExpandVariable varIndex maybeRawValue ->
@@ -414,9 +418,11 @@ view model =
                 ]
             , Font.size (scaled 2)
             , width fill
+            , height fill
             ]
             (column
                 [ width fill
+                , height fill
                 ]
                 [ viewHeader model
                 , case model.serverState of
@@ -425,7 +431,12 @@ view model =
 
                     ServerHttpError error ->
                         viewServerError error
-                , el [ padding 5, width fill ] (viewBody model)
+                , el
+                    [ width fill
+                    , height fill
+                    , scrollbars
+                    ]
+                    (viewBody model)
                 ]
             )
         ]
@@ -511,7 +522,7 @@ viewBody model =
         IRLoading ->
             text "Loading the IR ..."
 
-        IRLoaded ((Library packageName _ packageDef) as distribution) ->
+        IRLoaded ((Library _ _ packageDef) as distribution) ->
             case model.currentPage of
                 Home ->
                     viewAsCard (text "Modules")
@@ -522,7 +533,7 @@ viewBody model =
                             (packageDef.modules
                                 |> Dict.toList
                                 |> List.map
-                                    (\( moduleName, accessControlledModuleDef ) ->
+                                    (\( moduleName, _ ) ->
                                         link []
                                             { url =
                                                 "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
