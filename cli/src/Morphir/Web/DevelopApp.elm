@@ -1,6 +1,5 @@
 module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Page(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, toRoute, update, view, viewBody, viewHeader, viewTitle)
 
-import Array exposing (Array)
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
@@ -77,7 +76,7 @@ type Page
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key =
+init _ url key =
     ( { key = key
       , currentPage = toRoute url
       , theme = Light.theme scaled
@@ -221,7 +220,7 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        InvalidArgValue fQName argName string ->
+        InvalidArgValue _ _ _ ->
             ( model, Cmd.none )
 
         ExpandVariable varIndex maybeRawValue ->
@@ -516,7 +515,7 @@ viewBody model =
         IRLoading ->
             text "Loading the IR ..."
 
-        IRLoaded ((Library packageName _ packageDef) as distribution) ->
+        IRLoaded ((Library _ _ packageDef) as distribution) ->
             case model.currentPage of
                 Home ->
                     viewAsCard (text "Modules")
@@ -527,7 +526,7 @@ viewBody model =
                             (packageDef.modules
                                 |> Dict.toList
                                 |> List.map
-                                    (\( moduleName, accessControlledModuleDef ) ->
+                                    (\( moduleName, _ ) ->
                                         link []
                                             { url =
                                                 "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
