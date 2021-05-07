@@ -1,7 +1,7 @@
 module Morphir.Web.DevelopApp.ModulePage exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, alignRight, alignTop, column, el, fill, height, link, paddingXY, rgb, row, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignRight, alignTop, column, el, fill, height, link, padding, paddingXY, rgb, row, scrollbars, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -99,10 +99,17 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
         Just accessControlledModuleDef ->
             column
                 [ width fill
+                , height fill
                 , spacing (scaled 4)
                 ]
                 [ viewModuleControls valueFilterChanged model
-                , wrappedRow [ spacing (scaled 4) ]
+                , wrappedRow
+                    [ padding (scaled 4)
+                    , spacing (scaled 4)
+                    , width fill
+                    , height fill
+                    , scrollbars
+                    ]
                     (accessControlledModuleDef.value.values
                         |> Dict.toList
                         |> List.filterMap
@@ -180,6 +187,7 @@ viewModuleControls valueFilterChanged model =
         [ width fill
         , spacing (scaled 2)
         , height shrink
+        , padding 5
         ]
         [ Input.text
             [ paddingXY 10 4

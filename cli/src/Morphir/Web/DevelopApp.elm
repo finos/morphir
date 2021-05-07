@@ -3,7 +3,7 @@ module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Page(..), S
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, px, rgb, row, spacing, text, width)
+import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, px, rgb, row, scrollbars, spacing, text, width)
 import Element.Background as Background
 import Element.Font as Font
 import Http
@@ -418,9 +418,11 @@ view model =
                 ]
             , Font.size (scaled 2)
             , width fill
+            , height fill
             ]
             (column
                 [ width fill
+                , height fill
                 ]
                 [ viewHeader model
                 , case model.serverState of
@@ -429,7 +431,12 @@ view model =
 
                     ServerHttpError error ->
                         viewServerError error
-                , el [ padding 5, width fill ] (viewBody model)
+                , el
+                    [ width fill
+                    , height fill
+                    , scrollbars
+                    ]
+                    (viewBody model)
                 ]
             )
         ]
