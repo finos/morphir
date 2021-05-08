@@ -11,7 +11,6 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
-import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Edit as Edit
 import Morphir.Visual.Theme as Theme
@@ -250,9 +249,7 @@ viewArgumentEditors handlers model fQName valueDef =
                         )
                     ]
             )
-        |> wrappedRow
-            [ spacing 5
-            ]
+        |> wrappedRow [ spacing 5 ]
 
 
 makeURL : Model -> String

@@ -66,3 +66,11 @@ black =
 
 white =
     Element.rgb255 255 255 255
+
+
+green =
+    Element.rgb255 100 180 100
+
+
+red =
+    Element.rgb255 180 100 100
