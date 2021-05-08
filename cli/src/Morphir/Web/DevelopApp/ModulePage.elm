@@ -1,12 +1,13 @@
 module Morphir.Web.DevelopApp.ModulePage exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, column, el, fill, height, link, paddingXY, rgb, row, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignRight, alignTop, column, el, fill, height, link, padding, paddingXY, rgb, row, scrollbars, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input exposing (labelHidden)
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
@@ -98,10 +99,17 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
         Just accessControlledModuleDef ->
             column
                 [ width fill
+                , height fill
                 , spacing (scaled 4)
                 ]
                 [ viewModuleControls valueFilterChanged model
-                , wrappedRow [ spacing (scaled 4) ]
+                , wrappedRow
+                    [ padding (scaled 4)
+                    , spacing (scaled 4)
+                    , width fill
+                    , height fill
+                    , scrollbars
+                    ]
                     (accessControlledModuleDef.value.values
                         |> Dict.toList
                         |> List.filterMap
@@ -128,11 +136,20 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
                                     Just
                                         (el [ alignTop ]
                                             (viewAsCard
-                                                (column [ spacing 5 ]
-                                                    [ valueName
-                                                        |> Name.toHumanWords
-                                                        |> String.join " "
-                                                        |> text
+                                                (column [ width fill, spacing 5 ]
+                                                    [ row [ width fill ]
+                                                        [ valueName
+                                                            |> Name.toHumanWords
+                                                            |> String.join " "
+                                                            |> text
+                                                        , link [ alignRight ]
+                                                            { url =
+                                                                String.concat [ "/function/", FQName.toString valueFQName ]
+                                                            , label =
+                                                                el [ Font.italic ]
+                                                                    (text "jump to test cases")
+                                                            }
+                                                        ]
                                                     , viewArgumentEditors handlers model valueFQName accessControlledValueDef.value
                                                     ]
                                                 )
@@ -170,6 +187,7 @@ viewModuleControls valueFilterChanged model =
         [ width fill
         , spacing (scaled 2)
         , height shrink
+        , padding 5
         ]
         [ Input.text
             [ paddingXY 10 4
@@ -184,12 +202,12 @@ viewModuleControls valueFilterChanged model =
         , el []
             (row [ spacing 5 ]
                 [ link [ paddingXY 6 4, Border.rounded 3, viewTypeBackground XRayView ]
-                    { url = makeURL model
+                    { url = makeURL { model | viewType = XRayView }
                     , label = text "x-ray"
                     }
                 , text "|"
                 , link [ paddingXY 6 4, Border.rounded 3, viewTypeBackground InsightView ]
-                    { url = makeURL model
+                    { url = makeURL { model | viewType = InsightView }
                     , label = text "insight"
                     }
                 ]
