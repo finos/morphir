@@ -1,4 +1,4 @@
-module Morphir.Compiler.CodecTests exposing (..)
+module Morphir.IR.Distribution.CodecTests exposing (..)
 
 import Dict
 import Expect
@@ -7,6 +7,7 @@ import Json.Encode as Encode
 import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.IR.AccessControlled exposing (private, public)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
+import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName)
 import Morphir.IR.Package as Package
@@ -20,15 +21,15 @@ tests =
         [ test "When IR is encoded and decoded it should return itself"
             (\_ ->
                 sampleIR
-                    |> CompilerCodec.encodeIR
+                    |> DistributionCodec.encodeVersionedDistribution
                     |> Encode.encode 4
-                    |> Decode.decodeString CompilerCodec.decodeIR
+                    |> Decode.decodeString DistributionCodec.decodeVersionedDistribution
                     |> Expect.equal (Ok sampleIR)
             )
         , test "Sample JSON should decode into sample IR"
             (\_ ->
                 sampleJSON
-                    |> Decode.decodeString CompilerCodec.decodeIR
+                    |> Decode.decodeString DistributionCodec.decodeVersionedDistribution
                     |> Expect.equal (Ok sampleIR)
             )
         ]

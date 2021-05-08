@@ -7,7 +7,7 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
-import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
@@ -21,7 +21,7 @@ import Morphir.Type.ConstraintSet as ConstraintSet
 import Morphir.Type.Infer as Infer exposing (TypeError(..))
 import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
 import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, variableByIndex)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaRef, metaTuple, variableByIndex)
 import Morphir.Type.Solve as Solve exposing (UnificationError(..), UnificationErrorType(..))
 import Test exposing (Test, describe, test)
 
@@ -362,10 +362,10 @@ positiveOutcomes =
     -- number type class
     , Value.IfThenElse (floatType ())
         (Value.Literal (boolType ()) (BoolLiteral False))
-        (Value.Literal (floatType ()) (IntLiteral 2))
+        (Value.Literal (floatType ()) (FloatLiteral 2))
         (Value.Literal (floatType ()) (FloatLiteral 3))
     , Value.List (listType () (floatType ()))
-        [ Value.Literal (floatType ()) (IntLiteral 2)
+        [ Value.Literal (floatType ()) (FloatLiteral 2)
         , Value.Literal (floatType ()) (FloatLiteral 3)
         ]
     ]
@@ -524,7 +524,7 @@ solvePositiveTests =
             MetaVar (t i)
 
         ref n =
-            MetaRef (fQName [] [] [ n ])
+            metaRef (fQName [] [] [ n ]) []
 
         scenarios : List ( List Constraint, List Constraint, List ( Variable, MetaType ) )
         scenarios =
@@ -550,23 +550,23 @@ solvePositiveTests =
               , [ ( t 1, tvar 2 )
                 ]
               )
-            , ( [ equality (tvar 1) (MetaTuple [ tvar 5, tvar 4 ])
+            , ( [ equality (tvar 1) (metaTuple [ tvar 5, tvar 4 ])
                 , equality (tvar 5) (ref "int")
                 , equality (tvar 4) (ref "bool")
                 , equality (tvar 6) (ref "int")
                 , equality (tvar 7) (ref "int")
                 , equality (tvar 6) (tvar 3)
                 , equality (tvar 7) (tvar 3)
-                , equality (tvar 2) (MetaTuple [ tvar 1, tvar 3 ])
+                , equality (tvar 2) (metaTuple [ tvar 1, tvar 3 ])
                 ]
               , []
-              , [ ( t 1, MetaTuple [ ref "int", ref "bool" ] )
+              , [ ( t 1, metaTuple [ ref "int", ref "bool" ] )
                 , ( t 5, ref "int" )
                 , ( t 4, ref "bool" )
                 , ( t 6, ref "int" )
                 , ( t 7, ref "int" )
                 , ( t 3, ref "int" )
-                , ( t 2, MetaTuple [ MetaTuple [ ref "int", ref "bool" ], ref "int" ] )
+                , ( t 2, metaTuple [ metaTuple [ ref "int", ref "bool" ], ref "int" ] )
                 ]
               )
             , ( [ class (tvar 1) Class.Number

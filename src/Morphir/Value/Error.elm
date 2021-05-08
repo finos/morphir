@@ -13,7 +13,6 @@ type Error
     | LambdaArgumentDidNotMatch PatternMismatch
     | BindPatternDidNotMatch (Value () ()) PatternMismatch
     | UnexpectedArguments (List (Value () ()))
-    | UnexpectedOperator String
     | ExpectedLiteral (Value () ())
     | ExpectedBoolLiteral Literal
     | IfThenElseConditionShouldEvaluateToBool (Value () ()) (Value () ())
@@ -23,7 +22,7 @@ type Error
     | ExactlyOneArgumentExpected (List (Value () ()))
     | ErrorWhileEvaluatingReference FQName Error
     | ErrorWhileEvaluatingVariable Name Error
-    | ExpectedNumberTypeArguments (List (Value () ()))
+    | NotImplemented
 
 
 type PatternMismatch

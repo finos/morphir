@@ -6,6 +6,4 @@ import Morphir.Visual.Theme exposing (ThemeConfig)
 
 decodeThemeConfig : Decoder ThemeConfig
 decodeThemeConfig =
-    Decode.field "fontSize" Decode.int
-        |> Decode.maybe
-        |> Decode.map ThemeConfig
+    Decode.map2 ThemeConfig (Decode.field "fontSize" Decode.int |> Decode.maybe) (Decode.field "decimalDigit" Decode.int |> Decode.maybe)

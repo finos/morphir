@@ -13,7 +13,7 @@ type alias VisualizationState =
     { distribution : Distribution
     , selectedFunction : QName
     , functionDefinition : Value.Definition () (Type ())
-    , functionArguments : List (Value () ())
+    , functionArguments : List RawValue
     , expandedFunctions : Dict FQName (Value.Definition () (Type ()))
     , popupVariables : PopupScreenRecord
     }

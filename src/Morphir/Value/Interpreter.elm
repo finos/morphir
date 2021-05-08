@@ -1,28 +1,20 @@
-module Morphir.Value.Interpreter exposing
-    ( evaluate, evaluateValue, referencesForDistribution
-    , Reference(..)
-    )
+module Morphir.Value.Interpreter exposing (evaluate, evaluateValue, evaluateFunctionValue)
 
 {-| This module contains an interpreter for Morphir expressions. The interpreter takes a piece of logic as input,
 evaluates it and returns the resulting data. In Morphir both logic and data is captured as a `Value` so the interpreter
 takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
-@docs evaluate, evaluateValue, referencesForDistribution
-
-
-# Utilities
-
-@docs Reference
+@docs evaluate, evaluateValue, evaluateFunctionValue
 
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
-import Morphir.IR.SDK as SDK
-import Morphir.IR.Value as Value exposing (Pattern, Value)
+import Morphir.IR.Type as Type
+import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value, toRawValue)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
 import Morphir.Value.Native as Native
@@ -31,52 +23,29 @@ import Morphir.Value.Native as Native
 {-| Dictionary of variable name to value.
 -}
 type alias Variables =
-    Dict Name (Value () ())
+    Dict Name RawValue
 
 
-{-| Reference to an other value. The other value can either be another Morphir `Value` or a native function.
--}
-type Reference
-    = NativeReference Native.Function
-    | ValueReference (Value () ())
-
-
-{-| Translate a distribution into references that can be fed into the interpreter to be used during evaluation.
--}
-referencesForDistribution : Distribution -> Dict FQName Reference
-referencesForDistribution distribution =
-    case distribution of
-        Library packageName dependencies packageDef ->
-            let
-                packageReferences : Dict FQName Reference
-                packageReferences =
-                    packageDef.modules
-                        |> Dict.toList
-                        |> List.concatMap
-                            (\( moduleName, accessControlledModuleDef ) ->
-                                accessControlledModuleDef.value.values
-                                    |> Dict.toList
-                                    |> List.map
-                                        (\( valueName, accessControlledValueDef ) ->
-                                            ( ( packageName, moduleName, valueName )
-                                            , accessControlledValueDef.value
-                                                |> Value.mapDefinitionAttributes (always ()) (always ())
-                                                |> Value.definitionToValue
-                                                |> ValueReference
-                                            )
-                                        )
-                            )
+evaluateFunctionValue : Dict FQName Native.Function -> IR -> FQName -> List RawValue -> Result Error RawValue
+evaluateFunctionValue nativeFunctions ir fQName variableValues =
+    ir
+        |> IR.lookupValueDefinition fQName
+        -- If we cannot find the value in the IR we return an error.
+        |> Result.fromMaybe (ReferenceNotFound fQName)
+        |> Result.andThen
+            (\valueDef ->
+                evaluateValue nativeFunctions
+                    ir
+                    (List.map2 Tuple.pair
+                        (valueDef.inputTypes
+                            |> List.map (\( name, _, _ ) -> name)
+                        )
+                        variableValues
                         |> Dict.fromList
-
-                sdkReferences : Dict FQName Reference
-                sdkReferences =
-                    SDK.nativeFunctions
-                        |> Dict.map
-                            (\_ fun ->
-                                NativeReference fun
-                            )
-            in
-            Dict.union packageReferences sdkReferences
+                    )
+                    []
+                    (valueDef.body |> toRawValue)
+            )
 
 
 {-| Evaluates a value expression and returns another value expression or an error. You can also pass in other values
@@ -91,30 +60,50 @@ by fully-qualified name that will be used for lookup if the expression contains 
         -- (Value.Literal () (BoolLiteral False))
 
 -}
-evaluate : Dict FQName Reference -> Value () () -> Result Error (Value () ())
-evaluate references value =
-    evaluateValue references Dict.empty [] value
+evaluate : Dict FQName Native.Function -> IR -> RawValue -> Result Error RawValue
+evaluate nativeFunctions ir value =
+    evaluateValue nativeFunctions ir Dict.empty [] value
 
 
 {-| Evaluates a value expression recursively in a single pass while keeping track of variables and arguments along the
 evaluation.
 -}
-evaluateValue : Dict FQName Reference -> Variables -> List (Value () ()) -> Value () () -> Result Error (Value () ())
-evaluateValue references variables arguments value =
+evaluateValue : Dict FQName Native.Function -> IR -> Variables -> List RawValue -> RawValue -> Result Error RawValue
+evaluateValue nativeFunctions ir variables arguments value =
     case value of
         Value.Literal _ _ ->
             -- Literals cannot be evaluated any further
             Ok value
 
-        Value.Constructor _ _ ->
-            -- Constructor cannot be evaluated any further
-            Ok value
+        Value.Constructor _ fQName ->
+            case ir |> IR.lookupTypeSpecification (ir |> IR.resolveAliases fQName) of
+                Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
+                    Ok
+                        (Value.Record ()
+                            (List.map2 Tuple.pair
+                                (fields |> List.map .name)
+                                arguments
+                            )
+                        )
+
+                _ ->
+                    let
+                        applyArgs : RawValue -> List RawValue -> RawValue
+                        applyArgs subject argsReversed =
+                            case argsReversed of
+                                [] ->
+                                    subject
+
+                                lastArg :: restOfArgsReversed ->
+                                    Value.Apply () (applyArgs subject restOfArgsReversed) lastArg
+                    in
+                    Ok (applyArgs value (List.reverse arguments))
 
         Value.Tuple _ elems ->
             -- For a tuple we need to evaluate each element and return them wrapped back into a tuple
             elems
                 -- We evaluate each element separately.
-                |> List.map (evaluateValue references variables [])
+                |> List.map (evaluateValue nativeFunctions ir variables [])
                 -- If any of those fails we return the first failure.
                 |> ListOfResults.liftFirstError
                 -- If nothing fails we wrap the result in a tuple.
@@ -124,7 +113,7 @@ evaluateValue references variables arguments value =
             -- For a list we need to evaluate each element and return them wrapped back into a list
             items
                 -- We evaluate each element separately.
-                |> List.map (evaluateValue references variables [])
+                |> List.map (evaluateValue nativeFunctions ir variables [])
                 -- If any of those fails we return the first failure.
                 |> ListOfResults.liftFirstError
                 -- If nothing fails we wrap the result in a list.
@@ -136,7 +125,7 @@ evaluateValue references variables arguments value =
                 -- We evaluate each field separately.
                 |> List.map
                     (\( fieldName, fieldValue ) ->
-                        evaluateValue references variables [] fieldValue
+                        evaluateValue nativeFunctions ir variables [] fieldValue
                             |> Result.map (Tuple.pair fieldName)
                     )
                 -- If any of those fails we return the first failure.
@@ -151,48 +140,57 @@ evaluateValue references variables arguments value =
                 -- If we cannot find the variable in the state we return an error.
                 |> Result.fromMaybe (VariableNotFound varName)
                 -- Do another round of evaluation in case there are unevaluated values in the variable (lazy evaluation)
-                |> Result.andThen (evaluateValue references variables [])
+                |> Result.andThen (evaluateValue nativeFunctions ir variables [])
                 -- Wrap the error to make it easier to understand where it happened
                 |> Result.mapError (ErrorWhileEvaluatingVariable varName)
 
         Value.Reference _ (( packageName, moduleName, localName ) as fQName) ->
-            -- For references we first need to find what they point to.
-            references
-                |> Dict.get ( packageName, moduleName, localName )
-                -- If the reference is not found we return an error.
-                |> Result.fromMaybe (ReferenceNotFound fQName)
-                -- If the reference is found we need to evaluate them.
-                |> Result.andThen
-                    (\reference ->
-                        -- A reference can either point to a native function or another Morphir value.
-                        case reference of
-                            -- If it's a native function we invoke it directly.
-                            NativeReference nativeFunction ->
-                                nativeFunction
-                                    (evaluateValue
-                                        -- This is the state that will be used when native functions call "eval".
-                                        -- We need to retain most of the current state but clear out the argument since
-                                        -- the native function will evaluate completely new expressions.
-                                        references
-                                        variables
-                                        []
-                                    )
-                                    -- Pass down the arguments we collected before we got here (if we are inside an apply).
-                                    arguments
-                                    -- Wrap the error to make it easier to understand where it happened
-                                    |> Result.mapError (ErrorWhileEvaluatingReference fQName)
+            -- We check if there is a native function first
+            case nativeFunctions |> Dict.get ( packageName, moduleName, localName ) of
+                Just nativeFunction ->
+                    nativeFunction
+                        (evaluateValue
+                            -- This is the state that will be used when native functions call "eval".
+                            -- We need to retain most of the current state but clear out the argument since
+                            -- the native function will evaluate completely new expressions.
+                            nativeFunctions
+                            ir
+                            variables
+                            []
+                        )
+                        -- Pass down the arguments we collected before we got here (if we are inside an apply).
+                        arguments
+                        -- Wrap the error to make it easier to understand where it happened
+                        |> Result.mapError (ErrorWhileEvaluatingReference fQName)
 
-                            -- If this is a reference to another Morphir value we need to recursively evaluate those.
-                            ValueReference referredValue ->
-                                evaluateValue references Dict.empty arguments referredValue
+                Nothing ->
+                    -- If this is a reference to another Morphir value we need to look it up and evaluate.
+                    ir
+                        |> IR.lookupValueDefinition ( packageName, moduleName, localName )
+                        -- If we cannot find the value in the IR we return an error.
+                        |> Result.fromMaybe (ReferenceNotFound ( packageName, moduleName, localName ))
+                        |> Result.andThen
+                            (\referredValue ->
+                                let
+                                    rawValue : RawValue
+                                    rawValue =
+                                        Value.toRawValue referredValue.body
+                                in
+                                arguments
+                                    |> List.map (evaluateValue nativeFunctions ir variables [])
+                                    |> ListOfResults.liftFirstError
                                     -- Wrap the error to make it easier to understand where it happened
                                     |> Result.mapError (ErrorWhileEvaluatingReference fQName)
-                    )
+                                    |> Result.andThen
+                                        (\evaluatedArgs ->
+                                            evaluateValue nativeFunctions ir Dict.empty evaluatedArgs rawValue
+                                        )
+                            )
 
         Value.Field _ subjectValue fieldName ->
             -- Field selection is evaluated by evaluating the subject first then matching on the resulting record and
             -- getting the field with the specified name.
-            evaluateValue references variables [] subjectValue
+            evaluateValue nativeFunctions ir variables [] subjectValue
                 |> Result.andThen
                     (\evaluatedSubjectValue ->
                         case evaluatedSubjectValue of
@@ -211,7 +209,7 @@ evaluateValue references variables arguments value =
             -- it behaves exactly like a `Field` expression.
             case arguments of
                 [ subjectValue ] ->
-                    evaluateValue references variables [] subjectValue
+                    evaluateValue nativeFunctions ir variables [] subjectValue
                         |> Result.andThen
                             (\evaluatedSubjectValue ->
                                 case evaluatedSubjectValue of
@@ -234,7 +232,8 @@ evaluateValue references variables arguments value =
             -- repeatedly collected until we hit another node (lambda, reference or variable) where the arguments will
             -- be used to execute the calculation.
             evaluateValue
-                references
+                nativeFunctions
+                ir
                 variables
                 (argument :: arguments)
                 function
@@ -262,7 +261,8 @@ evaluateValue references variables arguments value =
                 |> Result.andThen
                     (\argumentVariables ->
                         evaluateValue
-                            references
+                            nativeFunctions
+                            ir
                             (Dict.union argumentVariables variables)
                             []
                             body
@@ -271,11 +271,12 @@ evaluateValue references variables arguments value =
         Value.LetDefinition _ defName def inValue ->
             -- We evaluate a let definition by first evaluating the definition, then assigning it to the variable name
             -- given in `defName`. Finally we evaluate the `inValue` passing in the new variable in the state.
-            evaluateValue references variables [] (Value.definitionToValue def)
+            evaluateValue nativeFunctions ir variables [] (Value.definitionToValue def)
                 |> Result.andThen
                     (\defValue ->
                         evaluateValue
-                            references
+                            nativeFunctions
+                            ir
                             (variables |> Dict.insert defName defValue)
                             []
                             inValue
@@ -290,7 +291,8 @@ evaluateValue references variables arguments value =
                     defs |> Dict.map (\_ def -> Value.definitionToValue def)
             in
             evaluateValue
-                references
+                nativeFunctions
+                ir
                 (Dict.union defVariables variables)
                 []
                 inValue
@@ -298,12 +300,13 @@ evaluateValue references variables arguments value =
         Value.Destructure _ bindPattern bindValue inValue ->
             -- A destructure can be evaluated by evaluating the bind value, matching it against the bind pattern and
             -- finally evaluating the in value using the variables from the bind pattern.
-            evaluateValue references variables [] bindValue
+            evaluateValue nativeFunctions ir variables [] bindValue
                 |> Result.andThen (matchPattern bindPattern >> Result.mapError (BindPatternDidNotMatch bindValue))
                 |> Result.andThen
                     (\bindVariables ->
                         evaluateValue
-                            references
+                            nativeFunctions
+                            ir
                             (Dict.union bindVariables variables)
                             []
                             inValue
@@ -312,7 +315,7 @@ evaluateValue references variables arguments value =
         Value.IfThenElse _ condition thenBranch elseBranch ->
             -- If then else evaluation is trivial: you evaluate the condition and depending on the result you evaluate
             -- one of the branches
-            evaluateValue references variables [] condition
+            evaluateValue nativeFunctions ir variables [] condition
                 |> Result.andThen
                     (\conditionValue ->
                         case conditionValue of
@@ -326,7 +329,7 @@ evaluateValue references variables arguments value =
                                         else
                                             elseBranch
                                 in
-                                evaluateValue references variables [] branchToFollow
+                                evaluateValue nativeFunctions ir variables [] branchToFollow
 
                             _ ->
                                 Err (IfThenElseConditionShouldEvaluateToBool condition conditionValue)
@@ -343,7 +346,8 @@ evaluateValue references variables arguments value =
                             case matchPattern nextPattern evaluatedSubject of
                                 Ok patternVariables ->
                                     evaluateValue
-                                        references
+                                        nativeFunctions
+                                        ir
                                         (Dict.union patternVariables variables)
                                         []
                                         nextBody
@@ -354,13 +358,13 @@ evaluateValue references variables arguments value =
                         [] ->
                             Err (NoPatternsMatch evaluatedSubject (cases |> List.map Tuple.first))
             in
-            evaluateValue references variables [] subjectValue
+            evaluateValue nativeFunctions ir variables [] subjectValue
                 |> Result.andThen (findMatch cases)
 
         Value.UpdateRecord _ subjectValue fieldUpdates ->
             -- To update a record first we need to evaluate the subject value, then extract the record fields and
             -- finally replace all updated fields with the new values
-            evaluateValue references variables [] subjectValue
+            evaluateValue nativeFunctions ir variables [] subjectValue
                 |> Result.andThen
                     (\evaluatedSubjectValue ->
                         case evaluatedSubjectValue of
@@ -382,7 +386,7 @@ evaluateValue references variables arguments value =
                                                                 (\_ ->
                                                                     -- Before we replace the field value we need to
                                                                     -- evaluate the updated value.
-                                                                    evaluateValue references variables [] newFieldValue
+                                                                    evaluateValue nativeFunctions ir variables [] newFieldValue
                                                                         |> Result.map
                                                                             (\evaluatedNewFieldValue ->
                                                                                 fieldsSoFar
@@ -409,7 +413,7 @@ evaluateValue references variables arguments value =
 {-| Matches a value against a pattern recursively. It either returns an error if there is a mismatch or a dictionary of
 variable names to values extracted out of the pattern.
 -}
-matchPattern : Pattern () -> Value () () -> Result PatternMismatch Variables
+matchPattern : Pattern () -> RawValue -> Result PatternMismatch Variables
 matchPattern pattern value =
     let
         error : Result PatternMismatch Variables

@@ -1,14 +1,15 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, column, fill, moveRight, moveUp, padding, row, spacing, text, width)
+import Element exposing (Element, centerX, column, fill, moveUp, padding, row, spacing, text, width)
 import Element.Border as Border
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Visual.Common exposing (VisualTypedValue, nameToText)
+import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config exposing (Config)
-import Morphir.Visual.Theme exposing (mediumPadding, smallPadding, smallSpacing)
+import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
 view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> List VisualTypedValue -> Element msg

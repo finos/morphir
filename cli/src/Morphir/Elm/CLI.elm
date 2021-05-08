@@ -109,7 +109,7 @@ update msg model =
                     , typedResult
                         |> Result.map (Package.mapDefinitionAttributes identity (\( _, tpe ) -> tpe))
                         |> Result.map (Distribution.Library packageInfo.name Dict.empty)
-                        |> encodeResult (Encode.list CompilerCodec.encodeError) CompilerCodec.encodeIR
+                        |> encodeResult (Encode.list CompilerCodec.encodeError) DistributionCodec.encodeVersionedDistribution
                         |> packageDefinitionFromSourceResult
                     )
 
@@ -129,7 +129,7 @@ update msg model =
                     Decode.decodeValue (decodeOptions targetOption) optionsJson
 
                 packageDistroResult =
-                    Decode.decodeValue CompilerCodec.decodeIR packageDistJson
+                    Decode.decodeValue DistributionCodec.decodeVersionedDistribution packageDistJson
             in
             case Result.map2 Tuple.pair optionsResult packageDistroResult of
                 Ok ( options, packageDist ) ->

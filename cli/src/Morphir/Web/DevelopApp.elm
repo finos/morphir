@@ -1,31 +1,30 @@
-module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Route(..), ServerState(..), ViewType(..), httpMakeModel, init, main, makeURL, noBorderWidth, routeParser, scaled, subscriptions, toRoute, update, view, viewAsCard, viewBody, viewHeader, viewModuleControls, viewTitle, viewTypeFromString, viewValue)
+module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Page(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, toRoute, update, view, viewBody, viewHeader, viewTitle)
 
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, column, el, fill, height, image, layout, link, minimum, none, padding, paddingXY, px, rgb, row, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, px, rgb, row, scrollbars, spacing, text, width)
 import Element.Background as Background
-import Element.Border as Border
 import Element.Font as Font
-import Element.Input as Input exposing (labelHidden)
 import Http
-import Morphir.Compiler.Codec as CompilerCodec
-import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.Correctness.Codec exposing (decodeTestSuite)
+import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
+import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
-import Morphir.Value.Interpreter as Interpreter
+import Morphir.IR.Package as Package
+import Morphir.IR.QName exposing (QName(..))
+import Morphir.IR.Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
-import Morphir.Visual.Edit as Edit
-import Morphir.Visual.Theme as Theme
-import Morphir.Visual.ViewValue as ViewValue
-import Morphir.Visual.XRayView as XRayView
+import Morphir.Web.DevelopApp.Common exposing (insertInList, scaled, viewAsCard)
+import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
+import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (makeURL)
 import Morphir.Web.Theme exposing (Theme)
 import Morphir.Web.Theme.Light as Light
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing ((</>), (<?>))
-import Url.Parser.Query as Query
 
 
 
@@ -50,12 +49,12 @@ main =
 
 type alias Model =
     { key : Nav.Key
-    , route : Route
+    , currentPage : Page
     , theme : Theme Msg
     , irState : IRState
     , serverState : ServerState
-    , argState : Dict FQName (Dict Name RawValue)
-    , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
+    , testSuite : TestSuite
+    , functionStates : Dict FQName FunctionPage.Model
     }
 
 
@@ -69,17 +68,24 @@ type ServerState
     | ServerHttpError Http.Error
 
 
+type Page
+    = Home
+    | Module ModulePage.Model
+    | Function FQName
+    | NotFound
+
+
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key =
+init _ url key =
     ( { key = key
-      , route = toRoute url
+      , currentPage = toRoute url
       , theme = Light.theme scaled
       , irState = IRLoading
       , serverState = ServerReady
-      , argState = Dict.empty
-      , expandedValues = Dict.empty
+      , testSuite = Dict.empty
+      , functionStates = Dict.empty
       }
-    , httpMakeModel
+    , Cmd.batch [ httpMakeModel ]
     )
 
 
@@ -92,12 +98,21 @@ type Msg
     | UrlChanged Url.Url
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
+    | ServerGetTestsResponse TestSuite
     | ExpandReference FQName Bool
     | ExpandVariable Int (Maybe RawValue)
+    | ExpandFunctionReference Int FQName Bool
+    | ExpandFunctionVariable Int Int (Maybe RawValue)
+    | ShrinkFunctionVariable Int Int
     | ShrinkVariable Int
     | ValueFilterChanged String
     | ArgValueUpdated FQName Name RawValue
+    | FunctionArgValueUpdated Int Name RawValue
     | InvalidArgValue FQName Name String
+    | InvalidFunctionArgValue Int Name String
+    | FunctionAddTestCase Int
+    | FunctionEditTestCase Int
+    | FunctionSaveTestCase Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -112,73 +127,452 @@ update msg model =
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            ( { model | route = toRoute url }
+            ( { model | currentPage = toRoute url }
             , Cmd.none
             )
 
         HttpError httpError ->
-            ( { model | serverState = ServerHttpError httpError }
-            , Cmd.none
-            )
+            case model.irState of
+                IRLoaded _ ->
+                    ( model, Cmd.none )
+
+                _ ->
+                    ( { model | serverState = ServerHttpError httpError }
+                    , Cmd.none
+                    )
 
         ServerGetIRResponse distribution ->
             ( { model | irState = IRLoaded distribution }
-            , Cmd.none
+            , httpTestModel distribution
             )
 
         ValueFilterChanged filterString ->
-            let
-                newRoute =
-                    case model.route of
-                        Module moduleName _ viewType ->
-                            Module moduleName (Just filterString) viewType
+            case model.currentPage of
+                Module moduleModel ->
+                    let
+                        newModuleModel =
+                            { moduleModel
+                                | filter = Just filterString
+                            }
+                    in
+                    ( { model
+                        | currentPage = Module newModuleModel
+                      }
+                    , Nav.replaceUrl model.key
+                        (makeURL newModuleModel)
+                    )
 
-                        _ ->
-                            model.route
+                _ ->
+                    ( model, Cmd.none )
 
-                cmd =
-                    case model.route of
-                        Module moduleName filter viewType ->
-                            Nav.pushUrl model.key
-                                (makeURL moduleName (Just filterString) viewType)
+        ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
+            case model.currentPage of
+                Module moduleModel ->
+                    if moduleModel.expandedValues |> Dict.member ( fQName, localName ) then
+                        case isFunctionPresent of
+                            True ->
+                                ( { model | currentPage = Module { moduleModel | expandedValues = moduleModel.expandedValues |> Dict.remove ( fQName, localName ) } }, Cmd.none )
 
-                        _ ->
-                            Cmd.none
-            in
-            ( { model | route = newRoute }
-            , cmd
-            )
+                            False ->
+                                ( model, Cmd.none )
 
-        ExpandReference fqn isFunctionPresent ->
-            ( model
-            , Cmd.none
-            )
+                    else
+                        ( { model
+                            | currentPage =
+                                Module
+                                    { moduleModel
+                                        | expandedValues =
+                                            Distribution.lookupValueDefinition (QName moduleName localName)
+                                                (case model.irState of
+                                                    IRLoaded distribution ->
+                                                        distribution
+
+                                                    _ ->
+                                                        Library [] Dict.empty Package.emptyDefinition
+                                                )
+                                                |> Maybe.map (\valueDef -> moduleModel.expandedValues |> Dict.insert ( fQName, localName ) valueDef)
+                                                |> Maybe.withDefault moduleModel.expandedValues
+                                    }
+                          }
+                        , Cmd.none
+                        )
+
+                _ ->
+                    ( model, Cmd.none )
 
         ArgValueUpdated fQName argName rawValue ->
-            ( { model
-                | argState =
-                    model.argState
-                        |> Dict.update fQName
-                            (\maybeArgs ->
-                                case maybeArgs of
-                                    Just args ->
-                                        args |> Dict.insert argName rawValue |> Just
+            case model.currentPage of
+                Module moduleModel ->
+                    ( { model
+                        | currentPage =
+                            Module
+                                { moduleModel
+                                    | argState =
+                                        moduleModel.argState
+                                            |> Dict.update fQName
+                                                (\maybeArgs ->
+                                                    case maybeArgs of
+                                                        Just args ->
+                                                            args |> Dict.insert argName rawValue |> Just
 
-                                    Nothing ->
-                                        Dict.singleton argName rawValue |> Just
-                            )
-              }
-            , Cmd.none
-            )
+                                                        Nothing ->
+                                                            Dict.singleton argName rawValue |> Just
+                                                )
+                                }
+                      }
+                    , Cmd.none
+                    )
 
-        InvalidArgValue fQName argName string ->
+                _ ->
+                    ( model, Cmd.none )
+
+        InvalidArgValue _ _ _ ->
             ( model, Cmd.none )
 
         ExpandVariable varIndex maybeRawValue ->
-            ( model, Cmd.none )
+            case model.currentPage of
+                Module moduleModel ->
+                    ( { model
+                        | currentPage =
+                            Module
+                                { moduleModel | popupVariables = { variableIndex = varIndex, variableValue = maybeRawValue } }
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         ShrinkVariable varIndex ->
+            case model.currentPage of
+                Module moduleModel ->
+                    ( { model
+                        | currentPage =
+                            Module
+                                { moduleModel | popupVariables = { variableIndex = varIndex, variableValue = Nothing } }
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ServerGetTestsResponse testSuite ->
+            let
+                distribution =
+                    case model.irState of
+                        IRLoaded distro ->
+                            distro
+
+                        _ ->
+                            Library [] Dict.empty Package.emptyDefinition
+
+                newFunctionState =
+                    case model.currentPage of
+                        Function (( packagePath, modulePath, localName ) as fQName) ->
+                            let
+                                argNames : List Name
+                                argNames =
+                                    Distribution.lookupValueSpecification packagePath modulePath localName distribution
+                                        |> Maybe.map
+                                            (\valueSpec ->
+                                                valueSpec.inputs
+                                                    |> List.map (\( name, tpe ) -> name)
+                                            )
+                                        |> Maybe.withDefault []
+
+                                updatedTestCaseStates : Dict Int TestCaseState
+                                updatedTestCaseStates =
+                                    testSuite
+                                        |> Dict.get fQName
+                                        |> Maybe.map
+                                            (\testCases ->
+                                                testCases
+                                                    |> List.map
+                                                        (\testcase ->
+                                                            { testCase = testcase
+                                                            , expandedValues = Dict.empty
+                                                            , popupVariables = { variableIndex = 0, variableValue = Nothing }
+                                                            , argState = List.map2 Tuple.pair argNames testcase.inputs |> Dict.fromList
+                                                            , editMode = False
+                                                            }
+                                                        )
+                                                    |> List.indexedMap Tuple.pair
+                                                    |> Dict.fromList
+                                            )
+                                        |> Maybe.withDefault Dict.empty
+                            in
+                            Dict.insert fQName { functionName = fQName, testCaseStates = updatedTestCaseStates } model.functionStates
+
+                        _ ->
+                            model.functionStates
+            in
+            ( { model | testSuite = testSuite, functionStates = newFunctionState }, Cmd.none )
+
+        ExpandFunctionReference testCaseIndex (( _, moduleName, localName ) as fQName) isFunctionPresent ->
+            let
+                newFunctionState =
+                    case model.currentPage of
+                        Function functionName ->
+                            let
+                                updatedModelState : Dict FQName FunctionPage.Model
+                                updatedModelState =
+                                    Dict.get functionName model.functionStates
+                                        |> Maybe.andThen
+                                            (\functionModel ->
+                                                functionModel.testCaseStates
+                                                    |> Dict.get testCaseIndex
+                                                    |> Maybe.map
+                                                        (\testCaseState ->
+                                                            let
+                                                                updatedTestCaseStates =
+                                                                    Dict.insert testCaseIndex
+                                                                        (case isFunctionPresent of
+                                                                            True ->
+                                                                                { testCaseState | expandedValues = Dict.remove fQName testCaseState.expandedValues }
+
+                                                                            False ->
+                                                                                Distribution.lookupValueDefinition
+                                                                                    (QName moduleName localName)
+                                                                                    (case model.irState of
+                                                                                        IRLoaded distribution ->
+                                                                                            distribution
+
+                                                                                        _ ->
+                                                                                            Library [] Dict.empty Package.emptyDefinition
+                                                                                    )
+                                                                                    |> Maybe.map
+                                                                                        (\valueDef ->
+                                                                                            { testCaseState | expandedValues = Dict.insert fQName valueDef testCaseState.expandedValues }
+                                                                                        )
+                                                                                    |> Maybe.withDefault testCaseState
+                                                                        )
+                                                                        functionModel.testCaseStates
+                                                            in
+                                                            Dict.insert functionName { functionModel | testCaseStates = updatedTestCaseStates } model.functionStates
+                                                        )
+                                            )
+                                        |> Maybe.withDefault model.functionStates
+                            in
+                            updatedModelState
+
+                        _ ->
+                            model.functionStates
+            in
+            ( { model | functionStates = newFunctionState }
+            , Cmd.none
+            )
+
+        ExpandFunctionVariable testCaseIndex varIndex maybeValue ->
+            let
+                newFunctionState =
+                    case model.currentPage of
+                        Function fQName ->
+                            let
+                                updatedModelState : Dict FQName FunctionPage.Model
+                                updatedModelState =
+                                    Dict.get fQName model.functionStates
+                                        |> Maybe.andThen
+                                            (\functionModel ->
+                                                functionModel.testCaseStates
+                                                    |> Dict.get testCaseIndex
+                                                    |> Maybe.map
+                                                        (\testCaseState ->
+                                                            let
+                                                                updatedTestCaseStates =
+                                                                    Dict.insert testCaseIndex
+                                                                        { testCaseState | popupVariables = { variableIndex = varIndex, variableValue = maybeValue } }
+                                                                        functionModel.testCaseStates
+                                                            in
+                                                            Dict.insert fQName { functionModel | testCaseStates = updatedTestCaseStates } model.functionStates
+                                                        )
+                                            )
+                                        |> Maybe.withDefault model.functionStates
+                            in
+                            updatedModelState
+
+                        _ ->
+                            model.functionStates
+            in
+            ( { model | functionStates = newFunctionState }
+            , Cmd.none
+            )
+
+        ShrinkFunctionVariable testCaseIndex varIndex ->
+            let
+                newFunctionState =
+                    case model.currentPage of
+                        Function fQName ->
+                            let
+                                updatedModelState : Dict FQName FunctionPage.Model
+                                updatedModelState =
+                                    Dict.get fQName model.functionStates
+                                        |> Maybe.andThen
+                                            (\functionModel ->
+                                                functionModel.testCaseStates
+                                                    |> Dict.get testCaseIndex
+                                                    |> Maybe.map
+                                                        (\testCaseState ->
+                                                            let
+                                                                updatedTestCaseStates =
+                                                                    Dict.insert testCaseIndex
+                                                                        { testCaseState | popupVariables = { variableIndex = varIndex, variableValue = Nothing } }
+                                                                        functionModel.testCaseStates
+                                                            in
+                                                            Dict.insert fQName { functionModel | testCaseStates = updatedTestCaseStates } model.functionStates
+                                                        )
+                                            )
+                                        |> Maybe.withDefault model.functionStates
+                            in
+                            updatedModelState
+
+                        _ ->
+                            model.functionStates
+            in
+            ( { model | functionStates = newFunctionState }
+            , Cmd.none
+            )
+
+        FunctionArgValueUpdated testCaseIndex argName rawValue ->
+            let
+                newFunctionState =
+                    case model.currentPage of
+                        Function fQName ->
+                            let
+                                updatedModelState : Dict FQName FunctionPage.Model
+                                updatedModelState =
+                                    Dict.get fQName model.functionStates
+                                        |> Maybe.andThen
+                                            (\functionModel ->
+                                                functionModel.testCaseStates
+                                                    |> Dict.get testCaseIndex
+                                                    |> Maybe.map
+                                                        (\testCaseState ->
+                                                            let
+                                                                updatedTestCaseStates =
+                                                                    Dict.insert testCaseIndex
+                                                                        { testCaseState | argState = Dict.insert argName rawValue testCaseState.argState }
+                                                                        functionModel.testCaseStates
+                                                            in
+                                                            Dict.insert fQName { functionModel | testCaseStates = updatedTestCaseStates } model.functionStates
+                                                        )
+                                            )
+                                        |> Maybe.withDefault model.functionStates
+                            in
+                            updatedModelState
+
+                        _ ->
+                            model.functionStates
+            in
+            ( { model | functionStates = newFunctionState }
+            , Cmd.none
+            )
+
+        InvalidFunctionArgValue testCaseIndex varName string ->
             ( model, Cmd.none )
+
+        FunctionAddTestCase testCaseIndex ->
+            let
+                newFunctionState =
+                    case model.currentPage of
+                        Function fQName ->
+                            let
+                                updatedModelState : Dict FQName FunctionPage.Model
+                                updatedModelState =
+                                    Dict.get fQName model.functionStates
+                                        |> Maybe.map
+                                            (\functionModel ->
+                                                let
+                                                    testCaseStates =
+                                                        functionModel.testCaseStates
+                                                            |> Dict.toList
+                                                            |> List.map Tuple.second
+                                                            |> insertInList testCaseIndex
+                                                            |> List.indexedMap Tuple.pair
+                                                            |> Dict.fromList
+                                                in
+                                                Dict.insert fQName { functionModel | testCaseStates = testCaseStates } model.functionStates
+                                            )
+                                        |> Maybe.withDefault model.functionStates
+                            in
+                            updatedModelState
+
+                        _ ->
+                            model.functionStates
+            in
+            ( { model | functionStates = newFunctionState }
+            , Cmd.none
+            )
+
+        FunctionEditTestCase testCaseIndex ->
+            let
+                newFunctionState =
+                    case model.currentPage of
+                        Function fQName ->
+                            let
+                                updatedModelState : Dict FQName FunctionPage.Model
+                                updatedModelState =
+                                    Dict.get fQName model.functionStates
+                                        |> Maybe.andThen
+                                            (\functionModel ->
+                                                functionModel.testCaseStates
+                                                    |> Dict.get testCaseIndex
+                                                    |> Maybe.map
+                                                        (\testCaseState ->
+                                                            let
+                                                                updatedTestCaseStates =
+                                                                    Dict.insert testCaseIndex
+                                                                        { testCaseState | editMode = True }
+                                                                        functionModel.testCaseStates
+                                                            in
+                                                            Dict.insert fQName { functionModel | testCaseStates = updatedTestCaseStates } model.functionStates
+                                                        )
+                                            )
+                                        |> Maybe.withDefault model.functionStates
+                            in
+                            updatedModelState
+
+                        _ ->
+                            model.functionStates
+            in
+            ( { model | functionStates = newFunctionState }
+            , Cmd.none
+            )
+
+        FunctionSaveTestCase testCaseIndex ->
+            let
+                newFunctionState =
+                    case model.currentPage of
+                        Function fQName ->
+                            let
+                                updatedModelState : Dict FQName FunctionPage.Model
+                                updatedModelState =
+                                    Dict.get fQName model.functionStates
+                                        |> Maybe.andThen
+                                            (\functionModel ->
+                                                functionModel.testCaseStates
+                                                    |> Dict.get testCaseIndex
+                                                    |> Maybe.map
+                                                        (\testCaseState ->
+                                                            let
+                                                                updatedTestCaseStates =
+                                                                    Dict.insert testCaseIndex
+                                                                        { testCaseState | editMode = False }
+                                                                        functionModel.testCaseStates
+                                                            in
+                                                            Dict.insert fQName { functionModel | testCaseStates = updatedTestCaseStates } model.functionStates
+                                                        )
+                                            )
+                                        |> Maybe.withDefault model.functionStates
+                            in
+                            updatedModelState
+
+                        _ ->
+                            model.functionStates
+            in
+            ( { model | functionStates = newFunctionState }
+            , Cmd.none
+            )
 
 
 
@@ -194,56 +588,17 @@ subscriptions _ =
 -- ROUTE
 
 
-type Route
-    = Home
-    | Module (List String) (Maybe String) ViewType
-    | NotFound
-
-
-type ViewType
-    = XRayView
-    | InsightView
-
-
-viewTypeFromString : String -> ViewType
-viewTypeFromString string =
-    case string of
-        "insight" ->
-            InsightView
-
-        _ ->
-            XRayView
-
-
-routeParser : UrlParser.Parser (Route -> a) a
+routeParser : UrlParser.Parser (Page -> a) a
 routeParser =
     UrlParser.oneOf
         [ UrlParser.map Home UrlParser.top
-        , UrlParser.map
-            (\moduleName filter viewType ->
-                Module moduleName
-                    (filter
-                        |> Maybe.map
-                            (\filterString ->
-                                if String.endsWith "*" filterString then
-                                    filterString |> String.dropRight 1
-
-                                else
-                                    filterString
-                            )
-                    )
-                    viewType
-            )
-            (UrlParser.s "module"
-                </> (UrlParser.string |> UrlParser.map (String.split "."))
-                <?> Query.string "filter"
-                <?> (Query.string "view" |> Query.map (Maybe.map viewTypeFromString >> Maybe.withDefault InsightView))
-            )
+        , UrlParser.map Module ModulePage.routeParser
+        , UrlParser.map Function FunctionPage.routeParser
         , UrlParser.map (always Home) UrlParser.string
         ]
 
 
-toRoute : Url -> Route
+toRoute : Url -> Page
 toRoute url =
     UrlParser.parse routeParser url
         |> Maybe.withDefault NotFound
@@ -267,9 +622,11 @@ view model =
                 ]
             , Font.size (scaled 2)
             , width fill
+            , height fill
             ]
             (column
                 [ width fill
+                , height fill
                 ]
                 [ viewHeader model
                 , case model.serverState of
@@ -278,7 +635,12 @@ view model =
 
                     ServerHttpError error ->
                         viewServerError error
-                , el [ padding 5, width fill ] (viewBody model)
+                , el
+                    [ width fill
+                    , height fill
+                    , scrollbars
+                    ]
+                    (viewBody model)
                 ]
             )
         ]
@@ -287,15 +649,18 @@ view model =
 
 viewTitle : Model -> String
 viewTitle model =
-    case model.route of
+    case model.currentPage of
         Home ->
             "Morphir - Home"
 
-        Module moduleName _ _ ->
-            "Morphir - " ++ (moduleName |> String.join " / ")
+        Module moduleModel ->
+            ModulePage.viewTitle moduleModel
 
         NotFound ->
             "Morphir - Not Found"
+
+        Function functionModel ->
+            FunctionPage.viewTitle functionModel
 
 
 viewHeader : Model -> Element Msg
@@ -361,8 +726,8 @@ viewBody model =
         IRLoading ->
             text "Loading the IR ..."
 
-        IRLoaded ((Library packageName _ packageDef) as distribution) ->
-            case model.route of
+        IRLoaded ((Library _ _ packageDef) as distribution) ->
+            case model.currentPage of
                 Home ->
                     viewAsCard (text "Modules")
                         (column
@@ -372,7 +737,7 @@ viewBody model =
                             (packageDef.modules
                                 |> Dict.toList
                                 |> List.map
-                                    (\( moduleName, accessControlledModuleDef ) ->
+                                    (\( moduleName, _ ) ->
                                         link []
                                             { url =
                                                 "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
@@ -386,109 +751,39 @@ viewBody model =
                             )
                         )
 
-                Module moduleNameString filterString viewType ->
-                    let
-                        moduleName =
-                            moduleNameString |> List.map Name.fromString
-                    in
-                    case packageDef.modules |> Dict.get moduleName of
-                        Just accessControlledModuleDef ->
-                            column
-                                [ width fill
-                                , spacing (scaled 4)
-                                ]
-                                [ viewModuleControls moduleNameString filterString viewType
-                                , wrappedRow [ spacing (scaled 4) ]
-                                    (accessControlledModuleDef.value.values
-                                        |> Dict.toList
-                                        |> List.filterMap
-                                            (\( valueName, accessControlledValueDef ) ->
-                                                let
-                                                    matchesFilter =
-                                                        case filterString of
-                                                            Just filter ->
-                                                                String.contains
-                                                                    (filter |> String.toLower)
-                                                                    (valueName
-                                                                        |> Name.toHumanWords
-                                                                        |> List.map String.toLower
-                                                                        |> String.join " "
-                                                                    )
-
-                                                            Nothing ->
-                                                                True
-
-                                                    valueFQName =
-                                                        ( packageName, moduleName, valueName )
-                                                in
-                                                if matchesFilter then
-                                                    Just
-                                                        (el [ alignTop ]
-                                                            (viewAsCard
-                                                                (column [ spacing 5 ]
-                                                                    [ valueName
-                                                                        |> Name.toHumanWords
-                                                                        |> String.join " "
-                                                                        |> text
-                                                                    , viewArgumentEditors model valueFQName accessControlledValueDef.value
-                                                                    ]
-                                                                )
-                                                                (case viewType of
-                                                                    InsightView ->
-                                                                        viewValue
-                                                                            model
-                                                                            distribution
-                                                                            valueFQName
-                                                                            accessControlledValueDef.value
-
-                                                                    XRayView ->
-                                                                        XRayView.viewValueDefinition XRayView.viewType accessControlledValueDef
-                                                                )
-                                                            )
-                                                        )
-
-                                                else
-                                                    Nothing
-                                            )
-                                    )
-                                ]
-
-                        Nothing ->
-                            text (String.join " " [ "Module", moduleNameString |> String.join ".", "not found" ])
+                Module moduleModel ->
+                    ModulePage.viewPage
+                        { expandReference = ExpandReference
+                        , expandVariable = ExpandVariable
+                        , shrinkVariable = ShrinkVariable
+                        , argValueUpdated = ArgValueUpdated
+                        , invalidArgValue = InvalidArgValue
+                        }
+                        ValueFilterChanged
+                        distribution
+                        moduleModel
 
                 NotFound ->
                     text "Route not found"
 
+                Function functionModelName ->
+                    case Dict.get functionModelName model.functionStates of
+                        Just functionModel ->
+                            FunctionPage.viewPage
+                                { expandReference = ExpandFunctionReference
+                                , expandVariable = ExpandFunctionVariable
+                                , shrinkVariable = ShrinkFunctionVariable
+                                , argValueUpdated = FunctionArgValueUpdated
+                                , invalidArgValue = InvalidFunctionArgValue
+                                , addTestCase = FunctionAddTestCase
+                                , editTestCase = FunctionEditTestCase
+                                , saveTestCase = FunctionSaveTestCase
+                                }
+                                distribution
+                                functionModel
 
-viewArgumentEditors : Model -> FQName -> Value.Definition () (Type ()) -> Element Msg
-viewArgumentEditors model fQName valueDef =
-    valueDef.inputTypes
-        |> List.map
-            (\( argName, _, argType ) ->
-                row
-                    [ Background.color (rgb 1 1 1)
-                    , Border.rounded 5
-                    , spacing 10
-                    ]
-                    [ el [ paddingXY 10 0 ]
-                        (text (argName |> Name.toHumanWords |> String.join " "))
-                    , el []
-                        (Edit.editValue
-                            argType
-                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName))
-                            (ArgValueUpdated fQName argName)
-                            (InvalidArgValue fQName argName)
-                        )
-                    ]
-            )
-        |> wrappedRow
-            [ spacing 5
-            ]
-
-
-scaled : Int -> Int
-scaled =
-    Element.modular 10 1.25 >> round
+                        Nothing ->
+                            el [ Font.bold ] (text "Function Not found in IR")
 
 
 
@@ -509,142 +804,23 @@ httpMakeModel =
                         Ok result ->
                             ServerGetIRResponse result
                 )
-                CompilerCodec.decodeIR
+                DistributionCodec.decodeVersionedDistribution
         }
 
 
-viewModuleControls : List String -> Maybe String -> ViewType -> Element Msg
-viewModuleControls moduleName filterString viewType =
-    let
-        viewTypeBackground expectedType =
-            if viewType == expectedType then
-                Background.color (rgb 0.8 0.8 0.8)
+httpTestModel : Distribution -> Cmd Msg
+httpTestModel distribution =
+    Http.get
+        { url = "/server/morphir-tests.json"
+        , expect =
+            Http.expectJson
+                (\response ->
+                    case response of
+                        Err httpError ->
+                            HttpError httpError
 
-            else
-                Background.color (rgb 1 1 1)
-    in
-    row
-        [ width fill
-        , spacing (scaled 2)
-        , height shrink
-        ]
-        [ Input.text
-            [ paddingXY 10 4
-            , Border.width 1
-            , Border.rounded 10
-            ]
-            { onChange = ValueFilterChanged
-            , text = filterString |> Maybe.withDefault ""
-            , placeholder = Just (Input.placeholder [] (text "start typing to filter values ..."))
-            , label = labelHidden "filter values"
-            }
-        , el []
-            (row [ spacing 5 ]
-                [ link [ paddingXY 6 4, Border.rounded 3, viewTypeBackground XRayView ]
-                    { url = makeURL moduleName filterString XRayView
-                    , label = text "x-ray"
-                    }
-                , text "|"
-                , link [ paddingXY 6 4, Border.rounded 3, viewTypeBackground InsightView ]
-                    { url = makeURL moduleName filterString InsightView
-                    , label = text "insight"
-                    }
-                ]
-            )
-        ]
-
-
-makeURL : List String -> Maybe String -> ViewType -> String
-makeURL moduleName filterString viewType =
-    String.concat
-        [ "/module/"
-        , moduleName |> String.join "."
-        , "?filter="
-        , filterString |> Maybe.withDefault ""
-        , "&view="
-        , case viewType of
-            InsightView ->
-                "insight"
-
-            _ ->
-                "raw"
-        ]
-
-
-viewValue : Model -> Distribution -> FQName -> Value.Definition () (Type ()) -> Element Msg
-viewValue model distribution valueFQName valueDef =
-    let
-        popupScreen : PopupScreenRecord
-        popupScreen =
-            { variableIndex = 0
-            , variableValue = Nothing
-            }
-
-        validArgValues : Dict Name (Value () ())
-        validArgValues =
-            model.argState
-                |> Dict.get valueFQName
-                |> Maybe.withDefault Dict.empty
-
-        config : Config Msg
-        config =
-            { irContext =
-                { distribution = distribution
-                , references = Interpreter.referencesForDistribution distribution
-                }
-            , state =
-                { expandedFunctions = Dict.empty
-                , variables = validArgValues
-                , popupVariables = popupScreen
-                , theme = Theme.fromConfig Nothing
-                }
-            , handlers =
-                { onReferenceClicked = ExpandReference
-                , onHoverOver = ExpandVariable
-                , onHoverLeave = ShrinkVariable
-                }
-            }
-    in
-    ViewValue.viewDefinition config valueFQName valueDef
-
-
-viewAsCard : Element msg -> Element msg -> Element msg
-viewAsCard header content =
-    let
-        gray =
-            rgb 0.9 0.9 0.9
-
-        white =
-            rgb 1 1 1
-    in
-    column
-        [ Background.color gray
-        , Border.rounded 3
-        , height (shrink |> minimum 200)
-        , width (shrink |> minimum 200)
-        , padding 5
-        , spacing 5
-        ]
-        [ el
-            [ width fill
-            , padding 2
-            , Font.size (scaled 2)
-            ]
-            header
-        , el
-            [ Background.color white
-            , Border.rounded 3
-            , padding 5
-            , height fill
-            , width fill
-            ]
-            content
-        ]
-
-
-noBorderWidth =
-    { top = 0
-    , right = 0
-    , bottom = 0
-    , left = 0
-    }
+                        Ok result ->
+                            ServerGetTestsResponse result
+                )
+                (decodeTestSuite (IR.fromDistribution distribution))
+        }

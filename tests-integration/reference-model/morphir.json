@@ -13,7 +13,16 @@
         "Issues.Issue330",
         "Issues.Issue331",
         "Issues.Issue333",
+        "Issues.Issue349",
+        "Issues.Issue350",
         "Issues.Issue364",
-        "Issues.Issue373"
+        "Issues.Issue373",
+        "Issues.Issue401",
+        "Issues.Issue407",
+        "Issues.Issue331",
+        "Issues.DecisionTables",
+        "Issues.PatternModel.BasicEnum",
+        "Issues.PatternModel.OtherBasicEnum",
+        "Issues.Issue410"
     ]
 }

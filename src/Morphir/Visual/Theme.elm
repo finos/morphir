@@ -5,11 +5,13 @@ import Element
 
 type alias Theme =
     { fontSize : Int
+    , decimalDigit : Int
     }
 
 
 type alias ThemeConfig =
     { fontSize : Maybe Int
+    , decimalDigit : Maybe Int
     }
 
 
@@ -17,10 +19,10 @@ fromConfig : Maybe ThemeConfig -> Theme
 fromConfig maybeConfig =
     case maybeConfig of
         Just config ->
-            { fontSize = config.fontSize |> Maybe.withDefault 12 }
+            { fontSize = config.fontSize |> Maybe.withDefault 12, decimalDigit = config.decimalDigit |> Maybe.withDefault 2 }
 
         Nothing ->
-            { fontSize = 12 }
+            { fontSize = 12, decimalDigit = 2 }
 
 
 smallSpacing : Theme -> Int

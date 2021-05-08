@@ -246,7 +246,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                             , returnType =
                                 Just (mapType accessControlledValueDef.value.outputType)
                             , body =
-                                Just (mapFunctionBody distribution accessControlledValueDef.value.body)
+                                Just (mapFunctionBody distribution accessControlledValueDef.value)
                             }
                         ]
                     )
@@ -485,11 +485,11 @@ mapType tpe =
 
 {-| Generate Scala for a Morphir function body.
 -}
-mapFunctionBody : Distribution -> Value ta (Type ()) -> Scala.Value
-mapFunctionBody distribution val =
+mapFunctionBody : Distribution -> Value.Definition ta (Type ()) -> Scala.Value
+mapFunctionBody distribution valueDef =
     let
-        mapValue : Value ta (Type ()) -> Scala.Value
-        mapValue value =
+        mapValue : Set Name -> Value ta (Type ()) -> Scala.Value
+        mapValue inScopeVars value =
             case value of
                 Literal tpe literal ->
                     let
@@ -529,36 +529,43 @@ mapFunctionBody distribution val =
                         ( path, name ) =
                             mapFQNameToPathAndName fQName
                     in
-                    case tpe of
-                        -- if the constructor has at least 2 arguments we should curry it
-                        Type.Function _ _ (Type.Function _ _ _) ->
-                            Scala.Select
-                                (Scala.Ref path (name |> Name.toTitleCase))
-                                "curried"
-
-                        _ ->
-                            Scala.Ref path (name |> Name.toTitleCase)
+                    Scala.Ref path (name |> Name.toTitleCase)
 
                 Tuple a elemValues ->
                     Scala.Tuple
-                        (elemValues |> List.map mapValue)
+                        (elemValues |> List.map (mapValue inScopeVars))
 
                 List a itemValues ->
                     Scala.Apply
                         (Scala.Ref [ "morphir", "sdk" ] "List")
                         (itemValues
-                            |> List.map mapValue
+                            |> List.map (mapValue inScopeVars)
                             |> List.map (Scala.ArgValue Nothing)
                         )
 
-                Record a fieldValues ->
-                    Scala.StructuralValue
-                        (fieldValues
-                            |> List.map
-                                (\( fieldName, fieldValue ) ->
-                                    ( mapValueName fieldName, mapValue fieldValue )
+                Record tpe fieldValues ->
+                    case tpe of
+                        Type.Reference _ fQName typeArgs ->
+                            let
+                                ( path, name ) =
+                                    mapFQNameToPathAndName fQName
+                            in
+                            Scala.Apply (Scala.Ref path (name |> Name.toTitleCase))
+                                (fieldValues
+                                    |> List.map
+                                        (\( fieldName, fieldValue ) ->
+                                            Scala.ArgValue (Just (mapValueName fieldName)) (mapValue inScopeVars fieldValue)
+                                        )
                                 )
-                        )
+
+                        _ ->
+                            Scala.StructuralValue
+                                (fieldValues
+                                    |> List.map
+                                        (\( fieldName, fieldValue ) ->
+                                            ( mapValueName fieldName, mapValue inScopeVars fieldValue )
+                                        )
+                                )
 
                 Variable a name ->
                     Scala.Variable (name |> Name.toCamelCase)
@@ -571,7 +578,7 @@ mapFunctionBody distribution val =
                     Scala.Ref path (mapValueName name)
 
                 Field a subjectValue fieldName ->
-                    Scala.Select (mapValue subjectValue) (mapValueName fieldName)
+                    Scala.Select (mapValue inScopeVars subjectValue) (mapValueName fieldName)
 
                 FieldFunction tpe fieldName ->
                     case tpe of
@@ -583,20 +590,80 @@ mapFunctionBody distribution val =
                         _ ->
                             Scala.Select Scala.Wildcard (mapValueName fieldName)
 
-                Apply a fun arg ->
-                    Scala.Apply (mapValue fun)
-                        [ Scala.ArgValue Nothing (mapValue arg)
-                        ]
+                Apply _ applyFun applyArg ->
+                    let
+                        ( bottomFun, args ) =
+                            Value.uncurryApply applyFun applyArg
+                    in
+                    case bottomFun of
+                        Constructor constructorType fQName ->
+                            let
+                                ( path, name ) =
+                                    mapFQNameToPathAndName fQName
 
-                Lambda a argPattern bodyValue ->
+                                extractArgTypes : Type () -> List (Type ())
+                                extractArgTypes tpe =
+                                    case tpe of
+                                        Type.Function _ argType returnType ->
+                                            argType :: extractArgTypes returnType
+
+                                        _ ->
+                                            []
+
+                                constructorArgTypes : List (Type ())
+                                constructorArgTypes =
+                                    extractArgTypes constructorType
+
+                                unspecifiedArgs : List ( String, Type () )
+                                unspecifiedArgs =
+                                    constructorArgTypes
+                                        |> List.drop (List.length args)
+                                        |> List.indexedMap
+                                            (\index argType ->
+                                                ( uniqueVarName inScopeVars index, argType )
+                                            )
+
+                                curryUnspecifiedArgs : List ( String, Type () ) -> Scala.Value -> List Scala.ArgValue -> Scala.Value
+                                curryUnspecifiedArgs argsToCurry constructor specifiedArgs =
+                                    case argsToCurry of
+                                        ( firstArgName, firstArgType ) :: restOfArgs ->
+                                            Scala.Lambda [ ( firstArgName, Just (mapType firstArgType) ) ]
+                                                (curryUnspecifiedArgs restOfArgs constructor (specifiedArgs ++ [ Scala.ArgValue Nothing (Scala.Variable firstArgName) ]))
+
+                                        [] ->
+                                            Scala.Apply constructor specifiedArgs
+                            in
+                            curryUnspecifiedArgs
+                                unspecifiedArgs
+                                (mapValue inScopeVars bottomFun)
+                                (args
+                                    |> List.map
+                                        (\arg ->
+                                            Scala.ArgValue Nothing (mapValue inScopeVars arg)
+                                        )
+                                )
+
+                        _ ->
+                            Scala.Apply (mapValue inScopeVars applyFun)
+                                [ Scala.ArgValue Nothing (mapValue inScopeVars applyArg)
+                                ]
+
+                Lambda _ argPattern bodyValue ->
+                    let
+                        newInScopeVars : Set Name
+                        newInScopeVars =
+                            Set.union
+                                (Value.collectPatternVariables argPattern)
+                                inScopeVars
+                    in
                     case argPattern of
                         AsPattern tpe (WildcardPattern _) alias ->
                             Scala.Lambda
                                 [ ( alias |> Name.toCamelCase, Just (mapType tpe) ) ]
-                                (mapValue bodyValue)
+                                (mapValue newInScopeVars bodyValue)
 
                         _ ->
-                            Scala.MatchCases [ ( mapPattern argPattern, mapValue bodyValue ) ]
+                            Scala.MatchCases [ ( mapPattern argPattern, mapValue newInScopeVars bodyValue ) ]
 
                 LetDefinition _ _ _ _ ->
                     let
@@ -615,6 +682,12 @@ mapFunctionBody distribution val =
 
                         ( defs, finalInValue ) =
                             flattenLetDef value
+
+                        newInScopeVars : Set Name
+                        newInScopeVars =
+                            Set.union
+                                (defs |> List.map Tuple.first |> Set.fromList)
+                                inScopeVars
                     in
                     Scala.Block
                         (defs
@@ -625,7 +698,7 @@ mapFunctionBody distribution val =
                                             { modifiers = []
                                             , pattern = Scala.NamedMatch (mapValueName defName)
                                             , valueType = Just (mapType def.outputType)
-                                            , value = mapValue def.body
+                                            , value = mapValue newInScopeVars def.body
                                             }
 
                                     else
@@ -647,13 +720,20 @@ mapFunctionBody distribution val =
                                             , returnType =
                                                 Just (mapType def.outputType)
                                             , body =
-                                                Just (mapValue def.body)
+                                                Just (mapValue newInScopeVars def.body)
                                             }
                                 )
                         )
-                        (mapValue finalInValue)
+                        (mapValue newInScopeVars finalInValue)
 
                 LetRecursion a defs inValue ->
+                    let
+                        newInScopeVars : Set Name
+                        newInScopeVars =
+                            Set.union
+                                (defs |> Dict.keys |> Set.fromList)
+                                inScopeVars
+                    in
                     Scala.Block
                         (defs
                             |> Dict.toList
@@ -681,52 +761,71 @@ mapFunctionBody distribution val =
                                         , returnType =
                                             Just (mapType def.outputType)
                                         , body =
-                                            Just (mapValue def.body)
+                                            Just (mapValue newInScopeVars def.body)
                                         }
                                 )
                         )
-                        (mapValue inValue)
+                        (mapValue newInScopeVars inValue)
 
-                Destructure a bindPattern bindValue inValue ->
+                Destructure _ bindPattern bindValue inValue ->
+                    let
+                        newInScopeVars : Set Name
+                        newInScopeVars =
+                            Set.union
+                                (Value.collectPatternVariables bindPattern)
+                                inScopeVars
+                    in
                     Scala.Block
                         [ Scala.ValueDecl
                             { modifiers = []
                             , pattern = mapPattern bindPattern
                             , valueType = Nothing
-                            , value = mapValue bindValue
+                            , value = mapValue newInScopeVars bindValue
                             }
                         ]
-                        (mapValue inValue)
+                        (mapValue newInScopeVars inValue)
 
                 IfThenElse a condValue thenValue elseValue ->
-                    Scala.IfElse (mapValue condValue) (mapValue thenValue) (mapValue elseValue)
+                    Scala.IfElse (mapValue inScopeVars condValue) (mapValue inScopeVars thenValue) (mapValue inScopeVars elseValue)
 
                 PatternMatch a onValue cases ->
-                    Scala.Match (mapValue onValue)
+                    Scala.Match (mapValue inScopeVars onValue)
                         (cases
                             |> List.map
                                 (\( casePattern, caseValue ) ->
-                                    ( mapPattern casePattern, mapValue caseValue )
+                                    let
+                                        newInScopeVars : Set Name
+                                        newInScopeVars =
+                                            Set.union
+                                                (Value.collectPatternVariables casePattern)
+                                                inScopeVars
+                                    in
+                                    ( mapPattern casePattern, mapValue newInScopeVars caseValue )
                                 )
                             |> Scala.MatchCases
                         )
 
                 UpdateRecord a subjectValue fieldUpdates ->
                     Scala.Apply
-                        (Scala.Select (mapValue subjectValue) "copy")
+                        (Scala.Select (mapValue inScopeVars subjectValue) "copy")
                         (fieldUpdates
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     Scala.ArgValue
                                         (Just (mapValueName fieldName))
-                                        (mapValue fieldValue)
+                                        (mapValue inScopeVars fieldValue)
                                 )
                         )
 
                 Unit a ->
                     Scala.Unit
     in
-    mapValue val
+    mapValue
+        (valueDef.inputTypes
+            |> List.map (\( name, _, _ ) -> name)
+            |> Set.fromList
+        )
+        valueDef.body
 
 
 mapPattern : Pattern a -> Scala.Pattern
@@ -818,3 +917,31 @@ javaObjectMethods =
         , "toString"
         , "wait"
         ]
+
+
+uniqueVarName : Set Name -> Int -> String
+uniqueVarName varNamesInUse hint =
+    let
+        varsInUse =
+            varNamesInUse
+                |> Set.map mapValueName
+
+        firstCandidate =
+            "a" ++ String.fromInt hint
+
+        findUnused h i =
+            let
+                candidate =
+                    "a" ++ String.fromInt h ++ String.fromInt i
+            in
+            if varsInUse |> Set.member candidate then
+                findUnused h (i + 1)
+
+            else
+                candidate
+    in
+    if varsInUse |> Set.member firstCandidate then
+        findUnused 0 hint
+
+    else
+        firstCandidate

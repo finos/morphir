@@ -8,7 +8,7 @@ import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 
 
-editValue : Type () -> Maybe RawValue -> (Value () () -> msg) -> (String -> msg) -> Element msg
+editValue : Type () -> Maybe RawValue -> (RawValue -> msg) -> (String -> msg) -> Element msg
 editValue valueType currentValue valueUpdated invalidValue =
     if valueType == Basics.intType () then
         editInt currentValue valueUpdated invalidValue
@@ -25,7 +25,7 @@ editValue valueType currentValue valueUpdated invalidValue =
             }
 
 
-editInt : Maybe RawValue -> (Value () () -> msg) -> (String -> msg) -> Element msg
+editInt : Maybe RawValue -> (RawValue -> msg) -> (String -> msg) -> Element msg
 editInt currentValue valueUpdated invalidValue =
     textBox
         { onChange =
@@ -43,7 +43,7 @@ editInt currentValue valueUpdated invalidValue =
         }
 
 
-editFloat : Maybe RawValue -> (Value () () -> msg) -> (String -> msg) -> Element msg
+editFloat : Maybe RawValue -> (RawValue -> msg) -> (String -> msg) -> Element msg
 editFloat currentValue valueUpdated invalidValue =
     textBox
         { onChange =
