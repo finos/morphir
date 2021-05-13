@@ -1,12 +1,11 @@
 module Morphir.Web.DevelopApp.FunctionPage exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, centerY, column, el, fill, height, htmlAttribute, none, padding, paddingXY, rgb, spacing, text, width)
+import Element exposing (Element, centerX, centerY, column, el, fill, height, none, padding, paddingXY, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
-import Html.Attributes exposing (style)
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
@@ -25,7 +24,7 @@ import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.VisualTypedValue exposing (rawToVisualTypedValue)
 import Morphir.Web.DevelopApp.Common exposing (scaled)
-import Morphir.Web.Theme.Light exposing (black, blue, gray, green, orange, red, white)
+import Morphir.Web.Theme.Light exposing (black, blue, green, orange, red, white)
 import Url.Parser as UrlParser exposing ((</>))
 
 

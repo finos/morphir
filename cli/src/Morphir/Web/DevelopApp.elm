@@ -267,45 +267,45 @@ update msg model =
                         _ ->
                             Library [] Dict.empty Package.emptyDefinition
 
+                newFunctionState : Dict FQName FunctionPage.Model
                 newFunctionState =
-                    case model.currentPage of
-                        Function (( packagePath, modulePath, localName ) as fQName) ->
-                            let
-                                argNames : List Name
-                                argNames =
-                                    Distribution.lookupValueSpecification packagePath modulePath localName distribution
-                                        |> Maybe.map
-                                            (\valueSpec ->
-                                                valueSpec.inputs
-                                                    |> List.map (\( name, tpe ) -> name)
-                                            )
-                                        |> Maybe.withDefault []
-
-                                updatedTestCaseStates : Dict Int TestCaseState
-                                updatedTestCaseStates =
-                                    testSuite
-                                        |> Dict.get fQName
-                                        |> Maybe.map
-                                            (\testCases ->
-                                                testCases
-                                                    |> List.map
-                                                        (\testcase ->
-                                                            { testCase = testcase
-                                                            , expandedValues = Dict.empty
-                                                            , popupVariables = { variableIndex = 0, variableValue = Nothing }
-                                                            , argState = List.map2 Tuple.pair argNames testcase.inputs |> Dict.fromList
-                                                            , editMode = False
-                                                            }
-                                                        )
-                                                    |> List.indexedMap Tuple.pair
-                                                    |> Dict.fromList
-                                            )
-                                        |> Maybe.withDefault Dict.empty
-                            in
-                            Dict.insert fQName { functionName = fQName, testCaseStates = updatedTestCaseStates } model.functionStates
-
-                        _ ->
-                            model.functionStates
+                    testSuite
+                        |> Dict.toList
+                        |> List.map
+                            (\( ( packagePath, modulePath, localName ) as fQName, testCasesList ) ->
+                                let
+                                    testCaseStates =
+                                        testCasesList
+                                            |> List.map
+                                                (\testcase ->
+                                                    let
+                                                        argNames : List Name
+                                                        argNames =
+                                                            Distribution.lookupValueSpecification packagePath modulePath localName distribution
+                                                                |> Maybe.map
+                                                                    (\valueSpec ->
+                                                                        valueSpec.inputs
+                                                                            |> List.map (\( name, tpe ) -> name)
+                                                                    )
+                                                                |> Maybe.withDefault []
+                                                    in
+                                                    { testCase = testcase
+                                                    , expandedValues = Dict.empty
+                                                    , popupVariables = { variableIndex = 0, variableValue = Nothing }
+                                                    , argState = List.map2 Tuple.pair argNames testcase.inputs |> Dict.fromList
+                                                    , editMode = False
+                                                    }
+                                                )
+                                            |> List.indexedMap Tuple.pair
+                                            |> Dict.fromList
+                                in
+                                ( fQName
+                                , { functionName = fQName
+                                  , testCaseStates = testCaseStates
+                                  }
+                                )
+                            )
+                        |> Dict.fromList
             in
             ( { model | testSuite = testSuite, functionStates = newFunctionState }, Cmd.none )
 
