@@ -18,6 +18,7 @@
 module Morphir.IR.SDK exposing (..)
 
 import Dict exposing (Dict)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
@@ -74,10 +75,10 @@ packageSpec =
     }
 
 
-nativeFunctions : Dict ( Path, Path, Name ) Native.Function
+nativeFunctions : Dict FQName Native.Function
 nativeFunctions =
     let
-        moduleFunctions : String -> List ( String, Native.Function ) -> Dict ( Path, Path, Name ) Native.Function
+        moduleFunctions : String -> List ( String, Native.Function ) -> Dict FQName Native.Function
         moduleFunctions moduleName functionsByName =
             functionsByName
                 |> List.map

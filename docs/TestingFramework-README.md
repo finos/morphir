@@ -1,4 +1,4 @@
-**This document will describe how we can use Testing Framework within developer server**
+**This document will describe how we can use Testing Framework within developer server.**
 
 ## Prerequisites
 - Morphir-elm package installed. Installation instructions: [morphir-elm installation](https://github.com/finos/morphir-elm/blob/master/README.md)
@@ -7,7 +7,8 @@
 
 ## How to use this framework
 1. Create a file name `morphir-tests.json` if not present and put it into the same directory where `morphir.json` and `morphir-ir.json` file is present.
-- This file is a dictionary with key as fully qualified name of function and value as list of testcases.
+- This file is basically called TestSuite which is a dictionary with key as fully qualified name `FQName` of function and value as list of testcase `List TestCase`.
+- For better understanding of data structure you can look this file [Test.elm](https://github.com/finos/morphir-elm/blob/master/src/Morphir/Correctness/Test.elm)   
 -  A testcase structure looks like this
 ``` 
    type alias TestCase =
@@ -17,7 +18,7 @@
    }
 ```
 
-Example:
+####Example: 
 If we have a file with module name defined as:
 ```
 module Morphir.Reference.Model.Issues.Issue410 exposing (..)
@@ -35,7 +36,7 @@ exampleIR
 |   |   |   |   |     |       Issue410
 ```
 
-- `Issue410` file has a function name `addFunction` which takes 2 Int values and return 1 Int value.
+- `Issue410` file has a function `addFunction` which takes 2 Int values and return 1 Int value.
 ```
    addFunction : Int -> Int -> Int
 ```
@@ -47,6 +48,13 @@ a) FQName for function
 - `LocalName` is function name within file itself.
 - You can look at `morphir.json` file for better understanding of FQName where name is `packagePath` and exposedModule is `modulePath` for each elm source file.
 ```
+Sample Format :
+    [ PackagePath
+    , ModulePath
+    , LocalName
+    ]
+      
+Example :
     [ [ [ "morphir" ], [ "reference" ], [ "model" ] ]
     , [ [ "issues" ], [ "issue", "410" ] ]
     , [ "add", "function" ]
@@ -56,7 +64,7 @@ a) FQName for function
 b) Sample testcase for function
 - `inputs` will always be a list. Values inside list could be Int, float, record, list , tuple or anything.
 - `expectedOutput` depends on the return type of the function. Like wise Input it could also be anything.
-- `description` is a string in case you wanted to add any description for a testcase.
+- `description` will be a string in case you wanted to add any description for a testcase.
 ```
     { "inputs" : [ 4 , 5 ]
     , "expectedOutput" : 9
@@ -114,22 +122,29 @@ c) Create a json object from FQName and Testcases
 ```
 
 4. You need to call this API with a specific URL
-- Structure of URL http://localhost:8000/function/packagePath:modulePath:localName
+- Structure of URL `http://localhost:8000/function/packagePath:modulePath:localName`
 - Sample URL for Testing TestSuites
 ```
    http://localhost:8000/function/Morphir.Reference.Model:Issues.Issue410:addFunction
 ```
+## Features
+####1. Add TestCases
+- You can clone as many testcase as you wanted with default values of testcase whose add testcase button you will click.
 
-5. Easy Debugging
+####2. Edit TestCases
+- You can edit inputs and output will be change based on the new input values.
+
+####3. Easy Debugging
 - This framework also allows user to match actual output with expected output.
 - If the actual output will be in green color then it matches otherwise it would be red.
-- It also shows the error if interpreter is unable to evaluate your inputs.
-  
-## Example
+- It also shows the error if morphir interpreter is unable to evaluate your inputs.
+ 
+**Note** - Nothing will be saved in database. Every cloned and edit testcase will update locally in page. Page reloading will remove all the local changes.
+
+### Example
 - Output is not matching 
 
 ![TestCase-1](./assets/TestCase1.PNG)
 - Output is matching
   
 ![TestCase-2](./assets/TestCase2.PNG)
-  

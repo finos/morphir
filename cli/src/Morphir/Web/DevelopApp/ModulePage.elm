@@ -267,9 +267,7 @@ viewArgumentEditors handlers model fQName valueDef =
                         )
                     ]
             )
-        |> wrappedRow
-            [ spacing 5
-            ]
+        |> wrappedRow [ spacing 5 ]
 
 
 makeURL : Model -> String

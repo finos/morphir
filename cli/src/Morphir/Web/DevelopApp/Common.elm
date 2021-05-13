@@ -43,3 +43,14 @@ viewAsCard header content =
             ]
             content
         ]
+
+
+insertInList : Int -> List a -> List a
+insertInList index list =
+    let
+        list2 =
+            list |> List.drop index
+    in
+    List.append (list2 |> List.take 1)
+        list2
+        |> List.append (list |> List.take index)

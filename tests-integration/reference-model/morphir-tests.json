@@ -8,7 +8,7 @@
     [
       {
         "inputs" : [ 4 , 5 ],
-        "expectedOutput" : 10,
+        "expectedOutput" : 9,
         "description" : "Add"
       },
       {
@@ -77,11 +77,11 @@
           },
           { "direction" : ["Up"]
           , "code" : "123456789"
-          , "velocity" : 12
+          , "velocity" : -12
           },
           { "direction" : ["Down"]
           , "code" : "987654321"
-          , "velocity" : 12
+          , "velocity" : -12
           }
         ],
         "description" : "List of Tracking Advantage"
