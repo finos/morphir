@@ -52,6 +52,7 @@ type alias Handlers msg =
     , addTestCase : Int -> msg
     , editTestCase : Int -> msg
     , saveTestCase : Int -> msg
+    , saveTestSuite : Model -> msg
     }
 
 
@@ -80,6 +81,7 @@ viewPage : Handlers msg -> Distribution -> Model -> Element msg
 viewPage handlers distribution model =
     Element.column [ padding 10, spacing 10 ]
         [ el [ Font.bold ] (text (viewTitle model.functionName))
+        , saveTestSuiteButton handlers.saveTestSuite model "Save Test Cases"
         , el [ Font.bold ] (text ("Total Test Cases : " ++ String.fromInt (Dict.size model.testCaseStates)))
         , el [ Font.bold, Font.size (scaled 4) ] (text "TestCases :")
         , viewSectionWise handlers distribution model
@@ -328,6 +330,21 @@ viewArgumentEditors handlers model index inputTypes =
                     ]
             )
         |> column [ spacing 5 ]
+
+
+saveTestSuiteButton : (model -> msg) -> model -> String -> Element msg
+saveTestSuiteButton handlers model label =
+    Element.el
+        [ Font.bold
+        , Border.solid
+        , Border.rounded 3
+        , spacing 7
+        , padding 7
+        , Background.color black
+        , Font.color white
+        , onClick (handlers model)
+        ]
+        (Element.text label)
 
 
 addOrEditOrSaveButton : (Int -> msg) -> Int -> String -> Element msg

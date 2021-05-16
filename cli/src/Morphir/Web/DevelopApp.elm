@@ -6,13 +6,13 @@ import Dict exposing (Dict)
 import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, px, rgb, row, scrollbars, spacing, text, width)
 import Element.Background as Background
 import Element.Font as Font
-import Http
-import Morphir.Correctness.Codec exposing (decodeTestSuite)
+import Http exposing (emptyBody, jsonBody)
+import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.QName exposing (QName(..))
@@ -113,10 +113,20 @@ type Msg
     | FunctionAddTestCase Int
     | FunctionEditTestCase Int
     | FunctionSaveTestCase Int
+    | SaveTestSuite FunctionPage.Model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        getDistribution =
+            case model.irState of
+                IRLoaded distribution ->
+                    distribution
+
+                _ ->
+                    Library [] Dict.empty Package.emptyDefinition
+    in
     case msg |> Debug.log "msg" of
         LinkClicked urlRequest ->
             case urlRequest of
@@ -183,13 +193,7 @@ update msg model =
                                     { moduleModel
                                         | expandedValues =
                                             Distribution.lookupValueDefinition (QName moduleName localName)
-                                                (case model.irState of
-                                                    IRLoaded distribution ->
-                                                        distribution
-
-                                                    _ ->
-                                                        Library [] Dict.empty Package.emptyDefinition
-                                                )
+                                                getDistribution
                                                 |> Maybe.map (\valueDef -> moduleModel.expandedValues |> Dict.insert ( fQName, localName ) valueDef)
                                                 |> Maybe.withDefault moduleModel.expandedValues
                                     }
@@ -259,14 +263,6 @@ update msg model =
 
         ServerGetTestsResponse testSuite ->
             let
-                distribution =
-                    case model.irState of
-                        IRLoaded distro ->
-                            distro
-
-                        _ ->
-                            Library [] Dict.empty Package.emptyDefinition
-
                 newFunctionState : Dict FQName FunctionPage.Model
                 newFunctionState =
                     testSuite
@@ -281,7 +277,7 @@ update msg model =
                                                     let
                                                         argNames : List Name
                                                         argNames =
-                                                            Distribution.lookupValueSpecification packagePath modulePath localName distribution
+                                                            Distribution.lookupValueSpecification packagePath modulePath localName getDistribution
                                                                 |> Maybe.map
                                                                     (\valueSpec ->
                                                                         valueSpec.inputs
@@ -334,13 +330,7 @@ update msg model =
                                                                             False ->
                                                                                 Distribution.lookupValueDefinition
                                                                                     (QName moduleName localName)
-                                                                                    (case model.irState of
-                                                                                        IRLoaded distribution ->
-                                                                                            distribution
-
-                                                                                        _ ->
-                                                                                            Library [] Dict.empty Package.emptyDefinition
-                                                                                    )
+                                                                                    getDistribution
                                                                                     |> Maybe.map
                                                                                         (\valueDef ->
                                                                                             { testCaseState | expandedValues = Dict.insert fQName valueDef testCaseState.expandedValues }
@@ -574,6 +564,42 @@ update msg model =
             , Cmd.none
             )
 
+        SaveTestSuite functionModel ->
+            let
+                ( packagePath, modulePath, localName ) =
+                    functionModel.functionName
+
+                argNames =
+                    Distribution.lookupValueSpecification packagePath modulePath localName getDistribution
+                        |> Maybe.map (\valueSpec -> valueSpec.inputs)
+                        |> Maybe.withDefault []
+
+                newTestSuite =
+                    Dict.insert functionModel.functionName
+                        (functionModel.testCaseStates
+                            |> Dict.toList
+                            |> List.map
+                                (\( index, testCaseState ) ->
+                                    let
+                                        testcase =
+                                            testCaseState.testCase
+                                    in
+                                    { testcase
+                                        | inputs =
+                                            testcase.inputs
+                                                |> List.map2
+                                                    (\( name, _ ) inputValue ->
+                                                        Dict.get name testCaseState.argState
+                                                            |> Maybe.withDefault inputValue
+                                                    )
+                                                    argNames
+                                    }
+                                )
+                        )
+                        model.testSuite
+            in
+            ( { model | testSuite = newTestSuite }, httpSaveTestSuite getDistribution newTestSuite )
+
 
 
 -- SUBSCRIPTIONS
@@ -778,6 +804,7 @@ viewBody model =
                                 , addTestCase = FunctionAddTestCase
                                 , editTestCase = FunctionEditTestCase
                                 , saveTestCase = FunctionSaveTestCase
+                                , saveTestSuite = SaveTestSuite
                                 }
                                 distribution
                                 functionModel
@@ -812,6 +839,34 @@ httpTestModel : Distribution -> Cmd Msg
 httpTestModel distribution =
     Http.get
         { url = "/server/morphir-tests.json"
+        , expect =
+            Http.expectJson
+                (\response ->
+                    case response of
+                        Err httpError ->
+                            HttpError httpError
+
+                        Ok result ->
+                            ServerGetTestsResponse result
+                )
+                (decodeTestSuite (IR.fromDistribution distribution))
+        }
+
+
+httpSaveTestSuite : Distribution -> TestSuite -> Cmd Msg
+httpSaveTestSuite distribution testSuite =
+    let
+        encodedTestSuite =
+            case encodeTestSuite (IR.fromDistribution distribution) testSuite of
+                Ok encodedValue ->
+                    jsonBody encodedValue
+
+                Err error ->
+                    emptyBody
+    in
+    Http.post
+        { url = "http://localhost:8000/server/morphir-tests.json"
+        , body = encodedTestSuite
         , expect =
             Http.expectJson
                 (\response ->
