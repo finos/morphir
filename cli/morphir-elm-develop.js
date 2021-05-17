@@ -6,6 +6,7 @@ const path = require('path')
 const util = require('util')
 const fs = require('fs')
 const readFile = util.promisify(fs.readFile)
+const writeFile = util.promisify(fs.writeFile)
 const commander = require('commander')
 const express = require('express')
 
@@ -48,6 +49,18 @@ app.get('/server/morphir-ir.json', wrap(async (req, res, next) => {
 
 app.get('/server/morphir-tests.json', wrap(async (req, res, next) => {
   const morphirTestsJsonPath = path.join(program.projectDir, 'morphir-tests.json')
+  const morphirTestsJsonContent = await readFile(morphirTestsJsonPath)
+  const morphirTestsJson = JSON.parse(morphirTestsJsonContent.toString())
+  res.send(morphirTestsJson)
+}))
+
+// middleware
+app.use(express.json());
+
+app.post('/server/morphir-tests.json', wrap(async (req, res, next) => {
+  const morphirTestsJsonPath = path.join(program.projectDir, 'morphir-tests.json')
+  var jsonContent = JSON.stringify(req.body)
+  await writeFile(morphirTestsJsonPath, jsonContent)
   const morphirTestsJsonContent = await readFile(morphirTestsJsonPath)
   const morphirTestsJson = JSON.parse(morphirTestsJsonContent.toString())
   res.send(morphirTestsJson)

@@ -6,7 +6,7 @@ import Dict exposing (Dict)
 import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, px, rgb, row, scrollbars, spacing, text, width)
 import Element.Background as Background
 import Element.Font as Font
-import Http exposing (emptyBody, jsonBody)
+import Http exposing (emptyBody, jsonBody, stringBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
@@ -865,7 +865,7 @@ httpSaveTestSuite distribution testSuite =
                     emptyBody
     in
     Http.post
-        { url = "http://localhost:8000/server/morphir-tests.json"
+        { url = "/server/morphir-tests.json"
         , body = encodedTestSuite
         , expect =
             Http.expectJson
