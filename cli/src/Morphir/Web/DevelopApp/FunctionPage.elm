@@ -6,6 +6,8 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
+import Element.Keyed as Keyed
+import Element.Lazy as Lazy
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
@@ -19,8 +21,8 @@ import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
-import Morphir.Visual.Edit as Edit
 import Morphir.Visual.Theme as Theme
+import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.VisualTypedValue exposing (rawToVisualTypedValue)
 import Morphir.Web.DevelopApp.Common exposing (scaled)
@@ -38,7 +40,7 @@ type alias TestCaseState =
     { testCase : TestCase
     , expandedValues : Dict FQName (Value.Definition () (Type ()))
     , popupVariables : PopupScreenRecord
-    , argState : Dict Name RawValue
+    , argState : Dict Name ValueEditor.EditorState
     , editMode : Bool
     }
 
@@ -47,7 +49,7 @@ type alias Handlers msg =
     { expandReference : Int -> FQName -> Bool -> msg
     , expandVariable : Int -> Int -> Maybe RawValue -> msg
     , shrinkVariable : Int -> Int -> msg
-    , argValueUpdated : Int -> Name -> RawValue -> msg
+    , argValueUpdated : Int -> Name -> ValueEditor.EditorState -> msg
     , invalidArgValue : Int -> Name -> String -> msg
     , addTestCase : Int -> msg
     , editTestCase : Int -> msg
@@ -112,6 +114,15 @@ viewSectionWise handlers distribution model =
                 , variables =
                     Dict.get index model.testCaseStates
                         |> Maybe.map .argState
+                        |> Maybe.map
+                            (\argStates ->
+                                argStates
+                                    |> Dict.map
+                                        (\_ editorState ->
+                                            editorState.lastValidValue
+                                                |> Maybe.withDefault (Value.Unit ())
+                                        )
+                            )
                         |> Maybe.withDefault Dict.empty
                 , popupVariables =
                     Dict.get index model.testCaseStates
@@ -152,7 +163,8 @@ viewSectionWise handlers distribution model =
                                             (\( ( name, tpe ), rawValue ) ->
                                                 case Dict.get name testCaseState.argState of
                                                     Just value ->
-                                                        value
+                                                        value.lastValidValue
+                                                            |> Maybe.withDefault (Value.Unit ())
 
                                                     Nothing ->
                                                         rawValue
@@ -308,23 +320,26 @@ viewArgumentEditors handlers model index inputTypes =
     inputTypes
         |> List.map
             (\( argName, argType ) ->
-                column
+                Keyed.column
                     [ Background.color (rgb 1 1 1)
                     , Border.rounded 5
                     , spacing 5
                     ]
-                    [ el [ padding 5, Font.bold ]
-                        (text (argName |> Name.toHumanWords |> String.join " "))
-                    , el [ padding 5 ]
-                        (Edit.editValue
-                            argType
-                            (model.testCaseStates
-                                |> Dict.get index
-                                |> Maybe.andThen (\record -> Dict.get argName record.argState)
+                    [ ( String.join "_" [ "editor", "label", String.fromInt index, Name.toCamelCase argName ]
+                      , el [ padding 5, Font.bold ]
+                            (text (argName |> Name.toHumanWords |> String.join " "))
+                      )
+                    , ( String.join "_" [ "editor", String.fromInt index, Name.toCamelCase argName ]
+                      , el [ padding 5 ]
+                            (ValueEditor.view argType
+                                (handlers.argValueUpdated index argName)
+                                (model.testCaseStates
+                                    |> Dict.get index
+                                    |> Maybe.andThen (\record -> Dict.get argName record.argState)
+                                    |> Maybe.withDefault (ValueEditor.initEditorState argType Nothing)
+                                )
                             )
-                            (handlers.argValueUpdated index argName)
-                            (handlers.invalidArgValue index argName)
-                        )
+                      )
                     ]
             )
         |> column [ spacing 5 ]

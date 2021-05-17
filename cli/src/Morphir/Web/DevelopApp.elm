@@ -16,8 +16,10 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.QName exposing (QName(..))
+import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
+import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Web.DevelopApp.Common exposing (insertInList, scaled, viewAsCard)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (makeURL)
@@ -106,8 +108,8 @@ type Msg
     | ShrinkFunctionVariable Int Int
     | ShrinkVariable Int
     | ValueFilterChanged String
-    | ArgValueUpdated FQName Name RawValue
-    | FunctionArgValueUpdated Int Name RawValue
+    | ArgValueUpdated FQName Name ValueEditor.EditorState
+    | FunctionArgValueUpdated Int Name ValueEditor.EditorState
     | InvalidArgValue FQName Name String
     | InvalidFunctionArgValue Int Name String
     | FunctionAddTestCase Int
@@ -279,20 +281,27 @@ update msg model =
                                             |> List.map
                                                 (\testcase ->
                                                     let
-                                                        argNames : List Name
-                                                        argNames =
+                                                        args : List ( Name, Type () )
+                                                        args =
                                                             Distribution.lookupValueSpecification packagePath modulePath localName distribution
                                                                 |> Maybe.map
                                                                     (\valueSpec ->
                                                                         valueSpec.inputs
-                                                                            |> List.map (\( name, tpe ) -> name)
                                                                     )
                                                                 |> Maybe.withDefault []
                                                     in
                                                     { testCase = testcase
                                                     , expandedValues = Dict.empty
                                                     , popupVariables = { variableIndex = 0, variableValue = Nothing }
-                                                    , argState = List.map2 Tuple.pair argNames testcase.inputs |> Dict.fromList
+                                                    , argState =
+                                                        Dict.fromList
+                                                            (List.map2
+                                                                (\( argName, argType ) input ->
+                                                                    ( argName, ValueEditor.initEditorState argType (Just input) )
+                                                                )
+                                                                args
+                                                                testcase.inputs
+                                                            )
                                                     , editMode = False
                                                     }
                                                 )

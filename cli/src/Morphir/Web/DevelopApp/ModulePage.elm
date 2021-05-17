@@ -13,8 +13,8 @@ import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
-import Morphir.Visual.Edit as Edit
 import Morphir.Visual.Theme as Theme
+import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.DevelopApp.Common exposing (scaled, viewAsCard)
@@ -26,7 +26,7 @@ type alias Model =
     { moduleName : List String
     , filter : Maybe String
     , viewType : ViewType
-    , argState : Dict FQName (Dict Name RawValue)
+    , argState : Dict FQName (Dict Name ValueEditor.EditorState)
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     , popupVariables : PopupScreenRecord
     }
@@ -36,7 +36,7 @@ type alias Handlers msg =
     { expandReference : FQName -> Bool -> msg
     , expandVariable : Int -> Maybe RawValue -> msg
     , shrinkVariable : Int -> msg
-    , argValueUpdated : FQName -> Name -> RawValue -> msg
+    , argValueUpdated : FQName -> Name -> ValueEditor.EditorState -> msg
     , invalidArgValue : FQName -> Name -> String -> msg
     }
 
@@ -222,6 +222,7 @@ viewValue handlers model distribution valueFQName valueDef =
         validArgValues =
             model.argState
                 |> Dict.get valueFQName
+                |> Maybe.map (\args -> args |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ())))
                 |> Maybe.withDefault Dict.empty
 
         config : Config msg
@@ -259,11 +260,10 @@ viewArgumentEditors handlers model fQName valueDef =
                     [ el [ paddingXY 10 0 ]
                         (text (argName |> Name.toHumanWords |> String.join " "))
                     , el []
-                        (Edit.editValue
+                        (ValueEditor.view
                             argType
-                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName))
                             (handlers.argValueUpdated fQName argName)
-                            (handlers.invalidArgValue fQName argName)
+                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState argType Nothing))
                         )
                     ]
             )
