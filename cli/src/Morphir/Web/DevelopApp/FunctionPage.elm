@@ -52,6 +52,7 @@ type alias Handlers msg =
     , addTestCase : Int -> msg
     , editTestCase : Int -> msg
     , saveTestCase : Int -> msg
+    , deleteTestCase : Int -> msg
     , saveTestSuite : Model -> msg
     }
 
@@ -79,12 +80,22 @@ viewTitle functionName =
 
 viewPage : Handlers msg -> Distribution -> Model -> Element msg
 viewPage handlers distribution model =
+    let
+        testCasesNumber =
+            Dict.size model.testCaseStates
+    in
     Element.column [ padding 10, spacing 10 ]
         [ el [ Font.bold ] (text (viewTitle model.functionName))
         , saveTestSuiteButton handlers.saveTestSuite model "Save Test Cases"
-        , el [ Font.bold ] (text ("Total Test Cases : " ++ String.fromInt (Dict.size model.testCaseStates)))
-        , el [ Font.bold, Font.size (scaled 4) ] (text "TestCases :")
-        , viewSectionWise handlers distribution model
+        , el [ Font.bold ] (text ("Total Test Cases : " ++ String.fromInt testCasesNumber))
+        , if testCasesNumber > 0 then
+            column [ spacing 5 ]
+                [ el [ Font.bold, Font.size (scaled 4) ] (text "TestCases :")
+                , viewSectionWise handlers distribution model
+                ]
+
+          else
+            el [ Font.bold ] (text "No Testcases found")
         ]
 
 
@@ -163,7 +174,8 @@ viewSectionWise handlers distribution model =
                 in
                 column [ spacing 5, padding 5 ]
                     [ el [ Font.bold, Font.size (scaled 3), Font.color blue ] (text ("TestCase " ++ String.fromInt index ++ " :"))
-                    , addOrEditOrSaveButton handlers.addTestCase index "Add Testcase"
+                    , addOrDeleteEditOrSaveButton handlers.addTestCase index "Add Testcase"
+                    , addOrDeleteEditOrSaveButton handlers.deleteTestCase index "Delete Testcase"
                     , viewDescription testCaseState.testCase.description
                     , viewInput handlers config index references testCaseState model argValues updatedTestcase
                     , viewExpectedOutput (config index) references updatedTestcase.expectedOutput
@@ -236,7 +248,7 @@ viewInput handlers config index references testCaseStateRecord model argValues u
         [ viewHeader "INPUTS"
         , if testCaseStateRecord.editMode == False then
             column [ spacing 5 ]
-                [ addOrEditOrSaveButton handlers.editTestCase index "Edit Inputs"
+                [ addOrDeleteEditOrSaveButton handlers.editTestCase index "Edit Inputs"
                 , List.map2 Tuple.pair argValues updatedTestcase.inputs
                     |> List.map
                         (\( ( name, tpe ), rawValue ) ->
@@ -259,7 +271,7 @@ viewInput handlers config index references testCaseStateRecord model argValues u
 
           else
             column [ spacing 5 ]
-                [ addOrEditOrSaveButton handlers.saveTestCase index "Save Inputs"
+                [ addOrDeleteEditOrSaveButton handlers.saveTestCase index "Save Inputs"
                 , viewArgumentEditors handlers model index argValues
                 ]
         ]
@@ -347,8 +359,8 @@ saveTestSuiteButton handlers model label =
         (Element.text label)
 
 
-addOrEditOrSaveButton : (Int -> msg) -> Int -> String -> Element msg
-addOrEditOrSaveButton handlers index label =
+addOrDeleteEditOrSaveButton : (Int -> msg) -> Int -> String -> Element msg
+addOrDeleteEditOrSaveButton handlers index label =
     Element.el
         [ Font.bold
         , Border.solid

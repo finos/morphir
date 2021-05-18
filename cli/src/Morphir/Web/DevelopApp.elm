@@ -111,6 +111,7 @@ type Msg
     | InvalidArgValue FQName Name String
     | InvalidFunctionArgValue Int Name String
     | FunctionAddTestCase Int
+    | FunctionDeleteTestCase Int
     | FunctionEditTestCase Int
     | FunctionSaveTestCase Int
     | SaveTestSuite FunctionPage.Model
@@ -600,6 +601,42 @@ update msg model =
             in
             ( { model | testSuite = newTestSuite }, httpSaveTestSuite getDistribution newTestSuite )
 
+        FunctionDeleteTestCase testCaseIndex ->
+            let
+                newFunctionState =
+                    case model.currentPage of
+                        Function functionName ->
+                            let
+                                updatedModelState : Dict FQName FunctionPage.Model
+                                updatedModelState =
+                                    Dict.get functionName model.functionStates
+                                        |> Maybe.map
+                                            (\functionModel ->
+                                                Dict.insert functionName
+                                                    { functionModel
+                                                        | testCaseStates =
+                                                            functionModel.testCaseStates
+                                                                |> Dict.remove testCaseIndex
+                                                                |> Dict.toList
+                                                                |> List.indexedMap
+                                                                    (\index ( _, value ) ->
+                                                                        ( index, value )
+                                                                    )
+                                                                |> Dict.fromList
+                                                    }
+                                                    model.functionStates
+                                            )
+                                        |> Maybe.withDefault model.functionStates
+                            in
+                            updatedModelState
+
+                        _ ->
+                            model.functionStates
+            in
+            ( { model | functionStates = newFunctionState }
+            , Cmd.none
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -802,6 +839,7 @@ viewBody model =
                                 , argValueUpdated = FunctionArgValueUpdated
                                 , invalidArgValue = InvalidFunctionArgValue
                                 , addTestCase = FunctionAddTestCase
+                                , deleteTestCase = FunctionDeleteTestCase
                                 , editTestCase = FunctionEditTestCase
                                 , saveTestCase = FunctionSaveTestCase
                                 , saveTestSuite = SaveTestSuite
