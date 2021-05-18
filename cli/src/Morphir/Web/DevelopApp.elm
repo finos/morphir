@@ -16,8 +16,10 @@ import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.QName exposing (QName(..))
+import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
+import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Web.DevelopApp.Common exposing (insertInList, scaled, viewAsCard)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (makeURL)
@@ -106,8 +108,8 @@ type Msg
     | ShrinkFunctionVariable Int Int
     | ShrinkVariable Int
     | ValueFilterChanged String
-    | ArgValueUpdated FQName Name RawValue
-    | FunctionArgValueUpdated Int Name RawValue
+    | ArgValueUpdated FQName Name ValueEditor.EditorState
+    | FunctionArgValueUpdated Int Name ValueEditor.EditorState
     | InvalidArgValue FQName Name String
     | InvalidFunctionArgValue Int Name String
     | FunctionAddTestCase Int
@@ -264,6 +266,18 @@ update msg model =
 
         ServerGetTestsResponse testSuite ->
             let
+                distribution =
+                    case model.irState of
+                        IRLoaded distro ->
+                            distro
+
+                        _ ->
+                            Library [] Dict.empty Package.emptyDefinition
+
+                ir : IR
+                ir =
+                    IR.fromDistribution distribution
+
                 newFunctionState : Dict FQName FunctionPage.Model
                 newFunctionState =
                     testSuite
@@ -276,20 +290,27 @@ update msg model =
                                             |> List.map
                                                 (\testcase ->
                                                     let
-                                                        argNames : List Name
-                                                        argNames =
-                                                            Distribution.lookupValueSpecification packagePath modulePath localName getDistribution
+                                                        args : List ( Name, Type () )
+                                                        args =
+                                                            Distribution.lookupValueSpecification packagePath modulePath localName distribution
                                                                 |> Maybe.map
                                                                     (\valueSpec ->
                                                                         valueSpec.inputs
-                                                                            |> List.map (\( name, tpe ) -> name)
                                                                     )
                                                                 |> Maybe.withDefault []
                                                     in
                                                     { testCase = testcase
                                                     , expandedValues = Dict.empty
                                                     , popupVariables = { variableIndex = 0, variableValue = Nothing }
-                                                    , argState = List.map2 Tuple.pair argNames testcase.inputs |> Dict.fromList
+                                                    , argState =
+                                                        Dict.fromList
+                                                            (List.map2
+                                                                (\( argName, argType ) input ->
+                                                                    ( argName, ValueEditor.initEditorState ir argType (Just input) )
+                                                                )
+                                                                args
+                                                                testcase.inputs
+                                                            )
                                                     , editMode = False
                                                     }
                                                 )
@@ -331,7 +352,13 @@ update msg model =
                                                                             False ->
                                                                                 Distribution.lookupValueDefinition
                                                                                     (QName moduleName localName)
-                                                                                    getDistribution
+                                                                                    (case model.irState of
+                                                                                        IRLoaded distribution ->
+                                                                                            distribution
+
+                                                                                        _ ->
+                                                                                            Library [] Dict.empty Package.emptyDefinition
+                                                                                    )
                                                                                     |> Maybe.map
                                                                                         (\valueDef ->
                                                                                             { testCaseState | expandedValues = Dict.insert fQName valueDef testCaseState.expandedValues }
@@ -587,13 +614,14 @@ update msg model =
                                     in
                                     { testcase
                                         | inputs =
-                                            testcase.inputs
-                                                |> List.map2
-                                                    (\( name, _ ) inputValue ->
-                                                        Dict.get name testCaseState.argState
-                                                            |> Maybe.withDefault inputValue
-                                                    )
-                                                    argNames
+                                            List.map2
+                                                (\( name, _ ) inputValue ->
+                                                    Dict.get name testCaseState.argState
+                                                        |> Maybe.andThen .lastValidValue
+                                                        |> Maybe.withDefault inputValue
+                                                )
+                                                argNames
+                                                testcase.inputs
                                     }
                                 )
                         )
@@ -829,26 +857,31 @@ viewBody model =
                 NotFound ->
                     text "Route not found"
 
-                Function functionModelName ->
-                    case Dict.get functionModelName model.functionStates of
-                        Just functionModel ->
-                            FunctionPage.viewPage
-                                { expandReference = ExpandFunctionReference
-                                , expandVariable = ExpandFunctionVariable
-                                , shrinkVariable = ShrinkFunctionVariable
-                                , argValueUpdated = FunctionArgValueUpdated
-                                , invalidArgValue = InvalidFunctionArgValue
-                                , addTestCase = FunctionAddTestCase
-                                , deleteTestCase = FunctionDeleteTestCase
-                                , editTestCase = FunctionEditTestCase
-                                , saveTestCase = FunctionSaveTestCase
-                                , saveTestSuite = SaveTestSuite
-                                }
-                                distribution
-                                functionModel
-
-                        Nothing ->
-                            el [ Font.bold ] (text "Function Not found in IR")
+                Function functionName ->
+                    let
+                        functionPageModel : FunctionPage.Model
+                        functionPageModel =
+                            model.functionStates
+                                |> Dict.get functionName
+                                |> Maybe.withDefault
+                                    { functionName = functionName
+                                    , testCaseStates = Dict.empty
+                                    }
+                    in
+                    FunctionPage.viewPage
+                        { expandReference = ExpandFunctionReference
+                        , expandVariable = ExpandFunctionVariable
+                        , shrinkVariable = ShrinkFunctionVariable
+                        , argValueUpdated = FunctionArgValueUpdated
+                        , invalidArgValue = InvalidFunctionArgValue
+                        , addTestCase = FunctionAddTestCase
+                        , deleteTestCase = FunctionDeleteTestCase
+                        , editTestCase = FunctionEditTestCase
+                        , saveTestCase = FunctionSaveTestCase
+                        , saveTestSuite = SaveTestSuite
+                        }
+                        distribution
+                        functionPageModel
 
 
 

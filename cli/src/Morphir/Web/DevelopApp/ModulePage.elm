@@ -6,6 +6,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input exposing (labelHidden)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -13,8 +14,8 @@ import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
-import Morphir.Visual.Edit as Edit
 import Morphir.Visual.Theme as Theme
+import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.DevelopApp.Common exposing (scaled, viewAsCard)
@@ -26,7 +27,7 @@ type alias Model =
     { moduleName : List String
     , filter : Maybe String
     , viewType : ViewType
-    , argState : Dict FQName (Dict Name RawValue)
+    , argState : Dict FQName (Dict Name ValueEditor.EditorState)
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     , popupVariables : PopupScreenRecord
     }
@@ -36,7 +37,7 @@ type alias Handlers msg =
     { expandReference : FQName -> Bool -> msg
     , expandVariable : Int -> Maybe RawValue -> msg
     , shrinkVariable : Int -> msg
-    , argValueUpdated : FQName -> Name -> RawValue -> msg
+    , argValueUpdated : FQName -> Name -> ValueEditor.EditorState -> msg
     , invalidArgValue : FQName -> Name -> String -> msg
     }
 
@@ -94,6 +95,10 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
     let
         moduleName =
             model.moduleName |> List.map Name.fromString
+
+        ir : IR
+        ir =
+            IR.fromDistribution distribution
     in
     case packageDef.modules |> Dict.get moduleName of
         Just accessControlledModuleDef ->
@@ -150,7 +155,7 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
                                                                     (text "jump to test cases")
                                                             }
                                                         ]
-                                                    , viewArgumentEditors handlers model valueFQName accessControlledValueDef.value
+                                                    , viewArgumentEditors ir handlers model valueFQName accessControlledValueDef.value
                                                     ]
                                                 )
                                                 (case model.viewType of
@@ -222,6 +227,7 @@ viewValue handlers model distribution valueFQName valueDef =
         validArgValues =
             model.argState
                 |> Dict.get valueFQName
+                |> Maybe.map (\args -> args |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ())))
                 |> Maybe.withDefault Dict.empty
 
         config : Config msg
@@ -246,8 +252,8 @@ viewValue handlers model distribution valueFQName valueDef =
     ViewValue.viewDefinition config valueFQName valueDef
 
 
-viewArgumentEditors : Handlers msg -> Model -> FQName -> Value.Definition () (Type ()) -> Element msg
-viewArgumentEditors handlers model fQName valueDef =
+viewArgumentEditors : IR -> Handlers msg -> Model -> FQName -> Value.Definition () (Type ()) -> Element msg
+viewArgumentEditors ir handlers model fQName valueDef =
     valueDef.inputTypes
         |> List.map
             (\( argName, _, argType ) ->
@@ -259,11 +265,10 @@ viewArgumentEditors handlers model fQName valueDef =
                     [ el [ paddingXY 10 0 ]
                         (text (argName |> Name.toHumanWords |> String.join " "))
                     , el []
-                        (Edit.editValue
+                        (ValueEditor.view ir
                             argType
-                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName))
                             (handlers.argValueUpdated fQName argName)
-                            (handlers.invalidArgValue fQName argName)
+                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
                         )
                     ]
             )
