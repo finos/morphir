@@ -290,10 +290,6 @@ update msg model =
                                             |> List.map
                                                 (\testcase ->
                                                     let
-                                                        argNames : List Name
-                                                        argNames =
-                                                            Distribution.lookupValueSpecification packagePath modulePath localName getDistribution
-
                                                         args : List ( Name, Type () )
                                                         args =
                                                             Distribution.lookupValueSpecification packagePath modulePath localName distribution
@@ -618,13 +614,14 @@ update msg model =
                                     in
                                     { testcase
                                         | inputs =
-                                            testcase.inputs
-                                                |> List.map2
-                                                    (\( name, _ ) inputValue ->
-                                                        Dict.get name testCaseState.argState
-                                                            |> Maybe.withDefault inputValue
-                                                    )
-                                                    argNames
+                                            List.map2
+                                                (\( name, _ ) inputValue ->
+                                                    Dict.get name testCaseState.argState
+                                                        |> Maybe.andThen .lastValidValue
+                                                        |> Maybe.withDefault inputValue
+                                                )
+                                                argNames
+                                                testcase.inputs
                                     }
                                 )
                         )
