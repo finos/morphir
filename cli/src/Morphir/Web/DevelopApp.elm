@@ -269,6 +269,10 @@ update msg model =
                         _ ->
                             Library [] Dict.empty Package.emptyDefinition
 
+                ir : IR
+                ir =
+                    IR.fromDistribution distribution
+
                 newFunctionState : Dict FQName FunctionPage.Model
                 newFunctionState =
                     testSuite
@@ -297,7 +301,7 @@ update msg model =
                                                         Dict.fromList
                                                             (List.map2
                                                                 (\( argName, argType ) input ->
-                                                                    ( argName, ValueEditor.initEditorState argType (Just input) )
+                                                                    ( argName, ValueEditor.initEditorState ir argType (Just input) )
                                                                 )
                                                                 args
                                                                 testcase.inputs

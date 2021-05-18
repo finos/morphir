@@ -241,7 +241,7 @@ viewDescription description =
 
 
 viewInput : Handlers msg -> (Int -> Config msg) -> Int -> IR -> TestCaseState -> Model -> List ( Name, Type () ) -> TestCase -> Element msg
-viewInput handlers config index references testCaseStateRecord model argValues updatedTestcase =
+viewInput handlers config index ir testCaseStateRecord model argValues updatedTestcase =
     column [ spacing 5, padding 5 ]
         [ viewHeader "INPUTS"
         , if testCaseStateRecord.editMode == False then
@@ -261,7 +261,7 @@ viewInput handlers config index references testCaseStateRecord model argValues u
                                             " : "
                                         )
                                     )
-                                , viewTestCase (config index) references rawValue
+                                , viewTestCase (config index) ir rawValue
                                 ]
                         )
                     |> column [ spacing 5, padding 5 ]
@@ -270,7 +270,7 @@ viewInput handlers config index references testCaseStateRecord model argValues u
           else
             column [ spacing 5 ]
                 [ addOrEditOrSaveButton handlers.saveTestCase index "Save Inputs"
-                , viewArgumentEditors handlers model index argValues
+                , viewArgumentEditors ir handlers model index argValues
                 ]
         ]
 
@@ -315,8 +315,8 @@ evaluateOutput config ir testCase fQName =
             text (Debug.toString error)
 
 
-viewArgumentEditors : Handlers msg -> Model -> Int -> List ( Name, Type () ) -> Element msg
-viewArgumentEditors handlers model index inputTypes =
+viewArgumentEditors : IR -> Handlers msg -> Model -> Int -> List ( Name, Type () ) -> Element msg
+viewArgumentEditors ir handlers model index inputTypes =
     inputTypes
         |> List.map
             (\( argName, argType ) ->
@@ -331,12 +331,13 @@ viewArgumentEditors handlers model index inputTypes =
                       )
                     , ( String.join "_" [ "editor", String.fromInt index, Name.toCamelCase argName ]
                       , el [ padding 5 ]
-                            (ValueEditor.view argType
+                            (ValueEditor.view ir
+                                argType
                                 (handlers.argValueUpdated index argName)
                                 (model.testCaseStates
                                     |> Dict.get index
                                     |> Maybe.andThen (\record -> Dict.get argName record.argState)
-                                    |> Maybe.withDefault (ValueEditor.initEditorState argType Nothing)
+                                    |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing)
                                 )
                             )
                       )

@@ -6,6 +6,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input exposing (labelHidden)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -94,6 +95,10 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
     let
         moduleName =
             model.moduleName |> List.map Name.fromString
+
+        ir : IR
+        ir =
+            IR.fromDistribution distribution
     in
     case packageDef.modules |> Dict.get moduleName of
         Just accessControlledModuleDef ->
@@ -150,7 +155,7 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
                                                                     (text "jump to test cases")
                                                             }
                                                         ]
-                                                    , viewArgumentEditors handlers model valueFQName accessControlledValueDef.value
+                                                    , viewArgumentEditors ir handlers model valueFQName accessControlledValueDef.value
                                                     ]
                                                 )
                                                 (case model.viewType of
@@ -247,8 +252,8 @@ viewValue handlers model distribution valueFQName valueDef =
     ViewValue.viewDefinition config valueFQName valueDef
 
 
-viewArgumentEditors : Handlers msg -> Model -> FQName -> Value.Definition () (Type ()) -> Element msg
-viewArgumentEditors handlers model fQName valueDef =
+viewArgumentEditors : IR -> Handlers msg -> Model -> FQName -> Value.Definition () (Type ()) -> Element msg
+viewArgumentEditors ir handlers model fQName valueDef =
     valueDef.inputTypes
         |> List.map
             (\( argName, _, argType ) ->
@@ -260,10 +265,10 @@ viewArgumentEditors handlers model fQName valueDef =
                     [ el [ paddingXY 10 0 ]
                         (text (argName |> Name.toHumanWords |> String.join " "))
                     , el []
-                        (ValueEditor.view
+                        (ValueEditor.view ir
                             argType
                             (handlers.argValueUpdated fQName argName)
-                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState argType Nothing))
+                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
                         )
                     ]
             )
