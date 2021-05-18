@@ -1,4 +1,5 @@
-**This document will describe how we can use Testing Framework within developer server.**
+##Testing Framework Guide
+The purpose of this document is how we can use Testing Framework within developer server.
 
 ## Prerequisites
 - Morphir-elm package installed. Installation instructions: [morphir-elm installation](https://github.com/finos/morphir-elm/blob/master/README.md)
