@@ -857,26 +857,31 @@ viewBody model =
                 NotFound ->
                     text "Route not found"
 
-                Function functionModelName ->
-                    case Dict.get functionModelName model.functionStates of
-                        Just functionModel ->
-                            FunctionPage.viewPage
-                                { expandReference = ExpandFunctionReference
-                                , expandVariable = ExpandFunctionVariable
-                                , shrinkVariable = ShrinkFunctionVariable
-                                , argValueUpdated = FunctionArgValueUpdated
-                                , invalidArgValue = InvalidFunctionArgValue
-                                , addTestCase = FunctionAddTestCase
-                                , deleteTestCase = FunctionDeleteTestCase
-                                , editTestCase = FunctionEditTestCase
-                                , saveTestCase = FunctionSaveTestCase
-                                , saveTestSuite = SaveTestSuite
-                                }
-                                distribution
-                                functionModel
-
-                        Nothing ->
-                            el [ Font.bold ] (text "Function Not found in IR")
+                Function functionName ->
+                    let
+                        functionPageModel : FunctionPage.Model
+                        functionPageModel =
+                            model.functionStates
+                                |> Dict.get functionName
+                                |> Maybe.withDefault
+                                    { functionName = functionName
+                                    , testCaseStates = Dict.empty
+                                    }
+                    in
+                    FunctionPage.viewPage
+                        { expandReference = ExpandFunctionReference
+                        , expandVariable = ExpandFunctionVariable
+                        , shrinkVariable = ShrinkFunctionVariable
+                        , argValueUpdated = FunctionArgValueUpdated
+                        , invalidArgValue = InvalidFunctionArgValue
+                        , addTestCase = FunctionAddTestCase
+                        , deleteTestCase = FunctionDeleteTestCase
+                        , editTestCase = FunctionEditTestCase
+                        , saveTestCase = FunctionSaveTestCase
+                        , saveTestSuite = SaveTestSuite
+                        }
+                        distribution
+                        functionPageModel
 
 
 

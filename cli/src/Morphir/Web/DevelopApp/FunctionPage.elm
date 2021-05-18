@@ -1,7 +1,7 @@
 module Morphir.Web.DevelopApp.FunctionPage exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, centerY, column, el, fill, height, none, padding, paddingXY, rgb, spacing, text, width)
+import Element exposing (Element, centerX, centerY, column, el, fill, height, none, padding, paddingXY, rgb, spacing, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -88,16 +88,16 @@ viewPage handlers distribution model =
     in
     Element.column [ padding 10, spacing 10 ]
         [ el [ Font.bold ] (text (viewTitle model.functionName))
-        , saveTestSuiteButton handlers.saveTestSuite model "Save Test Cases"
+        , saveTestSuiteButton handlers.saveTestSuite model "Save Changes"
         , el [ Font.bold ] (text ("Total Test Cases : " ++ String.fromInt testCasesNumber))
         , if testCasesNumber > 0 then
             column [ spacing 5 ]
-                [ el [ Font.bold, Font.size (scaled 4) ] (text "TestCases :")
+                [ el [ Font.bold, Font.size (scaled 4) ] (text "Test Cases :")
                 , viewSectionWise handlers distribution model
                 ]
 
           else
-            el [ Font.bold ] (text "No Testcases found")
+            el [ Font.bold ] (text "No test cases found")
         ]
 
 
@@ -185,9 +185,9 @@ viewSectionWise handlers distribution model =
                             }
                 in
                 column [ spacing 5, padding 5 ]
-                    [ el [ Font.bold, Font.size (scaled 3), Font.color blue ] (text ("TestCase " ++ String.fromInt index ++ " :"))
-                    , addOrDeleteEditOrSaveButton handlers.addTestCase index "Add Testcase"
-                    , addOrDeleteEditOrSaveButton handlers.deleteTestCase index "Delete Testcase"
+                    [ el [ Font.bold, Font.size (scaled 3), Font.color blue ] (text ("Test Case " ++ String.fromInt index ++ " :"))
+                    , addOrDeleteEditOrSaveButton handlers.addTestCase index "Clone test case"
+                    , addOrDeleteEditOrSaveButton handlers.deleteTestCase index "Delete test case"
                     , viewDescription testCaseState.testCase.description
                     , viewInput handlers config index references testCaseState model argValues updatedTestcase
                     , viewExpectedOutput (config index) references updatedTestcase.expectedOutput
