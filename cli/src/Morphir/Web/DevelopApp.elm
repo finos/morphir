@@ -6,13 +6,13 @@ import Dict exposing (Dict)
 import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, px, rgb, row, scrollbars, spacing, text, width)
 import Element.Background as Background
 import Element.Font as Font
-import Http exposing (emptyBody, jsonBody, stringBody)
+import Http exposing (emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.QName exposing (QName(..))
@@ -112,7 +112,7 @@ type Msg
     | FunctionArgValueUpdated Int Name ValueEditor.EditorState
     | InvalidArgValue FQName Name String
     | InvalidFunctionArgValue Int Name String
-    | FunctionAddTestCase Int
+    | FunctionCloneTestCase Int
     | FunctionDeleteTestCase Int
     | FunctionEditTestCase Int
     | FunctionSaveTestCase Int
@@ -242,7 +242,7 @@ update msg model =
                     ( { model
                         | currentPage =
                             Module
-                                { moduleModel | popupVariables = { variableIndex = varIndex, variableValue = maybeRawValue } }
+                                { moduleModel | popupVariables = PopupScreenRecord varIndex maybeRawValue }
                       }
                     , Cmd.none
                     )
@@ -256,7 +256,7 @@ update msg model =
                     ( { model
                         | currentPage =
                             Module
-                                { moduleModel | popupVariables = { variableIndex = varIndex, variableValue = Nothing } }
+                                { moduleModel | popupVariables = PopupScreenRecord varIndex Nothing }
                       }
                     , Cmd.none
                     )
@@ -301,16 +301,15 @@ update msg model =
                                                     in
                                                     { testCase = testcase
                                                     , expandedValues = Dict.empty
-                                                    , popupVariables = { variableIndex = 0, variableValue = Nothing }
+                                                    , popupVariables = PopupScreenRecord 0 Nothing
                                                     , argState =
-                                                        Dict.fromList
-                                                            (List.map2
+                                                        testcase.inputs
+                                                            |> List.map2
                                                                 (\( argName, argType ) input ->
                                                                     ( argName, ValueEditor.initEditorState ir argType (Just input) )
                                                                 )
                                                                 args
-                                                                testcase.inputs
-                                                            )
+                                                            |> Dict.fromList
                                                     , editMode = False
                                                     }
                                                 )
@@ -352,13 +351,7 @@ update msg model =
                                                                             False ->
                                                                                 Distribution.lookupValueDefinition
                                                                                     (QName moduleName localName)
-                                                                                    (case model.irState of
-                                                                                        IRLoaded distribution ->
-                                                                                            distribution
-
-                                                                                        _ ->
-                                                                                            Library [] Dict.empty Package.emptyDefinition
-                                                                                    )
+                                                                                    getDistribution
                                                                                     |> Maybe.map
                                                                                         (\valueDef ->
                                                                                             { testCaseState | expandedValues = Dict.insert fQName valueDef testCaseState.expandedValues }
@@ -399,7 +392,7 @@ update msg model =
                                                             let
                                                                 updatedTestCaseStates =
                                                                     Dict.insert testCaseIndex
-                                                                        { testCaseState | popupVariables = { variableIndex = varIndex, variableValue = maybeValue } }
+                                                                        { testCaseState | popupVariables = PopupScreenRecord varIndex maybeValue }
                                                                         functionModel.testCaseStates
                                                             in
                                                             Dict.insert fQName { functionModel | testCaseStates = updatedTestCaseStates } model.functionStates
@@ -434,7 +427,7 @@ update msg model =
                                                             let
                                                                 updatedTestCaseStates =
                                                                     Dict.insert testCaseIndex
-                                                                        { testCaseState | popupVariables = { variableIndex = varIndex, variableValue = Nothing } }
+                                                                        { testCaseState | popupVariables = PopupScreenRecord varIndex Nothing }
                                                                         functionModel.testCaseStates
                                                             in
                                                             Dict.insert fQName { functionModel | testCaseStates = updatedTestCaseStates } model.functionStates
@@ -489,7 +482,7 @@ update msg model =
         InvalidFunctionArgValue testCaseIndex varName string ->
             ( model, Cmd.none )
 
-        FunctionAddTestCase testCaseIndex ->
+        FunctionCloneTestCase testCaseIndex ->
             let
                 newFunctionState =
                     case model.currentPage of
@@ -510,6 +503,42 @@ update msg model =
                                                             |> Dict.fromList
                                                 in
                                                 Dict.insert fQName { functionModel | testCaseStates = testCaseStates } model.functionStates
+                                            )
+                                        |> Maybe.withDefault model.functionStates
+                            in
+                            updatedModelState
+
+                        _ ->
+                            model.functionStates
+            in
+            ( { model | functionStates = newFunctionState }
+            , Cmd.none
+            )
+
+        FunctionDeleteTestCase testCaseIndex ->
+            let
+                newFunctionState =
+                    case model.currentPage of
+                        Function functionName ->
+                            let
+                                updatedModelState : Dict FQName FunctionPage.Model
+                                updatedModelState =
+                                    Dict.get functionName model.functionStates
+                                        |> Maybe.map
+                                            (\functionModel ->
+                                                Dict.insert functionName
+                                                    { functionModel
+                                                        | testCaseStates =
+                                                            functionModel.testCaseStates
+                                                                |> Dict.remove testCaseIndex
+                                                                |> Dict.toList
+                                                                |> List.indexedMap
+                                                                    (\index ( _, value ) ->
+                                                                        ( index, value )
+                                                                    )
+                                                                |> Dict.fromList
+                                                    }
+                                                    model.functionStates
                                             )
                                         |> Maybe.withDefault model.functionStates
                             in
@@ -628,42 +657,6 @@ update msg model =
                         model.testSuite
             in
             ( { model | testSuite = newTestSuite }, httpSaveTestSuite getDistribution newTestSuite )
-
-        FunctionDeleteTestCase testCaseIndex ->
-            let
-                newFunctionState =
-                    case model.currentPage of
-                        Function functionName ->
-                            let
-                                updatedModelState : Dict FQName FunctionPage.Model
-                                updatedModelState =
-                                    Dict.get functionName model.functionStates
-                                        |> Maybe.map
-                                            (\functionModel ->
-                                                Dict.insert functionName
-                                                    { functionModel
-                                                        | testCaseStates =
-                                                            functionModel.testCaseStates
-                                                                |> Dict.remove testCaseIndex
-                                                                |> Dict.toList
-                                                                |> List.indexedMap
-                                                                    (\index ( _, value ) ->
-                                                                        ( index, value )
-                                                                    )
-                                                                |> Dict.fromList
-                                                    }
-                                                    model.functionStates
-                                            )
-                                        |> Maybe.withDefault model.functionStates
-                            in
-                            updatedModelState
-
-                        _ ->
-                            model.functionStates
-            in
-            ( { model | functionStates = newFunctionState }
-            , Cmd.none
-            )
 
 
 
@@ -874,7 +867,7 @@ viewBody model =
                         , shrinkVariable = ShrinkFunctionVariable
                         , argValueUpdated = FunctionArgValueUpdated
                         , invalidArgValue = InvalidFunctionArgValue
-                        , addTestCase = FunctionAddTestCase
+                        , cloneTestCase = FunctionCloneTestCase
                         , deleteTestCase = FunctionDeleteTestCase
                         , editTestCase = FunctionEditTestCase
                         , saveTestCase = FunctionSaveTestCase

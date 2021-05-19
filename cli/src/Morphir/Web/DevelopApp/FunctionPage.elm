@@ -1,13 +1,12 @@
 module Morphir.Web.DevelopApp.FunctionPage exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, centerY, column, el, fill, height, none, padding, paddingXY, rgb, spacing, table, text, width)
+import Element exposing (Element, centerX, centerY, column, el, fill, height, none, padding, paddingXY, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Keyed as Keyed
-import Element.Lazy as Lazy
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
@@ -51,7 +50,7 @@ type alias Handlers msg =
     , shrinkVariable : Int -> Int -> msg
     , argValueUpdated : Int -> Name -> ValueEditor.EditorState -> msg
     , invalidArgValue : Int -> Name -> String -> msg
-    , addTestCase : Int -> msg
+    , cloneTestCase : Int -> msg
     , editTestCase : Int -> msg
     , saveTestCase : Int -> msg
     , deleteTestCase : Int -> msg
@@ -140,10 +139,7 @@ viewSectionWise handlers distribution model =
                 , popupVariables =
                     Dict.get index model.testCaseStates
                         |> Maybe.map .popupVariables
-                        |> Maybe.withDefault
-                            { variableIndex = 0
-                            , variableValue = Nothing
-                            }
+                        |> Maybe.withDefault (PopupScreenRecord 0 Nothing)
                 , theme = Theme.fromConfig Nothing
                 }
             , handlers =
@@ -186,7 +182,7 @@ viewSectionWise handlers distribution model =
                 in
                 column [ spacing 5, padding 5 ]
                     [ el [ Font.bold, Font.size (scaled 3), Font.color blue ] (text ("Test Case " ++ String.fromInt index ++ " :"))
-                    , addOrDeleteEditOrSaveButton handlers.addTestCase index "Clone test case"
+                    , addOrDeleteEditOrSaveButton handlers.cloneTestCase index "Clone test case"
                     , addOrDeleteEditOrSaveButton handlers.deleteTestCase index "Delete test case"
                     , viewDescription testCaseState.testCase.description
                     , viewInput handlers config index references testCaseState model argValues updatedTestcase
