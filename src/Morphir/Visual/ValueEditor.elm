@@ -1,15 +1,17 @@
 module Morphir.Visual.ValueEditor exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, el, height, moveUp, none, padding, paddingXY, px, rgb, shrink, spacing, table, text, width)
+import Element exposing (Element, above, below, centerY, el, explain, fill, height, moveDown, moveUp, none, padding, paddingXY, px, rgb, row, shrink, spacing, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font exposing (center)
 import Element.Input as Input exposing (placeholder)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
+import Morphir.IR.SDK.Char as Basics
 import Morphir.IR.SDK.String as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
@@ -80,6 +82,12 @@ initTextBox maybeInitialValue =
             case maybeInitialValue of
                 Just initialValue ->
                     case initialValue of
+                        Value.Literal _ (StringLiteral string) ->
+                            string
+
+                        Value.Literal _ (CharLiteral char) ->
+                            String.fromChar char
+
                         Value.Literal _ (IntLiteral int) ->
                             String.fromInt int
 
@@ -147,6 +155,8 @@ view ir valueType updateEditorState editorState =
                     [ width (px 70)
                     , height shrink
                     , paddingXY 10 3
+                    , Events.onLoseFocus
+                        (updateEditorState (initEditorState ir valueType editorState.lastValidValue))
                     ]
 
                 errorStyle =
@@ -154,11 +164,11 @@ view ir valueType updateEditorState editorState =
                         Just errorMessage ->
                             [ Border.color (rgb 1 0 0)
                             , Border.width 2
-                            , above
+                            , below
                                 (el
                                     [ padding 5
                                     , Background.color (rgb 1 0.7 0.7)
-                                    , moveUp 5
+                                    , moveDown 5
                                     ]
                                     (text errorMessage)
                                 )
@@ -176,6 +186,18 @@ view ir valueType updateEditorState editorState =
                             valueResult =
                                 if valueType == Basics.stringType () then
                                     Ok (Value.Literal () (StringLiteral updatedText))
+
+                                else if valueType == Basics.charType () then
+                                    String.uncons updatedText
+                                        |> Result.fromMaybe "Expecting at least one character"
+                                        |> Result.andThen
+                                            (\( char, rest ) ->
+                                                if String.isEmpty rest then
+                                                    Ok (Value.Literal () (CharLiteral char))
+
+                                                else
+                                                    Err "Expecting a single character only"
+                                            )
 
                                 else if valueType == Basics.intType () then
                                     String.toInt updatedText
@@ -209,7 +231,9 @@ view ir valueType updateEditorState editorState =
 
         BoolEditor isChecked ->
             Input.radioRow
-                [ spacing 10 ]
+                [ paddingXY 10 5
+                , spacing 10
+                ]
                 { onChange =
                     \updatedIsChecked ->
                         updateEditorState
@@ -223,19 +247,29 @@ view ir valueType updateEditorState editorState =
                 }
 
         RecordEditor fieldEditorStates ->
-            table []
+            table
+                [ width fill
+                , height fill
+                ]
                 { columns =
                     [ { header = none
                       , width = shrink
                       , view =
                             \( fieldName, _, _ ) ->
-                                el [ paddingXY 10 5 ] (text (nameToText fieldName))
+                                row [ width fill ]
+                                    [ el [ width fill, paddingXY 10 5 ] (text (nameToText fieldName))
+                                    , el [ padding 5 ] (text ":")
+                                    ]
                       }
                     , { header = none
                       , width = shrink
                       , view =
                             \( fieldName, fieldType, fieldEditorState ) ->
-                                el []
+                                el
+                                    [ width fill
+                                    , height fill
+                                    , centerY
+                                    ]
                                     (view ir
                                         fieldType
                                         (\newFieldEditorState ->
