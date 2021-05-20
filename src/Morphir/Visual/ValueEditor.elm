@@ -1,12 +1,14 @@
 module Morphir.Visual.ValueEditor exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, below, centerY, el, explain, fill, height, moveDown, moveUp, none, padding, paddingXY, px, rgb, row, shrink, spacing, table, text, width)
+import Element exposing (Element, above, below, centerY, column, el, explain, fill, height, html, htmlAttribute, moveDown, moveUp, none, padding, paddingXY, px, rgb, row, shrink, spacing, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
 import Element.Font exposing (center)
 import Element.Input as Input exposing (placeholder)
+import Html
+import Html.Attributes
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
@@ -29,6 +31,7 @@ type ComponentState
     = TextBox String
     | BoolEditor (Maybe Bool)
     | RecordEditor (List ( Name, Type (), EditorState ))
+    | CustomEditor String (Type.Constructors ()) (List ( Name, List ( Name, Type () ) ))
 
 
 type alias Error =
@@ -37,13 +40,17 @@ type alias Error =
 
 initEditorState : IR -> Type () -> Maybe RawValue -> EditorState
 initEditorState ir valueType maybeInitialValue =
-    { componentState = initComponentState ir valueType maybeInitialValue
+    let
+        ( maybeError, componentState ) =
+            initComponentState ir valueType maybeInitialValue
+    in
+    { componentState = componentState
     , lastValidValue = maybeInitialValue
-    , errorState = Nothing
+    , errorState = maybeError
     }
 
 
-initComponentState : IR -> Type () -> Maybe RawValue -> ComponentState
+initComponentState : IR -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initComponentState ir valueType maybeInitialValue =
     case valueType of
         Type.Record _ fieldTypes ->
@@ -66,7 +73,7 @@ initComponentState ir valueType maybeInitialValue =
                                         initTextBox maybeInitialValue
 
                                     Type.CustomTypeSpecification typeParams constructors ->
-                                        initTextBox maybeInitialValue
+                                        initCustomEditor ir maybeInitialValue
 
                             Nothing ->
                                 initTextBox maybeInitialValue
@@ -75,75 +82,76 @@ initComponentState ir valueType maybeInitialValue =
                         initTextBox maybeInitialValue
 
 
-initTextBox : Maybe RawValue -> ComponentState
+initTextBox : Maybe RawValue -> ( Maybe Error, ComponentState )
 initTextBox maybeInitialValue =
-    let
-        text =
-            case maybeInitialValue of
-                Just initialValue ->
-                    case initialValue of
-                        Value.Literal _ (StringLiteral string) ->
-                            string
+    case maybeInitialValue of
+        Just initialValue ->
+            case initialValue of
+                Value.Literal _ (StringLiteral string) ->
+                    ( Nothing, TextBox string )
 
-                        Value.Literal _ (CharLiteral char) ->
-                            String.fromChar char
+                Value.Literal _ (CharLiteral char) ->
+                    ( Nothing, TextBox (String.fromChar char) )
 
-                        Value.Literal _ (IntLiteral int) ->
-                            String.fromInt int
+                Value.Literal _ (IntLiteral int) ->
+                    ( Nothing, TextBox (String.fromInt int) )
 
-                        Value.Literal _ (FloatLiteral float) ->
-                            String.fromFloat float
-
-                        _ ->
-                            "error"
-
-                Nothing ->
-                    ""
-    in
-    TextBox text
-
-
-initBoolEditor : Maybe RawValue -> ComponentState
-initBoolEditor maybeInitialValue =
-    let
-        isChecked =
-            case maybeInitialValue of
-                Just initialValue ->
-                    case initialValue of
-                        Value.Literal _ (BoolLiteral value) ->
-                            Just value
-
-                        _ ->
-                            Nothing
-
-                Nothing ->
-                    Nothing
-    in
-    BoolEditor isChecked
-
-
-initRecordEditor : IR -> List (Type.Field ()) -> Maybe RawValue -> ComponentState
-initRecordEditor ir fieldTypes maybeInitialValue =
-    let
-        initialFieldValues : Dict Name RawValue
-        initialFieldValues =
-            case maybeInitialValue of
-                Just (Value.Record _ fieldValues) ->
-                    fieldValues |> Dict.fromList
+                Value.Literal _ (FloatLiteral float) ->
+                    ( Nothing, TextBox (String.fromFloat float) )
 
                 _ ->
-                    Dict.empty
-    in
-    RecordEditor
-        (fieldTypes
-            |> List.map
-                (\field ->
-                    ( field.name
-                    , field.tpe
-                    , initEditorState ir field.tpe (initialFieldValues |> Dict.get field.name)
-                    )
+                    ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), TextBox "" )
+
+        Nothing ->
+            ( Nothing, TextBox "" )
+
+
+initBoolEditor : Maybe RawValue -> ( Maybe Error, ComponentState )
+initBoolEditor maybeInitialValue =
+    case maybeInitialValue of
+        Just initialValue ->
+            case initialValue of
+                Value.Literal _ (BoolLiteral value) ->
+                    ( Nothing, BoolEditor (Just value) )
+
+                _ ->
+                    ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), BoolEditor Nothing )
+
+        Nothing ->
+            ( Nothing, BoolEditor Nothing )
+
+
+initRecordEditor : IR -> List (Type.Field ()) -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initRecordEditor ir fieldTypes maybeInitialValue =
+    let
+        recordEditor initialFieldValues =
+            RecordEditor
+                (fieldTypes
+                    |> List.map
+                        (\field ->
+                            ( field.name
+                            , field.tpe
+                            , initEditorState ir field.tpe (initialFieldValues |> Dict.get field.name)
+                            )
+                        )
                 )
-        )
+    in
+    case maybeInitialValue of
+        Just initialValue ->
+            case initialValue of
+                Value.Record _ fieldValues ->
+                    ( Nothing, recordEditor (fieldValues |> Dict.fromList) )
+
+                _ ->
+                    ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), recordEditor Dict.empty )
+
+        Nothing ->
+            ( Nothing, recordEditor Dict.empty )
+
+
+initCustomEditor : IR -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initCustomEditor ir maybeInitialValue =
+    ( Nothing, CustomEditor "" Dict.empty [] )
 
 
 view : IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
@@ -295,6 +303,33 @@ view ir valueType updateEditorState editorState =
                     ]
                 , data = fieldEditorStates
                 }
+
+        CustomEditor searchText allConstructors selectedConstructors ->
+            column []
+                [ Input.text
+                    [ width (px 70)
+                    , height shrink
+                    , paddingXY 10 3
+                    , htmlAttribute (Html.Attributes.list "custom")
+                    ]
+                    { onChange =
+                        \updatedText ->
+                            updateEditorState
+                                { editorState
+                                    | componentState = CustomEditor updatedText allConstructors selectedConstructors
+                                }
+                    , text = searchText
+                    , placeholder =
+                        Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
+                    , label = Input.labelHidden ""
+                    }
+                , html
+                    (Html.datalist [ Html.Attributes.id "custom" ]
+                        [ Html.option [] [ Html.text "foo" ]
+                        , Html.option [] [ Html.text "bar" ]
+                        ]
+                    )
+                ]
 
 
 applyResult : Result String RawValue -> EditorState -> EditorState
