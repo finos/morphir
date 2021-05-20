@@ -5,6 +5,7 @@
         "BooksAndRecords",
         "Types",
         "Values",
+        "ValueEditors",
         "Formulas",
         "Insight.UseCase1",
         "Issues.Issue210",
