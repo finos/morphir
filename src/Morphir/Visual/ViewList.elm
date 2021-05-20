@@ -70,18 +70,22 @@ view config viewValue itemType items =
                     Ok resolvedItemType ->
                         view config viewValue resolvedItemType items
 
-                    Err error ->
-                        Element.text error
+                    Err _ ->
+                        viewAsList config viewValue items
 
             _ ->
-                table
-                    [ smallSpacing config.state.theme |> spacing
-                    ]
-                    { data = items
-                    , columns =
-                        [ { header = none
-                          , width = fill
-                          , view = viewValue
-                          }
-                        ]
-                    }
+                viewAsList config viewValue items
+
+
+viewAsList config viewValue items =
+    table
+        [ smallSpacing config.state.theme |> spacing
+        ]
+        { data = items
+        , columns =
+            [ { header = none
+              , width = fill
+              , view = viewValue
+              }
+            ]
+        }
