@@ -1,5 +1,6 @@
 module Morphir.Web.DevelopApp.FunctionPage exposing (..)
 
+import Array exposing (Array)
 import Dict exposing (Dict)
 import Element exposing (Element, centerX, centerY, column, el, fill, height, none, padding, paddingXY, rgb, spacing, text, width)
 import Element.Background as Background
@@ -31,7 +32,8 @@ import Url.Parser as UrlParser exposing ((</>))
 
 type alias Model =
     { functionName : FQName
-    , testCaseStates : Dict Int TestCaseState
+    , testCaseStates : Array TestCaseState
+    , savedTestCases : TestCases
     }
 
 
@@ -83,11 +85,15 @@ viewPage : Handlers msg -> Distribution -> Model -> Element msg
 viewPage handlers distribution model =
     let
         testCasesNumber =
-            Dict.size model.testCaseStates
+            Array.length model.testCaseStates
     in
     Element.column [ padding 10, spacing 10 ]
         [ el [ Font.bold ] (text (viewTitle model.functionName))
-        , saveTestSuiteButton handlers.saveTestSuite model "Save Changes"
+        , if List.length model.savedTestCases > 0 then
+            saveTestSuiteButton handlers.saveTestSuite model "Save Changes"
+
+          else
+            el [] none
         , el [ Font.bold ] (text ("Total Test Cases : " ++ String.fromInt testCasesNumber))
         , if testCasesNumber > 0 then
             column [ spacing 5 ]
@@ -103,9 +109,12 @@ viewPage handlers distribution model =
 viewSectionWise : Handlers msg -> Distribution -> Model -> Element msg
 viewSectionWise handlers distribution model =
     let
+        ( packagePath, modulePath, localName ) =
+            model.functionName
+
         argValues : List ( Name, Type () )
         argValues =
-            Distribution.lookupValueSpecification (FQName.getPackagePath model.functionName) (FQName.getModulePath model.functionName) (FQName.getLocalName model.functionName) distribution
+            Distribution.lookupValueSpecification packagePath modulePath localName distribution
                 |> Maybe.map
                     (\valueSpec ->
                         valueSpec.inputs
@@ -120,11 +129,11 @@ viewSectionWise handlers distribution model =
                 }
             , state =
                 { expandedFunctions =
-                    Dict.get index model.testCaseStates
+                    Array.get index model.testCaseStates
                         |> Maybe.map .expandedValues
                         |> Maybe.withDefault Dict.empty
                 , variables =
-                    Dict.get index model.testCaseStates
+                    Array.get index model.testCaseStates
                         |> Maybe.map .argState
                         |> Maybe.map
                             (\argStates ->
@@ -137,7 +146,7 @@ viewSectionWise handlers distribution model =
                             )
                         |> Maybe.withDefault Dict.empty
                 , popupVariables =
-                    Dict.get index model.testCaseStates
+                    Array.get index model.testCaseStates
                         |> Maybe.map .popupVariables
                         |> Maybe.withDefault (PopupScreenRecord 0 Nothing)
                 , theme = Theme.fromConfig Nothing
@@ -153,9 +162,9 @@ viewSectionWise handlers distribution model =
         references =
             IR.fromDistribution distribution
     in
-    Dict.toList model.testCaseStates
-        |> List.map
-            (\( index, testCaseState ) ->
+    Array.toList model.testCaseStates
+        |> List.indexedMap
+            (\index testCaseState ->
                 let
                     testcase =
                         testCaseState.testCase
@@ -201,10 +210,13 @@ viewSectionWise handlers distribution model =
 newFunctionView : Config msg -> Distribution -> TestCase -> Model -> Element msg
 newFunctionView config distribution testcase model =
     let
+        ( _, modulePath, localName ) =
+            model.functionName
+
         state =
             config.state
     in
-    Distribution.lookupValueDefinition (QName (FQName.getModulePath model.functionName) (FQName.getLocalName model.functionName)) distribution
+    Distribution.lookupValueDefinition (QName modulePath localName) distribution
         |> Maybe.map
             (\valueDef ->
                 ViewValue.viewDefinition
@@ -345,7 +357,7 @@ viewArgumentEditors ir handlers model index inputTypes =
                                 argType
                                 (handlers.argValueUpdated index argName)
                                 (model.testCaseStates
-                                    |> Dict.get index
+                                    |> Array.get index
                                     |> Maybe.andThen (\record -> Dict.get argName record.argState)
                                     |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing)
                                 )
@@ -410,3 +422,33 @@ testCaseSeparator separatorText =
         , Element.el [ padding 5, Font.bold ] (text separatorText)
         , horizontalLine
         ]
+
+
+compareState : TestCases -> TestCases -> Bool
+compareState testCaseList1 testCaseList2 =
+    if List.length testCaseList1 == List.length testCaseList2 then
+        testCaseList2
+            |> List.map2
+                (\testCase1 testCase2 ->
+                    compareTestCase testCase1 testCase2
+                )
+                testCaseList1
+            |> List.foldl (\val1 val2 -> val1 && val2) True
+
+    else
+        False
+
+
+compareTestCase : TestCase -> TestCase -> Bool
+compareTestCase testCase1 testCase2 =
+    testCase2.inputs
+        |> List.map2
+            (\input1 input2 ->
+                if input1 == input2 then
+                    True
+
+                else
+                    False
+            )
+            testCase1.inputs
+        |> List.foldl (\val1 val2 -> val1 && val2) True

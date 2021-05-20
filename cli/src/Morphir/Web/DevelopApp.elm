@@ -1,5 +1,7 @@
 module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Page(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, toRoute, update, view, viewBody, viewHeader, viewTitle)
 
+import Array
+import Array.Extra
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
@@ -111,7 +113,7 @@ type Msg
     | ArgValueUpdated FQName Name ValueEditor.EditorState
     | FunctionArgValueUpdated Int Name ValueEditor.EditorState
     | InvalidArgValue FQName Name String
-    | InvalidFunctionArgValue Int Name String
+    | FunctionInvalidArgValue Int Name String
     | FunctionCloneTestCase Int
     | FunctionDeleteTestCase Int
     | FunctionEditTestCase Int
@@ -313,12 +315,12 @@ update msg model =
                                                     , editMode = False
                                                     }
                                                 )
-                                            |> List.indexedMap Tuple.pair
-                                            |> Dict.fromList
+                                            |> Array.fromList
                                 in
                                 ( fQName
                                 , { functionName = fQName
                                   , testCaseStates = testCaseStates
+                                  , savedTestCases = testCasesList
                                   }
                                 )
                             )
@@ -338,12 +340,12 @@ update msg model =
                                         |> Maybe.andThen
                                             (\functionModel ->
                                                 functionModel.testCaseStates
-                                                    |> Dict.get testCaseIndex
+                                                    |> Array.get testCaseIndex
                                                     |> Maybe.map
                                                         (\testCaseState ->
                                                             let
                                                                 updatedTestCaseStates =
-                                                                    Dict.insert testCaseIndex
+                                                                    Array.set testCaseIndex
                                                                         (case isFunctionPresent of
                                                                             True ->
                                                                                 { testCaseState | expandedValues = Dict.remove fQName testCaseState.expandedValues }
@@ -386,12 +388,12 @@ update msg model =
                                         |> Maybe.andThen
                                             (\functionModel ->
                                                 functionModel.testCaseStates
-                                                    |> Dict.get testCaseIndex
+                                                    |> Array.get testCaseIndex
                                                     |> Maybe.map
                                                         (\testCaseState ->
                                                             let
                                                                 updatedTestCaseStates =
-                                                                    Dict.insert testCaseIndex
+                                                                    Array.set testCaseIndex
                                                                         { testCaseState | popupVariables = PopupScreenRecord varIndex maybeValue }
                                                                         functionModel.testCaseStates
                                                             in
@@ -421,12 +423,12 @@ update msg model =
                                         |> Maybe.andThen
                                             (\functionModel ->
                                                 functionModel.testCaseStates
-                                                    |> Dict.get testCaseIndex
+                                                    |> Array.get testCaseIndex
                                                     |> Maybe.map
                                                         (\testCaseState ->
                                                             let
                                                                 updatedTestCaseStates =
-                                                                    Dict.insert testCaseIndex
+                                                                    Array.set testCaseIndex
                                                                         { testCaseState | popupVariables = PopupScreenRecord varIndex Nothing }
                                                                         functionModel.testCaseStates
                                                             in
@@ -456,12 +458,12 @@ update msg model =
                                         |> Maybe.andThen
                                             (\functionModel ->
                                                 functionModel.testCaseStates
-                                                    |> Dict.get testCaseIndex
+                                                    |> Array.get testCaseIndex
                                                     |> Maybe.map
                                                         (\testCaseState ->
                                                             let
                                                                 updatedTestCaseStates =
-                                                                    Dict.insert testCaseIndex
+                                                                    Array.set testCaseIndex
                                                                         { testCaseState | argState = Dict.insert argName rawValue testCaseState.argState }
                                                                         functionModel.testCaseStates
                                                             in
@@ -479,7 +481,7 @@ update msg model =
             , Cmd.none
             )
 
-        InvalidFunctionArgValue testCaseIndex varName string ->
+        FunctionInvalidArgValue testCaseIndex varName string ->
             ( model, Cmd.none )
 
         FunctionCloneTestCase testCaseIndex ->
@@ -496,11 +498,9 @@ update msg model =
                                                 let
                                                     testCaseStates =
                                                         functionModel.testCaseStates
-                                                            |> Dict.toList
-                                                            |> List.map Tuple.second
+                                                            |> Array.toList
                                                             |> insertInList testCaseIndex
-                                                            |> List.indexedMap Tuple.pair
-                                                            |> Dict.fromList
+                                                            |> Array.fromList
                                                 in
                                                 Dict.insert fQName { functionModel | testCaseStates = testCaseStates } model.functionStates
                                             )
@@ -530,13 +530,7 @@ update msg model =
                                                     { functionModel
                                                         | testCaseStates =
                                                             functionModel.testCaseStates
-                                                                |> Dict.remove testCaseIndex
-                                                                |> Dict.toList
-                                                                |> List.indexedMap
-                                                                    (\index ( _, value ) ->
-                                                                        ( index, value )
-                                                                    )
-                                                                |> Dict.fromList
+                                                                |> Array.Extra.removeAt testCaseIndex
                                                     }
                                                     model.functionStates
                                             )
@@ -563,12 +557,12 @@ update msg model =
                                         |> Maybe.andThen
                                             (\functionModel ->
                                                 functionModel.testCaseStates
-                                                    |> Dict.get testCaseIndex
+                                                    |> Array.get testCaseIndex
                                                     |> Maybe.map
                                                         (\testCaseState ->
                                                             let
                                                                 updatedTestCaseStates =
-                                                                    Dict.insert testCaseIndex
+                                                                    Array.set testCaseIndex
                                                                         { testCaseState | editMode = True }
                                                                         functionModel.testCaseStates
                                                             in
@@ -598,12 +592,12 @@ update msg model =
                                         |> Maybe.andThen
                                             (\functionModel ->
                                                 functionModel.testCaseStates
-                                                    |> Dict.get testCaseIndex
+                                                    |> Array.get testCaseIndex
                                                     |> Maybe.map
                                                         (\testCaseState ->
                                                             let
                                                                 updatedTestCaseStates =
-                                                                    Dict.insert testCaseIndex
+                                                                    Array.set testCaseIndex
                                                                         { testCaseState | editMode = False }
                                                                         functionModel.testCaseStates
                                                             in
@@ -634,9 +628,9 @@ update msg model =
                 newTestSuite =
                     Dict.insert functionModel.functionName
                         (functionModel.testCaseStates
-                            |> Dict.toList
+                            |> Array.toList
                             |> List.map
-                                (\( index, testCaseState ) ->
+                                (\testCaseState ->
                                     let
                                         testcase =
                                             testCaseState.testCase
@@ -858,7 +852,8 @@ viewBody model =
                                 |> Dict.get functionName
                                 |> Maybe.withDefault
                                     { functionName = functionName
-                                    , testCaseStates = Dict.empty
+                                    , testCaseStates = Array.empty
+                                    , savedTestCases = []
                                     }
                     in
                     FunctionPage.viewPage
@@ -866,7 +861,7 @@ viewBody model =
                         , expandVariable = ExpandFunctionVariable
                         , shrinkVariable = ShrinkFunctionVariable
                         , argValueUpdated = FunctionArgValueUpdated
-                        , invalidArgValue = InvalidFunctionArgValue
+                        , invalidArgValue = FunctionInvalidArgValue
                         , cloneTestCase = FunctionCloneTestCase
                         , deleteTestCase = FunctionDeleteTestCase
                         , editTestCase = FunctionEditTestCase
