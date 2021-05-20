@@ -14,6 +14,7 @@ import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ValueEditor as ValueEditor
@@ -258,22 +259,14 @@ viewArgumentEditors ir handlers model fQName valueDef =
     valueDef.inputTypes
         |> List.map
             (\( argName, _, argType ) ->
-                row
-                    [ Background.color (rgb 1 1 1)
-                    , Border.rounded 5
-                    ]
-                    [ el [ width fill, paddingXY 10 5 ]
-                        (text (nameToText argName))
-                    , el [ padding 5 ] (text ":")
-                    , el []
-                        (ValueEditor.view ir
-                            argType
-                            (handlers.argValueUpdated fQName argName)
-                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
-                        )
-                    ]
+                ( argName
+                , ValueEditor.view ir
+                    argType
+                    (handlers.argValueUpdated fQName argName)
+                    (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
+                )
             )
-        |> wrappedRow [ spacing 5 ]
+        |> FieldList.view
 
 
 makeURL : Model -> String

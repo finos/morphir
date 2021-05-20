@@ -41,6 +41,11 @@ record3 input =
     input.boolField
 
 
+record4 : { boolField : Bool, intField : Int, floatField : Float } -> { boolField : Bool, intField : Int } -> Bool
+record4 foo bar =
+    foo.boolField
+
+
 type SmallEnum
     = OptionOne
     | OptionTwo

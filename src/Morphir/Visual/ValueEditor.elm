@@ -10,6 +10,7 @@ import Element.Input as Input exposing (placeholder)
 import Html
 import Html.Attributes
 import Morphir.IR as IR exposing (IR)
+import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
@@ -18,6 +19,7 @@ import Morphir.IR.SDK.String as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.FieldList as FieldList
 
 
 type alias EditorState =
@@ -73,7 +75,7 @@ initComponentState ir valueType maybeInitialValue =
                                         initTextBox maybeInitialValue
 
                                     Type.CustomTypeSpecification typeParams constructors ->
-                                        initCustomEditor ir maybeInitialValue
+                                        initCustomEditor ir constructors maybeInitialValue
 
                             Nothing ->
                                 initTextBox maybeInitialValue
@@ -149,9 +151,9 @@ initRecordEditor ir fieldTypes maybeInitialValue =
             ( Nothing, recordEditor Dict.empty )
 
 
-initCustomEditor : IR -> Maybe RawValue -> ( Maybe Error, ComponentState )
-initCustomEditor ir maybeInitialValue =
-    ( Nothing, CustomEditor "" Dict.empty [] )
+initCustomEditor : IR -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initCustomEditor ir constructors maybeInitialValue =
+    ( Nothing, CustomEditor "" constructors [] )
 
 
 view : IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
@@ -160,8 +162,8 @@ view ir valueType updateEditorState editorState =
         TextBox currentText ->
             let
                 baseStyle =
-                    [ width (px 70)
-                    , height shrink
+                    [ width fill
+                    , height fill
                     , paddingXY 10 3
                     , Events.onLoseFocus
                         (updateEditorState (initEditorState ir valueType editorState.lastValidValue))
@@ -255,25 +257,17 @@ view ir valueType updateEditorState editorState =
                 }
 
         RecordEditor fieldEditorStates ->
-            table
-                [ width fill
-                , height fill
+            el
+                [ padding 7
+                , Background.color (rgb 0.7 0.8 0.9)
+                , Border.rounded 7
                 ]
-                { columns =
-                    [ { header = none
-                      , width = shrink
-                      , view =
-                            \( fieldName, _, _ ) ->
-                                row [ width fill ]
-                                    [ el [ width fill, paddingXY 10 5 ] (text (nameToText fieldName))
-                                    , el [ padding 5 ] (text ":")
-                                    ]
-                      }
-                    , { header = none
-                      , width = shrink
-                      , view =
-                            \( fieldName, fieldType, fieldEditorState ) ->
-                                el
+                (FieldList.view
+                    (fieldEditorStates
+                        |> List.map
+                            (\( fieldName, fieldType, fieldEditorState ) ->
+                                ( fieldName
+                                , el
                                     [ width fill
                                     , height fill
                                     , centerY
@@ -299,18 +293,27 @@ view ir valueType updateEditorState editorState =
                                         )
                                         fieldEditorState
                                     )
-                      }
-                    ]
-                , data = fieldEditorStates
-                }
+                                )
+                            )
+                    )
+                )
 
         CustomEditor searchText allConstructors selectedConstructors ->
-            column []
+            let
+                dataListID =
+                    case valueType of
+                        Type.Reference _ fQName _ ->
+                            FQName.toString fQName
+
+                        _ ->
+                            ""
+            in
+            column [ width fill ]
                 [ Input.text
-                    [ width (px 70)
+                    [ width fill
                     , height shrink
                     , paddingXY 10 3
-                    , htmlAttribute (Html.Attributes.list "custom")
+                    , htmlAttribute (Html.Attributes.list dataListID)
                     ]
                     { onChange =
                         \updatedText ->
@@ -324,10 +327,14 @@ view ir valueType updateEditorState editorState =
                     , label = Input.labelHidden ""
                     }
                 , html
-                    (Html.datalist [ Html.Attributes.id "custom" ]
-                        [ Html.option [] [ Html.text "foo" ]
-                        , Html.option [] [ Html.text "bar" ]
-                        ]
+                    (Html.datalist [ Html.Attributes.id dataListID ]
+                        (allConstructors
+                            |> Dict.toList
+                            |> List.map
+                                (\( ctorName, _ ) ->
+                                    Html.option [] [ Html.text (nameToText ctorName) ]
+                                )
+                        )
                     )
                 ]
 
