@@ -1,5 +1,6 @@
 ---
 marp: true
+theme: default
 ---
 
 # An introduction to Morphir
@@ -8,26 +9,26 @@ marp: true
 
 # What is Morphir?
 
-- **A unified language for business and technology**
+* **A unified language for business and technology**
   - Business and technology speaking the same language
-- Existing ***methodologies***
+* We already have ***methodologies***
   - UML (Unified Modeling Language)
   - DDD (Domain-driven Design)
-- Morphir is a ***technology***
-  - both for humans and machines
+  - _for humans only_
+* Morphir is a ***technology***
+  - _for humans and machines_
 
 ---
 
 # What does Morphir do?
 
-- **Translates business logic into portable data** so that you can
-  - **Translate it** _- to move between technologies effortlessly as they evolve_
-  - **Visualize it** _- to unhide it from your business users_
-  - **Share it** _- across organziations for consistent interpretation_
-  - _and much more ..._
-- **Allows you to step to the next level**
-  - the Internet just “connects computers”
-  - what it enables has a profound impact on our lives
+* **Turns business logic into portable data** so that you can
+  * **Translate it** _- to move between technologies effortlessly as they evolve_
+  * **Visualize it** _- to unhide it from your business users_
+  * **Share it** _- across organziations for consistent interpretation_
+  * **and do much more ...**
+    - like the Internet that simply _“connects computers”_
+    - it enables innovation that has a profound impact on software development
 
 
 ---
