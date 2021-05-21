@@ -1,7 +1,7 @@
 module Morphir.Visual.ValueEditor exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, below, centerY, column, el, explain, fill, height, html, htmlAttribute, moveDown, moveUp, none, padding, paddingXY, px, rgb, row, shrink, spacing, table, text, width)
+import Element exposing (Element, above, below, centerY, column, el, explain, fill, height, html, htmlAttribute, minimum, moveDown, moveUp, none, padding, paddingXY, px, rgb, row, shrink, spacing, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -18,7 +18,7 @@ import Morphir.IR.SDK.Char as Basics
 import Morphir.IR.SDK.String as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
-import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Common exposing (nameToText, nameToTitleText)
 import Morphir.Visual.Components.FieldList as FieldList
 
 
@@ -158,11 +158,16 @@ initCustomEditor ir constructors maybeInitialValue =
 
 view : IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
 view ir valueType updateEditorState editorState =
+    viewHelp ir valueType updateEditorState editorState 0
+
+
+viewHelp : IR -> Type () -> (EditorState -> msg) -> EditorState -> Int -> Element msg
+viewHelp ir valueType updateEditorState editorState zIndex =
     case editorState.componentState of
         TextBox currentText ->
             let
                 baseStyle =
-                    [ width fill
+                    [ width (fill |> minimum 70)
                     , height fill
                     , paddingXY 10 3
                     , Events.onLoseFocus
@@ -259,7 +264,11 @@ view ir valueType updateEditorState editorState =
         RecordEditor fieldEditorStates ->
             el
                 [ padding 7
-                , Background.color (rgb 0.7 0.8 0.9)
+                , if modBy 2 zIndex == 0 then
+                    Background.color (rgb 0.7 0.8 0.9)
+
+                  else
+                    Background.color (rgb 0.9 0.95 1.0)
                 , Border.rounded 7
                 ]
                 (FieldList.view
@@ -272,7 +281,7 @@ view ir valueType updateEditorState editorState =
                                     , height fill
                                     , centerY
                                     ]
-                                    (view ir
+                                    (viewHelp ir
                                         fieldType
                                         (\newFieldEditorState ->
                                             updateEditorState
@@ -292,6 +301,7 @@ view ir valueType updateEditorState editorState =
                                                 }
                                         )
                                         fieldEditorState
+                                        (zIndex + 1)
                                     )
                                 )
                             )
@@ -332,7 +342,7 @@ view ir valueType updateEditorState editorState =
                             |> Dict.toList
                             |> List.map
                                 (\( ctorName, _ ) ->
-                                    Html.option [] [ Html.text (nameToText ctorName) ]
+                                    Html.option [] [ Html.text (nameToTitleText ctorName) ]
                                 )
                         )
                     )

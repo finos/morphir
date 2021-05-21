@@ -1,11 +1,12 @@
 module Morphir.Web.DevelopApp.FunctionPage exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, centerY, column, el, fill, height, none, padding, paddingXY, rgb, spacing, table, text, width)
+import Element exposing (Element, alignRight, alignTop, centerX, centerY, column, el, explain, fill, height, none, padding, paddingXY, px, rgb, rgb255, row, scrollbarX, scrollbars, shrink, spacing, table, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
-import Element.Font as Font
+import Element.Font as Font exposing (center)
+import Element.Input as Input
 import Element.Keyed as Keyed
 import Element.Lazy as Lazy
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
@@ -20,6 +21,7 @@ import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
+import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ValueEditor as ValueEditor
@@ -72,7 +74,7 @@ routeParser =
 
 viewHeader : String -> Element msg
 viewHeader heading =
-    el [ Font.bold, Font.size (scaled 2), spacing 5, padding 5 ] (text (heading ++ " : "))
+    el [ Font.bold, Font.size (scaled 2), spacing 5, padding 5 ] (text heading)
 
 
 viewTitle : FQName -> String
@@ -86,13 +88,13 @@ viewPage handlers distribution model =
         testCasesNumber =
             Dict.size model.testCaseStates
     in
-    Element.column [ padding 10, spacing 10 ]
+    Element.column [ width fill, padding 10, spacing 10 ]
         [ el [ Font.bold ] (text (viewTitle model.functionName))
         , saveTestSuiteButton handlers.saveTestSuite model "Save Changes"
         , el [ Font.bold ] (text ("Total Test Cases : " ++ String.fromInt testCasesNumber))
         , if testCasesNumber > 0 then
-            column [ spacing 5 ]
-                [ el [ Font.bold, Font.size (scaled 4) ] (text "Test Cases :")
+            column [ width fill, spacing 5 ]
+                [ el [ Font.bold, Font.size (scaled 4) ] (text "Scenarios")
                 , viewSectionWise handlers distribution model
                 ]
 
@@ -184,22 +186,56 @@ viewSectionWise handlers distribution model =
                                             )
                             }
                 in
-                column [ spacing 5, padding 5 ]
-                    [ el [ Font.bold, Font.size (scaled 3), Font.color blue ] (text ("Test Case " ++ String.fromInt index ++ " :"))
-                    , addOrDeleteEditOrSaveButton handlers.addTestCase index "Clone test case"
-                    , addOrDeleteEditOrSaveButton handlers.deleteTestCase index "Delete test case"
-                    , viewDescription testCaseState.testCase.description
-                    , viewInput handlers config index references testCaseState model argValues updatedTestcase
-                    , viewExpectedOutput (config index) references updatedTestcase.expectedOutput
-                    , viewActualOutput (config index) references updatedTestcase model.functionName
-                    , Element.column [ spacing 5, padding 5 ]
-                        [ viewHeader "FUNCTION"
-                        , el [ centerY, centerX, spacing 5, padding 5 ] (newFunctionView (config index) distribution updatedTestcase model)
+                column [ width fill, padding 10, Background.color (rgb 0.9 0.9 0.9) ]
+                    [ row
+                        [ width fill
+                        , spacing 10
+                        ]
+                        [ el
+                            [ width fill
+                            , Font.bold
+                            , Font.size (scaled 3)
+                            ]
+                            (text ("Scenario " ++ String.fromInt (index + 1)))
+                        , button handlers.addTestCase index "Clone"
+                        , button handlers.deleteTestCase index "Delete"
+                        ]
+                    , column [ width fill, spacing 5 ]
+                        [ viewDescription testCaseState.testCase.description
+                        , wrappedRow
+                            [ width fill
+                            , padding 5
+                            , spacing 20
+                            , Background.color white
+                            ]
+                            [ viewInput handlers config index references testCaseState model argValues updatedTestcase
+
+                            --, viewExpectedOutput (config index) references updatedTestcase.expectedOutput
+                            , viewExpectedVsActualOutput (config index) references updatedTestcase model.functionName
+                            ]
+                        , Element.column
+                            [ width fill
+                            , height fill
+                            , spacing 5
+                            , padding 5
+                            , Background.color (rgb 0.9 0.9 0.9)
+                            ]
+                            [ viewHeader "EXPLANATION"
+                            , el
+                                [ width fill
+                                , centerY
+                                , centerX
+                                , spacing 5
+                                , padding 5
+                                , scrollbarX
+                                , Background.color white
+                                ]
+                                (newFunctionView (config index) distribution updatedTestcase model)
+                            ]
                         ]
                     ]
             )
-        |> List.intersperse (testCaseSeparator "TEST CASE END")
-        |> column [ spacing 5, padding 5, width fill ]
+        |> column [ spacing 30, padding 5, width fill ]
 
 
 newFunctionView : Config msg -> Distribution -> TestCase -> Model -> Element msg
@@ -249,59 +285,119 @@ newFunctionView config distribution testcase model =
 viewDescription : String -> Element msg
 viewDescription description =
     column [ paddingXY 0 5 ]
-        [ viewHeader "DESCRIPTION"
-        , el [ spacing 5, padding 5 ] (text description)
+        [ el [ spacing 5, padding 5 ] (text description)
         ]
 
 
 viewInput : Handlers msg -> (Int -> Config msg) -> Int -> IR -> TestCaseState -> Model -> List ( Name, Type () ) -> TestCase -> Element msg
 viewInput handlers config index ir testCaseStateRecord model argValues updatedTestcase =
-    column [ spacing 5, padding 5 ]
-        [ viewHeader "INPUTS"
-        , if testCaseStateRecord.editMode == False then
-            column [ spacing 5 ]
-                [ addOrDeleteEditOrSaveButton handlers.editTestCase index "Edit Inputs"
-                , List.map2 Tuple.pair argValues updatedTestcase.inputs
+    column
+        [ alignTop
+        , spacing 5
+        , padding 5
+        , Background.color (rgb 0.8 0.85 0.9)
+        ]
+        [ row [ width fill ]
+            [ viewHeader "INPUTS"
+            , el [ alignRight ]
+                (if testCaseStateRecord.editMode == False then
+                    button handlers.editTestCase index "Edit"
+
+                 else
+                    button handlers.saveTestCase index "Save"
+                )
+            ]
+        , el
+            [ padding 5
+            , Background.color (rgb 1 1 1)
+            , Border.rounded 5
+            ]
+            (if testCaseStateRecord.editMode == False then
+                List.map2 Tuple.pair argValues updatedTestcase.inputs
                     |> List.map
                         (\( ( name, tpe ), rawValue ) ->
-                            column
-                                [ spacing 5, padding 5, width fill, height fill ]
-                                [ el [ Font.bold ]
-                                    (text
-                                        (String.append
-                                            (Name.toHumanWords name
-                                                |> String.join ""
-                                            )
-                                            " : "
-                                        )
-                                    )
-                                , viewTestCase (config index) ir rawValue
-                                ]
+                            ( name
+                            , el [ paddingXY 10 5 ] (viewTestCase (config index) ir rawValue)
+                            )
                         )
-                    |> column [ spacing 5, padding 5 ]
-                ]
+                    |> FieldList.view
 
-          else
-            column [ spacing 5 ]
-                [ addOrDeleteEditOrSaveButton handlers.saveTestCase index "Save Inputs"
-                , viewArgumentEditors ir handlers model index argValues
-                ]
+             else
+                viewArgumentEditors ir handlers model index argValues
+            )
         ]
 
 
 viewExpectedOutput : Config msg -> IR -> RawValue -> Element msg
 viewExpectedOutput config references rawValue =
-    column [ spacing 5, padding 5 ]
+    column
+        [ alignTop
+        , spacing 5
+        , padding 5
+        , Background.color (rgb 0.8 0.85 0.9)
+        ]
         [ viewHeader "EXPECTED OUTPUT"
-        , el [ spacing 5, padding 5 ] (viewTestCase config references rawValue)
+        , el
+            [ width fill
+            , height fill
+            , spacing 5
+            , padding 5
+            , Background.color (rgb 1 1 1)
+            , Border.rounded 5
+            ]
+            (viewTestCase config references rawValue)
         ]
 
 
-viewActualOutput : Config msg -> IR -> TestCase -> FQName -> Element msg
-viewActualOutput config references testCase fQName =
-    column [ spacing 5, padding 5 ]
-        [ viewHeader "ACTUAL OUTPUT"
-        , el [ spacing 5, padding 5 ] (evaluateOutput config references testCase fQName)
+viewExpectedVsActualOutput : Config msg -> IR -> TestCase -> FQName -> Element msg
+viewExpectedVsActualOutput config ir testCase fQName =
+    let
+        evaluateResult =
+            evaluateFunctionValue SDK.nativeFunctions ir fQName testCase.inputs
+    in
+    column
+        [ alignTop
+        , width shrink
+        , height shrink
+        , spacing 5
+        , padding 5
+        , Background.color
+            (case evaluateResult of
+                Ok rawValue ->
+                    if rawValue == testCase.expectedOutput then
+                        rgb 0.7 1 0.7
+
+                    else
+                        rgb 1 0.7 0.7
+
+                Err _ ->
+                    rgb 0.7 0.7 0.7
+            )
+        ]
+        [ viewHeader "EXPECTED / ACTUAL OUTPUT"
+        , el
+            [ width fill
+            , height fill
+            , spacing 5
+            , padding 5
+            , Background.color white
+            , Border.rounded 5
+            ]
+            (case evaluateResult of
+                Ok rawValue ->
+                    if rawValue == testCase.expectedOutput then
+                        el [ center, width fill ] (viewTestCase config ir rawValue)
+
+                    else
+                        row [ width fill, height fill, spacing 10 ]
+                            [ viewTestCase config ir testCase.expectedOutput
+                            , el [ Font.bold ] (text "=/=")
+                            , viewTestCase config ir rawValue
+                            ]
+
+                Err error ->
+                    text (Debug.toString error)
+            )
         ]
 
 
@@ -309,24 +405,10 @@ viewTestCase : Config msg -> IR -> RawValue -> Element msg
 viewTestCase config references rawValue =
     case rawToVisualTypedValue references rawValue of
         Ok typedValue ->
-            el [ centerX, centerY ] (ViewValue.viewValue config typedValue)
+            el [ centerX, centerY, width fill, height fill ] (ViewValue.viewValue config typedValue)
 
         Err error ->
-            el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
-
-
-evaluateOutput : Config msg -> IR -> TestCase -> FQName -> Element msg
-evaluateOutput config ir testCase fQName =
-    case evaluateFunctionValue SDK.nativeFunctions ir fQName testCase.inputs of
-        Ok rawValue ->
-            if rawValue == testCase.expectedOutput then
-                el [ Font.heavy, Font.color green ] (viewTestCase config ir rawValue)
-
-            else
-                el [ Font.heavy, Font.color red ] (viewTestCase config ir rawValue)
-
-        Err error ->
-            text (Debug.toString error)
+            el [ centerX, centerY, width fill, height fill ] (text (Infer.typeErrorToMessage error))
 
 
 viewArgumentEditors : IR -> Handlers msg -> Model -> Int -> List ( Name, Type () ) -> Element msg
@@ -334,30 +416,18 @@ viewArgumentEditors ir handlers model index inputTypes =
     inputTypes
         |> List.map
             (\( argName, argType ) ->
-                Keyed.column
-                    [ Background.color (rgb 1 1 1)
-                    , Border.rounded 5
-                    , spacing 5
-                    ]
-                    [ ( String.join "_" [ "editor", "label", String.fromInt index, Name.toCamelCase argName ]
-                      , el [ padding 5, Font.bold ]
-                            (text (argName |> Name.toHumanWords |> String.join " "))
-                      )
-                    , ( String.join "_" [ "editor", String.fromInt index, Name.toCamelCase argName ]
-                      , el [ padding 5 ]
-                            (ValueEditor.view ir
-                                argType
-                                (handlers.argValueUpdated index argName)
-                                (model.testCaseStates
-                                    |> Dict.get index
-                                    |> Maybe.andThen (\record -> Dict.get argName record.argState)
-                                    |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing)
-                                )
-                            )
-                      )
-                    ]
+                ( argName
+                , ValueEditor.view ir
+                    argType
+                    (handlers.argValueUpdated index argName)
+                    (model.testCaseStates
+                        |> Dict.get index
+                        |> Maybe.andThen (\record -> Dict.get argName record.argState)
+                        |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing)
+                    )
+                )
             )
-        |> column [ spacing 5 ]
+        |> FieldList.view
 
 
 saveTestSuiteButton : (model -> msg) -> model -> String -> Element msg
@@ -375,9 +445,9 @@ saveTestSuiteButton handlers model label =
         (Element.text label)
 
 
-addOrDeleteEditOrSaveButton : (Int -> msg) -> Int -> String -> Element msg
-addOrDeleteEditOrSaveButton handlers index label =
-    Element.el
+button : (Int -> msg) -> Int -> String -> Element msg
+button handlers index label =
+    Input.button
         [ Font.bold
         , Border.solid
         , Border.rounded 3
@@ -385,9 +455,10 @@ addOrDeleteEditOrSaveButton handlers index label =
         , padding 7
         , Background.color black
         , Font.color white
-        , onClick (handlers index)
         ]
-        (Element.text label)
+        { onPress = Just (handlers index)
+        , label = text label
+        }
 
 
 testCaseSeparator : String -> Element msg

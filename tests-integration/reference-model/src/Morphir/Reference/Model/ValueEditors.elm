@@ -46,6 +46,16 @@ record4 foo bar =
     foo.boolField
 
 
+record5 : { foo : { boolField : Bool, intField : Int, floatField : Float }, bar : { boolField : Bool, intField : Int } } -> Bool
+record5 input =
+    input.foo.boolField
+
+
+record6 : { first : { foo : { boolField : Bool, intField : Int, floatField : Float }, bar : { boolField : Bool, intField : Int } }, second : { foo : { boolField : Bool, intField : Int, floatField : Float }, bar : { boolField : Bool, intField : Int } } } -> Bool
+record6 input =
+    input.first.foo.boolField
+
+
 type SmallEnum
     = OptionOne
     | OptionTwo
