@@ -111,10 +111,10 @@ resolveTypeReference (( packageName, moduleName, localName ) as fQName) typeArgs
                         |> Ok
 
                 Type.OpaqueTypeSpecification _ ->
-                    Ok (Type.Reference () fQName typeArgs)
+                    Err (String.concat [ "Opaque types cannot be resolved: ", fQName |> FQName.toString ])
 
                 Type.CustomTypeSpecification _ _ ->
-                    Ok (Type.Reference () fQName typeArgs)
+                    Err (String.concat [ "Custom types cannot be resolved: ", fQName |> FQName.toString ])
 
         Nothing ->
             Err (String.concat [ "Type specification not found: ", fQName |> FQName.toString ])

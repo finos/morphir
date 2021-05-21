@@ -1,7 +1,7 @@
 module Morphir.Web.DevelopApp.ModulePage exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, alignRight, alignTop, column, el, fill, height, link, padding, paddingXY, rgb, row, scrollbars, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignRight, alignTop, column, el, explain, fill, height, link, padding, paddingXY, rgb, row, scrollbars, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -13,6 +13,8 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
+import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ValueEditor as ValueEditor
@@ -257,22 +259,14 @@ viewArgumentEditors ir handlers model fQName valueDef =
     valueDef.inputTypes
         |> List.map
             (\( argName, _, argType ) ->
-                row
-                    [ Background.color (rgb 1 1 1)
-                    , Border.rounded 5
-                    , spacing 10
-                    ]
-                    [ el [ paddingXY 10 0 ]
-                        (text (argName |> Name.toHumanWords |> String.join " "))
-                    , el []
-                        (ValueEditor.view ir
-                            argType
-                            (handlers.argValueUpdated fQName argName)
-                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
-                        )
-                    ]
+                ( argName
+                , ValueEditor.view ir
+                    argType
+                    (handlers.argValueUpdated fQName argName)
+                    (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
+                )
             )
-        |> wrappedRow [ spacing 5 ]
+        |> FieldList.view
 
 
 makeURL : Model -> String
