@@ -9,31 +9,46 @@ theme: default
 
 # What is Morphir?
 
-* **A unified language for business and technology**
-  - Business and technology speaking the same language
-* We already have ***methodologies***
-  - UML (Unified Modeling Language)
-  - DDD (Domain-driven Design)
-  - _for humans only_
-* Morphir is a ***technology***
-  - _for humans and machines_
+* **Sharing Business Logic** 
+  - Across humans and technologies
 
 ---
 
-# What does Morphir do?
+# What is Business Logic?
 
-* **Turns business logic into portable data** so that you can
-  * **Translate it** _- to move between technologies effortlessly as they evolve_
-  * **Visualize it** _- to unhide it from your business users_
-  * **Share it** _- across organziations for consistent interpretation_
-  * **and do much more ...**
-    - like the Internet that simply _“connects computers”_
-    - it enables innovation that has a profound impact on software development
-
+* The essence of your application
+* The common language between users and IT
+* What's left after removing
+  - Execution technologies 
+  - Deployment topologies 
+  - Platforms and frameworks 
+  - Process flow
 
 ---
 
-# Present the business problem
+# What is Business Logic?
+
+* Examples:
+  * If the order size > inventory and the order type is all-or-none, then reject it.  Otherwise take the minimum of order size and inventory.
+  * Value = Price * Quantity
+  * Member Category = if member actions > 100 then High else if member actions > 50 Medium else Low
+
+---
+
+# Why?
+
+* Risk and agility
+  * Business and technology evolve at differetnt paces
+  * Rewriting every change to doubles either rewrites or tech debt
+  * Move to new technologies without risking core business logic
+* Efficiency,
+  * A lot of valuable info is locked in individual bits of tech
+  * Data catalog
+  * Data quality
+  * Lineage
+* Being able to understand the busienss logic holistically is key to understanding the app
+
+---# Present the business problem
 
 ---
 
