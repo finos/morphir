@@ -19,7 +19,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value exposing (RawValue, TypedValue, Value)
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Web.DevelopApp.Common exposing (insertInList, scaled, viewAsCard)
@@ -301,11 +301,11 @@ update msg model =
                                                                     )
                                                                 |> Maybe.withDefault ( [], Type.Unit () )
                                                     in
-                                                    { testCase = testcase
-                                                    , expandedValues = Dict.empty
+                                                    { expandedValues = Dict.empty
                                                     , popupVariables = PopupScreenRecord 0 Nothing
                                                     , inputStates =
                                                         testcase.inputs
+                                                            --|> Debug.log "Inputs"
                                                             |> List.map2
                                                                 (\( argName, argType ) input ->
                                                                     ( argName, ValueEditor.initEditorState ir argType (Just input) )
@@ -700,20 +700,18 @@ update msg model =
                             |> Array.toList
                             |> List.map
                                 (\testCaseState ->
-                                    let
-                                        testcase =
-                                            testCaseState.testCase
-                                    in
-                                    { testcase
-                                        | inputs =
-                                            List.map2
-                                                (\( name, _ ) inputValue ->
-                                                    Dict.get name testCaseState.inputStates
-                                                        |> Maybe.andThen .lastValidValue
-                                                        |> Maybe.withDefault inputValue
-                                                )
-                                                argNames
-                                                testcase.inputs
+                                    { inputs =
+                                        List.map
+                                            (\( name, _ ) ->
+                                                Dict.get name testCaseState.inputStates
+                                                    |> Maybe.andThen .lastValidValue
+                                                    |> Maybe.withDefault (Value.Unit ())
+                                            )
+                                            argNames
+                                    , expectedOutput =
+                                        testCaseState.expectedOutputState.lastValidValue
+                                            |> Maybe.withDefault (Value.Unit ())
+                                    , description = testCaseState.descriptionState
                                     }
                                 )
                         )

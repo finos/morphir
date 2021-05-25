@@ -39,8 +39,7 @@ type alias Model =
 
 
 type alias TestCaseState =
-    { testCase : TestCase
-    , expandedValues : Dict FQName (Value.Definition () (Type ()))
+    { expandedValues : Dict FQName (Value.Definition () (Type ()))
     , popupVariables : PopupScreenRecord
     , inputStates : Dict Name ValueEditor.EditorState
     , expectedOutputState : ValueEditor.EditorState
@@ -169,26 +168,19 @@ viewSectionWise handlers distribution model =
         |> List.indexedMap
             (\index testCaseState ->
                 let
-                    testcase =
-                        testCaseState.testCase
-
-                    updatedTestcase =
-                        { testcase
-                            | inputs =
-                                testcase.inputs
-                                    |> List.map2
-                                        (\( name, tpe ) rawValue ->
-                                            case Dict.get name testCaseState.inputStates of
-                                                Just value ->
-                                                    value.lastValidValue
-                                                        |> Maybe.withDefault (Value.Unit ())
-
-                                                Nothing ->
-                                                    rawValue
-                                        )
-                                        inputArgValues
-                            , expectedOutput = testCaseState.expectedOutputState.lastValidValue |> Maybe.withDefault (Value.Unit ())
-                            , description = testCaseState.descriptionState
+                    testCase =
+                        { inputs =
+                            List.map
+                                (\( name, _ ) ->
+                                    Dict.get name testCaseState.inputStates
+                                        |> Maybe.andThen .lastValidValue
+                                        |> Maybe.withDefault (Value.Unit ())
+                                )
+                                inputArgValues
+                        , expectedOutput =
+                            testCaseState.expectedOutputState.lastValidValue
+                                |> Maybe.withDefault (Value.Unit ())
+                        , description = testCaseState.descriptionState
                         }
                 in
                 column [ spacing 5, padding 5 ]
@@ -196,15 +188,22 @@ viewSectionWise handlers distribution model =
                     , addOrDeleteEditOrSaveButton handlers.cloneTestCase index "Clone test case"
                     , addOrDeleteEditOrSaveButton handlers.deleteTestCase index "Delete test case"
                     , if testCaseState.editMode == False then
-                        addOrDeleteEditOrSaveButton handlers.editTestCase index "Edit TestCase"
+                        column []
+                            [ addOrDeleteEditOrSaveButton handlers.editTestCase index "Edit TestCase"
+                            , viewDescription testCase.description
+                            , viewInputs (config index) references inputArgValues testCase.inputs
+                            , viewExpectedOutput (config index) references testCase.expectedOutput
+                            ]
 
                       else
-                        addOrDeleteEditOrSaveButton handlers.saveTestCase index "Save Inputs"
-                    , viewInput handlers config index references testCaseState model inputArgValues outputValue updatedTestcase
-                    , viewActualOutput (config index) references updatedTestcase model.functionName
+                        column []
+                            [ addOrDeleteEditOrSaveButton handlers.saveTestCase index "Save Inputs"
+                            , viewArgumentEditors references handlers model index inputArgValues outputValue testCase.description
+                            ]
+                    , viewActualOutput (config index) references testCase model.functionName
                     , Element.column [ spacing 5, padding 5 ]
                         [ viewHeader "FUNCTION"
-                        , el [ centerY, centerX, spacing 5, padding 5 ] (newFunctionView (config index) distribution updatedTestcase model)
+                        , el [ centerY, centerX, spacing 5, padding 5 ] (newFunctionView (config index) distribution model)
                         ]
                     ]
             )
@@ -212,36 +211,17 @@ viewSectionWise handlers distribution model =
         |> column [ spacing 5, padding 5, width fill ]
 
 
-newFunctionView : Config msg -> Distribution -> TestCase -> Model -> Element msg
-newFunctionView config distribution testcase model =
+newFunctionView : Config msg -> Distribution -> Model -> Element msg
+newFunctionView config distribution model =
     let
         ( _, modulePath, localName ) =
             model.functionName
-
-        state =
-            config.state
     in
     Distribution.lookupValueDefinition (QName modulePath localName) distribution
         |> Maybe.map
             (\valueDef ->
                 ViewValue.viewDefinition
-                    { config
-                        | state =
-                            { state
-                                | variables =
-                                    if Dict.isEmpty state.variables then
-                                        List.map2
-                                            (\( name, _, tpe ) rawValue ->
-                                                ( name, rawValue )
-                                            )
-                                            valueDef.inputTypes
-                                            testcase.inputs
-                                            |> Dict.fromList
-
-                                    else
-                                        state.variables
-                            }
-                    }
+                    config
                     model.functionName
                     valueDef
             )
@@ -267,43 +247,37 @@ viewDescription description =
         ]
 
 
-viewInput : Handlers msg -> (Int -> Config msg) -> Int -> IR -> TestCaseState -> Model -> List ( Name, Type () ) -> Type () -> TestCase -> Element msg
-viewInput handlers config index ir testCaseStateRecord model argValues outputValue updatedTestcase =
-    if testCaseStateRecord.editMode == False then
-        column [ spacing 5 ]
-            [ viewDescription updatedTestcase.description
-            , viewHeader "INPUTS"
-            , updatedTestcase.inputs
-                |> List.map2
-                    (\( name, tpe ) rawValue ->
-                        column
-                            [ spacing 5, padding 5, width fill, height fill ]
-                            [ el [ Font.bold ]
-                                (text
-                                    (String.append
-                                        (Name.toHumanWords name
-                                            |> String.join ""
-                                        )
-                                        " : "
+viewInputs : Config msg -> IR -> List ( Name, Type () ) -> List RawValue -> Element msg
+viewInputs config ir argValues inputs =
+    column [ spacing 5 ]
+        [ viewHeader "INPUTS"
+        , inputs
+            |> List.map2
+                (\( name, tpe ) rawValue ->
+                    column
+                        [ spacing 5, padding 5, width fill, height fill ]
+                        [ el [ Font.bold ]
+                            (text
+                                (String.append
+                                    (Name.toHumanWords name
+                                        |> String.join ""
                                     )
+                                    " : "
                                 )
-                            , viewTestCase (config index) ir rawValue
-                            ]
-                    )
-                    argValues
-                |> column [ spacing 5, padding 5 ]
-            , viewExpectedOutput (config index) ir updatedTestcase.expectedOutput
-            ]
-
-    else
-        viewArgumentEditors ir handlers model index argValues outputValue updatedTestcase.description
+                            )
+                        , viewTestCase config ir rawValue
+                        ]
+                )
+                argValues
+            |> column [ spacing 5, padding 5 ]
+        ]
 
 
 viewExpectedOutput : Config msg -> IR -> RawValue -> Element msg
-viewExpectedOutput config references rawValue =
+viewExpectedOutput config references expectedOutput =
     column [ spacing 5 ]
         [ viewHeader "EXPECTED OUTPUT"
-        , viewTestCase config references rawValue
+        , viewTestCase config references expectedOutput
         ]
 
 
@@ -341,16 +315,13 @@ evaluateOutput config ir testCase fQName =
 
 viewArgumentEditors : IR -> Handlers msg -> Model -> Int -> List ( Name, Type () ) -> Type () -> String -> Element msg
 viewArgumentEditors ir handlers model index inputTypes outputType description =
-    let
-        baseStyle =
+    column [ spacing 5 ]
+        [ viewHeader "DESCRIPTION"
+        , Input.text
             [ width fill
             , height fill
             , paddingXY 10 3
             ]
-    in
-    column [ spacing 5 ]
-        [ viewHeader "DESCRIPTION"
-        , Input.text baseStyle
             { onChange =
                 \updatedText -> handlers.descriptionUpdated index updatedText
             , text = description
