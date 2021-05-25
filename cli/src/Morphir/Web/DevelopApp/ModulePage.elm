@@ -62,7 +62,7 @@ routeParser =
             , viewType = viewType
             , argState = Dict.empty
             , expandedValues = Dict.empty
-            , popupVariables = { variableIndex = 0, variableValue = Nothing }
+            , popupVariables = PopupScreenRecord 0 Nothing
             }
         )
         (UrlParser.s "module"
