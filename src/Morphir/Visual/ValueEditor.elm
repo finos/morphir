@@ -1,7 +1,7 @@
 module Morphir.Visual.ValueEditor exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, below, centerY, column, el, explain, fill, height, html, htmlAttribute, moveDown, moveUp, none, padding, paddingXY, px, rgb, row, shrink, spacing, table, text, width)
+import Element exposing (Element, above, below, centerY, column, el, explain, fill, height, html, htmlAttribute, minimum, moveDown, moveUp, none, padding, paddingXY, px, rgb, row, shrink, spacing, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -162,7 +162,7 @@ view ir valueType updateEditorState editorState =
         TextBox currentText ->
             let
                 baseStyle =
-                    [ width fill
+                    [ width (fill |> minimum 80)
                     , height fill
                     , paddingXY 10 3
                     , Events.onLoseFocus
