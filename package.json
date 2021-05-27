@@ -12,6 +12,7 @@
     "test": "elm-test",
     "insight-server-live": "cd cli && elm-live src/Morphir/Web/Insight.elm --start-page=./web/insight.html --dir=./web --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/insight.js",
     "dev-server-live": "cd cli && elm-live src/Morphir/Web/DevelopApp.elm --dir=web --pushstate --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/index.html",
+    "try-morphir-live": "cd cli && elm-live src/Morphir/Web/TryMorphir.elm",
     "ncc-morphir": "ncc build cli/morphir.js -o dist/morphir",
     "ncc-morphir-server": "ncc build cli/morphir-elm-develop.js -o dist/morphir-server",
     "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server"
