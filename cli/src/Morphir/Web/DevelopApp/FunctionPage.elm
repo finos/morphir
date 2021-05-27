@@ -22,11 +22,10 @@ import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
-import Morphir.Visual.Theme as Theme
+import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.VisualTypedValue exposing (rawToVisualTypedValue)
-import Morphir.Web.DevelopApp.Common exposing (scaled)
 import Morphir.Web.Theme.Light exposing (black, blue, green, orange, red, white)
 import Url.Parser as UrlParser exposing ((</>))
 
@@ -75,9 +74,9 @@ routeParser =
             )
 
 
-viewHeader : String -> Element msg
-viewHeader heading =
-    el [ Font.bold, Font.size (scaled 2), spacing 5, padding 5 ] (text (heading ++ " : "))
+viewHeader : Theme -> String -> Element msg
+viewHeader theme heading =
+    el [ Font.bold, Font.size (theme |> Theme.scaled 2), spacing 5, padding 5 ] (text (heading ++ " : "))
 
 
 viewTitle : FQName -> String
@@ -85,8 +84,8 @@ viewTitle functionName =
     "Morphir - " ++ (functionName |> FQName.toString |> String.replace ":" " / ")
 
 
-viewPage : Handlers msg -> Distribution -> Model -> Element msg
-viewPage handlers distribution model =
+viewPage : Theme -> Handlers msg -> Distribution -> Model -> Element msg
+viewPage theme handlers distribution model =
     let
         testCasesNumber =
             Array.length model.testCaseStates
@@ -101,8 +100,8 @@ viewPage handlers distribution model =
         , el [ Font.bold ] (text ("Total Test Cases : " ++ String.fromInt testCasesNumber))
         , if testCasesNumber > 0 then
             column [ spacing 5 ]
-                [ el [ Font.bold, Font.size (scaled 4) ] (text "Test Cases :")
-                , viewSectionWise handlers distribution model
+                [ el [ Font.bold, Font.size (theme |> Theme.scaled 4) ] (text "Test Cases :")
+                , viewSectionWise theme handlers distribution model
                 ]
 
           else
@@ -111,8 +110,8 @@ viewPage handlers distribution model =
         ]
 
 
-viewSectionWise : Handlers msg -> Distribution -> Model -> Element msg
-viewSectionWise handlers distribution model =
+viewSectionWise : Theme -> Handlers msg -> Distribution -> Model -> Element msg
+viewSectionWise theme handlers distribution model =
     let
         ( packagePath, modulePath, localName ) =
             model.functionName
@@ -186,25 +185,25 @@ viewSectionWise handlers distribution model =
                         }
                 in
                 column [ spacing 5, padding 5 ]
-                    [ el [ Font.bold, Font.size (scaled 3), Font.color blue ] (text ("Test Case " ++ String.fromInt index ++ " :"))
+                    [ el [ Font.bold, Font.size (theme |> Theme.scaled 3), Font.color blue ] (text ("Test Case " ++ String.fromInt index ++ " :"))
                     , addOrDeleteEditOrSaveButton handlers.cloneTestCase index "Clone test case"
                     , addOrDeleteEditOrSaveButton handlers.deleteTestCase index "Delete test case"
                     , if testCaseState.editMode == False then
                         column []
                             [ addOrDeleteEditOrSaveButton handlers.editTestCase index "Edit TestCase"
-                            , viewDescription testCase.description
-                            , viewInputs (config index) references inputArgValues testCase.inputs
-                            , viewExpectedOutput (config index) references testCase.expectedOutput
+                            , viewDescription theme testCase.description
+                            , viewInputs theme (config index) references inputArgValues testCase.inputs
+                            , viewExpectedOutput theme (config index) references testCase.expectedOutput
                             ]
 
                       else
                         column []
                             [ addOrDeleteEditOrSaveButton handlers.saveTestCase index "Save Inputs"
-                            , viewArgumentEditors references handlers model index inputArgValues outputValue testCase.description
+                            , viewArgumentEditors theme references handlers model index inputArgValues outputValue testCase.description
                             ]
-                    , viewActualOutput (config index) references testCase model.functionName
+                    , viewActualOutput theme (config index) references testCase model.functionName
                     , Element.column [ spacing 5, padding 5 ]
-                        [ viewHeader "FUNCTION"
+                        [ viewHeader theme "FUNCTION"
                         , el [ centerY, centerX, spacing 5, padding 5 ] (newFunctionView (config index) distribution model)
                         ]
                     ]
@@ -241,18 +240,18 @@ newFunctionView config distribution model =
             )
 
 
-viewDescription : String -> Element msg
-viewDescription description =
+viewDescription : Theme -> String -> Element msg
+viewDescription theme description =
     column [ paddingXY 0 5 ]
-        [ viewHeader "DESCRIPTION"
+        [ viewHeader theme "DESCRIPTION"
         , el [ spacing 5, padding 5 ] (text description)
         ]
 
 
-viewInputs : Config msg -> IR -> List ( Name, Type () ) -> List RawValue -> Element msg
-viewInputs config ir argValues inputs =
+viewInputs : Theme -> Config msg -> IR -> List ( Name, Type () ) -> List RawValue -> Element msg
+viewInputs theme config ir argValues inputs =
     column [ spacing 5 ]
-        [ viewHeader "INPUTS"
+        [ viewHeader theme "INPUTS"
         , inputs
             |> List.map2
                 (\( name, tpe ) rawValue ->
@@ -275,18 +274,18 @@ viewInputs config ir argValues inputs =
         ]
 
 
-viewExpectedOutput : Config msg -> IR -> RawValue -> Element msg
-viewExpectedOutput config references expectedOutput =
+viewExpectedOutput : Theme -> Config msg -> IR -> RawValue -> Element msg
+viewExpectedOutput theme config references expectedOutput =
     column [ spacing 5 ]
-        [ viewHeader "EXPECTED OUTPUT"
+        [ viewHeader theme "EXPECTED OUTPUT"
         , viewTestCase config references expectedOutput
         ]
 
 
-viewActualOutput : Config msg -> IR -> TestCase -> FQName -> Element msg
-viewActualOutput config references testCase fQName =
+viewActualOutput : Theme -> Config msg -> IR -> TestCase -> FQName -> Element msg
+viewActualOutput theme config references testCase fQName =
     column [ spacing 5, paddingXY 0 5 ]
-        [ viewHeader "ACTUAL OUTPUT"
+        [ viewHeader theme "ACTUAL OUTPUT"
         , evaluateOutput config references testCase fQName
         ]
 
@@ -315,10 +314,10 @@ evaluateOutput config ir testCase fQName =
             text (Debug.toString error)
 
 
-viewArgumentEditors : IR -> Handlers msg -> Model -> Int -> List ( Name, Type () ) -> Type () -> String -> Element msg
-viewArgumentEditors ir handlers model index inputTypes outputType description =
+viewArgumentEditors : Theme -> IR -> Handlers msg -> Model -> Int -> List ( Name, Type () ) -> Type () -> String -> Element msg
+viewArgumentEditors theme ir handlers model index inputTypes outputType description =
     column [ spacing 5 ]
-        [ viewHeader "DESCRIPTION"
+        [ viewHeader theme "DESCRIPTION"
         , Input.text
             [ width fill
             , height fill
@@ -331,7 +330,7 @@ viewArgumentEditors ir handlers model index inputTypes outputType description =
                 Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
             , label = Input.labelHidden ""
             }
-        , viewHeader "INPUTS"
+        , viewHeader theme "INPUTS"
         , inputTypes
             |> List.map
                 (\( argName, argType ) ->
@@ -359,7 +358,7 @@ viewArgumentEditors ir handlers model index inputTypes outputType description =
                         ]
                 )
             |> column [ spacing 5 ]
-        , viewHeader "EXPECTED OUTPUT"
+        , viewHeader theme "EXPECTED OUTPUT"
         , el [ padding 5 ]
             (ValueEditor.view ir
                 outputType

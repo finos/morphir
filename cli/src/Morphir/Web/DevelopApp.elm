@@ -21,12 +21,11 @@ import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
+import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
-import Morphir.Web.DevelopApp.Common exposing (insertInList, scaled, viewAsCard)
+import Morphir.Web.DevelopApp.Common exposing (insertInList, viewAsCard)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (makeURL)
-import Morphir.Web.Theme exposing (Theme)
-import Morphir.Web.Theme.Light as Light
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing ((</>), (<?>))
 
@@ -54,7 +53,7 @@ main =
 type alias Model =
     { key : Nav.Key
     , currentPage : Page
-    , theme : Theme Msg
+    , theme : Theme
     , irState : IRState
     , serverState : ServerState
     , testSuite : TestSuite
@@ -83,7 +82,7 @@ init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
     ( { key = key
       , currentPage = toRoute url
-      , theme = Light.theme scaled
+      , theme = Theme.fromConfig Nothing
       , irState = IRLoading
       , serverState = ServerReady
       , testSuite = Dict.empty
@@ -836,7 +835,7 @@ view model =
                     }
                 , Font.sansSerif
                 ]
-            , Font.size (scaled 2)
+            , Font.size (model.theme |> Theme.scaled 2)
             , width fill
             , height fill
             ]
@@ -883,7 +882,7 @@ viewHeader : Model -> Element Msg
 viewHeader model =
     column
         [ width fill
-        , Background.color model.theme.highlightColor
+        , Background.color model.theme.colors.primaryHighlight
         ]
         [ row
             [ width fill
@@ -899,8 +898,11 @@ viewHeader model =
                         , description = "Morphir Logo"
                         }
                     )
-                , el [ paddingXY 10 0 ]
-                    (model.theme.heading 1 "Morphir Web")
+                , el
+                    [ paddingXY 10 0
+                    , Font.size (model.theme |> Theme.scaled 5)
+                    ]
+                    (text "Morphir Web")
                 ]
             ]
         ]
@@ -945,7 +947,8 @@ viewBody model =
         IRLoaded ((Library _ _ packageDef) as distribution) ->
             case model.currentPage of
                 Home ->
-                    viewAsCard (text "Modules")
+                    viewAsCard model.theme
+                        (text "Modules")
                         (column
                             [ padding 10
                             , spacing 10
@@ -969,6 +972,7 @@ viewBody model =
 
                 Module moduleModel ->
                     ModulePage.viewPage
+                        model.theme
                         { expandReference = ExpandReference
                         , expandVariable = ExpandVariable
                         , shrinkVariable = ShrinkVariable
@@ -995,6 +999,7 @@ viewBody model =
                                     }
                     in
                     FunctionPage.viewPage
+                        model.theme
                         { expandReference = ExpandFunctionReference
                         , expandVariable = ExpandFunctionVariable
                         , shrinkVariable = ShrinkFunctionVariable
