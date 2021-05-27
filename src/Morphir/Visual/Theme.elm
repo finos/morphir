@@ -1,11 +1,26 @@
 module Morphir.Visual.Theme exposing (..)
 
-import Element
+import Element exposing (Color, Element, column, el, fill, padding, paddingXY, rgb, rgb255, row, spacing, toRgb, width)
+import Element.Background as Background
+import Element.Border as Border
+import Element.Font as Font
+import Element.Input as Input
 
 
 type alias Theme =
     { fontSize : Int
     , decimalDigit : Int
+    , colors : Colors
+    }
+
+
+type alias Colors =
+    { lightest : Color
+    , darkest : Color
+    , primaryHighlight : Color
+    , secondaryHighlight : Color
+    , positive : Color
+    , negative : Color
     }
 
 
@@ -15,14 +30,31 @@ type alias ThemeConfig =
     }
 
 
+defaultColors : Colors
+defaultColors =
+    { lightest = rgb 1 1 1
+    , darkest = rgb 0.1 0.1 0.1
+    , primaryHighlight = rgb255 0 163 225
+    , secondaryHighlight = rgb255 255 105 0
+    , positive = rgb 0 0.6 0
+    , negative = rgb 0.7 0 0
+    }
+
+
 fromConfig : Maybe ThemeConfig -> Theme
 fromConfig maybeConfig =
     case maybeConfig of
         Just config ->
-            { fontSize = config.fontSize |> Maybe.withDefault 12, decimalDigit = config.decimalDigit |> Maybe.withDefault 2 }
+            { fontSize = config.fontSize |> Maybe.withDefault 12
+            , decimalDigit = config.decimalDigit |> Maybe.withDefault 2
+            , colors = defaultColors
+            }
 
         Nothing ->
-            { fontSize = 12, decimalDigit = 2 }
+            { fontSize = 12
+            , decimalDigit = 2
+            , colors = defaultColors
+            }
 
 
 smallSpacing : Theme -> Int
@@ -58,3 +90,54 @@ largePadding theme =
 scaled : Int -> Theme -> Int
 scaled scaleValue theme =
     Element.modular (toFloat theme.fontSize) 1.25 scaleValue |> round
+
+
+fontColorFor : Color -> Theme -> Color
+fontColorFor backgroundColor theme =
+    let
+        backgroundBrightness =
+            let
+                rgb =
+                    toRgb backgroundColor
+            in
+            (rgb.red + rgb.green * rgb.blue) / 3
+    in
+    if backgroundBrightness < 0.5 then
+        theme.colors.lightest
+
+    else
+        theme.colors.darkest
+
+
+button : Theme -> msg -> String -> Color -> Element msg
+button theme msg label color =
+    Input.button
+        [ Font.bold
+        , Border.solid
+        , Border.rounded 3
+        , paddingXY
+            (theme |> scaled 1)
+            (theme |> scaled -3)
+        , Background.color color
+        , Font.color (theme |> fontColorFor color)
+        ]
+        { onPress = Just msg
+        , label = Element.text label
+        }
+
+
+header : Theme -> { left : List (Element msg), middle : List (Element msg), right : List (Element msg) } -> Element msg
+header theme parts =
+    row
+        [ width fill
+        ]
+        [ row [] parts.left
+        , row
+            [ width fill
+            ]
+            parts.middle
+        , row
+            [ spacing (theme |> scaled 1)
+            ]
+            parts.right
+        ]

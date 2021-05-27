@@ -13,14 +13,13 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
-import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
-import Morphir.Visual.Theme as Theme
+import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common exposing (scaled, viewAsCard)
+import Morphir.Web.DevelopApp.Common exposing (viewAsCard)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
 
@@ -92,8 +91,8 @@ viewTitle model =
     "Morphir - " ++ (model.moduleName |> String.join " / ")
 
 
-viewPage : Handlers msg -> (String -> msg) -> Distribution -> Model -> Element msg
-viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as distribution) model =
+viewPage : Theme -> Handlers msg -> (String -> msg) -> Distribution -> Model -> Element msg
+viewPage theme handlers valueFilterChanged ((Library packageName _ packageDef) as distribution) model =
     let
         moduleName =
             model.moduleName |> List.map Name.fromString
@@ -107,12 +106,12 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
             column
                 [ width fill
                 , height fill
-                , spacing (scaled 4)
+                , spacing (theme |> Theme.scaled 4)
                 ]
-                [ viewModuleControls valueFilterChanged model
+                [ viewModuleControls theme valueFilterChanged model
                 , wrappedRow
-                    [ padding (scaled 4)
-                    , spacing (scaled 4)
+                    [ padding (theme |> Theme.scaled 4)
+                    , spacing (theme |> Theme.scaled 4)
                     , width fill
                     , height fill
                     , scrollbars
@@ -142,7 +141,7 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
                                 if matchesFilter then
                                     Just
                                         (el [ alignTop ]
-                                            (viewAsCard
+                                            (viewAsCard theme
                                                 (column [ width fill, spacing 5 ]
                                                     [ row [ width fill ]
                                                         [ valueName
@@ -180,8 +179,8 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
             text (String.join " " [ "Module", model.moduleName |> String.join ".", "not found" ])
 
 
-viewModuleControls : (String -> msg) -> Model -> Element msg
-viewModuleControls valueFilterChanged model =
+viewModuleControls : Theme -> (String -> msg) -> Model -> Element msg
+viewModuleControls theme valueFilterChanged model =
     let
         viewTypeBackground expectedType =
             if model.viewType == expectedType then
@@ -192,7 +191,7 @@ viewModuleControls valueFilterChanged model =
     in
     row
         [ width fill
-        , spacing (scaled 2)
+        , spacing (theme |> Theme.scaled 2)
         , height shrink
         , padding 5
         ]

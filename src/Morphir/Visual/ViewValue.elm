@@ -31,7 +31,6 @@ import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue, rawToVisualTypedValue, typedToVisualTypedValue)
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.Theme.Light exposing (black, gray, white)
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
@@ -65,8 +64,8 @@ viewDefinition config ( _, _, valueName ) valueDef =
                                     [ Font.bold
                                     , Border.solid
                                     , Border.rounded 3
-                                    , Background.color black
-                                    , Font.color white
+                                    , Background.color config.state.theme.colors.lightest
+                                    , Font.color config.state.theme.colors.darkest
                                     , smallPadding config.state.theme |> padding
                                     , smallSpacing config.state.theme |> spacing
                                     , onClick (config.handlers.onReferenceClicked fqName True)
@@ -264,11 +263,11 @@ viewPopup config =
                                 { offset = ( 2, 2 )
                                 , size = 2
                                 , blur = 2
-                                , color = gray
+                                , color = config.state.theme.colors.darkest
                                 }
-                            , Background.color black
+                            , Background.color config.state.theme.colors.lightest
                             , Font.bold
-                            , Font.color white
+                            , Font.color config.state.theme.colors.darkest
                             , Border.rounded 4
                             , Font.center
                             , mediumPadding config.state.theme |> padding
