@@ -55,6 +55,7 @@ type alias Handlers msg =
     , inputsUpdated : Int -> Name -> ValueEditor.EditorState -> msg
     , expectedOutputUpdated : Int -> ValueEditor.EditorState -> msg
     , descriptionUpdated : Int -> String -> msg
+    , addTestCase : msg
     , cloneTestCase : Int -> msg
     , editTestCase : Int -> msg
     , saveTestCase : Int -> msg
@@ -92,7 +93,7 @@ viewPage handlers distribution model =
     in
     Element.column [ padding 10, spacing 10 ]
         [ el [ Font.bold ] (text (viewTitle model.functionName))
-        , if List.length model.savedTestCases > 0 then
+        , if List.length model.savedTestCases > 0 || Array.length model.testCaseStates > 0 then
             saveTestSuiteButton handlers.saveTestSuite model "Save Changes"
 
           else
@@ -106,6 +107,7 @@ viewPage handlers distribution model =
 
           else
             el [ Font.bold ] (text "No test cases found")
+        , addButton handlers.addTestCase "Add test case"
         ]
 
 
@@ -382,6 +384,21 @@ saveTestSuiteButton handlers model label =
         , Background.color black
         , Font.color white
         , onClick (handlers model)
+        ]
+        (Element.text label)
+
+
+addButton : msg -> String -> Element msg
+addButton handler label =
+    Element.el
+        [ Font.bold
+        , Border.solid
+        , Border.rounded 3
+        , spacing 7
+        , padding 7
+        , Background.color black
+        , Font.color white
+        , onClick handler
         ]
         (Element.text label)
 
