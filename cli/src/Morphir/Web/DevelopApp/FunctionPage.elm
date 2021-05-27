@@ -2,7 +2,7 @@ module Morphir.Web.DevelopApp.FunctionPage exposing (..)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, centerY, column, el, fill, height, none, padding, paddingXY, rgb, spacing, text, width)
+import Element exposing (Element, centerX, centerY, column, el, fill, height, none, padding, paddingXY, rgb, scrollbars, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -26,7 +26,6 @@ import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.VisualTypedValue exposing (rawToVisualTypedValue)
-import Morphir.Web.Theme.Light exposing (black, blue, green, orange, red, white)
 import Url.Parser as UrlParser exposing ((</>))
 
 
@@ -90,28 +89,28 @@ viewPage theme handlers distribution model =
         testCasesNumber =
             Array.length model.testCaseStates
     in
-    Element.column [ padding 10, spacing 10 ]
+    Element.column [ width fill, padding 10, spacing 10 ]
         [ el [ Font.bold ] (text (viewTitle model.functionName))
         , if List.length model.savedTestCases > 0 || Array.length model.testCaseStates > 0 then
-            saveTestSuiteButton handlers.saveTestSuite model "Save Changes"
+            Theme.button theme (handlers.saveTestSuite model) "Save Changes" theme.colors.secondaryHighlight
 
           else
             el [] none
-        , el [ Font.bold ] (text ("Total Test Cases : " ++ String.fromInt testCasesNumber))
+        , el [ Font.bold ] (text ("Total scenarios: " ++ String.fromInt testCasesNumber))
         , if testCasesNumber > 0 then
-            column [ spacing 5 ]
-                [ el [ Font.bold, Font.size (theme |> Theme.scaled 4) ] (text "Test Cases :")
-                , viewSectionWise theme handlers distribution model
+            column [ width fill, spacing 5 ]
+                [ el [ Font.bold, Font.size (theme |> Theme.scaled 4) ] (text "Scenarios")
+                , viewScenarios theme handlers distribution model
                 ]
 
           else
             el [ Font.bold ] (text "No test cases found")
-        , addButton handlers.addTestCase "Add test case"
+        , Theme.button theme handlers.addTestCase "Add new scenario" theme.colors.primaryHighlight
         ]
 
 
-viewSectionWise : Theme -> Handlers msg -> Distribution -> Model -> Element msg
-viewSectionWise theme handlers distribution model =
+viewScenarios : Theme -> Handlers msg -> Distribution -> Model -> Element msg
+viewScenarios theme handlers distribution model =
     let
         ( packagePath, modulePath, localName ) =
             model.functionName
@@ -184,31 +183,41 @@ viewSectionWise theme handlers distribution model =
                         , description = testCaseState.descriptionState
                         }
                 in
-                column [ spacing 5, padding 5 ]
-                    [ el [ Font.bold, Font.size (theme |> Theme.scaled 3), Font.color blue ] (text ("Test Case " ++ String.fromInt index ++ " :"))
-                    , addOrDeleteEditOrSaveButton handlers.cloneTestCase index "Clone test case"
-                    , addOrDeleteEditOrSaveButton handlers.deleteTestCase index "Delete test case"
+                column [ width fill, spacing 5, padding 5 ]
+                    [ Theme.header theme
+                        { left =
+                            [ el [ Font.bold, Font.size (theme |> Theme.scaled 3), Font.color theme.colors.primaryHighlight ] (text ("Scenario " ++ String.fromInt index))
+                            ]
+                        , middle =
+                            []
+                        , right =
+                            [ if testCaseState.editMode then
+                                Theme.button theme (handlers.saveTestCase index) "Save" theme.colors.secondaryHighlight
+
+                              else
+                                Theme.button theme (handlers.editTestCase index) "Edit" theme.colors.secondaryHighlight
+                            , Theme.button theme (handlers.cloneTestCase index) "Clone" theme.colors.primaryHighlight
+                            , Theme.button theme (handlers.deleteTestCase index) "Delete" theme.colors.primaryHighlight
+                            ]
+                        }
                     , if testCaseState.editMode == False then
                         column []
-                            [ addOrDeleteEditOrSaveButton handlers.editTestCase index "Edit TestCase"
-                            , viewDescription theme testCase.description
+                            [ viewDescription theme testCase.description
                             , viewInputs theme (config index) references inputArgValues testCase.inputs
                             , viewExpectedOutput theme (config index) references testCase.expectedOutput
                             ]
 
                       else
                         column []
-                            [ addOrDeleteEditOrSaveButton handlers.saveTestCase index "Save Inputs"
-                            , viewArgumentEditors theme references handlers model index inputArgValues outputValue testCase.description
+                            [ viewArgumentEditors theme references handlers model index inputArgValues outputValue testCase.description
                             ]
                     , viewActualOutput theme (config index) references testCase model.functionName
-                    , Element.column [ spacing 5, padding 5 ]
+                    , Element.column [ width fill, spacing 5, padding 5 ]
                         [ viewHeader theme "FUNCTION"
-                        , el [ centerY, centerX, spacing 5, padding 5 ] (newFunctionView (config index) distribution model)
+                        , el [ centerY, centerX, spacing 5, padding 5, scrollbars ] (newFunctionView (config index) distribution model)
                         ]
                     ]
             )
-        |> List.intersperse (testCaseSeparator "TEST CASE END")
         |> column [ spacing 5, padding 5, width fill ]
 
 
@@ -286,7 +295,7 @@ viewActualOutput : Theme -> Config msg -> IR -> TestCase -> FQName -> Element ms
 viewActualOutput theme config references testCase fQName =
     column [ spacing 5, paddingXY 0 5 ]
         [ viewHeader theme "ACTUAL OUTPUT"
-        , evaluateOutput config references testCase fQName
+        , evaluateOutput theme config references testCase fQName
         ]
 
 
@@ -300,15 +309,15 @@ viewTestCase config references rawValue =
             el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
 
 
-evaluateOutput : Config msg -> IR -> TestCase -> FQName -> Element msg
-evaluateOutput config ir testCase fQName =
+evaluateOutput : Theme -> Config msg -> IR -> TestCase -> FQName -> Element msg
+evaluateOutput theme config ir testCase fQName =
     case evaluateFunctionValue SDK.nativeFunctions ir fQName testCase.inputs of
         Ok rawValue ->
             if rawValue == testCase.expectedOutput then
-                el [ Font.heavy, Font.color green ] (viewTestCase config ir rawValue)
+                el [ Font.heavy, Font.color theme.colors.positive ] (viewTestCase config ir rawValue)
 
             else
-                el [ Font.heavy, Font.color red ] (viewTestCase config ir rawValue)
+                el [ Font.heavy, Font.color theme.colors.negative ] (viewTestCase config ir rawValue)
 
         Err error ->
             text (Debug.toString error)
@@ -372,51 +381,6 @@ viewArgumentEditors theme ir handlers model index inputTypes outputType descript
         ]
 
 
-saveTestSuiteButton : (model -> msg) -> model -> String -> Element msg
-saveTestSuiteButton handlers model label =
-    Element.el
-        [ Font.bold
-        , Border.solid
-        , Border.rounded 3
-        , spacing 7
-        , padding 7
-        , Background.color black
-        , Font.color white
-        , onClick (handlers model)
-        ]
-        (Element.text label)
-
-
-addButton : msg -> String -> Element msg
-addButton handler label =
-    Element.el
-        [ Font.bold
-        , Border.solid
-        , Border.rounded 3
-        , spacing 7
-        , padding 7
-        , Background.color black
-        , Font.color white
-        , onClick handler
-        ]
-        (Element.text label)
-
-
-addOrDeleteEditOrSaveButton : (Int -> msg) -> Int -> String -> Element msg
-addOrDeleteEditOrSaveButton handlers index label =
-    Element.el
-        [ Font.bold
-        , Border.solid
-        , Border.rounded 3
-        , spacing 7
-        , padding 7
-        , Background.color black
-        , Font.color white
-        , onClick (handlers index)
-        ]
-        (Element.text label)
-
-
 testCaseSeparator : String -> Element msg
 testCaseSeparator separatorText =
     let
@@ -436,7 +400,7 @@ testCaseSeparator separatorText =
                 , Element.el [ width fill ] none
                 ]
     in
-    Element.row [ centerX, width fill, Font.color orange ]
+    Element.row [ centerX, width fill ]
         [ horizontalLine
         , Element.el [ padding 5, Font.bold ] (text separatorText)
         , horizontalLine
