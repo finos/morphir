@@ -2,13 +2,10 @@ module Morphir.Web.DevelopApp.FunctionPage exposing (..)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, centerY, column, el, fill, height, none, padding, paddingXY, rgb, scrollbars, spacing, text, width)
+import Element exposing (Element, alignTop, centerX, centerY, column, el, explain, fill, height, none, padding, paddingXY, paragraph, px, rgb, row, scrollbarX, scrollbars, shrink, spacing, text, width)
 import Element.Background as Background
-import Element.Border as Border
-import Element.Events exposing (onClick)
 import Element.Font as Font exposing (center)
 import Element.Input as Input exposing (placeholder)
-import Element.Keyed as Keyed
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
@@ -21,11 +18,14 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
+import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.VisualTypedValue exposing (rawToVisualTypedValue)
+import Morphir.Web.DevelopApp.Common exposing (viewAsCard)
 import Url.Parser as UrlParser exposing ((</>))
 
 
@@ -75,12 +75,17 @@ routeParser =
 
 viewHeader : Theme -> String -> Element msg
 viewHeader theme heading =
-    el [ Font.bold, Font.size (theme |> Theme.scaled 2), spacing 5, padding 5 ] (text (heading ++ " : "))
+    el [ Font.bold, Font.size (theme |> Theme.scaled 2), spacing 5, padding 5 ] (text heading)
 
 
 viewTitle : FQName -> String
-viewTitle functionName =
-    "Morphir - " ++ (functionName |> FQName.toString |> String.replace ":" " / ")
+viewTitle ( _, moduleName, functionName ) =
+    String.join " / "
+        (List.concat
+            [ moduleName |> List.map nameToText
+            , [ nameToText functionName ]
+            ]
+        )
 
 
 viewPage : Theme -> Handlers msg -> Distribution -> Model -> Element msg
@@ -91,15 +96,23 @@ viewPage theme handlers distribution model =
     in
     Element.column [ width fill, padding 10, spacing 10 ]
         [ el [ Font.bold ] (text (viewTitle model.functionName))
-        , if List.length model.savedTestCases > 0 || Array.length model.testCaseStates > 0 then
-            Theme.button theme (handlers.saveTestSuite model) "Save Changes" theme.colors.secondaryHighlight
-
-          else
-            el [] none
-        , el [ Font.bold ] (text ("Total scenarios: " ++ String.fromInt testCasesNumber))
         , if testCasesNumber > 0 then
             column [ width fill, spacing 5 ]
-                [ el [ Font.bold, Font.size (theme |> Theme.scaled 4) ] (text "Scenarios")
+                [ Theme.header theme
+                    { left =
+                        [ el [ Font.bold, Font.size (theme |> Theme.scaled 4) ] (text "Scenarios")
+                        , el [ Font.bold ] (text ("Total: " ++ String.fromInt testCasesNumber))
+                        ]
+                    , middle =
+                        []
+                    , right =
+                        [ if List.length model.savedTestCases > 0 || Array.length model.testCaseStates > 0 then
+                            Theme.button theme (handlers.saveTestSuite model) "Save Changes" theme.colors.secondaryHighlight
+
+                          else
+                            el [] none
+                        ]
+                    }
                 , viewScenarios theme handlers distribution model
                 ]
 
@@ -115,7 +128,7 @@ viewScenarios theme handlers distribution model =
         ( packagePath, modulePath, localName ) =
             model.functionName
 
-        ( inputArgValues, outputValue ) =
+        ( inputTypes, outputType ) =
             Distribution.lookupValueSpecification packagePath modulePath localName distribution
                 |> Maybe.map
                     (\valueSpec ->
@@ -160,13 +173,13 @@ viewScenarios theme handlers distribution model =
                 }
             }
 
-        references : IR
-        references =
+        ir : IR
+        ir =
             IR.fromDistribution distribution
     in
     Array.toList model.testCaseStates
         |> List.indexedMap
-            (\index testCaseState ->
+            (\testCaseIndex testCaseState ->
                 let
                     testCase =
                         { inputs =
@@ -176,53 +189,57 @@ viewScenarios theme handlers distribution model =
                                         |> Maybe.andThen .lastValidValue
                                         |> Maybe.withDefault (Value.Unit ())
                                 )
-                                inputArgValues
+                                inputTypes
                         , expectedOutput =
                             testCaseState.expectedOutputState.lastValidValue
                                 |> Maybe.withDefault (Value.Unit ())
                         , description = testCaseState.descriptionState
                         }
                 in
-                column [ width fill, spacing 5, padding 5 ]
+                column
+                    [ width fill
+                    , padding (theme |> Theme.scaled 2)
+                    , Background.color (rgb 0.9 0.95 1)
+                    ]
                     [ Theme.header theme
                         { left =
-                            [ el [ Font.bold, Font.size (theme |> Theme.scaled 3), Font.color theme.colors.primaryHighlight ] (text ("Scenario " ++ String.fromInt index))
+                            [ el [ Font.bold, Font.size (theme |> Theme.scaled 3), Font.color theme.colors.primaryHighlight ] (text ("Scenario " ++ String.fromInt (testCaseIndex + 1)))
                             ]
                         , middle =
                             []
                         , right =
                             [ if testCaseState.editMode then
-                                Theme.button theme (handlers.saveTestCase index) "Save" theme.colors.secondaryHighlight
+                                Theme.button theme (handlers.saveTestCase testCaseIndex) "Save" theme.colors.secondaryHighlight
 
                               else
-                                Theme.button theme (handlers.editTestCase index) "Edit" theme.colors.secondaryHighlight
-                            , Theme.button theme (handlers.cloneTestCase index) "Clone" theme.colors.primaryHighlight
-                            , Theme.button theme (handlers.deleteTestCase index) "Delete" theme.colors.primaryHighlight
+                                Theme.button theme (handlers.editTestCase testCaseIndex) "Edit" theme.colors.secondaryHighlight
+                            , Theme.button theme (handlers.cloneTestCase testCaseIndex) "Clone" theme.colors.primaryHighlight
+                            , Theme.button theme (handlers.deleteTestCase testCaseIndex) "Delete" theme.colors.primaryHighlight
                             ]
                         }
-                    , if testCaseState.editMode == False then
-                        column []
-                            [ viewDescription theme testCase.description
-                            , viewInputs theme (config index) references inputArgValues testCase.inputs
-                            , viewExpectedOutput theme (config index) references testCase.expectedOutput
+                    , column [ width fill, spacing 5, padding 5 ]
+                        [ viewDescription theme testCase.description testCaseState.editMode (handlers.descriptionUpdated testCaseIndex)
+                        , row [ spacing (theme |> Theme.scaled 4) ]
+                            [ el [ alignTop ]
+                                (viewInputs theme (config testCaseIndex) ir inputTypes testCase.inputs testCaseState.editMode (handlers.inputsUpdated testCaseIndex) testCaseState)
+                            , el [ alignTop ]
+                                (viewExpectedOutput theme (config testCaseIndex) ir testCase.expectedOutput testCaseState.editMode (handlers.expectedOutputUpdated testCaseIndex) outputType testCaseState)
+                            , el [ alignTop ]
+                                (viewActualOutput theme (config testCaseIndex) ir testCase model.functionName)
                             ]
-
-                      else
-                        column []
-                            [ viewArgumentEditors theme references handlers model index inputArgValues outputValue testCase.description
+                        , column [ width fill, height fill, spacing 5, padding 5 ]
+                            [ viewHeader theme "Explanation"
+                            , el [ width fill, height (px 300), scrollbars, padding (theme |> Theme.scaled 2), Background.color theme.colors.lightest ]
+                                (viewExplanation (config testCaseIndex) distribution model)
                             ]
-                    , viewActualOutput theme (config index) references testCase model.functionName
-                    , Element.column [ width fill, spacing 5, padding 5 ]
-                        [ viewHeader theme "FUNCTION"
-                        , el [ centerY, centerX, spacing 5, padding 5, scrollbars ] (newFunctionView (config index) distribution model)
                         ]
                     ]
             )
-        |> column [ spacing 5, padding 5, width fill ]
+        |> column [ spacing 30, padding 5, width fill ]
 
 
-newFunctionView : Config msg -> Distribution -> Model -> Element msg
-newFunctionView config distribution model =
+viewExplanation : Config msg -> Distribution -> Model -> Element msg
+viewExplanation config distribution model =
     let
         ( _, modulePath, localName ) =
             model.functionName
@@ -249,59 +266,94 @@ newFunctionView config distribution model =
             )
 
 
-viewDescription : Theme -> String -> Element msg
-viewDescription theme description =
-    column [ paddingXY 0 5 ]
-        [ viewHeader theme "DESCRIPTION"
-        , el [ spacing 5, padding 5 ] (text description)
+viewDescription : Theme -> String -> Bool -> (String -> msg) -> Element msg
+viewDescription theme description editMode onUpdate =
+    let
+        commonStyle =
+            [ width fill
+            , height fill
+            , paddingXY (theme |> Theme.scaled 1) (theme |> Theme.scaled 1)
+            ]
+    in
+    column [ width fill, paddingXY 0 5 ]
+        [ if editMode then
+            Input.multiline commonStyle
+                { onChange =
+                    \updatedText -> onUpdate updatedText
+                , text = description
+                , placeholder =
+                    Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
+                , label = Input.labelHidden ""
+                , spellcheck = False
+                }
+
+          else
+            el commonStyle
+                (text description)
         ]
 
 
-viewInputs : Theme -> Config msg -> IR -> List ( Name, Type () ) -> List RawValue -> Element msg
-viewInputs theme config ir argValues inputs =
-    column [ spacing 5 ]
-        [ viewHeader theme "INPUTS"
-        , inputs
-            |> List.map2
-                (\( name, tpe ) rawValue ->
-                    column
-                        [ spacing 5, padding 5, width fill, height fill ]
-                        [ el [ Font.bold ]
-                            (text
-                                (String.append
-                                    (Name.toHumanWords name
-                                        |> String.join ""
-                                    )
-                                    " : "
+viewInputs : Theme -> Config msg -> IR -> List ( Name, Type () ) -> List RawValue -> Bool -> (Name -> ValueEditor.EditorState -> msg) -> TestCaseState -> Element msg
+viewInputs theme config ir argValues inputs editMode onUpdate testCaseState =
+    viewAsCard theme
+        (viewHeader theme "INPUTS")
+        (if editMode then
+            argValues
+                |> List.map
+                    (\( argName, argType ) ->
+                        ( argName
+                        , el []
+                            (ValueEditor.view ir
+                                argType
+                                (onUpdate argName)
+                                (testCaseState.inputStates
+                                    |> Dict.get argName
+                                    |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing)
                                 )
                             )
-                        , viewTestCase config ir rawValue
-                        ]
+                        )
+                    )
+                |> FieldList.view
+
+         else
+            FieldList.view
+                (List.map2
+                    (\( name, _ ) rawValue ->
+                        ( name, viewRawValue config ir rawValue )
+                    )
+                    argValues
+                    inputs
                 )
-                argValues
-            |> column [ spacing 5, padding 5 ]
-        ]
+        )
 
 
-viewExpectedOutput : Theme -> Config msg -> IR -> RawValue -> Element msg
-viewExpectedOutput theme config references expectedOutput =
-    column [ spacing 5 ]
-        [ viewHeader theme "EXPECTED OUTPUT"
-        , viewTestCase config references expectedOutput
-        ]
+viewExpectedOutput : Theme -> Config msg -> IR -> RawValue -> Bool -> (ValueEditor.EditorState -> msg) -> Type () -> TestCaseState -> Element msg
+viewExpectedOutput theme config ir expectedOutput editMode onUpdate outputType testCaseState =
+    viewAsCard theme
+        (viewHeader theme "EXPECTED OUTPUT")
+        (if editMode then
+            el [ padding 5 ]
+                (ValueEditor.view ir
+                    outputType
+                    onUpdate
+                    testCaseState.expectedOutputState
+                )
+
+         else
+            viewRawValue config ir expectedOutput
+        )
 
 
 viewActualOutput : Theme -> Config msg -> IR -> TestCase -> FQName -> Element msg
 viewActualOutput theme config references testCase fQName =
-    column [ spacing 5, paddingXY 0 5 ]
-        [ viewHeader theme "ACTUAL OUTPUT"
-        , evaluateOutput theme config references testCase fQName
-        ]
+    viewAsCard theme
+        (viewHeader theme "ACTUAL OUTPUT")
+        (evaluateOutput theme config references testCase fQName)
 
 
-viewTestCase : Config msg -> IR -> RawValue -> Element msg
-viewTestCase config references rawValue =
-    case rawToVisualTypedValue references rawValue of
+viewRawValue : Config msg -> IR -> RawValue -> Element msg
+viewRawValue config ir rawValue =
+    case rawToVisualTypedValue ir rawValue of
         Ok typedValue ->
             el [ spacing 5, padding 5 ] (ViewValue.viewValue config typedValue)
 
@@ -314,97 +366,13 @@ evaluateOutput theme config ir testCase fQName =
     case evaluateFunctionValue SDK.nativeFunctions ir fQName testCase.inputs of
         Ok rawValue ->
             if rawValue == testCase.expectedOutput then
-                el [ Font.heavy, Font.color theme.colors.positive ] (viewTestCase config ir rawValue)
+                el [ Font.heavy, Font.color theme.colors.positive ] (viewRawValue config ir rawValue)
 
             else
-                el [ Font.heavy, Font.color theme.colors.negative ] (viewTestCase config ir rawValue)
+                el [ Font.heavy, Font.color theme.colors.negative ] (viewRawValue config ir rawValue)
 
         Err error ->
             text (Debug.toString error)
-
-
-viewArgumentEditors : Theme -> IR -> Handlers msg -> Model -> Int -> List ( Name, Type () ) -> Type () -> String -> Element msg
-viewArgumentEditors theme ir handlers model index inputTypes outputType description =
-    column [ spacing 5 ]
-        [ viewHeader theme "DESCRIPTION"
-        , Input.text
-            [ width fill
-            , height fill
-            , paddingXY 10 3
-            ]
-            { onChange =
-                \updatedText -> handlers.descriptionUpdated index updatedText
-            , text = description
-            , placeholder =
-                Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
-            , label = Input.labelHidden ""
-            }
-        , viewHeader theme "INPUTS"
-        , inputTypes
-            |> List.map
-                (\( argName, argType ) ->
-                    Keyed.column
-                        [ Background.color (rgb 1 1 1)
-                        , Border.rounded 5
-                        , spacing 5
-                        ]
-                        [ ( String.join "_" [ "editor", "label", String.fromInt index, Name.toCamelCase argName ]
-                          , el [ padding 5, Font.bold ]
-                                (text (argName |> Name.toHumanWords |> String.join " "))
-                          )
-                        , ( String.join "_" [ "editor", String.fromInt index, Name.toCamelCase argName ]
-                          , el [ padding 5 ]
-                                (ValueEditor.view ir
-                                    argType
-                                    (handlers.inputsUpdated index argName)
-                                    (model.testCaseStates
-                                        |> Array.get index
-                                        |> Maybe.andThen (\record -> Dict.get argName record.inputStates)
-                                        |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing)
-                                    )
-                                )
-                          )
-                        ]
-                )
-            |> column [ spacing 5 ]
-        , viewHeader theme "EXPECTED OUTPUT"
-        , el [ padding 5 ]
-            (ValueEditor.view ir
-                outputType
-                (handlers.expectedOutputUpdated index)
-                (model.testCaseStates
-                    |> Array.get index
-                    |> Maybe.map (\record -> record.expectedOutputState)
-                    |> Maybe.withDefault (ValueEditor.initEditorState ir outputType Nothing)
-                )
-            )
-        ]
-
-
-testCaseSeparator : String -> Element msg
-testCaseSeparator separatorText =
-    let
-        horizontalLine : Element msg
-        horizontalLine =
-            Element.column [ width fill ]
-                [ Element.el
-                    [ Border.widthEach
-                        { top = 0
-                        , left = 0
-                        , right = 0
-                        , bottom = 1
-                        }
-                    , width fill
-                    ]
-                    none
-                , Element.el [ width fill ] none
-                ]
-    in
-    Element.row [ centerX, width fill ]
-        [ horizontalLine
-        , Element.el [ padding 5, Font.bold ] (text separatorText)
-        , horizontalLine
-        ]
 
 
 compareState : TestCases -> TestCases -> Bool

@@ -3,7 +3,7 @@ module Morphir.Visual.Theme exposing (..)
 import Element exposing (Color, Element, column, el, fill, padding, paddingXY, rgb, rgb255, row, spacing, toRgb, width)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font
+import Element.Font as Font exposing (center)
 import Element.Input as Input
 
 
@@ -131,9 +131,10 @@ header theme parts =
     row
         [ width fill
         ]
-        [ row [] parts.left
+        [ row [ spacing (theme |> scaled 1) ] parts.left
         , row
             [ width fill
+            , center
             ]
             parts.middle
         , row
