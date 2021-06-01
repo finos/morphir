@@ -195,6 +195,24 @@ nativeFunctions =
             , eval2 (>) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
             ]
       )
+    , ( "lessThanOrEqual"
+      , oneOf
+            -- TODO: this is only a limited subset of comparable values, we should implement for all
+            [ eval2 (<=) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
+            , eval2 (<=) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
+            , eval2 (<=) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
+            , eval2 (<=) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            ]
+      )
+    , ( "greaterThanOrEqual"
+      , oneOf
+            -- TODO: this is only a limited subset of comparable values, we should implement for all
+            [ eval2 (>=) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
+            , eval2 (>=) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
+            , eval2 (>=) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
+            , eval2 (>=) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            ]
+      )
     , ( "abs"
       , oneOf
             [ eval1 abs (expectLiteral intLiteral) (returnLiteral IntLiteral)
