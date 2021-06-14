@@ -18,7 +18,7 @@ import Morphir.IR.SDK.Char as Basics
 import Morphir.IR.SDK.String as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
-import Morphir.Visual.Common exposing (nameToText, nameToTitleText)
+import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 
 
@@ -158,16 +158,11 @@ initCustomEditor ir constructors maybeInitialValue =
 
 view : IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
 view ir valueType updateEditorState editorState =
-    viewHelp ir valueType updateEditorState editorState 0
-
-
-viewHelp : IR -> Type () -> (EditorState -> msg) -> EditorState -> Int -> Element msg
-viewHelp ir valueType updateEditorState editorState zIndex =
     case editorState.componentState of
         TextBox currentText ->
             let
                 baseStyle =
-                    [ width (fill |> minimum 70)
+                    [ width (fill |> minimum 80)
                     , height fill
                     , paddingXY 10 3
                     , Events.onLoseFocus
@@ -264,11 +259,7 @@ viewHelp ir valueType updateEditorState editorState zIndex =
         RecordEditor fieldEditorStates ->
             el
                 [ padding 7
-                , if modBy 2 zIndex == 0 then
-                    Background.color (rgb 0.7 0.8 0.9)
-
-                  else
-                    Background.color (rgb 0.9 0.95 1.0)
+                , Background.color (rgb 0.7 0.8 0.9)
                 , Border.rounded 7
                 ]
                 (FieldList.view
@@ -281,7 +272,7 @@ viewHelp ir valueType updateEditorState editorState zIndex =
                                     , height fill
                                     , centerY
                                     ]
-                                    (viewHelp ir
+                                    (view ir
                                         fieldType
                                         (\newFieldEditorState ->
                                             updateEditorState
@@ -301,7 +292,6 @@ viewHelp ir valueType updateEditorState editorState zIndex =
                                                 }
                                         )
                                         fieldEditorState
-                                        (zIndex + 1)
                                     )
                                 )
                             )
@@ -342,7 +332,7 @@ viewHelp ir valueType updateEditorState editorState zIndex =
                             |> Dict.toList
                             |> List.map
                                 (\( ctorName, _ ) ->
-                                    Html.option [] [ Html.text (nameToTitleText ctorName) ]
+                                    Html.option [] [ Html.text (nameToText ctorName) ]
                                 )
                         )
                     )
