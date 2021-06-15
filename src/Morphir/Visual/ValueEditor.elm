@@ -1,4 +1,4 @@
-module Morphir.Visual.ValueEditor exposing (initEditorState, view)
+module Morphir.Visual.ValueEditor exposing (EditorState, initEditorState, view)
 
 {-| The purpose of this component is to display an editor that allows the user to edit a value of a certain type while
 making sure that the value will be valid for that type.
@@ -14,7 +14,7 @@ The component is designed to be integrated into an Elm application by:
     message constructor to allow the editor to notify the host application about edits.
   - Handling the edit message in the `update` function and update the editor state in the model.
 
-@docs initEditorState, view
+@docs EditorState, initEditorState, view
 
 
 # Extending
@@ -135,17 +135,17 @@ initComponentState ir valueType maybeInitialValue =
 
             else
                 case valueType of
-                    Type.Reference _ fQName typeArgs ->
+                    Type.Reference _ fQName _ ->
                         case ir |> IR.lookupTypeSpecification fQName of
                             Just typeSpec ->
                                 case typeSpec of
-                                    Type.TypeAliasSpecification typeParams typeExp ->
+                                    Type.TypeAliasSpecification _ typeExp ->
                                         initComponentState ir typeExp maybeInitialValue
 
-                                    Type.OpaqueTypeSpecification typeParams ->
+                                    Type.OpaqueTypeSpecification _ ->
                                         initTextEditor maybeInitialValue
 
-                                    Type.CustomTypeSpecification typeParams constructors ->
+                                    Type.CustomTypeSpecification _ constructors ->
                                         initCustomEditor ir constructors maybeInitialValue
 
                             Nothing ->
@@ -231,7 +231,7 @@ initRecordEditor ir fieldTypes maybeInitialValue =
 {-| Creates a component state for a custom type editor with an optional error.
 -}
 initCustomEditor : IR -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
-initCustomEditor ir constructors maybeInitialValue =
+initCustomEditor _ constructors _ =
     ( Nothing, CustomEditor "" constructors [] )
 
 
@@ -418,8 +418,8 @@ view ir valueType updateEditorState editorState =
                         (allConstructors
                             |> Dict.toList
                             |> List.map
-                                (\( ctorName, _ ) ->
-                                    Html.option [] [ Html.text (nameToText ctorName) ]
+                                (\( constructorName, _ ) ->
+                                    Html.option [] [ Html.text (nameToText constructorName) ]
                                 )
                         )
                     )
