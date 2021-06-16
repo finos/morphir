@@ -1,7 +1,37 @@
-module Morphir.Visual.ValueEditor exposing (..)
+module Morphir.Visual.ValueEditor exposing (EditorState, initEditorState, view)
+
+{-| The purpose of this component is to display an editor that allows the user to edit a value of a certain type while
+making sure that the value will be valid for that type.
+
+
+# Usage
+
+The component is designed to be integrated into an Elm application by:
+
+  - Storing the `EditorState` in the host application's model.
+  - Initializing the editor state using `initEditorState`.
+  - Invoking `view` somewhere within the host application's `view` function to display the component while passing a
+    message constructor to allow the editor to notify the host application about edits.
+  - Handling the edit message in the `update` function and update the editor state in the model.
+
+@docs EditorState, initEditorState, view
+
+
+# Extending
+
+This component only works for value types that it explicitly handles. The expectation is that over time we add support
+for all possible Morphir types. To add a new type of editor you need to take the following steps:
+
+  - Add a new constructor to the `ComponentState` type.
+      - This constructor will be used to keep track of the state of the visual component used to edit the value so it
+        should contain enough information (as arguments) to create the component from scratch.
+  - Add a new branch to `initComponentState` to map the value type to the new component state.
+  - Add a new case to `view` to display the editor.
+
+-}
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, below, centerY, column, el, explain, fill, height, html, htmlAttribute, minimum, moveDown, moveUp, none, padding, paddingXY, px, rgb, row, shrink, spacing, table, text, width)
+import Element exposing (Element, below, centerY, column, el, fill, height, html, htmlAttribute, minimum, moveDown, padding, paddingXY, rgb, shrink, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -22,6 +52,25 @@ import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 
 
+{-| Type that represents the state of the value editor. It's made up of the following pieces of information:
+
+  - `componentState`
+      - The state of the visual component used to edit the value.
+      - This could be as simple as text box or or as complex as a grid.
+      - The type of visual component shown here depends entirely on the type of the value being edited.
+  - `lastValidValue`
+      - The component state can store values that are not valid for the value type being edited. For example you could
+        have non-digit characters in a text box used to edit an integer value.
+      - This field stores the last valid value that the editor contained in the past and makes it possible to revert back
+        to a valid state when the user clicks away from an editor that's in an invalid state.
+  - `errorState`
+      - This field is used by the editor to communicate invalid states.
+
+**Note:** It's tempting to think that an editor is either in a valid or an invalid state, never both so a `Result` would
+be a better choice to keep track of the value. In reality we do want to keep the previous valid state even if the editor
+goes into an error state so that we can recover from a half-done edit.
+
+-}
 type alias EditorState =
     { componentState : ComponentState
     , lastValidValue : Maybe RawValue
@@ -29,8 +78,14 @@ type alias EditorState =
     }
 
 
+{-| The state of the visual component used to edit the value.
+
+  - This could be as simple as text box or or as complex as a grid.
+  - The type of visual component shown here depends entirely on the type of the value being edited.
+
+-}
 type ComponentState
-    = TextBox String
+    = TextEditor String
     | BoolEditor (Maybe Bool)
     | RecordEditor (List ( Name, Type (), EditorState ))
     | CustomEditor String (Type.Constructors ()) (List ( Name, List ( Name, Type () ) ))
@@ -40,6 +95,13 @@ type alias Error =
     String
 
 
+{-| This function is used by the hosting application to initialize the editor state. It takes the following inputs:
+
+  - `ir` - This is used to look up additional type information when needed.
+  - `valueType` - The type of the value being edited.
+  - `maybeInitialValue` - Optional starting value for the editor.
+
+-}
 initEditorState : IR -> Type () -> Maybe RawValue -> EditorState
 initEditorState ir valueType maybeInitialValue =
     let
@@ -52,6 +114,15 @@ initEditorState ir valueType maybeInitialValue =
     }
 
 
+{-| Creates a component state with an optional error. It takes the following inputs:
+
+  - `ir` - This is used to look up additional type information when needed.
+  - `valueType` - The type of the value being edited.
+  - `maybeInitialValue` - Optional starting value for the editor.
+
+An error might be reported when the initial value being passed in is invalid for the given editor.
+
+-}
 initComponentState : IR -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initComponentState ir valueType maybeInitialValue =
     case valueType of
@@ -64,50 +135,54 @@ initComponentState ir valueType maybeInitialValue =
 
             else
                 case valueType of
-                    Type.Reference _ fQName typeArgs ->
+                    Type.Reference _ fQName _ ->
                         case ir |> IR.lookupTypeSpecification fQName of
                             Just typeSpec ->
                                 case typeSpec of
-                                    Type.TypeAliasSpecification typeParams typeExp ->
+                                    Type.TypeAliasSpecification _ typeExp ->
                                         initComponentState ir typeExp maybeInitialValue
 
-                                    Type.OpaqueTypeSpecification typeParams ->
-                                        initTextBox maybeInitialValue
+                                    Type.OpaqueTypeSpecification _ ->
+                                        initTextEditor maybeInitialValue
 
-                                    Type.CustomTypeSpecification typeParams constructors ->
+                                    Type.CustomTypeSpecification _ constructors ->
                                         initCustomEditor ir constructors maybeInitialValue
 
                             Nothing ->
-                                initTextBox maybeInitialValue
+                                initTextEditor maybeInitialValue
 
                     _ ->
-                        initTextBox maybeInitialValue
+                        initTextEditor maybeInitialValue
 
 
-initTextBox : Maybe RawValue -> ( Maybe Error, ComponentState )
-initTextBox maybeInitialValue =
+{-| Creates a component state for a text editor with an optional error.
+-}
+initTextEditor : Maybe RawValue -> ( Maybe Error, ComponentState )
+initTextEditor maybeInitialValue =
     case maybeInitialValue of
         Just initialValue ->
             case initialValue of
                 Value.Literal _ (StringLiteral string) ->
-                    ( Nothing, TextBox string )
+                    ( Nothing, TextEditor string )
 
                 Value.Literal _ (CharLiteral char) ->
-                    ( Nothing, TextBox (String.fromChar char) )
+                    ( Nothing, TextEditor (String.fromChar char) )
 
                 Value.Literal _ (IntLiteral int) ->
-                    ( Nothing, TextBox (String.fromInt int) )
+                    ( Nothing, TextEditor (String.fromInt int) )
 
                 Value.Literal _ (FloatLiteral float) ->
-                    ( Nothing, TextBox (String.fromFloat float) )
+                    ( Nothing, TextEditor (String.fromFloat float) )
 
                 _ ->
-                    ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), TextBox "" )
+                    ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), TextEditor "" )
 
         Nothing ->
-            ( Nothing, TextBox "" )
+            ( Nothing, TextEditor "" )
 
 
+{-| Creates a component state for a boolean editor with an optional error.
+-}
 initBoolEditor : Maybe RawValue -> ( Maybe Error, ComponentState )
 initBoolEditor maybeInitialValue =
     case maybeInitialValue of
@@ -123,6 +198,8 @@ initBoolEditor maybeInitialValue =
             ( Nothing, BoolEditor Nothing )
 
 
+{-| Creates a component state for a record editor with an optional error.
+-}
 initRecordEditor : IR -> List (Type.Field ()) -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initRecordEditor ir fieldTypes maybeInitialValue =
     let
@@ -151,15 +228,25 @@ initRecordEditor ir fieldTypes maybeInitialValue =
             ( Nothing, recordEditor Dict.empty )
 
 
+{-| Creates a component state for a custom type editor with an optional error.
+-}
 initCustomEditor : IR -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
-initCustomEditor ir constructors maybeInitialValue =
+initCustomEditor _ constructors _ =
     ( Nothing, CustomEditor "" constructors [] )
 
 
+{-| Display the editor. It takes the following inputs:
+
+  - `ir` - This is used to look up additional type information when needed.
+  - `valueType` - The type of the value being edited.
+  - `updateEditorState` - Function to create the message that will be sent by this component during edits.
+  - `editorState` - The current editor state.
+
+-}
 view : IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
 view ir valueType updateEditorState editorState =
     case editorState.componentState of
-        TextBox currentText ->
+        TextEditor currentText ->
             let
                 baseStyle =
                     [ width (fill |> minimum 80)
@@ -230,7 +317,7 @@ view ir valueType updateEditorState editorState =
                             updateEditorState
                                 (applyResult valueResult
                                     { editorState
-                                        | componentState = TextBox updatedText
+                                        | componentState = TextEditor updatedText
                                     }
                                 )
                 , text = currentText
@@ -331,14 +418,24 @@ view ir valueType updateEditorState editorState =
                         (allConstructors
                             |> Dict.toList
                             |> List.map
-                                (\( ctorName, _ ) ->
-                                    Html.option [] [ Html.text (nameToText ctorName) ]
+                                (\( constructorName, _ ) ->
+                                    Html.option [] [ Html.text (nameToText constructorName) ]
                                 )
                         )
                     )
                 ]
 
 
+{-| Utility function to apply the result of an edit to the editor state using the following logic:
+
+  - If the result is `Ok` it
+      - updates the `lastValidValue` to the new one and
+      - clears out the error state
+  - If the result is `Err` it
+      - keeps the current `lastValidValue` and
+      - updates the error state to the error
+
+-}
 applyResult : Result String RawValue -> EditorState -> EditorState
 applyResult valueResult editorState =
     { editorState
