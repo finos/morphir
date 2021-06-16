@@ -1,4 +1,4 @@
-module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, floatType, intType, isNamedVariable, listType, metaAlias, metaFun, metaRecord, metaRef, metaTuple, metaUnit, metaVar, stringType, subVariable, substituteVariable, substituteVariables, toName, toString, variableByIndex, variableByName, variables, wrapInAliases)
+module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, contains, floatType, intType, isNamedVariable, listType, metaAlias, metaFun, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, subVariable, substituteVariable, substituteVariables, toName, toString, variableByIndex, variableByName, variables, wrapInAliases)
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName, fqn)
@@ -302,3 +302,81 @@ floatType =
 listType : MetaType -> MetaType
 listType itemType =
     metaRef (fqn "Morphir.SDK" "List" "List") [ itemType ]
+
+
+contains : MetaType -> MetaType -> Bool
+contains innerType outerType =
+    if innerType == outerType then
+        True
+
+    else
+        case outerType of
+            MetaVar _ ->
+                False
+
+            MetaTuple _ metaElems ->
+                metaElems
+                    |> List.any (contains innerType)
+
+            MetaRecord _ _ metaFields ->
+                metaFields
+                    |> Dict.values
+                    |> List.any (contains innerType)
+
+            MetaFun _ metaFunc metaArg ->
+                contains innerType metaFunc || contains innerType metaArg
+
+            MetaRef _ _ args maybeAliasedType ->
+                case maybeAliasedType of
+                    Just aliasedType ->
+                        args
+                            |> List.any (contains innerType)
+                            |> (||) (contains innerType aliasedType)
+
+                    Nothing ->
+                        args
+                            |> List.any (contains innerType)
+
+            MetaUnit ->
+                False
+
+
+removeAliases : MetaType -> MetaType
+removeAliases original =
+    case original of
+        MetaVar _ ->
+            original
+
+        MetaTuple _ metaElems ->
+            metaTuple
+                (metaElems
+                    |> List.map removeAliases
+                )
+
+        MetaRecord _ extends metaFields ->
+            metaRecord extends
+                (metaFields
+                    |> Dict.map
+                        (\_ fieldType ->
+                            removeAliases fieldType
+                        )
+                )
+
+        MetaFun _ metaFunc metaArg ->
+            metaFun
+                (removeAliases metaFunc)
+                (removeAliases metaArg)
+
+        MetaRef _ fQName args maybeAliasedType ->
+            case maybeAliasedType of
+                Just aliasedType ->
+                    removeAliases aliasedType
+
+                Nothing ->
+                    metaRef fQName
+                        (args
+                            |> List.map removeAliases
+                        )
+
+        MetaUnit ->
+            original

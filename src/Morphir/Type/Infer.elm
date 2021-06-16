@@ -15,7 +15,7 @@ import Morphir.IR.Type as Type exposing (Specification(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Type.Class as Class exposing (Class)
-import Morphir.Type.Constraint exposing (Constraint(..), class, equality)
+import Morphir.Type.Constraint as Constraint exposing (Constraint(..), class, equality, isRecursive)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaTuple, metaUnit, metaVar, variableByName)
 import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
@@ -34,6 +34,7 @@ type ValueTypeError
 type TypeError
     = TypeErrors (List TypeError)
     | ClassConstraintViolation MetaType Class
+    | RecursiveConstraint MetaType MetaType
     | LookupError LookupError
     | UnknownError String
     | UnifyError UnificationError
@@ -148,6 +149,9 @@ typeErrorToMessage typeError =
                                 [ "Could not find field '", Name.toCamelCase name, "'" ]
             in
             mapUnificationError unificationError
+
+        RecursiveConstraint metaType1 metaType2 ->
+            String.concat [ "Recursive constraint: '", MetaType.toString metaType1, "' == '", MetaType.toString metaType2, "'" ]
 
 
 inferValueDefinition : IR -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
@@ -992,8 +996,12 @@ validateConstraints constraints =
                         else
                             Err (ClassConstraintViolation metaType class)
 
-                    _ ->
-                        Ok constraint
+                    Equality metaType1 metaType2 ->
+                        if isRecursive constraint then
+                            Err (RecursiveConstraint metaType1 metaType2)
+
+                        else
+                            Ok constraint
             )
         |> ListOfResults.liftAllErrors
         |> Result.mapError typeErrors

@@ -2,6 +2,7 @@ module Morphir.Type.Constraint exposing (..)
 
 import Morphir.Type.Class exposing (Class)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
+import Set
 
 
 type Constraint
@@ -52,6 +53,26 @@ isTrivial constraint =
     case constraint of
         Equality metaType1 metaType2 ->
             metaType1 == metaType2
+
+        Class _ _ ->
+            False
+
+
+isRecursive : Constraint -> Bool
+isRecursive constraint =
+    case constraint of
+        Equality metaType1 metaType2 ->
+            let
+                rawMetaType1 =
+                    MetaType.removeAliases metaType1
+
+                rawMetaType2 =
+                    MetaType.removeAliases metaType2
+            in
+            (rawMetaType1 /= rawMetaType2)
+                && (MetaType.variables rawMetaType1 |> Set.isEmpty |> not)
+                && (MetaType.variables rawMetaType2 |> Set.isEmpty |> not)
+                && (MetaType.contains rawMetaType1 rawMetaType2 || MetaType.contains rawMetaType2 rawMetaType1)
 
         Class _ _ ->
             False

@@ -37,16 +37,21 @@ lookupValue baseVar ir valueFQN =
         |> Result.fromMaybe (CouldNotFindValue valueFQN)
 
 
-lookupAliasedType : Variable -> IR -> FQName -> Result LookupError (Type ())
-lookupAliasedType baseVar ir typeFQN =
+lookupAliasedType : IR -> FQName -> List (Type ()) -> Result LookupError (Type ())
+lookupAliasedType ir typeFQN concreteTypeParams =
     ir
         |> IR.lookupTypeSpecification typeFQN
         |> Result.fromMaybe (CouldNotFindAlias typeFQN)
         |> Result.andThen
             (\typeSpec ->
                 case typeSpec of
-                    Type.TypeAliasSpecification paramNames tpe ->
-                        Ok tpe
+                    Type.TypeAliasSpecification typeParamNames tpe ->
+                        tpe
+                            |> Type.substituteTypeVariables
+                                (List.map2 Tuple.pair typeParamNames concreteTypeParams
+                                    |> Dict.fromList
+                                )
+                            |> Ok
 
                     _ ->
                         Err (ExpectedAlias typeFQN)
@@ -117,14 +122,17 @@ concreteTypeToMetaType baseVar ir varToMeta tpe =
 
         Type.Reference _ fQName args ->
             let
-                resolveAliases : FQName -> List MetaType -> MetaType
+                resolveAliases : FQName -> List (Type ()) -> MetaType
                 resolveAliases fqn ars =
-                    lookupAliasedType baseVar ir fqn
-                        |> Result.map (concreteTypeToMetaType baseVar ir varToMeta >> metaAlias fqn ars)
-                        |> Result.withDefault (metaRef fqn ars)
+                    let
+                        metaArgs =
+                            ars |> List.map (concreteTypeToMetaType baseVar ir varToMeta)
+                    in
+                    lookupAliasedType ir fqn ars
+                        |> Result.map (concreteTypeToMetaType baseVar ir varToMeta >> metaAlias fqn metaArgs)
+                        |> Result.withDefault (metaRef fqn metaArgs)
             in
-            resolveAliases fQName
-                (args |> List.map (concreteTypeToMetaType baseVar ir varToMeta))
+            resolveAliases fQName args
 
         Type.Tuple _ elemTypes ->
             metaTuple
