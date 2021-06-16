@@ -1658,7 +1658,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                 |> Result.mapError (ResolveError sourceLocation >> List.singleton)
 
         Value.Reference sourceLocation ( [], modulePath, localName ) ->
-            if variables |> Dict.member localName then
+            if List.isEmpty modulePath && (variables |> Dict.member localName) then
                 Ok (Value.Variable sourceLocation localName)
 
             else
