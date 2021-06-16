@@ -26,6 +26,7 @@
         "Issues.DecisionTables",
         "Issues.PatternModel.BasicEnum",
         "Issues.PatternModel.OtherBasicEnum",
+        "Issues.Issue409",
         "Issues.Issue410",
         "Issues.Issue448"
     ]
