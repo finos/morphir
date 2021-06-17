@@ -1166,11 +1166,19 @@ mapPattern sourceFile (Node range pattern) =
                         |> QName.fromName (qualifiedNameRef.moduleName |> List.map Name.fromString)
                         |> FQName.fromQName []
             in
-            argNodes
-                |> List.map (mapPattern sourceFile)
-                |> ListOfResults.liftAllErrors
-                |> Result.mapError List.concat
-                |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
+            case ( qualifiedNameRef.moduleName, qualifiedNameRef.name ) of
+                ( [], "True" ) ->
+                    Ok (Value.LiteralPattern sourceLocation (BoolLiteral True))
+
+                ( [], "False" ) ->
+                    Ok (Value.LiteralPattern sourceLocation (BoolLiteral False))
+
+                _ ->
+                    argNodes
+                        |> List.map (mapPattern sourceFile)
+                        |> ListOfResults.liftAllErrors
+                        |> Result.mapError List.concat
+                        |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
 
         Pattern.AsPattern subjectNode aliasNode ->
             mapPattern sourceFile subjectNode
