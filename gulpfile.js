@@ -49,6 +49,10 @@ function makeCLI() {
     return make('cli', 'src/Morphir/Elm/CLI.elm', 'Morphir.Elm.CLI.js')
 }
 
+function makeDevCLI() {
+    return make('cli', 'src/Morphir/Elm/DevCLI.elm', 'Morphir.Elm.DevCLI.js')
+}
+
 function makeDevServer() {
     return make('cli', 'src/Morphir/Web/DevelopApp.elm', 'web/index.html')
 }
@@ -65,6 +69,7 @@ function makeTryMorphir() {
 const build =
     series(
         makeCLI,
+        makeDevCLI,
         makeDevServer,
         makeInsightAPI,
         makeTryMorphir
@@ -72,6 +77,7 @@ const build =
 
 exports.clean = clean;
 exports.makeCLI = makeCLI;
+exports.makeDevCLI = makeDevCLI;
 exports.build = build;
 exports.default =
     series(
