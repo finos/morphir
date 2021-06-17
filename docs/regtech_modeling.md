@@ -136,5 +136,5 @@ t0Flows
 ## Summing up
 We've seen how using an industry standard RegTech can save an industry valuable time, effort, and risk.  We've also seen that doing so with a shared model allows firms to adopt RegTech without the costly exercise of rewriting their systems.  Finally, we've seen how capturing regulations in a technology-agnostic model can ease migration to new technologies.  
 
-To view the entire LCR example, take a look at [the Morphir Examples project](/morphir-examples/src/Morphir/Sample/LCR).  For generating SQL and Spark from Morphir models, be sure to keep an eye out for the upcoming **morphir-sql** and **morphir-spark** projects.
+To view the entire LCR example, take a look at [the Morphir Examples project](/morphir-examples/src/Morphir/Sample/Reg/LCR).  For generating SQL and Spark from Morphir models, be sure to keep an eye out for the upcoming **morphir-sql** and **morphir-spark** projects.
 
