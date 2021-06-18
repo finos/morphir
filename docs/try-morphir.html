@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Morphir.Web.DebugIR</title>
+  <title>Morphir.Web.TryMorphir</title>
   <style>body { padding: 0; margin: 0; }</style>
 </head>
 
@@ -5426,10 +5426,11 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $author$project$Morphir$Web$DebugIR$Change = function (a) {
-	return {$: 'Change', a: a};
+var $author$project$Morphir$Web$TryMorphir$ChangeSource = function (a) {
+	return {$: 'ChangeSource', a: a};
 };
-var $author$project$Morphir$Web$DebugIR$sampleSource = 'module My.Test exposing (..)\r\n\r\nbar : List a\r\nbar =\r\n    if True then\r\n        [ 1.5 ]\r\n    else\r\n        [ 1 ]\r\n\r\nfoo : Bool -> Int\r\nfoo myBool =\r\n    if myBool then\r\n        1 + 5\r\n    else\r\n        0\r\n        ';
+var $author$project$Morphir$Web$TryMorphir$VisualView = {$: 'VisualView'};
+var $author$project$Morphir$Web$TryMorphir$sampleSource = 'module My.Test exposing (..)\r\n\r\nbar : List a\r\nbar =\r\n    if True then\r\n        [ 1.5 ]\r\n    else\r\n        [ 1 ]\r\n\r\nfoo : Bool -> Int\r\nfoo myBool =\r\n    if myBool then\r\n        1 + 5\r\n    else\r\n        0\r\n        ';
 var $elm$core$Result$andThen = F2(
 	function (callback, result) {
 		if (result.$ === 'Ok') {
@@ -11869,7 +11870,9 @@ var $author$project$Morphir$IR$SDK$Rule$moduleSpec = {
 						_List_fromArray(
 							[
 								_List_fromArray(
-								['rule'])
+								['a']),
+								_List_fromArray(
+								['b'])
 							]),
 						A2(
 							$author$project$Morphir$IR$SDK$Common$tFun,
@@ -13456,19 +13459,31 @@ var $elm$core$List$concatMap = F2(
 		return $elm$core$List$concat(
 			A2($elm$core$List$map, f, list));
 	});
+var $author$project$Morphir$IR$flattenPackages = F2(
+	function (packages, f) {
+		return $elm$core$Dict$fromList(
+			A2(
+				$elm$core$List$concatMap,
+				function (_v0) {
+					var packageName = _v0.a;
+					var _package = _v0.b;
+					return A2(f, packageName, _package);
+				},
+				$elm$core$Dict$toList(packages)));
+	});
 var $author$project$Morphir$IR$fromPackageSpecifications = function (packageSpecs) {
 	var packageValueSpecifications = F2(
 		function (packageName, packageSpec) {
 			return A2(
 				$elm$core$List$concatMap,
-				function (_v7) {
-					var moduleName = _v7.a;
-					var moduleSpec = _v7.b;
+				function (_v6) {
+					var moduleName = _v6.a;
+					var moduleSpec = _v6.b;
 					return A2(
 						$elm$core$List$map,
-						function (_v8) {
-							var valueName = _v8.a;
-							var valueSpec = _v8.b;
+						function (_v7) {
+							var valueName = _v7.a;
+							var valueSpec = _v7.b;
 							return _Utils_Tuple2(
 								_Utils_Tuple3(packageName, moduleName, valueName),
 								valueSpec);
@@ -13481,14 +13496,14 @@ var $author$project$Morphir$IR$fromPackageSpecifications = function (packageSpec
 		function (packageName, packageSpec) {
 			return A2(
 				$elm$core$List$concatMap,
-				function (_v5) {
-					var moduleName = _v5.a;
-					var moduleSpec = _v5.b;
+				function (_v4) {
+					var moduleName = _v4.a;
+					var moduleSpec = _v4.b;
 					return A2(
 						$elm$core$List$map,
-						function (_v6) {
-							var typeName = _v6.a;
-							var typeSpec = _v6.b;
+						function (_v5) {
+							var typeName = _v5.a;
+							var typeSpec = _v5.b;
 							return _Utils_Tuple2(
 								_Utils_Tuple3(packageName, moduleName, typeName),
 								typeSpec.value);
@@ -13501,23 +13516,23 @@ var $author$project$Morphir$IR$fromPackageSpecifications = function (packageSpec
 		function (packageName, packageSpec) {
 			return A2(
 				$elm$core$List$concatMap,
-				function (_v1) {
-					var moduleName = _v1.a;
-					var moduleSpec = _v1.b;
+				function (_v0) {
+					var moduleName = _v0.a;
+					var moduleSpec = _v0.b;
 					return A2(
 						$elm$core$List$concatMap,
-						function (_v2) {
-							var typeName = _v2.a;
-							var typeSpec = _v2.b;
-							var _v3 = typeSpec.value;
-							if (_v3.$ === 'CustomTypeSpecification') {
-								var params = _v3.a;
-								var constructors = _v3.b;
+						function (_v1) {
+							var typeName = _v1.a;
+							var typeSpec = _v1.b;
+							var _v2 = typeSpec.value;
+							if (_v2.$ === 'CustomTypeSpecification') {
+								var params = _v2.a;
+								var constructors = _v2.b;
 								return A2(
 									$elm$core$List$map,
-									function (_v4) {
-										var ctorName = _v4.a;
-										var ctorArgs = _v4.b;
+									function (_v3) {
+										var ctorName = _v3.a;
+										var ctorArgs = _v3.b;
 										return _Utils_Tuple2(
 											_Utils_Tuple3(packageName, moduleName, ctorName),
 											_Utils_Tuple3(
@@ -13534,21 +13549,11 @@ var $author$project$Morphir$IR$fromPackageSpecifications = function (packageSpec
 				},
 				$elm$core$Dict$toList(packageSpec.modules));
 		});
-	var flatten = function (f) {
-		return $elm$core$Dict$fromList(
-			A2(
-				$elm$core$List$concatMap,
-				function (_v0) {
-					var packageName = _v0.a;
-					var packageSpec = _v0.b;
-					return A2(f, packageName, packageSpec);
-				},
-				$elm$core$Dict$toList(packageSpecs)));
-	};
 	return {
-		typeConstructors: flatten(packageTypeConstructors),
-		typeSpecifications: flatten(packageTypeSpecifications),
-		valueSpecifications: flatten(packageValueSpecifications)
+		typeConstructors: A2($author$project$Morphir$IR$flattenPackages, packageSpecs, packageTypeConstructors),
+		typeSpecifications: A2($author$project$Morphir$IR$flattenPackages, packageSpecs, packageTypeSpecifications),
+		valueDefinitions: $elm$core$Dict$empty,
+		valueSpecifications: A2($author$project$Morphir$IR$flattenPackages, packageSpecs, packageValueSpecifications)
 	};
 };
 var $author$project$Morphir$IR$AccessControlled$AccessControlled = F2(
@@ -15465,15 +15470,102 @@ var $author$project$Morphir$IR$lookupTypeSpecification = F2(
 	function (fqn, ir) {
 		return A2($elm$core$Dict$get, fqn, ir.typeSpecifications);
 	});
+var $elm$core$Tuple$pair = F2(
+	function (a, b) {
+		return _Utils_Tuple2(a, b);
+	});
+var $author$project$Morphir$IR$Type$substituteTypeVariables = F2(
+	function (mapping, original) {
+		switch (original.$) {
+			case 'Variable':
+				var a = original.a;
+				var varName = original.b;
+				return A2(
+					$elm$core$Maybe$withDefault,
+					original,
+					A2($elm$core$Dict$get, varName, mapping));
+			case 'Reference':
+				var a = original.a;
+				var fQName = original.b;
+				var typeArgs = original.c;
+				return A3(
+					$author$project$Morphir$IR$Type$Reference,
+					a,
+					fQName,
+					A2(
+						$elm$core$List$map,
+						$author$project$Morphir$IR$Type$substituteTypeVariables(mapping),
+						typeArgs));
+			case 'Tuple':
+				var a = original.a;
+				var elemTypes = original.b;
+				return A2(
+					$author$project$Morphir$IR$Type$Tuple,
+					a,
+					A2(
+						$elm$core$List$map,
+						$author$project$Morphir$IR$Type$substituteTypeVariables(mapping),
+						elemTypes));
+			case 'Record':
+				var a = original.a;
+				var fields = original.b;
+				return A2(
+					$author$project$Morphir$IR$Type$Record,
+					a,
+					A2(
+						$elm$core$List$map,
+						function (field) {
+							return A2(
+								$author$project$Morphir$IR$Type$Field,
+								field.name,
+								A2($author$project$Morphir$IR$Type$substituteTypeVariables, mapping, field.tpe));
+						},
+						fields));
+			case 'ExtensibleRecord':
+				var a = original.a;
+				var name = original.b;
+				var fields = original.c;
+				return A3(
+					$author$project$Morphir$IR$Type$ExtensibleRecord,
+					a,
+					name,
+					A2(
+						$elm$core$List$map,
+						function (field) {
+							return A2(
+								$author$project$Morphir$IR$Type$Field,
+								field.name,
+								A2($author$project$Morphir$IR$Type$substituteTypeVariables, mapping, field.tpe));
+						},
+						fields));
+			case 'Function':
+				var a = original.a;
+				var argType = original.b;
+				var returnType = original.c;
+				return A3(
+					$author$project$Morphir$IR$Type$Function,
+					a,
+					A2($author$project$Morphir$IR$Type$substituteTypeVariables, mapping, argType),
+					A2($author$project$Morphir$IR$Type$substituteTypeVariables, mapping, returnType));
+			default:
+				var a = original.a;
+				return $author$project$Morphir$IR$Type$Unit(a);
+		}
+	});
 var $author$project$Morphir$Type$MetaTypeMapping$lookupAliasedType = F3(
-	function (baseVar, ir, typeFQN) {
+	function (ir, typeFQN, concreteTypeParams) {
 		return A2(
 			$elm$core$Result$andThen,
 			function (typeSpec) {
 				if (typeSpec.$ === 'TypeAliasSpecification') {
-					var paramNames = typeSpec.a;
+					var typeParamNames = typeSpec.a;
 					var tpe = typeSpec.b;
-					return $elm$core$Result$Ok(tpe);
+					return $elm$core$Result$Ok(
+						A2(
+							$author$project$Morphir$IR$Type$substituteTypeVariables,
+							$elm$core$Dict$fromList(
+								A3($elm$core$List$map2, $elm$core$Tuple$pair, typeParamNames, concreteTypeParams)),
+							tpe));
 				} else {
 					return $elm$core$Result$Err(
 						$author$project$Morphir$Type$MetaTypeMapping$ExpectedAlias(typeFQN));
@@ -15591,24 +15683,22 @@ var $author$project$Morphir$Type$MetaTypeMapping$concreteTypeToMetaType = F4(
 				var args = tpe.c;
 				var resolveAliases = F2(
 					function (fqn, ars) {
+						var metaArgs = A2(
+							$elm$core$List$map,
+							A3($author$project$Morphir$Type$MetaTypeMapping$concreteTypeToMetaType, baseVar, ir, varToMeta),
+							ars);
 						return A2(
 							$elm$core$Result$withDefault,
-							A2($author$project$Morphir$Type$MetaType$metaRef, fqn, ars),
+							A2($author$project$Morphir$Type$MetaType$metaRef, fqn, metaArgs),
 							A2(
 								$elm$core$Result$map,
 								A2(
 									$elm$core$Basics$composeR,
 									A3($author$project$Morphir$Type$MetaTypeMapping$concreteTypeToMetaType, baseVar, ir, varToMeta),
-									A2($author$project$Morphir$Type$MetaType$metaAlias, fqn, ars)),
-								A3($author$project$Morphir$Type$MetaTypeMapping$lookupAliasedType, baseVar, ir, fqn)));
+									A2($author$project$Morphir$Type$MetaType$metaAlias, fqn, metaArgs)),
+								A3($author$project$Morphir$Type$MetaTypeMapping$lookupAliasedType, ir, fqn, ars)));
 					});
-				return A2(
-					resolveAliases,
-					fQName,
-					A2(
-						$elm$core$List$map,
-						A3($author$project$Morphir$Type$MetaTypeMapping$concreteTypeToMetaType, baseVar, ir, varToMeta),
-						args));
+				return A2(resolveAliases, fQName, args);
 			case 'Tuple':
 				var elemTypes = tpe.b;
 				return $author$project$Morphir$Type$MetaType$metaTuple(
@@ -17362,10 +17452,6 @@ var $elm$core$Result$mapError = F2(
 		}
 	});
 var $elm$core$Basics$not = _Basics_not;
-var $elm$core$Tuple$pair = F2(
-	function (a, b) {
-		return _Utils_Tuple2(a, b);
-	});
 var $author$project$Morphir$Type$MetaType$wrapInAliases = F2(
 	function (aliases, tpe) {
 		if (!aliases.b) {
@@ -17860,6 +17946,132 @@ var $author$project$Morphir$Type$Infer$ClassConstraintViolation = F2(
 	function (a, b) {
 		return {$: 'ClassConstraintViolation', a: a, b: b};
 	});
+var $author$project$Morphir$Type$Infer$RecursiveConstraint = F2(
+	function (a, b) {
+		return {$: 'RecursiveConstraint', a: a, b: b};
+	});
+var $elm$core$Dict$values = function (dict) {
+	return A3(
+		$elm$core$Dict$foldr,
+		F3(
+			function (key, value, valueList) {
+				return A2($elm$core$List$cons, value, valueList);
+			}),
+		_List_Nil,
+		dict);
+};
+var $author$project$Morphir$Type$MetaType$contains = F2(
+	function (innerType, outerType) {
+		if (_Utils_eq(innerType, outerType)) {
+			return true;
+		} else {
+			switch (outerType.$) {
+				case 'MetaVar':
+					return false;
+				case 'MetaTuple':
+					var metaElems = outerType.b;
+					return A2(
+						$elm$core$List$any,
+						$author$project$Morphir$Type$MetaType$contains(innerType),
+						metaElems);
+				case 'MetaRecord':
+					var metaFields = outerType.c;
+					return A2(
+						$elm$core$List$any,
+						$author$project$Morphir$Type$MetaType$contains(innerType),
+						$elm$core$Dict$values(metaFields));
+				case 'MetaFun':
+					var metaFunc = outerType.b;
+					var metaArg = outerType.c;
+					return A2($author$project$Morphir$Type$MetaType$contains, innerType, metaFunc) || A2($author$project$Morphir$Type$MetaType$contains, innerType, metaArg);
+				case 'MetaRef':
+					var args = outerType.c;
+					var maybeAliasedType = outerType.d;
+					if (maybeAliasedType.$ === 'Just') {
+						var aliasedType = maybeAliasedType.a;
+						return A2($author$project$Morphir$Type$MetaType$contains, innerType, aliasedType) || A2(
+							$elm$core$List$any,
+							$author$project$Morphir$Type$MetaType$contains(innerType),
+							args);
+					} else {
+						return A2(
+							$elm$core$List$any,
+							$author$project$Morphir$Type$MetaType$contains(innerType),
+							args);
+					}
+				default:
+					return false;
+			}
+		}
+	});
+var $elm$core$Set$isEmpty = function (_v0) {
+	var dict = _v0.a;
+	return $elm$core$Dict$isEmpty(dict);
+};
+var $elm$core$Basics$neq = _Utils_notEqual;
+var $author$project$Morphir$Type$MetaType$removeAliases = function (original) {
+	removeAliases:
+	while (true) {
+		switch (original.$) {
+			case 'MetaVar':
+				return original;
+			case 'MetaTuple':
+				var metaElems = original.b;
+				return $author$project$Morphir$Type$MetaType$metaTuple(
+					A2($elm$core$List$map, $author$project$Morphir$Type$MetaType$removeAliases, metaElems));
+			case 'MetaRecord':
+				var _extends = original.b;
+				var metaFields = original.c;
+				return A2(
+					$author$project$Morphir$Type$MetaType$metaRecord,
+					_extends,
+					A2(
+						$elm$core$Dict$map,
+						F2(
+							function (_v1, fieldType) {
+								return $author$project$Morphir$Type$MetaType$removeAliases(fieldType);
+							}),
+						metaFields));
+			case 'MetaFun':
+				var metaFunc = original.b;
+				var metaArg = original.c;
+				return A2(
+					$author$project$Morphir$Type$MetaType$metaFun,
+					$author$project$Morphir$Type$MetaType$removeAliases(metaFunc),
+					$author$project$Morphir$Type$MetaType$removeAliases(metaArg));
+			case 'MetaRef':
+				var fQName = original.b;
+				var args = original.c;
+				var maybeAliasedType = original.d;
+				if (maybeAliasedType.$ === 'Just') {
+					var aliasedType = maybeAliasedType.a;
+					var $temp$original = aliasedType;
+					original = $temp$original;
+					continue removeAliases;
+				} else {
+					return A2(
+						$author$project$Morphir$Type$MetaType$metaRef,
+						fQName,
+						A2($elm$core$List$map, $author$project$Morphir$Type$MetaType$removeAliases, args));
+				}
+			default:
+				return original;
+		}
+	}
+};
+var $author$project$Morphir$Type$Constraint$isRecursive = function (constraint) {
+	if (constraint.$ === 'Equality') {
+		var metaType1 = constraint.a;
+		var metaType2 = constraint.b;
+		var rawMetaType2 = $author$project$Morphir$Type$MetaType$removeAliases(metaType2);
+		var rawMetaType1 = $author$project$Morphir$Type$MetaType$removeAliases(metaType1);
+		return (!_Utils_eq(rawMetaType1, rawMetaType2)) && ((!$elm$core$Set$isEmpty(
+			$author$project$Morphir$Type$MetaType$variables(rawMetaType1))) && ((!$elm$core$Set$isEmpty(
+			$author$project$Morphir$Type$MetaType$variables(rawMetaType2))) && (A2($author$project$Morphir$Type$MetaType$contains, rawMetaType1, rawMetaType2) || A2($author$project$Morphir$Type$MetaType$contains, rawMetaType2, rawMetaType1))));
+	} else {
+		return false;
+	}
+};
 var $elm$core$List$member = F2(
 	function (x, xs) {
 		return A2(
@@ -17924,7 +18136,10 @@ var $author$project$Morphir$Type$Infer$validateConstraints = function (constrain
 								A2($author$project$Morphir$Type$Infer$ClassConstraintViolation, metaType, _class));
 						}
 					} else {
-						return $elm$core$Result$Ok(constraint);
+						var metaType1 = constraint.a;
+						var metaType2 = constraint.b;
+						return $author$project$Morphir$Type$Constraint$isRecursive(constraint) ? $elm$core$Result$Err(
+							A2($author$project$Morphir$Type$Infer$RecursiveConstraint, metaType1, metaType2)) : $elm$core$Result$Ok(constraint);
 					}
 				},
 				constraints)));
@@ -18333,7 +18548,7 @@ var $author$project$Morphir$Type$Infer$typeErrorToMessage = function (typeError)
 			return $elm$core$String$concat(
 				_List_fromArray(
 					['Unknown error: ', message]));
-		default:
+		case 'UnifyError':
 			var unificationError = typeError.a;
 			var mapUnificationError = function (uniError) {
 				switch (uniError.$) {
@@ -18381,6 +18596,18 @@ var $author$project$Morphir$Type$Infer$typeErrorToMessage = function (typeError)
 				}
 			};
 			return mapUnificationError(unificationError);
+		default:
+			var metaType1 = typeError.a;
+			var metaType2 = typeError.b;
+			return $elm$core$String$concat(
+				_List_fromArray(
+					[
+						'Recursive constraint: \'',
+						$author$project$Morphir$Type$MetaType$toString(metaType1),
+						'\' == \'',
+						$author$project$Morphir$Type$MetaType$toString(metaType2),
+						'\''
+					]));
 	}
 };
 var $author$project$Morphir$Type$Infer$inferModuleDefinition = F3(
@@ -19103,16 +19330,6 @@ var $elm$core$Dict$update = F3(
 			return A2($elm$core$Dict$remove, targetKey, dictionary);
 		}
 	});
-var $elm$core$Dict$values = function (dict) {
-	return A3(
-		$elm$core$Dict$foldr,
-		F3(
-			function (key, value, valueList) {
-				return A2($elm$core$List$cons, value, valueList);
-			}),
-		_List_Nil,
-		dict);
-};
 var $author$project$Morphir$Elm$Frontend$Resolve$collectImportedNames = F2(
 	function (getModulesExposedNames, imports) {
 		return A3(
@@ -20457,7 +20674,6 @@ var $elm_community$intdict$IntDict$inner = F3(
 		}
 	});
 var $elm$core$Bitwise$and = _Bitwise_and;
-var $elm$core$Basics$neq = _Utils_notEqual;
 var $elm$core$Bitwise$complement = _Bitwise_complement;
 var $elm$core$Bitwise$or = _Bitwise_or;
 var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
@@ -21499,6 +21715,30 @@ var $author$project$Morphir$Elm$Frontend$mapPattern = F2(
 							$author$project$Morphir$IR$QName$fromName,
 							A2($elm$core$List$map, $author$project$Morphir$IR$Name$fromString, qualifiedNameRef.moduleName),
 							$author$project$Morphir$IR$Name$fromString(qualifiedNameRef.name)));
+					var _v3 = _Utils_Tuple2(qualifiedNameRef.moduleName, qualifiedNameRef.name);
+					_v3$2:
+					while (true) {
+						if (!_v3.a.b) {
+							switch (_v3.b) {
+								case 'True':
+									return $elm$core$Result$Ok(
+										A2(
+											$author$project$Morphir$IR$Value$LiteralPattern,
+											sourceLocation,
+											$author$project$Morphir$IR$Literal$BoolLiteral(true)));
+								case 'False':
+									return $elm$core$Result$Ok(
+										A2(
+											$author$project$Morphir$IR$Value$LiteralPattern,
+											sourceLocation,
+											$author$project$Morphir$IR$Literal$BoolLiteral(false)));
+								default:
+									break _v3$2;
+							}
+						} else {
+							break _v3$2;
+						}
+					}
 					return A2(
 						$elm$core$Result$map,
 						A2($author$project$Morphir$IR$Value$ConstructorPattern, sourceLocation, qualifiedName),
@@ -23165,7 +23405,7 @@ var $author$project$Morphir$Elm$Frontend$resolveVariablesAndReferences = F3(
 						var _v3 = value.b;
 						var modulePath = _v3.b;
 						var localName = _v3.c;
-						return A2($elm$core$Dict$member, localName, variables) ? $elm$core$Result$Ok(
+						return ($elm$core$List$isEmpty(modulePath) && A2($elm$core$Dict$member, localName, variables)) ? $elm$core$Result$Ok(
 							A2($author$project$Morphir$IR$Value$Variable, sourceLocation, localName)) : A2(
 							$elm$core$Result$mapError,
 							A2(
@@ -30488,10 +30728,6 @@ var $stil4m$elm_syntax$Elm$Parser$parse = function (input) {
 		return $elm$core$Result$Err(s);
 	}
 };
-var $elm$core$Set$isEmpty = function (_v0) {
-	var dict = _v0.a;
-	return $elm$core$Dict$isEmpty(dict);
-};
 var $author$project$Morphir$Graph$reachableNodes = F2(
 	function (startNodes, _v0) {
 		var edges = _v0.a;
@@ -30956,7 +31192,7 @@ var $author$project$Morphir$IR$Package$mapSpecificationAttributes = F2(
 	});
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $author$project$Morphir$Web$DebugIR$packageInfo = {
+var $author$project$Morphir$Web$TryMorphir$packageInfo = {
 	exposedModules: $elm$core$Set$fromList(
 		_List_fromArray(
 			[
@@ -30972,82 +31208,91 @@ var $author$project$Morphir$Web$DebugIR$packageInfo = {
 			['my'])
 		])
 };
-var $author$project$Morphir$Web$DebugIR$update = F2(
+var $author$project$Morphir$Web$TryMorphir$update = F2(
 	function (msg, model) {
-		var sourceCode = msg.a;
-		var sourceFiles = _List_fromArray(
-			[
-				{content: sourceCode, path: 'Test.elm'}
-			]);
-		var opts = {typesOnly: false};
-		var frontendResult = A4($author$project$Morphir$Elm$Frontend$mapSource, opts, $author$project$Morphir$Web$DebugIR$packageInfo, $elm$core$Dict$empty, sourceFiles);
-		var typedResult = A2(
-			$elm$core$Result$andThen,
-			function (packageDef) {
-				var thisPackageSpec = A2(
-					$author$project$Morphir$IR$Package$mapSpecificationAttributes,
-					function (_v6) {
-						return _Utils_Tuple0;
-					},
-					$author$project$Morphir$IR$Package$definitionToSpecificationWithPrivate(packageDef));
-				var ir = $author$project$Morphir$IR$fromPackageSpecifications(
-					A3($elm$core$Dict$insert, $author$project$Morphir$Web$DebugIR$packageInfo.name, thisPackageSpec, $author$project$Morphir$Elm$Frontend$defaultDependencies));
-				return A2(
-					$elm$core$Result$map,
-					A2(
-						$author$project$Morphir$IR$Package$mapDefinitionAttributes,
-						function (_v4) {
+		if (msg.$ === 'ChangeSource') {
+			var sourceCode = msg.a;
+			var sourceFiles = _List_fromArray(
+				[
+					{content: sourceCode, path: 'Test.elm'}
+				]);
+			var opts = {typesOnly: false};
+			var frontendResult = A4($author$project$Morphir$Elm$Frontend$mapSource, opts, $author$project$Morphir$Web$TryMorphir$packageInfo, $elm$core$Dict$empty, sourceFiles);
+			var typedResult = A2(
+				$elm$core$Result$andThen,
+				function (packageDef) {
+					var thisPackageSpec = A2(
+						$author$project$Morphir$IR$Package$mapSpecificationAttributes,
+						function (_v6) {
 							return _Utils_Tuple0;
 						},
-						function (_v5) {
-							var tpe = _v5.b;
-							return tpe;
-						}),
-					A2(
-						$author$project$Morphir$Type$Infer$inferPackageDefinition,
-						ir,
-						A3(
+						$author$project$Morphir$IR$Package$definitionToSpecificationWithPrivate(packageDef));
+					var ir = $author$project$Morphir$IR$fromPackageSpecifications(
+						A3($elm$core$Dict$insert, $author$project$Morphir$Web$TryMorphir$packageInfo.name, thisPackageSpec, $author$project$Morphir$Elm$Frontend$defaultDependencies));
+					return A2(
+						$elm$core$Result$map,
+						A2(
 							$author$project$Morphir$IR$Package$mapDefinitionAttributes,
-							function (_v3) {
+							function (_v4) {
 								return _Utils_Tuple0;
 							},
-							$elm$core$Basics$identity,
-							packageDef)));
-			},
-			frontendResult);
-		return _Utils_Tuple2(
-			_Utils_update(
-				model,
-				{
-					errors: function () {
-						if (typedResult.$ === 'Err') {
-							var errors = typedResult.a;
-							return errors;
-						} else {
-							return _List_Nil;
-						}
-					}(),
-					maybePackageDef: function () {
-						if (typedResult.$ === 'Ok') {
-							var newPackageDef = typedResult.a;
-							return $elm$core$Maybe$Just(newPackageDef);
-						} else {
-							return model.maybePackageDef;
-						}
-					}(),
-					source: sourceCode
-				}),
-			$elm$core$Platform$Cmd$none);
+							function (_v5) {
+								var tpe = _v5.b;
+								return tpe;
+							}),
+						A2(
+							$author$project$Morphir$Type$Infer$inferPackageDefinition,
+							ir,
+							A3(
+								$author$project$Morphir$IR$Package$mapDefinitionAttributes,
+								function (_v3) {
+									return _Utils_Tuple0;
+								},
+								$elm$core$Basics$identity,
+								packageDef)));
+				},
+				frontendResult);
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{
+						errors: function () {
+							if (typedResult.$ === 'Err') {
+								var errors = typedResult.a;
+								return errors;
+							} else {
+								return _List_Nil;
+							}
+						}(),
+						maybePackageDef: function () {
+							if (typedResult.$ === 'Ok') {
+								var newPackageDef = typedResult.a;
+								return $elm$core$Maybe$Just(newPackageDef);
+							} else {
+								return model.maybePackageDef;
+							}
+						}(),
+						source: sourceCode
+					}),
+				$elm$core$Platform$Cmd$none);
+		} else {
+			var viewType = msg.a;
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{irView: viewType}),
+				$elm$core$Platform$Cmd$none);
+		}
 	});
-var $author$project$Morphir$Web$DebugIR$init = function (flags) {
+var $author$project$Morphir$Web$TryMorphir$init = function (flags) {
 	return A2(
-		$author$project$Morphir$Web$DebugIR$update,
-		$author$project$Morphir$Web$DebugIR$Change($author$project$Morphir$Web$DebugIR$sampleSource),
-		{errors: _List_Nil, maybePackageDef: $elm$core$Maybe$Nothing, source: ''});
+		$author$project$Morphir$Web$TryMorphir$update,
+		$author$project$Morphir$Web$TryMorphir$ChangeSource($author$project$Morphir$Web$TryMorphir$sampleSource),
+		{errors: _List_Nil, irView: $author$project$Morphir$Web$TryMorphir$VisualView, maybePackageDef: $elm$core$Maybe$Nothing, source: ''});
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $author$project$Morphir$Web$DebugIR$subscriptions = function (model) {
+var $author$project$Morphir$Web$TryMorphir$subscriptions = function (model) {
 	return $elm$core$Platform$Sub$none;
 };
 var $mdgriffith$elm_ui$Internal$Model$Unkeyed = function (a) {
@@ -37829,13 +38074,180 @@ var $author$project$Morphir$Web$SourceEditor$view = F2(
 				text: sourceCode
 			});
 	});
+var $author$project$Morphir$Web$TryMorphir$ChangeIRView = function (a) {
+	return {$: 'ChangeIRView', a: a};
+};
+var $author$project$Morphir$Web$TryMorphir$JsonView = {$: 'JsonView'};
+var $mdgriffith$elm_ui$Internal$Model$AlignX = function (a) {
+	return {$: 'AlignX', a: a};
+};
+var $mdgriffith$elm_ui$Internal$Model$Right = {$: 'Right'};
+var $mdgriffith$elm_ui$Element$alignRight = $mdgriffith$elm_ui$Internal$Model$AlignX($mdgriffith$elm_ui$Internal$Model$Right);
+var $mdgriffith$elm_ui$Internal$Model$Button = {$: 'Button'};
+var $elm$html$Html$Attributes$disabled = $elm$html$Html$Attributes$boolProperty('disabled');
+var $mdgriffith$elm_ui$Element$Input$enter = 'Enter';
+var $mdgriffith$elm_ui$Element$Input$focusDefault = function (attrs) {
+	return A2($elm$core$List$any, $mdgriffith$elm_ui$Element$Input$hasFocusStyle, attrs) ? $mdgriffith$elm_ui$Internal$Model$NoAttribute : $mdgriffith$elm_ui$Internal$Model$htmlClass('focusable');
+};
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
+var $mdgriffith$elm_ui$Element$Events$onClick = A2($elm$core$Basics$composeL, $mdgriffith$elm_ui$Internal$Model$Attr, $elm$html$Html$Events$onClick);
+var $elm$json$Json$Decode$andThen = _Json_andThen;
+var $elm$json$Json$Decode$fail = _Json_fail;
+var $elm$virtual_dom$VirtualDom$MayPreventDefault = function (a) {
+	return {$: 'MayPreventDefault', a: a};
+};
+var $elm$html$Html$Events$preventDefaultOn = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$MayPreventDefault(decoder));
+	});
+var $mdgriffith$elm_ui$Element$Input$onKeyLookup = function (lookup) {
+	var decode = function (code) {
+		var _v0 = lookup(code);
+		if (_v0.$ === 'Nothing') {
+			return $elm$json$Json$Decode$fail('No key matched');
+		} else {
+			var msg = _v0.a;
+			return $elm$json$Json$Decode$succeed(msg);
+		}
+	};
+	var isKey = A2(
+		$elm$json$Json$Decode$andThen,
+		decode,
+		A2($elm$json$Json$Decode$field, 'key', $elm$json$Json$Decode$string));
+	return $mdgriffith$elm_ui$Internal$Model$Attr(
+		A2(
+			$elm$html$Html$Events$preventDefaultOn,
+			'keydown',
+			A2(
+				$elm$json$Json$Decode$map,
+				function (fired) {
+					return _Utils_Tuple2(fired, true);
+				},
+				isKey)));
+};
+var $mdgriffith$elm_ui$Element$pointer = A2($mdgriffith$elm_ui$Internal$Model$Class, $mdgriffith$elm_ui$Internal$Flag$cursor, $mdgriffith$elm_ui$Internal$Style$classes.cursorPointer);
+var $mdgriffith$elm_ui$Element$Input$space = ' ';
+var $elm$html$Html$Attributes$tabindex = function (n) {
+	return A2(
+		_VirtualDom_attribute,
+		'tabIndex',
+		$elm$core$String$fromInt(n));
+};
+var $mdgriffith$elm_ui$Element$Input$button = F2(
+	function (attrs, _v0) {
+		var onPress = _v0.onPress;
+		var label = _v0.label;
+		return A4(
+			$mdgriffith$elm_ui$Internal$Model$element,
+			$mdgriffith$elm_ui$Internal$Model$asEl,
+			$mdgriffith$elm_ui$Internal$Model$div,
+			A2(
+				$elm$core$List$cons,
+				$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$shrink),
+				A2(
+					$elm$core$List$cons,
+					$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$shrink),
+					A2(
+						$elm$core$List$cons,
+						$mdgriffith$elm_ui$Internal$Model$htmlClass($mdgriffith$elm_ui$Internal$Style$classes.contentCenterX + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.contentCenterY + (' ' + ($mdgriffith$elm_ui$Internal$Style$classes.seButton + (' ' + $mdgriffith$elm_ui$Internal$Style$classes.noTextSelection)))))),
+						A2(
+							$elm$core$List$cons,
+							$mdgriffith$elm_ui$Element$pointer,
+							A2(
+								$elm$core$List$cons,
+								$mdgriffith$elm_ui$Element$Input$focusDefault(attrs),
+								A2(
+									$elm$core$List$cons,
+									$mdgriffith$elm_ui$Internal$Model$Describe($mdgriffith$elm_ui$Internal$Model$Button),
+									A2(
+										$elm$core$List$cons,
+										$mdgriffith$elm_ui$Internal$Model$Attr(
+											$elm$html$Html$Attributes$tabindex(0)),
+										function () {
+											if (onPress.$ === 'Nothing') {
+												return A2(
+													$elm$core$List$cons,
+													$mdgriffith$elm_ui$Internal$Model$Attr(
+														$elm$html$Html$Attributes$disabled(true)),
+													attrs);
+											} else {
+												var msg = onPress.a;
+												return A2(
+													$elm$core$List$cons,
+													$mdgriffith$elm_ui$Element$Events$onClick(msg),
+													A2(
+														$elm$core$List$cons,
+														$mdgriffith$elm_ui$Element$Input$onKeyLookup(
+															function (code) {
+																return _Utils_eq(code, $mdgriffith$elm_ui$Element$Input$enter) ? $elm$core$Maybe$Just(msg) : (_Utils_eq(code, $mdgriffith$elm_ui$Element$Input$space) ? $elm$core$Maybe$Just(msg) : $elm$core$Maybe$Nothing);
+															}),
+														attrs));
+											}
+										}()))))))),
+			$mdgriffith$elm_ui$Internal$Model$Unkeyed(
+				_List_fromArray(
+					[label])));
+	});
+var $author$project$Morphir$Web$TryMorphir$viewIRViewTabs = function (irView) {
+	var button = F2(
+		function (viewType, labelText) {
+			return A2(
+				$mdgriffith$elm_ui$Element$Input$button,
+				_List_fromArray(
+					[
+						A2($mdgriffith$elm_ui$Element$paddingXY, 10, 5),
+						$mdgriffith$elm_ui$Element$Background$color(
+						_Utils_eq(viewType, irView) ? A3($mdgriffith$elm_ui$Element$rgb, 0.8, 0.85, 0.9) : A3($mdgriffith$elm_ui$Element$rgb, 0.9, 0.9, 0.9)),
+						$mdgriffith$elm_ui$Element$Border$rounded(3)
+					]),
+				{
+					label: A2(
+						$mdgriffith$elm_ui$Element$el,
+						_List_Nil,
+						$mdgriffith$elm_ui$Element$text(labelText)),
+					onPress: $elm$core$Maybe$Just(
+						$author$project$Morphir$Web$TryMorphir$ChangeIRView(viewType))
+				});
+		});
+	return A2(
+		$mdgriffith$elm_ui$Element$row,
+		_List_fromArray(
+			[
+				$mdgriffith$elm_ui$Element$alignRight,
+				A2($mdgriffith$elm_ui$Element$paddingXY, 10, 0),
+				$mdgriffith$elm_ui$Element$spacing(10)
+			]),
+		_List_fromArray(
+			[
+				A2(button, $author$project$Morphir$Web$TryMorphir$VisualView, 'Visual'),
+				A2(button, $author$project$Morphir$Web$TryMorphir$JsonView, 'JSON')
+			]));
+};
 var $author$project$Morphir$Visual$Common$nameToText = function (name) {
 	return A2(
 		$elm$core$String$join,
 		' ',
 		$author$project$Morphir$IR$Name$toHumanWords(name));
 };
-var $author$project$Morphir$Web$DebugIR$viewDict = F3(
+var $author$project$Morphir$Web$TryMorphir$viewDict = F3(
 	function (viewKey, viewVal, dict) {
 		return A2(
 			$mdgriffith$elm_ui$Element$column,
@@ -38012,6 +38424,650 @@ var $author$project$Morphir$Visual$XRayView$viewType = function (tpe) {
 			return $mdgriffith$elm_ui$Element$text('()');
 	}
 };
+var $author$project$Morphir$IR$Name$Codec$encodeName = function (name) {
+	return A2(
+		$elm$json$Json$Encode$list,
+		$elm$json$Json$Encode$string,
+		$author$project$Morphir$IR$Name$toList(name));
+};
+var $author$project$Morphir$IR$Path$Codec$encodePath = function (path) {
+	return A2(
+		$elm$json$Json$Encode$list,
+		$author$project$Morphir$IR$Name$Codec$encodeName,
+		$author$project$Morphir$IR$Path$toList(path));
+};
+var $author$project$Morphir$IR$FQName$Codec$encodeFQName = function (_v0) {
+	var packagePath = _v0.a;
+	var modulePath = _v0.b;
+	var localName = _v0.c;
+	return A2(
+		$elm$json$Json$Encode$list,
+		$elm$core$Basics$identity,
+		_List_fromArray(
+			[
+				$author$project$Morphir$IR$Path$Codec$encodePath(packagePath),
+				$author$project$Morphir$IR$Path$Codec$encodePath(modulePath),
+				$author$project$Morphir$IR$Name$Codec$encodeName(localName)
+			]));
+};
+var $author$project$Morphir$IR$Type$Codec$encodeField = F2(
+	function (encodeAttributes, field) {
+		return A2(
+			$elm$json$Json$Encode$list,
+			$elm$core$Basics$identity,
+			_List_fromArray(
+				[
+					$author$project$Morphir$IR$Name$Codec$encodeName(field.name),
+					A2($author$project$Morphir$IR$Type$Codec$encodeType, encodeAttributes, field.tpe)
+				]));
+	});
+var $author$project$Morphir$IR$Type$Codec$encodeType = F2(
+	function (encodeAttributes, tpe) {
+		switch (tpe.$) {
+			case 'Variable':
+				var a = tpe.a;
+				var name = tpe.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('variable'),
+							encodeAttributes(a),
+							$author$project$Morphir$IR$Name$Codec$encodeName(name)
+						]));
+			case 'Reference':
+				var a = tpe.a;
+				var typeName = tpe.b;
+				var typeParameters = tpe.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('reference'),
+							encodeAttributes(a),
+							$author$project$Morphir$IR$FQName$Codec$encodeFQName(typeName),
+							A2(
+							$elm$json$Json$Encode$list,
+							$author$project$Morphir$IR$Type$Codec$encodeType(encodeAttributes),
+							typeParameters)
+						]));
+			case 'Tuple':
+				var a = tpe.a;
+				var elementTypes = tpe.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('tuple'),
+							encodeAttributes(a),
+							A2(
+							$elm$json$Json$Encode$list,
+							$author$project$Morphir$IR$Type$Codec$encodeType(encodeAttributes),
+							elementTypes)
+						]));
+			case 'Record':
+				var a = tpe.a;
+				var fieldTypes = tpe.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('record'),
+							encodeAttributes(a),
+							A2(
+							$elm$json$Json$Encode$list,
+							$author$project$Morphir$IR$Type$Codec$encodeField(encodeAttributes),
+							fieldTypes)
+						]));
+			case 'ExtensibleRecord':
+				var a = tpe.a;
+				var variableName = tpe.b;
+				var fieldTypes = tpe.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('extensible_record'),
+							encodeAttributes(a),
+							$author$project$Morphir$IR$Name$Codec$encodeName(variableName),
+							A2(
+							$elm$json$Json$Encode$list,
+							$author$project$Morphir$IR$Type$Codec$encodeField(encodeAttributes),
+							fieldTypes)
+						]));
+			case 'Function':
+				var a = tpe.a;
+				var argumentType = tpe.b;
+				var returnType = tpe.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('function'),
+							encodeAttributes(a),
+							A2($author$project$Morphir$IR$Type$Codec$encodeType, encodeAttributes, argumentType),
+							A2($author$project$Morphir$IR$Type$Codec$encodeType, encodeAttributes, returnType)
+						]));
+			default:
+				var a = tpe.a;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('unit'),
+							encodeAttributes(a)
+						]));
+		}
+	});
+var $elm$json$Json$Encode$float = _Json_wrap;
+var $elm$json$Json$Encode$int = _Json_wrap;
+var $author$project$Morphir$IR$Literal$Codec$encodeLiteral = function (l) {
+	switch (l.$) {
+		case 'BoolLiteral':
+			var v = l.a;
+			return A2(
+				$elm$json$Json$Encode$list,
+				$elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						$elm$json$Json$Encode$string('bool_literal'),
+						$elm$json$Json$Encode$bool(v)
+					]));
+		case 'CharLiteral':
+			var v = l.a;
+			return A2(
+				$elm$json$Json$Encode$list,
+				$elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						$elm$json$Json$Encode$string('char_literal'),
+						$elm$json$Json$Encode$string(
+						$elm$core$String$fromChar(v))
+					]));
+		case 'StringLiteral':
+			var v = l.a;
+			return A2(
+				$elm$json$Json$Encode$list,
+				$elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						$elm$json$Json$Encode$string('string_literal'),
+						$elm$json$Json$Encode$string(v)
+					]));
+		case 'IntLiteral':
+			var v = l.a;
+			return A2(
+				$elm$json$Json$Encode$list,
+				$elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						$elm$json$Json$Encode$string('int_literal'),
+						$elm$json$Json$Encode$int(v)
+					]));
+		default:
+			var v = l.a;
+			return A2(
+				$elm$json$Json$Encode$list,
+				$elm$core$Basics$identity,
+				_List_fromArray(
+					[
+						$elm$json$Json$Encode$string('float_literal'),
+						$elm$json$Json$Encode$float(v)
+					]));
+	}
+};
+var $author$project$Morphir$IR$Value$Codec$encodePattern = F2(
+	function (encodeAttributes, pattern) {
+		switch (pattern.$) {
+			case 'WildcardPattern':
+				var a = pattern.a;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('wildcard_pattern'),
+							encodeAttributes(a)
+						]));
+			case 'AsPattern':
+				var a = pattern.a;
+				var p = pattern.b;
+				var name = pattern.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('as_pattern'),
+							encodeAttributes(a),
+							A2($author$project$Morphir$IR$Value$Codec$encodePattern, encodeAttributes, p),
+							$author$project$Morphir$IR$Name$Codec$encodeName(name)
+						]));
+			case 'TuplePattern':
+				var a = pattern.a;
+				var elementPatterns = pattern.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('tuple_pattern'),
+							encodeAttributes(a),
+							A2(
+							$elm$json$Json$Encode$list,
+							$author$project$Morphir$IR$Value$Codec$encodePattern(encodeAttributes),
+							elementPatterns)
+						]));
+			case 'ConstructorPattern':
+				var a = pattern.a;
+				var constructorName = pattern.b;
+				var argumentPatterns = pattern.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('constructor_pattern'),
+							encodeAttributes(a),
+							$author$project$Morphir$IR$FQName$Codec$encodeFQName(constructorName),
+							A2(
+							$elm$json$Json$Encode$list,
+							$author$project$Morphir$IR$Value$Codec$encodePattern(encodeAttributes),
+							argumentPatterns)
+						]));
+			case 'EmptyListPattern':
+				var a = pattern.a;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('empty_list_pattern'),
+							encodeAttributes(a)
+						]));
+			case 'HeadTailPattern':
+				var a = pattern.a;
+				var headPattern = pattern.b;
+				var tailPattern = pattern.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('head_tail_pattern'),
+							encodeAttributes(a),
+							A2($author$project$Morphir$IR$Value$Codec$encodePattern, encodeAttributes, headPattern),
+							A2($author$project$Morphir$IR$Value$Codec$encodePattern, encodeAttributes, tailPattern)
+						]));
+			case 'LiteralPattern':
+				var a = pattern.a;
+				var value = pattern.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('literal_pattern'),
+							encodeAttributes(a),
+							$author$project$Morphir$IR$Literal$Codec$encodeLiteral(value)
+						]));
+			default:
+				var a = pattern.a;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('unit_pattern'),
+							encodeAttributes(a)
+						]));
+		}
+	});
+var $author$project$Morphir$IR$Value$Codec$encodeDefinition = F3(
+	function (encodeTypeAttributes, encodeValueAttributes, def) {
+		return $elm$json$Json$Encode$object(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(
+					'inputTypes',
+					A2(
+						$elm$json$Json$Encode$list,
+						function (_v5) {
+							var argName = _v5.a;
+							var a = _v5.b;
+							var argType = _v5.c;
+							return A2(
+								$elm$json$Json$Encode$list,
+								$elm$core$Basics$identity,
+								_List_fromArray(
+									[
+										$author$project$Morphir$IR$Name$Codec$encodeName(argName),
+										encodeValueAttributes(a),
+										A2($author$project$Morphir$IR$Type$Codec$encodeType, encodeTypeAttributes, argType)
+									]));
+						},
+						def.inputTypes)),
+					_Utils_Tuple2(
+					'outputType',
+					A2($author$project$Morphir$IR$Type$Codec$encodeType, encodeTypeAttributes, def.outputType)),
+					_Utils_Tuple2(
+					'body',
+					A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, def.body))
+				]));
+	});
+var $author$project$Morphir$IR$Value$Codec$encodeValue = F3(
+	function (encodeTypeAttributes, encodeValueAttributes, v) {
+		switch (v.$) {
+			case 'Literal':
+				var a = v.a;
+				var value = v.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('literal'),
+							encodeValueAttributes(a),
+							$author$project$Morphir$IR$Literal$Codec$encodeLiteral(value)
+						]));
+			case 'Constructor':
+				var a = v.a;
+				var fullyQualifiedName = v.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('constructor'),
+							encodeValueAttributes(a),
+							$author$project$Morphir$IR$FQName$Codec$encodeFQName(fullyQualifiedName)
+						]));
+			case 'Tuple':
+				var a = v.a;
+				var elements = v.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('tuple'),
+							encodeValueAttributes(a),
+							A2(
+							$elm$json$Json$Encode$list,
+							A2($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes),
+							elements)
+						]));
+			case 'List':
+				var a = v.a;
+				var items = v.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('list'),
+							encodeValueAttributes(a),
+							A2(
+							$elm$json$Json$Encode$list,
+							A2($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes),
+							items)
+						]));
+			case 'Record':
+				var a = v.a;
+				var fields = v.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('record'),
+							encodeValueAttributes(a),
+							A2(
+							$elm$json$Json$Encode$list,
+							function (_v1) {
+								var fieldName = _v1.a;
+								var fieldValue = _v1.b;
+								return A2(
+									$elm$json$Json$Encode$list,
+									$elm$core$Basics$identity,
+									_List_fromArray(
+										[
+											$author$project$Morphir$IR$Name$Codec$encodeName(fieldName),
+											A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, fieldValue)
+										]));
+							},
+							fields)
+						]));
+			case 'Variable':
+				var a = v.a;
+				var name = v.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('variable'),
+							encodeValueAttributes(a),
+							$author$project$Morphir$IR$Name$Codec$encodeName(name)
+						]));
+			case 'Reference':
+				var a = v.a;
+				var fullyQualifiedName = v.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('reference'),
+							encodeValueAttributes(a),
+							$author$project$Morphir$IR$FQName$Codec$encodeFQName(fullyQualifiedName)
+						]));
+			case 'Field':
+				var a = v.a;
+				var subjectValue = v.b;
+				var fieldName = v.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('field'),
+							encodeValueAttributes(a),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, subjectValue),
+							$author$project$Morphir$IR$Name$Codec$encodeName(fieldName)
+						]));
+			case 'FieldFunction':
+				var a = v.a;
+				var fieldName = v.b;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('field_function'),
+							encodeValueAttributes(a),
+							$author$project$Morphir$IR$Name$Codec$encodeName(fieldName)
+						]));
+			case 'Apply':
+				var a = v.a;
+				var _function = v.b;
+				var argument = v.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('apply'),
+							encodeValueAttributes(a),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, _function),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, argument)
+						]));
+			case 'Lambda':
+				var a = v.a;
+				var argumentPattern = v.b;
+				var body = v.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('lambda'),
+							encodeValueAttributes(a),
+							A2($author$project$Morphir$IR$Value$Codec$encodePattern, encodeValueAttributes, argumentPattern),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, body)
+						]));
+			case 'LetDefinition':
+				var a = v.a;
+				var valueName = v.b;
+				var valueDefinition = v.c;
+				var inValue = v.d;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('let_definition'),
+							encodeValueAttributes(a),
+							$author$project$Morphir$IR$Name$Codec$encodeName(valueName),
+							A3($author$project$Morphir$IR$Value$Codec$encodeDefinition, encodeTypeAttributes, encodeValueAttributes, valueDefinition),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, inValue)
+						]));
+			case 'LetRecursion':
+				var a = v.a;
+				var valueDefinitions = v.b;
+				var inValue = v.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('let_recursion'),
+							encodeValueAttributes(a),
+							A2(
+							$elm$json$Json$Encode$list,
+							function (_v2) {
+								var name = _v2.a;
+								var def = _v2.b;
+								return A2(
+									$elm$json$Json$Encode$list,
+									$elm$core$Basics$identity,
+									_List_fromArray(
+										[
+											$author$project$Morphir$IR$Name$Codec$encodeName(name),
+											A3($author$project$Morphir$IR$Value$Codec$encodeDefinition, encodeTypeAttributes, encodeValueAttributes, def)
+										]));
+							},
+							$elm$core$Dict$toList(valueDefinitions)),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, inValue)
+						]));
+			case 'Destructure':
+				var a = v.a;
+				var pattern = v.b;
+				var valueToDestruct = v.c;
+				var inValue = v.d;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('destructure'),
+							encodeValueAttributes(a),
+							A2($author$project$Morphir$IR$Value$Codec$encodePattern, encodeValueAttributes, pattern),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, valueToDestruct),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, inValue)
+						]));
+			case 'IfThenElse':
+				var a = v.a;
+				var condition = v.b;
+				var thenBranch = v.c;
+				var elseBranch = v.d;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('if_then_else'),
+							encodeValueAttributes(a),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, condition),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, thenBranch),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, elseBranch)
+						]));
+			case 'PatternMatch':
+				var a = v.a;
+				var branchOutOn = v.b;
+				var cases = v.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('pattern_match'),
+							encodeValueAttributes(a),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, branchOutOn),
+							A2(
+							$elm$json$Json$Encode$list,
+							function (_v3) {
+								var pattern = _v3.a;
+								var body = _v3.b;
+								return A2(
+									$elm$json$Json$Encode$list,
+									$elm$core$Basics$identity,
+									_List_fromArray(
+										[
+											A2($author$project$Morphir$IR$Value$Codec$encodePattern, encodeValueAttributes, pattern),
+											A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, body)
+										]));
+							},
+							cases)
+						]));
+			case 'UpdateRecord':
+				var a = v.a;
+				var valueToUpdate = v.b;
+				var fieldsToUpdate = v.c;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('update_record'),
+							encodeValueAttributes(a),
+							A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, valueToUpdate),
+							A2(
+							$elm$json$Json$Encode$list,
+							function (_v4) {
+								var fieldName = _v4.a;
+								var fieldValue = _v4.b;
+								return A2(
+									$elm$json$Json$Encode$list,
+									$elm$core$Basics$identity,
+									_List_fromArray(
+										[
+											$author$project$Morphir$IR$Name$Codec$encodeName(fieldName),
+											A3($author$project$Morphir$IR$Value$Codec$encodeValue, encodeTypeAttributes, encodeValueAttributes, fieldValue)
+										]));
+							},
+							fieldsToUpdate)
+						]));
+			default:
+				var a = v.a;
+				return A2(
+					$elm$json$Json$Encode$list,
+					$elm$core$Basics$identity,
+					_List_fromArray(
+						[
+							$elm$json$Json$Encode$string('unit'),
+							encodeValueAttributes(a)
+						]));
+		}
+	});
+var $elm$json$Json$Encode$null = _Json_encodeNull;
 var $author$project$Morphir$Visual$Common$grayScale = function (v) {
 	return A3($mdgriffith$elm_ui$Element$rgb, v, v, v);
 };
@@ -38775,15 +39831,49 @@ var $author$project$Morphir$Visual$XRayView$viewValueDefinition = F2(
 	function (viewValueAttr, accessControlledValueDef) {
 		return A2($author$project$Morphir$Visual$XRayView$viewValue, viewValueAttr, accessControlledValueDef.value.body);
 	});
-var $author$project$Morphir$Web$DebugIR$viewModuleDefinition = F2(
-	function (viewAttribute, moduleDef) {
+var $author$project$Morphir$Web$TryMorphir$viewValue = F2(
+	function (irView, valueDef) {
+		if (irView.$ === 'VisualView') {
+			return A2(
+				$author$project$Morphir$Visual$XRayView$viewValueDefinition,
+				function (tpe) {
+					return A2(
+						$mdgriffith$elm_ui$Element$row,
+						_List_fromArray(
+							[
+								$mdgriffith$elm_ui$Element$spacing(5),
+								$mdgriffith$elm_ui$Element$Background$color(
+								A3($mdgriffith$elm_ui$Element$rgb, 1, 0.9, 0.8))
+							]),
+						_List_fromArray(
+							[
+								$mdgriffith$elm_ui$Element$text(':'),
+								$author$project$Morphir$Visual$XRayView$viewType(tpe)
+							]));
+				},
+				valueDef);
+		} else {
+			return $mdgriffith$elm_ui$Element$text(
+				A2(
+					$elm$json$Json$Encode$encode,
+					2,
+					A3(
+						$author$project$Morphir$IR$Value$Codec$encodeValue,
+						$elm$core$Basics$always($elm$json$Json$Encode$null),
+						$author$project$Morphir$IR$Type$Codec$encodeType(
+							$elm$core$Basics$always($elm$json$Json$Encode$null)),
+						valueDef.value.body)));
+		}
+	});
+var $author$project$Morphir$Web$TryMorphir$viewModuleDefinition = F3(
+	function (viewAttribute, moduleDef, irView) {
 		return A2(
 			$mdgriffith$elm_ui$Element$column,
 			_List_Nil,
 			_List_fromArray(
 				[
 					A3(
-					$author$project$Morphir$Web$DebugIR$viewDict,
+					$author$project$Morphir$Web$TryMorphir$viewDict,
 					function (typeName) {
 						return $mdgriffith$elm_ui$Element$text(
 							A2(
@@ -38917,31 +40007,14 @@ var $author$project$Morphir$Web$DebugIR$viewModuleDefinition = F2(
 												A3($mdgriffith$elm_ui$Element$rgb, 1, 1, 1)),
 												$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
 											]),
-										A2(
-											$author$project$Morphir$Visual$XRayView$viewValueDefinition,
-											function (tpe) {
-												return A2(
-													$mdgriffith$elm_ui$Element$row,
-													_List_fromArray(
-														[
-															$mdgriffith$elm_ui$Element$spacing(5),
-															$mdgriffith$elm_ui$Element$Background$color(
-															A3($mdgriffith$elm_ui$Element$rgb, 1, 0.9, 0.8))
-														]),
-													_List_fromArray(
-														[
-															$mdgriffith$elm_ui$Element$text(':'),
-															$author$project$Morphir$Visual$XRayView$viewType(tpe)
-														]));
-											},
-											valueDef))
+										A2($author$project$Morphir$Web$TryMorphir$viewValue, irView, valueDef))
 									]));
 						},
 						$elm$core$Dict$toList(moduleDef.values)))
 				]));
 	});
-var $author$project$Morphir$Web$DebugIR$viewPackageDefinition = F2(
-	function (viewAttribute, packageDef) {
+var $author$project$Morphir$Web$TryMorphir$viewPackageDefinition = F3(
+	function (viewAttribute, packageDef, irView) {
 		return A2(
 			$mdgriffith$elm_ui$Element$column,
 			_List_Nil,
@@ -38950,12 +40023,12 @@ var $author$project$Morphir$Web$DebugIR$viewPackageDefinition = F2(
 				function (_v0) {
 					var moduleName = _v0.a;
 					var moduleDef = _v0.b;
-					return A2($author$project$Morphir$Web$DebugIR$viewModuleDefinition, viewAttribute, moduleDef.value);
+					return A3($author$project$Morphir$Web$TryMorphir$viewModuleDefinition, viewAttribute, moduleDef.value, irView);
 				},
 				$elm$core$Dict$toList(packageDef.modules)));
 	});
-var $author$project$Morphir$Web$DebugIR$viewPackageResult = F4(
-	function (sourceCode, onSourceChange, maybePackageDef, errors) {
+var $author$project$Morphir$Web$TryMorphir$viewPackageResult = F5(
+	function (sourceCode, onSourceChange, maybePackageDef, errors, irView) {
 		return A2(
 			$mdgriffith$elm_ui$Element$row,
 			_List_fromArray(
@@ -39048,13 +40121,23 @@ var $author$project$Morphir$Web$DebugIR$viewPackageResult = F4(
 					_List_fromArray(
 						[
 							A2(
-							$mdgriffith$elm_ui$Element$el,
+							$mdgriffith$elm_ui$Element$row,
 							_List_fromArray(
 								[
-									$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$shrink),
-									$mdgriffith$elm_ui$Element$padding(10)
+									$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill)
 								]),
-							$mdgriffith$elm_ui$Element$text('Morphir IR')),
+							_List_fromArray(
+								[
+									A2(
+									$mdgriffith$elm_ui$Element$el,
+									_List_fromArray(
+										[
+											$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$shrink),
+											$mdgriffith$elm_ui$Element$padding(10)
+										]),
+									$mdgriffith$elm_ui$Element$text('Morphir IR')),
+									$author$project$Morphir$Web$TryMorphir$viewIRViewTabs(irView)
+								])),
 							A2(
 							$mdgriffith$elm_ui$Element$el,
 							_List_fromArray(
@@ -39067,12 +40150,13 @@ var $author$project$Morphir$Web$DebugIR$viewPackageResult = F4(
 							function () {
 								if (maybePackageDef.$ === 'Just') {
 									var packageDef = maybePackageDef.a;
-									return A2(
-										$author$project$Morphir$Web$DebugIR$viewPackageDefinition,
+									return A3(
+										$author$project$Morphir$Web$TryMorphir$viewPackageDefinition,
 										function (_v2) {
 											return A2($elm$html$Html$div, _List_Nil, _List_Nil);
 										},
-										packageDef);
+										packageDef,
+										irView);
 								} else {
 									return $mdgriffith$elm_ui$Element$none;
 								}
@@ -39080,7 +40164,7 @@ var $author$project$Morphir$Web$DebugIR$viewPackageResult = F4(
 						]))
 				]));
 	});
-var $author$project$Morphir$Web$DebugIR$view = function (model) {
+var $author$project$Morphir$Web$TryMorphir$view = function (model) {
 	return A2(
 		$mdgriffith$elm_ui$Element$layout,
 		_List_fromArray(
@@ -39103,15 +40187,15 @@ var $author$project$Morphir$Web$DebugIR$view = function (model) {
 					$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$fill),
 					$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$fill)
 				]),
-			A4($author$project$Morphir$Web$DebugIR$viewPackageResult, model.source, $author$project$Morphir$Web$DebugIR$Change, model.maybePackageDef, model.errors)));
+			A5($author$project$Morphir$Web$TryMorphir$viewPackageResult, model.source, $author$project$Morphir$Web$TryMorphir$ChangeSource, model.maybePackageDef, model.errors, model.irView)));
 };
-var $author$project$Morphir$Web$DebugIR$main = $elm$browser$Browser$element(
-	{init: $author$project$Morphir$Web$DebugIR$init, subscriptions: $author$project$Morphir$Web$DebugIR$subscriptions, update: $author$project$Morphir$Web$DebugIR$update, view: $author$project$Morphir$Web$DebugIR$view});
-_Platform_export({'Morphir':{'Web':{'DebugIR':{'init':$author$project$Morphir$Web$DebugIR$main(
+var $author$project$Morphir$Web$TryMorphir$main = $elm$browser$Browser$element(
+	{init: $author$project$Morphir$Web$TryMorphir$init, subscriptions: $author$project$Morphir$Web$TryMorphir$subscriptions, update: $author$project$Morphir$Web$TryMorphir$update, view: $author$project$Morphir$Web$TryMorphir$view});
+_Platform_export({'Morphir':{'Web':{'TryMorphir':{'init':$author$project$Morphir$Web$TryMorphir$main(
 	$elm$json$Json$Decode$succeed(
 		{}))(0)}}}});}(this));
 
-  var app = Elm.Morphir.Web.DebugIR.init({ node: document.getElementById("elm") });
+  var app = Elm.Morphir.Web.TryMorphir.init({ node: document.getElementById("elm") });
 }
 catch (e)
 {
