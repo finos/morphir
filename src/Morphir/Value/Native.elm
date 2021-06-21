@@ -53,13 +53,13 @@ import Morphir.Value.Error exposing (Error(..))
 
 -}
 type alias Function =
-    Eval -> List (Value () ()) -> Result Error (Value () ())
+    Eval -> List RawValue -> Result Error RawValue
 
 
 {-| Type that captures a function used for evaluation. This will usually backed by the interpreter.
 -}
 type alias Eval =
-    Value () () -> Result Error (Value () ())
+    RawValue -> Result Error RawValue
 
 
 {-| Create a native function that takes exactly one argument. Let the implementor decide when to evaluate the argument.
@@ -76,7 +76,7 @@ type alias Eval =
             )
 
 -}
-unaryLazy : (Eval -> Value () () -> Result Error (Value () ())) -> Function
+unaryLazy : (Eval -> RawValue -> Result Error RawValue) -> Function
 unaryLazy f =
     \eval args ->
         case args of
@@ -98,7 +98,7 @@ function.
             )
 
 -}
-unaryStrict : (Eval -> Value () () -> Result Error (Value () ())) -> Function
+unaryStrict : (Eval -> RawValue -> Result Error RawValue) -> Function
 unaryStrict f =
     unaryLazy (\eval arg -> eval arg |> Result.andThen (f eval))
 
@@ -121,7 +121,7 @@ unaryStrict f =
             )
 
 -}
-binaryLazy : (Eval -> Value () () -> Value () () -> Result Error (Value () ())) -> Function
+binaryLazy : (Eval -> RawValue -> RawValue -> Result Error RawValue) -> Function
 binaryLazy f =
     \eval args ->
         case args of
@@ -143,7 +143,7 @@ function.
             )
 
 -}
-binaryStrict : (Value () () -> Value () () -> Result Error (Value () ())) -> Function
+binaryStrict : (RawValue -> RawValue -> Result Error RawValue) -> Function
 binaryStrict f =
     binaryLazy
         (\eval arg1 arg2 ->
@@ -158,7 +158,7 @@ binaryStrict f =
 
 {-| Create a native function that maps one literal value to another literal value.
 -}
-mapLiteral : (Literal -> Result Error Literal) -> Eval -> Value () () -> Result Error (Value () ())
+mapLiteral : (Literal -> Result Error Literal) -> Eval -> RawValue -> Result Error RawValue
 mapLiteral f eval value =
     case value of
         Value.Literal a lit ->
