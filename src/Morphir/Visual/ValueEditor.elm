@@ -279,12 +279,12 @@ view ir valueType updateEditorState editorState =
                 { onChange =
                     \updatedText ->
                         let
-                            valueResult : Result String RawValue
-                            valueResult =
-                                if valueType == Basics.stringType () then
+                            valueResult : Type () -> Result String RawValue
+                            valueResult tpe =
+                                if tpe == Basics.stringType () then
                                     Ok (Value.Literal () (StringLiteral updatedText))
 
-                                else if valueType == Basics.charType () then
+                                else if tpe == Basics.charType () then
                                     String.uncons updatedText
                                         |> Result.fromMaybe "Expecting at least one character"
                                         |> Result.andThen
@@ -296,18 +296,18 @@ view ir valueType updateEditorState editorState =
                                                     Err "Expecting a single character only"
                                             )
 
-                                else if valueType == Basics.intType () then
+                                else if tpe == Basics.intType () then
                                     String.toInt updatedText
                                         |> Maybe.map (\int -> Value.Literal () (IntLiteral int))
                                         |> Result.fromMaybe "Expecting a whole number like 5 or -958"
 
-                                else if valueType == Basics.floatType () then
+                                else if tpe == Basics.floatType () then
                                     String.toFloat updatedText
                                         |> Maybe.map (\float -> Value.Literal () (FloatLiteral float))
                                         |> Result.fromMaybe "Expecting a number like 1, -3.14 or 100.56"
 
                                 else
-                                    Err (String.concat [ "Translating text into ", Debug.toString valueType, " is not supported" ])
+                                    Err (String.concat [ "Translating text into '", Type.toString valueType, "' is not supported" ])
                         in
                         if updatedText == "" then
                             updateEditorState
@@ -315,7 +315,7 @@ view ir valueType updateEditorState editorState =
 
                         else
                             updateEditorState
-                                (applyResult valueResult
+                                (applyResult (valueResult (IR.resolveType valueType ir))
                                     { editorState
                                         | componentState = TextEditor updatedText
                                     }

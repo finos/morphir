@@ -19,7 +19,7 @@ module Morphir.IR exposing
     ( IR
     , fromPackageSpecifications, fromDistribution
     , lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification, lookupValueDefinition
-    , empty, resolveAliases
+    , empty, resolveAliases, resolveType
     )
 
 {-| This module contains data structures and functions to make working with the IR easier and more efficient.
@@ -39,7 +39,7 @@ module Morphir.IR exposing
 
 # Utilities
 
-@docs empty, resolveAliases
+@docs empty, resolveAliases, resolveType
 
 -}
 
@@ -237,3 +237,45 @@ resolveAliases fQName ir =
                         fQName
             )
         |> Maybe.withDefault fQName
+
+
+{-| Fully resolve all type aliases in the type.
+-}
+resolveType : Type () -> IR -> Type ()
+resolveType tpe ir =
+    case tpe of
+        Type.Variable a name ->
+            Type.Variable a name
+
+        Type.Reference _ fQName typeParams ->
+            ir
+                |> lookupTypeSpecification fQName
+                |> Maybe.map
+                    (\typeSpec ->
+                        case typeSpec of
+                            Type.TypeAliasSpecification typeParamNames targetType ->
+                                Type.substituteTypeVariables
+                                    (List.map2 Tuple.pair typeParamNames typeParams
+                                        |> Dict.fromList
+                                    )
+                                    targetType
+
+                            _ ->
+                                tpe
+                    )
+                |> Maybe.withDefault tpe
+
+        Type.Tuple a elemTypes ->
+            Type.Tuple a (elemTypes |> List.map (\t -> resolveType t ir))
+
+        Type.Record a fields ->
+            Type.Record a (fields |> List.map (\f -> { f | tpe = resolveType f.tpe ir }))
+
+        Type.ExtensibleRecord a varName fields ->
+            Type.ExtensibleRecord a varName (fields |> List.map (\f -> { f | tpe = resolveType f.tpe ir }))
+
+        Type.Function a argType returnType ->
+            Type.Function a (resolveType argType ir) (resolveType returnType ir)
+
+        Type.Unit a ->
+            Type.Unit a

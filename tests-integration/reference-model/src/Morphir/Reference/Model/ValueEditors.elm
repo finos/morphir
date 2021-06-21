@@ -26,6 +26,15 @@ float input =
     input
 
 
+type alias Price =
+    Float
+
+
+priceAlias : Price -> Price
+priceAlias price =
+    price
+
+
 record1 : { boolField : Bool } -> Bool
 record1 input =
     input.boolField
