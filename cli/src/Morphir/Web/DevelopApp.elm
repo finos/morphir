@@ -551,6 +551,9 @@ update msg model =
                     case model.currentPage of
                         Function (( packagePath, modulePath, localName ) as fQName) ->
                             let
+                                emptyFunctionModel =
+                                    FunctionPage.Model fQName Array.empty []
+
                                 ( inputArgValues, outputValue ) =
                                     Distribution.lookupValueSpecification packagePath modulePath localName getDistribution
                                         |> Maybe.map
@@ -562,8 +565,8 @@ update msg model =
                                 updatedModelState : Dict FQName FunctionPage.Model
                                 updatedModelState =
                                     Dict.get fQName model.functionStates
-                                        |> Maybe.map
-                                            (\functionModel ->
+                                        |> Maybe.withDefault emptyFunctionModel
+                                        |> (\functionModel ->
                                                 let
                                                     testCaseStates =
                                                         functionModel.testCaseStates
@@ -583,8 +586,7 @@ update msg model =
                                                                 }
                                                 in
                                                 Dict.insert fQName { functionModel | testCaseStates = testCaseStates } model.functionStates
-                                            )
-                                        |> Maybe.withDefault model.functionStates
+                                           )
                             in
                             updatedModelState
 
