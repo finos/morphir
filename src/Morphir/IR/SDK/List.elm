@@ -31,7 +31,7 @@ import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native exposing (eval2, expectFun1, expectList, returnList, returnResultList)
+import Morphir.Value.Native as Native exposing (decodeFun1, decodeList, decodeRaw, encodeList, encodeRaw, encodeResultList, eval2)
 
 
 moduleName : ModuleName
@@ -181,6 +181,6 @@ nativeFunctions =
                         Err (UnexpectedArguments [ arg ])
             )
       )
-    , ( "map", eval2 List.map expectFun1 expectList returnResultList )
-    , ( "append", eval2 List.append expectList expectList returnList )
+    , ( "map", eval2 List.map (decodeFun1 encodeRaw decodeRaw) (decodeList decodeRaw) encodeResultList )
+    , ( "append", eval2 List.append (decodeList decodeRaw) (decodeList decodeRaw) encodeList )
     ]

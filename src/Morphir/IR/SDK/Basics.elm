@@ -26,7 +26,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, eval1, eval2, expectLiteral, floatLiteral, intLiteral, oneOf, returnLiteral, stringLiteral)
+import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, decodeLiteral, encodeLiteral, eval1, eval2, floatLiteral, intLiteral, oneOf, stringLiteral)
 
 
 moduleName : ModuleName
@@ -126,40 +126,40 @@ moduleSpec =
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
     [ ( "not"
-      , eval1 not (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval1 not (decodeLiteral boolLiteral) (encodeLiteral BoolLiteral)
       )
     , ( "and"
-      , eval2 (&&) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval2 (&&) (decodeLiteral boolLiteral) (decodeLiteral boolLiteral) (encodeLiteral BoolLiteral)
       )
     , ( "or"
-      , eval2 (||) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval2 (||) (decodeLiteral boolLiteral) (decodeLiteral boolLiteral) (encodeLiteral BoolLiteral)
       )
     , ( "xor"
-      , eval2 xor (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval2 xor (decodeLiteral boolLiteral) (decodeLiteral boolLiteral) (encodeLiteral BoolLiteral)
       )
     , ( "add"
       , oneOf
-            [ eval2 (+) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , eval2 (+) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval2 (+) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            , eval2 (+) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "subtract"
       , oneOf
-            [ eval2 (-) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , eval2 (-) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval2 (-) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            , eval2 (-) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "multiply"
       , oneOf
-            [ eval2 (*) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , eval2 (*) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval2 (*) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            , eval2 (*) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "divide"
-      , eval2 (/) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+      , eval2 (/) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
       )
     , ( "integerDivide"
-      , eval2 (//) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+      , eval2 (//) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
       )
     , ( "equal"
       , Native.binaryStrict
@@ -180,54 +180,54 @@ nativeFunctions =
     , ( "lessThan"
       , oneOf
             -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ eval2 (<) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
-            , eval2 (<) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
-            , eval2 (<) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
-            , eval2 (<) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            [ eval2 (<) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (<) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (<) (decodeLiteral charLiteral) (decodeLiteral charLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (<) (decodeLiteral stringLiteral) (decodeLiteral stringLiteral) (encodeLiteral BoolLiteral)
             ]
       )
     , ( "greaterThan"
       , oneOf
             -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ eval2 (>) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
-            , eval2 (>) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
-            , eval2 (>) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
-            , eval2 (>) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            [ eval2 (>) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (>) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (>) (decodeLiteral charLiteral) (decodeLiteral charLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (>) (decodeLiteral stringLiteral) (decodeLiteral stringLiteral) (encodeLiteral BoolLiteral)
             ]
       )
     , ( "lessThanOrEqual"
       , oneOf
             -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ eval2 (<=) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
-            , eval2 (<=) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
-            , eval2 (<=) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
-            , eval2 (<=) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            [ eval2 (<=) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (<=) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (<=) (decodeLiteral charLiteral) (decodeLiteral charLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (<=) (decodeLiteral stringLiteral) (decodeLiteral stringLiteral) (encodeLiteral BoolLiteral)
             ]
       )
     , ( "greaterThanOrEqual"
       , oneOf
             -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ eval2 (>=) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
-            , eval2 (>=) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
-            , eval2 (>=) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
-            , eval2 (>=) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
+            [ eval2 (>=) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (>=) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (>=) (decodeLiteral charLiteral) (decodeLiteral charLiteral) (encodeLiteral BoolLiteral)
+            , eval2 (>=) (decodeLiteral stringLiteral) (decodeLiteral stringLiteral) (encodeLiteral BoolLiteral)
             ]
       )
     , ( "abs"
       , oneOf
-            [ eval1 abs (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , eval1 abs (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval1 abs (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            , eval1 abs (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "toFloat"
       , oneOf
-            [ eval1 toFloat (expectLiteral intLiteral) (returnLiteral FloatLiteral)
+            [ eval1 toFloat (decodeLiteral intLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "negate"
       , oneOf
-            [ eval1 Basics.negate (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , eval1 Basics.negate (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval1 Basics.negate (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            , eval1 Basics.negate (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     ]
