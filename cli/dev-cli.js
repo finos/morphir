@@ -8,14 +8,15 @@ const readdir = util.promisify(fs.readdir)
 const mkdir = util.promisify(fs.mkdir)
 const readFile = util.promisify(fs.readFile)
 const fsWriteFile = util.promisify(fs.writeFile)
-
+const outputPath = "../src/Morphir/IR/SDK/SDKNativeFunctions.elm"
 // Elm imports
 const worker = require('./Morphir.Elm.DevCLI').Elm.Morphir.Elm.DevCLI.init()
 
 
-worker.ports.respond.subscribe(result => {
-    console.log(result)
+worker.ports.respond.subscribe(async result => {
+    await fsWriteFile(outputPath , result )
 })
+worker.ports.request.send("Generate all SDK native functions")
 
 
 const commander = require('commander')
