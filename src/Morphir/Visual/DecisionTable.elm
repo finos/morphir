@@ -13,10 +13,10 @@ import Element exposing (Column, Element, el, fill, padding, rgb255, row, spacin
 import Element.Background as Background
 import Element.Border as Border
 import Morphir.IR.FQName exposing (getLocalName)
-import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Pattern(..), Value, indexedMapValue)
+import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.Visual.Common exposing (nameToText)
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue, typedToVisualTypedValue)
 
 
 type alias TypedValue =
@@ -25,10 +25,6 @@ type alias TypedValue =
 
 type alias TypedPattern =
     Pattern (Type ())
-
-
-
---
 
 
 {-| Represents a decision table. It has two fields:
@@ -75,7 +71,7 @@ tableHelp viewValue headerFunctions rows =
                         (text "Result")
                     )
                     fill
-                    (\rules -> viewValue (toVisualTypedValue (Tuple.second rules)))
+                    (\rules -> viewValue (typedToVisualTypedValue (Tuple.second rules)))
                 ]
         }
 
@@ -98,7 +94,7 @@ columnHelper viewValue header index =
     let
         head : VisualTypedValue
         head =
-            toVisualTypedValue header
+            typedToVisualTypedValue header
     in
     [ Column
         (el
@@ -125,7 +121,7 @@ getCaseFromIndex viewValue rules =
                             let
                                 value : VisualTypedValue
                                 value =
-                                    toVisualTypedValue (Value.Literal va literal)
+                                    typedToVisualTypedValue (Value.Literal va literal)
                             in
                             viewValue value
 
@@ -156,13 +152,6 @@ getCaseFromIndex viewValue rules =
 
         Nothing ->
             text "nothing"
-
-
-toVisualTypedValue : TypedValue -> VisualTypedValue
-toVisualTypedValue typedValue =
-    typedValue
-        |> indexedMapValue Tuple.pair 0
-        |> Tuple.first
 
 
 toTypedPattern : Pattern (Type ()) -> TypedPattern
