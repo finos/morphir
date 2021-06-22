@@ -13,16 +13,15 @@ const fsWriteFile = util.promisify(fs.writeFile)
 const worker = require('./Morphir.Elm.CLI').Elm.Morphir.Elm.CLI.init()
 
 
-async function make(projectDir) {
+async function make(projectDir, options) {
     const morphirJsonPath = path.join(projectDir, 'morphir.json')
     const morphirJsonContent = await readFile(morphirJsonPath)
     const morphirJson = JSON.parse(morphirJsonContent.toString())
-    const sourceFiles = await readElmSources(path.join(projectDir, morphirJson.sourceDirectory))
-    const packageDef = await packageDefinitionFromSource(morphirJson, sourceFiles)
-    return packageDef
+    const sourceFiles = readElmSources(path.join(projectDir, morphirJson.sourceDirectory))
+    return packageDefinitionFromSource(morphirJson, sourceFiles, options)
 }
 
-async function packageDefinitionFromSource(morphirJson, sourceFiles) {
+async function packageDefinitionFromSource(morphirJson, sourceFiles, options) {
     return new Promise((resolve, reject) => {
         worker.ports.jsonDecodeError.subscribe(err => {
             reject(err)
@@ -36,7 +35,12 @@ async function packageDefinitionFromSource(morphirJson, sourceFiles) {
             }
         })
 
-        worker.ports.packageDefinitionFromSource.send([morphirJson, sourceFiles])
+        const opts =
+        {
+            typesOnly: options.typesOnly
+        }
+
+        worker.ports.packageDefinitionFromSource.send([opts, morphirJson, sourceFiles])
     })
 }
 
@@ -73,7 +77,7 @@ async function gen(input, outputPath, options) {
     await mkdir(outputPath, { recursive: true })
     const morphirIrJson = await readFile(path.resolve(input))
     const fileMap = await generate(options, JSON.parse(morphirIrJson.toString()))
-    const sourceDirectory = path.join(path.dirname(__dirname), 'redistributable', `${options["target"]}`)
+
 
     const writePromises =
         fileMap.map(async ([[dirPath, fileName], content]) => {
@@ -93,15 +97,28 @@ async function gen(input, outputPath, options) {
             console.log(`DELETE - ${fileToDelete}`)
             return fs.unlinkSync(fileToDelete)
         })
-    const copyDirectoriesRecursive = await copyRecursiveSync(sourceDirectory, outputPath)
+    copyRedistributables(options, outputPath)
     return Promise.all(writePromises.concat(deletePromises))
 }
 
-async function copyRecursiveSync(src, dest) {
-    var exists = fs.existsSync(src);
+function copyRedistributables(options, outputPath) {
+    const copyFiles = (src, dest) => {
+        const sourceDirectory = path.join(path.dirname(__dirname), 'redistributable', src)
+        copyRecursiveSync(sourceDirectory, outputPath)
+    }
+    if (options.target == 'SpringBoot') {
+        copyFiles('SpringBoot', outputPath)
+    } else if (options.target == 'Scala' && options.copyDeps) {
+        copyFiles('Scala/sdk/src', outputPath)
+        copyFiles(`Scala/sdk/src-${options.targetVersion}`, outputPath)
+    }
+}
+
+function copyRecursiveSync(src, dest) {
+    const exists = fs.existsSync(src);
     if (exists) {
-        var stats = exists && fs.statSync(src);
-        var isDirectory = exists && stats.isDirectory();
+        const stats = exists && fs.statSync(src);
+        const isDirectory = exists && stats.isDirectory();
         if (isDirectory) {
             if (!fs.existsSync(dest))
                 fs.mkdirSync(dest);
@@ -111,6 +128,7 @@ async function copyRecursiveSync(src, dest) {
             });
         } else {
             fs.copyFileSync(src, dest);
+            console.log(`COPY - ${dest}`)
         }
     }
 }

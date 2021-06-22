@@ -29,14 +29,22 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as SDKBasics
+import Morphir.IR.SDK.Decimal as Decimal
+import Morphir.IR.SDK.Int as SDKInt
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.Maybe as Maybe
+import Morphir.IR.SDK.Rule as Rule
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
 import Morphir.IR.Value exposing (Definition, Pattern(..), Value(..))
-import Morphir.IR.SDK.Rule as Rule
 import Set
 import Test exposing (..)
+
+
+opts : Frontend.Options
+opts =
+    { typesOnly = False
+    }
 
 
 frontendTest : Test
@@ -51,6 +59,10 @@ frontendTest =
                     , "import My.Package.B exposing (Bee)"
                     , ""
                     , "import Morphir.SDK.Rule exposing (Rule)"
+                    , ""
+                    , "import Morphir.SDK.Decimal exposing (Decimal)"
+                    , ""
+                    , "import Morphir.SDK.Int exposing (Int8, Int16, Int32, Int64)"
                     , ""
                     , "type Foo = Foo Bee"
                     , ""
@@ -67,6 +79,11 @@ frontendTest =
                     , "    , field7 : Maybe Int"
                     , "    , field8 : List Float"
                     , "    , field9 : Rule Int Int"
+                    , "    , field10 : Decimal"
+                    , "    , field11 : Int8"
+                    , "    , field12 : Int16"
+                    , "    , field13 : Int32"
+                    , "    , field14 : Int64"
                     , "    }"
                     ]
             }
@@ -131,10 +148,13 @@ frontendTest =
                                             (Documented ""
                                                 (Type.CustomTypeDefinition []
                                                     (public
-                                                        [ Type.Constructor [ "foo" ]
-                                                            [ ( [ "arg", "1" ], Type.Reference () (fQName packageName [ [ "b" ] ] [ "bee" ]) [] )
+                                                        (Dict.fromList
+                                                            [ ( [ "foo" ]
+                                                              , [ ( [ "arg", "1" ], Type.Reference () (fQName packageName [ [ "b" ] ] [ "bee" ]) [] )
+                                                                ]
+                                                              )
                                                             ]
-                                                        ]
+                                                        )
                                                     )
                                                 )
                                             )
@@ -162,6 +182,16 @@ frontendTest =
                                                             (List.listType () (SDKBasics.floatType ()))
                                                         , Type.Field [ "field", "9" ]
                                                             (Rule.ruleType () (SDKBasics.intType ()) (SDKBasics.intType ()))
+                                                        , Type.Field [ "field", "10" ]
+                                                            (Decimal.decimalType ())
+                                                        , Type.Field [ "field", "11" ]
+                                                            (SDKInt.int8Type ())
+                                                        , Type.Field [ "field", "12" ]
+                                                            (SDKInt.int16Type ())
+                                                        , Type.Field [ "field", "13" ]
+                                                            (SDKInt.int32Type ())
+                                                        , Type.Field [ "field", "14" ]
+                                                            (SDKInt.int64Type ())
                                                         ]
                                                     )
                                                 )
@@ -180,7 +210,7 @@ frontendTest =
                                       , public
                                             (Documented " It's a bee "
                                                 (Type.CustomTypeDefinition []
-                                                    (public [ Type.Constructor [ "bee" ] [] ])
+                                                    (public (Dict.fromList [ ( [ "bee" ], [] ) ]))
                                                 )
                                             )
                                       )
@@ -194,7 +224,7 @@ frontendTest =
     in
     test "first" <|
         \_ ->
-            Frontend.packageDefinitionFromSource packageInfo Dict.empty [ sourceA, sourceB, sourceC ]
+            Frontend.packageDefinitionFromSource opts packageInfo Dict.empty [ sourceA, sourceB, sourceC ]
                 |> Result.map Package.eraseDefinitionAttributes
                 |> Expect.equal (Ok expected)
 
@@ -291,7 +321,7 @@ valueTests =
         checkIR valueSource expectedValueIR =
             test valueSource <|
                 \_ ->
-                    Frontend.packageDefinitionFromSource packageInfo deps [ barSource, moduleSource valueSource ]
+                    Frontend.packageDefinitionFromSource opts packageInfo deps [ barSource, moduleSource valueSource ]
                         |> Result.map Package.eraseDefinitionAttributes
                         |> Result.mapError
                             (\errors ->
@@ -389,7 +419,7 @@ valueTests =
         , checkIR "a << b" <| binary SDKBasics.composeLeft (ref "a") (ref "b")
         , checkIR "a >> b" <| binary SDKBasics.composeRight (ref "a") (ref "b")
         , checkIR "a :: b" <| binary List.construct (ref "a") (ref "b")
-        , checkIR "::" <| List.construct ()
+        , checkIR "(::)" <| List.construct ()
         , checkIR "foo (::)" <| Apply () (ref "foo") (List.construct ())
         , checkIR
             (String.join "\n"

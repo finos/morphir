@@ -21,8 +21,9 @@ module Morphir.IR.Type exposing
     , Field, mapFieldName, mapFieldType
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
     , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification
-    , Constructors, Constructor(..)
-    , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes, collectVariables
+    , Constructors
+    , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition
+    , eraseAttributes, collectVariables, substituteTypeVariables, toString
     )
 
 {-| Like any other programming languages Morphir has a type system as well. This module defines the building blocks of
@@ -118,18 +119,24 @@ Here is the full definition for reference:
 
 # Constructors
 
-@docs Constructors, Constructor
+@docs Constructors
 
 
 # Mapping
 
-@docs mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, eraseAttributes, collectVariables
+@docs mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition
+
+#Utilities
+
+@docs eraseAttributes, collectVariables, substituteTypeVariables, toString
 
 -}
 
+import Dict exposing (Dict)
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, withPublicAccess)
 import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Path as Path
 import Morphir.ListOfResults as ListOfResults
 import Set exposing (Set)
 
@@ -226,14 +233,10 @@ type Definition a
     | CustomTypeDefinition (List Name) (AccessControlled (Constructors a))
 
 
-{-| -}
+{-| Constructors in a dictionary keyed by their name. The values are the argument types for each constructor.
+-}
 type alias Constructors a =
-    List (Constructor a)
-
-
-{-| -}
-type Constructor a
-    = Constructor Name (List ( Name, Type a ))
+    Dict Name (List ( Name, Type a ))
 
 
 {-| -}
@@ -265,15 +268,13 @@ mapSpecificationAttributes f spec =
         CustomTypeSpecification params constructors ->
             CustomTypeSpecification params
                 (constructors
-                    |> List.map
-                        (\(Constructor ctorName ctorArgs) ->
-                            Constructor ctorName
-                                (ctorArgs
-                                    |> List.map
-                                        (\( argName, argType ) ->
-                                            ( argName, mapTypeAttributes f argType )
-                                        )
-                                )
+                    |> Dict.map
+                        (\_ ctorArgs ->
+                            ctorArgs
+                                |> List.map
+                                    (\( argName, argType ) ->
+                                        ( argName, mapTypeAttributes f argType )
+                                    )
                         )
                 )
 
@@ -292,8 +293,9 @@ mapDefinition f def =
                 ctorsResult : Result (List e) (AccessControlled (Constructors b))
                 ctorsResult =
                     constructors.value
+                        |> Dict.toList
                         |> List.map
-                            (\(Constructor ctorName ctorArgs) ->
+                            (\( ctorName, ctorArgs ) ->
                                 ctorArgs
                                     |> List.map
                                         (\( argName, argType ) ->
@@ -301,10 +303,10 @@ mapDefinition f def =
                                                 |> Result.map (Tuple.pair argName)
                                         )
                                     |> ListOfResults.liftAllErrors
-                                    |> Result.map (Constructor ctorName)
+                                    |> Result.map (Tuple.pair ctorName)
                             )
                         |> ListOfResults.liftAllErrors
-                        |> Result.map (AccessControlled constructors.access)
+                        |> Result.map (Dict.fromList >> AccessControlled constructors.access)
                         |> Result.mapError List.concat
             in
             ctorsResult
@@ -322,15 +324,13 @@ mapDefinitionAttributes f def =
             CustomTypeDefinition params
                 (AccessControlled constructors.access
                     (constructors.value
-                        |> List.map
-                            (\(Constructor ctorName ctorArgs) ->
-                                Constructor ctorName
-                                    (ctorArgs
-                                        |> List.map
-                                            (\( argName, argType ) ->
-                                                ( argName, mapTypeAttributes f argType )
-                                            )
-                                    )
+                        |> Dict.map
+                            (\_ ctorArgs ->
+                                ctorArgs
+                                    |> List.map
+                                        (\( argName, argType ) ->
+                                            ( argName, mapTypeAttributes f argType )
+                                        )
                             )
                     )
                 )
@@ -397,20 +397,15 @@ eraseAttributes typeDef =
 
         CustomTypeDefinition typeVars acsCtrlConstructors ->
             let
-                eraseCtor : Constructor a -> Constructor ()
-                eraseCtor (Constructor name types) =
-                    let
-                        extraErasedTypes : List ( Name, Type () )
-                        extraErasedTypes =
-                            types
-                                |> List.map (\( n, t ) -> ( n, mapTypeAttributes (\_ -> ()) t ))
-                    in
-                    Constructor name extraErasedTypes
+                eraseCtor : List ( Name, Type a ) -> List ( Name, Type () )
+                eraseCtor types =
+                    types
+                        |> List.map (\( n, t ) -> ( n, mapTypeAttributes (\_ -> ()) t ))
 
                 eraseAccessControlledCtors : AccessControlled (Constructors a) -> AccessControlled (Constructors ())
                 eraseAccessControlledCtors acsCtrlCtors =
                     AccessControlled.map
-                        (\ctors -> ctors |> List.map eraseCtor)
+                        (\ctors -> ctors |> Dict.map (\_ -> eraseCtor))
                         acsCtrlCtors
             in
             CustomTypeDefinition typeVars (eraseAccessControlledCtors acsCtrlConstructors)
@@ -603,3 +598,116 @@ collectVariables tpe =
 
         Unit _ ->
             Set.empty
+
+
+{-| Substitute type variables recursively.
+-}
+substituteTypeVariables : Dict Name (Type ta) -> Type ta -> Type ta
+substituteTypeVariables mapping original =
+    case original of
+        Variable a varName ->
+            mapping
+                |> Dict.get varName
+                |> Maybe.withDefault original
+
+        Reference a fQName typeArgs ->
+            Reference a
+                fQName
+                (typeArgs
+                    |> List.map (substituteTypeVariables mapping)
+                )
+
+        Tuple a elemTypes ->
+            Tuple a
+                (elemTypes
+                    |> List.map (substituteTypeVariables mapping)
+                )
+
+        Record a fields ->
+            Record a
+                (fields
+                    |> List.map
+                        (\field ->
+                            Field field.name (substituteTypeVariables mapping field.tpe)
+                        )
+                )
+
+        ExtensibleRecord a name fields ->
+            ExtensibleRecord a
+                name
+                (fields
+                    |> List.map
+                        (\field ->
+                            Field field.name (substituteTypeVariables mapping field.tpe)
+                        )
+                )
+
+        Function a argType returnType ->
+            Function a
+                (substituteTypeVariables mapping argType)
+                (substituteTypeVariables mapping returnType)
+
+        Unit a ->
+            Unit a
+
+
+{-| Get a compact string representation of the type.
+-}
+toString : Type a -> String
+toString tpe =
+    case tpe of
+        Variable _ name ->
+            Name.toCamelCase name
+
+        Reference _ ( packageName, moduleName, localName ) args ->
+            let
+                referenceName : String
+                referenceName =
+                    String.join "."
+                        [ Path.toString Name.toTitleCase "." packageName
+                        , Path.toString Name.toTitleCase "." moduleName
+                        , Name.toTitleCase localName
+                        ]
+            in
+            referenceName
+                :: List.map toString args
+                |> String.join " "
+
+        Tuple _ elems ->
+            String.concat
+                [ "( ", List.map toString elems |> String.join ", ", " )" ]
+
+        Record _ fields ->
+            String.concat
+                [ "{ "
+                , fields
+                    |> List.map
+                        (\field ->
+                            String.concat [ Name.toCamelCase field.name, " : ", toString field.tpe ]
+                        )
+                    |> String.join ", "
+                , " }"
+                ]
+
+        ExtensibleRecord _ varName fields ->
+            String.concat
+                [ "{ "
+                , Name.toCamelCase varName
+                , " | "
+                , fields
+                    |> List.map
+                        (\field ->
+                            String.concat [ Name.toCamelCase field.name, " : ", toString field.tpe ]
+                        )
+                    |> String.join ", "
+                , " }"
+                ]
+
+        Function _ ((Function _ _ _) as argType) returnType ->
+            String.concat [ "(", toString argType, ") -> ", toString returnType ]
+
+        Function _ argType returnType ->
+            String.concat [ toString argType, " -> ", toString returnType ]
+
+        Unit _ ->
+            "()"

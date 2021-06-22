@@ -18,16 +18,21 @@
 module Morphir.IR.SDK exposing (..)
 
 import Dict exposing (Dict)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.SDK.Aggregate as Aggregate
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Char
+import Morphir.IR.SDK.Decimal as Decimal
 import Morphir.IR.SDK.Dict as Dict
+import Morphir.IR.SDK.Key as Key
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.LocalDate as LocalDate
 import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Month as Month
+import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.Regex as Regex
 import Morphir.IR.SDK.Result as Result
 import Morphir.IR.SDK.Rule as Rule
@@ -61,14 +66,19 @@ packageSpec =
             , ( [ [ "regex" ] ], Regex.moduleSpec )
             , ( [ [ "stateful", "app" ] ], StatefulApp.moduleSpec )
             , ( [ [ "rule" ] ], Rule.moduleSpec )
+            , ( [ [ "decimal" ] ], Decimal.moduleSpec )
+            , ( [ [ "int" ] ], Decimal.moduleSpec )
+            , ( [ [ "number" ] ], Number.moduleSpec )
+            , ( [ [ "key" ] ], Key.moduleSpec )
+            , ( [ [ "aggregate" ] ], Aggregate.moduleSpec )
             ]
     }
 
 
-nativeFunctions : Dict ( Path, Path, Name ) Native.Function
+nativeFunctions : Dict FQName Native.Function
 nativeFunctions =
     let
-        moduleFunctions : String -> List ( String, Native.Function ) -> Dict ( Path, Path, Name ) Native.Function
+        moduleFunctions : String -> List ( String, Native.Function ) -> Dict FQName Native.Function
         moduleFunctions moduleName functionsByName =
             functionsByName
                 |> List.map

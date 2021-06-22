@@ -1,52 +1,91 @@
 module Morphir.Visual.ViewList exposing (view)
 
 import Dict
-import Element exposing (Element, fill, none, spacing, table, text)
+import Element exposing (Element, centerX, centerY, el, fill, height, indexedTable, none, padding, spacing, table, text, width)
+import Element.Border as Border
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
-view : (Value ta (Type ta) -> Element msg) -> Type ta -> List (Value ta (Type ta)) -> Element msg
-view viewValue itemType items =
-    case itemType of
-        Type.Record _ fields ->
-            table
-                [ spacing 10
-                ]
-                { data = items
-                , columns =
-                    fields
-                        |> List.map
-                            (\field ->
-                                { header = text (field.name |> Name.toHumanWords |> String.join " ")
-                                , width = fill
-                                , view =
-                                    \item ->
-                                        -- TODO: Use interpreter to get field values
-                                        case item of
-                                            Value.Record _ fieldValues ->
-                                                fieldValues
-                                                    |> Dict.fromList
-                                                    |> Dict.get field.name
-                                                    |> Maybe.map viewValue
-                                                    |> Maybe.withDefault (text "???")
+view : Config msg -> (VisualTypedValue -> Element msg) -> Type () -> List VisualTypedValue -> Element msg
+view config viewValue itemType items =
+    if List.isEmpty items then
+        el []
+            (text "[ ]")
 
-                                            _ ->
-                                                viewValue item
-                                }
-                            )
-                }
+    else
+        case itemType of
+            Type.Record _ fields ->
+                indexedTable
+                    [ centerX, centerY ]
+                    { data =
+                        items
+                            |> List.map
+                                (\item ->
+                                    config.irContext.distribution |> Distribution.resolveRecordConstructors item
+                                )
+                    , columns =
+                        fields
+                            |> List.map
+                                (\field ->
+                                    { header =
+                                        el
+                                            [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
+                                            , smallPadding config.state.theme |> padding
+                                            ]
+                                            (el [ centerY, centerX ] (text (field.name |> Name.toHumanWords |> String.join " ")))
+                                    , width = fill
+                                    , view =
+                                        \rowIndex item ->
+                                            el
+                                                [ smallPadding config.state.theme |> padding
+                                                , width fill
+                                                , height fill
+                                                ]
+                                                -- TODO: Use interpreter to get field values
+                                                (el [ centerX, centerY ]
+                                                    (case item of
+                                                        Value.Record _ fieldValues ->
+                                                            fieldValues
+                                                                |> Dict.fromList
+                                                                |> Dict.get field.name
+                                                                |> Maybe.map viewValue
+                                                                |> Maybe.withDefault (text "???")
 
-        _ ->
-            table
-                [ spacing 10
-                ]
-                { data = items
-                , columns =
-                    [ { header = none
-                      , width = fill
-                      , view = viewValue
-                      }
-                    ]
-                }
+                                                        _ ->
+                                                            viewValue item
+                                                    )
+                                                )
+                                    }
+                                )
+                    }
+
+            Type.Reference _ fQName typeArgs ->
+                case config.irContext.distribution |> Distribution.resolveTypeReference fQName typeArgs of
+                    Ok resolvedItemType ->
+                        view config viewValue resolvedItemType items
+
+                    Err _ ->
+                        viewAsList config viewValue items
+
+            _ ->
+                viewAsList config viewValue items
+
+
+viewAsList config viewValue items =
+    table
+        [ smallSpacing config.state.theme |> spacing
+        ]
+        { data = items
+        , columns =
+            [ { header = none
+              , width = fill
+              , view = viewValue
+              }
+            ]
+        }

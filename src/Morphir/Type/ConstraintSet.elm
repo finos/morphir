@@ -3,7 +3,7 @@ module Morphir.Type.ConstraintSet exposing (..)
 import Dict
 import Morphir.Type.Constraint as Constraint exposing (Constraint(..))
 import Morphir.Type.MetaType exposing (MetaType, Variable)
-import Morphir.Type.SolutionMap exposing (SolutionMap(..))
+import Morphir.Type.Solve exposing (SolutionMap(..))
 
 
 type ConstraintSet
@@ -32,7 +32,7 @@ member constraint (ConstraintSet constraints) =
 
 insert : Constraint -> ConstraintSet -> ConstraintSet
 insert constraint ((ConstraintSet constraints) as constraintSet) =
-    if member constraint constraintSet then
+    if Constraint.isTrivial constraint || member constraint constraintSet then
         constraintSet
 
     else
@@ -42,6 +42,11 @@ insert constraint ((ConstraintSet constraints) as constraintSet) =
 fromList : List Constraint -> ConstraintSet
 fromList list =
     List.foldl insert empty list
+
+
+toList : ConstraintSet -> List Constraint
+toList (ConstraintSet list) =
+    list
 
 
 union : ConstraintSet -> ConstraintSet -> ConstraintSet
@@ -58,7 +63,18 @@ substituteVariable : Variable -> MetaType -> ConstraintSet -> ConstraintSet
 substituteVariable var replacement (ConstraintSet constraints) =
     ConstraintSet
         (constraints
-            |> List.map (Constraint.substitute var replacement)
+            |> List.filterMap
+                (\constraint ->
+                    let
+                        newConstraint =
+                            Constraint.substitute var replacement constraint
+                    in
+                    if Constraint.isTrivial newConstraint then
+                        Nothing
+
+                    else
+                        Just newConstraint
+                )
         )
 
 

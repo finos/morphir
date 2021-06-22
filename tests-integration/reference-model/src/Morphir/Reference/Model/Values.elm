@@ -180,10 +180,41 @@ basicIfThenElse3 boolValueVariable =
         "Bye"
 
 
-basicIfThenElse4 : Float -> Float -> Float -> Float -> Float -> String
+booleanExpressions : Bool -> Bool -> Bool -> Bool
+booleanExpressions ball cat dog =
+    ball && cat || dog
+
+
+booleanExpressions2 : Bool -> Bool -> Bool -> Bool -> Bool
+booleanExpressions2 a b c d =
+    d && booleanExpressions a b c
+
+
+booleanExpressions3 : Bool -> Bool -> Bool -> Bool -> Bool -> Bool -> Bool
+booleanExpressions3 a b c d e f =
+    a || b && booleanExpressions2 c d e f
+
+
+booleanExpressions4 : Bool -> Bool -> Bool -> Bool -> Bool -> Bool -> Bool -> Bool -> Bool
+booleanExpressions4 a b c d e f g h =
+    a || b && booleanExpressions3 c d e f g h
+
+
+type alias FruitAction =
+    { fruitType : String
+    , amount : Float
+    }
+
+
+noHarvest : List FruitAction
+noHarvest =
+    []
+
+
+basicIfThenElse4 : Float -> Float -> Float -> Float -> Float -> List FruitAction
 basicIfThenElse4 greenApple redApple amberApple greenPear redPear =
     if greenApple == 0 || redApple == 0 || greenApple == redApple then
-        "no harvest"
+        noHarvest
 
     else
         let
@@ -192,17 +223,53 @@ basicIfThenElse4 greenApple redApple amberApple greenPear redPear =
                 redApple + greenApple
         in
         if redGreenApple > 0 then
-            "case 1"
+            let
+                appleAmount : Float
+                appleAmount =
+                    10
+            in
+            [ { fruitType = "apple", amount = appleAmount }
+            , { fruitType = "pear", amount = 5 }
+            ]
 
         else
-            "case 2"
+            let
+                appleAmount : Float
+                appleAmount =
+                    15
+
+                bananaAmount : Float
+                bananaAmount =
+                    158.3
+            in
+            [ { fruitType = "apple", amount = appleAmount }
+            , { fruitType = "pear", amount = 5 }
+            , FruitAction "banana" bananaAmount
+            ]
 
 
-basicPatternMatchWildcard : String -> Int
-basicPatternMatchWildcard s =
-    case s of
+basicPatternMatchWildcard : String -> String -> String -> Int
+basicPatternMatchWildcard s p q =
+    case ( s, p, q ) of
         _ ->
             1
+
+
+nestedPatternMatch : String -> String -> String -> String -> String -> Int
+nestedPatternMatch a b c d e =
+    case ( a, b ) of
+        ( "foo", "bar" ) ->
+            case ( d, e ) of
+                _ ->
+                    1
+
+        _ ->
+            case c of
+                "bar" ->
+                    2
+
+                _ ->
+                    3
 
 
 basicUpdateRecord : FooBarBazRecord -> FooBarBazRecord

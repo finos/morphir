@@ -1,33 +1,71 @@
 module Morphir.Visual.ViewIfThenElse exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, html, moveRight, spacing, text, wrappedRow)
-import Html
-import Html.Attributes exposing (attribute)
-import Morphir.File.SourceCode exposing (Doc)
-import Morphir.Graph.GraphViz.PrettyPrint as PrettyPrint
-import Morphir.Graph.GraphVizBackend as GraphVizBackend
-import Morphir.IR.Name exposing (Name)
-import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value exposing (Value)
+import Element exposing (Element)
+import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Value as Value exposing (TypedValue, Value)
+import Morphir.Visual.Components.DecisionTree as DecisionTree exposing (LeftOrRight(..))
+import Morphir.Visual.Config as Config exposing (Config)
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
-view : (Value ta (Type ta) -> Element msg) -> Value ta ( Int, Type ta ) -> Dict Name (Value () ()) -> Element msg
-view viewValue value variables =
-    case GraphVizBackend.mapValue value variables of
-        Just graph ->
-            graph
-                |> PrettyPrint.mapGraph
-                |> graphToNode
-
-        Nothing ->
-            text "Cannot display value as decision tree!"
+view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> Element msg
+view config viewValue value =
+    DecisionTree.layout config viewValue (valueToTree config True value)
 
 
-graphToNode : Doc -> Element msg
-graphToNode dotStructure =
-    Html.node "if-then-else"
-        [ attribute "dotstructure" dotStructure
-        ]
-        []
-        |> html
+valueToTree : Config msg -> Bool -> VisualTypedValue -> DecisionTree.Node
+valueToTree config doEval value =
+    case value of
+        Value.IfThenElse _ condition thenBranch elseBranch ->
+            let
+                result =
+                    if doEval then
+                        case config |> Config.evaluate (Value.toRawValue condition) of
+                            Ok (Value.Literal _ (BoolLiteral v)) ->
+                                Just v
+
+                            _ ->
+                                Nothing
+
+                    else
+                        Nothing
+            in
+            DecisionTree.Branch
+                { condition = condition
+                , conditionValue = result
+                , thenBranch = valueToTree config (result == Just True) thenBranch
+                , elseBranch = valueToTree config (result == Just False) elseBranch
+                }
+
+        Value.LetDefinition _ defName defValue inValue ->
+            let
+                currentState =
+                    config.state
+
+                newState =
+                    { currentState
+                        | variables =
+                            config
+                                |> Config.evaluate
+                                    (defValue
+                                        |> Value.mapDefinitionAttributes identity (always ())
+                                        |> Value.definitionToValue
+                                    )
+                                |> Result.map
+                                    (\evaluatedDefValue ->
+                                        currentState.variables
+                                            |> Dict.insert defName evaluatedDefValue
+                                    )
+                                |> Result.withDefault currentState.variables
+                    }
+            in
+            valueToTree
+                { config
+                    | state = newState
+                }
+                doEval
+                inValue
+
+        _ ->
+            DecisionTree.Leaf value

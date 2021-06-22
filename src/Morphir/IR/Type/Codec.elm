@@ -17,12 +17,13 @@
 
 module Morphir.IR.Type.Codec exposing (..)
 
+import Dict
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.AccessControlled.Codec exposing (decodeAccessControlled, encodeAccessControlled)
 import Morphir.IR.FQName.Codec exposing (decodeFQName, encodeFQName)
 import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
-import Morphir.IR.Type exposing (Constructor(..), Constructors, Definition(..), Field, Specification(..), Type(..))
+import Morphir.IR.Type exposing (Constructors, Definition(..), Field, Specification(..), Type(..))
 
 
 {-| Encode a type into JSON.
@@ -253,11 +254,11 @@ decodeDefinition decodeAttributes =
 encodeConstructors : (a -> Encode.Value) -> Constructors a -> Encode.Value
 encodeConstructors encodeAttributes ctors =
     ctors
+        |> Dict.toList
         |> Encode.list
-            (\(Constructor ctorName ctorArgs) ->
+            (\( ctorName, ctorArgs ) ->
                 Encode.list identity
-                    [ Encode.string "constructor"
-                    , encodeName ctorName
+                    [ encodeName ctorName
                     , ctorArgs
                         |> Encode.list
                             (\( argName, argType ) ->
@@ -273,23 +274,15 @@ encodeConstructors encodeAttributes ctors =
 decodeConstructors : Decode.Decoder a -> Decode.Decoder (Constructors a)
 decodeConstructors decodeAttributes =
     Decode.list
-        (Decode.index 0 Decode.string
-            |> Decode.andThen
-                (\kind ->
-                    case kind of
-                        "constructor" ->
-                            Decode.map2 Constructor
-                                (Decode.index 1 decodeName)
-                                (Decode.index 2
-                                    (Decode.list
-                                        (Decode.map2 Tuple.pair
-                                            (Decode.index 0 decodeName)
-                                            (Decode.index 1 (decodeType decodeAttributes))
-                                        )
-                                    )
-                                )
-
-                        _ ->
-                            Decode.fail ("Unknown kind: " ++ kind)
+        (Decode.map2 Tuple.pair
+            (Decode.index 0 decodeName)
+            (Decode.index 1
+                (Decode.list
+                    (Decode.map2 Tuple.pair
+                        (Decode.index 0 decodeName)
+                        (Decode.index 1 (decodeType decodeAttributes))
+                    )
                 )
+            )
         )
+        |> Decode.map Dict.fromList

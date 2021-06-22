@@ -285,6 +285,7 @@ moduleMapping =
         , ( [ [ "char" ] ], sdkModule [ "char" ] )
         , ( [ [ "tuple" ] ], sdkModule [ "tuple" ] )
         , ( [ [ "regex" ] ], sdkModule [ "regex" ] )
+        , ( [ [ "decimal" ] ], sdkModule [ "decimal" ] )
         ]
 
 
@@ -316,11 +317,7 @@ createModuleResolver ctx =
                                 Type.CustomTypeDefinition _ accessControlledCtors ->
                                     Just
                                         ( typeName
-                                        , accessControlledCtors.value
-                                            |> List.map
-                                                (\(Type.Constructor name _) ->
-                                                    name
-                                                )
+                                        , accessControlledCtors.value |> Dict.keys
                                         )
 
                                 Type.TypeAliasDefinition _ (Type.Record _ _) ->
@@ -566,11 +563,7 @@ moduleSpecToLocalNames moduleSpec =
                         Type.CustomTypeSpecification _ ctors ->
                             Just
                                 ( typeName
-                                , ctors
-                                    |> List.map
-                                        (\(Type.Constructor ctorName _) ->
-                                            ctorName
-                                        )
+                                , ctors |> Dict.keys
                                 )
 
                         Type.TypeAliasSpecification _ (Type.Record _ _) ->

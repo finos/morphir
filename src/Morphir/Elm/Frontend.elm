@@ -18,8 +18,7 @@
 module Morphir.Elm.Frontend exposing
     ( packageDefinitionFromSource, mapDeclarationsToType
     , defaultDependencies
-    , ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation
-    , mapSource
+    , Options, ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation, mapSource
     )
 
 {-| The Elm frontend turns Elm source code into Morphir IR.
@@ -34,7 +33,7 @@ module Morphir.Elm.Frontend exposing
 
 @docs defaultDependencies
 
-@docs ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation
+@docs Options, ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation, mapSource
 
 -}
 
@@ -60,7 +59,7 @@ import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName as FQName exposing (FQName(..), fQName)
+import Morphir.IR.FQName as FQName exposing (FQName, fQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
@@ -77,6 +76,16 @@ import Morphir.ListOfResults as ListOfResults
 import Morphir.Rewrite as Rewrite
 import Parser exposing (DeadEnd)
 import Set exposing (Set)
+
+
+{-| Options that modify the behavior of the frontend:
+
+    - `typesOnly` - only include type information in the IR, no values
+
+-}
+type alias Options =
+    { typesOnly : Bool
+    }
 
 
 {-| -}
@@ -166,8 +175,9 @@ defaultDependencies =
         ]
 
 
-mapSource : PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result (List Compiler.Error) (Package.Definition SourceLocation SourceLocation)
-mapSource packageInfo dependencies sourceFiles =
+{-| -}
+mapSource : Options -> PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result (List Compiler.Error) (Package.Definition SourceLocation SourceLocation)
+mapSource opts packageInfo dependencies sourceFiles =
     let
         mapSourceLocations : String -> SourceLocation -> List SourceLocation -> List ( String, Compiler.ErrorInSourceFile )
         mapSourceLocations message sourceLocation moreSourceLocations =
@@ -245,7 +255,7 @@ mapSource packageInfo dependencies sourceFiles =
                 ]
             }
     in
-    packageDefinitionFromSource packageInfo dependencies sourceFiles
+    packageDefinitionFromSource opts packageInfo dependencies sourceFiles
         |> Result.mapError
             (\errors ->
                 let
@@ -352,14 +362,18 @@ mapSource packageInfo dependencies sourceFiles =
 
 {-| Function that takes some package info and a list of sources and returns Morphir IR or errors.
 -}
-packageDefinitionFromSource : PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result Errors (Package.Definition SourceLocation SourceLocation)
-packageDefinitionFromSource packageInfo dependencies sourceFiles =
+packageDefinitionFromSource : Options -> PackageInfo -> Dict Path (Package.Specification ()) -> List SourceFile -> Result Errors (Package.Definition SourceLocation SourceLocation)
+packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
     let
         parseSources : List SourceFile -> Result Errors (List ( ModuleName, ParsedFile ))
         parseSources sources =
             sources
                 |> List.map
                     (\sourceFile ->
+                        let
+                            _ =
+                                Debug.log "Parsing source" sourceFile.path
+                        in
                         Elm.Parser.parse sourceFile.content
                             |> Result.map
                                 (\rawFile ->
@@ -432,6 +446,9 @@ packageDefinitionFromSource packageInfo dependencies sourceFiles =
         |> Result.andThen
             (\parsedFiles ->
                 let
+                    _ =
+                        Debug.log "Parsed sources" (parsedFiles |> List.length)
+
                     parsedFilesByModuleName =
                         parsedFiles
                             |> Dict.fromList
@@ -439,7 +456,7 @@ packageDefinitionFromSource packageInfo dependencies sourceFiles =
                 parsedFiles
                     |> treeShakeModules
                     |> sortModules
-                    |> Result.andThen (mapParsedFiles dependencies packageInfo.name parsedFilesByModuleName)
+                    |> Result.andThen (mapParsedFiles opts dependencies packageInfo.name parsedFilesByModuleName)
             )
         |> Result.map
             (\moduleDefs ->
@@ -459,8 +476,8 @@ packageDefinitionFromSource packageInfo dependencies sourceFiles =
             )
 
 
-mapParsedFiles : Dict Path (Package.Specification ()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
-mapParsedFiles dependencies currentPackagePath parsedModules sortedModuleNames =
+mapParsedFiles : Options -> Dict Path (Package.Specification ()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
+mapParsedFiles opts dependencies currentPackagePath parsedModules sortedModuleNames =
     let
         initialContext : ProcessContext
         initialContext =
@@ -489,7 +506,7 @@ mapParsedFiles dependencies currentPackagePath parsedModules sortedModuleNames =
                                     processContext
                                         |> Processing.addFile parsedFile.rawFile
                             in
-                            mapProcessedFile dependencies currentPackagePath (ProcessedFile parsedFile processedFile) modulesSoFar
+                            mapProcessedFile opts dependencies currentPackagePath (ProcessedFile parsedFile processedFile) modulesSoFar
                                 |> Result.map (Tuple.pair newProcessContext)
                         )
             )
@@ -497,8 +514,8 @@ mapParsedFiles dependencies currentPackagePath parsedModules sortedModuleNames =
         |> Result.map Tuple.second
 
 
-mapProcessedFile : Dict Path (Package.Specification ()) -> Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
-mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
+mapProcessedFile : Options -> Dict Path (Package.Specification ()) -> Path -> ProcessedFile -> Dict Path (Module.Definition SourceLocation SourceLocation) -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
+mapProcessedFile opts dependencies currentPackagePath processedFile modulesSoFar =
     let
         modulePath =
             processedFile.file.moduleDefinition
@@ -529,8 +546,12 @@ mapProcessedFile dependencies currentPackagePath processedFile modulesSoFar =
 
         valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation SourceLocation)))
         valuesResult =
-            mapDeclarationsToValue processedFile.parsedFile.sourceFile moduleExpose processedFile.file.declarations
-                |> Result.map Dict.fromList
+            if opts.typesOnly then
+                Ok Dict.empty
+
+            else
+                mapDeclarationsToValue processedFile.parsedFile.sourceFile moduleExpose processedFile.file.declarations
+                    |> Result.map Dict.fromList
 
         moduleResult : Result Errors (Module.Definition SourceLocation SourceLocation)
         moduleResult =
@@ -694,10 +715,11 @@ mapDeclarationsToType sourceFile expose decls =
                                             ctorArgsResult
                                                 |> Result.map
                                                     (\ctorArgs ->
-                                                        Type.Constructor ctorName ctorArgs
+                                                        ( ctorName, ctorArgs )
                                                     )
                                         )
                                     |> ListOfResults.liftAllErrors
+                                    |> Result.map Dict.fromList
                                     |> Result.mapError List.concat
 
                             doc =
@@ -887,7 +909,7 @@ mapExpression sourceFile (Node range exp) =
         sourceLocation =
             range |> SourceLocation sourceFile
     in
-    case fixAssociativity exp of
+    case exp of
         Expression.UnitExpr ->
             Ok (Value.Unit sourceLocation)
 
@@ -1144,11 +1166,19 @@ mapPattern sourceFile (Node range pattern) =
                         |> QName.fromName (qualifiedNameRef.moduleName |> List.map Name.fromString)
                         |> FQName.fromQName []
             in
-            argNodes
-                |> List.map (mapPattern sourceFile)
-                |> ListOfResults.liftAllErrors
-                |> Result.mapError List.concat
-                |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
+            case ( qualifiedNameRef.moduleName, qualifiedNameRef.name ) of
+                ( [], "True" ) ->
+                    Ok (Value.LiteralPattern sourceLocation (BoolLiteral True))
+
+                ( [], "False" ) ->
+                    Ok (Value.LiteralPattern sourceLocation (BoolLiteral False))
+
+                _ ->
+                    argNodes
+                        |> List.map (mapPattern sourceFile)
+                        |> ListOfResults.liftAllErrors
+                        |> Result.mapError List.concat
+                        |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
 
         Pattern.AsPattern subjectNode aliasNode ->
             mapPattern sourceFile subjectNode
@@ -1625,7 +1655,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                 (resolveVariablesAndReferences variablesDefNamesAndArgs moduleResolver def.body)
     in
     case value of
-        Value.Constructor sourceLocation (FQName [] modulePath localName) ->
+        Value.Constructor sourceLocation ( [], modulePath, localName ) ->
             moduleResolver.resolveCtor
                 (modulePath |> List.map Name.toTitleCase)
                 (localName |> Name.toTitleCase)
@@ -1635,8 +1665,8 @@ resolveVariablesAndReferences variables moduleResolver value =
                     )
                 |> Result.mapError (ResolveError sourceLocation >> List.singleton)
 
-        Value.Reference sourceLocation (FQName [] modulePath localName) ->
-            if variables |> Dict.member localName then
+        Value.Reference sourceLocation ( [], modulePath, localName ) ->
+            if List.isEmpty modulePath && (variables |> Dict.member localName) then
                 Ok (Value.Variable sourceLocation localName)
 
             else
@@ -1820,7 +1850,7 @@ resolvePatternReferences moduleResolver pattern =
                     |> Result.mapError List.concat
                 )
 
-        Value.ConstructorPattern sourceLocation (FQName [] modulePath localName) argPatterns ->
+        Value.ConstructorPattern sourceLocation ( [], modulePath, localName ) argPatterns ->
             Result.map2
                 (\resolvedFullName resolvedArgPatterns ->
                     Value.ConstructorPattern sourceLocation resolvedFullName resolvedArgPatterns
@@ -1852,25 +1882,6 @@ withAccessControl isExposed a =
 
     else
         private a
-
-
-{-| This is an incomplete fis for an associativity issue in elm-syntax.
-It only works when the operators are the same instead of relying on precedence equality.
-Consequently it also doesn't take mixed associativities into account.
--}
-fixAssociativity : Expression -> Expression
-fixAssociativity expr =
-    case expr of
-        Expression.OperatorApplication o d (Node lr l) (Node _ (Expression.OperatorApplication ro rd (Node rlr rl) (Node rrr rr))) ->
-            if (o == ro) && d == Infix.Left then
-                Expression.OperatorApplication o d (Node (Range.combine [ lr, rlr ]) (Expression.OperatorApplication ro rd (Node lr l) (Node rlr rl))) (Node rrr rr)
-                    |> fixAssociativity
-
-            else
-                expr
-
-        _ ->
-            expr
 
 
 withWellKnownOperators : ProcessContext -> ProcessContext

@@ -5,6 +5,9 @@
 const commander = require('commander')
 const cli = require('./cli')
 
+// logging
+require('log-timestamp')
+
 // Set up Commander
 const program = new commander.Command()
 program
@@ -12,10 +15,11 @@ program
     .description('Translate Elm sources to Morphir IR')
     .option('-p, --project-dir <path>', 'Root directory of the project where morphir.json is located.', '.')
     .option('-o, --output <path>', 'Target file location where the Morphir IR will be saved.', 'morphir-ir.json')
+    .option('-t, --types-only', 'Only include type information in the IR, no values.', false)
     .parse(process.argv)
 
 
-cli.make(program.projectDir)
+cli.make(program.projectDir, program.opts())
     .then((packageDef) => {
         console.log(`Writing file ${program.output}.`)
         cli.writeFile(program.output, JSON.stringify(packageDef, null, 4))
@@ -30,7 +34,11 @@ cli.make(program.projectDir)
         if (err.code == 'ENOENT') {
             console.error(`Could not find file at '${err.path}'`)
         } else {
-            console.error(`Error: ${JSON.stringify(err)}`)
+            if (err instanceof Error) {
+                console.error(err)
+            } else {
+                console.error(`Error: ${JSON.stringify(err, null, 2)}`)
+            }
         }
         process.exit(1)
     })

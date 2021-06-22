@@ -28,7 +28,7 @@ The GitHub action will take care of the rest. Here are the detailed steps:
     ```
 2. Build the CLI.
     ```
-    npm run make-cli
+    npm run build
     ```
 3. Run `np` for publishing.
     - If you don't have `np` installed yet, install it with `npm install -g np`

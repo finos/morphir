@@ -1,5 +1,6 @@
 module Morphir.Elm.Frontend.Codec exposing
-    ( decodePackageInfo
+    ( decodeOptions
+    , decodePackageInfo
     , encodeDeadEnd
     , encodeSourceFile
     , encodeError
@@ -9,6 +10,11 @@ module Morphir.Elm.Frontend.Codec exposing
     )
 
 {-| Codecs for types in the `Morphir.Elm.Frontend` module.
+
+
+# Options
+
+@docs decodeOptions
 
 
 # PackageInfo
@@ -49,13 +55,21 @@ module Morphir.Elm.Frontend.Codec exposing
 
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.Elm.Frontend exposing (ContentLocation, ContentRange, Error(..), PackageInfo, SourceFile, SourceLocation)
+import Morphir.Elm.Frontend exposing (ContentLocation, ContentRange, Error(..), Options, PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Resolve as Resolve
 import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Path as Path
 import Morphir.JsonExtra as JsonExtra
 import Parser exposing (DeadEnd)
 import Set
+
+
+{-| Decode Options.
+-}
+decodeOptions : Decode.Decoder Options
+decodeOptions =
+    Decode.map Options
+        (Decode.field "typesOnly" Decode.bool)
 
 
 {-| Encode PackageInfo.

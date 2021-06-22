@@ -1,6 +1,10 @@
-node_modules
 elm-stuff
+node_modules
+dist
 .vscode
 .idea
-dist/
+.metals/
 morphir-ir.json
+generated/
+out/
+redistributable/Scala

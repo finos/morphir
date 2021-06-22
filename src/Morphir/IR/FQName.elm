@@ -16,13 +16,13 @@
 
 
 module Morphir.IR.FQName exposing
-    ( FQName(..), fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn
-    , toString
+    ( FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn, toString
+    , fromString
     )
 
 {-| Module to work with fully-qualified names. A qualified name is a combination of a package path, a module path and a local name.
 
-@docs FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn
+@docs FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn, toString
 
 -}
 
@@ -34,42 +34,42 @@ import Morphir.IR.QName as QName exposing (QName)
 {-| Type that represents a fully-qualified name.
 The parameters are PackagePath ModulePath Name
 -}
-type FQName
-    = FQName Path Path Name
+type alias FQName =
+    ( Path, Path, Name )
 
 
 {-| Create a fully-qualified name.
 -}
 fQName : Path -> Path -> Name -> FQName
 fQName packagePath modulePath localName =
-    FQName packagePath modulePath localName
+    ( packagePath, modulePath, localName )
 
 
 {-| Create a fully-qualified from a qualified name.
 -}
 fromQName : Path -> QName -> FQName
 fromQName packagePath qName =
-    FQName packagePath (qName |> QName.getModulePath) (qName |> QName.getLocalName)
+    ( packagePath, qName |> QName.getModulePath, qName |> QName.getLocalName )
 
 
 {-| Get the package path part of a fully-qualified name.
 -}
 getPackagePath : FQName -> Path
-getPackagePath (FQName p _ _) =
+getPackagePath ( p, _, _ ) =
     p
 
 
 {-| Get the module path part of a fully-qualified name.
 -}
 getModulePath : FQName -> Path
-getModulePath (FQName _ m _) =
+getModulePath ( _, m, _ ) =
     m
 
 
 {-| Get the local name part of a fully-qualified name.
 -}
 getLocalName : FQName -> Name
-getLocalName (FQName _ _ l) =
+getLocalName ( _, _, l ) =
     l
 
 
@@ -83,10 +83,27 @@ fqn packageName moduleName localName =
         (Name.fromString localName)
 
 
+{-| Convert a fully-qualified name to a string
+-}
 toString : FQName -> String
-toString (FQName p m l) =
+toString ( p, m, l ) =
     String.join ":"
         [ Path.toString Name.toTitleCase "." p
         , Path.toString Name.toTitleCase "." m
         , Name.toCamelCase l
         ]
+
+
+{-| Parse a string into a FQName using splitter as the separator between package, module and local names.
+-}
+fromString : String -> String -> FQName
+fromString fqNameString splitter =
+    case fqNameString |> String.split splitter of
+        [ moduleNameString, packageNameString, localNameString ] ->
+            ( Path.fromString moduleNameString
+            , Path.fromString packageNameString
+            , Name.fromString localNameString
+            )
+
+        _ ->
+            ( [ [] ], [], [] )

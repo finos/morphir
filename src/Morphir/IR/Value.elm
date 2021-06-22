@@ -16,7 +16,7 @@
 
 
 module Morphir.IR.Value exposing
-    ( Value(..), literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
+    ( Value(..), RawValue, TypedValue, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
     , tuple, variable, ifThenElse, patternMatch, update, unit
     , mapValueAttributes
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
@@ -24,7 +24,7 @@ module Morphir.IR.Value exposing
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-    , definitionToValue
+    , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables
     )
 
 {-| In functional programming data and logic are treated the same way and we refer to both as values. This module
@@ -79,7 +79,7 @@ to find more details. Here are the Morphir IR snippets for the above values as a
 
 Value is the top level building block for data and logic. See the constructor functions below for details on each node type.
 
-@docs Value, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
+@docs Value, RawValue, TypedValue, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
 @docs tuple, variable, ifThenElse, patternMatch, update, unit
 @docs mapValueAttributes
 
@@ -113,7 +113,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 @docs definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-@docs definitionToValue
+@docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables
 
 -}
 
@@ -213,6 +213,25 @@ type Value ta va
     | PatternMatch va (Value ta va) (List ( Pattern va, Value ta va ))
     | UpdateRecord va (Value ta va) (List ( Name, Value ta va ))
     | Unit va
+
+
+{-| A value without any additional information.
+-}
+type alias RawValue =
+    Value () ()
+
+
+{-| Clear all type and value annotations to get a raw value.
+-}
+toRawValue : Value ta va -> RawValue
+toRawValue value =
+    value |> mapValueAttributes (always ()) (always ())
+
+
+{-| A value with type information.
+-}
+type alias TypedValue =
+    Value () (Type ())
 
 
 {-| Type that represents a pattern. A pattern can do two things: match on a specific shape or exact value and extract
@@ -647,6 +666,14 @@ collectValueAttributes v =
 
 
 {-| -}
+countValueNodes : Value ta va -> Int
+countValueNodes value =
+    value
+        |> collectValueAttributes
+        |> List.length
+
+
+{-| -}
 collectPatternAttributes : Pattern a -> List a
 collectPatternAttributes p =
     case p of
@@ -748,6 +775,41 @@ collectVariables value =
                 |> Set.union (collectVariables valueToUpdate)
 
         _ ->
+            Set.empty
+
+
+{-| Collect all variables in a pattern.
+-}
+collectPatternVariables : Pattern va -> Set Name
+collectPatternVariables pattern =
+    case pattern of
+        WildcardPattern _ ->
+            Set.empty
+
+        AsPattern _ subject name ->
+            collectPatternVariables subject
+                |> Set.insert name
+
+        TuplePattern _ elemPatterns ->
+            elemPatterns
+                |> List.map collectPatternVariables
+                |> List.foldl Set.union Set.empty
+
+        ConstructorPattern _ _ argPatterns ->
+            argPatterns
+                |> List.map collectPatternVariables
+                |> List.foldl Set.union Set.empty
+
+        EmptyListPattern _ ->
+            Set.empty
+
+        HeadTailPattern _ headPattern tailPattern ->
+            Set.union (collectPatternVariables headPattern) (collectPatternVariables tailPattern)
+
+        LiteralPattern _ _ ->
+            Set.empty
+
+        UnitPattern _ ->
             Set.empty
 
 
@@ -1031,6 +1093,71 @@ indexedMapListHelp f baseIndex elemList =
                 ( List.append elemsSoFar [ mappedElem ], lastIndex )
             )
             ( [], baseIndex )
+
+
+{-| Recursively rewrite a value using the supplied mapping function.
+-}
+rewriteValue : (Value ta va -> Maybe (Value ta va)) -> Value ta va -> Value ta va
+rewriteValue f value =
+    case f value of
+        Just newValue ->
+            newValue
+
+        Nothing ->
+            case value of
+                Tuple va elems ->
+                    Tuple va (elems |> List.map (rewriteValue f))
+
+                List va items ->
+                    List va (items |> List.map (rewriteValue f))
+
+                Record va fields ->
+                    Record va (fields |> List.map (\( n, v ) -> ( n, rewriteValue f v )))
+
+                Field va subject name ->
+                    Field va (rewriteValue f subject) name
+
+                Apply va fun arg ->
+                    Apply va (rewriteValue f fun) (rewriteValue f arg)
+
+                Lambda va pattern body ->
+                    Lambda va pattern (rewriteValue f body)
+
+                LetDefinition va defName def inValue ->
+                    LetDefinition va
+                        defName
+                        { def | body = rewriteValue f def.body }
+                        (rewriteValue f inValue)
+
+                LetRecursion va defs inValue ->
+                    LetRecursion va
+                        (defs |> Dict.map (\_ def -> { def | body = rewriteValue f def.body }))
+                        (rewriteValue f inValue)
+
+                Destructure va bindPattern bindValue inValue ->
+                    Destructure va
+                        bindPattern
+                        (rewriteValue f bindValue)
+                        (rewriteValue f inValue)
+
+                IfThenElse va condition thenBranch elseBranch ->
+                    IfThenElse va
+                        (rewriteValue f condition)
+                        (rewriteValue f thenBranch)
+                        (rewriteValue f elseBranch)
+
+                PatternMatch va subject cases ->
+                    PatternMatch va
+                        (rewriteValue f subject)
+                        (cases |> List.map (\( p, v ) -> ( p, rewriteValue f v )))
+
+                UpdateRecord va subject fields ->
+                    UpdateRecord va
+                        (rewriteValue f subject)
+                        (fields |> List.map (\( n, v ) -> ( n, rewriteValue f v )))
+
+                _ ->
+                    value
 
 
 
