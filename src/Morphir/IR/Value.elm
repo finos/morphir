@@ -24,7 +24,8 @@ module Morphir.IR.Value exposing
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-    , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables
+    , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData
+    , toString
     )
 
 {-| In functional programming data and logic are treated the same way and we refer to both as values. This module
@@ -113,14 +114,15 @@ which is just the specification of those. Value definitions can be typed or unty
 
 @docs definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-@docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables
+@docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData
 
 -}
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Literal exposing (Literal)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.ListOfResults as ListOfResults
 import Set exposing (Set)
@@ -1658,3 +1660,225 @@ uncurryApply fun lastArg =
 
         _ ->
             ( fun, [ lastArg ] )
+
+
+{-| Check if the value has any logic in it all is all just data.
+-}
+isData : Value ta va -> Bool
+isData value =
+    case value of
+        Literal _ _ ->
+            True
+
+        Constructor _ _ ->
+            True
+
+        Tuple _ elems ->
+            List.all isData elems
+
+        List _ items ->
+            List.all isData items
+
+        Record _ fields ->
+            fields
+                |> List.map Tuple.second
+                |> List.all isData
+
+        Apply _ fun arg ->
+            -- most Apply nodes will be logic but if it's a Constructor with arguments it is still considered data
+            isData fun && isData arg
+
+        Unit _ ->
+            True
+
+        _ ->
+            -- everything else is considered logic
+            False
+
+
+{-| Simple string version of a value tree. The output is mostly compatible with the Elm syntax except where Elm uses
+indentation to separate values. This representation uses semicolons in those places.
+-}
+toString : Value ta va -> String
+toString value =
+    let
+        literalToString : Literal -> String
+        literalToString lit =
+            case lit of
+                BoolLiteral bool ->
+                    if bool then
+                        "True"
+
+                    else
+                        "False"
+
+                CharLiteral char ->
+                    String.concat [ "'", String.fromChar char, "'" ]
+
+                StringLiteral string ->
+                    String.concat [ "\"", string, "\"" ]
+
+                IntLiteral int ->
+                    String.fromInt int
+
+                FloatLiteral float ->
+                    String.fromFloat float
+
+        patternToString : Pattern va -> String
+        patternToString pattern =
+            case pattern of
+                WildcardPattern _ ->
+                    "_"
+
+                AsPattern _ (WildcardPattern _) alias ->
+                    Name.toCamelCase alias
+
+                AsPattern _ subjectPattern alias ->
+                    String.concat [ patternToString subjectPattern, " as ", Name.toCamelCase alias ]
+
+                TuplePattern _ elems ->
+                    String.concat [ "( ", elems |> List.map patternToString |> String.join ", ", " )" ]
+
+                ConstructorPattern _ ( packageName, moduleName, localName ) argPatterns ->
+                    let
+                        constructorString =
+                            String.join "."
+                                [ Path.toString Name.toTitleCase "." packageName
+                                , Path.toString Name.toTitleCase "." moduleName
+                                , Name.toTitleCase localName
+                                ]
+                    in
+                    String.join " " (constructorString :: (argPatterns |> List.map patternToString))
+
+                EmptyListPattern _ ->
+                    "[]"
+
+                HeadTailPattern _ headPattern tailPattern ->
+                    String.concat [ patternToString headPattern, " :: ", patternToString tailPattern ]
+
+                LiteralPattern _ lit ->
+                    literalToString lit
+
+                UnitPattern _ ->
+                    "()"
+
+        valueToString : Value ta va -> String
+        valueToString v =
+            case v of
+                Literal _ lit ->
+                    literalToString lit
+
+                Constructor _ ( packageName, moduleName, localName ) ->
+                    String.join "."
+                        [ Path.toString Name.toTitleCase "." packageName
+                        , Path.toString Name.toTitleCase "." moduleName
+                        , Name.toTitleCase localName
+                        ]
+
+                Tuple _ elems ->
+                    String.concat [ "( ", elems |> List.map toString |> String.join ", ", " )" ]
+
+                List _ items ->
+                    String.concat [ "[ ", items |> List.map toString |> String.join ", ", " ]" ]
+
+                Record _ fields ->
+                    String.concat
+                        [ "{ "
+                        , fields
+                            |> List.map
+                                (\( fieldName, fieldValue ) ->
+                                    String.concat [ Name.toCamelCase fieldName, " = ", toString fieldValue ]
+                                )
+                            |> String.join ", "
+                        , " }"
+                        ]
+
+                Variable _ name ->
+                    Name.toCamelCase name
+
+                Reference _ ( packageName, moduleName, localName ) ->
+                    String.join "."
+                        [ Path.toString Name.toTitleCase "." packageName
+                        , Path.toString Name.toTitleCase "." moduleName
+                        , Name.toCamelCase localName
+                        ]
+
+                Field _ subject fieldName ->
+                    String.join "."
+                        [ valueToString subject
+                        , Name.toCamelCase fieldName
+                        ]
+
+                FieldFunction _ fieldName ->
+                    String.concat [ ".", Name.toCamelCase fieldName ]
+
+                Apply _ fun arg ->
+                    String.join " " [ toString fun, toString arg ]
+
+                Lambda _ argPattern body ->
+                    String.concat [ "(\\", patternToString argPattern, " -> ", valueToString body, ")" ]
+
+                LetDefinition _ name def inValue ->
+                    let
+                        args : List String
+                        args =
+                            def.inputTypes
+                                |> List.map (\( argName, _, _ ) -> Name.toCamelCase argName)
+                    in
+                    String.concat [ "let ", Name.toCamelCase name, String.join " " args, " = ", valueToString def.body, " in ", valueToString inValue ]
+
+                LetRecursion _ defs inValue ->
+                    let
+                        args : Definition ta va -> List String
+                        args def =
+                            def.inputTypes
+                                |> List.map (\( argName, _, _ ) -> Name.toCamelCase argName)
+
+                        defStrings : List String
+                        defStrings =
+                            defs
+                                |> Dict.toList
+                                |> List.map
+                                    (\( name, def ) ->
+                                        String.concat [ Name.toCamelCase name, String.join " " (args def), " = ", valueToString def.body ]
+                                    )
+                    in
+                    String.concat [ "let ", String.join "; " defStrings, " in ", valueToString inValue ]
+
+                Destructure _ bindPattern bindValue inValue ->
+                    String.concat [ "let ", patternToString bindPattern, " = ", valueToString bindValue, " in ", valueToString inValue ]
+
+                IfThenElse _ cond thenBranch elseBranch ->
+                    String.concat [ "if ", valueToString cond, " then ", valueToString thenBranch, " else ", valueToString elseBranch ]
+
+                PatternMatch _ subject cases ->
+                    String.concat
+                        [ "case "
+                        , valueToString subject
+                        , " of "
+                        , cases
+                            |> List.map
+                                (\( casePattern, caseBody ) ->
+                                    String.concat [ patternToString casePattern, " -> ", valueToString caseBody ]
+                                )
+                            |> String.join "; "
+                        ]
+
+                UpdateRecord _ subject fields ->
+                    String.concat
+                        [ "{ "
+                        , valueToString subject
+                        , " | "
+                        , fields
+                            |> List.map
+                                (\( fieldName, fieldValue ) ->
+                                    String.concat [ Name.toCamelCase fieldName, " = ", toString fieldValue ]
+                                )
+                            |> String.join ", "
+                        , " }"
+                        ]
+
+                Unit _ ->
+                    "()"
+    in
+    valueToString value
