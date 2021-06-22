@@ -30,12 +30,12 @@ import Dict exposing (Dict)
 import List.Extra exposing (uniqueBy)
 import Morphir.IR.AccessControlled exposing (withPublicAccess)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
-import Morphir.IR.FQName as FQName exposing (FQName(..))
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
-import Morphir.IR.Type as Type exposing (Constructor(..), Specification(..), Type(..))
+import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value(..))
 
 
@@ -176,7 +176,7 @@ mapTypeDefinition : Package.PackageName -> Module.ModuleName -> Name -> Type.Def
 mapTypeDefinition packageName moduleName typeName typeDef =
     let
         fqn =
-            FQName packageName moduleName typeName
+            ( packageName, moduleName, typeName )
 
         edges =
             case typeDef of
@@ -192,7 +192,7 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                                     (\field ->
                                         let
                                             fieldNode =
-                                                Field (FQName packageName moduleName typeName) field.name
+                                                Field ( packageName, moduleName, typeName ) field.name
 
                                             fieldType =
                                                 case field.tpe of
@@ -239,17 +239,16 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                             asEnum typeDef
                                 |> List.map
                                     (\name ->
-                                        EdgeEntry (Edge typeNode Enumerates (Enum (FQName (FQName.getPackagePath fqn) (FQName.getModulePath fqn) name)))
+                                        EdgeEntry (Edge typeNode Enumerates (Enum ((FQName.getPackagePath fqn), (FQName.getModulePath fqn), name)))
                                     )
 
                         unions =
                             case accessControlledCtors |> withPublicAccess of
-                                Just constructors ->
-                                    constructors
+                                Just ctors ->
+                                    ctors
+                                        |> Dict.toList
                                         |> List.map
-                                            (\constructor ->
-                                                case constructor of
-                                                    Type.Constructor _ namesAndTypes ->
+                                            (\( _, namesAndTypes ) ->
                                                         -- If this is a simple enum, extract the values
                                                         -- Otherwise, it's a complex union
                                                         namesAndTypes
@@ -337,7 +336,7 @@ mapValueDefinition packageName moduleName valueName valueDef nodeRegistry =
                     ]
 
         functionFqn =
-            FQName packageName moduleName valueName
+            ( packageName, moduleName, valueName )
 
         functionNode =
             Function functionFqn
@@ -539,7 +538,7 @@ nodeFQN node =
             fqn
 
         Unknown s ->
-            FQName [] [] [ s ]
+            ( [], [], [ s ] )
 
 
 {-| Utility for dealing with comparable.
@@ -669,3 +668,4 @@ graphEntryToComparable entry =
 
         EdgeEntry edge ->
             "EdgeEntry: " ++ edgeToString edge
+
