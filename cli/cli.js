@@ -17,7 +17,7 @@ async function make(projectDir, options) {
     const morphirJsonPath = path.join(projectDir, 'morphir.json')
     const morphirJsonContent = await readFile(morphirJsonPath)
     const morphirJson = JSON.parse(morphirJsonContent.toString())
-    const sourceFiles = readElmSources(path.join(projectDir, morphirJson.sourceDirectory))
+    const sourceFiles = await readElmSources(path.join(projectDir, morphirJson.sourceDirectory))
     return packageDefinitionFromSource(morphirJson, sourceFiles, options)
 }
 
