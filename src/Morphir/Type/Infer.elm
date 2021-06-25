@@ -2,7 +2,7 @@ module Morphir.Type.Infer exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.Compiler as Compiler
-import Morphir.IR exposing (IR)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -155,7 +155,7 @@ typeErrorToMessage typeError =
 
 
 inferValueDefinition : IR -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
-inferValueDefinition refs def =
+inferValueDefinition ir def =
     let
         ( annotatedDef, lastVarIndex ) =
             annotateDefinition 1 def
@@ -166,7 +166,7 @@ inferValueDefinition refs def =
                 cs =
                     constrainDefinition
                         (MetaType.variableByIndex 0)
-                        refs
+                        ir
                         Dict.empty
                         annotatedDef
 
@@ -177,13 +177,13 @@ inferValueDefinition refs def =
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
         solution =
-            solve refs constraints
+            solve ir constraints
 
         _ =
             Debug.log "Generated solutions" (solution |> Result.map (Tuple.second >> Solve.toList) |> Result.withDefault [] |> List.length)
     in
     solution
-        |> Result.map (applySolutionToAnnotatedDefinition annotatedDef)
+        |> Result.map (applySolutionToAnnotatedDefinition ir annotatedDef)
 
 
 inferValue : IR -> Value () va -> Result TypeError (TypedValue va)
@@ -203,7 +203,7 @@ inferValue ir untypedValue =
             solve ir constraints
     in
     solution
-        |> Result.map (applySolutionToAnnotatedValue annotatedValue)
+        |> Result.map (applySolutionToAnnotatedValue ir annotatedValue)
 
 
 annotateDefinition : Int -> Value.Definition ta va -> ( Value.Definition ta ( va, Variable ), Int )
@@ -1007,8 +1007,8 @@ validateConstraints constraints =
         |> Result.mapError typeErrors
 
 
-applySolutionToAnnotatedDefinition : Value.Definition ta ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> Value.Definition ta ( va, Type () )
-applySolutionToAnnotatedDefinition annotatedDef ( residualConstraints, solutionMap ) =
+applySolutionToAnnotatedDefinition : IR -> Value.Definition ta ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> Value.Definition ta ( va, Type () )
+applySolutionToAnnotatedDefinition ir annotatedDef ( residualConstraints, solutionMap ) =
     annotatedDef
         |> Value.mapDefinitionAttributes identity
             (\( va, metaVar ) ->
@@ -1019,11 +1019,11 @@ applySolutionToAnnotatedDefinition annotatedDef ( residualConstraints, solutionM
                     |> Maybe.withDefault (metaVar |> MetaType.toName |> Type.Variable ())
                 )
             )
-        |> (\valDef -> { valDef | body = valDef.body |> fixNumberLiterals })
+        |> (\valDef -> { valDef | body = valDef.body |> fixNumberLiterals ir })
 
 
-applySolutionToAnnotatedValue : Value () ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> TypedValue va
-applySolutionToAnnotatedValue annotatedValue ( residualConstraints, solutionMap ) =
+applySolutionToAnnotatedValue : IR -> Value () ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> TypedValue va
+applySolutionToAnnotatedValue ir annotatedValue ( residualConstraints, solutionMap ) =
     annotatedValue
         |> Value.mapValueAttributes identity
             (\( va, metaVar ) ->
@@ -1034,17 +1034,17 @@ applySolutionToAnnotatedValue annotatedValue ( residualConstraints, solutionMap 
                     |> Maybe.withDefault (metaVar |> MetaType.toName |> Type.Variable ())
                 )
             )
-        |> fixNumberLiterals
+        |> fixNumberLiterals ir
 
 
-fixNumberLiterals : Value ta ( va, Type () ) -> Value ta ( va, Type () )
-fixNumberLiterals typedValue =
+fixNumberLiterals : IR -> Value ta ( va, Type () ) -> Value ta ( va, Type () )
+fixNumberLiterals ir typedValue =
     typedValue
         |> Value.rewriteValue
             (\value ->
                 case value of
                     Value.Literal ( va, tpe ) (IntLiteral v) ->
-                        if tpe == floatType () then
+                        if (ir |> IR.resolveType tpe) == floatType () then
                             Value.Literal ( va, tpe ) (FloatLiteral (toFloat v)) |> Just
 
                         else

@@ -23,7 +23,11 @@ int input =
 
 float : Float -> Float
 float input =
-    input
+    if input == 0 then
+        0
+
+    else
+        input
 
 
 type alias Price =
@@ -32,7 +36,11 @@ type alias Price =
 
 priceAlias : Price -> Price
 priceAlias price =
-    price
+    if price == 0 then
+        0
+
+    else
+        price
 
 
 record1 : { boolField : Bool } -> Bool
