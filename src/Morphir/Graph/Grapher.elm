@@ -280,27 +280,24 @@ mapTypeDefinition packageName moduleName typeName typeDef =
     edges
 
 
+isEnum : Dict a (List b) -> Bool
+isEnum constructors =
+    constructors
+        |> Dict.toList
+        |> List.all
+            (\(name, args) ->
+                List.isEmpty args
+            )
+
 asEnum : Type.Definition ta -> List Name
 asEnum typeDef =
     case typeDef of
         Type.CustomTypeDefinition _ accessControlledCtors ->
             case accessControlledCtors |> withPublicAccess of
                 Just constructors ->
-                    let
-                        enumOptions =
-                            constructors
-                                |> List.filterMap
-                                    (\constructor ->
-                                        case constructor of
-                                            Type.Constructor name [] ->
-                                                Just name
-
-                                            _ ->
-                                                Nothing
-                                    )
-                    in
-                    if List.length enumOptions == List.length constructors then
-                        enumOptions
+                    if isEnum constructors then
+                        constructors
+                            |> Dict.keys
 
                     else
                         []
