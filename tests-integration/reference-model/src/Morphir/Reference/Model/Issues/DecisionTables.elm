@@ -166,16 +166,17 @@ variableEnumPatternMatch =
             5
 
 
+type alias Record =
+    { x : Int
+    , y : Int
+    }
 
---type alias Record =
---    { x : Int
---    , y : Int
---    }
---recordPatternMatch : Record -> String
---recordPatternMatch record =
---    case record of
---        { x, y } -> <-- not supported in morphir
---            "3"
---
---        _ ->
---            "pass"
+
+recordPatternMatch : Record -> String
+recordPatternMatch record =
+    case record.x of
+        1 ->
+            "3"
+
+        _ ->
+            "pass"
