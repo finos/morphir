@@ -85,11 +85,12 @@ basicRecordOne =
     }
 
 
-basicRecordMany : { foo : String, bar : Bool, baz : Int }
+basicRecordMany : { foo : String, bar : Bool, baz : Int, record : { foo : String } }
 basicRecordMany =
     { foo = "bar"
     , bar = False
     , baz = 15
+    , record = basicRecordOne
     }
 
 
