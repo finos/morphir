@@ -1,4 +1,7 @@
-module Morphir.Value.Interpreter exposing (evaluate, evaluateValue, evaluateFunctionValue)
+module Morphir.Value.Interpreter exposing
+    ( evaluate, evaluateValue, evaluateFunctionValue
+    , matchPattern
+    )
 
 {-| This module contains an interpreter for Morphir expressions. The interpreter takes a piece of logic as input,
 evaluates it and returns the resulting data. In Morphir both logic and data is captured as a `Value` so the interpreter
