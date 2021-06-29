@@ -20,6 +20,7 @@ inlineOperators =
         , ( "Basics.lessThanOrEqual", "<=" )
         , ( "Basics.greaterThan", ">" )
         , ( "Basics.greaterThanOrEqual", ">=" )
+        , ( "Basics.append", "++" )
         , ( "Basics.power", "^" )
         , ( "Basics.composeLeft", "<|" )
         , ( "Basics.composeRight", "|>" )
@@ -32,3 +33,9 @@ mapOperators operatorName =
     inlineOperators
         |> Dict.get operatorName
         |> Maybe.withDefault operatorName
+        |> appendBraces
+
+
+appendBraces : String -> String
+appendBraces string =
+    "(" ++ string ++ ")"
