@@ -31,7 +31,6 @@ import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue, rawToVisualTypedValue, typedToVisualTypedValue)
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.Theme.Light exposing (black, gray, white)
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
@@ -65,8 +64,8 @@ viewDefinition config ( _, _, valueName ) valueDef =
                                     [ Font.bold
                                     , Border.solid
                                     , Border.rounded 3
-                                    , Background.color black
-                                    , Font.color white
+                                    , Background.color config.state.theme.colors.lightest
+                                    , Font.color config.state.theme.colors.darkest
                                     , smallPadding config.state.theme |> padding
                                     , smallSpacing config.state.theme |> spacing
                                     , onClick (config.handlers.onReferenceClicked fqName True)
@@ -221,6 +220,9 @@ viewValueByLanguageFeature config value =
                 Value.PatternMatch tpe param patterns ->
                     ViewPatternMatch.view config (viewValue config) param patterns
 
+                Value.Unit _ ->
+                    el [] (text "not set")
+
                 other ->
                     Element.column
                         [ Background.color (rgb 1 0.6 0.6)
@@ -246,53 +248,39 @@ viewValueByLanguageFeature config value =
 
 viewPopup : Config msg -> Element msg
 viewPopup config =
-    Element.column []
-        [ case config.state.popupVariables.variableValue of
-            Just rawValue ->
+    config.state.popupVariables.variableValue
+        |> Maybe.map
+            (\rawValue ->
                 let
                     visualTypedVal : Result TypeError VisualTypedValue
                     visualTypedVal =
                         rawToVisualTypedValue (IR.fromDistribution config.irContext.distribution) rawValue
+
+                    popUpStyle : Element msg -> Element msg
+                    popUpStyle element =
+                        el
+                            [ Border.shadow
+                                { offset = ( 2, 2 )
+                                , size = 2
+                                , blur = 2
+                                , color = config.state.theme.colors.darkest
+                                }
+                            , Background.color config.state.theme.colors.lightest
+                            , Font.bold
+                            , Font.color config.state.theme.colors.darkest
+                            , Border.rounded 4
+                            , Font.center
+                            , mediumPadding config.state.theme |> padding
+                            , htmlAttribute (style "position" "absolute")
+                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
+                            ]
+                            element
                 in
                 case visualTypedVal of
                     Ok visualTypedValue ->
-                        el
-                            [ Border.shadow
-                                { offset = ( 2, 2 )
-                                , size = 2
-                                , blur = 2
-                                , color = gray
-                                }
-                            , Background.color black
-                            , Font.bold
-                            , Font.color white
-                            , Border.rounded 4
-                            , Font.center
-                            , mediumPadding config.state.theme |> padding
-                            , htmlAttribute (style "position" "absolute")
-                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
-                            ]
-                            (viewValue config visualTypedValue)
+                        popUpStyle (viewValue config visualTypedValue)
 
                     Err error ->
-                        el
-                            [ Border.shadow
-                                { offset = ( 2, 2 )
-                                , size = 2
-                                , blur = 2
-                                , color = gray
-                                }
-                            , Background.color black
-                            , Font.bold
-                            , Font.color white
-                            , Border.rounded 4
-                            , Font.center
-                            , mediumPadding config.state.theme |> padding
-                            , htmlAttribute (style "position" "absolute")
-                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
-                            ]
-                            (text (Infer.typeErrorToMessage error))
-
-            Nothing ->
-                el [] (text "")
-        ]
+                        popUpStyle (text (Infer.typeErrorToMessage error))
+            )
+        |> Maybe.withDefault (el [] (text ""))

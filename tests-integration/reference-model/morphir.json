@@ -8,6 +8,7 @@
         "ValueEditors",
         "Formulas",
         "Insight.UseCase1",
+        "Presentations.UKFintechMeetup",
         "Issues.Issue210",
         "Issues.Issue227",
         "Issues.Issue273",
@@ -25,6 +26,9 @@
         "Issues.DecisionTables",
         "Issues.PatternModel.BasicEnum",
         "Issues.PatternModel.OtherBasicEnum",
-        "Issues.Issue410"
+        "Issues.Issue409",
+        "Issues.Issue410",
+        "Issues.Issue448",
+        "Issues.Issue450"
     ]
 }
