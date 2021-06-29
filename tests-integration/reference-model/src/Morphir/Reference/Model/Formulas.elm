@@ -1,10 +1,7 @@
 module Morphir.Reference.Model.Formulas exposing (..)
 
 
-lawOfGravitation :
-    Float
-    -> Float
-    -> Float -- not perfect
+lawOfGravitation : Float -> Float -> Float
 lawOfGravitation f1 f2 =
     (f1 + f2) * 10
 

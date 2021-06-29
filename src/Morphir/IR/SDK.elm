@@ -27,6 +27,7 @@ import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Char
 import Morphir.IR.SDK.Decimal as Decimal
 import Morphir.IR.SDK.Dict as Dict
+import Morphir.IR.SDK.Int as Int
 import Morphir.IR.SDK.Key as Key
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.LocalDate as LocalDate
@@ -36,6 +37,7 @@ import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.Regex as Regex
 import Morphir.IR.SDK.Result as Result
 import Morphir.IR.SDK.Rule as Rule
+import Morphir.IR.SDK.SDKNativeFunctions as SDKNativeFunctions
 import Morphir.IR.SDK.Set as Set
 import Morphir.IR.SDK.StatefulApp as StatefulApp
 import Morphir.IR.SDK.String as String
@@ -67,7 +69,7 @@ packageSpec =
             , ( [ [ "stateful", "app" ] ], StatefulApp.moduleSpec )
             , ( [ [ "rule" ] ], Rule.moduleSpec )
             , ( [ [ "decimal" ] ], Decimal.moduleSpec )
-            , ( [ [ "int" ] ], Decimal.moduleSpec )
+            , ( [ [ "int" ] ], Int.moduleSpec )
             , ( [ [ "number" ] ], Number.moduleSpec )
             , ( [ [ "key" ] ], Key.moduleSpec )
             , ( [ [ "aggregate" ] ], Aggregate.moduleSpec )
@@ -88,8 +90,13 @@ nativeFunctions =
                 |> Dict.fromList
     in
     List.foldl Dict.union
-        Dict.empty
+        (SDKNativeFunctions.nativeFunctions
+            |> List.map
+                (\( moduleName, localName, fun ) ->
+                    ( ( packageName, Path.fromString moduleName, Name.fromString localName ), fun )
+                )
+            |> Dict.fromList
+        )
         [ moduleFunctions "Basics" Basics.nativeFunctions
-        , moduleFunctions "String" String.nativeFunctions
         , moduleFunctions "List" List.nativeFunctions
         ]
