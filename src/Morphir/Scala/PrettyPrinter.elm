@@ -370,6 +370,9 @@ mapType opt tpe =
 
         FunctionType argType returnType ->
             (case argType of
+                TupleType _ ->
+                    parens (mapType opt argType)
+
                 FunctionType _ _ ->
                     parens (mapType opt argType)
 
