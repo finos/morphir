@@ -1,9 +1,9 @@
 module Morphir.Value.Native exposing
     ( Function
     , Eval
-    , unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval1, eval2
+    , unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
     , floatLiteral, intLiteral, oneOf, stringLiteral
-    , decodeFun1, decodeList, decodeLiteral, decodeRaw, encodeList, encodeLiteral, encodeRaw, encodeResultList
+    , decodeFun1, decodeList, decodeLiteral, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeRaw, encodeResultList, encodeTuple2
     )
 
 {-| This module contains an API and some tools to implement native functions. Native functions are functions that are
@@ -36,12 +36,13 @@ example the predicate in a `filter` will need to be evaluated on each item in th
 
 Various utilities to help with implementing native functions.
 
-@docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval1, eval2, expectFun1
+@docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3, expectFun1
 @docs expectList, expectLiteral, floatLiteral, intLiteral, oneOf, returnList, returnLiteral, returnResultList, stringLiteral
 
 -}
 
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
@@ -205,6 +206,25 @@ decodeList decodeItem eval value =
             Err error
 
 
+encodeTuple2 : ( Encode a, Encode b ) -> ( a, b ) -> Result Error RawValue
+encodeTuple2 ( encodeA, encodeB ) ( a, b ) =
+    encodeB b
+        |> Result.map2 (\a1 b1 -> Value.Tuple () [ a1, b1 ]) (encodeA a)
+
+
+decodeTuple2 : ( Decoder a, Decoder b ) -> Decoder ( a, b )
+decodeTuple2 ( decodeA, decodeB ) eval value =
+    case eval value of
+        Ok (Value.Tuple _ [ val1, val2 ]) ->
+            Result.map2 (\a1 b1 -> ( a1, b1 )) (decodeA eval val1) (decodeB eval val2)
+
+        Ok _ ->
+            Err (ExpectedLiteral value)
+
+        Err error ->
+            Err error
+
+
 {-| -}
 decodeFun1 : Encode a -> Decoder r -> Decoder (a -> Result Error r)
 decodeFun1 encodeA decodeR eval fun =
@@ -287,9 +307,33 @@ encodeResultList listOfValueResults =
 
 
 {-| -}
-encodeList : List RawValue -> Result Error RawValue
-encodeList list =
-    Ok (Value.List () list)
+encodeList : Encode a -> List a -> Result Error RawValue
+encodeList encodeA list =
+    list
+        |> List.map encodeA
+        |> ListOfResults.liftFirstError
+        |> Result.map (Value.List ())
+
+
+encodeMaybe : Encode a -> Maybe a -> Result Error RawValue
+encodeMaybe encodeA maybe =
+    case maybe of
+        Just a ->
+            encodeA a |> Result.map (Maybe.just ())
+
+        Nothing ->
+            Ok (Maybe.nothing ())
+
+
+eval0 : r -> Encode r -> Function
+eval0 r encodeR =
+    \eval args ->
+        case args of
+            [] ->
+                encodeR r
+
+            _ ->
+                Err (UnexpectedArguments args)
 
 
 {-| -}
@@ -312,14 +356,32 @@ eval2 : (a -> b -> r) -> Decoder a -> Decoder b -> Encode r -> Function
 eval2 f decodeA decodeB encodeR eval args =
     case args of
         [ arg1, arg2 ] ->
-            Result.andThen identity
-                (Result.map2
-                    (\a b ->
-                        encodeR (f a b)
+            decodeA eval arg1
+                |> Result.andThen
+                    (\a ->
+                        decodeB eval arg2
+                            |> Result.andThen
+                                (\b -> encodeR (f a b))
                     )
-                    (decodeA eval arg1)
-                    (decodeB eval arg2)
-                )
+
+        _ ->
+            Err (UnexpectedArguments args)
+
+
+eval3 : (a -> b -> c -> r) -> Decoder a -> Decoder b -> Decoder c -> Encode r -> Function
+eval3 f decodeA decodeB decodeC encodeR eval args =
+    case args of
+        [ arg1, arg2, arg3 ] ->
+            decodeA eval arg1
+                |> Result.andThen
+                    (\a ->
+                        decodeB eval arg2
+                            |> Result.andThen
+                                (\b ->
+                                    decodeC eval arg3
+                                        |> Result.andThen (\c -> encodeR (f a b c))
+                                )
+                    )
 
         _ ->
             Err (UnexpectedArguments args)

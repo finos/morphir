@@ -19,7 +19,6 @@ module Morphir.IR.SDK.String exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
@@ -29,10 +28,6 @@ import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
-import Morphir.ListOfResults as ListOfResults
-import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native
 
 
 moduleName : ModuleName
@@ -80,9 +75,9 @@ moduleSpec =
             , vSpec "fromList" [ ( "a", listType () (charType ()) ) ] (stringType ())
             , vSpec "toUpper" [ ( "s", stringType () ) ] (stringType ())
             , vSpec "toLower" [ ( "s", stringType () ) ] (stringType ())
-            , vSpec "pad" [ ( "n", intType () ), ( "s", stringType () ) ] (stringType ())
-            , vSpec "padLeft" [ ( "n", intType () ), ( "s", stringType () ) ] (stringType ())
-            , vSpec "padRight" [ ( "n", intType () ), ( "s", stringType () ) ] (stringType ())
+            , vSpec "pad" [ ( "n", intType () ), ( "ch", charType () ), ( "s", stringType () ) ] (stringType ())
+            , vSpec "padLeft" [ ( "n", intType () ), ( "ch", charType () ), ( "s", stringType () ) ] (stringType ())
+            , vSpec "padRight" [ ( "n", intType () ), ( "ch", charType () ), ( "s", stringType () ) ] (stringType ())
             , vSpec "trim" [ ( "s", stringType () ) ] (stringType ())
             , vSpec "trimLeft" [ ( "s", stringType () ) ] (stringType ())
             , vSpec "trimRight" [ ( "s", stringType () ) ] (stringType ())
@@ -99,34 +94,3 @@ moduleSpec =
 stringType : a -> Type a
 stringType attributes =
     Reference attributes (toFQName moduleName "String") []
-
-
-nativeFunctions : List ( String, Native.Function )
-nativeFunctions =
-    [ ( "concat"
-      , Native.unaryStrict
-            (\eval arg ->
-                case arg of
-                    Value.List _ value ->
-                        value
-                            |> List.map
-                                (\listItem ->
-                                    eval listItem
-                                        |> Result.andThen
-                                            (\evaluatedListItem ->
-                                                case evaluatedListItem of
-                                                    Value.Literal _ (StringLiteral argument) ->
-                                                        Ok argument
-
-                                                    _ ->
-                                                        Err (UnexpectedArguments [ arg ])
-                                            )
-                                )
-                            |> ListOfResults.liftFirstError
-                            |> Result.map (String.concat >> StringLiteral >> Value.Literal ())
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg ])
-            )
-      )
-    ]

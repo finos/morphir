@@ -23,7 +23,11 @@ int input =
 
 float : Float -> Float
 float input =
-    input
+    if input == 0 then
+        0
+
+    else
+        input
 
 
 type alias Price =
@@ -32,7 +36,11 @@ type alias Price =
 
 priceAlias : Price -> Price
 priceAlias price =
-    price
+    if price == 0 then
+        0
+
+    else
+        price
 
 
 record1 : { boolField : Bool } -> Bool
@@ -45,14 +53,14 @@ record2 input =
     input.boolField
 
 
-record3 : { boolField : Bool, intField : Int, floatField : Float } -> Bool
+record3 : { boolField : Bool, intField : Int, floatField : Float } -> Int
 record3 input =
-    input.boolField
+    input.intField
 
 
-record4 : { boolField : Bool, intField : Int, floatField : Float } -> { boolField : Bool, intField : Int } -> Bool
+record4 : { boolField : Bool, intField : Int, floatField : Float } -> { boolField : Bool, intField : Int } -> Float
 record4 foo bar =
-    foo.boolField
+    foo.floatField
 
 
 record5 : { foo : { boolField : Bool, intField : Int, floatField : Float }, bar : { boolField : Bool, intField : Int } } -> Bool
