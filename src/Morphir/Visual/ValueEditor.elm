@@ -40,9 +40,10 @@ import Element.Input as Input exposing (placeholder)
 import Html
 import Html.Attributes
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.FQName as FQName
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Basics
 import Morphir.IR.SDK.String as Basics
@@ -88,7 +89,7 @@ type ComponentState
     = TextEditor String
     | BoolEditor (Maybe Bool)
     | RecordEditor (Dict Name ( Type (), EditorState ))
-    | CustomEditor String (Type.Constructors ()) (List ( Name, List ( Name, Type () ) ))
+    | CustomEditor String (Type.Constructors ()) (List ( Name, List ( Name, Type () ) )) Path Path
 
 
 type alias Error =
@@ -146,7 +147,7 @@ initComponentState ir valueType maybeInitialValue =
                                         initTextEditor maybeInitialValue
 
                                     Type.CustomTypeSpecification _ constructors ->
-                                        initCustomEditor ir constructors maybeInitialValue
+                                        initCustomEditor ir fQName constructors maybeInitialValue
 
                             Nothing ->
                                 initTextEditor maybeInitialValue
@@ -232,9 +233,9 @@ initRecordEditor ir fieldTypes maybeInitialValue =
 
 {-| Creates a component state for a custom type editor with an optional error.
 -}
-initCustomEditor : IR -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
-initCustomEditor _ constructors _ =
-    ( Nothing, CustomEditor "" constructors [] )
+initCustomEditor : IR -> FQName -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initCustomEditor _ ( packageName, moduleName, _ ) constructors _ =
+    ( Nothing, CustomEditor "" constructors [] packageName moduleName )
 
 
 {-| Display the editor. It takes the following inputs:
@@ -411,7 +412,7 @@ view ir valueType updateEditorState editorState =
                     )
                 )
 
-        CustomEditor searchText allConstructors selectedConstructors ->
+        CustomEditor searchText allConstructors selectedConstructors packageName moduleName ->
             let
                 dataListID =
                     case valueType of
@@ -430,10 +431,17 @@ view ir valueType updateEditorState editorState =
                     ]
                     { onChange =
                         \updatedText ->
+                            let
+                                constructorResult : Result String RawValue
+                                constructorResult =
+                                    Ok (Value.Constructor () ( packageName, moduleName, Name.fromString updatedText ))
+                            in
                             updateEditorState
-                                { editorState
-                                    | componentState = CustomEditor updatedText allConstructors selectedConstructors
-                                }
+                                (applyResult constructorResult
+                                    { editorState
+                                        | componentState = CustomEditor updatedText allConstructors selectedConstructors packageName moduleName
+                                    }
+                                )
                     , text = searchText
                     , placeholder =
                         Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
