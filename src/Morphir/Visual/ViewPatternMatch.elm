@@ -44,7 +44,7 @@ toDecisionTable config subject matches =
 
         highlights : List (List HighlightState)
         highlights =
-            Debug.log "states" (getHighlightStates config decomposedInput rules)
+            getHighlightStates config decomposedInput rules
     in
     { decomposeInput = decomposedInput
     , rules = List.map2 (\rows highlightStates -> Rule (Tuple.first rows) (Tuple.second rows) highlightStates) rules highlights
@@ -139,9 +139,6 @@ comparePreviousHighlightStates config matches previousStates =
                 [] ->
                     []
 
-        debug =
-            Debug.log "Most Recent Row" mostRecentRow
-
         nextMatches : List HighlightState
         nextMatches =
             --check whether the previous row is either untouched or fully matched, meaning we should stop checking highlight logic.
@@ -165,9 +162,6 @@ comparePreviousHighlightStates config matches previousStates =
 
                 [] ->
                     let
-                        debugResult =
-                            Debug.log "result []" []
-
                         nextStates : List HighlightState
                         nextStates =
                             List.foldl (getNextHighlightState config) [] matches
