@@ -87,7 +87,7 @@ type alias EditorState =
 type ComponentState
     = TextEditor String
     | BoolEditor (Maybe Bool)
-    | RecordEditor (List ( Name, Type (), EditorState ))
+    | RecordEditor (Dict Name ( Type (), EditorState ))
     | CustomEditor String (Type.Constructors ()) (List ( Name, List ( Name, Type () ) ))
 
 
@@ -209,10 +209,12 @@ initRecordEditor ir fieldTypes maybeInitialValue =
                     |> List.map
                         (\field ->
                             ( field.name
-                            , field.tpe
-                            , initEditorState ir field.tpe (initialFieldValues |> Dict.get field.name)
+                            , ( field.tpe
+                              , initEditorState ir field.tpe (initialFieldValues |> Dict.get field.name)
+                              )
                             )
                         )
+                    |> Dict.fromList
                 )
     in
     case maybeInitialValue of
@@ -351,8 +353,9 @@ view ir valueType updateEditorState editorState =
                 ]
                 (FieldList.view
                     (fieldEditorStates
+                        |> Dict.toList
                         |> List.map
-                            (\( fieldName, fieldType, fieldEditorState ) ->
+                            (\( fieldName, ( fieldType, fieldEditorState ) ) ->
                                 ( fieldName
                                 , el
                                     [ width fill
@@ -362,21 +365,44 @@ view ir valueType updateEditorState editorState =
                                     (view ir
                                         fieldType
                                         (\newFieldEditorState ->
-                                            updateEditorState
-                                                { editorState
-                                                    | componentState =
-                                                        RecordEditor
-                                                            (fieldEditorStates
-                                                                |> List.map
-                                                                    (\( currentFieldName, currentFieldType, currentFieldEditorState ) ->
-                                                                        if fieldName == currentFieldName then
-                                                                            ( currentFieldName, currentFieldType, newFieldEditorState )
+                                            let
+                                                newFieldEditorStates : Dict Name ( Type (), EditorState )
+                                                newFieldEditorStates =
+                                                    fieldEditorStates
+                                                        |> Dict.insert fieldName ( fieldType, newFieldEditorState )
 
-                                                                        else
-                                                                            ( currentFieldName, currentFieldType, currentFieldEditorState )
-                                                                    )
+                                                recordResult : Result String RawValue
+                                                recordResult =
+                                                    newFieldEditorStates
+                                                        |> Dict.toList
+                                                        |> List.foldr
+                                                            (\( nextFieldName, ( _, nextFieldEditorState ) ) fieldsResultSoFar ->
+                                                                fieldsResultSoFar
+                                                                    |> Result.andThen
+                                                                        (\fieldsSoFar ->
+                                                                            editorStateToRawValueResult nextFieldEditorState
+                                                                                |> Result.map
+                                                                                    (\maybeNextFieldValue ->
+                                                                                        case maybeNextFieldValue of
+                                                                                            Just nextFieldValue ->
+                                                                                                ( nextFieldName, nextFieldValue ) :: fieldsSoFar
+
+                                                                                            Nothing ->
+                                                                                                fieldsSoFar
+                                                                                    )
+                                                                        )
                                                             )
-                                                }
+                                                            (Ok [])
+                                                        |> Result.map (Value.Record ())
+                                            in
+                                            updateEditorState
+                                                (applyResult recordResult
+                                                    { editorState
+                                                        | componentState =
+                                                            RecordEditor
+                                                                newFieldEditorStates
+                                                    }
+                                                )
                                         )
                                         fieldEditorState
                                     )
@@ -454,3 +480,13 @@ applyResult valueResult editorState =
                 Err error ->
                     Just error
     }
+
+
+editorStateToRawValueResult : EditorState -> Result String (Maybe RawValue)
+editorStateToRawValueResult editorState =
+    case editorState.errorState of
+        Just error ->
+            Err error
+
+        Nothing ->
+            Ok editorState.lastValidValue
