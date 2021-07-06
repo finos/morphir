@@ -263,15 +263,72 @@ substituteVariable var replacement original =
         original
 
 
-substituteVariables : List ( Variable, MetaType ) -> MetaType -> MetaType
+substituteVariables : Dict Variable MetaType -> MetaType -> MetaType
 substituteVariables replacements original =
-    replacements
-        |> List.foldl
-            (\( var, replacement ) soFar ->
-                soFar
-                    |> substituteVariable var replacement
-            )
-            original
+    if Set.isEmpty (Set.intersect (replacements |> Dict.keys |> Set.fromList) (variables original)) then
+        original
+
+    else
+        case original of
+            MetaVar thisVar ->
+                case Dict.get thisVar replacements of
+                    Just replacement ->
+                        replacement
+
+                    Nothing ->
+                        original
+
+            MetaTuple _ metaElems ->
+                metaTuple
+                    (metaElems
+                        |> List.map (substituteVariables replacements)
+                    )
+
+            MetaRecord _ (Just extends) metaFields ->
+                case Dict.get extends replacements of
+                    Just replacement ->
+                        replacement
+
+                    Nothing ->
+                        metaRecord (Just extends)
+                            (metaFields
+                                |> Dict.map
+                                    (\_ fieldType ->
+                                        substituteVariables replacements fieldType
+                                    )
+                            )
+
+            MetaRecord _ Nothing metaFields ->
+                metaRecord Nothing
+                    (metaFields
+                        |> Dict.map
+                            (\_ fieldType ->
+                                substituteVariables replacements fieldType
+                            )
+                    )
+
+            MetaFun _ metaFunc metaArg ->
+                metaFun
+                    (substituteVariables replacements metaFunc)
+                    (substituteVariables replacements metaArg)
+
+            MetaRef _ fQName args maybeAliasedType ->
+                case maybeAliasedType of
+                    Just aliasedType ->
+                        metaAlias fQName
+                            (args
+                                |> List.map (substituteVariables replacements)
+                            )
+                            (substituteVariables replacements aliasedType)
+
+                    Nothing ->
+                        metaRef fQName
+                            (args
+                                |> List.map (substituteVariables replacements)
+                            )
+
+            MetaUnit ->
+                original
 
 
 boolType : MetaType
