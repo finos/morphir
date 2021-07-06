@@ -13,6 +13,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
+import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme)
@@ -40,6 +41,7 @@ type alias Handlers msg =
     , shrinkVariable : Int -> msg
     , argValueUpdated : FQName -> Name -> ValueEditor.EditorState -> msg
     , invalidArgValue : FQName -> Name -> String -> msg
+    , jumpToTestCases : FQName -> msg
     }
 
 
@@ -143,19 +145,11 @@ viewPage theme handlers valueFilterChanged ((Library packageName _ packageDef) a
                                         (el [ alignTop ]
                                             (viewAsCard theme
                                                 (column [ width fill, spacing 5 ]
-                                                    [ row [ width fill ]
-                                                        [ valueName
-                                                            |> Name.toHumanWords
-                                                            |> String.join " "
-                                                            |> text
-                                                        , link [ alignRight ]
-                                                            { url =
-                                                                String.concat [ "/function/", FQName.toString valueFQName ]
-                                                            , label =
-                                                                el [ Font.italic ]
-                                                                    (text "jump to test cases")
-                                                            }
-                                                        ]
+                                                    [ Theme.header theme
+                                                        { left = [ nameToText valueName |> text ]
+                                                        , middle = []
+                                                        , right = [ theme |> Theme.button (handlers.jumpToTestCases valueFQName) "Scenarios" theme.colors.primaryHighlight ]
+                                                        }
                                                     , viewArgumentEditors ir handlers model valueFQName accessControlledValueDef.value
                                                     ]
                                                 )

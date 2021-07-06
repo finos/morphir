@@ -107,7 +107,7 @@ viewPage theme handlers distribution model =
                         []
                     , right =
                         [ if List.length model.savedTestCases > 0 || Array.length model.testCaseStates > 0 then
-                            Theme.button theme (handlers.saveTestSuite model) "Save Changes" theme.colors.secondaryHighlight
+                            theme |> Theme.button (handlers.saveTestSuite model) "Save Changes" theme.colors.secondaryHighlight
 
                           else
                             el [] none
@@ -118,7 +118,7 @@ viewPage theme handlers distribution model =
 
           else
             el [ Font.bold ] (text "No test cases found")
-        , Theme.button theme handlers.addTestCase "Add new scenario" theme.colors.primaryHighlight
+        , theme |> Theme.button handlers.addTestCase "Add new scenario" theme.colors.primaryHighlight
         ]
 
 
@@ -209,12 +209,12 @@ viewScenarios theme handlers distribution model =
                             []
                         , right =
                             [ if testCaseState.editMode then
-                                Theme.button theme (handlers.saveTestCase testCaseIndex) "Save" theme.colors.secondaryHighlight
+                                theme |> Theme.button (handlers.saveTestCase testCaseIndex) "Save" theme.colors.secondaryHighlight
 
                               else
-                                Theme.button theme (handlers.editTestCase testCaseIndex) "Edit" theme.colors.secondaryHighlight
-                            , Theme.button theme (handlers.cloneTestCase testCaseIndex) "Clone" theme.colors.primaryHighlight
-                            , Theme.button theme (handlers.deleteTestCase testCaseIndex) "Delete" theme.colors.primaryHighlight
+                                theme |> Theme.button (handlers.editTestCase testCaseIndex) "Edit" theme.colors.secondaryHighlight
+                            , theme |> Theme.button (handlers.cloneTestCase testCaseIndex) "Clone" theme.colors.primaryHighlight
+                            , theme |> Theme.button (handlers.deleteTestCase testCaseIndex) "Delete" theme.colors.primaryHighlight
                             ]
                         }
                     , column [ width fill, spacing 5, padding 5 ]
