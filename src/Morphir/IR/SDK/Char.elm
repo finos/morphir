@@ -24,8 +24,7 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics exposing (boolType, intType)
 import Morphir.IR.SDK.Common exposing (toFQName, vSpec)
-import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
+import Morphir.IR.Type exposing (Specification(..), Type(..))
 
 
 moduleName : ModuleName

@@ -3,11 +3,12 @@ port module Morphir.Elm.DevCLI exposing (..)
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Morphir.Elm.Common exposing (mapOperators)
-import Morphir.IR.Name as Name
+import Morphir.Elm.Common exposing (appendBraces, mapOperators)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK as SDK
-import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type as Type exposing (Type, collectVariables)
+import Set
 
 
 port request : (Decode.Value -> msg) -> Sub msg
@@ -51,16 +52,32 @@ subscriptions model =
 
 nativeFun : String
 nativeFun =
-    [ "module Morphir.IR.SDK.Basics exposing (..)"
-    , "nativeFunctions : List ( String, Native.Function )"
+    [ "module Morphir.IR.SDK.SDKNativeFunctions exposing (..)"
+    , "import Morphir.IR.Literal exposing (Literal(..))"
+    , "import Morphir.Value.Native as Native exposing (..)"
+    , "nativeFunctions : List ( String, String, Native.Function )"
     , "nativeFunctions = "
-    , "\t["
+    , "["
         ++ (SDK.packageSpec.modules
                 |> Dict.toList
                 |> List.map
                     (\( moduleName, moduleSpec ) ->
                         moduleSpec.values
                             |> Dict.toList
+                            |> List.filter
+                                (\( _, functionSpec ) ->
+                                    let
+                                        filterFunction : Type () -> Bool
+                                        filterFunction typeInfo =
+                                            case typeInfo of
+                                                Type.Function _ _ _ ->
+                                                    False
+
+                                                other ->
+                                                    collectVariables other |> Set.isEmpty
+                                    in
+                                    List.all filterFunction (functionSpec.inputs |> List.map Tuple.second) && filterFunction functionSpec.output
+                                )
                             |> List.map
                                 (\( functionName, functionSpec ) ->
                                     let
@@ -68,29 +85,30 @@ nativeFun =
                                             "eval" ++ (List.length functionSpec.inputs |> String.fromInt)
 
                                         funName =
-                                            "(" ++ ((Path.toString Name.toTitleCase "." moduleName ++ "." ++ Name.toCamelCase functionName) |> mapOperators) ++ ")"
+                                            (Path.toString Name.toTitleCase "." moduleName ++ "." ++ Name.toCamelCase functionName) |> mapOperators
 
                                         inputTypes : String
                                         inputTypes =
                                             functionSpec.inputs
                                                 |> List.map
                                                     (\( _, argType ) ->
-                                                        "("
-                                                            ++ ([ mapExpectedOrReturn "expect" argType
-                                                                , argType
-                                                                    |> mapTypeValue
-                                                                    |> typeToString
-                                                                ]
-                                                                    |> List.filter (\val -> not (String.isEmpty val))
-                                                                    |> String.join " "
-                                                               )
-                                                            ++ ")"
+                                                        [ mapEncodeOrDecode "decode" argType
+                                                        , argType |> mapTypeValue "decode"
+                                                        ]
+                                                            |> List.filter (\val -> not (String.isEmpty val))
+                                                            |> String.join " "
+                                                            |> appendBraces
                                                     )
                                                 |> String.join " "
 
                                         outputType : String
                                         outputType =
-                                            "(" ++ mapExpectedOrReturn "return" functionSpec.output ++ " " ++ (functionSpec.output |> mapTypeValue |> typeToString) ++ ")"
+                                            [ mapEncodeOrDecode "encode" functionSpec.output
+                                            , functionSpec.output |> mapTypeValue "encode"
+                                            ]
+                                                |> List.filter (\val -> not (String.isEmpty val))
+                                                |> String.join " "
+                                                |> appendBraces
 
                                         nativeExpression : String
                                         nativeExpression =
@@ -98,87 +116,81 @@ nativeFun =
                                                 |> List.filter (\val -> not (String.isEmpty val))
                                                 |> String.join " "
                                     in
-                                    "(" ++ ([ "\"" ++ Name.toCamelCase functionName ++ "\"", nativeExpression ] |> String.join ",") ++ ")"
+                                    ([ "\"" ++ Path.toString Name.toTitleCase "." moduleName ++ "\"", "\"" ++ Name.toCamelCase functionName ++ "\"", nativeExpression ]
+                                        |> String.join ","
+                                    )
+                                        |> appendBraces
                                 )
                     )
                 |> List.concat
-                |> String.join ",\n\t"
+                |> String.join ",\n"
            )
         ++ "]"
     ]
         |> String.join "\n"
 
 
-mapTypeValue : Type () -> Type ()
-mapTypeValue typeA =
+mapTypeValue : String -> Type () -> String
+mapTypeValue encodeOrDecode typeA =
+    let
+        isEncodingOrDecoding : String -> String -> String
+        isEncodingOrDecoding encodedValue decodedValue =
+            case encodeOrDecode of
+                "encode" ->
+                    decodedValue
+
+                _ ->
+                    encodedValue
+    in
     case typeA of
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
             case ( moduleName, localName, args ) of
                 ( [ [ "basics" ] ], [ "bool" ], [] ) ->
-                    Type.Reference () ( [ [ "morphir" ], [ "value" ] ], [ [ "native" ] ], [ "basicsBoolLiteral" ] ) []
+                    isEncodingOrDecoding "boolLiteral" "BoolLiteral"
 
                 ( [ [ "char" ] ], [ "char" ], [] ) ->
-                    Type.Reference () ( [ [ "morphir" ], [ "value" ] ], [ [ "native" ] ], [ "charLiteral" ] ) []
+                    isEncodingOrDecoding "charLiteral" "CharLiteral"
 
                 ( [ [ "string" ] ], [ "string" ], [] ) ->
-                    Type.Reference () ( [ [ "morphir" ], [ "value" ] ], [ [ "native" ] ], [ "stringLiteral" ] ) []
+                    isEncodingOrDecoding "stringLiteral" "StringLiteral"
 
                 ( [ [ "basics" ] ], [ "int" ], [] ) ->
-                    Type.Reference () ( [ [ "morphir" ], [ "value" ] ], [ [ "native" ] ], [ "intLiteral" ] ) []
+                    isEncodingOrDecoding "intLiteral" "IntLiteral"
 
                 ( [ [ "basics" ] ], [ "float" ], [] ) ->
-                    Type.Reference () ( [ [ "morphir" ], [ "value" ] ], [ [ "native" ] ], [ "floatLiteral" ] ) []
+                    isEncodingOrDecoding "floatLiteral" "FloatLiteral"
+
+                ( [ [ "list" ] ], [ "list" ], [ itemType ] ) ->
+                    [ mapEncodeOrDecode encodeOrDecode itemType, mapTypeValue encodeOrDecode itemType ]
+                        |> List.filter (\val -> not (String.isEmpty val))
+                        |> String.join " "
+                        |> appendBraces
+
+                ( [ [ "maybe" ] ], [ "maybe" ], [ itemType ] ) ->
+                    [ mapEncodeOrDecode encodeOrDecode itemType, mapTypeValue encodeOrDecode itemType ]
+                        |> List.filter (\val -> not (String.isEmpty val))
+                        |> String.join " "
+                        |> appendBraces
 
                 _ ->
-                    Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args
-
-        other ->
-            other
-
-
-typeToString : Type () -> String
-typeToString typeB =
-    case typeB of
-        Type.Reference _ ( _, moduleName, localName ) argsList ->
-            if List.length argsList > 0 then
-                Name.toCamelCase localName
-                    ++ "["
-                    ++ (argsList |> List.map (\arg -> typeToString arg) |> String.join ",")
-                    ++ "]"
-
-            else
-                Name.toCamelCase localName
-
-        Type.Variable _ name ->
-            Name.toCamelCase name
+                    Name.toCamelCase localName
 
         Type.Tuple _ typeList ->
-            "(" ++ (typeList |> List.map (\tpe -> typeToString tpe) |> String.join ",") ++ ")"
+            (typeList
+                |> List.map
+                    (\tpe ->
+                        [ mapEncodeOrDecode encodeOrDecode tpe, mapTypeValue encodeOrDecode tpe ]
+                            |> List.filter (\val -> not (String.isEmpty val))
+                            |> String.join " "
+                            |> appendBraces
+                    )
+                |> String.join ","
+            )
+                |> appendBraces
 
         Type.Record _ fieldsList ->
-            "{" ++ (fieldsList |> List.map (\field -> Name.toCamelCase field.name ++ " : " ++ typeToString field.tpe) |> String.join ",") ++ "}"
+            "{" ++ (fieldsList |> List.map (\field -> Name.toCamelCase field.name ++ " : " ++ mapTypeValue encodeOrDecode field.tpe) |> String.join ",") ++ "}"
 
-        Type.Function _ argType returnType ->
-            let
-                uncurry : Type () -> ( Type (), List (Type ()) )
-                uncurry typeZ =
-                    case typeZ of
-                        Type.Function _ argType1 returnType1 ->
-                            let
-                                ( nestedType, nestedArgs ) =
-                                    uncurry returnType1
-                            in
-                            ( nestedType, nestedArgs ++ [ returnType1 ] )
-
-                        _ ->
-                            ( typeZ, [] )
-
-                typeList =
-                    List.length (uncurry returnType |> Tuple.second) + 1
-            in
-            "expectFun" ++ String.fromInt typeList
-
-        --    "( " ++ typeToString argType ++ " -> " ++ typeToString returnType ++ " )"
         Type.Unit () ->
             "()"
 
@@ -186,34 +198,37 @@ typeToString typeB =
             "Types are pending"
 
 
-mapExpectedOrReturn : String -> Type () -> String
-mapExpectedOrReturn expectOrReturn typeC =
+mapEncodeOrDecode : String -> Type () -> String
+mapEncodeOrDecode encodeOrDecode typeC =
     case typeC of
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
             case ( moduleName, localName, args ) of
                 ( [ [ "basics" ] ], [ "bool" ], [] ) ->
-                    expectOrReturn ++ "Literal"
+                    encodeOrDecode ++ "Literal"
 
                 ( [ [ "char" ] ], [ "char" ], [] ) ->
-                    expectOrReturn ++ "Literal"
+                    encodeOrDecode ++ "Literal"
 
                 ( [ [ "string" ] ], [ "string" ], [] ) ->
-                    expectOrReturn ++ "Literal"
+                    encodeOrDecode ++ "Literal"
 
                 ( [ [ "basics" ] ], [ "int" ], [] ) ->
-                    expectOrReturn ++ "Literal"
+                    encodeOrDecode ++ "Literal"
 
                 ( [ [ "basics" ] ], [ "float" ], [] ) ->
-                    expectOrReturn ++ "Literal"
+                    encodeOrDecode ++ "Literal"
 
                 ( [ [ "list" ] ], [ "list" ], [ itemType ] ) ->
-                    expectOrReturn ++ "List"
+                    encodeOrDecode ++ "List"
+
+                ( [ [ "maybe" ] ], [ "maybe" ], [ itemType ] ) ->
+                    encodeOrDecode ++ "Maybe"
 
                 _ ->
-                    expectOrReturn ++ "Undefined"
+                    encodeOrDecode ++ "Undefined"
 
-        Type.Function _ _ _ ->
-            ""
+        Type.Tuple _ typeList ->
+            encodeOrDecode ++ "Tuple2"
 
         _ ->
             "Undefined Type"

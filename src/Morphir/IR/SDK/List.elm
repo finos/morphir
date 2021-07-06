@@ -29,9 +29,8 @@ import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
-import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native exposing (decodeFun1, decodeList, decodeRaw, encodeList, encodeRaw, encodeResultList, eval2)
+import Morphir.Value.Native as Native exposing (decodeFun1, decodeList, decodeLiteral, decodeRaw, encodeList, encodeLiteral, encodeRaw, encodeResultList, eval2, intLiteral)
 
 
 moduleName : ModuleName
@@ -182,5 +181,6 @@ nativeFunctions =
             )
       )
     , ( "map", eval2 List.map (decodeFun1 encodeRaw decodeRaw) (decodeList decodeRaw) encodeResultList )
-    , ( "append", eval2 List.append (decodeList decodeRaw) (decodeList decodeRaw) encodeList )
+    , ( "append", eval2 List.append (decodeList decodeRaw) (decodeList decodeRaw) (encodeList encodeRaw) )
+    , ( "range", eval2 List.range (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeList (encodeLiteral IntLiteral)) )
     ]

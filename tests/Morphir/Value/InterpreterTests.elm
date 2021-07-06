@@ -20,25 +20,22 @@ evaluateValueTests =
                         |> Expect.equal
                             (Ok expectedOutput)
                 )
-
-        negativeCheck desc input errorMessage =
-            test desc
-                (\_ ->
-                    evaluate SDK.nativeFunctions IR.empty input
-                        |> Expect.equal
-                            (Err errorMessage)
-                )
     in
     describe "evaluateValue"
-        [ positiveCheck "True = True"
+        [ {- Basics.equal -}
+          positiveCheck "True = True"
             (Value.Literal () (BoolLiteral True))
             (Value.Literal () (BoolLiteral True))
+
+        {- Basics.not -}
         , positiveCheck "not True == False"
             (Value.Apply ()
                 (Value.Reference () (fqn "Morphir.SDK" "Basics" "not"))
                 (Value.Literal () (BoolLiteral True))
             )
             (Value.Literal () (BoolLiteral False))
+
+        {- Basics.and -}
         , positiveCheck "True && False == False"
             (Value.Apply ()
                 (Value.Apply ()
@@ -57,6 +54,8 @@ evaluateValueTests =
                 (Value.Literal () (BoolLiteral True))
             )
             (Value.Literal () (BoolLiteral False))
+
+        {- Basics.add -}
         , positiveCheck "2 + 4 == 6"
             (Value.Apply ()
                 (Value.Apply ()
@@ -84,25 +83,26 @@ evaluateValueTests =
                 (Value.Literal () (IntLiteral 2000000000000))
             )
             (Value.Literal () (IntLiteral 3000000000000))
+        , positiveCheck "2 + 4.2 == 6.2"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                    (Value.Literal () (FloatLiteral 2))
+                )
+                (Value.Literal () (FloatLiteral 4.2))
+            )
+            (Value.Literal () (FloatLiteral 6.2))
+        , positiveCheck "10.5 + 3 == 13.5"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                    (Value.Literal () (FloatLiteral 10.5))
+                )
+                (Value.Literal () (FloatLiteral 3))
+            )
+            (Value.Literal () (FloatLiteral 13.5))
 
-        --, positiveCheck "2 + 4.2 == 6.2"
-        --    (Value.Apply ()
-        --        (Value.Apply ()
-        --            (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
-        --            (Value.Literal () (IntLiteral 2))
-        --        )
-        --        (Value.Literal () (FloatLiteral 4.2))
-        --    )
-        --    (Value.Literal () (FloatLiteral 6.2))
-        --, positiveCheck "10.5 + 3 == 13.5"
-        --    (Value.Apply ()
-        --        (Value.Apply ()
-        --            (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
-        --            (Value.Literal () (FloatLiteral 10.5))
-        --        )
-        --        (Value.Literal () (IntLiteral 3))
-        --    )
-        --    (Value.Literal () (FloatLiteral 13.5))
+        {- Basics.subtract -}
         , positiveCheck "1000000000000 - 1000000000000 == 0"
             (Value.Apply ()
                 (Value.Apply ()
@@ -121,25 +121,26 @@ evaluateValueTests =
                 (Value.Literal () (FloatLiteral 0.4))
             )
             (Value.Literal () (FloatLiteral 99.6))
+        , positiveCheck " 17 - 0.8 == 16.2"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "subtract"))
+                    (Value.Literal () (FloatLiteral 17))
+                )
+                (Value.Literal () (FloatLiteral 0.8))
+            )
+            (Value.Literal () (FloatLiteral 16.2))
+        , positiveCheck " 30.6 - 2 == 28.6"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "subtract"))
+                    (Value.Literal () (FloatLiteral 30.6))
+                )
+                (Value.Literal () (FloatLiteral 2))
+            )
+            (Value.Literal () (FloatLiteral 28.6))
 
-        --, positiveCheck " 17 - 0.8 == 16.2"
-        --    (Value.Apply ()
-        --        (Value.Apply ()
-        --            (Value.Reference () (fqn "Morphir.SDK" "Basics" "subtract"))
-        --            (Value.Literal () (IntLiteral 17))
-        --        )
-        --        (Value.Literal () (FloatLiteral 0.8))
-        --    )
-        --    (Value.Literal () (FloatLiteral 16.2))
-        --, positiveCheck " 30.6 - 2 == 28.6"
-        --    (Value.Apply ()
-        --        (Value.Apply ()
-        --            (Value.Reference () (fqn "Morphir.SDK" "Basics" "subtract"))
-        --            (Value.Literal () (FloatLiteral 30.6))
-        --        )
-        --        (Value.Literal () (IntLiteral 2))
-        --    )
-        --    (Value.Literal () (FloatLiteral 28.6))
+        {- Basics.multiply -}
         , positiveCheck " 0.4 mul 5.0 == 2.0"
             (Value.Apply ()
                 (Value.Apply ()
@@ -158,25 +159,26 @@ evaluateValueTests =
                 (Value.Literal () (IntLiteral 5))
             )
             (Value.Literal () (IntLiteral 15))
+        , positiveCheck " 10 mul 5.0 == 50.0"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "multiply"))
+                    (Value.Literal () (FloatLiteral 10))
+                )
+                (Value.Literal () (FloatLiteral 5))
+            )
+            (Value.Literal () (FloatLiteral 50))
+        , positiveCheck " 30.2 mul 5 == 151.0"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "multiply"))
+                    (Value.Literal () (FloatLiteral 30.2))
+                )
+                (Value.Literal () (FloatLiteral 5))
+            )
+            (Value.Literal () (FloatLiteral 151))
 
-        --, positiveCheck " 10 mul 5.0 == 50.0"
-        --    (Value.Apply ()
-        --        (Value.Apply ()
-        --            (Value.Reference () (fqn "Morphir.SDK" "Basics" "multiply"))
-        --            (Value.Literal () (IntLiteral 10))
-        --        )
-        --        (Value.Literal () (FloatLiteral 5))
-        --    )
-        --    (Value.Literal () (FloatLiteral 50))
-        --, positiveCheck " 30.2 mul 5 == 151.0"
-        --    (Value.Apply ()
-        --        (Value.Apply ()
-        --            (Value.Reference () (fqn "Morphir.SDK" "Basics" "multiply"))
-        --            (Value.Literal () (FloatLiteral 30.2))
-        --        )
-        --        (Value.Literal () (IntLiteral 5))
-        --    )
-        --    (Value.Literal () (FloatLiteral 151))
+        {- Basics.divide -}
         , positiveCheck "4.0 / 2.0 == 2.0"
             (Value.Apply ()
                 (Value.Apply ()
@@ -213,6 +215,8 @@ evaluateValueTests =
                 (Value.Literal () (FloatLiteral 10.0))
             )
             (Value.Literal () (FloatLiteral 0.1))
+
+        {- Basics.lessThan -}
         , positiveCheck " 100 < 100 == False"
             (Value.Apply ()
                 (Value.Apply ()
@@ -258,25 +262,24 @@ evaluateValueTests =
                 (Value.Literal () (FloatLiteral 10.112))
             )
             (Value.Literal () (BoolLiteral True))
-
-        --, positiveCheck " 5 < 2.5 == False"
-        --    (Value.Apply ()
-        --        (Value.Apply ()
-        --            (Value.Reference () (fqn "Morphir.SDK" "Basics" "lessThan"))
-        --            (Value.Literal () (IntLiteral 5))
-        --        )
-        --        (Value.Literal () (FloatLiteral 2.5))
-        --    )
-        --    (Value.Literal () (BoolLiteral False))
-        --, positiveCheck " 10.111 < 12  == True"
-        --    (Value.Apply ()
-        --        (Value.Apply ()
-        --            (Value.Reference () (fqn "Morphir.SDK" "Basics" "lessThan"))
-        --            (Value.Literal () (FloatLiteral 10.111))
-        --        )
-        --        (Value.Literal () (IntLiteral 12))
-        --    )
-        --    (Value.Literal () (BoolLiteral True))
+        , positiveCheck " 5 < 2.5 == False"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "lessThan"))
+                    (Value.Literal () (FloatLiteral 5))
+                )
+                (Value.Literal () (FloatLiteral 2.5))
+            )
+            (Value.Literal () (BoolLiteral False))
+        , positiveCheck " 10.111 < 12  == True"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "lessThan"))
+                    (Value.Literal () (FloatLiteral 10.111))
+                )
+                (Value.Literal () (FloatLiteral 12))
+            )
+            (Value.Literal () (BoolLiteral True))
         , positiveCheck " 'a' < 'c'  == True"
             (Value.Apply ()
                 (Value.Apply ()
@@ -322,7 +325,161 @@ evaluateValueTests =
                 (Value.Literal () (StringLiteral "ball"))
             )
             (Value.Literal () (BoolLiteral False))
------
+
+        {- Basics.cos -}
+        , positiveCheck "cos(degree 60) == 0.5000000000000001"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "cos"))
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "degrees"))
+                    (Value.Literal () (FloatLiteral 60))
+                )
+            )
+            (Value.Literal () (FloatLiteral 0.5000000000000001))
+        , positiveCheck "cos(turns 1/6) == 0.5000000000000001"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "cos"))
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "turns"))
+                    (Value.Apply ()
+                        (Value.Apply ()
+                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "divide"))
+                            (Value.Literal () (FloatLiteral 1))
+                        )
+                        (Value.Literal () (FloatLiteral 6))
+                    )
+                )
+            )
+            (Value.Literal () (FloatLiteral 0.5000000000000001))
+        , positiveCheck "cos(radians (pi/3)) == 0.5000000000000001"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "cos"))
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "radians"))
+                    (Value.Apply ()
+                        (Value.Apply ()
+                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "divide"))
+                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "pi"))
+                        )
+                        (Value.Literal () (FloatLiteral 3))
+                    )
+                )
+            )
+            (Value.Literal () (FloatLiteral 0.5000000000000001))
+        , positiveCheck "cos(pi/3) == 0.5000000000000001"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "cos"))
+                (Value.Apply ()
+                    (Value.Apply ()
+                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "divide"))
+                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "pi"))
+                    )
+                    (Value.Literal () (FloatLiteral 3))
+                )
+            )
+            (Value.Literal () (FloatLiteral 0.5000000000000001))
+
+        {- Basics.pi -}
+        , positiveCheck "pi == pi"
+            (Value.Reference () (fqn "Morphir.SDK" "Basics" "pi"))
+            (Value.Literal () (FloatLiteral 3.141592653589793))
+
+        {- Basics.floor -}
+        , positiveCheck "floor(4.99999999999999) == 4"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "floor"))
+                (Value.Literal () (FloatLiteral 4.99999999999999))
+            )
+            (Value.Literal () (IntLiteral 4))
+        , positiveCheck "floor(-4.000001) == -5"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "floor"))
+                (Value.Literal () (FloatLiteral -4.000001))
+            )
+            (Value.Literal () (IntLiteral -5))
+        , positiveCheck "floor(4.00000001) == 4"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "floor"))
+                (Value.Literal () (FloatLiteral 4.00000001))
+            )
+            (Value.Literal () (IntLiteral 4))
+
+        {- Basics.ceiling -}
+        , positiveCheck "ceiling(4.000000001) == 5"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "ceiling"))
+                (Value.Literal () (FloatLiteral 4.000000001))
+            )
+            (Value.Literal () (IntLiteral 5))
+        , positiveCheck "ceiling(4.9999999999) == 5"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "ceiling"))
+                (Value.Literal () (FloatLiteral 4.9999999999))
+            )
+            (Value.Literal () (IntLiteral 5))
+        , positiveCheck "ceiling(-3.000000000001) == -3"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "ceiling"))
+                (Value.Literal () (FloatLiteral -3.000000000001))
+            )
+            (Value.Literal () (IntLiteral -3))
+
+        {- Basics.isNan -}
+        , positiveCheck "isNaN(4.0001) == False"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "isNaN"))
+                (Value.Literal () (FloatLiteral 4.0001))
+            )
+            (Value.Literal () (BoolLiteral False))
+        , positiveCheck "isNaN(1/0) == False"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "isNaN"))
+                (Value.Apply ()
+                    (Value.Apply ()
+                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "divide"))
+                        (Value.Literal () (FloatLiteral 1))
+                    )
+                    (Value.Literal () (FloatLiteral 0))
+                )
+            )
+            (Value.Literal () (BoolLiteral False))
+        , positiveCheck "isNaN(0/0) == True"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "isNaN"))
+                (Value.Apply ()
+                    (Value.Apply ()
+                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "divide"))
+                        (Value.Literal () (FloatLiteral 0))
+                    )
+                    (Value.Literal () (FloatLiteral 0))
+                )
+            )
+            (Value.Literal () (BoolLiteral True))
+        , positiveCheck "isNaN( sqrt -1) == True"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "isNaN"))
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "sqrt"))
+                    (Value.Literal () (FloatLiteral -1))
+                )
+            )
+            (Value.Literal () (BoolLiteral True))
+
+        {- Basics.sqrt -}
+        , positiveCheck "sqrt 16 == 4"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "sqrt"))
+                (Value.Literal () (FloatLiteral 16))
+            )
+            (Value.Literal () (FloatLiteral 4))
+        , positiveCheck "sqrt 10 == 3.1622776601683795"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "sqrt"))
+                (Value.Literal () (FloatLiteral 10))
+            )
+            (Value.Literal () (FloatLiteral 3.1622776601683795))
+
+        {- Basics.lessThanEqualTo -}
         , positiveCheck " -10.0 <= -100.0 == False"
             (Value.Apply ()
                 (Value.Apply ()
@@ -386,7 +543,8 @@ evaluateValueTests =
                 (Value.Literal () (StringLiteral "bool"))
             )
             (Value.Literal () (BoolLiteral True))
----------
+
+        {- Basics.greaterThanEqualTo -}
         , positiveCheck " -10.0 >= -100.0 == True"
             (Value.Apply ()
                 (Value.Apply ()
@@ -450,7 +608,6 @@ evaluateValueTests =
                 (Value.Literal () (StringLiteral "ball"))
             )
             (Value.Literal () (BoolLiteral True))
----------------
         , positiveCheck " 100 >= 100 == True"
             (Value.Apply ()
                 (Value.Apply ()
@@ -487,7 +644,8 @@ evaluateValueTests =
                 (Value.Literal () (StringLiteral "ball"))
             )
             (Value.Literal () (BoolLiteral True))
----------
+
+        {- List.sum -}
         , positiveCheck " sum [1,3]  == 4"
             (Value.Apply ()
                 (Value.Reference () (fqn "Morphir.SDK" "List" "sum"))
@@ -500,6 +658,8 @@ evaluateValueTests =
                 (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral -1) ])
             )
             (Value.Literal () (IntLiteral 0))
+
+        {- List.append -}
         , positiveCheck " append [1,2,3] [1,2] == [1,2,3,1,2]"
             (Value.Apply ()
                 (Value.Apply ()
@@ -585,6 +745,8 @@ evaluateValueTests =
                 )
             )
             (Value.List () [ Value.Literal () (IntLiteral 9), Value.Literal () (IntLiteral 0), Value.Literal () (IntLiteral 8), Value.Literal () (IntLiteral 10), Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 5), Value.Literal () (IntLiteral 3), Value.Literal () (IntLiteral 9), Value.Literal () (IntLiteral 6) ])
+
+        {- String.concat -}
         , positiveCheck " concat [\"a\",\"b\",\"123\"] == \"ab123\""
             (Value.Apply ()
                 (Value.Reference () (fqn "Morphir.SDK" "String" "concat"))
@@ -597,6 +759,8 @@ evaluateValueTests =
                 (Value.List () [])
             )
             (Value.Literal () (StringLiteral ""))
+
+        {- Basics.lessThan -}
         , positiveCheck "if 100 < 1000 then 2 else 3"
             (Value.IfThenElse ()
                 (Value.Apply ()
@@ -623,6 +787,8 @@ evaluateValueTests =
                 (Value.Literal () (IntLiteral 3))
             )
             (Value.Literal () (IntLiteral 3))
+
+        {- List.map -}
         , positiveCheck "map (\\a -> a//2)  [2,4,6] = [1,2,3]"
             (Value.Apply ()
                 (Value.Apply ()
@@ -641,6 +807,22 @@ evaluateValueTests =
                 (Value.List () [ Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 4), Value.Literal () (IntLiteral 6) ])
             )
             (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 3) ])
+
+        {- List.map (modBy) -}
+        , positiveCheck "map (modBy 4)  [-5,0,5] = [3,0,1]"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "map"))
+                    (Value.Apply ()
+                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "modBy"))
+                        (Value.Literal () (IntLiteral 4))
+                    )
+                )
+                (Value.List () [ Value.Literal () (IntLiteral -5), Value.Literal () (IntLiteral 0), Value.Literal () (IntLiteral 5) ])
+            )
+            (Value.List () [ Value.Literal () (IntLiteral 3), Value.Literal () (IntLiteral 0), Value.Literal () (IntLiteral 1) ])
+
+        {- List.map (not) -}
         , positiveCheck
             "map not [True,False,True] = [False,True,False]"
             (Value.Apply ()
@@ -651,6 +833,8 @@ evaluateValueTests =
                 (Value.List () [ Value.Literal () (BoolLiteral True), Value.Literal () (BoolLiteral False), Value.Literal () (BoolLiteral True) ])
             )
             (Value.List () [ Value.Literal () (BoolLiteral False), Value.Literal () (BoolLiteral True), Value.Literal () (BoolLiteral False) ])
+
+        {- List.map (lambda) -}
         , positiveCheck "map (\\a -> -a)  [2,4,6] = [-2,-4,-6]"
             (Value.Apply ()
                 (Value.Apply ()
