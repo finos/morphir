@@ -44,7 +44,7 @@ toDecisionTable config subject matches =
 
         highlights : List (List HighlightState)
         highlights =
-            getHighlightStates config decomposedInput rules
+            Debug.log "states" (getHighlightStates config decomposedInput rules)
     in
     { decomposeInput = decomposedInput
     , rules = List.map2 (\rows highlightStates -> Rule (Tuple.first rows) (Tuple.second rows) highlightStates) rules highlights
@@ -132,37 +132,42 @@ comparePreviousHighlightStates config matches previousStates =
     let
         mostRecentRow : List HighlightState
         mostRecentRow =
-            case previousStates of
+            case List.reverse previousStates of
                 x :: _ ->
                     x
 
                 [] ->
                     []
 
+        debug =
+            Debug.log "Most Recent Row" mostRecentRow
+
         nextMatches : List HighlightState
         nextMatches =
-            --get the highlight state for the result, which is representative of the highlight states for all the variables in the row
-            case List.reverse mostRecentRow of
+            --check whether the previous row is either untouched or fully matched, meaning we should stop checking highlight logic.
+            case mostRecentRow of
                 x :: _ ->
-                    case x of
+                    if isFullyMatchedRow mostRecentRow || isFullyDefaultRow mostRecentRow then
+                        List.repeat (List.length matches + 1) Default
+
+                    else
                         --if we haven't matched a result yet, we need to check logic for the next row
-                        Default ->
-                            let
-                                nextStates : List HighlightState
-                                nextStates =
-                                    List.foldl (getNextHighlightState config) [] matches
-                            in
-                            if isFullyMatchedRow nextStates then
-                                List.append nextStates [ Matched ]
+                        let
+                            nextStates : List HighlightState
+                            nextStates =
+                                List.foldl (getNextHighlightState config) [] matches
+                        in
+                        if isFullyMatchedRow nextStates then
+                            List.append nextStates [ Matched ]
 
-                            else
-                                List.append nextStates [ Default ]
-
-                        _ ->
-                            List.repeat (List.length matches + 1) Default
+                        else
+                            List.append nextStates [ Default ]
 
                 [] ->
                     let
+                        debugResult =
+                            Debug.log "result []" []
+
                         nextStates : List HighlightState
                         nextStates =
                             List.foldl (getNextHighlightState config) [] matches
@@ -181,9 +186,19 @@ isNotMatchedHighlightState highlightState =
     highlightState /= Matched
 
 
+isNotDefaultHighlightState : HighlightState -> Bool
+isNotDefaultHighlightState highlightState =
+    highlightState /= Default
+
+
 isFullyMatchedRow : List HighlightState -> Bool
 isFullyMatchedRow highlightStates =
     List.length (List.filter isNotMatchedHighlightState highlightStates) == 0
+
+
+isFullyDefaultRow : List HighlightState -> Bool
+isFullyDefaultRow highlightStates =
+    List.length (List.filter isNotDefaultHighlightState highlightStates) == 0
 
 
 getNextHighlightState : Config msg -> ( TypedValue, Match ) -> List HighlightState -> List HighlightState
