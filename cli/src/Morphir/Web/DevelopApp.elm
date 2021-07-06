@@ -14,7 +14,7 @@ import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.QName exposing (QName(..))
@@ -27,6 +27,7 @@ import Morphir.Web.DevelopApp.Common exposing (insertInList, viewAsCard)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (makeURL)
 import Url exposing (Url)
+import Url.Builder
 import Url.Parser as UrlParser exposing ((</>), (<?>))
 
 
@@ -980,6 +981,7 @@ viewBody model =
                         , shrinkVariable = ShrinkVariable
                         , argValueUpdated = ArgValueUpdated
                         , invalidArgValue = InvalidArgValue
+                        , jumpToTestCases = \fQName -> LinkClicked (Browser.External (Url.Builder.absolute [ "function", FQName.toString fQName ] []))
                         }
                         ValueFilterChanged
                         distribution
