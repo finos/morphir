@@ -28,7 +28,7 @@ enterprises. The result of processing is a [Graph](#Graph), which is a collectio
 
 import Dict exposing (Dict)
 import List.Extra exposing (uniqueBy)
-import Morphir.IR.AccessControlled exposing (withPublicAccess)
+import Morphir.IR.AccessControlled exposing (Access(..), withPublicAccess)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module
@@ -46,6 +46,8 @@ The types of constructs that we're interested in tracking are:
   - **Field** - Represents a field within a Record.
   - **Type** - Represents a Type or Type Alias, which we want to track aliases through their hierarchies.
   - **Function** - Represents a Function.
+  - **Enum** - Represents a restricted set of single name values.
+  - **Function** - Represents a type that defines a strong unit of measure.
   - **Unknown** - Questionable practice, but it's useful to identify relationships we might want to track in the future.
 
 -}
@@ -55,6 +57,7 @@ type Node
     | Type FQName
     | Function FQName
     | Enum FQName
+    | UnitOfMeasure FQName
     | Unknown String
 
 
@@ -79,6 +82,7 @@ type Verb
     | Calls
     | Produces
     | Parameterizes
+    | Measures
     | Unions
     | Enumerates
 
@@ -235,44 +239,59 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                         typeNode =
                             Type fqn
 
+                        -- An enum, which represents a set of simple names
                         enums =
                             asEnum typeDef
                                 |> List.map
                                     (\name ->
-                                        EdgeEntry (Edge typeNode Enumerates (Enum ((FQName.getPackagePath fqn), (FQName.getModulePath fqn), name)))
+                                        EdgeEntry (Edge typeNode Enumerates (Enum ( FQName.getPackagePath fqn, FQName.getModulePath fqn, name )))
                                     )
 
-                        unions =
-                            case accessControlledCtors |> withPublicAccess of
-                                Just ctors ->
-                                    ctors
-                                        |> Dict.toList
-                                        |> List.map
-                                            (\( _, namesAndTypes ) ->
-                                                        -- If this is a simple enum, extract the values
-                                                        -- Otherwise, it's a complex union
-                                                        namesAndTypes
-                                                            |> List.concatMap
-                                                                (\( _, tipe ) ->
-                                                                    leafType tipe
-                                                                        |> List.concatMap
-                                                                            (\leafFqn ->
-                                                                                let
-                                                                                    leafNode =
-                                                                                        Type leafFqn
-                                                                                in
-                                                                                [ NodeEntry leafNode
-                                                                                , EdgeEntry (Edge typeNode Unions leafNode)
-                                                                                ]
-                                                                            )
-                                                                )
-                                            )
-                                        |> List.concat
+                        -- A unit of measure type, which represents the declaration of a strong base type as opposed to a weaker alias.
+                        unitOfMeasures =
+                            asUnitOfMeasure typeDef
+                                |> Maybe.map
+                                    (\measureFqn ->
+                                        EdgeEntry (Edge typeNode Measures (UnitOfMeasure measureFqn))
+                                    )
+                                |> Maybe.map (\x -> [ NodeEntry (UnitOfMeasure fqn), x ])
+                                |> Maybe.withDefault []
 
-                                Nothing ->
-                                    []
+                        unions =
+                            if not (isUnitOfMeasure typeDef) then
+                                case accessControlledCtors |> withPublicAccess of
+                                    Just ctors ->
+                                        ctors
+                                            |> Dict.toList
+                                            |> List.map
+                                                (\( _, namesAndTypes ) ->
+                                                    -- If this is a simple enum, extract the values
+                                                    -- Otherwise, it's a complex union
+                                                    namesAndTypes
+                                                        |> List.concatMap
+                                                            (\( _, tipe ) ->
+                                                                leafType tipe
+                                                                    |> List.concatMap
+                                                                        (\leafFqn ->
+                                                                            let
+                                                                                leafNode =
+                                                                                    Type leafFqn
+                                                                            in
+                                                                            [ NodeEntry leafNode
+                                                                            , EdgeEntry (Edge typeNode Unions leafNode)
+                                                                            ]
+                                                                        )
+                                                            )
+                                                )
+                                            |> List.concat
+
+                                    Nothing ->
+                                        []
+
+                            else
+                                []
                     in
-                    NodeEntry typeNode :: (unions ++ enums)
+                    NodeEntry typeNode :: (unions ++ enums ++ unitOfMeasures)
 
                 _ ->
                     []
@@ -285,9 +304,10 @@ isEnum constructors =
     constructors
         |> Dict.toList
         |> List.all
-            (\(name, args) ->
+            (\( name, args ) ->
                 List.isEmpty args
             )
+
 
 asEnum : Type.Definition ta -> List Name
 asEnum typeDef =
@@ -307,6 +327,50 @@ asEnum typeDef =
 
         _ ->
             []
+
+
+isUnitOfMeasure : Type.Definition ta -> Bool
+isUnitOfMeasure typeDef =
+    case typeDef of
+        Type.CustomTypeDefinition _ accessControlledCtors ->
+            let
+                values =
+                    accessControlledCtors
+                        |> withPublicAccess
+                        |> Maybe.map Dict.values
+                        |> Maybe.withDefault []
+            in
+            case values of
+                [ [ ( _, Type.Reference _ _ _ ) ] ] ->
+                    True
+
+                _ ->
+                    False
+
+        _ ->
+            False
+
+
+asUnitOfMeasure : Type.Definition ta -> Maybe FQName
+asUnitOfMeasure typeDef =
+    case typeDef of
+        Type.CustomTypeDefinition _ accessControlledCtors ->
+            let
+                values =
+                    accessControlledCtors
+                        |> withPublicAccess
+                        |> Maybe.map Dict.values
+                        |> Maybe.withDefault []
+            in
+            case values of
+                [ [ ( name, Type.Reference _ fqn _ ) ] ] ->
+                    Just fqn
+
+                _ ->
+                    Nothing
+
+        _ ->
+            Nothing
 
 
 {-| Process [Functions](#Type) specifically and ignore the rest.
@@ -509,6 +573,9 @@ nodeType node =
         Enum _ ->
             "Enum"
 
+        UnitOfMeasure _ ->
+            "Unit"
+
         Unknown _ ->
             "Unknown"
 
@@ -532,6 +599,9 @@ nodeFQN node =
             fqn
 
         Enum fqn ->
+            fqn
+
+        UnitOfMeasure fqn ->
             fqn
 
         Unknown s ->
@@ -614,6 +684,9 @@ verbToString verb =
         Enumerates ->
             "enumerates"
 
+        Measures ->
+            "measures"
+
 
 {-| Utility for dealing with comparable.
 -}
@@ -655,6 +728,9 @@ graphEntryToComparable entry =
                         Enum fqn ->
                             fqnToString fqn
 
+                        UnitOfMeasure fqn ->
+                            fqnToString fqn
+
                         Unknown s ->
                             "unknown:" ++ s
                    )
@@ -665,4 +741,3 @@ graphEntryToComparable entry =
 
         EdgeEntry edge ->
             "EdgeEntry: " ++ edgeToString edge
-
