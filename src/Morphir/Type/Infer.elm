@@ -950,34 +950,32 @@ solveHelp : IR -> SolutionMap -> ConstraintSet -> Result TypeError ( ConstraintS
 solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
     --let
     --    _ =
-    --        Debug.log "constraints so far" constraints
+    --        Debug.log "constraints so far" (constraints |> List.length)
     --
     --    _ =
-    --        Debug.log "solutions so far" (solutionsSoFar |> Solve.toList)
+    --        Debug.log "solutions so far" (solutionsSoFar |> Solve.toList |> List.length)
     --in
-    constraints
-        |> validateConstraints
-        |> Result.andThen
-            (\nonTrivialConstraints ->
-                nonTrivialConstraints
-                    |> Solve.findSubstitution refs
-                    |> Result.mapError UnifyError
-                    |> Result.andThen
-                        (\maybeNewSolutions ->
-                            case maybeNewSolutions of
-                                Nothing ->
-                                    Ok ( ConstraintSet.fromList nonTrivialConstraints, solutionsSoFar )
+    case validateConstraints constraints of
+        Ok nonTrivialConstraints ->
+            case Solve.findSubstitution refs nonTrivialConstraints of
+                Ok maybeNewSolutions ->
+                    case maybeNewSolutions of
+                        Nothing ->
+                            Ok ( ConstraintSet.fromList nonTrivialConstraints, solutionsSoFar )
 
-                                Just newSolutions ->
-                                    solutionsSoFar
-                                        |> Solve.mergeSolutions refs newSolutions
-                                        |> Result.mapError UnifyError
-                                        |> Result.andThen
-                                            (\mergedSolutions ->
-                                                solveHelp refs mergedSolutions (constraintSet |> ConstraintSet.applySubstitutions mergedSolutions)
-                                            )
-                        )
-            )
+                        Just newSolutions ->
+                            case Solve.mergeSolutions refs newSolutions solutionsSoFar of
+                                Ok mergedSolutions ->
+                                    solveHelp refs mergedSolutions (constraintSet |> ConstraintSet.applySubstitutions mergedSolutions)
+
+                                Err error ->
+                                    Err (UnifyError error)
+
+                Err error ->
+                    Err (UnifyError error)
+
+        Err error ->
+            Err error
 
 
 validateConstraints : List Constraint -> Result TypeError (List Constraint)
