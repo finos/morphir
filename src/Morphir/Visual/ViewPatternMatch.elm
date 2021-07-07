@@ -9,7 +9,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, TypedValue, Value)
 import Morphir.Value.Interpreter exposing (matchPattern)
 import Morphir.Visual.Components.DecisionTable as DecisionTable exposing (DecisionTable, HighlightState(..), Match(..), Rule, TypedPattern)
-import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Config as Config exposing (Config)
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
@@ -219,29 +219,15 @@ getNextHighlightState config currentMatch previousStates =
                                         rawPattern : Pattern ()
                                         rawPattern =
                                             pattern |> Value.mapPatternAttributes (always ())
-
-                                        variable : Maybe Name
-                                        variable =
-                                            case subject of
-                                                Value.Variable _ name ->
-                                                    Just name
-
-                                                _ ->
-                                                    Nothing
                                     in
-                                    case subject of
-                                        Value.Variable _ name ->
-                                            case Dict.get name config.state.variables of
-                                                Just value ->
-                                                    case matchPattern rawPattern value of
-                                                        Ok _ ->
-                                                            Matched
+                                    case Config.evaluate (Value.toRawValue subject) config of
+                                        Ok value ->
+                                            case matchPattern rawPattern value of
+                                                Ok _ ->
+                                                    Matched
 
-                                                        Err _ ->
-                                                            Unmatched
-
-                                                Nothing ->
-                                                    Default
+                                                Err _ ->
+                                                    Unmatched
 
                                         _ ->
                                             Default
