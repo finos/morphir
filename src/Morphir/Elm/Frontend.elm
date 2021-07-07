@@ -19,6 +19,7 @@ module Morphir.Elm.Frontend exposing
     ( packageDefinitionFromSource, mapDeclarationsToType
     , defaultDependencies
     , Options, ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation, mapSource
+    , mapValueToFile
     )
 
 {-| The Elm frontend turns Elm source code into Morphir IR.
@@ -45,19 +46,22 @@ import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
 import Elm.Syntax.Expression as Expression exposing (Expression, Function, FunctionImplementation)
 import Elm.Syntax.File exposing (File)
-import Elm.Syntax.Infix as Infix
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
-import Elm.Syntax.Range as Range exposing (Range)
+import Elm.Syntax.Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
+import Json.Encode as Encode
 import Morphir.Compiler as Compiler
+import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName, fQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -173,6 +177,62 @@ defaultDependencies =
     Dict.fromList
         [ ( SDK.packageName, SDK.packageSpec )
         ]
+
+
+mapValueToFile : Type () -> String -> Result String IR
+mapValueToFile outputType content =
+    let
+        sourceA =
+            { path = "My/Package/A.elm"
+            , content =
+                String.join "\n"
+                    [ "module My.Package.A exposing (..)"
+                    , ""
+                    , "import Morphir.SDK.Basics exposing (..)"
+                    , ""
+                    , "import Morphir.SDK.List exposing (..)"
+                    , ""
+                    , "import Morphir.SDK.Char exposing (..)"
+                    , ""
+                    , "import Morphir.SDK.String exposing (..)"
+                    , ""
+                    , "import Morphir.SDK.Maybe exposing (..)"
+                    , ""
+                    , "fooFunction : " ++ (outputType |> Type.toString)
+                    , ""
+                    , "fooFunction = " ++ content
+                    ]
+            }
+
+        packageName =
+            Path.fromString "My.Package"
+
+        moduleA =
+            Path.fromString "A"
+
+        packageInfo =
+            { name =
+                packageName
+            , exposedModules =
+                Set.fromList
+                    [ moduleA
+                    ]
+            }
+    in
+    mapSource (Options False) packageInfo defaultDependencies [ sourceA ]
+        |> Result.map
+            (\packageDef ->
+                packageDef
+                    |> Package.mapDefinitionAttributes (\_ -> ()) identity
+                    |> Package.mapDefinitionAttributes identity (\_ -> outputType)
+                    |> Library packageName Dict.empty
+                    |> IR.fromDistribution
+            )
+        |> Result.mapError (\errorList -> errorList |> Debug.toString)
+
+
+
+--Encode.list CompilerCodec.encodeError
 
 
 {-| -}

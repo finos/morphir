@@ -3,6 +3,7 @@ module Morphir.Visual.ViewList exposing (view)
 import Dict
 import Element exposing (Element, centerX, centerY, el, fill, height, indexedTable, none, padding, spacing, table, text, width)
 import Element.Border as Border
+import Element.Font as Font
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
@@ -35,8 +36,9 @@ view config viewValue itemType items =
                                 (\field ->
                                     { header =
                                         el
-                                            [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
+                                            [ Border.width 1
                                             , smallPadding config.state.theme |> padding
+                                            , Font.bold
                                             ]
                                             (el [ centerY, centerX ] (text (field.name |> Name.toHumanWords |> String.join " ")))
                                     , width = fill
@@ -46,6 +48,7 @@ view config viewValue itemType items =
                                                 [ smallPadding config.state.theme |> padding
                                                 , width fill
                                                 , height fill
+                                                , Border.widthEach { bottom = 1, top = 0, right = 1, left = 1 }
                                                 ]
                                                 -- TODO: Use interpreter to get field values
                                                 (el [ centerX, centerY ]
