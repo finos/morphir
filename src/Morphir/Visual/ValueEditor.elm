@@ -41,6 +41,7 @@ import Html
 import Html.Attributes
 import Html.Events
 import Json.Decode as Decode
+import Morphir.Elm.Frontend as Frontend
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
