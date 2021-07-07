@@ -55,7 +55,18 @@ record2 input =
 
 record3 : { boolField : Bool, intField : Int, floatField : Float } -> Int
 record3 input =
-    input.intField
+    if input.boolField then
+        if input.floatField < 5 then
+            0
+
+        else
+            1
+
+    else if input.intField > 10 then
+        2
+
+    else
+        3
 
 
 record4 : { boolField : Bool, intField : Int, floatField : Float } -> { boolField : Bool, intField : Int } -> Float

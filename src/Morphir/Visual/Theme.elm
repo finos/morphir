@@ -109,8 +109,8 @@ fontColorFor backgroundColor theme =
         theme.colors.darkest
 
 
-button : Theme -> msg -> String -> Color -> Element msg
-button theme msg label color =
+button : msg -> String -> Color -> Theme -> Element msg
+button msg label color theme =
     Input.button
         [ Font.bold
         , Border.solid

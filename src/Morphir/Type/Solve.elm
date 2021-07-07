@@ -97,14 +97,7 @@ addSolution ir var newSolution (SolutionMap currentSolutions) =
     let
         substitutedNewSolution : MetaType
         substitutedNewSolution =
-            currentSolutions
-                |> Dict.toList
-                |> List.foldl
-                    (\( currentVar, currentMetaType ) soFar ->
-                        soFar
-                            |> MetaType.substituteVariable currentVar currentMetaType
-                    )
-                    newSolution
+            MetaType.substituteVariables currentSolutions newSolution
     in
     case Dict.get var currentSolutions of
         Just existingSolution ->
@@ -116,7 +109,7 @@ addSolution ir var newSolution (SolutionMap currentSolutions) =
                         currentSolutions
                             |> Dict.insert var
                                 (existingSolution
-                                    |> MetaType.substituteVariables (Dict.toList newSubstitutions)
+                                    |> MetaType.substituteVariables newSubstitutions
                                 )
                             |> Dict.union newSubstitutions
                             |> SolutionMap

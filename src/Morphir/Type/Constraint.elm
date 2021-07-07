@@ -1,5 +1,6 @@
 module Morphir.Type.Constraint exposing (..)
 
+import Dict exposing (Dict)
 import Morphir.Type.Class exposing (Class)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
 import Set
@@ -34,8 +35,8 @@ equivalent constraint1 constraint2 =
                 False
 
 
-substitute : Variable -> MetaType -> Constraint -> Constraint
-substitute var replacement constraint =
+substituteVariable : Variable -> MetaType -> Constraint -> Constraint
+substituteVariable var replacement constraint =
     case constraint of
         Equality metaType1 metaType2 ->
             Equality
@@ -45,6 +46,20 @@ substitute var replacement constraint =
         Class metaType cls ->
             Class
                 (metaType |> MetaType.substituteVariable var replacement)
+                cls
+
+
+substituteVariables : Dict Variable MetaType -> Constraint -> Constraint
+substituteVariables replacements constraint =
+    case constraint of
+        Equality metaType1 metaType2 ->
+            Equality
+                (metaType1 |> MetaType.substituteVariables replacements)
+                (metaType2 |> MetaType.substituteVariables replacements)
+
+        Class metaType cls ->
+            Class
+                (metaType |> MetaType.substituteVariables replacements)
                 cls
 
 
