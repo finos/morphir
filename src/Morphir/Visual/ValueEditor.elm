@@ -45,7 +45,7 @@ import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Path exposing (Path)
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Basics
 import Morphir.IR.SDK.String as Basics
@@ -92,6 +92,7 @@ type ComponentState
     | BoolEditor (Maybe Bool)
     | RecordEditor (Dict Name ( Type (), EditorState ))
     | CustomEditor Path Path (Type.Constructors ())
+    | GenericEditor String
 
 
 type alias Error =
@@ -126,6 +127,11 @@ initEditorState ir valueType maybeInitialValue =
 An error might be reported when the initial value being passed in is invalid for the given editor.
 
 -}
+textEditorTypeList : List (Type ())
+textEditorTypeList =
+    [ Basics.intType (), Basics.stringType (), Basics.charType (), Basics.floatType () ]
+
+
 initComponentState : IR -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initComponentState ir valueType maybeInitialValue =
     case valueType of
@@ -135,6 +141,9 @@ initComponentState ir valueType maybeInitialValue =
         _ ->
             if valueType == Basics.boolType () then
                 initBoolEditor maybeInitialValue
+
+            else if textEditorTypeList |> List.member valueType then
+                initTextEditor maybeInitialValue
 
             else
                 case valueType of
@@ -152,10 +161,20 @@ initComponentState ir valueType maybeInitialValue =
                                         initCustomEditor ir fQName constructors maybeInitialValue
 
                             Nothing ->
-                                initTextEditor maybeInitialValue
+                                initGenericEditor maybeInitialValue
 
                     _ ->
-                        initTextEditor maybeInitialValue
+                        initGenericEditor maybeInitialValue
+
+
+initGenericEditor : Maybe RawValue -> ( Maybe Error, ComponentState )
+initGenericEditor maybeInitialValue =
+    case maybeInitialValue of
+        Just initialValue ->
+            ( Nothing, GenericEditor (initialValue |> Value.toString) )
+
+        Nothing ->
+            ( Nothing, GenericEditor "" )
 
 
 {-| Creates a component state for a text editor with an optional error.
@@ -178,7 +197,7 @@ initTextEditor maybeInitialValue =
                     ( Nothing, TextEditor (String.fromFloat float) )
 
                 _ ->
-                    ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), TextEditor "" )
+                    ( Nothing, TextEditor (initialValue |> Value.toString) )
 
         Nothing ->
             ( Nothing, TextEditor "" )
@@ -312,7 +331,27 @@ view ir valueType updateEditorState editorState =
                                         |> Result.fromMaybe "Expecting a number like 1, -3.14 or 100.56"
 
                                 else
-                                    Err (String.concat [ "Translating text into '", Type.toString valueType, "' is not supported" ])
+                                    updatedText
+                                        |> Frontend.mapValueToFile tpe
+                                        |> Result.andThen
+                                            (\sourceFileIR ->
+                                                let
+                                                    packageName =
+                                                        Path.fromString "My.Package"
+
+                                                    moduleName =
+                                                        Path.fromString "A"
+
+                                                    localName =
+                                                        Name.fromString "fooFunction"
+                                                in
+                                                case sourceFileIR |> IR.lookupValueDefinition ( packageName, moduleName, localName ) of
+                                                    Just valDef ->
+                                                        Ok (valDef.body |> Value.toRawValue)
+
+                                                    Nothing ->
+                                                        Err "Function name Not found"
+                                            )
                         in
                         if updatedText == "" then
                             updateEditorState
@@ -463,6 +502,80 @@ view ir valueType updateEditorState editorState =
                         )
                     )
                 )
+
+        GenericEditor currentText ->
+            let
+                baseStyle =
+                    [ width (fill |> minimum 80)
+                    , height fill
+                    , paddingXY 10 3
+                    , Events.onLoseFocus
+                        (updateEditorState (initEditorState ir valueType editorState.lastValidValue))
+                    ]
+
+                errorStyle =
+                    case editorState.errorState of
+                        Just errorMessage ->
+                            [ Border.color (rgb 1 0 0)
+                            , Border.width 2
+                            , below
+                                (el
+                                    [ padding 5
+                                    , Background.color (rgb 1 0.7 0.7)
+                                    , moveDown 5
+                                    ]
+                                    (text errorMessage)
+                                )
+                            ]
+
+                        Nothing ->
+                            [ Border.width 2
+                            ]
+            in
+            Input.multiline (baseStyle ++ errorStyle)
+                { onChange =
+                    \updatedText ->
+                        let
+                            valueResult tpe =
+                                updatedText
+                                    |> Frontend.mapValueToFile tpe
+                                    |> Result.andThen
+                                        (\sourceFileIR ->
+                                            let
+                                                packageName =
+                                                    Path.fromString "My.Package"
+
+                                                moduleName =
+                                                    Path.fromString "A"
+
+                                                localName =
+                                                    Name.fromString "fooFunction"
+                                            in
+                                            case sourceFileIR |> IR.lookupValueDefinition ( packageName, moduleName, localName ) of
+                                                Just valDef ->
+                                                    Ok (valDef.body |> Value.toRawValue)
+
+                                                Nothing ->
+                                                    Err "Function name Not found"
+                                        )
+                        in
+                        if updatedText == "" then
+                            updateEditorState
+                                (initEditorState ir valueType Nothing)
+
+                        else
+                            updateEditorState
+                                (applyResult (valueResult (IR.resolveType valueType ir))
+                                    { editorState
+                                        | componentState = GenericEditor updatedText
+                                    }
+                                )
+                , text = currentText
+                , placeholder =
+                    Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
+                , label = Input.labelHidden ""
+                , spellcheck = False
+                }
 
 
 {-| Utility function to apply the result of an edit to the editor state using the following logic:

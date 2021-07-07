@@ -7,7 +7,7 @@ import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
-import Morphir.IR as IR exposing (IR)
+import Morphir.IR as IR
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
@@ -27,6 +27,7 @@ import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
 import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
+import Morphir.Visual.ViewRecord as ViewRecord
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue, rawToVisualTypedValue, typedToVisualTypedValue)
@@ -127,6 +128,9 @@ viewValueByLanguageFeature config value =
                 Value.List ( index, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
                     ViewList.view config (viewValue config) itemType items
 
+                Value.Record _ items ->
+                    ViewRecord.view config (viewValue config) items
+
                 Value.Variable ( index, tpe ) name ->
                     let
                         variableValue : Maybe RawValue
@@ -151,8 +155,56 @@ viewValueByLanguageFeature config value =
                 Value.Reference _ fQName ->
                     ViewReference.view config (viewValue config) fQName
 
-                Value.Field _ subjectValue fieldName ->
-                    ViewField.view (viewValue config) subjectValue fieldName
+                Value.Field ( index1, tpe ) subjectValue fieldName ->
+                    let
+                        defaultValue =
+                            Element.row
+                                [ width fill ]
+                                [ String.concat
+                                    [ "the "
+                                    , nameToText fieldName
+                                    , " field of "
+                                    ]
+                                    |> text
+                                , viewValue config subjectValue
+                                ]
+                    in
+                    case Config.evaluate (subjectValue |> Value.toRawValue) config of
+                        Ok valueType ->
+                            case valueType |> rawToVisualTypedValue (config.irContext.distribution |> IR.fromDistribution) of
+                                Ok (Value.Variable ( index, _ ) variableName) ->
+                                    let
+                                        variableValue : Maybe RawValue
+                                        variableValue =
+                                            Dict.get variableName config.state.variables
+                                    in
+                                    el
+                                        [ onMouseEnter (config.handlers.onHoverOver index variableValue)
+                                        , onMouseLeave (config.handlers.onHoverLeave index)
+                                        , Element.below
+                                            (if config.state.popupVariables.variableIndex == index then
+                                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
+
+                                             else
+                                                Element.text "Not Found"
+                                            )
+                                        , width fill
+                                        , center
+                                        ]
+                                        (String.concat
+                                            [ "the "
+                                            , nameToText variableName
+                                            , "'s "
+                                            , nameToText fieldName
+                                            ]
+                                            |> text
+                                        )
+
+                                _ ->
+                                    defaultValue
+
+                        Err error ->
+                            defaultValue
 
                 Value.Apply _ fun arg ->
                     let
@@ -257,7 +309,7 @@ viewPopup config =
                         rawToVisualTypedValue (IR.fromDistribution config.irContext.distribution) rawValue
 
                     popUpStyle : Element msg -> Element msg
-                    popUpStyle element =
+                    popUpStyle elementMsg =
                         el
                             [ Border.shadow
                                 { offset = ( 2, 2 )
@@ -274,7 +326,7 @@ viewPopup config =
                             , htmlAttribute (style "position" "absolute")
                             , htmlAttribute (style "transition" "all 0.2s ease-in-out")
                             ]
-                            element
+                            elementMsg
                 in
                 case visualTypedVal of
                     Ok visualTypedValue ->
