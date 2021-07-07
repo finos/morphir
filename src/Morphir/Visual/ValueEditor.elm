@@ -39,12 +39,14 @@ import Element.Font exposing (center)
 import Element.Input as Input exposing (placeholder)
 import Html
 import Html.Attributes
+import Html.Events
+import Json.Decode as Decode
 import Morphir.Elm.Frontend as Frontend
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.FQName as FQName
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Path as Path
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Basics
 import Morphir.IR.SDK.String as Basics
@@ -90,7 +92,7 @@ type ComponentState
     = TextEditor String
     | BoolEditor (Maybe Bool)
     | RecordEditor (Dict Name ( Type (), EditorState ))
-    | CustomEditor String (Type.Constructors ()) (List ( Name, List ( Name, Type () ) ))
+    | CustomEditor Path Path (Type.Constructors ())
     | GenericEditor String
 
 
@@ -157,7 +159,7 @@ initComponentState ir valueType maybeInitialValue =
                                         initTextEditor maybeInitialValue
 
                                     Type.CustomTypeSpecification _ constructors ->
-                                        initCustomEditor ir constructors maybeInitialValue
+                                        initCustomEditor ir fQName constructors maybeInitialValue
 
                             Nothing ->
                                 initGenericEditor maybeInitialValue
@@ -253,9 +255,9 @@ initRecordEditor ir fieldTypes maybeInitialValue =
 
 {-| Creates a component state for a custom type editor with an optional error.
 -}
-initCustomEditor : IR -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
-initCustomEditor _ constructors _ =
-    ( Nothing, CustomEditor "" constructors [] )
+initCustomEditor : IR -> FQName -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initCustomEditor _ ( packageName, moduleName, _ ) constructors _ =
+    ( Nothing, CustomEditor packageName moduleName constructors )
 
 
 {-| Display the editor. It takes the following inputs:
@@ -452,45 +454,55 @@ view ir valueType updateEditorState editorState =
                     )
                 )
 
-        CustomEditor searchText allConstructors selectedConstructors ->
-            let
-                dataListID =
-                    case valueType of
-                        Type.Reference _ fQName _ ->
-                            FQName.toString fQName
+        CustomEditor packageName moduleName constructors ->
+            el
+                [ width fill
+                , height fill
+                ]
+                (html
+                    (Html.select
+                        [ Html.Attributes.style "height" "100%"
+                        , Html.Events.on "change"
+                            (Decode.at [ "target", "value" ] Decode.string
+                                |> Decode.map
+                                    (\selectedConstructorName ->
+                                        if String.isEmpty selectedConstructorName then
+                                            updateEditorState
+                                                { componentState = CustomEditor packageName moduleName constructors
+                                                , lastValidValue = Nothing
+                                                , errorState = Nothing
+                                                }
 
-                        _ ->
-                            ""
-            in
-            column [ width fill ]
-                [ Input.text
-                    [ width fill
-                    , height shrink
-                    , paddingXY 10 3
-                    , htmlAttribute (Html.Attributes.list dataListID)
-                    ]
-                    { onChange =
-                        \updatedText ->
-                            updateEditorState
-                                { editorState
-                                    | componentState = CustomEditor updatedText allConstructors selectedConstructors
-                                }
-                    , text = searchText
-                    , placeholder =
-                        Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
-                    , label = Input.labelHidden ""
-                    }
-                , html
-                    (Html.datalist [ Html.Attributes.id dataListID ]
-                        (allConstructors
+                                        else
+                                            updateEditorState
+                                                (applyResult (Ok (Value.Constructor () ( packageName, moduleName, Name.fromString selectedConstructorName )))
+                                                    { editorState
+                                                        | componentState = CustomEditor packageName moduleName constructors
+                                                    }
+                                                )
+                                    )
+                            )
+                        ]
+                        (constructors
                             |> Dict.toList
                             |> List.map
                                 (\( constructorName, _ ) ->
-                                    Html.option [] [ Html.text (nameToText constructorName) ]
+                                    Html.option
+                                        [ Html.Attributes.value (Name.toTitleCase constructorName)
+                                        ]
+                                        [ Html.text (nameToText constructorName)
+                                        ]
                                 )
+                            |> List.append
+                                [ Html.option
+                                    [ Html.Attributes.value ""
+                                    ]
+                                    [ Html.text "..."
+                                    ]
+                                ]
                         )
                     )
-                ]
+                )
 
         GenericEditor currentText ->
             let
