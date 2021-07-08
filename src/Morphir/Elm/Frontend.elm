@@ -188,17 +188,7 @@ mapValueToFile outputType content =
                 String.join "\n"
                     [ "module My.Package.A exposing (..)"
                     , ""
-                    , "import Morphir.SDK.Basics exposing (..)"
-                    , ""
-                    , "import Morphir.SDK.List exposing (..)"
-                    , ""
-                    , "import Morphir.SDK.Char exposing (..)"
-                    , ""
-                    , "import Morphir.SDK.String exposing (..)"
-                    , ""
-                    , "import Morphir.SDK.Maybe exposing (..)"
-                    , ""
-                    , "fooFunction : " ++ (outputType |> Type.toString)
+                    , "fooFunction : " ++ (outputType |> Type.toString |> String.replace "Morphir.SDK." "")
                     , ""
                     , "fooFunction = " ++ content
                     ]
