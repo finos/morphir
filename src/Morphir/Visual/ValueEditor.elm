@@ -270,37 +270,45 @@ initCustomEditor _ ( packageName, moduleName, _ ) constructors _ =
 -}
 view : IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
 view ir valueType updateEditorState editorState =
-    case editorState.componentState of
-        TextEditor currentText ->
-            let
-                baseStyle =
-                    [ width (fill |> minimum 80)
-                    , height fill
-                    , paddingXY 10 3
-                    , Events.onLoseFocus
-                        (updateEditorState (initEditorState ir valueType editorState.lastValidValue))
+    let
+        baseStyle =
+            [ width (fill |> minimum 80)
+            , height fill
+            , paddingXY 10 3
+            , Events.onLoseFocus
+                (updateEditorState (initEditorState ir valueType editorState.lastValidValue))
+            ]
+
+        errorBorderStyle =
+            case editorState.errorState of
+                Just errorMessage ->
+                    [ Border.color (rgb 1 0 0)
+                    , Border.width 2
                     ]
 
-                errorStyle =
-                    case editorState.errorState of
-                        Just errorMessage ->
-                            [ Border.color (rgb 1 0 0)
-                            , Border.width 2
-                            , below
-                                (el
-                                    [ padding 5
-                                    , Background.color (rgb 1 0.7 0.7)
-                                    , moveDown 5
-                                    ]
-                                    (text errorMessage)
-                                )
-                            ]
+                Nothing ->
+                    [ Border.width 2
+                    ]
 
-                        Nothing ->
-                            [ Border.width 2
+        errorMessageStyle =
+            case editorState.errorState of
+                Just errorMessage ->
+                    [ below
+                        (el
+                            [ padding 5
+                            , Background.color (rgb 1 0.7 0.7)
+                            , moveDown 5
                             ]
-            in
-            Input.text (baseStyle ++ errorStyle)
+                            (text errorMessage)
+                        )
+                    ]
+
+                Nothing ->
+                    []
+    in
+    case editorState.componentState of
+        TextEditor currentText ->
+            Input.text (baseStyle ++ errorBorderStyle ++ errorMessageStyle)
                 { onChange =
                     \updatedText ->
                         let
@@ -333,7 +341,7 @@ view ir valueType updateEditorState editorState =
 
                                 else
                                     updatedText
-                                        |> Frontend.mapValueToFile tpe
+                                        |> Frontend.mapValueToFile ir tpe
                                         |> Result.andThen
                                             (\sourceFileIR ->
                                                 let
@@ -505,78 +513,52 @@ view ir valueType updateEditorState editorState =
                 )
 
         GenericEditor currentText ->
-            let
-                baseStyle =
-                    [ width (fill |> minimum 80)
-                    , height fill
-                    , paddingXY 10 3
-                    , Events.onLoseFocus
-                        (updateEditorState (initEditorState ir valueType editorState.lastValidValue))
-                    ]
+            el (baseStyle ++ errorMessageStyle)
+                (Input.multiline errorBorderStyle
+                    { onChange =
+                        \updatedText ->
+                            let
+                                valueResult tpe =
+                                    updatedText
+                                        |> Frontend.mapValueToFile ir tpe
+                                        |> Result.andThen
+                                            (\sourceFileIR ->
+                                                let
+                                                    packageName =
+                                                        Path.fromString "My.Package"
 
-                errorStyle =
-                    case editorState.errorState of
-                        Just errorMessage ->
-                            [ Border.color (rgb 1 0 0)
-                            , Border.width 2
-                            , below
-                                (el
-                                    [ padding 5
-                                    , Background.color (rgb 1 0.7 0.7)
-                                    , moveDown 5
-                                    ]
-                                    (text errorMessage)
-                                )
-                            ]
+                                                    moduleName =
+                                                        Path.fromString "A"
 
-                        Nothing ->
-                            [ Border.width 2
-                            ]
-            in
-            Input.multiline (baseStyle ++ errorStyle)
-                { onChange =
-                    \updatedText ->
-                        let
-                            valueResult tpe =
-                                updatedText
-                                    |> Frontend.mapValueToFile tpe
-                                    |> Result.andThen
-                                        (\sourceFileIR ->
-                                            let
-                                                packageName =
-                                                    Path.fromString "My.Package"
+                                                    localName =
+                                                        Name.fromString "fooFunction"
+                                                in
+                                                case sourceFileIR |> IR.lookupValueDefinition ( packageName, moduleName, localName ) of
+                                                    Just valDef ->
+                                                        Ok (valDef.body |> Value.toRawValue)
 
-                                                moduleName =
-                                                    Path.fromString "A"
+                                                    Nothing ->
+                                                        Err "Function name Not found"
+                                            )
+                            in
+                            if updatedText == "" then
+                                updateEditorState
+                                    (initEditorState ir valueType Nothing)
 
-                                                localName =
-                                                    Name.fromString "fooFunction"
-                                            in
-                                            case sourceFileIR |> IR.lookupValueDefinition ( packageName, moduleName, localName ) of
-                                                Just valDef ->
-                                                    Ok (valDef.body |> Value.toRawValue)
-
-                                                Nothing ->
-                                                    Err "Function name Not found"
-                                        )
-                        in
-                        if updatedText == "" then
-                            updateEditorState
-                                (initEditorState ir valueType Nothing)
-
-                        else
-                            updateEditorState
-                                (applyResult (valueResult (IR.resolveType valueType ir))
-                                    { editorState
-                                        | componentState = GenericEditor updatedText
-                                    }
-                                )
-                , text = currentText
-                , placeholder =
-                    Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
-                , label = Input.labelHidden ""
-                , spellcheck = False
-                }
+                            else
+                                updateEditorState
+                                    (applyResult (valueResult (IR.resolveType valueType ir))
+                                        { editorState
+                                            | componentState = GenericEditor updatedText
+                                        }
+                                    )
+                    , text = currentText
+                    , placeholder =
+                        Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
+                    , label = Input.labelHidden ""
+                    , spellcheck = False
+                    }
+                )
 
 
 {-| Utility function to apply the result of an edit to the editor state using the following logic:
