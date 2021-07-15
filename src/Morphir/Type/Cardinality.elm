@@ -1,4 +1,10 @@
-module Morphir.Type.Cardinality exposing (..)
+module Morphir.Type.Cardinality exposing (Cardinality, AlephNumber, cardinality)
+
+{-| This module contains utilities to calculate the cardinality of types.
+
+@docs Cardinality, AlephNumber, cardinality
+
+-}
 
 import Dict exposing (Dict)
 import Morphir.IR as IR exposing (IR)
@@ -6,16 +12,24 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 
 
+{-| Type cardinality represents the number of possible values for a given type.
+<https://en.wikipedia.org/wiki/Cardinality>
+-}
 type Cardinality
     = Finite Int
     | Infinite AlephNumber
     | Unbound
 
 
+{-| Represents an Aleph number that allows you to compare various levels of infinity
+<https://en.wikipedia.org/wiki/Aleph_number>
+-}
 type alias AlephNumber =
     Int
 
 
+{-| Calculate the cardinality of a type going down recursively in the type expression tree.
+-}
 cardinality : IR -> Dict Name (Type ()) -> Type () -> Cardinality
 cardinality ir vars tpe =
     case IR.resolveType tpe ir of
