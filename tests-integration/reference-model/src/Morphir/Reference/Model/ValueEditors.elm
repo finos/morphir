@@ -121,3 +121,18 @@ type LargeEnum
 largeEnum : LargeEnum -> LargeEnum
 largeEnum input =
     input
+
+
+maybe1 : Maybe Int -> Int
+maybe1 input =
+    case input of
+        Just value ->
+            value
+
+        Nothing ->
+            0
+
+
+maybe2 : Maybe SmallEnum -> Maybe SmallEnum
+maybe2 input =
+    input
