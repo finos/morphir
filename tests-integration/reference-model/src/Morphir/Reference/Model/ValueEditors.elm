@@ -136,3 +136,13 @@ maybe1 input =
 maybe2 : Maybe SmallEnum -> Maybe SmallEnum
 maybe2 input =
     input
+
+
+list1 : List Int -> List Int
+list1 input =
+    input
+
+
+list2 : List { boolField : Bool, intField : Int } -> List { boolField : Bool, intField : Int }
+list2 input =
+    input

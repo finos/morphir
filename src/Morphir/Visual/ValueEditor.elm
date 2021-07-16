@@ -30,8 +30,9 @@ for all possible Morphir types. To add a new type of editor you need to take the
 
 -}
 
+import Array exposing (Array)
 import Dict exposing (Dict)
-import Element exposing (Element, below, centerY, el, fill, height, html, minimum, moveDown, padding, paddingXY, rgb, spacing, text, width)
+import Element exposing (Element, alignBottom, alignTop, below, centerY, column, el, fill, height, html, minimum, moveDown, moveUp, none, padding, paddingXY, rgb, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -94,6 +95,7 @@ type ComponentState
     | RecordEditor (Dict Name ( Type (), EditorState ))
     | CustomEditor Path Path (Type.Constructors ())
     | MaybeEditor (Type ()) (Maybe EditorState)
+    | ListEditor (Type ()) (List EditorState)
     | GenericEditor String
 
 
@@ -119,6 +121,10 @@ initEditorState ir valueType maybeInitialValue =
                         -- if a value that is a Maybe is not set then treat it as Nothing
                         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) [ _ ] ->
                             Just (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ))
+
+                        -- if a value that is a List is not set then treat it as empty list
+                        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ _ ] ->
+                            Just (Value.List () [])
 
                         _ ->
                             maybeInitialValue
@@ -157,6 +163,9 @@ initComponentState ir valueType maybeInitialValue =
 
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) [ itemType ] ->
             initMaybeEditor ir itemType maybeInitialValue
+
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ->
+            initListEditor ir itemType maybeInitialValue
 
         _ ->
             if valueType == Basics.boolType () then
@@ -294,6 +303,23 @@ initMaybeEditor ir itemType maybeInitialValue =
 
                 _ ->
                     ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), MaybeEditor itemType Nothing )
+
+        Nothing ->
+            ( Nothing, MaybeEditor itemType Nothing )
+
+
+{-| Creates a component state for a optional values.
+-}
+initListEditor : IR -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initListEditor ir itemType maybeInitialValue =
+    case maybeInitialValue of
+        Just initialValue ->
+            case initialValue of
+                Value.List _ items ->
+                    ( Nothing, ListEditor itemType (items |> List.map (\item -> initEditorState ir itemType (Just item))) )
+
+                _ ->
+                    ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), ListEditor itemType [] )
 
         Nothing ->
             ( Nothing, MaybeEditor itemType Nothing )
@@ -585,6 +611,106 @@ view ir valueType updateEditorState editorState =
                 (maybeItemEditorState
                     |> Maybe.withDefault (initEditorState ir itemType Nothing)
                 )
+
+        ListEditor itemType itemEditorStates ->
+            let
+                set : Int -> a -> List a -> List a
+                set index item list =
+                    List.concat
+                        [ List.take index list
+                        , [ item ]
+                        , List.drop (index + 1) list
+                        ]
+
+                insert : Int -> a -> List a -> List a
+                insert index item list =
+                    List.concat
+                        [ List.take index list
+                        , [ item ]
+                        , List.drop index list
+                        ]
+
+                remove : Int -> List a -> List a
+                remove index list =
+                    List.concat
+                        [ List.take index list
+                        , List.drop (index + 1) list
+                        ]
+
+                defaultItemEditorState =
+                    initEditorState ir itemType Nothing
+
+                updateState : List EditorState -> msg
+                updateState itemStates =
+                    let
+                        listValueResult : Result Error RawValue
+                        listValueResult =
+                            itemStates
+                                |> List.filterMap
+                                    (\nextItemEditorState ->
+                                        editorStateToRawValueResult nextItemEditorState
+                                            |> Result.toMaybe
+                                            |> Maybe.andThen identity
+                                    )
+                                |> Value.List ()
+                                |> Ok
+                    in
+                    updateEditorState
+                        (applyResult listValueResult
+                            { editorState
+                                | componentState = ListEditor itemType itemStates
+                            }
+                        )
+            in
+            if List.isEmpty itemEditorStates then
+                Input.button []
+                    { onPress =
+                        Just
+                            (updateState [ defaultItemEditorState ])
+                    , label = text "+"
+                    }
+
+            else
+                column [ spacing 5 ]
+                    (itemEditorStates
+                        |> List.indexedMap
+                            (\index itemEditorState ->
+                                row []
+                                    [ column [ height fill ]
+                                        [ Input.button
+                                            [ alignTop, moveUp 10 ]
+                                            { onPress =
+                                                Just
+                                                    (updateState (itemEditorStates |> insert index defaultItemEditorState))
+                                            , label = text "+"
+                                            }
+                                        , if index == List.length itemEditorStates - 1 then
+                                            Input.button [ alignBottom, moveDown 9 ]
+                                                { onPress =
+                                                    Just
+                                                        (updateState (itemEditorStates |> insert (index + 1) defaultItemEditorState))
+                                                , label = text "+"
+                                                }
+
+                                          else
+                                            none
+                                        ]
+                                    , view ir
+                                        itemType
+                                        (\newItemEditorState ->
+                                            updateState (itemEditorStates |> set index newItemEditorState)
+                                        )
+                                        itemEditorState
+                                    , Input.button
+                                        [ centerY ]
+                                        { onPress =
+                                            Just
+                                                (updateState (itemEditorStates |> remove index))
+                                        , label = el [ padding 3 ] (text "x")
+                                        }
+                                    ]
+                            )
+                    )
 
         GenericEditor currentText ->
             el (baseStyle ++ errorMessageStyle)
