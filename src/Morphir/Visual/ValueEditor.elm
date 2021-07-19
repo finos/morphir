@@ -32,7 +32,7 @@ for all possible Morphir types. To add a new type of editor you need to take the
 
 import Array exposing (Array)
 import Dict exposing (Dict)
-import Element exposing (Element, alignBottom, alignTop, below, centerX, centerY, column, el, fill, height, html, inFront, minimum, moveDown, moveLeft, moveUp, none, onLeft, onRight, padding, paddingEach, paddingXY, rgb, row, spacing, table, text, width)
+import Element exposing (Element, alignBottom, alignTop, below, centerX, centerY, column, el, explain, fill, height, html, inFront, minimum, moveDown, moveLeft, moveUp, none, onLeft, onRight, padding, paddingEach, paddingXY, rgb, row, spacing, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -55,6 +55,8 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
+import Svg
+import Svg.Attributes
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -711,12 +713,7 @@ view ir valueType updateEditorState editorState =
                         )
             in
             if List.isEmpty itemEditorStates then
-                Input.button []
-                    { onPress =
-                        Just
-                            (updateState [ defaultItemEditorState ])
-                    , label = text "+"
-                    }
+                el [] (plusButton (updateState [ defaultItemEditorState ]))
 
             else
                 column [ spacing 5 ]
@@ -725,20 +722,12 @@ view ir valueType updateEditorState editorState =
                             (\index itemEditorState ->
                                 row []
                                     [ column [ height fill ]
-                                        [ Input.button
+                                        [ el
                                             [ alignTop, moveUp 10 ]
-                                            { onPress =
-                                                Just
-                                                    (updateState (itemEditorStates |> insert index defaultItemEditorState))
-                                            , label = text "+"
-                                            }
+                                            (plusButton (updateState (itemEditorStates |> insert index defaultItemEditorState)))
                                         , if index == List.length itemEditorStates - 1 then
-                                            Input.button [ alignBottom, moveDown 9 ]
-                                                { onPress =
-                                                    Just
-                                                        (updateState (itemEditorStates |> insert (index + 1) defaultItemEditorState))
-                                                , label = text "+"
-                                                }
+                                            el [ alignBottom, moveDown 9 ]
+                                                (closeButton (updateState (itemEditorStates |> insert (index + 1) defaultItemEditorState)))
 
                                           else
                                             none
@@ -749,13 +738,7 @@ view ir valueType updateEditorState editorState =
                                             updateState (itemEditorStates |> set index newItemEditorState)
                                         )
                                         itemEditorState
-                                    , Input.button
-                                        [ centerY ]
-                                        { onPress =
-                                            Just
-                                                (updateState (itemEditorStates |> remove index))
-                                        , label = el [ padding 3 ] (text "x")
-                                        }
+                                    , closeButton (updateState (itemEditorStates |> remove index))
                                     ]
                             )
                     )
@@ -817,12 +800,7 @@ view ir valueType updateEditorState editorState =
                         )
             in
             if List.isEmpty cellEditorStates then
-                Input.button []
-                    { onPress =
-                        Just
-                            (updateState [ emptyRowEditors ])
-                    , label = text "+"
-                    }
+                el [] (plusButton (updateState [ emptyRowEditors ]))
 
             else
                 table
@@ -848,20 +826,8 @@ view ir valueType updateEditorState editorState =
                                                         el
                                                             [ moveUp 7
                                                             , moveLeft 7
-                                                            , padding 2
-                                                            , Background.color (rgb 1 1 1)
-                                                            , Border.rounded 7
-                                                            , Border.color (rgb 0.8 0.8 0.8)
-                                                            , Border.width 1
-                                                            , Font.size 7
                                                             ]
-                                                            (Input.button []
-                                                                { onPress =
-                                                                    Just
-                                                                        (updateState newStates)
-                                                                , label = text "+"
-                                                                }
-                                                            )
+                                                            (plusButton (updateState newStates))
 
                                                     else
                                                         none
@@ -870,27 +836,17 @@ view ir valueType updateEditorState editorState =
                                                 removeButton newStates =
                                                     if columnIndex == List.length columnTypes - 1 then
                                                         el
-                                                            [ moveLeft 3
-                                                            , padding 2
-                                                            , Background.color (rgb 1 1 1)
-                                                            , Border.rounded 7
-                                                            , Border.color (rgb 0.8 0.8 0.8)
-                                                            , Border.width 1
-                                                            , Font.size 7
+                                                            [ moveDown 3
                                                             ]
-                                                            (Input.button []
-                                                                { onPress =
-                                                                    Just
-                                                                        (updateState newStates)
-                                                                , label = text "x"
-                                                                }
-                                                            )
+                                                            (closeButton (updateState newStates))
 
                                                     else
                                                         none
                                             in
                                             el
-                                                [ Background.color (rgb 1 1 1)
+                                                [ width fill
+                                                , height fill
+                                                , Background.color (rgb 1 1 1)
                                                 , inFront (addButton (emptyRowEditors :: cellEditorStates))
                                                 , if rowIndex == List.length cellEditorStates - 1 then
                                                     below (addButton (cellEditorStates ++ [ emptyRowEditors ]))
@@ -997,3 +953,70 @@ editorStateToRawValueResult editorState =
 
         Nothing ->
             Ok editorState.lastValidValue
+
+
+plusIcon : Element msg
+plusIcon =
+    html
+        (Svg.svg
+            [ Svg.Attributes.width "7px"
+            , Svg.Attributes.height "7px"
+            , Svg.Attributes.viewBox "0 0 200 200"
+            ]
+            [ Svg.polygon
+                [ Svg.Attributes.points "80,0 120,0 120,80 200,80 200,120 120,120 120,200 80,200 80,120 0,120 0,80 80,80"
+                , Svg.Attributes.style "fill: rgb(100,100,100)"
+                ]
+                []
+            ]
+        )
+
+
+plusButton : msg -> Element msg
+plusButton msg =
+    el
+        [ padding 2
+        , Background.color (rgb 1 1 1)
+        , Border.rounded 7
+        , Border.color (rgb 0.8 0.8 0.8)
+        , Border.width 2
+        ]
+        (Input.button []
+            { onPress = Just msg
+            , label = plusIcon
+            }
+        )
+
+
+closeIcon : Element msg
+closeIcon =
+    html
+        (Svg.svg
+            [ Svg.Attributes.width "7px"
+            , Svg.Attributes.height "7px"
+            , Svg.Attributes.viewBox "0 0 200 200"
+            ]
+            [ Svg.polygon
+                [ Svg.Attributes.points "80,0 120,0 120,80 200,80 200,120 120,120 120,200 80,200 80,120 0,120 0,80 80,80"
+                , Svg.Attributes.style "fill: rgb(100,100,100)"
+                , Svg.Attributes.transform "rotate(45,100,100)"
+                ]
+                []
+            ]
+        )
+
+
+closeButton : msg -> Element msg
+closeButton msg =
+    el
+        [ padding 2
+        , Background.color (rgb 1 1 1)
+        , Border.rounded 7
+        , Border.color (rgb 0.8 0.8 0.8)
+        , Border.width 2
+        ]
+        (Input.button []
+            { onPress = Just msg
+            , label = closeIcon
+            }
+        )
