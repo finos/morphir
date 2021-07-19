@@ -315,7 +315,7 @@ initMaybeEditor ir itemType maybeInitialValue =
 -}
 initListEditor : IR -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initListEditor ir itemType maybeInitialValue =
-    case itemType of
+    case ir |> IR.resolveType itemType of
         Type.Record _ fieldTypes ->
             let
                 columnTypes : List ( Name, Type () )
