@@ -32,11 +32,11 @@ for all possible Morphir types. To add a new type of editor you need to take the
 
 import Array exposing (Array)
 import Dict exposing (Dict)
-import Element exposing (Element, alignBottom, alignTop, below, centerY, column, el, fill, height, html, minimum, moveDown, moveUp, none, padding, paddingXY, rgb, row, spacing, text, width)
+import Element exposing (Element, alignBottom, alignTop, below, centerX, centerY, column, el, explain, fill, height, html, inFront, minimum, moveDown, moveLeft, moveUp, none, onLeft, onRight, padding, paddingEach, paddingXY, rgb, row, spacing, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
-import Element.Font exposing (center)
+import Element.Font as Font exposing (center)
 import Element.Input as Input exposing (placeholder)
 import Html
 import Html.Attributes
@@ -55,6 +55,8 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
+import Svg
+import Svg.Attributes
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -96,6 +98,7 @@ type ComponentState
     | CustomEditor Path Path (Type.Constructors ())
     | MaybeEditor (Type ()) (Maybe EditorState)
     | ListEditor (Type ()) (List EditorState)
+    | GridEditor (List ( Name, Type () )) (List (Array EditorState))
     | GenericEditor String
 
 
@@ -312,17 +315,64 @@ initMaybeEditor ir itemType maybeInitialValue =
 -}
 initListEditor : IR -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initListEditor ir itemType maybeInitialValue =
-    case maybeInitialValue of
-        Just initialValue ->
-            case initialValue of
-                Value.List _ items ->
-                    ( Nothing, ListEditor itemType (items |> List.map (\item -> initEditorState ir itemType (Just item))) )
+    case ir |> IR.resolveType itemType of
+        Type.Record _ fieldTypes ->
+            let
+                columnTypes : List ( Name, Type () )
+                columnTypes =
+                    fieldTypes
+                        |> List.map
+                            (\field ->
+                                ( field.name, field.tpe )
+                            )
+            in
+            case maybeInitialValue of
+                Just initialValue ->
+                    case initialValue of
+                        Value.List _ records ->
+                            ( Nothing
+                            , GridEditor columnTypes
+                                (records
+                                    |> List.map
+                                        (\record ->
+                                            case record of
+                                                Value.Record _ fieldValues ->
+                                                    let
+                                                        fieldValueDict =
+                                                            fieldValues |> Dict.fromList
+                                                    in
+                                                    columnTypes
+                                                        |> List.map
+                                                            (\( columnName, columnType ) ->
+                                                                initEditorState ir columnType (fieldValueDict |> Dict.get columnName)
+                                                            )
+                                                        |> Array.fromList
 
-                _ ->
-                    ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), ListEditor itemType [] )
+                                                _ ->
+                                                    [ initEditorState ir itemType (Just record) ]
+                                                        |> Array.fromList
+                                        )
+                                )
+                            )
 
-        Nothing ->
-            ( Nothing, MaybeEditor itemType Nothing )
+                        _ ->
+                            ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), GridEditor columnTypes [] )
+
+                Nothing ->
+                    ( Nothing, GridEditor columnTypes [] )
+
+        _ ->
+            case maybeInitialValue of
+                Just initialValue ->
+                    case initialValue of
+                        Value.List _ items ->
+                            ( Nothing, ListEditor itemType (items |> List.map (\item -> initEditorState ir itemType (Just item))) )
+
+                        _ ->
+                            ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), ListEditor itemType [] )
+
+                Nothing ->
+                    ( Nothing, ListEditor itemType [] )
 
 
 {-| Display the editor. It takes the following inputs:
@@ -663,12 +713,7 @@ view ir valueType updateEditorState editorState =
                         )
             in
             if List.isEmpty itemEditorStates then
-                Input.button []
-                    { onPress =
-                        Just
-                            (updateState [ defaultItemEditorState ])
-                    , label = text "+"
-                    }
+                el [] (plusButton (updateState [ defaultItemEditorState ]))
 
             else
                 column [ spacing 5 ]
@@ -677,20 +722,12 @@ view ir valueType updateEditorState editorState =
                             (\index itemEditorState ->
                                 row []
                                     [ column [ height fill ]
-                                        [ Input.button
+                                        [ el
                                             [ alignTop, moveUp 10 ]
-                                            { onPress =
-                                                Just
-                                                    (updateState (itemEditorStates |> insert index defaultItemEditorState))
-                                            , label = text "+"
-                                            }
+                                            (plusButton (updateState (itemEditorStates |> insert index defaultItemEditorState)))
                                         , if index == List.length itemEditorStates - 1 then
-                                            Input.button [ alignBottom, moveDown 9 ]
-                                                { onPress =
-                                                    Just
-                                                        (updateState (itemEditorStates |> insert (index + 1) defaultItemEditorState))
-                                                , label = text "+"
-                                                }
+                                            el [ alignBottom, moveDown 9 ]
+                                                (closeButton (updateState (itemEditorStates |> insert (index + 1) defaultItemEditorState)))
 
                                           else
                                             none
@@ -701,16 +738,133 @@ view ir valueType updateEditorState editorState =
                                             updateState (itemEditorStates |> set index newItemEditorState)
                                         )
                                         itemEditorState
-                                    , Input.button
-                                        [ centerY ]
-                                        { onPress =
-                                            Just
-                                                (updateState (itemEditorStates |> remove index))
-                                        , label = el [ padding 3 ] (text "x")
-                                        }
+                                    , closeButton (updateState (itemEditorStates |> remove index))
                                     ]
                             )
                     )
+
+        GridEditor columnTypes cellEditorStates ->
+            let
+                set : Int -> Int -> a -> List (Array a) -> List (Array a)
+                set rowIndex columnIndex item list =
+                    List.concat
+                        [ List.take rowIndex list
+                        , list |> List.drop rowIndex |> List.take 1 |> List.map (Array.set columnIndex item)
+                        , List.drop (rowIndex + 1) list
+                        ]
+
+                remove : Int -> List a -> List a
+                remove index list =
+                    List.concat
+                        [ List.take index list
+                        , List.drop (index + 1) list
+                        ]
+
+                emptyRowEditors : Array EditorState
+                emptyRowEditors =
+                    columnTypes
+                        |> List.map
+                            (\( _, columnType ) ->
+                                initEditorState ir columnType Nothing
+                            )
+                        |> Array.fromList
+
+                updateState : List (Array EditorState) -> msg
+                updateState rowStates =
+                    let
+                        listValueResult : Result Error RawValue
+                        listValueResult =
+                            rowStates
+                                |> List.map
+                                    (\rowEditorStates ->
+                                        columnTypes
+                                            |> List.indexedMap
+                                                (\columnIndex ( columnName, _ ) ->
+                                                    rowEditorStates
+                                                        |> Array.get columnIndex
+                                                        |> Maybe.andThen (editorStateToRawValueResult >> Result.toMaybe)
+                                                        |> Maybe.andThen identity
+                                                        |> Maybe.map (Tuple.pair columnName)
+                                                )
+                                            |> List.filterMap identity
+                                            |> Value.Record ()
+                                    )
+                                |> Value.List ()
+                                |> Ok
+                    in
+                    updateEditorState
+                        (applyResult listValueResult
+                            { editorState
+                                | componentState = GridEditor columnTypes rowStates
+                            }
+                        )
+            in
+            if List.isEmpty cellEditorStates then
+                el [] (plusButton (updateState [ emptyRowEditors ]))
+
+            else
+                table
+                    [ spacing 2
+                    , paddingEach { top = 3, bottom = 10, left = 10, right = 10 }
+                    , Background.color (rgb 0.8 0.8 0.8)
+                    ]
+                    { data = cellEditorStates |> List.indexedMap Tuple.pair
+                    , columns =
+                        columnTypes
+                            |> List.indexedMap
+                                (\columnIndex ( columnName, columnType ) ->
+                                    { header =
+                                        el [ width fill, height fill, paddingXY 10 5, Font.bold, Background.color (rgb 1 1 1) ]
+                                            (el [ width fill, center ] (text (columnName |> Name.toHumanWords |> String.join " ")))
+                                    , width = fill
+                                    , view =
+                                        \( rowIndex, rowEditorStates ) ->
+                                            let
+                                                addButton : List (Array EditorState) -> Element msg
+                                                addButton newStates =
+                                                    if columnIndex == 0 then
+                                                        el
+                                                            [ moveUp 7
+                                                            , moveLeft 7
+                                                            ]
+                                                            (plusButton (updateState newStates))
+
+                                                    else
+                                                        none
+
+                                                removeButton : List (Array EditorState) -> Element msg
+                                                removeButton newStates =
+                                                    if columnIndex == List.length columnTypes - 1 then
+                                                        el
+                                                            [ moveDown 3
+                                                            ]
+                                                            (closeButton (updateState newStates))
+
+                                                    else
+                                                        none
+                                            in
+                                            el
+                                                [ width fill
+                                                , height fill
+                                                , Background.color (rgb 1 1 1)
+                                                , inFront (addButton (emptyRowEditors :: cellEditorStates))
+                                                , if rowIndex == List.length cellEditorStates - 1 then
+                                                    below (addButton (cellEditorStates ++ [ emptyRowEditors ]))
+
+                                                  else
+                                                    below none
+                                                , onRight (removeButton (cellEditorStates |> remove rowIndex))
+                                                ]
+                                                (view ir
+                                                    columnType
+                                                    (\newItemEditorState ->
+                                                        updateState (cellEditorStates |> set rowIndex columnIndex newItemEditorState)
+                                                    )
+                                                    (Array.get columnIndex rowEditorStates |> Maybe.withDefault (initEditorState ir columnType Nothing))
+                                                )
+                                    }
+                                )
+                    }
 
         GenericEditor currentText ->
             el (baseStyle ++ errorMessageStyle)
@@ -799,3 +953,70 @@ editorStateToRawValueResult editorState =
 
         Nothing ->
             Ok editorState.lastValidValue
+
+
+plusIcon : Element msg
+plusIcon =
+    html
+        (Svg.svg
+            [ Svg.Attributes.width "7px"
+            , Svg.Attributes.height "7px"
+            , Svg.Attributes.viewBox "0 0 200 200"
+            ]
+            [ Svg.polygon
+                [ Svg.Attributes.points "80,0 120,0 120,80 200,80 200,120 120,120 120,200 80,200 80,120 0,120 0,80 80,80"
+                , Svg.Attributes.style "fill: rgb(100,100,100)"
+                ]
+                []
+            ]
+        )
+
+
+plusButton : msg -> Element msg
+plusButton msg =
+    el
+        [ padding 2
+        , Background.color (rgb 1 1 1)
+        , Border.rounded 7
+        , Border.color (rgb 0.8 0.8 0.8)
+        , Border.width 2
+        ]
+        (Input.button []
+            { onPress = Just msg
+            , label = plusIcon
+            }
+        )
+
+
+closeIcon : Element msg
+closeIcon =
+    html
+        (Svg.svg
+            [ Svg.Attributes.width "7px"
+            , Svg.Attributes.height "7px"
+            , Svg.Attributes.viewBox "0 0 200 200"
+            ]
+            [ Svg.polygon
+                [ Svg.Attributes.points "80,0 120,0 120,80 200,80 200,120 120,120 120,200 80,200 80,120 0,120 0,80 80,80"
+                , Svg.Attributes.style "fill: rgb(100,100,100)"
+                , Svg.Attributes.transform "rotate(45,100,100)"
+                ]
+                []
+            ]
+        )
+
+
+closeButton : msg -> Element msg
+closeButton msg =
+    el
+        [ padding 2
+        , Background.color (rgb 1 1 1)
+        , Border.rounded 7
+        , Border.color (rgb 0.8 0.8 0.8)
+        , Border.width 2
+        ]
+        (Input.button []
+            { onPress = Just msg
+            , label = closeIcon
+            }
+        )
