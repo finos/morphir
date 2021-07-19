@@ -31,6 +31,7 @@
     "cli/morphir-elm-make.js",
     "cli/morphir-elm-gen.js",
     "cli/morphir-elm-develop.js",
+    "cli/morphir-elm-test.js",
     "cli/morphir-dapr.js",
     "cli/Morphir.Elm.CLI.js",
     "cli/Morphir.Elm.DaprCLI.js",
