@@ -179,8 +179,8 @@ defaultDependencies =
         ]
 
 
-mapValueToFile : Type () -> String -> Result String IR
-mapValueToFile outputType content =
+mapValueToFile : IR -> Type () -> String -> Result String IR
+mapValueToFile ir outputType content =
     let
         sourceA =
             { path = "My/Package/A.elm"
