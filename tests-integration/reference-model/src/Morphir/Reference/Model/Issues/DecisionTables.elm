@@ -94,76 +94,88 @@ nestedPatternMatch a b c d e =
                     5
 
 
-type Enum
-    = First
-    | Second String
-    | Third String Int
+type Person
+    = Anonymous
+    | Named String
+    | NamedWithAge String Int
 
 
-myEnum : Enum
+myEnum : Person
 myEnum =
-    Second "foo"
+    NamedWithAge "Jane Doe" 18
 
 
-type OtherEnum
-    = One Enum String
+type Employee
+    = Employed Person String
 
 
-enumPatternMatch : Enum -> Int
+enumPatternMatch : Person -> Int
 enumPatternMatch enum =
     case enum of
-        First ->
+        Anonymous ->
             1
 
-        Second str ->
+        Named "John Doe" ->
             2
 
-        Second "specific value" ->
+        Named name ->
             3
 
-        Third str int ->
+        NamedWithAge "John Doe" 21 ->
             4
 
-        _ ->
+        NamedWithAge "Jane Doe" _ ->
             5
 
+        NamedWithAge name age ->
+            6
 
-nestedEnumPatternMatch : OtherEnum -> Int
+        _ ->
+            7
+
+
+nestedEnumPatternMatch : Employee -> Int
 nestedEnumPatternMatch enum =
     case enum of
-        One First str ->
+        Employed Anonymous "John's Company" ->
             1
 
-        One (Second str) str2 ->
+        Employed Anonymous employment ->
             2
 
-        One (Second "specific") "value" ->
+        Employed (Named "John Doe") "John's Company" ->
             3
 
-        One (Third str int) str2 ->
-            4
+        Employed (Named "Jane Doe") company ->
+            5
+
+        Employed (NamedWithAge "John Smith" 21) "FooBar" ->
+            5
 
         _ ->
-            5
+            6
 
 
 variableEnumPatternMatch : Int
 variableEnumPatternMatch =
     case myEnum of
-        First ->
+        Anonymous ->
             1
 
-        Second str ->
+        Named "John Doe" ->
             2
 
-        Second "specific value" ->
+        Named name ->
             3
 
-        Third str int ->
+        NamedWithAge "Jane Doe" 18 ->
             4
 
-        _ ->
+        NamedWithAge name employment ->
             5
+
+        _ ->
+            6
 
 
 type alias Record =
