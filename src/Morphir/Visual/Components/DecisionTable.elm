@@ -10,7 +10,7 @@ module Morphir.Visual.Components.DecisionTable exposing
 -}
 
 import Dict
-import Element exposing (Color, Column, Element, el, fill, padding, rgb255, row, spacing, table, text, width)
+import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, spacing, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -91,6 +91,7 @@ tableHelp config viewValue headerFunctions rows =
                     (el
                         [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
                         , mediumPadding config.state.theme |> padding
+                        , height fill
                         ]
                         (text "Result")
                     )
@@ -124,6 +125,7 @@ columnHelper config viewValue header index =
         (el
             [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
             , mediumPadding config.state.theme |> padding
+            , height fill
             ]
             (viewValue head)
         )
