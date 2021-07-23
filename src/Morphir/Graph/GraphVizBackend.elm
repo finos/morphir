@@ -121,7 +121,7 @@ valueToLabel indexedValue variables =
                 StringLiteral string ->
                     String.concat [ "'", string, "'" ]
 
-                IntLiteral int ->
+                WholeNumberLiteral int ->
                     String.fromInt int
 
                 FloatLiteral float ->

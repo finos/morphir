@@ -35,7 +35,7 @@ lessThan a b =
                             False
     in
     case ( a, b ) of
-        ( Value.Literal _ (IntLiteral aInt), Value.Literal _ (IntLiteral bInt) ) ->
+        ( Value.Literal _ (WholeNumberLiteral aInt), Value.Literal _ (WholeNumberLiteral bInt) ) ->
             Ok (aInt < bInt)
 
         ( Value.Literal _ (FloatLiteral aFloat), Value.Literal _ (FloatLiteral bFloat) ) ->

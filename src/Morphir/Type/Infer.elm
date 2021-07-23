@@ -933,7 +933,7 @@ constrainLiteral thisTypeVar literalValue =
         StringLiteral _ ->
             expectExactType MetaType.stringType
 
-        IntLiteral _ ->
+        WholeNumberLiteral _ ->
             ConstraintSet.singleton
                 (class (metaVar thisTypeVar) Class.Number)
 
@@ -1041,7 +1041,7 @@ fixNumberLiterals ir typedValue =
         |> Value.rewriteValue
             (\value ->
                 case value of
-                    Value.Literal ( va, tpe ) (IntLiteral v) ->
+                    Value.Literal ( va, tpe ) (WholeNumberLiteral v) ->
                         if (ir |> IR.resolveType tpe) == floatType () then
                             Value.Literal ( va, tpe ) (FloatLiteral (toFloat v)) |> Just
 

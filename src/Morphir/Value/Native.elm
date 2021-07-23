@@ -252,7 +252,7 @@ boolLiteral lit =
 intLiteral : Literal -> Result Error Int
 intLiteral lit =
     case lit of
-        IntLiteral v ->
+        WholeNumberLiteral v ->
             Ok v
 
         _ ->

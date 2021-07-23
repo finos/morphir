@@ -375,12 +375,12 @@ negativeOutcomes : List ( Value () Int, TypeError )
 negativeOutcomes =
     [ ( Value.IfThenElse 1
             (Value.Literal 2 (FloatLiteral 1))
-            (Value.Literal 3 (IntLiteral 2))
-            (Value.Literal 4 (IntLiteral 3))
+            (Value.Literal 3 (WholeNumberLiteral 2))
+            (Value.Literal 4 (WholeNumberLiteral 3))
       , UnifyError (CouldNotUnify RefMismatch MetaType.boolType MetaType.floatType)
       )
     , ( Value.List 1
-            [ Value.Literal 2 (IntLiteral 2)
+            [ Value.Literal 2 (WholeNumberLiteral 2)
             , Value.Literal 3 (FloatLiteral 3)
             , Value.Literal 4 (BoolLiteral False)
             ]

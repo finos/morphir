@@ -1041,10 +1041,10 @@ mapExpression sourceFile (Node range exp) =
             mapOperator sourceLocation op
 
         Expression.Integer value ->
-            Ok (Value.Literal sourceLocation (IntLiteral value))
+            Ok (Value.Literal sourceLocation (WholeNumberLiteral value))
 
         Expression.Hex value ->
-            Ok (Value.Literal sourceLocation (IntLiteral value))
+            Ok (Value.Literal sourceLocation (WholeNumberLiteral value))
 
         Expression.Floatable value ->
             Ok (Value.Literal sourceLocation (FloatLiteral value))
@@ -1167,10 +1167,10 @@ mapPattern sourceFile (Node range pattern) =
             Ok (Value.LiteralPattern sourceLocation (StringLiteral string))
 
         Pattern.IntPattern int ->
-            Ok (Value.LiteralPattern sourceLocation (IntLiteral int))
+            Ok (Value.LiteralPattern sourceLocation (WholeNumberLiteral int))
 
         Pattern.HexPattern int ->
-            Ok (Value.LiteralPattern sourceLocation (IntLiteral int))
+            Ok (Value.LiteralPattern sourceLocation (WholeNumberLiteral int))
 
         Pattern.FloatPattern float ->
             Ok (Value.LiteralPattern sourceLocation (FloatLiteral float))

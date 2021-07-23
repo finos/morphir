@@ -174,7 +174,7 @@ nativeFunctions =
                                                     )
                                             )
                                 )
-                                (Ok (Value.Literal () (IntLiteral 0)))
+                                (Ok (Value.Literal () (WholeNumberLiteral 0)))
 
                     _ ->
                         Err (UnexpectedArguments [ arg ])
@@ -182,5 +182,5 @@ nativeFunctions =
       )
     , ( "map", eval2 List.map (decodeFun1 encodeRaw decodeRaw) (decodeList decodeRaw) encodeResultList )
     , ( "append", eval2 List.append (decodeList decodeRaw) (decodeList decodeRaw) (encodeList encodeRaw) )
-    , ( "range", eval2 List.range (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeList (encodeLiteral IntLiteral)) )
+    , ( "range", eval2 List.range (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeList (encodeLiteral WholeNumberLiteral)) )
     ]
