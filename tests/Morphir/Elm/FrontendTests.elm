@@ -360,8 +360,8 @@ valueTests =
     in
     describe "Values are mapped correctly"
         [ checkIR "()" <| Unit ()
-        , checkIR "1" <| Literal () (IntLiteral 1)
-        , checkIR "0x20" <| Literal () (IntLiteral 32)
+        , checkIR "1" <| Literal () (WholeNumberLiteral 1)
+        , checkIR "0x20" <| Literal () (WholeNumberLiteral 32)
         , checkIR "1.5" <| Literal () (FloatLiteral 1.5)
         , checkIR "\"foo\"" <| Literal () (StringLiteral "foo")
         , checkIR "True" <| Literal () (BoolLiteral True)
@@ -373,7 +373,7 @@ valueTests =
         --, checkIR "MyPack.Bar.foo" <| Reference () (fQName [] [ [ "my", "pack" ], [ "bar" ] ] [ "foo" ])
         , checkIR "foo bar" <| Apply () (ref "foo") (ref "bar")
         , checkIR "foo bar baz" <| Apply () (Apply () (ref "foo") (ref "bar")) (ref "baz")
-        , checkIR "-1" <| SDKBasics.negate () () (Literal () (IntLiteral 1))
+        , checkIR "-1" <| SDKBasics.negate () () (Literal () (WholeNumberLiteral 1))
         , checkIR "if foo then bar else baz" <| IfThenElse () (ref "foo") (ref "bar") (ref "baz")
         , checkIR "( foo, bar, baz )" <| Tuple () [ ref "foo", ref "bar", ref "baz" ]
         , checkIR "( foo )" <| ref "foo"
@@ -387,16 +387,16 @@ valueTests =
         , checkIR "\\_ -> foo " <| Lambda () (WildcardPattern ()) (ref "foo")
         , checkIR "\\'a' -> foo " <| Lambda () (LiteralPattern () (CharLiteral 'a')) (ref "foo")
         , checkIR "\\\"foo\" -> foo " <| Lambda () (LiteralPattern () (StringLiteral "foo")) (ref "foo")
-        , checkIR "\\42 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 42)) (ref "foo")
-        , checkIR "\\0x20 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 32)) (ref "foo")
-        , checkIR "\\( 1, 2 ) -> foo " <| Lambda () (TuplePattern () [ LiteralPattern () (IntLiteral 1), LiteralPattern () (IntLiteral 2) ]) (ref "foo")
-        , checkIR "\\1 :: 2 -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (LiteralPattern () (IntLiteral 2))) (ref "foo")
+        , checkIR "\\42 -> foo " <| Lambda () (LiteralPattern () (WholeNumberLiteral 42)) (ref "foo")
+        , checkIR "\\0x20 -> foo " <| Lambda () (LiteralPattern () (WholeNumberLiteral 32)) (ref "foo")
+        , checkIR "\\( 1, 2 ) -> foo " <| Lambda () (TuplePattern () [ LiteralPattern () (WholeNumberLiteral 1), LiteralPattern () (WholeNumberLiteral 2) ]) (ref "foo")
+        , checkIR "\\1 :: 2 -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (WholeNumberLiteral 1)) (LiteralPattern () (WholeNumberLiteral 2))) (ref "foo")
         , checkIR "\\[] -> foo " <| Lambda () (EmptyListPattern ()) (ref "foo")
-        , checkIR "\\[ 1 ] -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (EmptyListPattern ())) (ref "foo")
+        , checkIR "\\[ 1 ] -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (WholeNumberLiteral 1)) (EmptyListPattern ())) (ref "foo")
         , checkIR "\\([] as bar) -> foo " <| Lambda () (AsPattern () (EmptyListPattern ()) (Name.fromString "bar")) (ref "foo")
-        , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [ [ "my" ] ] [ [ "test" ] ] [ "foo" ]) [ LiteralPattern () (IntLiteral 1), WildcardPattern () ]) (ref "foo")
+        , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [ [ "my" ] ] [ [ "test" ] ] [ "foo" ]) [ LiteralPattern () (WholeNumberLiteral 1), WildcardPattern () ]) (ref "foo")
         , checkIR "\\Bar.Baz -> foo " <| Lambda () (ConstructorPattern () (fQName [ [ "my" ] ] [ [ "bar" ] ] [ "baz" ]) []) (ref "foo")
-        , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (IntLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
+        , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (WholeNumberLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
         , checkIR "a <| b" <| Apply () (ref "a") (ref "b")
         , checkIR "a |> b" <| Apply () (ref "b") (ref "a")
         , checkIR "a |> b |> c" <| Apply () (ref "c") (Apply () (ref "b") (ref "a"))

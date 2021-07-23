@@ -103,28 +103,28 @@ expectedTestSuite =
           )
         , ( ( [ [ "morphir" ], [ "reference" ], [ "model" ] ], [ [ "issues" ], [ "issue", "410" ] ], [ "add", "function" ] )
           , [ { description = "Add"
-              , expectedOutput = Literal () (IntLiteral 9)
-              , inputs = [ Literal () (IntLiteral 4), Literal () (IntLiteral 5) ]
+              , expectedOutput = Literal () (WholeNumberLiteral 9)
+              , inputs = [ Literal () (WholeNumberLiteral 4), Literal () (WholeNumberLiteral 5) ]
               }
             , { description = "Add"
-              , expectedOutput = Literal () (IntLiteral 29)
-              , inputs = [ Literal () (IntLiteral 14), Literal () (IntLiteral 15) ]
+              , expectedOutput = Literal () (WholeNumberLiteral 29)
+              , inputs = [ Literal () (WholeNumberLiteral 14), Literal () (WholeNumberLiteral 15) ]
               }
             , { description = "Add"
-              , expectedOutput = Literal () (IntLiteral 38)
-              , inputs = [ Literal () (IntLiteral 12), Literal () (IntLiteral 26) ]
+              , expectedOutput = Literal () (WholeNumberLiteral 38)
+              , inputs = [ Literal () (WholeNumberLiteral 12), Literal () (WholeNumberLiteral 26) ]
               }
             , { description = "Add"
-              , expectedOutput = Literal () (IntLiteral 248)
-              , inputs = [ Literal () (IntLiteral 122), Literal () (IntLiteral 126) ]
+              , expectedOutput = Literal () (WholeNumberLiteral 248)
+              , inputs = [ Literal () (WholeNumberLiteral 122), Literal () (WholeNumberLiteral 126) ]
               }
             , { description = "Add"
-              , expectedOutput = Literal () (IntLiteral 11)
-              , inputs = [ Literal () (IntLiteral 10), Literal () (IntLiteral 1) ]
+              , expectedOutput = Literal () (WholeNumberLiteral 11)
+              , inputs = [ Literal () (WholeNumberLiteral 10), Literal () (WholeNumberLiteral 1) ]
               }
             , { description = "Add"
-              , expectedOutput = Literal () (IntLiteral -9)
-              , inputs = [ Literal () (IntLiteral -10), Literal () (IntLiteral 1) ]
+              , expectedOutput = Literal () (WholeNumberLiteral -9)
+              , inputs = [ Literal () (WholeNumberLiteral -10), Literal () (WholeNumberLiteral 1) ]
               }
             ]
           )

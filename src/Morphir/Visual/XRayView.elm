@@ -445,7 +445,7 @@ viewLiteral lit =
         StringLiteral string ->
             text (String.concat [ "\"", string, "\"" ])
 
-        IntLiteral int ->
+        WholeNumberLiteral int ->
             text (String.fromInt int)
 
         FloatLiteral float ->

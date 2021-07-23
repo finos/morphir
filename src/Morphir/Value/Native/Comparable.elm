@@ -19,7 +19,6 @@ lessThan arg1 arg2 =
                         False
             )
 
-
 lessThanOrEqual : RawValue -> RawValue -> Result Error Bool
 lessThanOrEqual arg1 arg2 =
     compareValue arg1 arg2
@@ -93,7 +92,7 @@ min arg1 arg2 =
 compareValue : RawValue -> RawValue -> Result Error Order
 compareValue arg1 arg2 =
     case ( arg1, arg2 ) of
-        ( Value.Literal () (IntLiteral val1), Value.Literal () (IntLiteral val2) ) ->
+        ( Value.Literal () (WholeNumberLiteral val1), Value.Literal () (WholeNumberLiteral val2) ) ->
             compare val1 val2 |> Ok
 
         ( Value.Literal () (FloatLiteral val1), Value.Literal () (FloatLiteral val2) ) ->
