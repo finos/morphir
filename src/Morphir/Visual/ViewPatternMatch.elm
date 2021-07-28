@@ -8,12 +8,12 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, TypedValue, Value)
 import Morphir.Value.Interpreter exposing (matchPattern)
-import Morphir.Visual.Components.DecisionTable as DecisionTable exposing (DecisionTable, HighlightState(..), Match(..), Rule, TypedPattern)
-import Morphir.Visual.Config as Config exposing (Config)
+import Morphir.Visual.Components.DecisionTable as DecisionTable exposing (DecisionTable, Match(..), Rule, TypedPattern)
+import Morphir.Visual.Config as Config exposing (Config, HighlightState(..))
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
-view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> List ( Pattern ( Int, Type () ), VisualTypedValue ) -> Element msg
+view : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> VisualTypedValue -> List ( Pattern ( Int, Type () ), VisualTypedValue ) -> Element msg
 view config viewValue subject matches =
     let
         typedSubject : TypedValue
@@ -124,7 +124,17 @@ getHighlightStates config subject matches =
         referencedPatterns =
             List.map (List.map2 Tuple.pair subject) patterns
     in
-    List.foldl (comparePreviousHighlightStates config) [] referencedPatterns
+    case config.state.highlightState of
+        Nothing ->
+            List.foldl (comparePreviousHighlightStates config) [] referencedPatterns
+
+        Just highlightState ->
+            case highlightState of
+                Matched ->
+                    List.foldl (comparePreviousHighlightStates config) [] referencedPatterns
+
+                _ ->
+                    List.map (\x -> List.repeat (List.length x) Default) patterns
 
 
 comparePreviousHighlightStates : Config msg -> List ( TypedValue, Match ) -> List (List HighlightState) -> List (List HighlightState)
