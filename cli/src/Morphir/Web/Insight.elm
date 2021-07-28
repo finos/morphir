@@ -314,6 +314,7 @@ view model =
                         , variables = validArgValues
                         , popupVariables = visualizationState.popupVariables
                         , theme = model.theme
+                        , highlightState = Nothing
                         }
                     , handlers =
                         { onReferenceClicked = ExpandReference
