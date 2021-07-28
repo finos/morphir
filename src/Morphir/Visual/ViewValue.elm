@@ -37,9 +37,6 @@ import Morphir.Visual.XRayView as XRayView
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
 viewDefinition config ( _, _, valueName ) valueDef =
     let
-        _ =
-            Debug.log "variables" config.state.variables
-
         definitionElem =
             definition config
                 (nameToText valueName)
@@ -270,7 +267,7 @@ viewValueByLanguageFeature config value =
                     ViewIfThenElse.view config (viewValue config) value
 
                 Value.PatternMatch tpe param patterns ->
-                    ViewPatternMatch.view config (viewValue config) param patterns
+                    ViewPatternMatch.view config viewValue param patterns
 
                 Value.Unit _ ->
                     el [] (text "not set")
