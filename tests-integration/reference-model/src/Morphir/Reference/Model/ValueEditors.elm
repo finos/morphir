@@ -121,3 +121,33 @@ type LargeEnum
 largeEnum : LargeEnum -> LargeEnum
 largeEnum input =
     input
+
+
+maybe1 : Maybe Int -> Int
+maybe1 input =
+    case input of
+        Just value ->
+            value
+
+        Nothing ->
+            0
+
+
+maybe2 : Maybe SmallEnum -> Maybe SmallEnum
+maybe2 input =
+    input
+
+
+list1 : List Int -> List Int
+list1 input =
+    input
+
+
+list2 : List { boolField : Bool, intField : Int } -> List { boolField : Bool, intField : Int }
+list2 input =
+    input
+
+
+list3 : List { boolField : Bool, intField : Int, smallEnum : SmallEnum } -> List { boolField : Bool, intField : Int, smallEnum : SmallEnum }
+list3 input =
+    input
