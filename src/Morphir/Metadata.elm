@@ -1,5 +1,5 @@
 module Morphir.Metadata exposing
-   (Metadata, mapDistribution, getTypes, getEnums, getBaseTypes, getAliases)
+   (Metadata, Types, Enums, BaseTypes, Aliases, mapDistribution, getTypes, getEnums, getBaseTypes, getAliases)
 
 {-| The Metadata module analyses a distribution to build a graph for dependency and lineage tracking purposes.
 The goal is to understand data flow and to automate contribution to the types of products that are commonly used in
@@ -32,30 +32,34 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 
 
+type alias Types ta =        (Dict FQName (Type.Definition ta))
+type alias Enums =        (Dict FQName (List Name))
+type alias BaseTypes =        (Dict FQName FQName)
+type alias Aliases =        (Dict FQName FQName)
 
 type Metadata ta =
     Metadata
-        (Dict FQName (Type.Definition ta))
-        (Dict FQName (List Name))
-        (Dict FQName FQName)
-        (Dict FQName FQName)
+        (Types ta)
+        Enums
+        BaseTypes
+        Aliases
 
-getTypes : Metadata ta -> Dict FQName (Type.Definition ta)
+getTypes : Metadata ta -> Types ta
 getTypes meta =
     case meta of
         Metadata types _ _ _ -> types
 
-getEnums : Metadata ta -> Dict FQName (List Name)
+getEnums : Metadata ta -> Enums
 getEnums meta =
     case meta of
         Metadata  _ enums _ _ -> enums
 
-getBaseTypes : Metadata ta -> Dict  FQName FQName
+getBaseTypes : Metadata ta -> BaseTypes
 getBaseTypes meta =
     case meta of
         Metadata  _ _ baseTypes _ -> baseTypes
 
-getAliases : Metadata ta -> Dict  FQName FQName
+getAliases : Metadata ta -> Aliases
 getAliases meta =
     case meta of
         Metadata  _ _ _ aliases -> aliases
