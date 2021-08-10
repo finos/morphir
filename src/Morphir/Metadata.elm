@@ -1,14 +1,16 @@
 module Morphir.Metadata exposing
-   (Metadata, mapDistribution, getTypes, getEnums, getBaseTypes, getAliases)
+    ( Metadata
+    , mapDistribution
+    , getTypes, getEnums, getBaseTypes, getAliases, getDocumentation
+    )
 
-{-| The Metadata module analyses a distribution to build a graph for dependency and lineage tracking purposes.
-The goal is to understand data flow and to automate contribution to the types of products that are commonly used in
-enterprises. The result of processing is a [Graph](#Graph), which is a collection of [Nodes](#Node) and [Edges](#Edge).
+{-| The Metadata module analyses a distribution for the type of metadata information that would be helpful in
+automating things like data dictionaries, lineage tracking, and the such.
 
 
 # Types
 
-@docs Node, Verb, Edge, GraphEntry, Graph
+@docs Metadata
 
 
 # Processing
@@ -18,49 +20,102 @@ enterprises. The result of processing is a [Graph](#Graph), which is a collectio
 
 # Utilities
 
-@docs graphEntryToComparable, nodeType, verbToString, nodeFQN
+@docs getTypes, getEnums, getBaseTypes, getAliases, getDocumentation
 
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR.AccessControlled exposing (Access(..), withPublicAccess)
+import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled, withPublicAccess)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
+import Morphir.Scala.AST exposing (Documented)
 
 
+{-| Structure for holding metadata information from processing the distribution.
+-}
+type Metadata ta
+    = Metadata (Types ta) Enums BaseTypes Aliases
 
-type Metadata ta =
-    Metadata
-        (Dict FQName (Type.Definition ta))
-        (Dict FQName (List Name))
-        (Dict FQName FQName)
-        (Dict FQName FQName)
 
-getTypes : Metadata ta -> Dict FQName (Type.Definition ta)
+{-| The registry of types through entire distribution.
+-}
+type alias Types ta =
+    Dict FQName (Documented (Type.Definition ta))
+
+
+{-| The registry of enums through the entire distribution.
+An enum is identified as any union type that has only non-argument options.
+-}
+type alias Enums =
+    Dict FQName (List Name)
+
+
+{-| The registry of base types through the entire distribution.
+A base type is any union type that has only one single argument option.
+-}
+type alias BaseTypes =
+    Dict FQName FQName
+
+
+{-| The registry of aliases through the entire distribution.
+An alias is any type alias that aliases a non-record type.
+-}
+type alias Aliases =
+    Dict FQName FQName
+
+
+{-| Access function for getting the type registry from a Metadata structure.
+-}
+getTypes : Metadata ta -> Types ta
 getTypes meta =
     case meta of
-        Metadata types _ _ _ -> types
+        Metadata types _ _ _ ->
+            types
 
-getEnums : Metadata ta -> Dict FQName (List Name)
+
+{-| Access function for getting the full type registry from a Metadata structure.
+-}
+getDocumentation : Metadata ta -> FQName -> Maybe String
+getDocumentation meta fqn =
+    getTypes meta
+        |> Dict.get fqn
+        |> Maybe.map .doc
+        |> Maybe.withDefault Nothing
+        |> Maybe.map String.trim
+
+
+{-| Access function for getting the enum registry from a Metadata structure.
+-}
+getEnums : Metadata ta -> Enums
 getEnums meta =
     case meta of
-        Metadata  _ enums _ _ -> enums
+        Metadata _ enums _ _ ->
+            enums
 
-getBaseTypes : Metadata ta -> Dict  FQName FQName
+
+{-| Access function for getting the base type registry from a Metadata structure.
+-}
+getBaseTypes : Metadata ta -> BaseTypes
 getBaseTypes meta =
     case meta of
-        Metadata  _ _ baseTypes _ -> baseTypes
+        Metadata _ _ baseTypes _ ->
+            baseTypes
 
-getAliases : Metadata ta -> Dict  FQName FQName
+
+{-| Access function for getting the alias type registry from a Metadata structure.
+-}
+getAliases : Metadata ta -> Aliases
 getAliases meta =
     case meta of
-        Metadata  _ _ _ aliases -> aliases
+        Metadata _ _ _ aliases ->
+            aliases
 
-{-| Process this distribution into a Graph of its packages.
+
+{-| Process this distribution into a Metadata structure.
 -}
 mapDistribution : Distribution -> Metadata ()
 mapDistribution distro =
@@ -69,8 +124,7 @@ mapDistribution distro =
             mapPackageDefinition packageName packageDef
 
 
-{-| Process this package into a Graph of its modules. We take two passes to the IR. The first collects all of the
-types and the second processes the functions and their relationships to those types.
+{-| Process this package into a Metadata structure.
 -}
 mapPackageDefinition : Package.PackageName -> Package.Definition ta va -> Metadata ta
 mapPackageDefinition packageName packageDef =
@@ -82,67 +136,90 @@ mapPackageDefinition packageName packageDef =
                     (\( moduleName, accessControlledModuleDef ) ->
                         mapModuleTypes packageName moduleName accessControlledModuleDef.value
                     )
+
         types =
             typeList
                 |> Dict.fromList
 
         enums =
             typeList
-                |> List.filterMap (\(k,v) ->
-                    let
-                        es = asEnum v
-                    in
+                |> List.filterMap
+                    (\( k, v ) ->
+                        let
+                            es =
+                                asEnum v.value
+                        in
                         if List.isEmpty es then
                             Nothing
+
                         else
-                            Just (k, es)
-                )
+                            Just ( k, es )
+                    )
                 |> Dict.fromList
 
         bases =
             typeList
-                |> List.filterMap (\(k,v) ->
-                    let
-                        bs = asBaseType v
-                    in
-                        bs |> Maybe.map (\b -> (k, b))
-                )
+                |> List.filterMap
+                    (\( k, v ) ->
+                        let
+                            bs =
+                                asBaseType v.value
+                        in
+                        bs |> Maybe.map (\b -> ( k, b ))
+                    )
                 |> Dict.fromList
 
         aliases =
             typeList
-                |> List.filterMap (\(k,v) ->
-                    let
-                        bs = asAlias v
-                    in
-                        bs |> Maybe.map (\b -> (k, b))
-                )
+                |> List.filterMap
+                    (\( k, v ) ->
+                        let
+                            bs =
+                                asAlias v.value
+                        in
+                        bs |> Maybe.map (\b -> ( k, b ))
+                    )
                 |> Dict.fromList
     in
-        Metadata types enums bases aliases
+    Metadata types enums bases aliases
 
-{-| Process this module to collect the types used and produced by it.
+
+{-| Process this module to collect the types used produced by it.
 -}
-mapModuleTypes : Package.PackageName -> Module.ModuleName -> Module.Definition ta va -> List (FQName, Type.Definition ta)
+mapModuleTypes : Package.PackageName -> Module.ModuleName -> Module.Definition ta va -> List ( FQName, Documented (Type.Definition ta) )
 mapModuleTypes packageName moduleName moduleDef =
     moduleDef.types
         |> Dict.toList
         |> List.map
             (\( typeName, accessControlledDocumentedTypeDef ) ->
-                mapTypeDefinition packageName moduleName typeName accessControlledDocumentedTypeDef.value.value
+                mapTypeDefinition packageName moduleName typeName accessControlledDocumentedTypeDef.value.value accessControlledDocumentedTypeDef.value.doc
             )
+
 
 {-| Process a type since there are a lot of variations.
 -}
-mapTypeDefinition : Package.PackageName -> Module.ModuleName -> Name -> Type.Definition ta -> (FQName, Type.Definition ta)
-mapTypeDefinition packageName moduleName typeName typeDef =
+mapTypeDefinition : Package.PackageName -> Module.ModuleName -> Name -> Type.Definition ta -> String -> ( FQName, Documented (Type.Definition ta) )
+mapTypeDefinition packageName moduleName typeName typeDef documentation =
     let
         fqn =
             ( packageName, moduleName, typeName )
+
+        mDocumentation =
+            documentation
+                |> String.trim
+                |> (\s ->
+                        if String.isEmpty s then
+                            Nothing
+
+                        else
+                            Just s
+                   )
     in
-    (fqn, typeDef)
+    ( fqn, Documented mDocumentation typeDef )
 
 
+{-| Decides whether a union type is an enum by ensuring it only has no-arg constructors.
+-}
 isEnum : Dict a (List b) -> Bool
 isEnum constructors =
     constructors
@@ -153,7 +230,9 @@ isEnum constructors =
             )
 
 
-asEnum : Type.Definition ta ->  (List Name)
+{-| Decides whether a type is an enum through Maybe.
+-}
+asEnum : Type.Definition ta -> List Name
 asEnum typeDef =
     case typeDef of
         Type.CustomTypeDefinition _ accessControlledCtors ->
@@ -161,7 +240,7 @@ asEnum typeDef =
                 Just constructors ->
                     if isEnum constructors then
                         constructors
-                            |>  Dict.keys
+                            |> Dict.keys
 
                     else
                         []
@@ -172,6 +251,9 @@ asEnum typeDef =
         _ ->
             []
 
+
+{-| Decides whether a type is a base type through Maybe.
+-}
 asBaseType : Type.Definition ta -> Maybe FQName
 asBaseType typeDef =
     case typeDef of
@@ -194,11 +276,14 @@ asBaseType typeDef =
             Nothing
 
 
+{-| Decides whether a type is an alias through Maybe.
+-}
 asAlias : Type.Definition ta -> Maybe FQName
 asAlias typeDef =
-     case typeDef of
+    case typeDef of
         -- This is a type alias, so we want to get that as a type and register the base type as well.
         Type.TypeAliasDefinition _ (Type.Reference _ aliasFQN _) ->
             Just aliasFQN
 
-        _ -> Nothing
+        _ ->
+            Nothing
