@@ -1,7 +1,8 @@
 module Morphir.Metadata exposing
     ( Metadata
     , mapDistribution
-    , getTypes, getEnums, getBaseTypes, getAliases, getDocumentation
+    , getTypes, getEnums, getBaseTypes, getAliases, getDocumentation, getModules
+    , Aliases, BaseTypes, Enums, Modules, Types
     )
 
 {-| The Metadata module analyses a distribution for the type of metadata information that would be helpful in
@@ -20,7 +21,7 @@ automating things like data dictionaries, lineage tracking, and the such.
 
 # Utilities
 
-@docs getTypes, getEnums, getBaseTypes, getAliases, getDocumentation
+@docs getTypes, getEnums, getBaseTypes, getAliases, getDocumentation, getModules
 
 -}
 
@@ -28,7 +29,7 @@ import Dict exposing (Dict)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled, withPublicAccess)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Module as Module
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
@@ -38,7 +39,13 @@ import Morphir.Scala.AST exposing (Documented)
 {-| Structure for holding metadata information from processing the distribution.
 -}
 type Metadata ta
-    = Metadata (Types ta) Enums BaseTypes Aliases
+    = Metadata Modules (Types ta) Enums BaseTypes Aliases
+
+
+{-| The registry of modules through entire distribution.
+-}
+type alias Modules =
+    List ModuleName
 
 
 {-| The registry of types through entire distribution.
@@ -68,12 +75,21 @@ type alias Aliases =
     Dict FQName FQName
 
 
+{-| Access function for getting the module registry from a Metadata structure.
+-}
+getModules : Metadata ta -> Modules
+getModules meta =
+    case meta of
+        Metadata modules _ _ _ _ ->
+            modules
+
+
 {-| Access function for getting the type registry from a Metadata structure.
 -}
 getTypes : Metadata ta -> Types ta
 getTypes meta =
     case meta of
-        Metadata types _ _ _ ->
+        Metadata _ types _ _ _ ->
             types
 
 
@@ -93,7 +109,7 @@ getDocumentation meta fqn =
 getEnums : Metadata ta -> Enums
 getEnums meta =
     case meta of
-        Metadata _ enums _ _ ->
+        Metadata _ _ enums _ _ ->
             enums
 
 
@@ -102,7 +118,7 @@ getEnums meta =
 getBaseTypes : Metadata ta -> BaseTypes
 getBaseTypes meta =
     case meta of
-        Metadata _ _ baseTypes _ ->
+        Metadata _ _ _ baseTypes _ ->
             baseTypes
 
 
@@ -111,7 +127,7 @@ getBaseTypes meta =
 getAliases : Metadata ta -> Aliases
 getAliases meta =
     case meta of
-        Metadata _ _ _ aliases ->
+        Metadata _ _ _ _ aliases ->
             aliases
 
 
@@ -129,6 +145,10 @@ mapDistribution distro =
 mapPackageDefinition : Package.PackageName -> Package.Definition ta va -> Metadata ta
 mapPackageDefinition packageName packageDef =
     let
+        modules =
+            packageDef.modules
+                |> Dict.keys
+
         typeList =
             packageDef.modules
                 |> Dict.toList
@@ -181,7 +201,7 @@ mapPackageDefinition packageName packageDef =
                     )
                 |> Dict.fromList
     in
-    Metadata types enums bases aliases
+    Metadata modules types enums bases aliases
 
 
 {-| Process this module to collect the types used produced by it.
