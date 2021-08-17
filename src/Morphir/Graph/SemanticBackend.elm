@@ -19,9 +19,9 @@ module Morphir.Graph.SemanticBackend exposing (..)
 
 import Dict
 import Morphir.File.FileMap exposing (FileMap)
-import Morphir.File.SourceCode as Doc exposing (Doc, concat, newLine, space)
+import Morphir.File.SourceCode as Doc exposing (Doc, concat, indentLines, newLine, space)
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.FQName as FQName
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
@@ -30,11 +30,14 @@ import Morphir.Metadata as Metadata exposing (Types)
 
 
 type alias Options =
-    { namespace : String }
+    { namespace : ( String, String )
+
+    --, includes : List ( String, String )
+    }
 
 
 mapDistribution : Options -> Distribution -> FileMap
-mapDistribution opt distro =
+mapDistribution options distro =
     let
         metadata =
             Metadata.mapDistribution distro
@@ -45,12 +48,12 @@ mapDistribution opt distro =
         types =
             Metadata.getTypes metadata
     in
-    [ toFile modules types ]
+    [ toFile options modules types ]
         |> Dict.fromList
 
 
-toFile : List ModuleName -> Types ta -> ( ( List String, String ), String )
-toFile modules types =
+toFile : Options -> List ModuleName -> Types ta -> ( ( List String, String ), String )
+toFile options modules types =
     let
         path =
             []
@@ -59,20 +62,23 @@ toFile modules types =
             "taxonomy.skos"
 
         content =
-            prettyPrint modules types
+            prettyPrint options modules types
 
         --PrettyPrinter.mapAttributes (PrettyPrinter.Options 2 100) attributes
     in
     ( ( path, file ), content )
 
 
-prettyPrint : List ModuleName -> Types ta -> Doc
-prettyPrint modules types =
+prettyPrint : Options -> List ModuleName -> Types ta -> Doc
+prettyPrint options modules types =
+    -- TODO clean up the redundancy with proper grammar
     let
-        lastPath : Path -> String
-        lastPath path =
-            path |> List.reverse |> List.head |> Maybe.map Name.toSnakeCase |> Maybe.withDefault "<root>"
+        ( namespacePrefix, namespaceIRI ) =
+            options.namespace
 
+        --lastPath : Path -> String
+        --lastPath path =
+        --    path |> List.reverse |> List.head |> Maybe.map Name.toSnakeCase |> Maybe.withDefault "<root>"
         moduleSkos =
             modules
                 |> List.map
@@ -81,33 +87,63 @@ prettyPrint modules types =
                             [] ->
                                 Doc.empty
 
-                            [ root ] ->
-                                concat [ Name.toSnakeCase root, space, "-type->", space, "DomainElement", newLine ]
+                            [ name ] ->
+                                concat
+                                    [ concat [ namespacePrefix, ":", Name.toSnakeCase name, space, "rdf:type", space, "sko:Concept", space, ";", newLine ]
+                                    , indentLines 2
+                                        [ concat [ "skos:prefLabel", space, "\"", Name.toHumanWords name |> String.join " ", "\"", space, ".", newLine ]
+                                        ]
+                                    , newLine
+                                    ]
 
                             name :: root :: _ ->
                                 concat
-                                    [ concat [ Name.toSnakeCase name, space, "-skos:broader->", space, Name.toSnakeCase root, newLine ]
-                                    , concat [ Name.toSnakeCase root, space, "-type->", space, "DomainElement", newLine ]
+                                    [ concat [ namespacePrefix, ":", Name.toSnakeCase name, space, "rdf:type", space, "sko:Concept", space, ";", newLine ]
+                                    , indentLines 2
+                                        [ concat [ "skos:prefLabel", space, "\"", Name.toHumanWords name |> String.join " ", "\"", space, ".", newLine ]
+                                        , concat [ "skos:broader", space, namespacePrefix, ":", namespacePrefix, ":", Name.toSnakeCase name, space, ".", newLine ]
+                                        ]
                                     ]
                     )
 
         typeSkos =
             types
                 |> Dict.keys
-                |> List.map (\fqn -> ( Name.toSnakeCase (FQName.getLocalName fqn), lastPath (FQName.getModulePath fqn) ))
+                |> List.map (\fqn -> ( FQName.getLocalName fqn, FQName.getModulePath fqn |> List.reverse |> List.head |> Maybe.withDefault [] ))
                 |> List.map
                     (\( name, domain ) ->
                         concat
-                            [ concat [ name, space, "-type->", space, "DataElement", newLine ]
-                            , concat [ name, space, "-skos:broader->", space, domain, newLine ]
+                            [ concat [ namespacePrefix, ":", Name.toSnakeCase name, space, "rdf:type", space, namespacePrefix, ":", "DataElement", space, ";", newLine ]
+                            , indentLines 2
+                                [ concat [ "skos:prefLabel", space, "\"", Name.toHumanWords name |> String.join " ", "\"", space, ";", newLine ]
+                                , concat [ "skos:broader", space, namespacePrefix, ":", namespacePrefix, ":", Name.toSnakeCase domain, space, ".", newLine ]
+                                ]
                             ]
                     )
     in
     concat
-        ([ concat [ "@prefix skos: <http://www.w3.org/2004/02/skos/core#> .", newLine ]
+        ([ concat [ "@prefix", space, namespacePrefix, ":", space, "<", namespaceIRI, ">", space, ".", newLine ]
+         , concat [ "@prefix skos: <http://www.w3.org/2004/02/skos/core#> .", newLine ]
          , concat [ "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .", newLine ]
          , newLine
          ]
             ++ moduleSkos
             ++ typeSkos
         )
+
+
+fqnToURI : FQName -> String
+fqnToURI fqn =
+    String.join "/"
+        [ moduleToURI fqn
+        , Name.toSnakeCase (FQName.getLocalName fqn)
+        ]
+
+
+moduleToURI : FQName -> String
+moduleToURI fqn =
+    String.join "/"
+        [ "http:/"
+        , Path.toString Name.toSnakeCase "/" (FQName.getPackagePath fqn)
+        , Path.toString Name.toSnakeCase "/" (FQName.getModulePath fqn)
+        ]
