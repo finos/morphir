@@ -18,22 +18,18 @@
 module Morphir.Graph.SemanticBackend exposing (..)
 
 import Dict
+import List.Extra as List
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.SourceCode as Doc exposing (Doc, concat, indentLines, newLine, space)
-import Morphir.IR.Distribution exposing (Distribution)
+import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type exposing (Type)
 import Morphir.Metadata as Metadata exposing (Types)
-
-
-type alias Options =
-    { namespace : ( String, String )
-
-    --, includes : List ( String, String )
-    }
+import Morphir.Scala.Backend exposing (Options)
+import Set
 
 
 mapDistribution : Options -> Distribution -> FileMap
@@ -47,84 +43,123 @@ mapDistribution options distro =
 
         types =
             Metadata.getTypes metadata
+
+        package =
+            Distribution.lookupPackageName distro |> toFQName
     in
-    [ toFile options modules types ]
+    [ toFile package modules types ]
         |> Dict.fromList
 
 
-toFile : Options -> List ModuleName -> Types ta -> ( ( List String, String ), String )
-toFile options modules types =
+toFile : FQName -> List ModuleName -> Types ta -> ( ( List String, String ), String )
+toFile package modules types =
     let
         path =
             []
 
         file =
-            "taxonomy.skos"
+            "taxonomy.ttl"
 
         content =
-            prettyPrint options modules types
+            prettyPrint package modules types
 
         --PrettyPrinter.mapAttributes (PrettyPrinter.Options 2 100) attributes
     in
     ( ( path, file ), content )
 
 
-prettyPrint : Options -> List ModuleName -> Types ta -> Doc
-prettyPrint options modules types =
+prettyPrint : FQName -> List ModuleName -> Types ta -> Doc
+prettyPrint package modules types =
     -- TODO clean up the redundancy with proper grammar
     let
-        ( namespacePrefix, namespaceIRI ) =
-            options.namespace
+        namespacePrefix =
+            package |> FQName.getLocalName |> Name.toSnakeCase
 
-        --lastPath : Path -> String
-        --lastPath path =
-        --    path |> List.reverse |> List.head |> Maybe.map Name.toSnakeCase |> Maybe.withDefault "<root>"
-        moduleSkos =
+        namespaceIRI =
+            Debug.log ".." package |> fqnToIRI
+
+        reducePath modulePath =
+            case modulePath of
+                [] ->
+                    []
+
+                [ name ] ->
+                    [ FQName.fQName [] [] name ]
+
+                _ ->
+                    let
+                        fqn =
+                            toFQName modulePath
+                    in
+                    fqn :: reducePath (FQName.getModulePath fqn)
+
+        moduleFqns =
             modules
-                |> List.map
-                    (\moduleName ->
-                        case List.reverse moduleName of
-                            [] ->
-                                Doc.empty
+                |> List.concatMap reducePath
+                |> Set.fromList
 
-                            [ name ] ->
-                                concat
-                                    [ concat [ namespacePrefix, ":", Name.toSnakeCase name, space, "rdf:type", space, "sko:Concept", space, ";", newLine ]
-                                    , indentLines 2
-                                        [ concat [ "skos:prefLabel", space, "\"", Name.toHumanWords name |> String.join " ", "\"", space, ".", newLine ]
-                                        ]
-                                    , newLine
-                                    ]
+        toSkos : String -> FQName -> Doc
+        toSkos skosType fqn =
+            case fqn of
+                ( _, [], [] ) ->
+                    Doc.empty
 
-                            name :: root :: _ ->
-                                concat
-                                    [ concat [ namespacePrefix, ":", Name.toSnakeCase name, space, "rdf:type", space, "sko:Concept", space, ";", newLine ]
-                                    , indentLines 2
-                                        [ concat [ "skos:prefLabel", space, "\"", Name.toHumanWords name |> String.join " ", "\"", space, ".", newLine ]
-                                        , concat [ "skos:broader", space, namespacePrefix, ":", namespacePrefix, ":", Name.toSnakeCase name, space, ".", newLine ]
-                                        ]
-                                    ]
-                    )
+                ( _, [], name ) ->
+                    concat
+                        [ concat [ namespacePrefix, ":", Name.toSnakeCase name, space, "rdf:type", space, skosType, space, ";", newLine ]
+                        , indentLines 2
+                            [ concat [ "skos:prefLabel", space, "\"", Name.toHumanWords name |> String.join " ", "\"", space, "." ]
+                            ]
+                        , newLine
+                        , newLine
+                        ]
+
+                ( _, domain, name ) ->
+                    concat
+                        [ concat [ namespacePrefix, ":", Name.toSnakeCase name, space, "rdf:type", space, skosType, space, ";", newLine ]
+                        , indentLines 2
+                            [ concat [ "skos:prefLabel", space, "\"", Name.toHumanWords name |> String.join " ", "\"", space, ";" ]
+                            , concat [ "skos:broader", space, namespacePrefix, ":", Name.toSnakeCase (FQName.getLocalName (toFQName domain)), space, "." ]
+                            ]
+                        , newLine
+                        , newLine
+                        ]
+
+        dataDomainConcept =
+            namespacePrefix ++ ":" ++ "DataDomain"
+
+        dataElementConcept =
+            namespacePrefix ++ ":" ++ "DataElement"
+
+        moduleSkos =
+            moduleFqns
+                |> Set.toList
+                |> List.sortBy (\x -> String.toLower (FQName.toString x))
+                |> List.map (toSkos dataDomainConcept)
 
         typeSkos =
             types
                 |> Dict.keys
-                |> List.map (\fqn -> ( FQName.getLocalName fqn, FQName.getModulePath fqn |> List.reverse |> List.head |> Maybe.withDefault [] ))
-                |> List.map
-                    (\( name, domain ) ->
-                        concat
-                            [ concat [ namespacePrefix, ":", Name.toSnakeCase name, space, "rdf:type", space, namespacePrefix, ":", "DataElement", space, ";", newLine ]
-                            , indentLines 2
-                                [ concat [ "skos:prefLabel", space, "\"", Name.toHumanWords name |> String.join " ", "\"", space, ";", newLine ]
-                                , concat [ "skos:broader", space, namespacePrefix, ":", namespacePrefix, ":", Name.toSnakeCase domain, space, ".", newLine ]
-                                ]
-                            ]
-                    )
+                |> List.map (toSkos dataElementConcept)
     in
     concat
         ([ concat [ "@prefix", space, namespacePrefix, ":", space, "<", namespaceIRI, ">", space, ".", newLine ]
          , concat [ "@prefix skos: <http://www.w3.org/2004/02/skos/core#> .", newLine ]
          , concat [ "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .", newLine ]
+         , newLine
+         , concat [ dataDomainConcept, space, "rdf:type", space, "skos:Concept", space, ";", newLine ]
+         , indentLines 2
+            [ concat [ "skos:prefLabel", space, "\"Data Domain\"", space, ";" ]
+            , concat [ "skos:broader", space, "skos:Concept", space, "." ]
+            ]
+         , newLine
+         , newLine
+         , concat [ dataElementConcept, space, "rdf:type", space, "skos:Concept", space, ";", newLine ]
+         , indentLines 2
+            [ concat [ "skos:prefLabel", space, "\"Data Element\"", space, ";" ]
+            , concat [ "skos:broader", space, "skos:Concept", space, "." ]
+            ]
+         , newLine
          , newLine
          ]
             ++ moduleSkos
@@ -132,18 +167,30 @@ prettyPrint options modules types =
         )
 
 
-fqnToURI : FQName -> String
-fqnToURI fqn =
+toFQName : Path -> FQName
+toFQName path =
+    let
+        ( localName, newModulePath ) =
+            List.unconsLast path
+                |> Maybe.withDefault ( [], [] )
+    in
+    FQName.fQName [] newModulePath localName
+
+
+fqnToIRI : FQName -> String
+fqnToIRI fqn =
     String.join "/"
-        [ moduleToURI fqn
+        [ moduleToIRI fqn
         , Name.toSnakeCase (FQName.getLocalName fqn)
         ]
 
 
-moduleToURI : FQName -> String
-moduleToURI fqn =
-    String.join "/"
-        [ "http:/"
-        , Path.toString Name.toSnakeCase "/" (FQName.getPackagePath fqn)
-        , Path.toString Name.toSnakeCase "/" (FQName.getModulePath fqn)
-        ]
+moduleToIRI : FQName -> String
+moduleToIRI fqn =
+    [ FQName.getPackagePath fqn
+    , FQName.getModulePath fqn
+    ]
+        |> List.concat
+        |> List.map Name.toSnakeCase
+        |> (::) "http:/"
+        |> String.join "/"
