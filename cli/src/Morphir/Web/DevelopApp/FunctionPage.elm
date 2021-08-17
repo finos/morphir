@@ -20,7 +20,7 @@ import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
+import Morphir.Visual.Config exposing (Config, HighlightState(..), PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
@@ -165,6 +165,7 @@ viewScenarios theme handlers distribution model =
                         |> Maybe.map .popupVariables
                         |> Maybe.withDefault (PopupScreenRecord 0 Nothing)
                 , theme = Theme.fromConfig Nothing
+                , highlightState = Nothing
                 }
             , handlers =
                 { onReferenceClicked = handlers.expandReference index

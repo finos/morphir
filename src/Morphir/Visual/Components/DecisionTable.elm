@@ -1,6 +1,6 @@
 module Morphir.Visual.Components.DecisionTable exposing
     ( DecisionTable, Match(..)
-    , HighlightState(..), Rule, TypedPattern, displayTable
+    , Rule, TypedPattern, displayTable
     )
 
 {-| This module contains a generic decision table representation that is relatively easy to map to a visualization.
@@ -10,7 +10,7 @@ module Morphir.Visual.Components.DecisionTable exposing
 -}
 
 import Dict
-import Element exposing (Color, Column, Element, el, fill, padding, rgb255, row, spacing, table, text, width)
+import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, spacing, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -20,7 +20,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value, indexedMapValue)
 import Morphir.Value.Interpreter exposing (matchPattern)
 import Morphir.Visual.Common exposing (nameToText)
-import Morphir.Visual.Config as Config exposing (Config)
+import Morphir.Visual.Config as Config exposing (Config, HighlightState(..), VisualState)
 import Morphir.Visual.Theme exposing (mediumPadding)
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
@@ -63,12 +63,6 @@ type Match
     | Guard TypedValue
 
 
-type HighlightState
-    = Matched
-    | Unmatched
-    | Default
-
-
 type alias Rule =
     { matches : List Match
     , result : TypedValue
@@ -76,12 +70,12 @@ type alias Rule =
     }
 
 
-displayTable : Config msg -> (VisualTypedValue -> Element msg) -> DecisionTable -> Element msg
+displayTable : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> DecisionTable -> Element msg
 displayTable config viewValue table =
     tableHelp config viewValue table.decomposeInput table.rules
 
 
-tableHelp : Config msg -> (VisualTypedValue -> Element msg) -> List TypedValue -> List Rule -> Element msg
+tableHelp : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> List TypedValue -> List Rule -> Element msg
 tableHelp config viewValue headerFunctions rows =
     table [ Border.solid, Border.width 1 ]
         { data = rows
@@ -91,16 +85,23 @@ tableHelp config viewValue headerFunctions rows =
                     (el
                         [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
                         , mediumPadding config.state.theme |> padding
+                        , height fill
                         ]
                         (text "Result")
                     )
                     fill
-                    (\rules -> el [ Background.color (highlightStateToColor (List.head (List.reverse rules.highlightStates))), mediumPadding config.state.theme |> padding ] (viewValue (toVisualTypedValue rules.result)))
+                    (\rules ->
+                        el
+                            [ Background.color (highlightStateToColor (List.head (List.reverse rules.highlightStates)))
+                            , mediumPadding config.state.theme |> padding
+                            ]
+                            (viewValue (updateConfig config (List.head (List.reverse rules.highlightStates))) (toVisualTypedValue rules.result))
+                    )
                 ]
         }
 
 
-getColumnFromHeader : Config msg -> (VisualTypedValue -> Element msg) -> Int -> List TypedValue -> List (Column Rule msg)
+getColumnFromHeader : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> Int -> List TypedValue -> List (Column Rule msg)
 getColumnFromHeader config viewValue index decomposeInput =
     case decomposeInput of
         inputHead :: [] ->
@@ -113,7 +114,7 @@ getColumnFromHeader config viewValue index decomposeInput =
             []
 
 
-columnHelper : Config msg -> (VisualTypedValue -> Element msg) -> TypedValue -> Int -> List (Column Rule msg)
+columnHelper : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> TypedValue -> Int -> List (Column Rule msg)
 columnHelper config viewValue header index =
     let
         head : VisualTypedValue
@@ -124,21 +125,40 @@ columnHelper config viewValue header index =
         (el
             [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
             , mediumPadding config.state.theme |> padding
+            , height fill
             ]
-            (viewValue head)
+            (viewValue config head)
         )
         fill
         (\rules -> getCaseFromIndex config head viewValue (rules.highlightStates |> List.drop index |> List.head) (rules.matches |> List.drop index |> List.head))
     ]
 
 
-getCaseFromIndex : Config msg -> VisualTypedValue -> (VisualTypedValue -> Element msg) -> Maybe HighlightState -> Maybe Match -> Element msg
+updateConfig : Config msg -> Maybe HighlightState -> Config msg
+updateConfig config highlightState =
+    let
+        tableState : VisualState
+        tableState =
+            config.state
+
+        updatedTableState : VisualState
+        updatedTableState =
+            { tableState | highlightState = highlightState }
+    in
+    { config | state = updatedTableState }
+
+
+getCaseFromIndex : Config msg -> VisualTypedValue -> (Config msg -> VisualTypedValue -> Element msg) -> Maybe HighlightState -> Maybe Match -> Element msg
 getCaseFromIndex config head viewValue highlightState rule =
     case rule of
         Just match ->
             case match of
                 Pattern pattern ->
                     let
+                        updatedConfig : Config msg
+                        updatedConfig =
+                            updateConfig config highlightState
+
                         result : Color
                         result =
                             highlightStateToColor highlightState
@@ -153,7 +173,7 @@ getCaseFromIndex config head viewValue highlightState rule =
                                 value =
                                     toVisualTypedValue (Value.Literal va literal)
                             in
-                            el [ Background.color result, mediumPadding config.state.theme |> padding ] (viewValue value)
+                            el [ Background.color result, mediumPadding config.state.theme |> padding ] (viewValue updatedConfig value)
 
                         Value.ConstructorPattern tpe fQName matches ->
                             let

@@ -30,6 +30,7 @@ type alias VisualState =
     , variables : Dict Name RawValue
     , popupVariables : PopupScreenRecord
     , theme : Theme
+    , highlightState : Maybe HighlightState
     }
 
 
@@ -44,6 +45,12 @@ type alias PopupScreenRecord =
     { variableIndex : Int
     , variableValue : Maybe RawValue
     }
+
+
+type HighlightState
+    = Matched
+    | Unmatched
+    | Default
 
 
 evaluate : RawValue -> Config msg -> Result String RawValue
