@@ -168,27 +168,13 @@ evaluateValue nativeFunctions ir variables arguments value =
 
                 Nothing ->
                     -- If this is a reference to another Morphir value we need to look it up and evaluate.
-                    ir
-                        |> IR.lookupValueDefinition ( packageName, moduleName, localName )
-                        -- If we cannot find the value in the IR we return an error.
-                        |> Result.fromMaybe (ReferenceNotFound ( packageName, moduleName, localName ))
+                    arguments
+                        |> List.map (evaluateValue nativeFunctions ir variables [])
+                        |> ListOfResults.liftFirstError
+                        -- Wrap the error to make it easier to understand where it happened
+                        |> Result.mapError (ErrorWhileEvaluatingReference fQName)
                         |> Result.andThen
-                            (\referredValue ->
-                                let
-                                    rawValue : RawValue
-                                    rawValue =
-                                        Value.toRawValue referredValue.body
-                                in
-                                arguments
-                                    |> List.map (evaluateValue nativeFunctions ir variables [])
-                                    |> ListOfResults.liftFirstError
-                                    -- Wrap the error to make it easier to understand where it happened
-                                    |> Result.mapError (ErrorWhileEvaluatingReference fQName)
-                                    |> Result.andThen
-                                        (\evaluatedArgs ->
-                                            evaluateValue nativeFunctions ir Dict.empty evaluatedArgs rawValue
-                                        )
-                            )
+                            (evaluateFunctionValue nativeFunctions ir fQName)
 
         Value.Field _ subjectValue fieldName ->
             -- Field selection is evaluated by evaluating the subject first then matching on the resulting record and
