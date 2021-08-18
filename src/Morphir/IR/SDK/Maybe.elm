@@ -104,9 +104,9 @@ maybeType attributes itemType =
 
 just : va -> Value ta va -> Value ta va
 just va v =
-    Value.Apply va (Value.Reference va (toFQName moduleName "Just")) v
+    Value.Apply va (Value.Constructor va (toFQName moduleName "Just")) v
 
 
 nothing : va -> Value ta va
 nothing va =
-    Value.Reference va (toFQName moduleName "Nothing")
+    Value.Constructor va (toFQName moduleName "Nothing")
