@@ -341,3 +341,18 @@ functionToMethod2 =
 functionToMethod3 : String
 functionToMethod3 =
     Types.fooBarBazToString (FooBarBazRecord "foo" False 43)
+
+
+functionString : String -> String
+functionString myStr =
+    functionString2 myStr |> String.trim
+
+
+functionString2 : String -> String
+functionString2 temp =
+    temp
+
+
+functionString3 : String -> String
+functionString3 myStr =
+    myStr |> String.trim
