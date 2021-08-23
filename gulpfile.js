@@ -10,7 +10,7 @@ const del = require('del')
 const elmMake = require('node-elm-compiler').compile
 
 const config = {
-    morphirJvmVersion: '0.7.0',
+    morphirJvmVersion: '0.7.1',
     morphirJvmCloneDir: tmp.dirSync()
 }
 
