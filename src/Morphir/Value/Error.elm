@@ -14,6 +14,8 @@ type Error
     | BindPatternDidNotMatch (Value () ()) PatternMismatch
     | UnexpectedArguments (List (Value () ()))
     | ExpectedLiteral (Value () ())
+    | ExpectedList (Value () ())
+    | ExpectedTuple (Value () ())
     | ExpectedBoolLiteral Literal
     | IfThenElseConditionShouldEvaluateToBool (Value () ()) (Value () ())
     | FieldNotFound (Value () ()) Name

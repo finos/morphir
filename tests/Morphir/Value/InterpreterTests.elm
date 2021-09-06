@@ -9,7 +9,6 @@ import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Value as Value
-import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluate)
 import Test exposing (Test, describe, test)
 
@@ -342,6 +341,27 @@ evaluateValueTests =
             )
             listPendingSDK
             [ [ "list" ] ]
+        , positiveCheck "(\\val1 val2 -> val1 + val2) 1 2"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Lambda ()
+                        (Value.AsPattern () (Value.WildcardPattern ()) [ "val", "1" ])
+                        (Value.Lambda ()
+                            (Value.AsPattern () (Value.WildcardPattern ()) [ "val", "2" ])
+                            (Value.Apply ()
+                                (Value.Apply ()
+                                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                                    (Value.Variable () [ "val", "1" ])
+                                )
+                                (Value.Variable () [ "val", "2" ])
+                            )
+                        )
+                    )
+                    (Value.Literal () (IntLiteral 1))
+                )
+                (Value.Literal () (IntLiteral 2))
+            )
+            (Value.Literal () (IntLiteral 3))
         , {- Basics.always -}
           positiveCheck "List.map (always 0) [1,2,3] = [0,0,0]"
             (Value.Apply ()
@@ -889,8 +909,6 @@ evaluateValueTests =
                 (Value.Literal () (StringLiteral "bool"))
             )
             (Value.Literal () (BoolLiteral True))
-
-        {- Basics.greaterThanEqualTo -}
         , positiveCheck " -10.0 >= -100.0 == True"
             (Value.Apply ()
                 (Value.Apply ()
@@ -1170,6 +1188,49 @@ evaluateValueTests =
                 (Value.List () [ Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 4), Value.Literal () (IntLiteral 6) ])
             )
             (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 3) ])
+        , {- modBy 2 value = 1 -}
+          positiveCheck "modBy 2 value = 1 "
+            (Value.Apply ()
+                (Value.Lambda
+                    ()
+                    (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                    (Value.Apply ()
+                        (Value.Apply ()
+                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "modBy"))
+                            (Value.Literal () (IntLiteral 2))
+                        )
+                        (Value.Variable () [ "value" ])
+                    )
+                )
+                (Value.Literal () (IntLiteral 5))
+            )
+            (Value.Literal () (IntLiteral 1))
+        , positiveCheck " if modBy 2 value == 0 then True else False "
+            (Value.IfThenElse ()
+                (Value.Apply ()
+                    (Value.Apply ()
+                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "equal"))
+                        (Value.Apply ()
+                            (Value.Lambda
+                                ()
+                                (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                                (Value.Apply ()
+                                    (Value.Apply ()
+                                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "modBy"))
+                                        (Value.Literal () (IntLiteral 2))
+                                    )
+                                    (Value.Variable () [ "value" ])
+                                )
+                            )
+                            (Value.Literal () (IntLiteral 5))
+                        )
+                    )
+                    (Value.Literal () (IntLiteral 0))
+                )
+                (Value.Literal () (BoolLiteral True))
+                (Value.Literal () (BoolLiteral False))
+            )
+            (Value.Literal () (BoolLiteral False))
 
         {- List.map (modBy) -}
         , positiveCheck "map (modBy 4)  [-5,0,5] = [3,0,1]"

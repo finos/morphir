@@ -99,4 +99,5 @@ nativeFunctions =
         )
         [ moduleFunctions "Basics" Basics.nativeFunctions
         , moduleFunctions "List" List.nativeFunctions
+        , moduleFunctions "Maybe" Maybe.nativeFunctions
         ]
