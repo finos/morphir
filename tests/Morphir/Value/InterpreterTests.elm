@@ -909,6 +909,23 @@ evaluateValueTests =
                 (Value.Literal () (IntLiteral 10))
             )
             (Value.Literal () (BoolLiteral False))
+        , {- Basics.greaterThanEqualTo -}
+          positiveCheck "value >= 46 == True"
+            (Value.Apply ()
+                (Value.Lambda
+                    ()
+                    (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                    (Value.Apply ()
+                        (Value.Apply ()
+                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "greaterThanOrEqual"))
+                            (Value.Literal () (IntLiteral 46))
+                        )
+                        (Value.Variable () [ "value" ])
+                    )
+                )
+                (Value.Literal () (IntLiteral 20))
+            )
+            (Value.Literal () (BoolLiteral True))
         , positiveCheck " -10.2 >= -10.6 == True"
             (Value.Apply ()
                 (Value.Apply ()
