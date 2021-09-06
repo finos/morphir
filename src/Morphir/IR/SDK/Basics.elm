@@ -25,8 +25,9 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, decodeLiteral, encodeLiteral, eval1, eval2, floatLiteral, intLiteral, oneOf, stringLiteral)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.Value.Error exposing (Error(..))
+import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, decodeList, decodeLiteral, decodeRaw, encodeList, encodeLiteral, encodeRaw, eval1, eval2, eval3, floatLiteral, intLiteral, oneOf, stringLiteral)
 
 
 moduleName : ModuleName
@@ -161,6 +162,12 @@ nativeFunctions =
     , ( "integerDivide"
       , eval2 (//) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
       )
+    , ( "power"
+      , oneOf
+            [ eval2 (^) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            , eval2 (^) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
+            ]
+      )
     , ( "equal"
       , Native.binaryStrict
             (\arg1 arg2 ->
@@ -177,41 +184,119 @@ nativeFunctions =
                 Ok (Value.Literal () (BoolLiteral (arg1 /= arg2)))
             )
       )
+    , ( "identity"
+      , Native.unaryStrict
+            (\arg1 -> arg1)
+      )
+    , ( "always"
+      , Native.binaryStrict
+            (\arg1 _ -> Ok arg1)
+      )
+    , ( "never"
+      , \eval args ->
+            Err (UnexpectedArguments args)
+      )
+    , ( "composeLeft"
+      , \eval args ->
+            case args of
+                [ fun1, fun2, arg1 ] ->
+                    eval
+                        (Value.Apply ()
+                            fun2
+                            arg1
+                        )
+                        |> Result.andThen
+                            (\arg2 ->
+                                eval
+                                    (Value.Apply ()
+                                        fun1
+                                        arg2
+                                    )
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "composeRight"
+      , \eval args ->
+            case args of
+                [ fun1, fun2, arg1 ] ->
+                    eval
+                        (Value.Apply ()
+                            fun1
+                            arg1
+                        )
+                        |> Result.andThen
+                            (\arg2 ->
+                                eval
+                                    (Value.Apply ()
+                                        fun2
+                                        arg2
+                                    )
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
     , ( "lessThan"
-      , oneOf
-            -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ eval2 (<) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (<) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (<) (decodeLiteral charLiteral) (decodeLiteral charLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (<) (decodeLiteral stringLiteral) (decodeLiteral stringLiteral) (encodeLiteral BoolLiteral)
-            ]
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                LT ->
+                                    Value.Literal () (BoolLiteral True)
+
+                                _ ->
+                                    Value.Literal () (BoolLiteral False)
+                        )
+            )
       )
     , ( "greaterThan"
-      , oneOf
-            -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ eval2 (>) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (>) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (>) (decodeLiteral charLiteral) (decodeLiteral charLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (>) (decodeLiteral stringLiteral) (decodeLiteral stringLiteral) (encodeLiteral BoolLiteral)
-            ]
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                GT ->
+                                    Value.Literal () (BoolLiteral True)
+
+                                _ ->
+                                    Value.Literal () (BoolLiteral False)
+                        )
+            )
       )
     , ( "lessThanOrEqual"
-      , oneOf
-            -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ eval2 (<=) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (<=) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (<=) (decodeLiteral charLiteral) (decodeLiteral charLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (<=) (decodeLiteral stringLiteral) (decodeLiteral stringLiteral) (encodeLiteral BoolLiteral)
-            ]
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                GT ->
+                                    Value.Literal () (BoolLiteral False)
+
+                                _ ->
+                                    Value.Literal () (BoolLiteral True)
+                        )
+            )
       )
     , ( "greaterThanOrEqual"
-      , oneOf
-            -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ eval2 (>=) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (>=) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (>=) (decodeLiteral charLiteral) (decodeLiteral charLiteral) (encodeLiteral BoolLiteral)
-            , eval2 (>=) (decodeLiteral stringLiteral) (decodeLiteral stringLiteral) (encodeLiteral BoolLiteral)
-            ]
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                LT ->
+                                    Value.Literal () (BoolLiteral False)
+
+                                _ ->
+                                    Value.Literal () (BoolLiteral True)
+                        )
+            )
       )
     , ( "abs"
       , oneOf
@@ -229,6 +314,70 @@ nativeFunctions =
             [ eval1 Basics.negate (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
             , eval1 Basics.negate (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
+      )
+    , ( "clamp"
+      , oneOf
+            [ eval3 Basics.clamp (decodeLiteral intLiteral) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            , eval3 Basics.clamp (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
+            ]
+      )
+    , ( "max"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                LT ->
+                                    arg2
+
+                                _ ->
+                                    arg1
+                        )
+            )
+      )
+    , ( "min"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                GT ->
+                                    arg2
+
+                                _ ->
+                                    arg1
+                        )
+            )
+      )
+    , ( "append"
+      , oneOf
+            [ eval2 (++) (decodeLiteral stringLiteral) (decodeLiteral stringLiteral) (encodeLiteral StringLiteral)
+            , eval2 (++) (decodeList decodeRaw) (decodeList decodeRaw) (encodeList encodeRaw)
+            ]
+      )
+    , ( "compare"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            let
+                                val =
+                                    case order of
+                                        GT ->
+                                            "GT"
+
+                                        LT ->
+                                            "LT"
+
+                                        EQ ->
+                                            "EQ"
+                            in
+                            Value.Constructor () (toFQName moduleName val)
+                        )
+            )
       )
     ]
 
@@ -354,3 +503,70 @@ isNumber tpe =
 
         _ ->
             False
+
+
+compareValue : RawValue -> RawValue -> Result Error Order
+compareValue arg1 arg2 =
+    case ( arg1, arg2 ) of
+        ( Value.Literal () (IntLiteral val1), Value.Literal () (IntLiteral val2) ) ->
+            compare val1 val2 |> Ok
+
+        ( Value.Literal () (FloatLiteral val1), Value.Literal () (FloatLiteral val2) ) ->
+            compare val1 val2 |> Ok
+
+        ( Value.Literal () (CharLiteral val1), Value.Literal () (CharLiteral val2) ) ->
+            compare val1 val2 |> Ok
+
+        ( Value.Literal () (StringLiteral val1), Value.Literal () (StringLiteral val2) ) ->
+            compare val1 val2 |> Ok
+
+        ( Value.List () list1, Value.List () list2 ) ->
+            let
+                fun : List RawValue -> List RawValue -> Result Error Order
+                fun listA listB =
+                    case ( listA, listB ) of
+                        ( [], [] ) ->
+                            Ok EQ
+
+                        ( [], _ ) ->
+                            Ok LT
+
+                        ( _, [] ) ->
+                            Ok GT
+
+                        ( head1 :: tail1, head2 :: tail2 ) ->
+                            case compareValue head1 head2 of
+                                Ok EQ ->
+                                    fun tail1 tail2
+
+                                other ->
+                                    other
+            in
+            fun list1 list2
+
+        ( Value.Tuple () tupleList1, Value.Tuple () tupleList2 ) ->
+            let
+                fun : List RawValue -> List RawValue -> Result Error Order
+                fun listA listB =
+                    case ( listA, listB ) of
+                        ( [], [] ) ->
+                            Ok EQ
+
+                        ( [], _ ) ->
+                            Err (TupleLengthNotMatchException tupleList1 tupleList2)
+
+                        ( _, [] ) ->
+                            Err (TupleLengthNotMatchException tupleList1 tupleList2)
+
+                        ( head1 :: tail1, head2 :: tail2 ) ->
+                            case compareValue head1 head2 of
+                                Ok EQ ->
+                                    fun tail1 tail2
+
+                                other ->
+                                    other
+            in
+            fun tupleList1 tupleList2
+
+        ( a, b ) ->
+            Err (UnexpectedArguments [ a, b ])

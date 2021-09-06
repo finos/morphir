@@ -3,7 +3,7 @@ module Morphir.Value.Native exposing
     , Eval
     , unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
     , floatLiteral, intLiteral, oneOf, stringLiteral
-    , decodeFun1, decodeList, decodeLiteral, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeRaw, encodeResultList, encodeTuple2
+    , decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
     )
 
 {-| This module contains an API and some tools to implement native functions. Native functions are functions that are
@@ -42,7 +42,6 @@ Various utilities to help with implementing native functions.
 -}
 
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
@@ -306,6 +305,19 @@ encodeResultList listOfValueResults =
         |> Result.map (Value.List ())
 
 
+encodeMaybeResult : Maybe (Result Error RawValue) -> Result Error RawValue
+encodeMaybeResult maybeResult =
+    case maybeResult of
+        Just (Ok value) ->
+            Ok (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) value)
+
+        Just (Err error) ->
+            Err error
+
+        Nothing ->
+            Ok (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ))
+
+
 {-| -}
 encodeList : Encode a -> List a -> Result Error RawValue
 encodeList encodeA list =
@@ -319,10 +331,28 @@ encodeMaybe : Encode a -> Maybe a -> Result Error RawValue
 encodeMaybe encodeA maybe =
     case maybe of
         Just a ->
-            encodeA a |> Result.map (Maybe.just ())
+            encodeA a |> Result.map (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )))
 
         Nothing ->
-            Ok (Maybe.nothing ())
+            Ok (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ))
+
+
+decodeMaybe : Decoder a -> Decoder (Maybe a)
+decodeMaybe decodeItem eval value =
+    case eval value of
+        Ok (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
+            Ok Nothing
+
+        Ok (Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) val) ->
+            val
+                |> decodeItem eval
+                |> Result.map Just
+
+        Ok _ ->
+            Err (UnexpectedArguments [ value ])
+
+        Err error ->
+            Err error
 
 
 eval0 : r -> Encode r -> Function
