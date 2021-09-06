@@ -199,7 +199,7 @@ decodeList decodeItem eval value =
                 |> ListOfResults.liftFirstError
 
         Ok _ ->
-            Err (ExpectedLiteral value)
+            Err (ExpectedList value)
 
         Err error ->
             Err error
@@ -218,7 +218,7 @@ decodeTuple2 ( decodeA, decodeB ) eval value =
             Result.map2 (\a1 b1 -> ( a1, b1 )) (decodeA eval val1) (decodeB eval val2)
 
         Ok _ ->
-            Err (ExpectedLiteral value)
+            Err (ExpectedTuple value)
 
         Err error ->
             Err error
