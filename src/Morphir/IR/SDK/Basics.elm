@@ -239,76 +239,64 @@ nativeFunctions =
                     Err (UnexpectedArguments args)
       )
     , ( "lessThan"
-      , \eval args ->
-            case args of
-                [ arg1, arg2 ] ->
-                    compareValue arg1 arg2
-                        |> Result.map
-                            (\order ->
-                                case order of
-                                    LT ->
-                                        Value.Literal () (BoolLiteral True)
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                LT ->
+                                    Value.Literal () (BoolLiteral True)
 
-                                    _ ->
-                                        Value.Literal () (BoolLiteral False)
-                            )
-
-                _ ->
-                    Err (UnexpectedArguments args)
+                                _ ->
+                                    Value.Literal () (BoolLiteral False)
+                        )
+            )
       )
     , ( "greaterThan"
-      , \eval args ->
-            case args of
-                [ arg1, arg2 ] ->
-                    compareValue arg1 arg2
-                        |> Result.map
-                            (\order ->
-                                case order of
-                                    GT ->
-                                        Value.Literal () (BoolLiteral True)
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                GT ->
+                                    Value.Literal () (BoolLiteral True)
 
-                                    _ ->
-                                        Value.Literal () (BoolLiteral False)
-                            )
-
-                _ ->
-                    Err (UnexpectedArguments args)
+                                _ ->
+                                    Value.Literal () (BoolLiteral False)
+                        )
+            )
       )
     , ( "lessThanOrEqual"
-      , \eval args ->
-            case args of
-                [ arg1, arg2 ] ->
-                    compareValue arg1 arg2
-                        |> Result.map
-                            (\order ->
-                                case order of
-                                    GT ->
-                                        Value.Literal () (BoolLiteral False)
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                GT ->
+                                    Value.Literal () (BoolLiteral False)
 
-                                    _ ->
-                                        Value.Literal () (BoolLiteral True)
-                            )
-
-                _ ->
-                    Err (UnexpectedArguments args)
+                                _ ->
+                                    Value.Literal () (BoolLiteral True)
+                        )
+            )
       )
     , ( "greaterThanOrEqual"
-      , \eval args ->
-            case args of
-                [ arg1, arg2 ] ->
-                    compareValue arg1 arg2
-                        |> Result.map
-                            (\order ->
-                                case order of
-                                    LT ->
-                                        Value.Literal () (BoolLiteral False)
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                LT ->
+                                    Value.Literal () (BoolLiteral False)
 
-                                    _ ->
-                                        Value.Literal () (BoolLiteral True)
-                            )
-
-                _ ->
-                    Err (UnexpectedArguments args)
+                                _ ->
+                                    Value.Literal () (BoolLiteral True)
+                        )
+            )
       )
     , ( "abs"
       , oneOf
@@ -334,40 +322,34 @@ nativeFunctions =
             ]
       )
     , ( "max"
-      , \eval args ->
-            case args of
-                [ arg1, arg2 ] ->
-                    compareValue arg1 arg2
-                        |> Result.map
-                            (\order ->
-                                case order of
-                                    LT ->
-                                        arg2
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                LT ->
+                                    arg2
 
-                                    _ ->
-                                        arg1
-                            )
-
-                _ ->
-                    Err (UnexpectedArguments args)
+                                _ ->
+                                    arg1
+                        )
+            )
       )
     , ( "min"
-      , \eval args ->
-            case args of
-                [ arg1, arg2 ] ->
-                    compareValue arg1 arg2
-                        |> Result.map
-                            (\order ->
-                                case order of
-                                    GT ->
-                                        arg2
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            case order of
+                                GT ->
+                                    arg2
 
-                                    _ ->
-                                        arg1
-                            )
-
-                _ ->
-                    Err (UnexpectedArguments args)
+                                _ ->
+                                    arg1
+                        )
+            )
       )
     , ( "append"
       , oneOf
@@ -376,29 +358,26 @@ nativeFunctions =
             ]
       )
     , ( "compare"
-      , \eval args ->
-            case args of
-                [ arg1, arg2 ] ->
-                    compareValue arg1 arg2
-                        |> Result.map
-                            (\order ->
-                                let
-                                    val =
-                                        case order of
-                                            GT ->
-                                                "GT"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            let
+                                val =
+                                    case order of
+                                        GT ->
+                                            "GT"
 
-                                            LT ->
-                                                "LT"
+                                        LT ->
+                                            "LT"
 
-                                            EQ ->
-                                                "EQ"
-                                in
-                                Value.Constructor () (toFQName moduleName val)
-                            )
-
-                _ ->
-                    Err (UnexpectedArguments args)
+                                        EQ ->
+                                            "EQ"
+                            in
+                            Value.Constructor () (toFQName moduleName val)
+                        )
+            )
       )
     ]
 
