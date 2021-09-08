@@ -341,3 +341,92 @@ functionToMethod2 =
 functionToMethod3 : String
 functionToMethod3 =
     Types.fooBarBazToString (FooBarBazRecord "foo" False 43)
+
+
+functionString : String -> String
+functionString myStr =
+    functionString2 myStr |> String.trim
+
+
+functionString2 : String -> String
+functionString2 temp =
+    temp
+
+
+functionString3 : String -> String
+functionString3 myStr =
+    myStr |> String.trim
+
+
+parseMonth : String -> Maybe Int
+parseMonth userInput =
+    String.toInt userInput
+        |> Maybe.andThen toValidMonth
+
+
+parseMonth2 : String -> Maybe Int
+parseMonth2 userInput =
+    String.toInt userInput
+        |> Maybe.map (\input -> Just input)
+        |> Maybe.withDefault Nothing
+
+
+toValidMonth : Int -> Maybe Int
+toValidMonth month =
+    if 1 <= month && month <= 12 then
+        Just month
+
+    else
+        Nothing
+
+
+maybeMap2 : String -> String -> Maybe Int
+maybeMap2 input1 input2 =
+    Maybe.map2 (+) (String.toInt input1) (String.toInt input2)
+
+
+maybeMap2Lambda : String -> String -> Maybe Int
+maybeMap2Lambda input1 input2 =
+    Maybe.map2 (\val1 val2 -> val1 + val2) (String.toInt input1) (String.toInt input2)
+
+
+maybeMap3 : String -> String -> String -> Maybe Int
+maybeMap3 input1 input2 input3 =
+    Maybe.map3 (\val1 val2 val3 -> val1 * val2 * val3) (String.toInt input1) (String.toInt input2) (String.toInt input3)
+
+
+maybeMap4 : String -> String -> String -> String -> Maybe Int
+maybeMap4 input1 input2 input3 input4 =
+    Maybe.map4 (\val1 val2 val3 val4 -> val1 * val2 * val3 * val4) (String.toInt input1) (String.toInt input2) (String.toInt input3) (String.toInt input4)
+
+
+maybeMap5 : String -> String -> String -> String -> String -> Maybe Int
+maybeMap5 input1 input2 input3 input4 input5 =
+    Maybe.map5 (\val1 val2 val3 val4 val5 -> val1 * val2 * val3 * val4 + val5) (String.toInt input1) (String.toInt input2) (String.toInt input3) (String.toInt input4) (String.toInt input5)
+
+
+listAll : List Int -> Bool
+listAll list =
+    List.all
+        (\val ->
+            if modBy 2 val == 0 then
+                True
+
+            else
+                False
+        )
+        [ 1, 2 ]
+
+
+isEven : Int -> Bool
+isEven value =
+    if modBy 2 value == 0 then
+        True
+
+    else
+        False
+
+
+modByTest : Int -> Int
+modByTest value =
+    modBy 2 value

@@ -1,18 +1,306 @@
 module Morphir.Value.InterpreterTests exposing (..)
 
+import Dict
 import Expect
 import Morphir.IR as IR
-import Morphir.IR.FQName exposing (fqn)
+import Morphir.IR.FQName exposing (FQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Module exposing (ModuleName)
+import Morphir.IR.QName as QName exposing (QName(..))
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Value as Value
 import Morphir.Value.Interpreter exposing (evaluate)
 import Test exposing (Test, describe, test)
 
 
+basicsPendingSDK =
+    Ok
+        []
+
+
+listPendingSDK =
+    Ok
+        [ QName [ [ "list" ] ] [ "all" ]
+        , QName [ [ "list" ] ] [ "any" ]
+        , QName [ [ "list" ] ] [ "concat", "map" ]
+        , QName [ [ "list" ] ] [ "cons" ]
+        , QName [ [ "list" ] ] [ "drop" ]
+        , QName [ [ "list" ] ] [ "filter" ]
+        , QName [ [ "list" ] ] [ "filter", "map" ]
+        , QName [ [ "list" ] ] [ "foldl" ]
+        , QName [ [ "list" ] ] [ "foldr" ]
+        , QName [ [ "list" ] ] [ "head" ]
+        , QName [ [ "list" ] ] [ "indexed", "map" ]
+        , QName [ [ "list" ] ] [ "intersperse" ]
+        , QName [ [ "list" ] ] [ "is", "empty" ]
+        , QName [ [ "list" ] ] [ "length" ]
+        , QName [ [ "list" ] ] [ "map", "2" ]
+        , QName [ [ "list" ] ] [ "map", "3" ]
+        , QName [ [ "list" ] ] [ "map", "4" ]
+        , QName [ [ "list" ] ] [ "map", "5" ]
+        , QName [ [ "list" ] ] [ "maximum" ]
+        , QName [ [ "list" ] ] [ "member" ]
+        , QName [ [ "list" ] ] [ "minimum" ]
+        , QName [ [ "list" ] ] [ "partition" ]
+        , QName [ [ "list" ] ] [ "reverse" ]
+        , QName [ [ "list" ] ] [ "sort" ]
+        , QName [ [ "list" ] ] [ "sort", "by" ]
+        , QName [ [ "list" ] ] [ "sort", "with" ]
+        , QName [ [ "list" ] ] [ "tail" ]
+        , QName [ [ "list" ] ] [ "take" ]
+        , QName [ [ "list" ] ] [ "unzip" ]
+        ]
+
+
+compareList : List QName -> List QName -> ModuleName -> Result String (List QName)
+compareList sdkList sdkImplementedList moduleName =
+    sdkList
+        |> List.filter
+            (\elem ->
+                if sdkImplementedList |> List.member elem then
+                    False
+
+                else if QName.getModulePath elem == moduleName then
+                    True
+
+                else
+                    False
+            )
+        |> Ok
+
+
+totalSDK =
+    Ok
+        [ QName [ [ "aggregate" ] ] [ "aggregate", "map" ]
+        , QName [ [ "aggregate" ] ] [ "aggregate", "map", "2" ]
+        , QName [ [ "aggregate" ] ] [ "aggregate", "map", "3" ]
+        , QName [ [ "aggregate" ] ] [ "average", "of" ]
+        , QName [ [ "aggregate" ] ] [ "by", "key" ]
+        , QName [ [ "aggregate" ] ] [ "count" ]
+        , QName [ [ "aggregate" ] ] [ "maximum", "of" ]
+        , QName [ [ "aggregate" ] ] [ "minimum", "of" ]
+        , QName [ [ "aggregate" ] ] [ "sum", "of" ]
+        , QName [ [ "aggregate" ] ] [ "weighted", "average", "of" ]
+        , QName [ [ "aggregate" ] ] [ "with", "filter" ]
+        , QName [ [ "basics" ] ] [ "always" ]
+        , QName [ [ "basics" ] ] [ "append" ]
+        , QName [ [ "basics" ] ] [ "clamp" ]
+        , QName [ [ "basics" ] ] [ "compare" ]
+        , QName [ [ "basics" ] ] [ "compose", "left" ]
+        , QName [ [ "basics" ] ] [ "compose", "right" ]
+        , QName [ [ "basics" ] ] [ "identity" ]
+        , QName [ [ "basics" ] ] [ "max" ]
+        , QName [ [ "basics" ] ] [ "min" ]
+        , QName [ [ "basics" ] ] [ "never" ]
+        , QName [ [ "basics" ] ] [ "power" ]
+        , QName [ [ "decimal" ] ] [ "abs" ]
+        , QName [ [ "decimal" ] ] [ "add" ]
+        , QName [ [ "decimal" ] ] [ "bps" ]
+        , QName [ [ "decimal" ] ] [ "compare" ]
+        , QName [ [ "decimal" ] ] [ "div" ]
+        , QName [ [ "decimal" ] ] [ "div", "with", "default" ]
+        , QName [ [ "decimal" ] ] [ "eq" ]
+        , QName [ [ "decimal" ] ] [ "from", "float" ]
+        , QName [ [ "decimal" ] ] [ "from", "int" ]
+        , QName [ [ "decimal" ] ] [ "from", "string" ]
+        , QName [ [ "decimal" ] ] [ "gt" ]
+        , QName [ [ "decimal" ] ] [ "gte" ]
+        , QName [ [ "decimal" ] ] [ "hundred" ]
+        , QName [ [ "decimal" ] ] [ "hundredth" ]
+        , QName [ [ "decimal" ] ] [ "lt" ]
+        , QName [ [ "decimal" ] ] [ "lte" ]
+        , QName [ [ "decimal" ] ] [ "million" ]
+        , QName [ [ "decimal" ] ] [ "millionth" ]
+        , QName [ [ "decimal" ] ] [ "minus", "one" ]
+        , QName [ [ "decimal" ] ] [ "mul" ]
+        , QName [ [ "decimal" ] ] [ "negate" ]
+        , QName [ [ "decimal" ] ] [ "neq" ]
+        , QName [ [ "decimal" ] ] [ "one" ]
+        , QName [ [ "decimal" ] ] [ "round" ]
+        , QName [ [ "decimal" ] ] [ "shift", "decimal", "left" ]
+        , QName [ [ "decimal" ] ] [ "shift", "decimal", "right" ]
+        , QName [ [ "decimal" ] ] [ "sub" ]
+        , QName [ [ "decimal" ] ] [ "tenth" ]
+        , QName [ [ "decimal" ] ] [ "thousand" ]
+        , QName [ [ "decimal" ] ] [ "to", "float" ]
+        , QName [ [ "decimal" ] ] [ "to", "string" ]
+        , QName [ [ "decimal" ] ] [ "truncate" ]
+        , QName [ [ "decimal" ] ] [ "zero" ]
+        , QName [ [ "dict" ] ] [ "diff" ]
+        , QName [ [ "dict" ] ] [ "empty" ]
+        , QName [ [ "dict" ] ] [ "filter" ]
+        , QName [ [ "dict" ] ] [ "foldl" ]
+        , QName [ [ "dict" ] ] [ "foldr" ]
+        , QName [ [ "dict" ] ] [ "from", "list" ]
+        , QName [ [ "dict" ] ] [ "get" ]
+        , QName [ [ "dict" ] ] [ "insert" ]
+        , QName [ [ "dict" ] ] [ "intersect" ]
+        , QName [ [ "dict" ] ] [ "is", "empty" ]
+        , QName [ [ "dict" ] ] [ "keys" ]
+        , QName [ [ "dict" ] ] [ "map" ]
+        , QName [ [ "dict" ] ] [ "member" ]
+        , QName [ [ "dict" ] ] [ "merge" ]
+        , QName [ [ "dict" ] ] [ "partition" ]
+        , QName [ [ "dict" ] ] [ "remove" ]
+        , QName [ [ "dict" ] ] [ "singleton" ]
+        , QName [ [ "dict" ] ] [ "size" ]
+        , QName [ [ "dict" ] ] [ "to", "list" ]
+        , QName [ [ "dict" ] ] [ "union" ]
+        , QName [ [ "dict" ] ] [ "update" ]
+        , QName [ [ "dict" ] ] [ "values" ]
+        , QName [ [ "int" ] ] [ "from", "int", "16" ]
+        , QName [ [ "int" ] ] [ "from", "int", "32" ]
+        , QName [ [ "int" ] ] [ "from", "int", "64" ]
+        , QName [ [ "int" ] ] [ "from", "int", "8" ]
+        , QName [ [ "int" ] ] [ "to", "int", "16" ]
+        , QName [ [ "int" ] ] [ "to", "int", "32" ]
+        , QName [ [ "int" ] ] [ "to", "int", "64" ]
+        , QName [ [ "int" ] ] [ "to", "int", "8" ]
+        , QName [ [ "key" ] ] [ "key", "0" ]
+        , QName [ [ "key" ] ] [ "key", "10" ]
+        , QName [ [ "key" ] ] [ "key", "11" ]
+        , QName [ [ "key" ] ] [ "key", "12" ]
+        , QName [ [ "key" ] ] [ "key", "13" ]
+        , QName [ [ "key" ] ] [ "key", "14" ]
+        , QName [ [ "key" ] ] [ "key", "15" ]
+        , QName [ [ "key" ] ] [ "key", "16" ]
+        , QName [ [ "key" ] ] [ "key", "2" ]
+        , QName [ [ "key" ] ] [ "key", "3" ]
+        , QName [ [ "key" ] ] [ "key", "4" ]
+        , QName [ [ "key" ] ] [ "key", "5" ]
+        , QName [ [ "key" ] ] [ "key", "6" ]
+        , QName [ [ "key" ] ] [ "key", "7" ]
+        , QName [ [ "key" ] ] [ "key", "8" ]
+        , QName [ [ "key" ] ] [ "key", "9" ]
+        , QName [ [ "key" ] ] [ "no", "key" ]
+        , QName [ [ "list" ] ] [ "all" ]
+        , QName [ [ "list" ] ] [ "any" ]
+        , QName [ [ "list" ] ] [ "concat", "map" ]
+        , QName [ [ "list" ] ] [ "cons" ]
+        , QName [ [ "list" ] ] [ "drop" ]
+        , QName [ [ "list" ] ] [ "filter" ]
+        , QName [ [ "list" ] ] [ "filter", "map" ]
+        , QName [ [ "list" ] ] [ "foldl" ]
+        , QName [ [ "list" ] ] [ "foldr" ]
+        , QName [ [ "list" ] ] [ "head" ]
+        , QName [ [ "list" ] ] [ "indexed", "map" ]
+        , QName [ [ "list" ] ] [ "intersperse" ]
+        , QName [ [ "list" ] ] [ "is", "empty" ]
+        , QName [ [ "list" ] ] [ "length" ]
+        , QName [ [ "list" ] ] [ "map", "2" ]
+        , QName [ [ "list" ] ] [ "map", "3" ]
+        , QName [ [ "list" ] ] [ "map", "4" ]
+        , QName [ [ "list" ] ] [ "map", "5" ]
+        , QName [ [ "list" ] ] [ "maximum" ]
+        , QName [ [ "list" ] ] [ "member" ]
+        , QName [ [ "list" ] ] [ "minimum" ]
+        , QName [ [ "list" ] ] [ "partition" ]
+        , QName [ [ "list" ] ] [ "reverse" ]
+        , QName [ [ "list" ] ] [ "sort" ]
+        , QName [ [ "list" ] ] [ "sort", "by" ]
+        , QName [ [ "list" ] ] [ "sort", "with" ]
+        , QName [ [ "list" ] ] [ "tail" ]
+        , QName [ [ "list" ] ] [ "take" ]
+        , QName [ [ "list" ] ] [ "unzip" ]
+        , QName [ [ "local", "date" ] ] [ "add", "days" ]
+        , QName [ [ "local", "date" ] ] [ "add", "months" ]
+        , QName [ [ "local", "date" ] ] [ "add", "weeks" ]
+        , QName [ [ "local", "date" ] ] [ "add", "years" ]
+        , QName [ [ "local", "date" ] ] [ "diff", "in", "days" ]
+        , QName [ [ "local", "date" ] ] [ "diff", "in", "months" ]
+        , QName [ [ "local", "date" ] ] [ "diff", "in", "weeks" ]
+        , QName [ [ "local", "date" ] ] [ "diff", "in", "years" ]
+        , QName [ [ "local", "date" ] ] [ "from", "i", "s", "o" ]
+        , QName [ [ "local", "date" ] ] [ "from", "parts" ]
+        , QName [ [ "maybe" ] ] [ "and", "then" ]
+        , QName [ [ "maybe" ] ] [ "map" ]
+        , QName [ [ "maybe" ] ] [ "map", "2" ]
+        , QName [ [ "maybe" ] ] [ "map", "3" ]
+        , QName [ [ "maybe" ] ] [ "map", "4" ]
+        , QName [ [ "maybe" ] ] [ "map", "5" ]
+        , QName [ [ "maybe" ] ] [ "with", "default" ]
+        , QName [ [ "number" ] ] [ "abs" ]
+        , QName [ [ "number" ] ] [ "add" ]
+        , QName [ [ "number" ] ] [ "coerce", "to", "decimal" ]
+        , QName [ [ "number" ] ] [ "divide" ]
+        , QName [ [ "number" ] ] [ "equal" ]
+        , QName [ [ "number" ] ] [ "from", "int" ]
+        , QName [ [ "number" ] ] [ "greater", "than" ]
+        , QName [ [ "number" ] ] [ "greater", "than", "or", "equal" ]
+        , QName [ [ "number" ] ] [ "is", "simplified" ]
+        , QName [ [ "number" ] ] [ "less", "than" ]
+        , QName [ [ "number" ] ] [ "less", "than", "or", "equal" ]
+        , QName [ [ "number" ] ] [ "multiply" ]
+        , QName [ [ "number" ] ] [ "negate" ]
+        , QName [ [ "number" ] ] [ "not", "equal" ]
+        , QName [ [ "number" ] ] [ "one" ]
+        , QName [ [ "number" ] ] [ "reciprocal" ]
+        , QName [ [ "number" ] ] [ "simplify" ]
+        , QName [ [ "number" ] ] [ "subtract" ]
+        , QName [ [ "number" ] ] [ "to", "decimal" ]
+        , QName [ [ "number" ] ] [ "to", "fractional", "string" ]
+        , QName [ [ "number" ] ] [ "zero" ]
+        , QName [ [ "regex" ] ] [ "contains" ]
+        , QName [ [ "regex" ] ] [ "find" ]
+        , QName [ [ "regex" ] ] [ "find", "at", "most" ]
+        , QName [ [ "regex" ] ] [ "from", "string" ]
+        , QName [ [ "regex" ] ] [ "from", "string", "with" ]
+        , QName [ [ "regex" ] ] [ "never" ]
+        , QName [ [ "regex" ] ] [ "replace" ]
+        , QName [ [ "regex" ] ] [ "replace", "at", "most" ]
+        , QName [ [ "regex" ] ] [ "split" ]
+        , QName [ [ "regex" ] ] [ "split", "at", "most" ]
+        , QName [ [ "result" ] ] [ "and", "then" ]
+        , QName [ [ "result" ] ] [ "from", "maybe" ]
+        , QName [ [ "result" ] ] [ "map" ]
+        , QName [ [ "result" ] ] [ "map", "2" ]
+        , QName [ [ "result" ] ] [ "map", "3" ]
+        , QName [ [ "result" ] ] [ "map", "4" ]
+        , QName [ [ "result" ] ] [ "map", "5" ]
+        , QName [ [ "result" ] ] [ "map", "error" ]
+        , QName [ [ "result" ] ] [ "to", "maybe" ]
+        , QName [ [ "result" ] ] [ "with", "default" ]
+        , QName [ [ "rule" ] ] [ "any" ]
+        , QName [ [ "rule" ] ] [ "any", "of" ]
+        , QName [ [ "rule" ] ] [ "chain" ]
+        , QName [ [ "rule" ] ] [ "is" ]
+        , QName [ [ "rule" ] ] [ "none", "of" ]
+        , QName [ [ "set" ] ] [ "diff" ]
+        , QName [ [ "set" ] ] [ "empty" ]
+        , QName [ [ "set" ] ] [ "filter" ]
+        , QName [ [ "set" ] ] [ "foldl" ]
+        , QName [ [ "set" ] ] [ "foldr" ]
+        , QName [ [ "set" ] ] [ "from", "list" ]
+        , QName [ [ "set" ] ] [ "insert" ]
+        , QName [ [ "set" ] ] [ "intersect" ]
+        , QName [ [ "set" ] ] [ "is", "empty" ]
+        , QName [ [ "set" ] ] [ "map" ]
+        , QName [ [ "set" ] ] [ "member" ]
+        , QName [ [ "set" ] ] [ "partition" ]
+        , QName [ [ "set" ] ] [ "remove" ]
+        , QName [ [ "set" ] ] [ "singleton" ]
+        , QName [ [ "set" ] ] [ "size" ]
+        , QName [ [ "set" ] ] [ "to", "list" ]
+        , QName [ [ "set" ] ] [ "union" ]
+        , QName [ [ "string" ] ] [ "all" ]
+        , QName [ [ "string" ] ] [ "any" ]
+        , QName [ [ "string" ] ] [ "filter" ]
+        , QName [ [ "string" ] ] [ "foldl" ]
+        , QName [ [ "string" ] ] [ "foldr" ]
+        , QName [ [ "string" ] ] [ "map" ]
+        , QName [ [ "tuple" ] ] [ "first" ]
+        , QName [ [ "tuple" ] ] [ "map", "both" ]
+        , QName [ [ "tuple" ] ] [ "map", "first" ]
+        , QName [ [ "tuple" ] ] [ "map", "second" ]
+        , QName [ [ "tuple" ] ] [ "pair" ]
+        , QName [ [ "tuple" ] ] [ "second" ]
+        ]
+
+
 evaluateValueTests : Test
 evaluateValueTests =
     let
+        positiveCheck : String -> Value.RawValue -> Value.RawValue -> Test
         positiveCheck desc input expectedOutput =
             test desc
                 (\_ ->
@@ -20,9 +308,87 @@ evaluateValueTests =
                         |> Expect.equal
                             (Ok expectedOutput)
                 )
+
+        listCheck : String -> List QName -> List QName -> Result String (List QName) -> ModuleName -> Test
+        listCheck desc sdkList sdkImplementedList pendingSDK moduleName =
+            test desc
+                (\_ ->
+                    compareList sdkList sdkImplementedList moduleName |> Expect.equal pendingSDK
+                )
     in
     describe "evaluateValue"
-        [ {- Basics.equal -}
+        [ listCheck "Basic SDK List = Basic SDK Implemented List"
+            (SDK.packageSpec.modules
+                |> Dict.toList
+                |> List.map (\( moduleName, moduleSpec ) -> moduleSpec.values |> Dict.toList |> List.map (\a -> QName.fromTuple ( moduleName, Tuple.first a )))
+                |> List.concat
+            )
+            (SDK.nativeFunctions
+                |> Dict.toList
+                |> List.map (\( ( _, moduleName, localName ), _ ) -> QName.fromTuple ( moduleName, localName ))
+            )
+            basicsPendingSDK
+            [ [ "basics" ] ]
+        , listCheck "List SDK List = List SDK Implemented List"
+            (SDK.packageSpec.modules
+                |> Dict.toList
+                |> List.map (\( moduleName, moduleSpec ) -> moduleSpec.values |> Dict.toList |> List.map (\a -> QName.fromTuple ( moduleName, Tuple.first a )))
+                |> List.concat
+            )
+            (SDK.nativeFunctions
+                |> Dict.toList
+                |> List.map (\( ( _, moduleName, localName ), _ ) -> QName.fromTuple ( moduleName, localName ))
+            )
+            listPendingSDK
+            [ [ "list" ] ]
+        , positiveCheck "(\\val1 val2 -> val1 + val2) 1 2"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Lambda ()
+                        (Value.AsPattern () (Value.WildcardPattern ()) [ "val", "1" ])
+                        (Value.Lambda ()
+                            (Value.AsPattern () (Value.WildcardPattern ()) [ "val", "2" ])
+                            (Value.Apply ()
+                                (Value.Apply ()
+                                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                                    (Value.Variable () [ "val", "1" ])
+                                )
+                                (Value.Variable () [ "val", "2" ])
+                            )
+                        )
+                    )
+                    (Value.Literal () (IntLiteral 1))
+                )
+                (Value.Literal () (IntLiteral 2))
+            )
+            (Value.Literal () (IntLiteral 3))
+        , {- Basics.always -}
+          positiveCheck "List.map (always 0) [1,2,3] = [0,0,0]"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "map"))
+                    (Value.Apply ()
+                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "always"))
+                        (Value.Literal () (IntLiteral 0))
+                    )
+                )
+                (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 3) ])
+            )
+            (Value.List () [ Value.Literal () (IntLiteral 0), Value.Literal () (IntLiteral 0), Value.Literal () (IntLiteral 0) ])
+        , {- Basics.identity -}
+          positiveCheck "identity 5 = 5"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "identity"))
+                (Value.Literal () (IntLiteral 5))
+            )
+            (Value.Literal () (IntLiteral 5))
+        , positiveCheck "identity [\"a\",\"b\",\"123\"] = [\"a\",\"b\",\"123\"]"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "Basics" "identity"))
+                (Value.List () [ Value.Literal () (StringLiteral "a"), Value.Literal () (StringLiteral "b"), Value.Literal () (StringLiteral "123") ])
+            )
+            (Value.List () [ Value.Literal () (StringLiteral "a"), Value.Literal () (StringLiteral "b"), Value.Literal () (StringLiteral "123") ])
+        , {- Basics.equal -}
           positiveCheck "True = True"
             (Value.Literal () (BoolLiteral True))
             (Value.Literal () (BoolLiteral True))
@@ -543,8 +909,6 @@ evaluateValueTests =
                 (Value.Literal () (StringLiteral "bool"))
             )
             (Value.Literal () (BoolLiteral True))
-
-        {- Basics.greaterThanEqualTo -}
         , positiveCheck " -10.0 >= -100.0 == True"
             (Value.Apply ()
                 (Value.Apply ()
@@ -563,6 +927,23 @@ evaluateValueTests =
                 (Value.Literal () (IntLiteral 10))
             )
             (Value.Literal () (BoolLiteral False))
+        , {- Basics.greaterThanEqualTo -}
+          positiveCheck "value >= 46 == True"
+            (Value.Apply ()
+                (Value.Lambda
+                    ()
+                    (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                    (Value.Apply ()
+                        (Value.Apply ()
+                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "greaterThanOrEqual"))
+                            (Value.Literal () (IntLiteral 46))
+                        )
+                        (Value.Variable () [ "value" ])
+                    )
+                )
+                (Value.Literal () (IntLiteral 20))
+            )
+            (Value.Literal () (BoolLiteral True))
         , positiveCheck " -10.2 >= -10.6 == True"
             (Value.Apply ()
                 (Value.Apply ()
@@ -807,6 +1188,49 @@ evaluateValueTests =
                 (Value.List () [ Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 4), Value.Literal () (IntLiteral 6) ])
             )
             (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 3) ])
+        , {- modBy 2 value = 1 -}
+          positiveCheck "modBy 2 value = 1 "
+            (Value.Apply ()
+                (Value.Lambda
+                    ()
+                    (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                    (Value.Apply ()
+                        (Value.Apply ()
+                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "modBy"))
+                            (Value.Literal () (IntLiteral 2))
+                        )
+                        (Value.Variable () [ "value" ])
+                    )
+                )
+                (Value.Literal () (IntLiteral 5))
+            )
+            (Value.Literal () (IntLiteral 1))
+        , positiveCheck " if modBy 2 value == 0 then True else False "
+            (Value.IfThenElse ()
+                (Value.Apply ()
+                    (Value.Apply ()
+                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "equal"))
+                        (Value.Apply ()
+                            (Value.Lambda
+                                ()
+                                (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                                (Value.Apply ()
+                                    (Value.Apply ()
+                                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "modBy"))
+                                        (Value.Literal () (IntLiteral 2))
+                                    )
+                                    (Value.Variable () [ "value" ])
+                                )
+                            )
+                            (Value.Literal () (IntLiteral 5))
+                        )
+                    )
+                    (Value.Literal () (IntLiteral 0))
+                )
+                (Value.Literal () (BoolLiteral True))
+                (Value.Literal () (BoolLiteral False))
+            )
+            (Value.Literal () (BoolLiteral False))
 
         {- List.map (modBy) -}
         , positiveCheck "map (modBy 4)  [-5,0,5] = [3,0,1]"

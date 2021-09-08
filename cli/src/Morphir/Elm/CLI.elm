@@ -259,49 +259,6 @@ update msg model =
                                                         )
                                             )
                                         |> List.liftAllErrors
-
-                                --finalResult : Result (List String) (List String)
-                                --finalResult =
-                                --    evaluation
-                                --        |> List.indexedMap
-                                --            (\index ( funcName, resultList ) ->
-                                --                let
-                                --                    ( passedList, failList ) =
-                                --                        resultList
-                                --                            |> List.partition
-                                --                                (\val ->
-                                --                                    if val == "Match" then
-                                --                                        True
-                                --
-                                --                                    else
-                                --                                        False
-                                --                                )
-                                --                in
-                                --                if List.length failList == 0 then
-                                --                    Ok
-                                --                        ([ String.fromInt (index + 1) ++ ") FunctionName - " ++ FQName.toString funcName
-                                --                         , "Total TestCases - " ++ String.fromInt (List.length resultList)
-                                --                         , "Passed TestCases - "
-                                --                            ++ String.fromInt
-                                --                                (List.length passedList)
-                                --                         ]
-                                --                            |> String.join "\n"
-                                --                        )
-                                --
-                                --                else
-                                --                    Err
-                                --                        (failList
-                                --                            |> List.append
-                                --                                [ String.fromInt (index + 1) ++ ") FunctionName - " ++ FQName.toString funcName
-                                --                                , "Total TestCases - " ++ String.fromInt (List.length resultList)
-                                --                                , "Fail TestCases - "
-                                --                                    ++ String.fromInt
-                                --                                        (List.length failList)
-                                --                                ]
-                                --                            |> String.join "\n"
-                                --                        )
-                                --            )
-                                --        |> List.liftAllErrors
                             in
                             case finalResult of
                                 Ok passList ->

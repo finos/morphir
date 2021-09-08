@@ -19,7 +19,6 @@ module Morphir.IR.SDK.List exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -30,7 +29,7 @@ import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native exposing (decodeFun1, decodeList, decodeLiteral, decodeRaw, encodeList, encodeLiteral, encodeRaw, encodeResultList, eval2, intLiteral)
+import Morphir.Value.Native as Native exposing (decodeFun1, decodeList, decodeLiteral, decodeRaw, encodeList, encodeLiteral, encodeRaw, encodeResultList, eval1, eval2, floatLiteral, intLiteral, oneOf)
 
 
 moduleName : ModuleName
@@ -153,34 +152,21 @@ nativeAppend eval args =
 
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
-    [ ( "sum"
-      , Native.unaryStrict
-            (\eval arg ->
-                case arg of
-                    Value.List _ value ->
-                        value
-                            |> List.foldl
-                                (\nextElem resultSoFar ->
-                                    resultSoFar
-                                        |> Result.andThen
-                                            (\resultValue ->
-                                                eval
-                                                    (Value.Apply ()
-                                                        (Value.Apply ()
-                                                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
-                                                            nextElem
-                                                        )
-                                                        resultValue
-                                                    )
-                                            )
-                                )
-                                (Ok (Value.Literal () (IntLiteral 0)))
-
-                    _ ->
-                        Err (UnexpectedArguments [ arg ])
-            )
-      )
-    , ( "map", eval2 List.map (decodeFun1 encodeRaw decodeRaw) (decodeList decodeRaw) encodeResultList )
+    [ ( "map", eval2 List.map (decodeFun1 encodeRaw decodeRaw) (decodeList decodeRaw) encodeResultList )
     , ( "append", eval2 List.append (decodeList decodeRaw) (decodeList decodeRaw) (encodeList encodeRaw) )
-    , ( "range", eval2 List.range (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeList (encodeLiteral IntLiteral)) )
+    , ( "concat", eval1 List.concat (decodeList (decodeList decodeRaw)) (encodeList encodeRaw) )
+    , ( "singleton", eval1 List.singleton decodeRaw (encodeList encodeRaw) )
+    , ( "repeat", eval2 List.repeat (decodeLiteral intLiteral) decodeRaw (encodeList encodeRaw) )
+    , ( "product"
+      , oneOf
+            [ eval1 List.product (decodeList (decodeLiteral floatLiteral)) (encodeLiteral FloatLiteral)
+            , eval1 List.product (decodeList (decodeLiteral intLiteral)) (encodeLiteral IntLiteral)
+            ]
+      )
+    , ( "sum"
+      , oneOf
+            [ eval1 List.sum (decodeList (decodeLiteral floatLiteral)) (encodeLiteral FloatLiteral)
+            , eval1 List.sum (decodeList (decodeLiteral intLiteral)) (encodeLiteral IntLiteral)
+            ]
+      )
     ]
