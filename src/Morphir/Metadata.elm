@@ -1,8 +1,7 @@
 module Morphir.Metadata exposing
-    ( Metadata
+    ( BaseTypes, EnumExtensionComponent, Enums, Modules, Types, Aliases, Metadata
     , mapDistribution
-    , getTypes, getEnums, getBaseTypes, getAliases, getDocumentation, getModules
-    , Aliases, BaseTypes, Enums, Modules, Types
+    , getTypes, getEnums, getBaseTypes, getAliases, getDocumentation, getModules, getEnumsWithExtensions, enumExtensionName, getUnions, isEnumExtension
     )
 
 {-| The Metadata module analyses a distribution for the type of metadata information that would be helpful in
@@ -11,17 +10,17 @@ automating things like data dictionaries, lineage tracking, and the such.
 
 # Types
 
-@docs Metadata
+@docs BaseTypes, EnumExtensionComponent, Enums, Modules, Types, Aliases, Metadata
 
 
 # Processing
 
-@docs mapDistribution, mapPackageDefinition, mapModuleTypes, mapModuleValues, mapTypeDefinition, mapValueDefinition
+@docs mapDistribution
 
 
 # Utilities
 
-@docs getTypes, getEnums, getBaseTypes, getAliases, getDocumentation, getModules
+@docs getTypes, getEnums, getBaseTypes, getAliases, getDocumentation, getModules, getEnumsWithExtensions, enumExtensionName, getUnions, isEnumExtension
 
 -}
 
@@ -32,14 +31,14 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
-import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
+import Morphir.IR.Type as Type exposing (Constructors, Specification(..), Type(..))
 import Morphir.Scala.AST exposing (Documented)
 
 
 {-| Structure for holding metadata information from processing the distribution.
 -}
 type Metadata ta
-    = Metadata Modules (Types ta) Enums BaseTypes Aliases
+    = Metadata Modules (Types ta) Enums BaseTypes (Types ta) Aliases
 
 
 {-| The registry of modules through entire distribution.
@@ -68,6 +67,13 @@ type alias BaseTypes =
     Dict FQName FQName
 
 
+{-| The registry of base types through the entire distribution.
+A base type is any union type that has more than one single argument option.
+-}
+type alias UnionTypes =
+    Dict FQName FQName
+
+
 {-| The registry of aliases through the entire distribution.
 An alias is any type alias that aliases a non-record type.
 -}
@@ -75,12 +81,19 @@ type alias Aliases =
     Dict FQName FQName
 
 
+{-| An enum extension is a special pattern of union type that is either an enum or a name with no arguments
+-}
+type EnumExtensionComponent
+    = ExtensionBase ( FQName, List Name )
+    | ExtensionValue Name
+
+
 {-| Access function for getting the module registry from a Metadata structure.
 -}
 getModules : Metadata ta -> Modules
 getModules meta =
     case meta of
-        Metadata modules _ _ _ _ ->
+        Metadata modules _ _ _ _ _ ->
             modules
 
 
@@ -89,7 +102,7 @@ getModules meta =
 getTypes : Metadata ta -> Types ta
 getTypes meta =
     case meta of
-        Metadata _ types _ _ _ ->
+        Metadata _ types _ _ _ _ ->
             types
 
 
@@ -109,8 +122,25 @@ getDocumentation meta fqn =
 getEnums : Metadata ta -> Enums
 getEnums meta =
     case meta of
-        Metadata _ _ enums _ _ ->
+        Metadata _ _ enums _ _ _ ->
             enums
+
+
+{-| Access function for getting the enum registry from a Metadata structure that includes EnumExtensions.
+-}
+getEnumsWithExtensions : Metadata ta -> Enums
+getEnumsWithExtensions meta =
+    let
+        enums =
+            getEnums meta
+
+        enumExtensions =
+            getEnumExtensions meta
+                |> Dict.toList
+                |> List.map extensionToEnum
+                |> Dict.fromList
+    in
+    Dict.union enums enumExtensions
 
 
 {-| Access function for getting the base type registry from a Metadata structure.
@@ -118,8 +148,17 @@ getEnums meta =
 getBaseTypes : Metadata ta -> BaseTypes
 getBaseTypes meta =
     case meta of
-        Metadata _ _ _ baseTypes _ ->
+        Metadata _ _ _ baseTypes _ _ ->
             baseTypes
+
+
+{-| Access function for getting the base type registry from a Metadata structure.
+-}
+getUnions : Metadata ta -> Types ta
+getUnions meta =
+    case meta of
+        Metadata _ _ _ _ unions _ ->
+            unions
 
 
 {-| Access function for getting the alias type registry from a Metadata structure.
@@ -127,7 +166,7 @@ getBaseTypes meta =
 getAliases : Metadata ta -> Aliases
 getAliases meta =
     case meta of
-        Metadata _ _ _ _ aliases ->
+        Metadata _ _ _ _ _ aliases ->
             aliases
 
 
@@ -189,6 +228,14 @@ mapPackageDefinition packageName packageDef =
                     )
                 |> Dict.fromList
 
+        unions =
+            typeList
+                |> List.filter
+                    (\( k, v ) ->
+                        isUnion v.value
+                    )
+                |> Dict.fromList
+
         aliases =
             typeList
                 |> List.filterMap
@@ -201,7 +248,7 @@ mapPackageDefinition packageName packageDef =
                     )
                 |> Dict.fromList
     in
-    Metadata modules types enums bases aliases
+    Metadata modules types enums bases unions aliases
 
 
 {-| Process this module to collect the types used produced by it.
@@ -272,7 +319,106 @@ asEnum typeDef =
             []
 
 
-{-| Decides whether a type is a base type through Maybe.
+{-| Decides whether a union type is an enum by ensuring it only has constructors with base type enum or no arg constructors.
+-}
+isEnumExtension : Metadata a -> Constructors a -> Bool
+isEnumExtension metadata constructors =
+    let
+        ( totalEmpties, totalEnums, totalOthers ) =
+            constructors
+                |> Dict.values
+                |> List.foldl
+                    (\args ( empties, enums, others ) ->
+                        case args of
+                            [] ->
+                                ( empties + 1, enums, others )
+
+                            [ ( _, Type.Reference _ fqn _ ) ] ->
+                                getEnums metadata
+                                    |> Dict.get fqn
+                                    |> Maybe.map (\x -> ( empties, enums + 1, others ))
+                                    |> Maybe.withDefault ( empties, enums, others + 1 )
+
+                            _ ->
+                                ( empties, enums, others + 1 )
+                    )
+                    ( 0, 0, 0 )
+    in
+    totalEmpties > 0 && totalEnums > 0 && totalOthers == 0
+
+
+asEnumExtension : Metadata ta -> Type.Definition ta -> List EnumExtensionComponent
+asEnumExtension metadata typeDef =
+    case typeDef of
+        Type.CustomTypeDefinition _ accessControlledCtors ->
+            case accessControlledCtors |> withPublicAccess of
+                Just constructors ->
+                    if isEnumExtension metadata constructors then
+                        constructors
+                            |> Dict.toList
+                            |> List.filterMap
+                                (\( name, constructor ) ->
+                                    case constructor of
+                                        [] ->
+                                            Just (ExtensionValue name)
+
+                                        [ ( _, Type.Reference _ baseFqn _ ) ] ->
+                                            getEnums metadata
+                                                |> Dict.get baseFqn
+                                                |> Maybe.map (\names -> ExtensionBase ( baseFqn, names ))
+
+                                        _ ->
+                                            Nothing
+                                )
+
+                    else
+                        []
+
+                _ ->
+                    []
+
+        _ ->
+            []
+
+
+getEnumExtensions : Metadata a -> Dict FQName (List EnumExtensionComponent)
+getEnumExtensions metadata =
+    let
+        xs =
+            getTypes metadata
+                |> Dict.toList
+                |> List.filterMap
+                    (\( fqn, value ) ->
+                        let
+                            extensions =
+                                asEnumExtension metadata value.value
+                        in
+                        if List.isEmpty extensions then
+                            Nothing
+
+                        else
+                            Just ( fqn, extensions )
+                    )
+    in
+    Dict.fromList xs
+
+
+extensionToEnum : ( FQName, List EnumExtensionComponent ) -> ( FQName, List Name )
+extensionToEnum ( fqn, components ) =
+    ( fqn, List.concatMap enumExtensionName components )
+
+
+enumExtensionName : EnumExtensionComponent -> List Name
+enumExtensionName ee =
+    case ee of
+        ExtensionBase ( _, names ) ->
+            names
+
+        ExtensionValue name ->
+            [ name ]
+
+
+{-| Decides whether a type is a base type (one single argument constructor) through Maybe.
 -}
 asBaseType : Type.Definition ta -> Maybe FQName
 asBaseType typeDef =
@@ -286,7 +432,8 @@ asBaseType typeDef =
                         |> Maybe.withDefault []
             in
             case values of
-                [ [ ( name, Type.Reference _ fqn _ ) ] ] ->
+                -- One single argument
+                [ [ ( _, Type.Reference _ fqn _ ) ] ] ->
                     Just fqn
 
                 _ ->
@@ -294,6 +441,25 @@ asBaseType typeDef =
 
         _ ->
             Nothing
+
+
+{-| Decides whether a type is a base type through Maybe.
+-}
+isUnion : Type.Definition ta -> Bool
+isUnion typeDef =
+    case typeDef of
+        Type.CustomTypeDefinition _ accessControlledCtors ->
+            let
+                values =
+                    accessControlledCtors
+                        |> withPublicAccess
+                        |> Maybe.map Dict.values
+                        |> Maybe.withDefault []
+            in
+            List.length values > 1
+
+        _ ->
+            False
 
 
 {-| Decides whether a type is an alias through Maybe.
