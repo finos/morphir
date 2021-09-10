@@ -27,7 +27,9 @@ import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, decodeList, decodeLiteral, decodeRaw, encodeList, encodeLiteral, encodeRaw, eval1, eval2, eval3, floatLiteral, intLiteral, oneOf, stringLiteral)
+import Morphir.Value.Native as Native exposing (boolLiteral, decodeList, decodeLiteral, decodeRaw, encodeList, encodeLiteral, encodeRaw, eval1, eval2, eval3, floatLiteral, intLiteral, oneOf, stringLiteral)
+import Morphir.Value.Native.Comparable as Comparable exposing (compareValue, max, min)
+import Morphir.Value.Native.Eq as Eq
 
 
 moduleName : ModuleName
@@ -173,7 +175,7 @@ nativeFunctions =
             (\arg1 arg2 ->
                 -- We use structural equality similar to Elm with the difference that Elm fails when you try to compare
                 -- two functions but we will actually compare if the implementations are the same.
-                Ok (Value.Literal () (BoolLiteral (arg1 == arg2)))
+                Eq.equal arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
             )
       )
     , ( "notEqual"
@@ -181,7 +183,7 @@ nativeFunctions =
             (\arg1 arg2 ->
                 -- We use structural equality similar to Elm with the difference that Elm fails when you try to compare
                 -- two functions but we will actually compare if the implementations are the same.
-                Ok (Value.Literal () (BoolLiteral (arg1 /= arg2)))
+                Eq.notEqual arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
             )
       )
     , ( "identity"
@@ -241,61 +243,25 @@ nativeFunctions =
     , ( "lessThan"
       , Native.binaryStrict
             (\arg1 arg2 ->
-                compareValue arg1 arg2
-                    |> Result.map
-                        (\order ->
-                            case order of
-                                LT ->
-                                    Value.Literal () (BoolLiteral True)
-
-                                _ ->
-                                    Value.Literal () (BoolLiteral False)
-                        )
+                Comparable.lessThan arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
             )
       )
     , ( "greaterThan"
       , Native.binaryStrict
             (\arg1 arg2 ->
-                compareValue arg1 arg2
-                    |> Result.map
-                        (\order ->
-                            case order of
-                                GT ->
-                                    Value.Literal () (BoolLiteral True)
-
-                                _ ->
-                                    Value.Literal () (BoolLiteral False)
-                        )
+                Comparable.greaterThan arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
             )
       )
     , ( "lessThanOrEqual"
       , Native.binaryStrict
             (\arg1 arg2 ->
-                compareValue arg1 arg2
-                    |> Result.map
-                        (\order ->
-                            case order of
-                                GT ->
-                                    Value.Literal () (BoolLiteral False)
-
-                                _ ->
-                                    Value.Literal () (BoolLiteral True)
-                        )
+                Comparable.lessThanOrEqual arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
             )
       )
     , ( "greaterThanOrEqual"
       , Native.binaryStrict
             (\arg1 arg2 ->
-                compareValue arg1 arg2
-                    |> Result.map
-                        (\order ->
-                            case order of
-                                LT ->
-                                    Value.Literal () (BoolLiteral False)
-
-                                _ ->
-                                    Value.Literal () (BoolLiteral True)
-                        )
+                Comparable.greaterThanOrEqual arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
             )
       )
     , ( "abs"
@@ -324,31 +290,13 @@ nativeFunctions =
     , ( "max"
       , Native.binaryStrict
             (\arg1 arg2 ->
-                compareValue arg1 arg2
-                    |> Result.map
-                        (\order ->
-                            case order of
-                                LT ->
-                                    arg2
-
-                                _ ->
-                                    arg1
-                        )
+                Comparable.max arg1 arg2
             )
       )
     , ( "min"
       , Native.binaryStrict
             (\arg1 arg2 ->
-                compareValue arg1 arg2
-                    |> Result.map
-                        (\order ->
-                            case order of
-                                GT ->
-                                    arg2
-
-                                _ ->
-                                    arg1
-                        )
+                Comparable.min arg1 arg2
             )
       )
     , ( "append"
@@ -503,70 +451,3 @@ isNumber tpe =
 
         _ ->
             False
-
-
-compareValue : RawValue -> RawValue -> Result Error Order
-compareValue arg1 arg2 =
-    case ( arg1, arg2 ) of
-        ( Value.Literal () (IntLiteral val1), Value.Literal () (IntLiteral val2) ) ->
-            compare val1 val2 |> Ok
-
-        ( Value.Literal () (FloatLiteral val1), Value.Literal () (FloatLiteral val2) ) ->
-            compare val1 val2 |> Ok
-
-        ( Value.Literal () (CharLiteral val1), Value.Literal () (CharLiteral val2) ) ->
-            compare val1 val2 |> Ok
-
-        ( Value.Literal () (StringLiteral val1), Value.Literal () (StringLiteral val2) ) ->
-            compare val1 val2 |> Ok
-
-        ( Value.List () list1, Value.List () list2 ) ->
-            let
-                fun : List RawValue -> List RawValue -> Result Error Order
-                fun listA listB =
-                    case ( listA, listB ) of
-                        ( [], [] ) ->
-                            Ok EQ
-
-                        ( [], _ ) ->
-                            Ok LT
-
-                        ( _, [] ) ->
-                            Ok GT
-
-                        ( head1 :: tail1, head2 :: tail2 ) ->
-                            case compareValue head1 head2 of
-                                Ok EQ ->
-                                    fun tail1 tail2
-
-                                other ->
-                                    other
-            in
-            fun list1 list2
-
-        ( Value.Tuple () tupleList1, Value.Tuple () tupleList2 ) ->
-            let
-                fun : List RawValue -> List RawValue -> Result Error Order
-                fun listA listB =
-                    case ( listA, listB ) of
-                        ( [], [] ) ->
-                            Ok EQ
-
-                        ( [], _ ) ->
-                            Err (TupleLengthNotMatchException tupleList1 tupleList2)
-
-                        ( _, [] ) ->
-                            Err (TupleLengthNotMatchException tupleList1 tupleList2)
-
-                        ( head1 :: tail1, head2 :: tail2 ) ->
-                            case compareValue head1 head2 of
-                                Ok EQ ->
-                                    fun tail1 tail2
-
-                                other ->
-                                    other
-            in
-            fun tupleList1 tupleList2
-
-        ( a, b ) ->
-            Err (UnexpectedArguments [ a, b ])
