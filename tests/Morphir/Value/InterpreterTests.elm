@@ -20,35 +20,10 @@ basicsPendingSDK =
 
 listPendingSDK =
     Ok
-        [ QName [ [ "list" ] ] [ "all" ]
-        , QName [ [ "list" ] ] [ "any" ]
-        , QName [ [ "list" ] ] [ "concat", "map" ]
-        , QName [ [ "list" ] ] [ "cons" ]
-        , QName [ [ "list" ] ] [ "drop" ]
-        , QName [ [ "list" ] ] [ "filter" ]
-        , QName [ [ "list" ] ] [ "filter", "map" ]
-        , QName [ [ "list" ] ] [ "foldl" ]
-        , QName [ [ "list" ] ] [ "foldr" ]
-        , QName [ [ "list" ] ] [ "head" ]
-        , QName [ [ "list" ] ] [ "indexed", "map" ]
-        , QName [ [ "list" ] ] [ "intersperse" ]
-        , QName [ [ "list" ] ] [ "is", "empty" ]
-        , QName [ [ "list" ] ] [ "length" ]
-        , QName [ [ "list" ] ] [ "map", "2" ]
-        , QName [ [ "list" ] ] [ "map", "3" ]
-        , QName [ [ "list" ] ] [ "map", "4" ]
-        , QName [ [ "list" ] ] [ "map", "5" ]
-        , QName [ [ "list" ] ] [ "maximum" ]
-        , QName [ [ "list" ] ] [ "member" ]
-        , QName [ [ "list" ] ] [ "minimum" ]
-        , QName [ [ "list" ] ] [ "partition" ]
-        , QName [ [ "list" ] ] [ "reverse" ]
+        [ QName [ [ "list" ] ] [ "indexed", "map" ]
         , QName [ [ "list" ] ] [ "sort" ]
         , QName [ [ "list" ] ] [ "sort", "by" ]
         , QName [ [ "list" ] ] [ "sort", "with" ]
-        , QName [ [ "list" ] ] [ "tail" ]
-        , QName [ [ "list" ] ] [ "take" ]
-        , QName [ [ "list" ] ] [ "unzip" ]
         ]
 
 
@@ -173,35 +148,10 @@ totalSDK =
         , QName [ [ "key" ] ] [ "key", "8" ]
         , QName [ [ "key" ] ] [ "key", "9" ]
         , QName [ [ "key" ] ] [ "no", "key" ]
-        , QName [ [ "list" ] ] [ "all" ]
-        , QName [ [ "list" ] ] [ "any" ]
-        , QName [ [ "list" ] ] [ "concat", "map" ]
-        , QName [ [ "list" ] ] [ "cons" ]
-        , QName [ [ "list" ] ] [ "drop" ]
-        , QName [ [ "list" ] ] [ "filter" ]
-        , QName [ [ "list" ] ] [ "filter", "map" ]
-        , QName [ [ "list" ] ] [ "foldl" ]
-        , QName [ [ "list" ] ] [ "foldr" ]
-        , QName [ [ "list" ] ] [ "head" ]
         , QName [ [ "list" ] ] [ "indexed", "map" ]
-        , QName [ [ "list" ] ] [ "intersperse" ]
-        , QName [ [ "list" ] ] [ "is", "empty" ]
-        , QName [ [ "list" ] ] [ "length" ]
-        , QName [ [ "list" ] ] [ "map", "2" ]
-        , QName [ [ "list" ] ] [ "map", "3" ]
-        , QName [ [ "list" ] ] [ "map", "4" ]
-        , QName [ [ "list" ] ] [ "map", "5" ]
-        , QName [ [ "list" ] ] [ "maximum" ]
-        , QName [ [ "list" ] ] [ "member" ]
-        , QName [ [ "list" ] ] [ "minimum" ]
-        , QName [ [ "list" ] ] [ "partition" ]
-        , QName [ [ "list" ] ] [ "reverse" ]
         , QName [ [ "list" ] ] [ "sort" ]
         , QName [ [ "list" ] ] [ "sort", "by" ]
         , QName [ [ "list" ] ] [ "sort", "with" ]
-        , QName [ [ "list" ] ] [ "tail" ]
-        , QName [ [ "list" ] ] [ "take" ]
-        , QName [ [ "list" ] ] [ "unzip" ]
         , QName [ [ "local", "date" ] ] [ "add", "days" ]
         , QName [ [ "local", "date" ] ] [ "add", "months" ]
         , QName [ [ "local", "date" ] ] [ "add", "weeks" ]
@@ -375,6 +325,194 @@ evaluateValueTests =
                 (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 3) ])
             )
             (Value.List () [ Value.Literal () (IntLiteral 0), Value.Literal () (IntLiteral 0), Value.Literal () (IntLiteral 0) ])
+        , positiveCheck "List.isEmpty [] == True"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "List" "isEmpty"))
+                (Value.List () [])
+            )
+            (Value.Literal () (BoolLiteral True))
+        , positiveCheck "List.isEmpty [1,2] == False"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "List" "isEmpty"))
+                (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 2) ])
+            )
+            (Value.Literal () (BoolLiteral False))
+        , positiveCheck "List.head [] == Nothing"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "List" "head"))
+                (Value.List () [])
+            )
+            (Value.Constructor () (fqn "Morphir.SDK" "Maybe" "Nothing"))
+        , positiveCheck "List.head [[\"1\"],[\"2\"]] == Just [\"1\"]"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "List" "head"))
+                (Value.List () [ Value.List () [ Value.Literal () (StringLiteral "1") ], Value.List () [ Value.Literal () (StringLiteral "2") ] ])
+            )
+            (Value.Apply () (Value.Constructor () (fqn "Morphir.SDK" "Maybe" "Just")) (Value.List () [ Value.Literal () (StringLiteral "1") ]))
+        , positiveCheck "List.concat [[\"1\"],[\"2\"]] == [\"1\",\"2\"]"
+            (Value.Apply ()
+                (Value.Reference () (fqn "Morphir.SDK" "List" "concat"))
+                (Value.List () [ Value.List () [ Value.Literal () (StringLiteral "1") ], Value.List () [ Value.Literal () (StringLiteral "2") ] ])
+            )
+            (Value.List () [ Value.Literal () (StringLiteral "1"), Value.Literal () (StringLiteral "2") ])
+
+        --, positiveCheck "List.concatMap List [1,2] == [\"1\",\"2\"]"
+        --    (Value.Apply ()
+        --        (Value.Reference () (fqn "Morphir.SDK" "List" "concat"))
+        --        (Value.List () [ Value.List () [ Value.Literal () (StringLiteral "1") ], Value.List () [ Value.Literal () (StringLiteral "2") ] ])
+        --    )
+        --    (Value.List () [ Value.Literal () (StringLiteral "1"), Value.Literal () (StringLiteral "2") ])
+        , positiveCheck "List.intersperse 4 [2,3,5] == [2,4,3,4,5]"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "intersperse"))
+                    (Value.Literal () (IntLiteral 4))
+                )
+                (Value.List () [ Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 3), Value.Literal () (IntLiteral 5) ])
+            )
+            (Value.List () [ Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 4), Value.Literal () (IntLiteral 3), Value.Literal () (IntLiteral 4), Value.Literal () (IntLiteral 5) ])
+        , positiveCheck "List.filter  (\\value -> if modBy 2 value == 0 then True else False) [1,2,3,4] == [2,4] "
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "filter"))
+                    (Value.Lambda ()
+                        (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                        (Value.IfThenElse ()
+                            (Value.Apply ()
+                                (Value.Apply ()
+                                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "equal"))
+                                    (Value.Apply ()
+                                        (Value.Apply ()
+                                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "modBy"))
+                                            (Value.Literal () (IntLiteral 2))
+                                        )
+                                        (Value.Variable () [ "value" ])
+                                    )
+                                )
+                                (Value.Literal () (IntLiteral 0))
+                            )
+                            (Value.Literal () (BoolLiteral True))
+                            (Value.Literal () (BoolLiteral False))
+                        )
+                    )
+                )
+                (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 3), Value.Literal () (IntLiteral 4) ])
+            )
+            (Value.List () [ Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 4) ])
+        , positiveCheck "List.filterMap String.toInt [\"1\",\"hi\",\"3\",\"4\"] == [1,3,4]"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "filterMap"))
+                    (Value.Lambda ()
+                        (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                        (Value.Apply ()
+                            (Value.Reference () (fqn "Morphir.SDK" "String" "toInt"))
+                            (Value.Variable () [ "value" ])
+                        )
+                    )
+                )
+                (Value.List () [ Value.Literal () (StringLiteral "1"), Value.Literal () (StringLiteral "hi"), Value.Literal () (StringLiteral "3"), Value.Literal () (StringLiteral "4") ])
+            )
+            (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 3), Value.Literal () (IntLiteral 4) ])
+        , positiveCheck "List.filterMap String.toInt [\"hi\",\"hello\"] == []"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "filterMap"))
+                    (Value.Lambda ()
+                        (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                        (Value.Apply ()
+                            (Value.Reference () (fqn "Morphir.SDK" "String" "toInt"))
+                            (Value.Variable () [ "value" ])
+                        )
+                    )
+                )
+                (Value.List () [ Value.Literal () (StringLiteral "hi"), Value.Literal () (StringLiteral "hello") ])
+            )
+            (Value.List () [])
+        , positiveCheck "List.all (\\value -> if modBy 2 value == 0 then True else False) [2,4,6]"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "all"))
+                    (Value.Lambda ()
+                        (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                        (Value.IfThenElse ()
+                            (Value.Apply ()
+                                (Value.Apply ()
+                                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "equal"))
+                                    (Value.Apply ()
+                                        (Value.Apply ()
+                                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "modBy"))
+                                            (Value.Literal () (IntLiteral 2))
+                                        )
+                                        (Value.Variable () [ "value" ])
+                                    )
+                                )
+                                (Value.Literal () (IntLiteral 0))
+                            )
+                            (Value.Literal () (BoolLiteral True))
+                            (Value.Literal () (BoolLiteral False))
+                        )
+                    )
+                )
+                (Value.List () [ Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 4), Value.Literal () (IntLiteral 6) ])
+            )
+            (Value.Literal () (BoolLiteral True))
+        , positiveCheck "List.any (\\value -> if modBy 2 value == 0 then True else False) [1,2,3]"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "any"))
+                    (Value.Lambda ()
+                        (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                        (Value.IfThenElse ()
+                            (Value.Apply ()
+                                (Value.Apply ()
+                                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "equal"))
+                                    (Value.Apply ()
+                                        (Value.Apply ()
+                                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "modBy"))
+                                            (Value.Literal () (IntLiteral 2))
+                                        )
+                                        (Value.Variable () [ "value" ])
+                                    )
+                                )
+                                (Value.Literal () (IntLiteral 0))
+                            )
+                            (Value.Literal () (BoolLiteral True))
+                            (Value.Literal () (BoolLiteral False))
+                        )
+                    )
+                )
+                (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 2), Value.Literal () (IntLiteral 3) ])
+            )
+            (Value.Literal () (BoolLiteral True))
+        , positiveCheck "List.any (\\value -> if modBy 2 value == 0 then True else False) [1,3]"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "any"))
+                    (Value.Lambda ()
+                        (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                        (Value.IfThenElse ()
+                            (Value.Apply ()
+                                (Value.Apply ()
+                                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "equal"))
+                                    (Value.Apply ()
+                                        (Value.Apply ()
+                                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "modBy"))
+                                            (Value.Literal () (IntLiteral 2))
+                                        )
+                                        (Value.Variable () [ "value" ])
+                                    )
+                                )
+                                (Value.Literal () (IntLiteral 0))
+                            )
+                            (Value.Literal () (BoolLiteral True))
+                            (Value.Literal () (BoolLiteral False))
+                        )
+                    )
+                )
+                (Value.List () [ Value.Literal () (IntLiteral 1), Value.Literal () (IntLiteral 3) ])
+            )
+            (Value.Literal () (BoolLiteral False))
         , {- Basics.identity -}
           positiveCheck "identity 5 = 5"
             (Value.Apply ()
@@ -1205,15 +1343,14 @@ evaluateValueTests =
                 (Value.Literal () (IntLiteral 5))
             )
             (Value.Literal () (IntLiteral 1))
-        , positiveCheck " if modBy 2 value == 0 then True else False "
-            (Value.IfThenElse ()
-                (Value.Apply ()
-                    (Value.Apply ()
-                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "equal"))
+        , positiveCheck " (\\value -> if modBy 2 value == 0 then True else False) "
+            (Value.Apply ()
+                (Value.Lambda ()
+                    (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                    (Value.IfThenElse ()
                         (Value.Apply ()
-                            (Value.Lambda
-                                ()
-                                (Value.AsPattern () (Value.WildcardPattern ()) [ "value" ])
+                            (Value.Apply ()
+                                (Value.Reference () (fqn "Morphir.SDK" "Basics" "equal"))
                                 (Value.Apply ()
                                     (Value.Apply ()
                                         (Value.Reference () (fqn "Morphir.SDK" "Basics" "modBy"))
@@ -1222,13 +1359,13 @@ evaluateValueTests =
                                     (Value.Variable () [ "value" ])
                                 )
                             )
-                            (Value.Literal () (IntLiteral 5))
+                            (Value.Literal () (IntLiteral 0))
                         )
+                        (Value.Literal () (BoolLiteral True))
+                        (Value.Literal () (BoolLiteral False))
                     )
-                    (Value.Literal () (IntLiteral 0))
                 )
-                (Value.Literal () (BoolLiteral True))
-                (Value.Literal () (BoolLiteral False))
+                (Value.Literal () (IntLiteral 5))
             )
             (Value.Literal () (BoolLiteral False))
 
