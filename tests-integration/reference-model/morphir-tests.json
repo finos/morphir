@@ -404,7 +404,7 @@
                         4
                     ]
                 ],
-                "expectedOutput": 12,
+                "expectedOutput": 15,
                 "description": "Foldl Check"
             }
         ]
