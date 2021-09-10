@@ -415,7 +415,7 @@ listAll list =
             else
                 False
         )
-        [ 1, 2 ]
+        list
 
 
 isEven : Int -> Bool
@@ -430,3 +430,58 @@ isEven value =
 modByTest : Int -> Int
 modByTest value =
     modBy 2 value
+
+
+listAny : List Int -> Bool
+listAny list =
+    List.any isEven list
+
+
+listPartition : List Int -> ( List Int, List Int )
+listPartition list =
+    List.partition (\x -> x < 3) list
+
+
+listPartition2 : List Int -> ( List Int, List Int )
+listPartition2 list =
+    List.partition isEven list
+
+
+listUnzip : List ( Int, String ) -> ( List Int, List String )
+listUnzip list =
+    List.unzip list
+
+
+listConcatMap : List Int -> Int -> List Int
+listConcatMap list num =
+    List.concatMap (\value -> value |> List.repeat num) list
+
+
+listMap2 : List Int -> List Int -> List Int
+listMap2 list1 list2 =
+    List.map2 (+) list1 list2
+
+
+listFoldl1 : Int -> List Int -> Int
+listFoldl1 value list1 =
+    List.foldl (+) value list1
+
+
+listFoldl2 : List Int -> List Int -> List number
+listFoldl2 list1 list2 =
+    List.foldl (::) list1 list2
+
+
+listFoldr1 : Int -> List Int -> Int
+listFoldr1 value list1 =
+    List.foldr (+) value list1
+
+
+listFoldr2 : List Int -> List Int -> List number
+listFoldr2 list1 list2 =
+    List.foldr (::) list1 list2
+
+
+listCons : Int -> List Int -> List Int
+listCons value list =
+    value :: list
