@@ -244,7 +244,7 @@ boolLiteral lit =
             Ok v
 
         _ ->
-            Err (ExpectedBoolLiteral lit)
+            Err (ExpectedBoolLiteral (Value.Literal () lit))
 
 
 {-| -}
@@ -255,7 +255,7 @@ intLiteral lit =
             Ok v
 
         _ ->
-            Err (ExpectedBoolLiteral lit)
+            Err (ExpectedIntLiteral (Value.Literal () lit))
 
 
 {-| -}
@@ -266,7 +266,7 @@ floatLiteral lit =
             Ok v
 
         _ ->
-            Err (ExpectedBoolLiteral lit)
+            Err (ExpectedFloatLiteral (Value.Literal () lit))
 
 
 {-| -}
@@ -277,7 +277,7 @@ charLiteral lit =
             Ok v
 
         _ ->
-            Err (ExpectedBoolLiteral lit)
+            Err (ExpectedCharLiteral (Value.Literal () lit))
 
 
 {-| -}
@@ -288,7 +288,7 @@ stringLiteral lit =
             Ok v
 
         _ ->
-            Err (ExpectedBoolLiteral lit)
+            Err (ExpectedStringLiteral (Value.Literal () lit))
 
 
 {-| -}
@@ -349,7 +349,7 @@ decodeMaybe decodeItem eval value =
                 |> Result.map Just
 
         Ok _ ->
-            Err (UnexpectedArguments [ value ])
+            Err (ExpectedMaybe value)
 
         Err error ->
             Err error

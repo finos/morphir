@@ -1,9 +1,8 @@
 module Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
 
 import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name exposing (Name)
-import Morphir.IR.Value exposing (Pattern, Value)
+import Morphir.IR.Value exposing (Pattern, RawValue, Value)
 
 
 type Error
@@ -11,22 +10,27 @@ type Error
     | ReferenceNotFound FQName
     | NoArgumentToPassToLambda
     | LambdaArgumentDidNotMatch PatternMismatch
-    | BindPatternDidNotMatch (Value () ()) PatternMismatch
-    | UnexpectedArguments (List (Value () ()))
-    | ExpectedLiteral (Value () ())
-    | ExpectedList (Value () ())
-    | ExpectedTuple (Value () ())
-    | ExpectedBoolLiteral Literal
-    | IfThenElseConditionShouldEvaluateToBool (Value () ()) (Value () ())
-    | FieldNotFound (Value () ()) Name
-    | RecordExpected (Value () ()) (Value () ())
-    | NoPatternsMatch (Value () ()) (List (Pattern ()))
-    | ExactlyOneArgumentExpected (List (Value () ()))
+    | BindPatternDidNotMatch RawValue PatternMismatch
+    | UnexpectedArguments (List RawValue)
+    | ExpectedLiteral RawValue
+    | ExpectedList RawValue
+    | ExpectedTuple RawValue
+    | ExpectedBoolLiteral RawValue
+    | ExpectedIntLiteral RawValue
+    | ExpectedFloatLiteral RawValue
+    | ExpectedStringLiteral RawValue
+    | ExpectedCharLiteral RawValue
+    | ExpectedMaybe RawValue
+    | IfThenElseConditionShouldEvaluateToBool RawValue RawValue
+    | FieldNotFound RawValue Name
+    | RecordExpected RawValue RawValue
+    | NoPatternsMatch RawValue (List (Pattern ()))
+    | ExactlyOneArgumentExpected (List RawValue)
     | ErrorWhileEvaluatingReference FQName Error
     | ErrorWhileEvaluatingVariable Name Error
-    | TupleLengthNotMatchException (List (Value () ())) (List (Value () ()))
+    | TupleLengthNotMatchException (List RawValue) (List RawValue)
     | NotImplemented
 
 
 type PatternMismatch
-    = PatternMismatch (Pattern ()) (Value () ())
+    = PatternMismatch (Pattern ()) RawValue
