@@ -20,8 +20,7 @@ basicsPendingSDK =
 
 listPendingSDK =
     Ok
-        [ QName [ [ "list" ] ] [ "indexed", "map" ]
-        , QName [ [ "list" ] ] [ "sort" ]
+        [ QName [ [ "list" ] ] [ "sort" ]
         , QName [ [ "list" ] ] [ "sort", "by" ]
         , QName [ [ "list" ] ] [ "sort", "with" ]
         ]

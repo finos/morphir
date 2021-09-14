@@ -7,7 +7,7 @@
         "Values",
         "ValueEditors",
         "Formulas",
-        "TupleSDK",
+        "SDK.Tuple",
         "Insight.UseCase1",
         "Insight.UseCase2",
         "Presentations.UKFintechMeetup",

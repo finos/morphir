@@ -472,6 +472,38 @@ nativeFunctions =
     , ( "intersperse", eval2 List.intersperse decodeRaw (decodeList decodeRaw) (encodeList encodeRaw) )
 
     {- sort sortBy sortWith -}
+    , ( "indexedMap"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    Result.map
+                        (\evaluatedArg1 ->
+                            case evaluatedArg1 of
+                                Value.List () listItems1 ->
+                                    List.indexedMap
+                                        (\index item1 ->
+                                            eval
+                                                (Value.Apply ()
+                                                    (Value.Apply ()
+                                                        fun
+                                                        item1
+                                                    )
+                                                    (Value.Literal () (IntLiteral index))
+                                                )
+                                        )
+                                        listItems1
+                                        |> ListOfResults.liftFirstError
+                                        |> Result.map (Value.List ())
+
+                                _ ->
+                                    Err (UnexpectedArguments args)
+                        )
+                        (eval arg1)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
     , ( "map2"
       , \eval args ->
             case args of
