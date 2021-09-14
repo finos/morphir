@@ -200,49 +200,6 @@
             ],
             [
                 [
-                    "tuple",
-                    "s",
-                    "d",
-                    "k"
-                ]
-            ],
-            [
-                "tuple",
-                "map",
-                "second"
-            ]
-        ],
-        [
-            {
-                "inputs": [
-                    [
-                        "Piyush",
-                        4
-                    ]
-                ],
-                "expectedOutput": [
-                    "Piyush",
-                    2
-                ],
-                "description": ""
-            }
-        ]
-    ],
-    [
-        [
-            [
-                [
-                    "morphir"
-                ],
-                [
-                    "reference"
-                ],
-                [
-                    "model"
-                ]
-            ],
-            [
-                [
                     "values"
                 ]
             ],
