@@ -24,6 +24,8 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value
+import Morphir.Value.Error exposing (Error(..))
+import Morphir.Value.Native as Native exposing (decodeRaw, decodeTuple2, encodeRaw, encodeTuple2, eval1, eval2)
 
 
 moduleName : ModuleName
@@ -68,3 +70,79 @@ moduleSpec =
                 (Type.Tuple () [ tVar "x", tVar "y" ])
             ]
     }
+
+
+nativeFunctions : List ( String, Native.Function )
+nativeFunctions =
+    [ ( "pair", eval2 Tuple.pair decodeRaw decodeRaw (encodeTuple2 ( encodeRaw, encodeRaw )) )
+    , ( "first", eval1 Tuple.first (decodeTuple2 ( decodeRaw, decodeRaw )) encodeRaw )
+    , ( "second", eval1 Tuple.second (decodeTuple2 ( decodeRaw, decodeRaw )) encodeRaw )
+    , ( "mapFirst"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Tuple () [ val1, val2 ] ->
+                                        eval (Value.Apply () fun val1)
+                                            |> Result.andThen
+                                                (\evaluatedValue1 ->
+                                                    Value.Tuple () [ evaluatedValue1, val2 ] |> Ok
+                                                )
+
+                                    _ ->
+                                        Err (ExpectedTuple evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "mapSecond"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Tuple () [ val1, val2 ] ->
+                                        eval (Value.Apply () fun val2)
+                                            |> Result.andThen
+                                                (\evaluatedValue2 ->
+                                                    Value.Tuple () [ val1, evaluatedValue2 ] |> Ok
+                                                )
+
+                                    _ ->
+                                        Err (ExpectedTuple evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "mapBoth"
+      , \eval args ->
+            case args of
+                [ fun1, fun2, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Tuple () [ val1, val2 ] ->
+                                        Result.map2
+                                            (\evaluatedValue1 evaluatedValue2 ->
+                                                Value.Tuple () [ evaluatedValue1, evaluatedValue2 ] |> Ok
+                                            )
+                                            (eval (Value.Apply () fun1 val1))
+                                            (eval (Value.Apply () fun2 val2))
+                                            |> Result.andThen identity
+
+                                    _ ->
+                                        Err (ExpectedTuple evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    ]

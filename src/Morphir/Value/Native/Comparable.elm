@@ -7,125 +7,151 @@ import Morphir.Value.Native.Eq as Eq
 
 
 lessThan : RawValue -> RawValue -> Result Error Bool
-lessThan a b =
-    let
-        pairwiseLess : List ( RawValue, RawValue ) -> Bool
-        pairwiseLess list =
-            case list of
-                [] ->
-                    False
+lessThan arg1 arg2 =
+    compareValue arg1 arg2
+        |> Result.map
+            (\order ->
+                case order of
+                    LT ->
+                        True
 
-                ( aValue, bValue ) :: rest ->
-                    case lessThan aValue bValue of
-                        Ok True ->
-                            True
-
-                        Ok False ->
-                            case lessThan bValue aValue of
-                                Ok True ->
-                                    False
-
-                                Ok False ->
-                                    pairwiseLess rest
-
-                                Err _ ->
-                                    False
-
-                        Err _ ->
-                            False
-    in
-    case ( a, b ) of
-        ( Value.Literal _ (IntLiteral aInt), Value.Literal _ (IntLiteral bInt) ) ->
-            Ok (aInt < bInt)
-
-        ( Value.Literal _ (FloatLiteral aFloat), Value.Literal _ (FloatLiteral bFloat) ) ->
-            Ok (aFloat < bFloat)
-
-        ( Value.Literal _ (CharLiteral aChar), Value.Literal _ (CharLiteral bChar) ) ->
-            Ok (aChar < bChar)
-
-        ( Value.Literal _ (StringLiteral aString), Value.Literal _ (StringLiteral bString) ) ->
-            Ok (aString < bString)
-
-        ( Value.List _ aItems, Value.List _ bItems ) ->
-            if List.length aItems == List.length bItems then
-                List.map2 Tuple.pair aItems bItems
-                    |> pairwiseLess
-                    |> Ok
-
-            else
-                Ok False
-
-        ( Value.Tuple _ aElems, Value.Tuple _ bElems ) ->
-            if List.length aElems == List.length bElems then
-                List.map2 Tuple.pair aElems bElems
-                    |> pairwiseLess
-                    |> Ok
-
-            else
-                Err (UnexpectedArguments [ a, b ])
-
-        _ ->
-            Err (UnexpectedArguments [ a, b ])
+                    _ ->
+                        False
+            )
 
 
 lessThanOrEqual : RawValue -> RawValue -> Result Error Bool
-lessThanOrEqual a b =
-    Result.map2 (||) (lessThan a b) (Eq.equal a b)
+lessThanOrEqual arg1 arg2 =
+    compareValue arg1 arg2
+        |> Result.map
+            (\order ->
+                case order of
+                    GT ->
+                        False
+
+                    _ ->
+                        True
+            )
 
 
 greaterThan : RawValue -> RawValue -> Result Error Bool
-greaterThan a b =
-    Result.map not (lessThanOrEqual a b)
+greaterThan arg1 arg2 =
+    compareValue arg1 arg2
+        |> Result.map
+            (\order ->
+                case order of
+                    GT ->
+                        True
+
+                    _ ->
+                        False
+            )
 
 
 greaterThanOrEqual : RawValue -> RawValue -> Result Error Bool
-greaterThanOrEqual a b =
-    Result.map not (lessThan a b)
+greaterThanOrEqual arg1 arg2 =
+    compareValue arg1 arg2
+        |> Result.map
+            (\order ->
+                case order of
+                    LT ->
+                        False
+
+                    _ ->
+                        True
+            )
 
 
 max : RawValue -> RawValue -> Result Error RawValue
-max a b =
-    lessThan a b
+max arg1 arg2 =
+    compareValue arg1 arg2
         |> Result.map
-            (\aIsLess ->
-                if aIsLess then
-                    b
+            (\order ->
+                case order of
+                    LT ->
+                        arg2
 
-                else
-                    a
+                    _ ->
+                        arg1
             )
 
 
 min : RawValue -> RawValue -> Result Error RawValue
-min a b =
-    lessThan a b
+min arg1 arg2 =
+    compareValue arg1 arg2
         |> Result.map
-            (\aIsLess ->
-                if aIsLess then
-                    a
+            (\order ->
+                case order of
+                    GT ->
+                        arg2
 
-                else
-                    b
+                    _ ->
+                        arg1
             )
 
 
-compare : RawValue -> RawValue -> Result Error Order
-compare a b =
-    lessThan a b
-        |> Result.andThen
-            (\aIsLess ->
-                if aIsLess then
-                    Ok LT
+compareValue : RawValue -> RawValue -> Result Error Order
+compareValue arg1 arg2 =
+    case ( arg1, arg2 ) of
+        ( Value.Literal () (IntLiteral val1), Value.Literal () (IntLiteral val2) ) ->
+            compare val1 val2 |> Ok
 
-                else
-                    Eq.equal a b
-                        |> Result.map
-                            (\isEqual ->
-                                if isEqual then
-                                    EQ
+        ( Value.Literal () (FloatLiteral val1), Value.Literal () (FloatLiteral val2) ) ->
+            compare val1 val2 |> Ok
 
-                                else
-                                    GT
-                            )
-            )
+        ( Value.Literal () (CharLiteral val1), Value.Literal () (CharLiteral val2) ) ->
+            compare val1 val2 |> Ok
+
+        ( Value.Literal () (StringLiteral val1), Value.Literal () (StringLiteral val2) ) ->
+            compare val1 val2 |> Ok
+
+        ( Value.List () list1, Value.List () list2 ) ->
+            let
+                fun : List RawValue -> List RawValue -> Result Error Order
+                fun listA listB =
+                    case ( listA, listB ) of
+                        ( [], [] ) ->
+                            Ok EQ
+
+                        ( [], _ ) ->
+                            Ok LT
+
+                        ( _, [] ) ->
+                            Ok GT
+
+                        ( head1 :: tail1, head2 :: tail2 ) ->
+                            case compareValue head1 head2 of
+                                Ok EQ ->
+                                    fun tail1 tail2
+
+                                other ->
+                                    other
+            in
+            fun list1 list2
+
+        ( Value.Tuple () tupleList1, Value.Tuple () tupleList2 ) ->
+            let
+                fun : List RawValue -> List RawValue -> Result Error Order
+                fun listA listB =
+                    case ( listA, listB ) of
+                        ( [], [] ) ->
+                            Ok EQ
+
+                        ( [], _ ) ->
+                            Err (TupleLengthNotMatchException tupleList1 tupleList2)
+
+                        ( _, [] ) ->
+                            Err (TupleLengthNotMatchException tupleList1 tupleList2)
+
+                        ( head1 :: tail1, head2 :: tail2 ) ->
+                            case compareValue head1 head2 of
+                                Ok EQ ->
+                                    fun tail1 tail2
+
+                                other ->
+                                    other
+            in
+            fun tupleList1 tupleList2
+
+        ( a, b ) ->
+            Err (UnexpectedArguments [ a, b ])

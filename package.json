@@ -9,13 +9,15 @@
     "test:integration:clean": "del-cli tests-integration/generated/",
     "test:integration:gen": "node dist/morphir elm gen -i ./tests-integration/generated/morphir-ir.json -o ./tests-integration/generated/refModel/src/scala/ -t Scala ",
     "test:integration:make": "morphir-elm make -p ./tests-integration/reference-model -o ./tests-integration/generated/morphir-ir.json",
-    "test": "elm-test",
+    "test": "elm-test && npm run integration:test",
+    "integration:test": "node ./cli/morphir-elm-test.js -p ./tests-integration/reference-model",
+    "integration:make": "node ./cli/morphir-elm-make.js -p ./tests-integration/reference-model -o ./tests-integration/reference-model/morphir-ir.json",
     "insight-server-live": "cd cli && elm-live src/Morphir/Web/Insight.elm --start-page=./web/insight.html --dir=./web --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/insight.js",
     "dev-server-live": "cd cli && elm-live src/Morphir/Web/DevelopApp.elm --dir=web --pushstate --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/index.html",
     "try-morphir-live": "cd cli && elm-live src/Morphir/Web/TryMorphir.elm",
     "ncc-morphir": "ncc build cli/morphir.js -o dist/morphir",
     "ncc-morphir-server": "ncc build cli/morphir-elm-develop.js -o dist/morphir-server",
-    "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server"
+    "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server && npm run integration:make"
   },
   "repository": {
     "type": "git",
