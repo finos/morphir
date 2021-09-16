@@ -3,6 +3,7 @@ module Morphir.TypeScript.BackendTests exposing (mapTypeDefinitionTests)
 import Dict
 import Expect
 import Morphir.IR.AccessControlled exposing (public)
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as Type
 import Morphir.TypeScript.AST as TS
@@ -16,14 +17,19 @@ mapTypeDefinitionTests =
         [ test "custom type mapping"
             (\_ ->
                 mapTypeDefinition [ "my", "foo" ]
-                    (Type.CustomTypeDefinition []
-                        (public
-                            (Dict.fromList
-                                [ ( [ "bar" ], [] )
-                                , ( [ "baz" ]
-                                  , [ ( [ "my", "field" ], stringType () ) ]
-                                  )
-                                ]
+                    (public
+                        (Documented
+                             ""
+                             (Type.CustomTypeDefinition []
+                                (public
+                                    (Dict.fromList
+                                        [ ( [ "bar" ], [] )
+                                        , ( [ "baz" ]
+                                          , [ ( [ "my", "field" ], stringType () ) ]
+                                          )
+                                        ]
+                                    )
+                                )
                             )
                         )
                     )
