@@ -15,11 +15,10 @@
 -}
 
 
-module Morphir.IR.SDK.ResultList exposing (construct, listType, moduleName, moduleSpec, nativeFunctions)
+module Morphir.IR.SDK.ResultList exposing (moduleName, moduleSpec, nativeFunctions)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
@@ -28,9 +27,7 @@ import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.SDK.Result exposing (resultType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value exposing (RawValue, Value)
-import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native exposing (decodeFun1, decodeList, decodeRaw, encodeRaw, encodeResultList, eval2)
+import Morphir.Value.Native as Native
 
 
 moduleName : ModuleName
