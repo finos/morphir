@@ -101,4 +101,5 @@ nativeFunctions =
         , moduleFunctions "List" List.nativeFunctions
         , moduleFunctions "Maybe" Maybe.nativeFunctions
         , moduleFunctions "Tuple" Tuple.nativeFunctions
+        , moduleFunctions "Result" Result.nativeFunctions
         ]
