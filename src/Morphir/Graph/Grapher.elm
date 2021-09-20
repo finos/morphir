@@ -1,8 +1,7 @@
 module Morphir.Graph.Grapher exposing
     ( Node(..), Verb(..), Edge, GraphEntry(..), Graph
     , mapDistribution, mapPackageDefinition, mapModuleTypes, mapModuleValues, mapTypeDefinition, mapValueDefinition
-    , graphEntryToComparable, nodeType, verbToString, nodeFQN
-    , asEnum, edgeFromTuple, edgeToTuple, fqnToString
+    , graphEntryToComparable, nodeType, verbToString, nodeFQN, asEnum, edgeFromTuple, edgeToTuple, fqnToString
     )
 
 {-| The Grapher module analyses a distribution to build a graph for dependency and lineage tracking purposes.
@@ -22,7 +21,7 @@ enterprises. The result of processing is a [Graph](#Graph), which is a collectio
 
 # Utilities
 
-@docs graphEntryToComparable, nodeType, verbToString, nodeFQN
+@docs graphEntryToComparable, nodeType, verbToString, nodeFQN, asEnum, edgeFromTuple, edgeToTuple, fqnToString
 
 -}
 
@@ -309,6 +308,7 @@ isEnum constructors =
             )
 
 
+{-| -}
 asEnum : Type.Definition ta -> List Name
 asEnum typeDef =
     case typeDef of

@@ -35,6 +35,7 @@ module Morphir.Elm.Frontend exposing
 @docs defaultDependencies
 
 @docs Options, ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation, mapSource
+@docs mapValueToFile
 
 -}
 
@@ -179,6 +180,7 @@ defaultDependencies =
         ]
 
 
+{-| -}
 mapValueToFile : IR -> Type () -> String -> Result String IR
 mapValueToFile ir outputType content =
     let

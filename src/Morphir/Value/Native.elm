@@ -36,8 +36,9 @@ example the predicate in a `filter` will need to be evaluated on each item in th
 
 Various utilities to help with implementing native functions.
 
-@docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3, expectFun1
-@docs expectList, expectLiteral, floatLiteral, intLiteral, oneOf, returnList, returnLiteral, returnResultList, stringLiteral
+@docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
+@docs floatLiteral, intLiteral, oneOf, stringLiteral
+@docs decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
 
 -}
 
@@ -165,11 +166,13 @@ type alias Encode a =
     a -> Result Error RawValue
 
 
+{-| -}
 decodeRaw : Decoder RawValue
 decodeRaw eval value =
     eval value
 
 
+{-| -}
 encodeRaw : Encode RawValue
 encodeRaw value =
     Ok value
@@ -205,12 +208,14 @@ decodeList decodeItem eval value =
             Err error
 
 
+{-| -}
 encodeTuple2 : ( Encode a, Encode b ) -> ( a, b ) -> Result Error RawValue
 encodeTuple2 ( encodeA, encodeB ) ( a, b ) =
     encodeB b
         |> Result.map2 (\a1 b1 -> Value.Tuple () [ a1, b1 ]) (encodeA a)
 
 
+{-| -}
 decodeTuple2 : ( Decoder a, Decoder b ) -> Decoder ( a, b )
 decodeTuple2 ( decodeA, decodeB ) eval value =
     case eval value of
@@ -305,6 +310,7 @@ encodeResultList listOfValueResults =
         |> Result.map (Value.List ())
 
 
+{-| -}
 encodeMaybeResult : Maybe (Result Error RawValue) -> Result Error RawValue
 encodeMaybeResult maybeResult =
     case maybeResult of
@@ -327,6 +333,7 @@ encodeList encodeA list =
         |> Result.map (Value.List ())
 
 
+{-| -}
 encodeMaybe : Encode a -> Maybe a -> Result Error RawValue
 encodeMaybe encodeA maybe =
     case maybe of
@@ -337,6 +344,7 @@ encodeMaybe encodeA maybe =
             Ok (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ))
 
 
+{-| -}
 decodeMaybe : Decoder a -> Decoder (Maybe a)
 decodeMaybe decodeItem eval value =
     case eval value of
@@ -355,6 +363,7 @@ decodeMaybe decodeItem eval value =
             Err error
 
 
+{-| -}
 eval0 : r -> Encode r -> Function
 eval0 r encodeR =
     \eval args ->
@@ -398,6 +407,7 @@ eval2 f decodeA decodeB encodeR eval args =
             Err (UnexpectedArguments args)
 
 
+{-| -}
 eval3 : (a -> b -> c -> r) -> Decoder a -> Decoder b -> Decoder c -> Encode r -> Function
 eval3 f decodeA decodeB decodeC encodeR eval args =
     case args of
