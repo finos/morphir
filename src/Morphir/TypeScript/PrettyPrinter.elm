@@ -79,3 +79,10 @@ mapTypeExp opt typeExp =
 
         Any ->
             "any"
+
+        UnhandledType tpe ->
+            concat [ "any"
+                   , " /* Unhandled type: "
+                   , tpe
+                   , " */"
+                   ]

@@ -10,6 +10,7 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
@@ -150,5 +151,23 @@ mapTypeExp tpe =
         Type.Reference _ ( packageName, moduleName, localName ) [] ->
             TS.TypeRef (localName |> Name.toTitleCase)
 
-        _ ->
-            TS.Any
+        Type.Reference _ fqName _ ->
+            TS.UnhandledType ("Reference " ++ (FQName.toString fqName) ++ ")")
+
+        Type.Variable a name ->
+            TS.UnhandledType ("Variable (" ++ (Name.toCamelCase name) ++ ")")
+
+        Type.Tuple a elemTypes ->
+            TS.UnhandledType "Tuple"
+
+        Type.Record a fields ->
+            TS.UnhandledType "Record"
+
+        Type.ExtensibleRecord a argName fields ->
+            TS.UnhandledType "ExtensibleRecord"
+
+        Type.Function a argType returnType ->
+            TS.UnhandledType "Function"
+
+        Type.Unit a ->
+            TS.UnhandledType "Unit"

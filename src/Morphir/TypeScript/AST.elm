@@ -44,6 +44,7 @@ type TypeExp
     | Union (List TypeExp)
     | TypeRef String
     | Any
+    | UnhandledType String
 
 
 {-| Represents a field as a name and type pair.
