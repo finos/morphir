@@ -86,51 +86,95 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
     [ moduleUnit ]
 
 
+{-| Map a Morphir Constructor (A tuple of Name and Constructor Args) to a Typescript AST Interface
+-}
+mapConstructor : TS.Privacy -> List TS.TypeExp -> ( Name, List ( Name, Type.Type ta ) ) -> TS.TypeDef
+mapConstructor privacy variables ( ctorName, ctorArgs ) =
+    let
+        nameInTitleCase =
+            ctorName |> Name.toTitleCase
+
+        kindField =
+            ( "kind", TS.LiteralString nameInTitleCase )
+
+        otherFields =
+            ctorArgs
+                |> List.map
+                    (\( argName, argType ) ->
+                        ( argName |> Name.toCamelCase, mapTypeExp argType )
+                    )
+    in
+    TS.Interface
+        { name = nameInTitleCase
+        , privacy = privacy
+        , variables = variables
+        , fields = kindField :: otherFields
+        }
+
+
 {-| Map a Morphir type definition into a list of TypeScript type definitions. The reason for returning a list is that
 some Morphir type definitions can only be represented by a combination of multiple type definitions in TypeScript.
 -}
 mapTypeDefinition : Name -> AccessControlled (Documented (Type.Definition ta)) -> List TS.TypeDef
 mapTypeDefinition name typeDef =
+    let
+        doc =
+            typeDef.value.doc
+
+        privacy =
+            case typeDef.access of
+                Public ->
+                    TS.Public
+
+                Private ->
+                    TS.Private
+    in
     case typeDef.value.value of
-        Type.TypeAliasDefinition typeArgs typeExp ->
+        Type.TypeAliasDefinition variables typeExp ->
             [ TS.TypeAlias
-                (name |> Name.toTitleCase)
-                (typeExp |> mapTypeExp)
+                { name = name |> Name.toTitleCase
+                , privacy = privacy
+                , doc = doc
+                , variables = variables |> List.map Name.toCamelCase |> List.map (\var -> TS.Variable var)
+                , typeExpression = typeExp |> mapTypeExp
+                }
             ]
 
-        Type.CustomTypeDefinition typeArgs accessControlledConstructors ->
+        Type.CustomTypeDefinition variables accessControlledConstructors ->
             let
+                typeName =
+                    name |> Name.toTitleCase
+
+                tsVariables =
+                    variables |> List.map Name.toCamelCase |> List.map (\var -> TS.Variable var)
+
                 constructors =
                     accessControlledConstructors.value
                         |> Dict.toList
 
                 constructorInterfaces =
                     constructors
-                        |> List.map
-                            (\( ctorName, ctorArgs ) ->
-                                TS.Interface
-                                    (ctorName |> Name.toTitleCase)
-                                    (ctorArgs
-                                        |> List.map
-                                            (\( argName, argType ) ->
-                                                ( argName |> Name.toCamelCase, mapTypeExp argType )
-                                            )
-                                    )
-                            )
+                        |> List.map (mapConstructor privacy tsVariables)
 
                 union =
-                    TS.TypeAlias
-                        (name |> Name.toTitleCase)
-                        (TS.Union
-                            (constructors
-                                |> List.map
-                                    (\( ctorName, _ ) ->
-                                        TS.TypeRef (ctorName |> Name.toTitleCase)
+                    List.singleton
+                        (TS.TypeAlias
+                            { name = typeName
+                            , privacy = privacy
+                            , doc = doc
+                            , variables = tsVariables
+                            , typeExpression =
+                                TS.Union
+                                    (constructors
+                                        |> List.map
+                                            (\( ctorName, _ ) ->
+                                                TS.TypeRef (ctorName |> Name.toTitleCase) tsVariables
+                                            )
                                     )
-                            )
+                            }
                         )
             in
-            constructorInterfaces ++ [ union ]
+            union ++ constructorInterfaces
 
 
 {-| Map a Morphir type expression into a TypeScript type expression.
@@ -138,38 +182,47 @@ mapTypeDefinition name typeDef =
 mapTypeExp : Type.Type ta -> TS.TypeExp
 mapTypeExp tpe =
     case tpe of
-        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) [] ->
-            TS.String
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] ->
+            TS.Boolean
 
-        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
-            TS.Number
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "dict" ] ) [ dictKeyType, dictValType ] ->
+            TS.List (TS.Tuple [ mapTypeExp dictKeyType, mapTypeExp dictValType ])
+
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ listType ] ->
+            TS.List (mapTypeExp listType)
 
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] ->
             TS.Number
 
-        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] ->
-            TS.Boolean
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) [] ->
+            TS.Number
 
-        Type.Reference _ ( packageName, moduleName, localName ) [] ->
-            TS.TypeRef (localName |> Name.toTitleCase)
+        Type.Record _ fieldList ->
+            TS.Object
+                (fieldList
+                    |> List.map
+                        (\field ->
+                            ( field.name |> Name.toTitleCase, mapTypeExp field.tpe )
+                        )
+                )
 
-        Type.Reference _ fqName _ ->
-            TS.UnhandledType ("Reference " ++ FQName.toString fqName ++ ")")
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) [] ->
+            TS.String
 
-        Type.Variable a name ->
-            TS.UnhandledType ("Variable (" ++ Name.toCamelCase name ++ ")")
+        Type.Tuple _ tupleTypesList ->
+            TS.Tuple (List.map mapTypeExp tupleTypesList)
 
-        Type.Tuple a elemTypes ->
-            TS.UnhandledType "Tuple"
+        Type.Reference _ ( packageName, moduleName, localName ) typeList ->
+            TS.TypeRef (localName |> Name.toTitleCase) (typeList |> List.map mapTypeExp)
 
-        Type.Record a fields ->
-            TS.UnhandledType "Record"
+        Type.Unit _ ->
+            TS.Tuple []
+
+        Type.Variable _ name ->
+            TS.Variable (Name.toCamelCase name)
 
         Type.ExtensibleRecord a argName fields ->
             TS.UnhandledType "ExtensibleRecord"
 
         Type.Function a argType returnType ->
             TS.UnhandledType "Function"
-
-        Type.Unit a ->
-            TS.UnhandledType "Unit"

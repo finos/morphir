@@ -1,6 +1,6 @@
 module Morphir.TypeScript.AST exposing
-    ( TypeDef(..), TypeExp(..), FieldDef
-    , CompilationUnit
+    ( TypeDef(..), TypeExp(..)
+    , CompilationUnit, ObjectExp, Privacy(..)
     )
 
 {-| This module contains the TypeScript AST (Abstract Syntax Tree). The purpose of this AST is to make it easier to
@@ -24,11 +24,29 @@ type alias CompilationUnit =
     }
 
 
+{-| Represents either a public or a private entity
+-}
+type Privacy
+    = Public
+    | Private
+
+
 {-| Represents a type definition.
 -}
 type TypeDef
-    = TypeAlias String TypeExp
-    | Interface String (List FieldDef)
+    = TypeAlias
+        { name : String
+        , doc : String
+        , privacy : Privacy
+        , variables : List TypeExp
+        , typeExpression : TypeExp
+        }
+    | Interface
+        { name : String
+        , privacy : Privacy
+        , variables : List TypeExp
+        , fields : ObjectExp
+        }
 
 
 {-| A type expression represents the right-hand side of a type annotation or a type alias.
@@ -40,16 +58,21 @@ Only a small subset of the type-system is currently implemented.
 
 -}
 type TypeExp
-    = String
-    | Number
+    = Any
     | Boolean
+    | List TypeExp {- Represents a Morphir 'List' type, as a Typescript 'Array' type -}
+    | LiteralString String
+    | Number
+    | Object ObjectExp
+    | String
+    | Tuple (List TypeExp)
+    | TypeRef String (List TypeExp)
     | Union (List TypeExp)
-    | TypeRef String
-    | Any
+    | Variable String
     | UnhandledType String
 
 
-{-| Represents a field as a name and type pair.
+{-| Represents an object expression (or interface definition) as a list of name-and-type pairs.
 -}
-type alias FieldDef =
-    ( String, TypeExp )
+type alias ObjectExp =
+    List ( String, TypeExp )
