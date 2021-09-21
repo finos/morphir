@@ -30,6 +30,11 @@ tuplePendingSDK =
     Ok []
 
 
+stringPendingSDK =
+    Ok
+        []
+
+
 compareList : List QName -> List QName -> ModuleName -> Result String (List QName)
 compareList sdkList sdkImplementedList moduleName =
     sdkList
@@ -300,6 +305,18 @@ evaluateValueTests =
             )
             tuplePendingSDK
             [ [ "tuple" ] ]
+        , listCheck "String SDK List = String SDK Implemented List"
+            (SDK.packageSpec.modules
+                |> Dict.toList
+                |> List.map (\( moduleName, moduleSpec ) -> moduleSpec.values |> Dict.toList |> List.map (\a -> QName.fromTuple ( moduleName, Tuple.first a )))
+                |> List.concat
+            )
+            (SDK.nativeFunctions
+                |> Dict.toList
+                |> List.map (\( ( _, moduleName, localName ), _ ) -> QName.fromTuple ( moduleName, localName ))
+            )
+            stringPendingSDK
+            [ [ "string" ] ]
         , positiveCheck "(\\val1 val2 -> val1 + val2) 1 2"
             (Value.Apply ()
                 (Value.Apply ()

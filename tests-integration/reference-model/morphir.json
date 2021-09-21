@@ -9,6 +9,7 @@
         "Formulas",
         "SDK.Tuple",
         "SDK.Result",
+        "SDK.String",
         "Insight.UseCase1",
         "Insight.UseCase2",
         "Presentations.UKFintechMeetup",
