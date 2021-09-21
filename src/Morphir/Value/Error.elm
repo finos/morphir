@@ -21,6 +21,7 @@ type Error
     | ExpectedStringLiteral RawValue
     | ExpectedCharLiteral RawValue
     | ExpectedMaybe RawValue
+    | ExpectedResult RawValue
     | IfThenElseConditionShouldEvaluateToBool RawValue RawValue
     | FieldNotFound RawValue Name
     | RecordExpected RawValue RawValue
