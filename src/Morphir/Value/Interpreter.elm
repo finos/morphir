@@ -1,13 +1,10 @@
-module Morphir.Value.Interpreter exposing
-    ( evaluate, evaluateValue, evaluateFunctionValue
-    , matchPattern
-    )
+module Morphir.Value.Interpreter exposing (evaluate, evaluateValue, evaluateFunctionValue, matchPattern)
 
 {-| This module contains an interpreter for Morphir expressions. The interpreter takes a piece of logic as input,
 evaluates it and returns the resulting data. In Morphir both logic and data is captured as a `Value` so the interpreter
 takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
-@docs evaluate, evaluateValue, evaluateFunctionValue
+@docs evaluate, evaluateValue, evaluateFunctionValue, matchPattern
 
 -}
 
@@ -29,6 +26,7 @@ type alias Variables =
     Dict Name RawValue
 
 
+{-| -}
 evaluateFunctionValue : Dict FQName Native.Function -> IR -> FQName -> List RawValue -> Result Error RawValue
 evaluateFunctionValue nativeFunctions ir fQName variableValues =
     ir

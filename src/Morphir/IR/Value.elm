@@ -24,8 +24,7 @@ module Morphir.IR.Value exposing
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-    , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData
-    , toString
+    , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
     )
 
 {-| In functional programming data and logic are treated the same way and we refer to both as values. This module
@@ -114,7 +113,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 @docs definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
-@docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData
+@docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
 
 -}
 
