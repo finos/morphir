@@ -9,6 +9,7 @@ const http = require('isomorphic-git/http/node')
 const del = require('del')
 const elmMake = require('node-elm-compiler').compile
 const execa = require('execa');
+const ts = require('gulp-typescript');
 
 const config = {
     morphirJvmVersion: '0.7.1',
@@ -129,6 +130,27 @@ async function testIntegrationBuildScala(cb) {
     )
 }
 
+async function testIntegrationGenTypeScript(cb) {
+    await execa(
+        'node',
+        [
+            './cli/morphir-elm.js', 'gen',
+            '-i', './tests-integration/generated/morphir-ir.json',
+            '-o', './tests-integration/generated/refModel/src/typescript/',
+            '-t', 'TypeScript'
+        ],
+        { stdio },
+    )
+}
+
+function testIntegrationBuildTypeScript(cb) {
+    return src('tests-integration/generated/refModel/src/typescript/**/*.ts')
+        .pipe(ts({
+            outFile: 'output.js'
+        }))
+        .pipe(dest('tests-integration/generated/refModel/src/typescript/output.js'));
+}
+
 const testIntegration = series(
         testIntegrationClean,
         testIntegrationMake,
@@ -137,6 +159,10 @@ const testIntegration = series(
             series(
                 testIntegrationGenScala,
                 testIntegrationBuildScala,
+            ),
+            series(
+                testIntegrationGenTypeScript,
+                testIntegrationBuildTypeScript,
             ),
         )
     )
