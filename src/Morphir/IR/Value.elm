@@ -52,7 +52,7 @@ various node types representing each possible language construct. You can check 
 to find more details. Here are the Morphir IR snippets for the above values as a quick reference:
 
     myThreshold =
-        Literal () (IntLiteral 1000)
+        Literal () (WholeNumberLiteral 1000)
 
     min a b =
         IfThenElse ()
@@ -72,7 +72,7 @@ to find more details. Here are the Morphir IR snippets for the above values as a
                 (Reference () (fqn "Morphir.SDK" "Basics" "add"))
                 (Variable () [ "a" ])
             )
-            (Literal () (IntLiteral 2))
+            (Literal () (WholeNumberLiteral 2))
 
 
 # Value
@@ -1253,7 +1253,7 @@ rewriteValue f value =
 
     "foo" -- Literal (StringLiteral "foo")
 
-    13 -- Literal (IntLiteral 13)
+    13 -- Literal (WholeNumberLiteral 13)
 
     15.4 -- Literal (FloatLiteral 15.4)
 
@@ -1281,9 +1281,9 @@ constructor attributes fullyQualifiedName =
 
 **Note**: Tuples with zero values are considered to be the special value [`Unit`](#unit)
 
-    ( 1, True ) -- Tuple [ Literal (IntLiteral 1), Literal (BoolLiteral True) ]
+    ( 1, True ) -- Tuple [ Literal (WholeNumberLiteral 1), Literal (BoolLiteral True) ]
 
-    ( "foo", True, 3 ) -- Tuple [ Literal (StringLiteral "foo"), Literal (BoolLiteral True), Literal (IntLiteral 3) ]
+    ( "foo", True, 3 ) -- Tuple [ Literal (StringLiteral "foo"), Literal (BoolLiteral True), Literal (WholeNumberLiteral 3) ]
 
     () -- Unit
 
@@ -1297,7 +1297,7 @@ tuple attributes elements =
 
 {-| A [list] represents an ordered list of values where every value has to be of the same type.
 
-    [ 1, 3, 5 ] -- List [ Literal (IntLiteral 1), Literal (IntLiteral 3), Literal (IntLiteral 5) ]
+    [ 1, 3, 5 ] -- List [ Literal (WholeNumberLiteral 1), Literal (WholeNumberLiteral 3), Literal (WholeNumberLiteral 5) ]
 
     [] -- List []
 
@@ -1313,7 +1313,7 @@ list attributes items =
 
     { foo = "bar" } -- Record [ ( [ "foo" ], Literal (StringLiteral "bar") ) ]
 
-    { foo = "bar", baz = 1 } -- Record [ ( [ "foo" ], Literal (StringLiteral "bar") ), ( [ "baz" ], Literal (IntLiteral 1) ) ]
+    { foo = "bar", baz = 1 } -- Record [ ( [ "foo" ], Literal (StringLiteral "bar") ), ( [ "baz" ], Literal (WholeNumberLiteral 1) ) ]
 
     {} -- Record []
 
@@ -1501,7 +1501,7 @@ ifThenElse attributes condition thenBranch elseBranch =
         _ ->
             "nay"
     -- PatternMatch (Variable ["a"])
-    --     [ ( LiteralPattern (IntLiteral 1), Literal (StringLiteral "yea") )
+    --     [ ( LiteralPattern (WholeNumberLiteral 1), Literal (StringLiteral "yea") )
     --     , ( WildcardPattern, Literal (StringLiteral "nay") )
     --     ]
 
@@ -1513,7 +1513,7 @@ patternMatch attributes branchOutOn cases =
 
 {-| Update one or many fields of a record value.
 
-    { a | foo = 1 } -- Update (Variable ["a"]) [ ( ["foo"], Literal (IntLiteral 1) ) ]
+    { a | foo = 1 } -- Update (Variable ["a"]) [ ( ["foo"], Literal (WholeNumberLiteral 1) ) ]
 
 -}
 update : va -> Value ta va -> List ( Name, Value ta va ) -> Value ta va
@@ -1631,7 +1631,7 @@ since it always filters.
 
     "foo" -- LiteralPattern (StringLiteral "foo")
 
-    13 -- LiteralPattern (IntLiteral 13)
+    13 -- LiteralPattern (WholeNumberLiteral 13)
 
     15.4 -- LiteralPattern (FloatLiteral 15.4)
 
@@ -1717,7 +1717,7 @@ toString value =
                 StringLiteral string ->
                     String.concat [ "\"", string, "\"" ]
 
-                IntLiteral int ->
+                WholeNumberLiteral int ->
                     String.fromInt int
 
                 FloatLiteral float ->

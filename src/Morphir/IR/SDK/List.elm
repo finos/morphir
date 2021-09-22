@@ -272,7 +272,7 @@ nativeFunctions =
                 _ ->
                     Err (UnexpectedArguments args)
       )
-    , ( "length", eval1 List.length (decodeList decodeRaw) (encodeLiteral IntLiteral) )
+    , ( "length", eval1 List.length (decodeList decodeRaw) (encodeLiteral WholeNumberLiteral) )
     , ( "reverse", eval1 List.reverse (decodeList decodeRaw) (encodeList encodeRaw) )
     , ( "member", eval2 List.member decodeRaw (decodeList decodeRaw) (encodeLiteral BoolLiteral) )
     , ( "all"
@@ -458,13 +458,13 @@ nativeFunctions =
     , ( "sum"
       , oneOf
             [ eval1 List.sum (decodeList (decodeLiteral floatLiteral)) (encodeLiteral FloatLiteral)
-            , eval1 List.sum (decodeList (decodeLiteral intLiteral)) (encodeLiteral IntLiteral)
+            , eval1 List.sum (decodeList (decodeLiteral intLiteral)) (encodeLiteral WholeNumberLiteral)
             ]
       )
     , ( "product"
       , oneOf
             [ eval1 List.product (decodeList (decodeLiteral floatLiteral)) (encodeLiteral FloatLiteral)
-            , eval1 List.product (decodeList (decodeLiteral intLiteral)) (encodeLiteral IntLiteral)
+            , eval1 List.product (decodeList (decodeLiteral intLiteral)) (encodeLiteral WholeNumberLiteral)
             ]
       )
     , ( "append", eval2 List.append (decodeList decodeRaw) (decodeList decodeRaw) (encodeList encodeRaw) )
@@ -488,7 +488,7 @@ nativeFunctions =
                                                         fun
                                                         item1
                                                     )
-                                                    (Value.Literal () (IntLiteral index))
+                                                    (Value.Literal () (WholeNumberLiteral index))
                                                 )
                                         )
                                         listItems1

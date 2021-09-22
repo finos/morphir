@@ -55,7 +55,7 @@ encodeData ir tpe =
                     Ok
                         (\value ->
                             case value of
-                                Value.Literal _ (IntLiteral v) ->
+                                Value.Literal _ (WholeNumberLiteral v) ->
                                     Ok (Encode.int v)
 
                                 _ ->
@@ -265,7 +265,7 @@ decodeData ir tpe =
                     Ok (Decode.map (\value -> Value.Literal () (BoolLiteral value)) Decode.bool)
 
                 ( [ [ "basics" ] ], [ "int" ], [] ) ->
-                    Ok (Decode.map (\value -> Value.Literal () (IntLiteral value)) Decode.int)
+                    Ok (Decode.map (\value -> Value.Literal () (WholeNumberLiteral value)) Decode.int)
 
                 ( [ [ "basics" ] ], [ "float" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (FloatLiteral value)) Decode.float)

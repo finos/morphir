@@ -142,19 +142,19 @@ nativeFunctions =
       )
     , ( "add"
       , oneOf
-            [ eval2 (+) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            [ eval2 (+) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
             , eval2 (+) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "subtract"
       , oneOf
-            [ eval2 (-) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            [ eval2 (-) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
             , eval2 (-) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "multiply"
       , oneOf
-            [ eval2 (*) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            [ eval2 (*) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
             , eval2 (*) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
@@ -162,11 +162,11 @@ nativeFunctions =
       , eval2 (/) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
       )
     , ( "integerDivide"
-      , eval2 (//) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+      , eval2 (//) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
       )
     , ( "power"
       , oneOf
-            [ eval2 (^) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            [ eval2 (^) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
             , eval2 (^) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
@@ -266,7 +266,7 @@ nativeFunctions =
       )
     , ( "abs"
       , oneOf
-            [ eval1 abs (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            [ eval1 abs (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
             , eval1 abs (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
@@ -277,13 +277,13 @@ nativeFunctions =
       )
     , ( "negate"
       , oneOf
-            [ eval1 Basics.negate (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            [ eval1 Basics.negate (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
             , eval1 Basics.negate (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "clamp"
       , oneOf
-            [ eval3 Basics.clamp (decodeLiteral intLiteral) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral IntLiteral)
+            [ eval3 Basics.clamp (decodeLiteral intLiteral) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
             , eval3 Basics.clamp (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )

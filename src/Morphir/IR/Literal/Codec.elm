@@ -43,7 +43,7 @@ encodeLiteral l =
                 , Encode.string v
                 ]
 
-        IntLiteral v ->
+        WholeNumberLiteral v ->
             Encode.list identity
                 [ Encode.string "int_literal"
                 , Encode.int v
@@ -85,7 +85,7 @@ decodeLiteral =
                             (Decode.index 1 Decode.string)
 
                     "int_literal" ->
-                        Decode.map IntLiteral
+                        Decode.map WholeNumberLiteral
                             (Decode.index 1 Decode.int)
 
                     "float_literal" ->

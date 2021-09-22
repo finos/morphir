@@ -509,7 +509,7 @@ mapFunctionBody distribution valueDef =
                         StringLiteral v ->
                             Scala.Literal (Scala.StringLit v)
 
-                        IntLiteral v ->
+                        WholeNumberLiteral v ->
                             case tpe of
                                 Type.Reference () fQName [] ->
                                     if (distribution |> Distribution.lookupBaseTypeName fQName) == Just (fqn "Morphir.SDK" "Basics" "Float") then
@@ -875,7 +875,7 @@ mapPattern pattern =
                         StringLiteral v ->
                             Scala.StringLit v
 
-                        IntLiteral v ->
+                        WholeNumberLiteral v ->
                             Scala.IntegerLit v
 
                         FloatLiteral v ->

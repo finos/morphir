@@ -222,7 +222,7 @@ initTextEditor maybeInitialValue =
                 Value.Literal _ (CharLiteral char) ->
                     ( Nothing, TextEditor (String.fromChar char) )
 
-                Value.Literal _ (IntLiteral int) ->
+                Value.Literal _ (WholeNumberLiteral int) ->
                     ( Nothing, TextEditor (String.fromInt int) )
 
                 Value.Literal _ (FloatLiteral float) ->
@@ -446,7 +446,7 @@ view ir valueType updateEditorState editorState =
 
                                 else if tpe == Basics.intType () then
                                     String.toInt updatedText
-                                        |> Maybe.map (\int -> Value.Literal () (IntLiteral int))
+                                        |> Maybe.map (\int -> Value.Literal () (WholeNumberLiteral int))
                                         |> Result.fromMaybe "Expecting a whole number like 5 or -958"
 
                                 else if tpe == Basics.floatType () then
