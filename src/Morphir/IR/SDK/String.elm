@@ -19,6 +19,7 @@ module Morphir.IR.SDK.String exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
@@ -28,6 +29,9 @@ import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
+import Morphir.IR.Value as Value
+import Morphir.Value.Error exposing (Error(..))
+import Morphir.Value.Native as Native
 
 
 moduleName : ModuleName
@@ -89,6 +93,216 @@ moduleSpec =
             , vSpec "all" [ ( "f", tFun [ charType () ] (boolType ()) ), ( "s", stringType () ) ] (boolType ())
             ]
     }
+
+
+nativeFunctions : List ( String, Native.Function )
+nativeFunctions =
+    [ ( "all"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Literal () (StringLiteral value) ->
+                                        let
+                                            evaluate str =
+                                                case String.uncons str of
+                                                    Just ( c, tail ) ->
+                                                        case eval (Value.Apply () fun (Value.Literal () (CharLiteral c))) of
+                                                            Ok (Value.Literal _ (BoolLiteral False)) ->
+                                                                Ok False
+
+                                                            Ok (Value.Literal _ (BoolLiteral True)) ->
+                                                                evaluate tail
+
+                                                            Ok other ->
+                                                                Err (ExpectedBoolLiteral other)
+
+                                                            Err other ->
+                                                                Err other
+
+                                                    Nothing ->
+                                                        Ok True
+                                        in
+                                        evaluate value |> Result.map (\val -> Value.Literal () (BoolLiteral val))
+
+                                    _ ->
+                                        Err (ExpectedStringLiteral evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "any"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Literal () (StringLiteral value) ->
+                                        let
+                                            evaluate str =
+                                                case String.uncons str of
+                                                    Just ( c, tail ) ->
+                                                        case eval (Value.Apply () fun (Value.Literal () (CharLiteral c))) of
+                                                            Ok (Value.Literal _ (BoolLiteral False)) ->
+                                                                evaluate tail
+
+                                                            Ok (Value.Literal _ (BoolLiteral True)) ->
+                                                                Ok True
+
+                                                            Ok other ->
+                                                                Err (ExpectedBoolLiteral other)
+
+                                                            Err other ->
+                                                                Err other
+
+                                                    Nothing ->
+                                                        Ok False
+                                        in
+                                        evaluate value |> Result.map (\val -> Value.Literal () (BoolLiteral val))
+
+                                    _ ->
+                                        Err (ExpectedStringLiteral evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "filter"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Literal () (StringLiteral value) ->
+                                        let
+                                            evaluate : String -> String -> Result Error String
+                                            evaluate resultStr str =
+                                                case String.uncons str of
+                                                    Just ( c, tail ) ->
+                                                        case eval (Value.Apply () fun (Value.Literal () (CharLiteral c))) of
+                                                            Ok (Value.Literal _ (BoolLiteral False)) ->
+                                                                evaluate resultStr tail
+
+                                                            Ok (Value.Literal _ (BoolLiteral True)) ->
+                                                                evaluate (String.append resultStr (String.fromChar c)) tail
+
+                                                            Ok other ->
+                                                                Err (ExpectedBoolLiteral other)
+
+                                                            Err other ->
+                                                                Err other
+
+                                                    Nothing ->
+                                                        Ok resultStr
+                                        in
+                                        evaluate "" value |> Result.map (\val -> Value.Literal () (StringLiteral val))
+
+                                    _ ->
+                                        Err (ExpectedStringLiteral evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "map"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Literal () (StringLiteral value) ->
+                                        let
+                                            evaluate : String -> String -> Result Error String
+                                            evaluate resultStr str =
+                                                case String.uncons str of
+                                                    Just ( c, tail ) ->
+                                                        case eval (Value.Apply () fun (Value.Literal () (CharLiteral c))) of
+                                                            Ok (Value.Literal _ (CharLiteral newChar)) ->
+                                                                evaluate (String.append resultStr (String.fromChar newChar)) tail
+
+                                                            Ok other ->
+                                                                Err (ExpectedCharLiteral other)
+
+                                                            Err other ->
+                                                                Err other
+
+                                                    Nothing ->
+                                                        Ok resultStr
+                                        in
+                                        evaluate "" value |> Result.map (\val -> Value.Literal () (StringLiteral val))
+
+                                    _ ->
+                                        Err (ExpectedStringLiteral evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "foldl"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2 ] ->
+                    eval arg2
+                        |> Result.andThen
+                            (\evaluatedArg2 ->
+                                case evaluatedArg2 of
+                                    Value.Literal () (StringLiteral value) ->
+                                        value
+                                            |> String.foldl
+                                                (\nextChar resultSoFar ->
+                                                    resultSoFar
+                                                        |> Result.andThen
+                                                            (\soFar ->
+                                                                eval (Value.Apply () (Value.Apply () fun (Value.Literal () (CharLiteral nextChar))) soFar)
+                                                            )
+                                                )
+                                                (eval arg1)
+
+                                    _ ->
+                                        Err (ExpectedStringLiteral evaluatedArg2)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "foldr"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2 ] ->
+                    eval arg2
+                        |> Result.andThen
+                            (\evaluatedArg2 ->
+                                case evaluatedArg2 of
+                                    Value.Literal () (StringLiteral value) ->
+                                        value
+                                            |> String.foldr
+                                                (\nextChar resultSoFar ->
+                                                    resultSoFar
+                                                        |> Result.andThen
+                                                            (\soFar ->
+                                                                eval (Value.Apply () (Value.Apply () fun (Value.Literal () (CharLiteral nextChar))) soFar)
+                                                            )
+                                                )
+                                                (eval arg1)
+
+                                    _ ->
+                                        Err (ExpectedStringLiteral evaluatedArg2)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    ]
 
 
 stringType : a -> Type a

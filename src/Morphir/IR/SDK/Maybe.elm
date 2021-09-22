@@ -117,7 +117,7 @@ nativeFunctions =
                                         Ok (nothing ())
 
                                     _ ->
-                                        Err (UnexpectedArguments [ arg1 ])
+                                        Err (UnexpectedArguments [ evaluatedArg1 ])
                             )
 
                 _ ->

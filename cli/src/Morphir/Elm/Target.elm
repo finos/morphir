@@ -13,6 +13,11 @@ import Morphir.SpringBoot.Backend as SpringBoot
 import Morphir.SpringBoot.Backend.Codec
 
 
+import Morphir.Graph.SemanticBackend as SemanticBackend
+import Morphir.Graph.CypherBackend as Cypher
+import Morphir.Graph.Backend.Codec
+import Morphir.TypeScript.Backend
+import Morphir.TypeScript.Backend.Codec
 
 -- possible language generation options
 
@@ -22,6 +27,7 @@ type BackendOptions
     | SpringBootOptions Morphir.Scala.Backend.Options
     | SemanticOptions Morphir.Scala.Backend.Options
     | CypherOptions Morphir.Scala.Backend.Options
+    | TypeScriptOptions Morphir.TypeScript.Backend.Options
 
 
 decodeOptions : Result Error String -> Decode.Decoder BackendOptions
@@ -35,6 +41,9 @@ decodeOptions gen =
 
         Ok "cypher" ->
             Decode.map (\options -> CypherOptions options) Morphir.Graph.Backend.Codec.decodeOptions
+
+        Ok "TypeScript" ->
+            Decode.map (\(options) -> TypeScriptOptions(options)) Morphir.Graph.Backend.Codec.decodeOptions
 
         _ ->
             Decode.map (\options -> ScalaOptions options) Morphir.Scala.Backend.Codec.decodeOptions
@@ -54,3 +63,6 @@ mapDistribution back dist =
 
         ScalaOptions options ->
             Morphir.Scala.Backend.mapDistribution options dist
+
+        TypeScriptOptions options ->
+            Morphir.TypeScript.Backend.mapDistribution options dist

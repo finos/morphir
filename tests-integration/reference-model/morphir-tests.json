@@ -200,6 +200,200 @@
             ],
             [
                 [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "string"
+                ]
+            ],
+            [
+                "is",
+                "digit"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    "a"
+                ],
+                "expectedOutput": false,
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "string"
+                ]
+            ],
+            [
+                "string",
+                "all"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    "124334"
+                ],
+                "expectedOutput": true,
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "string"
+                ]
+            ],
+            [
+                "string",
+                "fold",
+                "l"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    "H",
+                    "time"
+                ],
+                "expectedOutput": "emitH",
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "string"
+                ]
+            ],
+            [
+                "string",
+                "fold",
+                "r"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    "x",
+                    "time"
+                ],
+                "expectedOutput": "timex",
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "string"
+                ]
+            ],
+            [
+                "string",
+                "map"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    "a/b/c"
+                ],
+                "expectedOutput": "a.b.c",
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
                     "values"
                 ]
             ],

@@ -103,6 +103,20 @@ encodeData ir tpe =
                                         Err (String.concat [ "Expected Just or Nothing but found: ", Debug.toString value ])
                             )
 
+                --( [ [ "result" ] ], [ "result" ], [ itemType ] ) ->
+                --    encodeData ir itemType
+                --        |> Result.map
+                --            (\encodeItem value ->
+                --                case value of
+                --                    Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) v ->
+                --                        encodeItem v
+                --
+                --                    Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ->
+                --                        encodeItem error
+                --
+                --                    _ ->
+                --                        Err (String.concat [ "Expected Ok or Error but found: ", Debug.toString value ])
+                --            )
                 _ ->
                     Debug.todo "implement"
 
