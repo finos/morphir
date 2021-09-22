@@ -1,4 +1,7 @@
-module Morphir.TypeScript.AST exposing (CompilationUnit, TypeDef(..), TypeExp(..), FieldDef)
+module Morphir.TypeScript.AST exposing
+    ( TypeDef(..), TypeExp(..), FieldDef
+    , CompilationUnit
+    )
 
 {-| This module contains the TypeScript AST (Abstract Syntax Tree). The purpose of this AST is to make it easier to
 generate valid TypeScript source code and to separate the language syntax from low-level formatting concerns. We use
@@ -17,7 +20,7 @@ that we use in the backend.
 type alias CompilationUnit =
     { dirPath : List String
     , fileName : String
-    , typeDefs : List (TypeDef)
+    , typeDefs : List TypeDef
     }
 
 
@@ -36,7 +39,6 @@ The structure follows the documentation here:
 Only a small subset of the type-system is currently implemented.
 
 -}
-
 type TypeExp
     = String
     | Number

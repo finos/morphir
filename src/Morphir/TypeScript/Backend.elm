@@ -1,6 +1,8 @@
-module Morphir.TypeScript.Backend exposing ( mapDistribution, mapTypeDefinition
-                                           , Options
-                                           )
+module Morphir.TypeScript.Backend exposing
+    ( Options
+    , mapDistribution
+    , mapTypeDefinition
+    )
 
 {-| This module contains the TypeScript backend that translates the Morphir IR into TypeScript.
 -}
@@ -67,12 +69,12 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                 lastName :: reverseModulePath ->
                     ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
 
-        typeDefs : List (TS.TypeDef)
+        typeDefs : List TS.TypeDef
         typeDefs =
             accessControlledModuleDef.value.types
-            |> Dict.toList
-            |> List.concatMap
-                (\( typeName, typeDef) -> mapTypeDefinition typeName typeDef)
+                |> Dict.toList
+                |> List.concatMap
+                    (\( typeName, typeDef ) -> mapTypeDefinition typeName typeDef)
 
         moduleUnit : TS.CompilationUnit
         moduleUnit =
@@ -81,7 +83,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
             , typeDefs = typeDefs
             }
     in
-    [moduleUnit]
+    [ moduleUnit ]
 
 
 {-| Map a Morphir type definition into a list of TypeScript type definitions. The reason for returning a list is that
@@ -152,10 +154,10 @@ mapTypeExp tpe =
             TS.TypeRef (localName |> Name.toTitleCase)
 
         Type.Reference _ fqName _ ->
-            TS.UnhandledType ("Reference " ++ (FQName.toString fqName) ++ ")")
+            TS.UnhandledType ("Reference " ++ FQName.toString fqName ++ ")")
 
         Type.Variable a name ->
-            TS.UnhandledType ("Variable (" ++ (Name.toCamelCase name) ++ ")")
+            TS.UnhandledType ("Variable (" ++ Name.toCamelCase name ++ ")")
 
         Type.Tuple a elemTypes ->
             TS.UnhandledType "Tuple"

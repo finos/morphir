@@ -30,6 +30,7 @@ mapCompilationUnit opt cu =
         , newLine
         ]
 
+
 {-| Map a type definition to text.
 -}
 mapTypeDef : Options -> TypeDef -> Doc
@@ -81,8 +82,9 @@ mapTypeExp opt typeExp =
             "any"
 
         UnhandledType tpe ->
-            concat [ "any"
-                   , " /* Unhandled type: "
-                   , tpe
-                   , " */"
-                   ]
+            concat
+                [ "any"
+                , " /* Unhandled type: "
+                , tpe
+                , " */"
+                ]
