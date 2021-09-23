@@ -1,4 +1,4 @@
-const { series, src, dest } = require('gulp');
+const { series, parallel, src, dest } = require('gulp');
 const os = require('os')
 const path = require('path')
 const util = require('util')
@@ -8,17 +8,18 @@ const git = require('isomorphic-git')
 const http = require('isomorphic-git/http/node')
 const del = require('del')
 const elmMake = require('node-elm-compiler').compile
+const execa = require('execa');
+const ts = require('gulp-typescript');
 
 const config = {
     morphirJvmVersion: '0.7.1',
     morphirJvmCloneDir: tmp.dirSync()
 }
 
+const stdio = 'inherit';
+
 async function clean() {
-    return del([
-        'dist',
-        'tests-integration/generated'
-    ])
+    return del([ 'dist' ])
 }
 
 async function cloneMorphirJVM() {
@@ -75,10 +76,117 @@ const build =
         makeTryMorphir
     )
 
+
+async function testUnit(cb) {
+    await execa('elm-test');
+}
+
+function testIntegrationClean() {
+    return del([
+        'tests-integration/generated',
+        'tests-integration/reference-model/morphir-ir.json'
+    ])
+}
+
+async function testIntegrationMake(cb) {
+    await execa(
+        'node',
+        [
+            './cli/morphir-elm.js', 'make',
+             '-p', './tests-integration/reference-model',
+             '-o', './tests-integration/generated/morphir-ir.json'
+        ],
+        { stdio },
+    )
+}
+
+async function testIntegrationMorphirTest(cb) {
+    src('./tests-integration/generated/morphir-ir.json')
+        .pipe(dest('./tests-integration/reference-model/'))
+    await execa(
+        'node',
+        ['./cli/morphir-elm.js', 'test', '-p', './tests-integration/reference-model'],
+        { stdio },
+    )
+}
+
+async function testIntegrationGenScala(cb) {
+    await execa(
+        'node',
+        [
+            './cli/morphir-elm.js', 'gen',
+            '-i', './tests-integration/generated/morphir-ir.json',
+            '-o', './tests-integration/generated/refModel/src/scala/',
+            '-t', 'Scala'
+        ],
+        { stdio },
+    )
+}
+
+async function testIntegrationBuildScala(cb) {
+    try {
+        await execa(
+            'mill', ['__.compile'],
+            { stdio, cwd: 'tests-integration' },
+        )
+    } catch (err) {
+        if (err.code == 'ENOENT') {
+            console.log("Skipping testIntegrationBuildScala as `mill` build tool isn't available.");
+        } else {
+            throw err;
+        }
+    }
+}
+
+async function testIntegrationGenTypeScript(cb) {
+    await execa(
+        'node',
+        [
+            './cli/morphir-elm.js', 'gen',
+            '-i', './tests-integration/generated/morphir-ir.json',
+            '-o', './tests-integration/generated/refModel/src/typescript/',
+            '-t', 'TypeScript'
+        ],
+        { stdio },
+    )
+}
+
+function testIntegrationBuildTypeScript(cb) {
+    return src('tests-integration/generated/refModel/src/typescript/**/*.ts')
+        .pipe(ts({
+            outFile: 'output.js'
+        }))
+        .pipe(dest('tests-integration/generated/refModel/src/typescript/output.js'));
+}
+
+const testIntegration = series(
+        testIntegrationClean,
+        testIntegrationMake,
+        parallel(
+            testIntegrationMorphirTest,
+            series(
+                testIntegrationGenScala,
+                testIntegrationBuildScala,
+            ),
+            series(
+                testIntegrationGenTypeScript,
+                //testIntegrationBuildTypeScript,
+            ),
+        )
+    )
+
+const test =
+    parallel(
+        testUnit,
+        testIntegration,
+    )
+
 exports.clean = clean;
 exports.makeCLI = makeCLI;
 exports.makeDevCLI = makeDevCLI;
 exports.build = build;
+exports.test = test;
+exports.testIntegration = testIntegration;
 exports.default =
     series(
         clean,

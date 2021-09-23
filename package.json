@@ -4,20 +4,13 @@
   "description": "Elm bindings for Morphir",
   "scripts": {
     "clean": "gulp clean",
-    "test:integration": "npm run test:integration:clean && npm run test:integration:make && npm run test:integration:gen && npm run test:integration:build",
-    "test:integration:build": "cd tests-integration && mill __.compile",
-    "test:integration:clean": "del-cli tests-integration/generated/",
-    "test:integration:gen": "node dist/morphir elm gen -i ./tests-integration/generated/morphir-ir.json -o ./tests-integration/generated/refModel/src/scala/ -t Scala ",
-    "test:integration:make": "morphir-elm make -p ./tests-integration/reference-model -o ./tests-integration/generated/morphir-ir.json",
-    "test": "elm-test && npm run integration:test",
-    "integration:test": "node ./cli/morphir-elm-test.js -p ./tests-integration/reference-model",
-    "integration:make": "node ./cli/morphir-elm-make.js -p ./tests-integration/reference-model -o ./tests-integration/reference-model/morphir-ir.json",
+    "test": "gulp test",
     "insight-server-live": "cd cli && elm-live src/Morphir/Web/Insight.elm --start-page=./web/insight.html --dir=./web --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/insight.js",
     "dev-server-live": "cd cli && elm-live src/Morphir/Web/DevelopApp.elm --dir=web --pushstate --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/index.html",
     "try-morphir-live": "cd cli && elm-live src/Morphir/Web/TryMorphir.elm",
     "ncc-morphir": "ncc build cli/morphir.js -o dist/morphir",
     "ncc-morphir-server": "ncc build cli/morphir-elm-develop.js -o dist/morphir-server",
-    "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server && npm run integration:make"
+    "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server"
   },
   "repository": {
     "type": "git",
@@ -59,10 +52,13 @@
     "elm": "^0.19.1-5",
     "elm-doc-preview": "^3.0.4",
     "elm-test": "^0.19.1-revision6",
+    "execa": "^5.1.1",
     "gulp": "^4.0.2",
+    "gulp-typescript": "^6.0.0-alpha.1",
     "isomorphic-git": "^1.8.1",
     "node-elm-compiler": "^5.0.5",
-    "tmp": "^0.2.1"
+    "tmp": "^0.2.1",
+    "typescript": "^4.4.3"
   },
   "dependencies": {
     "chalk": "^4.1.1",
