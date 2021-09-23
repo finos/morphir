@@ -124,10 +124,18 @@ async function testIntegrationGenScala(cb) {
 }
 
 async function testIntegrationBuildScala(cb) {
-    await execa(
-        'mill', ['__.compile'],
-        { stdio, cwd: 'tests-integration' },
-    )
+    try {
+        await execa(
+            'mill', ['__.compile'],
+            { stdio, cwd: 'tests-integration' },
+        )
+    } catch (err) {
+        if (err.code == 'ENOENT') {
+            console.log("Skipping testIntegrationBuildScala as `mill` build tool isn't available.");
+        } else {
+            throw err;
+        }
+    }
 }
 
 async function testIntegrationGenTypeScript(cb) {
