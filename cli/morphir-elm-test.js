@@ -38,8 +38,7 @@ cli.test(program.projectDir)
     })
     .catch((err) => {
 
-
-        if (err instanceof Object) {
+        if (err instanceof Object && err.length >= 0) {
             for (let i = 0; i < err.length; i++) {
                 const testObject = err[i]
                 console.log(chalk.cyan(`Function Name - ${testObject["Function Name"]}`))
