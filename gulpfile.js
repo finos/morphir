@@ -162,7 +162,7 @@ const testIntegration = series(
             ),
             series(
                 testIntegrationGenTypeScript,
-                testIntegrationBuildTypeScript,
+                //testIntegrationBuildTypeScript,
             ),
         )
     )
