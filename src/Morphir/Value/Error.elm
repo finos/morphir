@@ -30,6 +30,7 @@ type Error
     | ErrorWhileEvaluatingReference FQName Error
     | ErrorWhileEvaluatingVariable Name Error
     | TupleLengthNotMatchException (List RawValue) (List RawValue)
+    | TupleExpected
     | NotImplemented
 
 

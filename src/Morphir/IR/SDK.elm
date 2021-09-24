@@ -105,4 +105,5 @@ nativeFunctions =
         , moduleFunctions "String" String.nativeFunctions
         , moduleFunctions "Tuple" Tuple.nativeFunctions
         , moduleFunctions "Result" Result.nativeFunctions
+        , moduleFunctions "Dict" Dict.nativeFunctions
         ]
