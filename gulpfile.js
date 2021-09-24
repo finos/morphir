@@ -77,6 +77,22 @@ const build =
     )
 
 
+function morphirElmMake(projectDir, outputPath, options) {
+    args = [ './cli/morphir-elm.js', 'make', '-p', projectDir, '-o', outputPath ]
+    if (options.typesOnly) {
+        args.push('--types-only')
+    }
+    console.log("Running: " + args.join(' '));
+    return execa('node', args, { stdio })
+}
+
+function morphirElmGen(inputPath, outputDir, target) {
+    args = [ './cli/morphir-elm.js', 'gen', '-i', inputPath, '-o', outputDir, '-t', target ]
+    console.log("Running: " + args.join(' '));
+    return execa('node', args, { stdio })
+}
+
+
 async function testUnit(cb) {
     await execa('elm-test');
 }
@@ -88,16 +104,11 @@ function testIntegrationClean() {
     ])
 }
 
+
 async function testIntegrationMake(cb) {
-    await execa(
-        'node',
-        [
-            './cli/morphir-elm.js', 'make',
-             '-p', './tests-integration/reference-model',
-             '-o', './tests-integration/generated/morphir-ir.json'
-        ],
-        { stdio },
-    )
+    await morphirElmMake(
+        './tests-integration/reference-model',
+        './tests-integration/generated/morphir-ir.json')
 }
 
 async function testIntegrationMorphirTest(cb) {
@@ -111,16 +122,10 @@ async function testIntegrationMorphirTest(cb) {
 }
 
 async function testIntegrationGenScala(cb) {
-    await execa(
-        'node',
-        [
-            './cli/morphir-elm.js', 'gen',
-            '-i', './tests-integration/generated/morphir-ir.json',
-            '-o', './tests-integration/generated/refModel/src/scala/',
-            '-t', 'Scala'
-        ],
-        { stdio },
-    )
+    await morphirElmGen(
+        './tests-integration/generated/morphir-ir.json',
+        './tests-integration/generated/refModel/src/scala/',
+        'Scala')
 }
 
 async function testIntegrationBuildScala(cb) {
@@ -139,16 +144,10 @@ async function testIntegrationBuildScala(cb) {
 }
 
 async function testIntegrationGenTypeScript(cb) {
-    await execa(
-        'node',
-        [
-            './cli/morphir-elm.js', 'gen',
-            '-i', './tests-integration/generated/morphir-ir.json',
-            '-o', './tests-integration/generated/refModel/src/typescript/',
-            '-t', 'TypeScript'
-        ],
-        { stdio },
-    )
+    await morphirElmGen(
+        './tests-integration/generated/morphir-ir.json',
+        './tests-integration/generated/refModel/src/typescript/',
+        'TypeScript')
 }
 
 function testIntegrationBuildTypeScript(cb) {
