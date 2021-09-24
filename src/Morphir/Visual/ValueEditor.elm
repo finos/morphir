@@ -50,9 +50,11 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Basics
+import Morphir.IR.SDK.Dict as SDKDict
 import Morphir.IR.SDK.String as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
+import Morphir.ListOfResults as ListOfResults
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Svg
@@ -99,6 +101,7 @@ type ComponentState
     | MaybeEditor (Type ()) (Maybe EditorState)
     | ListEditor (Type ()) (List EditorState)
     | GridEditor (List ( Name, Type () )) (List (Array EditorState))
+    | DictEditor ( Type (), Type () ) (List ( EditorState, EditorState ))
     | GenericEditor String
 
 
@@ -128,6 +131,10 @@ initEditorState ir valueType maybeInitialValue =
                         -- if a value that is a List is not set then treat it as empty list
                         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ _ ] ->
                             Just (Value.List () [])
+
+                        -- if a value that is a Dict is not set then treat it as empty Dict
+                        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "dict" ] ) [ _, _ ] ->
+                            Just (SDKDict.fromListValue () (Value.List () []))
 
                         _ ->
                             maybeInitialValue
@@ -169,6 +176,9 @@ initComponentState ir valueType maybeInitialValue =
 
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ->
             initListEditor ir itemType maybeInitialValue
+
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "dict" ] ) [ dictKeyType, dictValueType ] ->
+            initDictEditor ir dictKeyType dictValueType maybeInitialValue
 
         _ ->
             if valueType == Basics.boolType () then
@@ -311,7 +321,7 @@ initMaybeEditor ir itemType maybeInitialValue =
             ( Nothing, MaybeEditor itemType Nothing )
 
 
-{-| Creates a component state for a optional values.
+{-| Creates a component state for a list values.
 -}
 initListEditor : IR -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
 initListEditor ir itemType maybeInitialValue =
@@ -373,6 +383,45 @@ initListEditor ir itemType maybeInitialValue =
 
                 Nothing ->
                     ( Nothing, ListEditor itemType [] )
+
+
+{-| Creates a component state for a list values.
+-}
+initDictEditor : IR -> Type () -> Type () -> Maybe RawValue -> ( Maybe Error, ComponentState )
+initDictEditor ir dictKeyType dictValueType maybeInitialValue =
+    case maybeInitialValue of
+        Just initialValue ->
+            case initialValue of
+                Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) (Value.List _ items) ->
+                    let
+                        editorResult =
+                            items
+                                |> List.map
+                                    (\item ->
+                                        case item of
+                                            Value.Tuple _ [ itemKey, itemValue ] ->
+                                                Ok
+                                                    ( initEditorState ir dictKeyType (Just itemKey)
+                                                    , initEditorState ir dictValueType (Just itemValue)
+                                                    )
+
+                                            _ ->
+                                                Err ("Invalid Dict entry: " ++ Debug.toString item)
+                                    )
+                                |> ListOfResults.liftFirstError
+                    in
+                    case editorResult of
+                        Ok editors ->
+                            ( Nothing, DictEditor ( dictKeyType, dictValueType ) editors )
+
+                        Err error ->
+                            ( Just error, DictEditor ( dictKeyType, dictValueType ) [] )
+
+                _ ->
+                    ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), DictEditor ( dictKeyType, dictValueType ) [] )
+
+        Nothing ->
+            ( Nothing, DictEditor ( dictKeyType, dictValueType ) [] )
 
 
 {-| Display the editor. It takes the following inputs:
@@ -930,6 +979,140 @@ view ir valueType updateEditorState editorState =
                                                         updateState (cellEditorStates |> set rowIndex columnIndex newItemEditorState)
                                                     )
                                                     (Array.get columnIndex rowEditorStates |> Maybe.withDefault (initEditorState ir columnType Nothing))
+                                                )
+                                    }
+                                )
+                    }
+
+        DictEditor ( dictKeyType, dictValueType ) keyValueEditorStates ->
+            let
+                columnTypes =
+                    [ ( [ "key" ], dictKeyType ), ( [ "value" ], dictValueType ) ]
+
+                cellEditorStates =
+                    keyValueEditorStates
+
+                set : Int -> Int -> a -> List ( a, a ) -> List ( a, a )
+                set rowIndex columnIndex item list =
+                    List.concat
+                        [ List.take rowIndex list
+                        , list |> List.drop rowIndex |> List.take 1
+                            |> List.map
+                                (\( k, v ) ->
+                                    if columnIndex == 0 then
+                                        ( item, v )
+
+                                    else
+                                        ( k, item )
+                                )
+                        , List.drop (rowIndex + 1) list
+                        ]
+
+                remove : Int -> List a -> List a
+                remove index list =
+                    List.concat
+                        [ List.take index list
+                        , List.drop (index + 1) list
+                        ]
+
+                emptyRowEditors : ( EditorState, EditorState )
+                emptyRowEditors =
+                    ( initEditorState ir dictKeyType Nothing, initEditorState ir dictValueType Nothing )
+
+                updateState : List ( EditorState, EditorState ) -> msg
+                updateState rowStates =
+                    let
+                        listValueResult : Result Error RawValue
+                        listValueResult =
+                            rowStates
+                                |> List.map
+                                    (\( keyEditorState, valueEditorState ) ->
+                                        Maybe.map2
+                                            (\key value ->
+                                                Value.Tuple () [ key, value ]
+                                            )
+                                            (editorStateToRawValueResult keyEditorState |> Result.toMaybe |> Maybe.andThen identity)
+                                            (editorStateToRawValueResult valueEditorState |> Result.toMaybe |> Maybe.andThen identity)
+                                    )
+                                |> List.filterMap identity
+                                |> Value.List ()
+                                |> SDKDict.fromListValue ()
+                                |> Ok
+                    in
+                    updateEditorState
+                        (applyResult listValueResult
+                            { editorState
+                                | componentState = DictEditor ( dictKeyType, dictValueType ) rowStates
+                            }
+                        )
+            in
+            if List.isEmpty cellEditorStates then
+                el [] (plusButton (updateState [ emptyRowEditors ]))
+
+            else
+                table
+                    [ spacing 2
+                    , paddingEach { top = 3, bottom = 10, left = 10, right = 10 }
+                    , Background.color (rgb 0.8 0.8 0.8)
+                    ]
+                    { data = cellEditorStates |> List.indexedMap Tuple.pair
+                    , columns =
+                        columnTypes
+                            |> List.indexedMap
+                                (\columnIndex ( columnName, columnType ) ->
+                                    { header =
+                                        el [ width fill, height fill, paddingXY 10 5, Font.bold, Background.color (rgb 1 1 1) ]
+                                            (el [ width fill, center ] (text (columnName |> Name.toHumanWords |> String.join " ")))
+                                    , width = fill
+                                    , view =
+                                        \( rowIndex, rowEditorStates ) ->
+                                            let
+                                                addButton : List ( EditorState, EditorState ) -> Element msg
+                                                addButton newStates =
+                                                    if columnIndex == 0 then
+                                                        el
+                                                            [ moveUp 7
+                                                            , moveLeft 7
+                                                            ]
+                                                            (plusButton (updateState newStates))
+
+                                                    else
+                                                        none
+
+                                                removeButton : List ( EditorState, EditorState ) -> Element msg
+                                                removeButton newStates =
+                                                    if columnIndex == List.length columnTypes - 1 then
+                                                        el
+                                                            [ moveDown 3
+                                                            ]
+                                                            (closeButton (updateState newStates))
+
+                                                    else
+                                                        none
+                                            in
+                                            el
+                                                [ width fill
+                                                , height fill
+                                                , Background.color (rgb 1 1 1)
+                                                , inFront (addButton (emptyRowEditors :: cellEditorStates))
+                                                , if rowIndex == List.length cellEditorStates - 1 then
+                                                    below (addButton (cellEditorStates ++ [ emptyRowEditors ]))
+
+                                                  else
+                                                    below none
+                                                , onRight (removeButton (cellEditorStates |> remove rowIndex))
+                                                ]
+                                                (view ir
+                                                    columnType
+                                                    (\newItemEditorState ->
+                                                        updateState (cellEditorStates |> set rowIndex columnIndex newItemEditorState)
+                                                    )
+                                                    (if columnIndex == 0 then
+                                                        rowEditorStates |> Tuple.first
+
+                                                     else
+                                                        rowEditorStates |> Tuple.second
+                                                    )
                                                 )
                                     }
                                 )

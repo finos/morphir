@@ -185,6 +185,9 @@ getCaseFromIndex config head viewValue highlightState rule =
                             in
                             row [ width fill, Background.color result, mediumPadding config.state.theme |> padding ] (List.concat [ [ text "(", text (nameToText (getLocalName fQName)) ], List.intersperse (text ",") parsedMatches, [ text ")" ] ])
 
+                        Value.AsPattern tpe (Value.WildcardPattern _) name ->
+                            el [ Background.color result, mediumPadding config.state.theme |> padding ] (text (nameToText name))
+
                         Value.AsPattern tpe asPattern name ->
                             getCaseFromIndex config head viewValue highlightState (Just (patternToMatch asPattern))
 

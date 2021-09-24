@@ -22,7 +22,6 @@ import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
-import Morphir.Visual.ViewField as ViewField
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
 import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
@@ -156,14 +155,9 @@ viewValueByLanguageFeature config value =
                     let
                         defaultValue =
                             Element.row
-                                [ width fill ]
-                                [ String.concat
-                                    [ "the "
-                                    , nameToText fieldName
-                                    , " field of "
-                                    ]
-                                    |> text
-                                , viewValue config subjectValue
+                                [ spacing 10 ]
+                                [ viewValue config subjectValue
+                                , text (nameToText fieldName)
                                 ]
                     in
                     case Config.evaluate (subjectValue |> Value.toRawValue) config of

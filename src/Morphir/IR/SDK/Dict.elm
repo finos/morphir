@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK.Dict exposing (dictType, moduleName, moduleSpec, nativeFunctions)
+module Morphir.IR.SDK.Dict exposing (dictType, fromListValue, moduleName, moduleSpec, nativeFunctions)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
