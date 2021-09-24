@@ -77,7 +77,7 @@ const build =
     )
 
 
-function morphirElmMake(projectDir, outputPath, options) {
+function morphirElmMake(projectDir, outputPath, options = {}) {
     args = [ './cli/morphir-elm.js', 'make', '-p', projectDir, '-o', outputPath ]
     if (options.typesOnly) {
         args.push('--types-only')
@@ -108,11 +108,11 @@ function testIntegrationClean() {
 async function testIntegrationMake(cb) {
     await morphirElmMake(
         './tests-integration/reference-model',
-        './tests-integration/generated/morphir-ir.json')
+        './tests-integration/generated/refModel/morphir-ir.json')
 }
 
 async function testIntegrationMorphirTest(cb) {
-    src('./tests-integration/generated/morphir-ir.json')
+    src('./tests-integration/generated/refModel/morphir-ir.json')
         .pipe(dest('./tests-integration/reference-model/'))
     await execa(
         'node',
@@ -123,7 +123,7 @@ async function testIntegrationMorphirTest(cb) {
 
 async function testIntegrationGenScala(cb) {
     await morphirElmGen(
-        './tests-integration/generated/morphir-ir.json',
+        './tests-integration/generated/refModel/morphir-ir.json',
         './tests-integration/generated/refModel/src/scala/',
         'Scala')
 }
@@ -145,7 +145,7 @@ async function testIntegrationBuildScala(cb) {
 
 async function testIntegrationGenTypeScript(cb) {
     await morphirElmGen(
-        './tests-integration/generated/morphir-ir.json',
+        './tests-integration/generated/refModel/morphir-ir.json',
         './tests-integration/generated/refModel/src/typescript/',
         'TypeScript')
 }
@@ -174,10 +174,39 @@ const testIntegration = series(
         )
     )
 
+
+async function testMorphirIRMake(cb) {
+    await morphirElmMake('.', 'tests-integration/generated/morphirIR/morphir-ir.json',
+        { typesOnly: true })
+}
+
+async function testMorphirIRGenTypeScript(cb) {
+    await morphirElmGen(
+        './tests-integration/generated/morphirIR/morphir-ir.json',
+        './tests-integration/generated/morphirIR/src/typescript/',
+        'TypeScript')
+}
+
+function testMorphirIRBuildTypeScript(cb) {
+    return src('tests-integration/generated/morphirIR/src/typescript/**/*.ts')
+        .pipe(ts({
+            outFile: 'output.js'
+        }))
+        .pipe(dest('tests-integration/generated/morphirIR/src/typescript/output.js'));
+}
+
+testMorphirIR = series(
+    testMorphirIRMake,
+    testMorphirIRGenTypeScript,
+    //testMorphirIRBuildTypeScript,
+)
+
+
 const test =
     parallel(
         testUnit,
         testIntegration,
+        testMorphirIR,
     )
 
 exports.clean = clean;
@@ -186,6 +215,7 @@ exports.makeDevCLI = makeDevCLI;
 exports.build = build;
 exports.test = test;
 exports.testIntegration = testIntegration;
+exports.testMorphirIR = testMorphirIR;
 exports.default =
     series(
         clean,
