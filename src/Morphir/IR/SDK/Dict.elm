@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK.Dict exposing (..)
+module Morphir.IR.SDK.Dict exposing (dictType, moduleName, moduleSpec, nativeFunctions)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
@@ -25,9 +25,11 @@ import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics exposing (boolType, intType)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.SDK.List exposing (listType)
-import Morphir.IR.SDK.Maybe exposing (maybeType)
+import Morphir.IR.SDK.Maybe exposing (just, maybeType, nothing)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Value.Error exposing (Error(..))
+import Morphir.Value.Native as Native
 
 
 moduleName : ModuleName
@@ -39,7 +41,7 @@ moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Dict", OpaqueTypeSpecification [ [ "a" ] ] |> Documented "Type that represents a dictionary of key-value pairs." )
+            [ ( Name.fromString "Dict", OpaqueTypeSpecification [ [ "k", "v" ] ] |> Documented "Type that represents a dictionary of key-value pairs." )
             ]
     , values =
         Dict.fromList
@@ -128,3 +130,48 @@ moduleSpec =
 dictType : a -> Type a -> Type a -> Type a
 dictType attributes keyType valueType =
     Reference attributes (toFQName moduleName "dict") [ keyType, valueType ]
+
+
+fromListValue : va -> Value ta va -> Value ta va
+fromListValue a list =
+    Value.Apply a (Value.Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) list
+
+
+nativeFunctions : List ( String, Native.Function )
+nativeFunctions =
+    [ ( "fromList", Native.unaryStrict (\_ arg -> Ok (fromListValue () arg)) )
+    , ( "get"
+      , Native.binaryStrict
+            (\keyToGet dict ->
+                case dict of
+                    Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                        case arg of
+                            Value.List _ list ->
+                                let
+                                    find l =
+                                        case l of
+                                            [] ->
+                                                Ok (nothing ())
+
+                                            head :: tail ->
+                                                case head of
+                                                    Value.Tuple _ [ key, value ] ->
+                                                        if key == keyToGet then
+                                                            Ok (just () value)
+
+                                                        else
+                                                            find tail
+
+                                                    _ ->
+                                                        Err TupleExpected
+                                in
+                                find list
+
+                            _ ->
+                                Err (ExpectedList arg)
+
+                    _ ->
+                        Err (UnexpectedArguments [ dict ])
+            )
+      )
+    ]
