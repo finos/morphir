@@ -152,27 +152,36 @@ mapTypeDefinition name typeDef =
                     accessControlledConstructors.value
                         |> Dict.toList
 
+                constructorNames =
+                    accessControlledConstructors.value
+                        |> Dict.keys
+                        |> List.map Name.toTitleCase
+
                 constructorInterfaces =
                     constructors
                         |> List.map (mapConstructor privacy tsVariables)
 
                 union =
-                    List.singleton
-                        (TS.TypeAlias
-                            { name = typeName
-                            , privacy = privacy
-                            , doc = doc
-                            , variables = tsVariables
-                            , typeExpression =
-                                TS.Union
-                                    (constructors
-                                        |> List.map
-                                            (\( ctorName, _ ) ->
-                                                TS.TypeRef (ctorName |> Name.toTitleCase) tsVariables
-                                            )
-                                    )
-                            }
-                        )
+                    if List.all ((==) typeName) constructorNames then
+                        []
+
+                    else
+                        List.singleton
+                            (TS.TypeAlias
+                                { name = typeName
+                                , privacy = privacy
+                                , doc = doc
+                                , variables = tsVariables
+                                , typeExpression =
+                                    TS.Union
+                                        (constructors
+                                            |> List.map
+                                                (\( ctorName, _ ) ->
+                                                    TS.TypeRef (ctorName |> Name.toTitleCase) tsVariables
+                                                )
+                                        )
+                                }
+                            )
             in
             union ++ constructorInterfaces
 

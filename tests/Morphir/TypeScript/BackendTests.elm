@@ -61,4 +61,29 @@ mapTypeDefinitionTests =
                             }
                         ]
             )
+        , test "type alias expressed as custom type"
+            (\_ ->
+                mapTypeDefinition [ "same", "name" ]
+                    (public
+                        (Documented
+                            ""
+                            (Type.CustomTypeDefinition []
+                                (public
+                                    (Dict.fromList
+                                        [ ( [ "same", "name" ], [] ) ]
+                                    )
+                                )
+                            )
+                        )
+                    )
+                    |> Expect.equal
+                        {- There should be no TS.Union here, as the name would conflict with the TS.Interface -}
+                        [ TS.Interface
+                            { name = "SameName"
+                            , privacy = TS.Public
+                            , variables = []
+                            , fields = [ ( "kind", TS.LiteralString "SameName" ) ]
+                            }
+                        ]
+             )
         ]
