@@ -53,6 +53,16 @@ mapGenericVariables opt variables =
 
 mapTypeDef : Options -> TypeDef -> Doc
 mapTypeDef opt typeDef =
+    let
+        exportIfPublic : Privacy -> String
+        exportIfPublic privacy =
+            case privacy of
+                Public ->
+                    "export "
+
+                Private ->
+                    ""
+    in
     case typeDef of
         TypeAlias { name, privacy, doc, variables, typeExpression } ->
             let
@@ -62,19 +72,11 @@ mapTypeDef opt typeDef =
 
                     else
                         ""
-
-                exportString =
-                    case privacy of
-                        Public ->
-                            "export "
-
-                        Private ->
-                            ""
             in
             concat
                 [ docstring
                 , newLine
-                , exportString
+                , privacy |> exportIfPublic
                 , "type "
                 , name
                 , mapGenericVariables opt variables
@@ -84,7 +86,8 @@ mapTypeDef opt typeDef =
 
         Interface { name, privacy, variables, fields } ->
             concat
-                [ "interface "
+                [ privacy |> exportIfPublic
+                , "interface "
                 , name
                 , mapGenericVariables opt variables
                 , mapObjectExp opt fields
