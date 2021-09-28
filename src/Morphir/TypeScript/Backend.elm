@@ -19,7 +19,7 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.TypeScript.AST as TS
-import Morphir.TypeScript.PrettyPrinter as PrettyPrinter
+import Morphir.TypeScript.PrettyPrinter as PrettyPrinter exposing (getTypeScriptPackagePathAndModuleName)
 
 
 {-| Placeholder for code generator options. Currently empty.
@@ -62,12 +62,7 @@ mapModuleDefinition : Options -> Distribution -> Package.PackageName -> Path -> 
 mapModuleDefinition opt distribution currentPackagePath currentModulePath accessControlledModuleDef =
     let
         ( typeScriptPackagePath, moduleName ) =
-            case currentModulePath |> List.reverse of
-                [] ->
-                    ( [], [] )
-
-                lastName :: reverseModulePath ->
-                    ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
+            getTypeScriptPackagePathAndModuleName currentPackagePath currentModulePath
 
         typeDefs : List TS.TypeDef
         typeDefs =
@@ -76,11 +71,24 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                 |> List.concatMap
                     (\( typeName, typeDef ) -> mapTypeDefinition typeName typeDef)
 
+        namespace : TS.TypeDef
+        namespace =
+            TS.Namespace
+                { name =
+                    (currentPackagePath ++ currentModulePath)
+                        |> Path.toString Name.toTitleCase "_"
+                        |> List.singleton
+                , privacy = TS.Public
+                , content = typeDefs
+                }
+
         moduleUnit : TS.CompilationUnit
         moduleUnit =
             { dirPath = typeScriptPackagePath
             , fileName = (moduleName |> Name.toTitleCase) ++ ".ts"
-            , typeDefs = typeDefs
+            , packagePath = currentPackagePath
+            , modulePath = currentModulePath
+            , typeDefs = List.singleton namespace
             }
     in
     [ moduleUnit ]
@@ -91,11 +99,8 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
 mapConstructor : TS.Privacy -> List TS.TypeExp -> ( Name, List ( Name, Type.Type ta ) ) -> TS.TypeDef
 mapConstructor privacy variables ( ctorName, ctorArgs ) =
     let
-        nameInTitleCase =
-            ctorName |> Name.toTitleCase
-
         kindField =
-            ( "kind", TS.LiteralString nameInTitleCase )
+            ( "kind", TS.LiteralString (ctorName |> Name.toTitleCase) )
 
         otherFields =
             ctorArgs
@@ -105,7 +110,7 @@ mapConstructor privacy variables ( ctorName, ctorArgs ) =
                     )
     in
     TS.Interface
-        { name = nameInTitleCase
+        { name = ctorName
         , privacy = privacy
         , variables = variables
         , fields = kindField :: otherFields
@@ -122,17 +127,12 @@ mapTypeDefinition name typeDef =
             typeDef.value.doc
 
         privacy =
-            case typeDef.access of
-                Public ->
-                    TS.Public
-
-                Private ->
-                    TS.Private
+            typeDef.access |> mapPrivacy
     in
     case typeDef.value.value of
         Type.TypeAliasDefinition variables typeExp ->
             [ TS.TypeAlias
-                { name = name |> Name.toTitleCase
+                { name = name
                 , privacy = privacy
                 , doc = doc
                 , variables = variables |> List.map Name.toCamelCase |> List.map (\var -> TS.Variable var)
@@ -142,9 +142,6 @@ mapTypeDefinition name typeDef =
 
         Type.CustomTypeDefinition variables accessControlledConstructors ->
             let
-                typeName =
-                    name |> Name.toTitleCase
-
                 tsVariables =
                     variables |> List.map Name.toCamelCase |> List.map (\var -> TS.Variable var)
 
@@ -155,20 +152,19 @@ mapTypeDefinition name typeDef =
                 constructorNames =
                     accessControlledConstructors.value
                         |> Dict.keys
-                        |> List.map Name.toTitleCase
 
                 constructorInterfaces =
                     constructors
                         |> List.map (mapConstructor privacy tsVariables)
 
                 union =
-                    if List.all ((==) typeName) constructorNames then
+                    if List.all ((==) name) constructorNames then
                         []
 
                     else
                         List.singleton
                             (TS.TypeAlias
-                                { name = typeName
+                                { name = name
                                 , privacy = privacy
                                 , doc = doc
                                 , variables = tsVariables
@@ -177,7 +173,7 @@ mapTypeDefinition name typeDef =
                                         (constructors
                                             |> List.map
                                                 (\( ctorName, _ ) ->
-                                                    TS.TypeRef (ctorName |> Name.toTitleCase) tsVariables
+                                                    TS.TypeRef (FQName.fQName [] [] ctorName) tsVariables
                                                 )
                                         )
                                 }
@@ -224,8 +220,8 @@ mapTypeExp tpe =
         Type.Tuple _ tupleTypesList ->
             TS.Tuple (List.map mapTypeExp tupleTypesList)
 
-        Type.Reference _ ( packageName, moduleName, localName ) typeList ->
-            TS.TypeRef (localName |> Name.toTitleCase) (typeList |> List.map mapTypeExp)
+        Type.Reference _ fQName typeList ->
+            TS.TypeRef fQName (typeList |> List.map mapTypeExp)
 
         Type.Unit _ ->
             TS.Tuple []
@@ -238,3 +234,15 @@ mapTypeExp tpe =
 
         Type.Function a argType returnType ->
             TS.UnhandledType "Function"
+
+
+{-| Utility funciton: map an AccessControlled.Access object, to a TS.Privacy Object
+-}
+mapPrivacy : Access -> TS.Privacy
+mapPrivacy privacy =
+    case privacy of
+        Public ->
+            TS.Public
+
+        Private ->
+            TS.Private
