@@ -9,6 +9,7 @@ module Morphir.TypeScript.Backend exposing
 
 import Dict
 import Morphir.File.FileMap exposing (FileMap)
+import Morphir.File.SourceCode exposing (newLine)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
@@ -18,8 +19,14 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.TypeScript.AST as TS
+import Morphir.TypeScript.AST as TS exposing (namespacePath)
+import Morphir.TypeScript.NamespaceMerger exposing (mergeNamespaces)
 import Morphir.TypeScript.PrettyPrinter as PrettyPrinter exposing (getTypeScriptPackagePathAndModuleName)
+
+
+standardPrettyPrinterOptions : PrettyPrinter.Options
+standardPrettyPrinterOptions =
+    { indentDepth = 2 }
 
 
 {-| Placeholder for code generator options. Currently empty.
@@ -40,22 +47,88 @@ mapDistribution opt distro =
 
 mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> FileMap
 mapPackageDefinition opt distribution packagePath packageDef =
+    let
+        compilationUnitToFileMapElement : TS.CompilationUnit -> ( ( List String, String ), String )
+        compilationUnitToFileMapElement compilationUnit =
+            let
+                fileContent =
+                    compilationUnit
+                        |> PrettyPrinter.mapCompilationUnit standardPrettyPrinterOptions
+            in
+            ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
+
+        individualModuleFiles : List ( ( List String, String ), String )
+        individualModuleFiles =
+            packageDef.modules
+                |> Dict.toList
+                |> List.concatMap
+                    (\( modulePath, moduleImpl ) ->
+                        mapModuleDefinition opt distribution packagePath modulePath moduleImpl
+                            |> List.map compilationUnitToFileMapElement
+                    )
+
+        topLevelPackageName : String
+        topLevelPackageName =
+            case packagePath of
+                firstName :: _ ->
+                    (firstName |> Name.toTitleCase) ++ ".ts"
+
+                _ ->
+                    ".ts"
+
+        topLevelCompilationUnit : TS.CompilationUnit
+        topLevelCompilationUnit =
+            { dirPath = []
+            , fileName = topLevelPackageName
+            , packagePath = []
+            , modulePath = []
+            , typeDefs = mapModuleNamespacesForTopLevelFile packagePath packageDef
+            }
+
+        topLevelNameSpaceModuleFile : List ( ( List String, String ), String )
+        topLevelNameSpaceModuleFile =
+            [ compilationUnitToFileMapElement topLevelCompilationUnit ]
+    in
+    (individualModuleFiles ++ topLevelNameSpaceModuleFile)
+        |> Dict.fromList
+
+
+mapModuleNamespacesForTopLevelFile : Package.PackageName -> Package.Definition ta (Type ()) -> List TS.TypeDef
+mapModuleNamespacesForTopLevelFile packagePath packageDef =
     packageDef.modules
         |> Dict.toList
-        |> List.concatMap
+        |> List.map
             (\( modulePath, moduleImpl ) ->
-                mapModuleDefinition opt distribution packagePath modulePath moduleImpl
-                    |> List.map
-                        (\compilationUnit ->
-                            let
-                                fileContent =
-                                    compilationUnit
-                                        |> PrettyPrinter.mapCompilationUnit (PrettyPrinter.Options 2)
-                            in
-                            ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
-                        )
+                ( moduleImpl.access |> mapPrivacy
+                , TS.namespacePath packagePath modulePath
+                )
             )
-        |> Dict.fromList
+        |> List.concatMap
+            (\( privacy, namespacePath ) ->
+                case namespacePath.packagePath ++ namespacePath.modulePath |> List.reverse of
+                    [] ->
+                        []
+
+                    lastName :: restOfPath ->
+                        let
+                            importStatement =
+                                TS.ImportStatement
+                                    { name = lastName
+                                    , privacy = privacy
+                                    , typeExpression = TS.NamespaceRef namespacePath
+                                    }
+
+                            step : Name -> TS.TypeDef -> TS.TypeDef
+                            step name state =
+                                TS.Namespace
+                                    { name = name
+                                    , privacy = privacy
+                                    , content = List.singleton state
+                                    }
+                        in
+                        [ List.foldl step importStatement restOfPath ]
+            )
+        |> mergeNamespaces
 
 
 mapModuleDefinition : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List TS.CompilationUnit
