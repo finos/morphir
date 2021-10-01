@@ -215,6 +215,9 @@ mapTypeExp tpe =
                         )
                 )
 
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "char" ] ], [ "char" ] ) [] ->
+            TS.String
+
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) [] ->
             TS.String
 
