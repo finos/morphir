@@ -1,6 +1,6 @@
 module Morphir.TypeScript.AST exposing
     ( TypeDef(..), TypeExp(..)
-    , CompilationUnit, NamespacePath, ObjectExp, Privacy(..), namespacePath
+    , CompilationUnit, NamespacePath, ObjectExp, Privacy(..)
     )
 
 {-| This module contains the TypeScript AST (Abstract Syntax Tree). The purpose of this AST is to make it easier to
@@ -24,8 +24,7 @@ import Morphir.IR.Path exposing (Path)
 type alias CompilationUnit =
     { dirPath : List String
     , fileName : String
-    , packagePath : Path
-    , modulePath : Path
+    , imports : List NamespacePath
     , typeDefs : List TypeDef
     }
 
@@ -37,19 +36,18 @@ type Privacy
     | Private
 
 
-{-| Represents the path to a module nameSpace, for creating import statements or references
+{-| (packagePath, modulePath).
+
+Represents the path to a module. Used in various ways to produce either a path
+to a module file, or a reference to that module's namespace. (eg in imports)
+
+This has two components, the package path and the module path.
+(Note: this is different from a Morphir Fully Qualified Name, which has three
+components: package path, module path AND a local name).
+
 -}
 type alias NamespacePath =
-    { packagePath : Path
-    , modulePath : Path
-    }
-
-
-namespacePath : Path -> Path -> NamespacePath
-namespacePath packagePath modulePath =
-    { packagePath = packagePath
-    , modulePath = modulePath
-    }
+    ( Path, Path )
 
 
 {-| Represents a type definition.
@@ -73,10 +71,10 @@ type TypeDef
         , variables : List TypeExp
         , fields : ObjectExp
         }
-    | ImportStatement
+    | ImportAlias
         { name : Name
         , privacy : Privacy
-        , typeExpression : TypeExp
+        , namespacePath : NamespacePath
         }
 
 
@@ -93,7 +91,6 @@ type TypeExp
     | Boolean
     | List TypeExp {- Represents a Morphir 'List' type, as a Typescript 'Array' type -}
     | LiteralString String
-    | NamespaceRef NamespacePath
     | Number
     | Object ObjectExp
     | String
