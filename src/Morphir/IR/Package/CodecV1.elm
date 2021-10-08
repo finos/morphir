@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.Package.Codec exposing
+module Morphir.IR.Package.CodecV1 exposing
     ( encodeSpecification, decodeSpecification
     , encodeDefinition, decodeDefinition
     )
@@ -37,8 +37,8 @@ module Morphir.IR.Package.Codec exposing
 import Dict
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.AccessControlled.Codec exposing (decodeAccessControlled, encodeAccessControlled)
-import Morphir.IR.Module.Codec as ModuleCodec
+import Morphir.IR.AccessControlled.CodecV1 exposing (decodeAccessControlled, encodeAccessControlled)
+import Morphir.IR.Module.CodecV1 as ModuleCodec
 import Morphir.IR.Package exposing (Definition, Specification)
 import Morphir.IR.Path.CodecV1 exposing (decodePath, encodePath)
 
@@ -53,9 +53,9 @@ encodeSpecification encodeTypeAttributes spec =
                 |> Dict.toList
                 |> Encode.list
                     (\( moduleName, moduleSpec ) ->
-                        Encode.list identity
-                            [ encodePath moduleName
-                            , ModuleCodec.encodeSpecification encodeTypeAttributes moduleSpec
+                        Encode.object
+                            [ ( "name", encodePath moduleName )
+                            , ( "spec", ModuleCodec.encodeSpecification encodeTypeAttributes moduleSpec )
                             ]
                     )
           )
@@ -71,8 +71,8 @@ decodeSpecification decodeAttributes =
             (Decode.map Dict.fromList
                 (Decode.list
                     (Decode.map2 Tuple.pair
-                        (Decode.index 0 decodePath)
-                        (Decode.index 1 (ModuleCodec.decodeSpecification decodeAttributes))
+                        (Decode.field "name" decodePath)
+                        (Decode.field "spec" (ModuleCodec.decodeSpecification decodeAttributes))
                     )
                 )
             )
@@ -89,9 +89,9 @@ encodeDefinition encodeTypeAttributes encodeValueAttributes def =
                 |> Dict.toList
                 |> Encode.list
                     (\( moduleName, moduleDef ) ->
-                        Encode.list identity
-                            [ encodePath moduleName
-                            , encodeAccessControlled (ModuleCodec.encodeDefinition encodeTypeAttributes encodeValueAttributes) moduleDef
+                        Encode.object
+                            [ ( "name", encodePath moduleName )
+                            , ( "def", encodeAccessControlled (ModuleCodec.encodeDefinition encodeTypeAttributes encodeValueAttributes) moduleDef )
                             ]
                     )
           )
@@ -107,8 +107,8 @@ decodeDefinition decodeAttributes decodeAttributes2 =
             (Decode.map Dict.fromList
                 (Decode.list
                     (Decode.map2 Tuple.pair
-                        (Decode.index 0 decodePath)
-                        (Decode.index 1 (decodeAccessControlled (ModuleCodec.decodeDefinition decodeAttributes decodeAttributes2)))
+                        (Decode.field "name" decodePath)
+                        (Decode.field "def" (decodeAccessControlled (ModuleCodec.decodeDefinition decodeAttributes decodeAttributes2)))
                     )
                 )
             )
