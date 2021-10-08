@@ -90,7 +90,7 @@ encodeDistribution distro =
     case distro of
         Library packagePath dependencies def ->
             Encode.list identity
-                [ Encode.string "library"
+                [ Encode.string "Library"
                 , encodePath packagePath
                 , dependencies
                     |> Dict.toList
@@ -115,7 +115,7 @@ decodeDistribution =
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "library" ->
+                    "Library" ->
                         Decode.map3 Library
                             (Decode.index 1 decodePath)
                             (Decode.index 2

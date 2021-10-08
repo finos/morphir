@@ -24,14 +24,14 @@ import Morphir.IR.Documented exposing (Documented)
 
 encodeDocumented : (a -> Encode.Value) -> Documented a -> Encode.Value
 encodeDocumented encodeValue d =
-    Encode.list identity
-        [ Encode.string d.doc
-        , encodeValue d.value
+    Encode.object
+        [ ( "doc", Encode.string d.doc )
+        , ( "value", encodeValue d.value )
         ]
 
 
 decodeDocumented : Decode.Decoder a -> Decode.Decoder (Documented a)
 decodeDocumented decodeValue =
     Decode.map2 Documented
-        (Decode.index 0 Decode.string)
-        (Decode.index 1 decodeValue)
+        (Decode.field "doc" Decode.string)
+        (Decode.field "value" decodeValue)

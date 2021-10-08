@@ -30,13 +30,13 @@ encodeAccessControlled encodeValue ac =
     case ac.access of
         Public ->
             Encode.list identity
-                [ Encode.string "public"
+                [ Encode.string "Public"
                 , encodeValue ac.value
                 ]
 
         Private ->
             Encode.list identity
-                [ Encode.string "private"
+                [ Encode.string "Private"
                 , encodeValue ac.value
                 ]
 
@@ -49,11 +49,11 @@ decodeAccessControlled decodeValue =
         |> Decode.andThen
             (\tag ->
                 case tag of
-                    "public" ->
+                    "Public" ->
                         Decode.map (AccessControlled Public)
                             (Decode.index 1 decodeValue)
 
-                    "private" ->
+                    "Private" ->
                         Decode.map (AccessControlled Private)
                             (Decode.index 1 decodeValue)
 

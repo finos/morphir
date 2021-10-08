@@ -14,7 +14,16 @@ import Test exposing (Test, test)
 
 ir : IR
 ir =
-    Decode.decodeString DistributionCodec.decodeDistribution encodedDistribution
+    let
+        versionedDistribution =
+            String.concat
+                            [ """{ \"formatVersion\": 1"""
+                            , """, \"distribution\": """
+                            , encodedDistribution
+                            , """}"""
+                            ]
+    in
+    Decode.decodeString DistributionCodec.decodeVersionedDistribution versionedDistribution
         |> Result.map IR.fromDistribution
         |> Result.withDefault IR.empty
 

@@ -33,14 +33,14 @@ encodeType encodeAttributes tpe =
     case tpe of
         Variable a name ->
             Encode.list identity
-                [ Encode.string "variable"
+                [ Encode.string "Variable"
                 , encodeAttributes a
                 , encodeName name
                 ]
 
         Reference a typeName typeParameters ->
             Encode.list identity
-                [ Encode.string "reference"
+                [ Encode.string "Reference"
                 , encodeAttributes a
                 , encodeFQName typeName
                 , Encode.list (encodeType encodeAttributes) typeParameters
@@ -48,21 +48,21 @@ encodeType encodeAttributes tpe =
 
         Tuple a elementTypes ->
             Encode.list identity
-                [ Encode.string "tuple"
+                [ Encode.string "Tuple"
                 , encodeAttributes a
                 , Encode.list (encodeType encodeAttributes) elementTypes
                 ]
 
         Record a fieldTypes ->
             Encode.list identity
-                [ Encode.string "record"
+                [ Encode.string "Record"
                 , encodeAttributes a
                 , Encode.list (encodeField encodeAttributes) fieldTypes
                 ]
 
         ExtensibleRecord a variableName fieldTypes ->
             Encode.list identity
-                [ Encode.string "extensible_record"
+                [ Encode.string "ExtensibleRecord"
                 , encodeAttributes a
                 , encodeName variableName
                 , Encode.list (encodeField encodeAttributes) fieldTypes
@@ -70,7 +70,7 @@ encodeType encodeAttributes tpe =
 
         Function a argumentType returnType ->
             Encode.list identity
-                [ Encode.string "function"
+                [ Encode.string "Function"
                 , encodeAttributes a
                 , encodeType encodeAttributes argumentType
                 , encodeType encodeAttributes returnType
@@ -78,7 +78,7 @@ encodeType encodeAttributes tpe =
 
         Unit a ->
             Encode.list identity
-                [ Encode.string "unit"
+                [ Encode.string "Unit"
                 , encodeAttributes a
                 ]
 
@@ -104,40 +104,40 @@ decodeType decodeAttributes =
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "variable" ->
+                    "Variable" ->
                         Decode.map2 Variable
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeName)
 
-                    "reference" ->
+                    "Reference" ->
                         Decode.map3 Reference
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeFQName)
                             (Decode.index 3 (Decode.list (Decode.lazy (\_ -> decodeType decodeAttributes))))
 
-                    "tuple" ->
+                    "Tuple" ->
                         Decode.map2 Tuple
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 (Decode.list lazyDecodeType))
 
-                    "record" ->
+                    "Record" ->
                         Decode.map2 Record
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 (Decode.list lazyDecodeField))
 
-                    "extensible_record" ->
+                    "ExtensibleRecord" ->
                         Decode.map3 ExtensibleRecord
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 decodeName)
                             (Decode.index 3 (Decode.list lazyDecodeField))
 
-                    "function" ->
+                    "Function" ->
                         Decode.map3 Function
                             (Decode.index 1 decodeAttributes)
                             (Decode.index 2 lazyDecodeType)
                             (Decode.index 3 lazyDecodeType)
 
-                    "unit" ->
+                    "Unit" ->
                         Decode.map Unit
                             (Decode.index 1 decodeAttributes)
 
@@ -167,20 +167,20 @@ encodeSpecification encodeAttributes spec =
     case spec of
         TypeAliasSpecification params exp ->
             Encode.list identity
-                [ Encode.string "type_alias_specification"
+                [ Encode.string "TypeAliasSpecification"
                 , Encode.list encodeName params
                 , encodeType encodeAttributes exp
                 ]
 
         OpaqueTypeSpecification params ->
             Encode.list identity
-                [ Encode.string "opaque_type_specification"
+                [ Encode.string "OpaqueTypeSpecification"
                 , Encode.list encodeName params
                 ]
 
         CustomTypeSpecification params ctors ->
             Encode.list identity
-                [ Encode.string "custom_type_specification"
+                [ Encode.string "CustomTypeSpecification"
                 , Encode.list encodeName params
                 , encodeConstructors encodeAttributes ctors
                 ]
@@ -192,16 +192,16 @@ decodeSpecification decodeAttributes =
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "type_alias_specification" ->
+                    "TypeAliasSpecification" ->
                         Decode.map2 TypeAliasSpecification
                             (Decode.index 1 (Decode.list decodeName))
                             (Decode.index 2 (decodeType decodeAttributes))
 
-                    "opaque_type_specification" ->
+                    "OpaqueTypeSpecification" ->
                         Decode.map OpaqueTypeSpecification
                             (Decode.index 1 (Decode.list decodeName))
 
-                    "custom_type_specification" ->
+                    "CustomTypeSpecification" ->
                         Decode.map2 CustomTypeSpecification
                             (Decode.index 1 (Decode.list decodeName))
                             (Decode.index 2 (decodeConstructors decodeAttributes))
@@ -217,14 +217,14 @@ encodeDefinition encodeAttributes def =
     case def of
         TypeAliasDefinition params exp ->
             Encode.list identity
-                [ Encode.string "type_alias_definition"
+                [ Encode.string "TypeAliasDefinition"
                 , Encode.list encodeName params
                 , encodeType encodeAttributes exp
                 ]
 
         CustomTypeDefinition params ctors ->
             Encode.list identity
-                [ Encode.string "custom_type_definition"
+                [ Encode.string "CustomTypeDefinition"
                 , Encode.list encodeName params
                 , encodeAccessControlled (encodeConstructors encodeAttributes) ctors
                 ]
@@ -236,12 +236,12 @@ decodeDefinition decodeAttributes =
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "type_alias_definition" ->
+                    "TypeAliasDefinition" ->
                         Decode.map2 TypeAliasDefinition
                             (Decode.index 1 (Decode.list decodeName))
                             (Decode.index 2 (decodeType decodeAttributes))
 
-                    "custom_type_definition" ->
+                    "CustomTypeDefinition" ->
                         Decode.map2 CustomTypeDefinition
                             (Decode.index 1 (Decode.list decodeName))
                             (Decode.index 2 (decodeAccessControlled (decodeConstructors decodeAttributes)))

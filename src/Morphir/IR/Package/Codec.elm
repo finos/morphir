@@ -53,9 +53,9 @@ encodeSpecification encodeTypeAttributes spec =
                 |> Dict.toList
                 |> Encode.list
                     (\( moduleName, moduleSpec ) ->
-                        Encode.object
-                            [ ( "name", encodePath moduleName )
-                            , ( "spec", ModuleCodec.encodeSpecification encodeTypeAttributes moduleSpec )
+                        Encode.list identity
+                            [ encodePath moduleName
+                            , ModuleCodec.encodeSpecification encodeTypeAttributes moduleSpec
                             ]
                     )
           )
@@ -71,8 +71,8 @@ decodeSpecification decodeAttributes =
             (Decode.map Dict.fromList
                 (Decode.list
                     (Decode.map2 Tuple.pair
-                        (Decode.field "name" decodePath)
-                        (Decode.field "spec" (ModuleCodec.decodeSpecification decodeAttributes))
+                        (Decode.index 0 decodePath)
+                        (Decode.index 1 (ModuleCodec.decodeSpecification decodeAttributes))
                     )
                 )
             )
@@ -89,9 +89,9 @@ encodeDefinition encodeTypeAttributes encodeValueAttributes def =
                 |> Dict.toList
                 |> Encode.list
                     (\( moduleName, moduleDef ) ->
-                        Encode.object
-                            [ ( "name", encodePath moduleName )
-                            , ( "def", encodeAccessControlled (ModuleCodec.encodeDefinition encodeTypeAttributes encodeValueAttributes) moduleDef )
+                        Encode.list identity
+                            [ encodePath moduleName
+                            , encodeAccessControlled (ModuleCodec.encodeDefinition encodeTypeAttributes encodeValueAttributes) moduleDef
                             ]
                     )
           )
@@ -107,8 +107,8 @@ decodeDefinition decodeAttributes decodeAttributes2 =
             (Decode.map Dict.fromList
                 (Decode.list
                     (Decode.map2 Tuple.pair
-                        (Decode.field "name" decodePath)
-                        (Decode.field "def" (decodeAccessControlled (ModuleCodec.decodeDefinition decodeAttributes decodeAttributes2)))
+                        (Decode.index 0 decodePath)
+                        (Decode.index 1 (decodeAccessControlled (ModuleCodec.decodeDefinition decodeAttributes decodeAttributes2)))
                     )
                 )
             )
