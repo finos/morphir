@@ -15,30 +15,32 @@
 -}
 
 
-module Morphir.IR.QName.Codec exposing (..)
+module Morphir.IR.FQName.CodecV1 exposing (..)
 
-{-| Encode a qualified name to JSON.
+{-| Encode a fully-qualified name to JSON.
 -}
 
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
-import Morphir.IR.Path.Codec exposing (decodePath, encodePath)
-import Morphir.IR.QName exposing (QName)
+import Morphir.IR.FQName exposing (FQName, fQName)
+import Morphir.IR.Name.CodecV1 exposing (decodeName, encodeName)
+import Morphir.IR.Path.CodecV1 exposing (decodePath, encodePath)
 
 
-encodeQName : QName -> Encode.Value
-encodeQName (QName modulePath localName) =
+encodeFQName : FQName -> Encode.Value
+encodeFQName ( packagePath, modulePath, localName ) =
     Encode.list identity
-        [ modulePath |> encodePath
+        [ packagePath |> encodePath
+        , modulePath |> encodePath
         , localName |> encodeName
         ]
 
 
-{-| Decode a qualified name from JSON.
+{-| Decode a fully-qualified name from JSON.
 -}
-decodeQName : Decode.Decoder QName
-decodeQName =
-    Decode.map2 QName
+decodeFQName : Decode.Decoder FQName
+decodeFQName =
+    Decode.map3 fQName
         (Decode.index 0 decodePath)
-        (Decode.index 1 decodeName)
+        (Decode.index 1 decodePath)
+        (Decode.index 2 decodeName)

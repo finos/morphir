@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.Package.Codec exposing
+module Morphir.IR.Package.CodecV1 exposing
     ( encodeSpecification, decodeSpecification
     , encodeDefinition, decodeDefinition
     )
@@ -37,8 +37,8 @@ module Morphir.IR.Package.Codec exposing
 import Dict
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.AccessControlled.Codec exposing (decodeAccessControlled, encodeAccessControlled)
-import Morphir.IR.Module.Codec as ModuleCodec
+import Morphir.IR.AccessControlled.CodecV1 exposing (decodeAccessControlled, encodeAccessControlled)
+import Morphir.IR.Module.CodecV1 as ModuleCodec
 import Morphir.IR.Package exposing (Definition, Specification)
 import Morphir.IR.Path.CodecV1 exposing (decodePath, encodePath)
 

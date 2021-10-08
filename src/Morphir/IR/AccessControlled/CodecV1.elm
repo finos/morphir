@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.AccessControlled.Codec exposing (..)
+module Morphir.IR.AccessControlled.CodecV1 exposing (..)
 
 {-| Encode AccessControlled to JSON.
 -}

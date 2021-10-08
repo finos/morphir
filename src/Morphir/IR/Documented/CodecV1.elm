@@ -15,27 +15,23 @@
 -}
 
 
-module Morphir.IR.Path.Codec exposing (..)
-
-{-| Encode a path to JSON.
--}
+module Morphir.IR.Documented.CodecV1 exposing (..)
 
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
-import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.Documented exposing (Documented)
 
 
-encodePath : Path -> Encode.Value
-encodePath path =
-    path
-        |> Path.toList
-        |> Encode.list encodeName
+encodeDocumented : (a -> Encode.Value) -> Documented a -> Encode.Value
+encodeDocumented encodeValue d =
+    Encode.list identity
+        [ Encode.string d.doc
+        , encodeValue d.value
+        ]
 
 
-{-| Decode a path from JSON.
--}
-decodePath : Decode.Decoder Path
-decodePath =
-    Decode.list decodeName
-        |> Decode.map Path.fromList
+decodeDocumented : Decode.Decoder a -> Decode.Decoder (Documented a)
+decodeDocumented decodeValue =
+    Decode.map2 Documented
+        (Decode.index 0 Decode.string)
+        (Decode.index 1 decodeValue)

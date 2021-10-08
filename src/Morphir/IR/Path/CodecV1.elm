@@ -15,14 +15,14 @@
 -}
 
 
-module Morphir.IR.Path.Codec exposing (..)
+module Morphir.IR.Path.CodecV1 exposing (..)
 
 {-| Encode a path to JSON.
 -}
 
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
+import Morphir.IR.Name.CodecV1 exposing (decodeName, encodeName)
 import Morphir.IR.Path as Path exposing (Path)
 
 
