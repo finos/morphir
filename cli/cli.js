@@ -118,6 +118,8 @@ function copyRedistributables(options, outputPath) {
     } else if (options.target == 'Scala' && options.copyDeps) {
         copyFiles('Scala/sdk/src', outputPath)
         copyFiles(`Scala/sdk/src-${options.targetVersion}`, outputPath)
+    } else if (options.target == 'TypeScript') {
+        copyFiles('TypeScript/', outputPath)
     }
 }
 

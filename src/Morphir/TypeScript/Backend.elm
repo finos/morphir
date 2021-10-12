@@ -16,14 +16,14 @@ import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type exposing (Type)
 import Morphir.TypeScript.AST as TS
-import Morphir.TypeScript.Backend.ImportRefs exposing (getUniqueImportRefs)
-import Morphir.TypeScript.Backend.MapTopLevelNamespace exposing (mapTopLevelNamespaceModule)
-import Morphir.TypeScript.Backend.MapTypes exposing (mapTypeDefinition)
-import Morphir.TypeScript.PrettyPrinter as PrettyPrinter exposing (getTypeScriptPackagePathAndModuleName)
-import Morphir.TypeScript.PrettyPrinter.MapExpressions as MapExpressions
+import Morphir.TypeScript.Backend.Imports exposing (getTypeScriptPackagePathAndModuleName, getUniqueImportRefs, makeRelativeImport, renderInternalImport)
+import Morphir.TypeScript.Backend.TopLevelNamespace exposing (makeTopLevelNamespaceModule)
+import Morphir.TypeScript.Backend.Types exposing (mapTypeDefinition)
+import Morphir.TypeScript.PrettyPrinter as PrettyPrinter
+import Morphir.TypeScript.PrettyPrinter.Expressions as PrettyPrinterExpressions
 
 
-standardPrettyPrinterOptions : MapExpressions.Options
+standardPrettyPrinterOptions : PrettyPrinterExpressions.Options
 standardPrettyPrinterOptions =
     { indentDepth = 2 }
 
@@ -57,7 +57,7 @@ mapPackageDefinition opt distribution packagePath packageDef =
     let
         topLevelNamespaceModule : TS.CompilationUnit
         topLevelNamespaceModule =
-            mapTopLevelNamespaceModule packagePath packageDef
+            makeTopLevelNamespaceModule packagePath packageDef
 
         individualModules : List TS.CompilationUnit
         individualModules =
@@ -98,13 +98,22 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
         namespace : TS.TypeDef
         namespace =
             TS.Namespace
-                { name =
-                    (currentPackagePath ++ currentModulePath)
-                        |> Path.toString Name.toTitleCase "_"
-                        |> List.singleton
+                { name = TS.namespaceNameFromPackageAndModule currentPackagePath currentModulePath
                 , privacy = TS.Public
                 , content = typeDefs
                 }
+
+        codecsImport =
+            { importClause = "* as codecs"
+            , moduleSpecifier = makeRelativeImport typeScriptPackagePath "morphir/internal/Codecs"
+            }
+
+        imports =
+            codecsImport
+                :: (namespace
+                        |> getUniqueImportRefs currentPackagePath currentModulePath
+                        |> List.map (renderInternalImport typeScriptPackagePath)
+                   )
 
         {--Collect references from inside the module,
         filter out references to current module
@@ -113,7 +122,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
         moduleUnit =
             { dirPath = typeScriptPackagePath
             , fileName = (moduleName |> Name.toTitleCase) ++ ".ts"
-            , imports = namespace |> getUniqueImportRefs currentPackagePath currentModulePath
+            , imports = imports
             , typeDefs = List.singleton namespace
             }
     in

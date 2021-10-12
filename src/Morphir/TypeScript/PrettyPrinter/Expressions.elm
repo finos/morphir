@@ -1,9 +1,9 @@
-module Morphir.TypeScript.PrettyPrinter.MapExpressions exposing (Options, mapGenericVariables, mapObjectExp, mapTypeExp, namespaceNameFromPackageAndModule)
+module Morphir.TypeScript.PrettyPrinter.Expressions exposing (Options, mapField, mapGenericVariables, mapObjectExp, mapTypeExp, namespaceNameFromPackageAndModule)
 
 import Morphir.File.SourceCode exposing (Doc, concat, indentLines, newLine)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path exposing (Path)
-import Morphir.TypeScript.AST exposing (ObjectExp, Privacy(..), TypeDef(..), TypeExp(..))
+import Morphir.TypeScript.AST exposing (ObjectExp, Privacy(..), TypeDef(..), TypeExp(..), namespaceNameFromPackageAndModule)
 
 
 {-| Formatting options.
@@ -27,20 +27,22 @@ mapGenericVariables opt variables =
                 ]
 
 
+{-| Map a field to text (from an object or interface)
+-}
+mapField : Options -> ( String, TypeExp ) -> Doc
+mapField opt ( fieldName, fieldType ) =
+    concat [ fieldName, ": ", mapTypeExp opt fieldType, ";" ]
+
+
 {-| Map an object expression or interface definiton to text
 -}
 mapObjectExp : Options -> ObjectExp -> Doc
 mapObjectExp opt objectExp =
-    let
-        mapField : ( String, TypeExp ) -> Doc
-        mapField ( fieldName, fieldType ) =
-            concat [ fieldName, ": ", mapTypeExp opt fieldType, ";" ]
-    in
     concat
         [ "{"
         , newLine
         , objectExp
-            |> List.map mapField
+            |> List.map (mapField opt)
             |> indentLines opt.indentDepth
         , newLine
         , "}"
@@ -63,6 +65,16 @@ mapTypeExp opt typeExp =
 
         LiteralString stringval ->
             "\"" ++ stringval ++ "\""
+
+        Map keyType valueType ->
+            concat
+                [ "Map"
+                , "<"
+                , mapTypeExp opt keyType
+                , ", "
+                , mapTypeExp opt valueType
+                , ">"
+                ]
 
         Number ->
             "number"

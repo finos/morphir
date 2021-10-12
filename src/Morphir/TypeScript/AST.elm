@@ -1,7 +1,4 @@
-module Morphir.TypeScript.AST exposing
-    ( TypeDef(..), TypeExp(..)
-    , CompilationUnit, NamespacePath, ObjectExp, Privacy(..)
-    )
+module Morphir.TypeScript.AST exposing (..)
 
 {-| This module contains the TypeScript AST (Abstract Syntax Tree). The purpose of this AST is to make it easier to
 generate valid TypeScript source code and to separate the language syntax from low-level formatting concerns. We use
@@ -16,7 +13,7 @@ that we use in the backend.
 -}
 
 import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Name as Name
 import Morphir.IR.Path exposing (Path)
 
 
@@ -24,7 +21,7 @@ import Morphir.IR.Path exposing (Path)
 type alias CompilationUnit =
     { dirPath : List String
     , fileName : String
-    , imports : List NamespacePath
+    , imports : List ImportDeclaration
     , typeDefs : List TypeDef
     }
 
@@ -50,29 +47,107 @@ type alias NamespacePath =
     ( Path, Path )
 
 
+{-| Generate a unique identifier for the given namespace, for private use.
+-}
+namespaceNameFromPackageAndModule : Path -> Path -> String
+namespaceNameFromPackageAndModule packagePath modulePath =
+    (packagePath ++ modulePath)
+        |> List.map Name.toTitleCase
+        |> String.join "_"
+
+
+type alias CallExpression =
+    { function : Expression
+    , arguments : List Expression
+    }
+
+
+type Expression
+    = ArrayLiteralExpression (List Expression)
+    | Call CallExpression
+    | Identifier String
+    | MemberExpression
+        { object : Expression
+        , member : Expression
+        }
+    | NewExpression
+        { constructor : String
+        , arguments : List Expression
+        }
+    | NullLiteral
+    | ObjectLiteralExpression { properties : List ( String, Expression ) }
+    | StringLiteralExpression String
+
+
+emptyObject : Expression
+emptyObject =
+    ObjectLiteralExpression { properties = [] }
+
+
+type FunctionScope
+    = ModuleFunction
+    | ClassMemberFunction
+    | ClassStaticFunction
+
+
+type alias Parameter =
+    { modifiers : List String
+    , name : String
+    , typeAnnotation : Maybe TypeExp
+    }
+
+
+parameter : List String -> String -> Maybe TypeExp -> Parameter
+parameter modifiers name typeAnnotation =
+    { modifiers = modifiers
+    , name = name
+    , typeAnnotation = typeAnnotation
+    }
+
+
+type Statement
+    = FunctionDeclaration
+        { name : String
+        , scope : FunctionScope
+        , parameters : List Parameter
+        , body : List Statement
+        , privacy : Privacy
+        }
+    | LetStatement Expression (Maybe TypeExp) Expression
+    | AssignmentStatement Expression (Maybe TypeExp) Expression
+    | ExpressionStatement Expression
+    | ReturnStatement Expression
+
+
 {-| Represents a type definition.
 -}
 type TypeDef
     = Namespace
-        { name : Name
+        { name : String
         , privacy : Privacy
         , content : List TypeDef
         }
     | TypeAlias
-        { name : Name
+        { name : String
         , doc : String
         , privacy : Privacy
         , variables : List TypeExp
         , typeExpression : TypeExp
+        , decoder : Maybe Statement
+        , encoder : Maybe Statement
         }
-    | Interface
-        { name : Name
+    | VariantClass
+        { name : String
         , privacy : Privacy
         , variables : List TypeExp
-        , fields : ObjectExp
+        , body : List Statement
+        , constructor : Maybe Statement
+        , decoder : Maybe Statement
+        , encoder : Maybe Statement
+        , typeExpressions : List TypeExp -- for collecting import refs
         }
     | ImportAlias
-        { name : Name
+        { name : String
         , privacy : Privacy
         , namespacePath : NamespacePath
         }
@@ -91,6 +166,7 @@ type TypeExp
     | Boolean
     | List TypeExp {- Represents a Morphir 'List' type, as a Typescript 'Array' type -}
     | LiteralString String
+    | Map TypeExp TypeExp
     | Number
     | Object ObjectExp
     | String
@@ -105,3 +181,9 @@ type TypeExp
 -}
 type alias ObjectExp =
     List ( String, TypeExp )
+
+
+type alias ImportDeclaration =
+    { importClause : String
+    , moduleSpecifier : String
+    }
