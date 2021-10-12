@@ -7,7 +7,7 @@ import Morphir.IR.Value exposing (RawValue)
 type Relation
     = From Name
     | Where RawValue Relation
-    | Select RawValue Relation
+    | Select (List RawValue) Relation
     | Join JoinType RawValue Relation Relation
 
 
