@@ -5,6 +5,7 @@
   "scripts": {
     "clean": "gulp clean",
     "test": "gulp test",
+    "test-morphir-ir-typescript": "gulp testMorphirIRTypeScript",
     "insight-server-live": "cd cli && elm-live src/Morphir/Web/Insight.elm --start-page=./web/insight.html --dir=./web --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/insight.js",
     "dev-server-live": "cd cli && elm-live src/Morphir/Web/DevelopApp.elm --dir=web --pushstate --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/index.html",
     "try-morphir-live": "cd cli && elm-live src/Morphir/Web/TryMorphir.elm",
@@ -47,6 +48,7 @@
   },
   "homepage": "https://github.com/Morgan-Stanley/morphir-elm#readme",
   "devDependencies": {
+    "@types/mocha": "^9.0.0",
     "@vercel/ncc": "^0.24.1",
     "del-cli": "3.0.1",
     "elm": "^0.19.1-5",
@@ -54,10 +56,13 @@
     "elm-test": "^0.19.1-revision6",
     "execa": "^5.1.1",
     "gulp": "^4.0.2",
+    "gulp-mocha": "^8.0.0",
     "gulp-typescript": "^6.0.0-alpha.1",
     "isomorphic-git": "^1.8.1",
+    "mocha": "^9.1.3",
     "node-elm-compiler": "^5.0.5",
     "tmp": "^0.2.1",
+    "ts-node": "^10.3.0",
     "typescript": "^4.4.3"
   },
   "dependencies": {
