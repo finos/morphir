@@ -59,6 +59,38 @@ app.get('/insight', (req, res) => {
     });
 });
 
+
+app.get('/insight.html', (req, res) => {
+    var options = {
+        root: path.join(__dirname)
+    };
+    var fileName = 'web/insight.html';
+    res.sendFile(fileName, options, function (err) {
+        if (err) {
+            next(err);
+        } else {
+            console.log('Sent:', fileName);
+        }
+    });
+});
+
+
+app.get('/insight.js', (req, res) => {
+    var options = {
+        root: path.join(__dirname)
+    };
+    var fileName = 'web/insight.js';
+    res.sendFile(fileName, options, function (err) {
+        if (err) {
+            next(err);
+        } else {
+            console.log('Sent:', fileName);
+        }
+    });
+});
+
+
+
 app.get('/server/morphir-ir.json', (req, res) => {
     var options = {
         root: path.join(__dirname)
@@ -72,6 +104,24 @@ app.get('/server/morphir-ir.json', (req, res) => {
         }
     });
 });
+
+
+
+app.get('/assets/2020_Morphir_Logo_Icon_WHT.svg', (req, res) => {
+    var options = {
+        root: path.join(__dirname)
+    };
+    var fileName = 'web/assets/2020_Morphir_Logo_Icon_WHT.svg';
+    res.sendFile(fileName, options, function (err) {
+        if (err) {
+            next(err);
+        } else {
+            console.log('Sent:', fileName);
+        }
+    });
+});
+
+
 
 app.post('/verify', function (request, response) {
     console.log("IR:");
