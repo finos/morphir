@@ -58,6 +58,10 @@ function makeDevServer() {
     return make('cli', 'src/Morphir/Web/DevelopApp.elm', 'web/index.html')
 }
 
+function makeDevServerAPI() {
+    return make('cli', 'src/Morphir/Web/DevelopApp.elm', 'web/insightapp.js')
+}
+
 function makeInsightAPI() {
     return make('cli', 'src/Morphir/Web/Insight.elm', 'web/insight.js')
 }
@@ -72,6 +76,7 @@ const build =
         makeCLI,
         makeDevCLI,
         makeDevServer,
+        makeDevServerAPI,
         makeInsightAPI,
         makeTryMorphir
     )

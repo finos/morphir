@@ -49,7 +49,7 @@ app.get('/insight', (req, res) => {
     var options = {
         root: path.join(__dirname)
     };
-    var fileName = 'web/index.html';
+    var fileName = 'web/insightapp.html';
     res.sendFile(fileName, options, function (err) {
         if (err) {
             next(err);
