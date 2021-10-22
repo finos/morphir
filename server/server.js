@@ -29,8 +29,12 @@ app.post('/insight', function (request, response) {
         root: path.join(__dirname)
     };
 
-    fs.writeFile('web/server/morphir-ir.json', ir, function (err) {
+    var irFile = 'web/morphir-ir.json';
+
+    fs.writeFile(irFile, ir, function (err) {
       if (err) return console.log(err);
+      else
+            console.log('Wrote:', irFile);
     });
 
     var fileName = 'web/index.html';
@@ -95,7 +99,7 @@ app.get('/server/morphir-ir.json', (req, res) => {
     var options = {
         root: path.join(__dirname)
     };
-    var fileName = 'web/server/morphir-ir.json';
+    var fileName = 'web/morphir-ir.json';
     res.sendFile(fileName, options, function (err) {
         if (err) {
             next(err);
