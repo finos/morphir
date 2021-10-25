@@ -35,7 +35,9 @@ type CodecMap = Map<string, CodecFunction>;
 //   * https://github.com/Microsoft/TypeScript/issues/3369
 //   * https://stackoverflow.com/a/53136686
 //
-export function buildCodecMap(entries: Array<[string, CodecFunction]>): CodecMap {
+export function buildCodecMap(
+  entries: Array<[string, CodecFunction]>
+): CodecMap {
   return new Map(entries);
 }
 
@@ -141,14 +143,16 @@ export function decodeDict<K, V>(
 
   const inputArray: Array<any> = input;
 
-  return new Map(inputArray.map((item: any) => {
-    if (!(item instanceof Array)) {
-      throw new DecodeError(`Expected array, got ${typeof item}`);
-    }
+  return new Map(
+    inputArray.map((item: any) => {
+      if (!(item instanceof Array)) {
+        throw new DecodeError(`Expected array, got ${typeof item}`);
+      }
 
-    const itemArray: Array<any> = item;
-    return [decodeKey(itemArray[0]), decodeValue(itemArray[1])];
-  }));
+      const itemArray: Array<any> = item;
+      return [decodeKey(itemArray[0]), decodeValue(itemArray[1])];
+    })
+  );
 }
 
 export function decodeList<T>(decodeElement: (any) => T, input: any): Array<T> {

@@ -470,6 +470,8 @@ generateDecoderFunction variables typeName access typeExp =
     in
     TS.FunctionDeclaration
         { name = prependDecodeToName typeName
+        , typeVariables = []
+        , returnType = Nothing
         , scope = TS.ModuleFunction
         , parameters = variableParams ++ [ inputParam ]
         , privacy = access |> mapPrivacy
@@ -525,6 +527,8 @@ generateConstructorDecoderFunction constructor =
     in
     TS.FunctionDeclaration
         { name = prependDecodeToName constructor.name
+        , typeVariables = []
+        , returnType = Nothing
         , scope = TS.ModuleFunction
         , privacy = constructor.privacy
         , parameters = decoderParams ++ [ inputParam ]
@@ -576,6 +580,8 @@ generateUnionDecoderFunction typeName privacy typeVariables constructors =
     in
     TS.FunctionDeclaration
         { name = prependDecodeToName typeName
+        , typeVariables = []
+        , returnType = Nothing
         , scope = TS.ModuleFunction
         , privacy = privacy
         , parameters = decoderParams ++ [ inputParam ]
@@ -716,6 +722,8 @@ generateEncoderFunction variables typeName access typeExp =
     in
     TS.FunctionDeclaration
         { name = prependEncodeToName typeName
+        , typeVariables = []
+        , returnType = Nothing
         , scope = TS.ModuleFunction
         , parameters = variableParams ++ [ valueParam ]
         , privacy = access |> mapPrivacy
@@ -767,6 +775,8 @@ generateConstructorEncoderFunction constructor =
     in
     TS.FunctionDeclaration
         { name = prependEncodeToName constructor.name
+        , typeVariables = []
+        , returnType = Nothing
         , scope = TS.ModuleFunction
         , privacy = constructor.privacy
         , parameters = encoderParams ++ [ valueParam ]
@@ -818,6 +828,8 @@ generateUnionEncoderFunction typeName privacy typeVariables constructors =
     in
     TS.FunctionDeclaration
         { name = prependEncodeToName typeName
+        , typeVariables = []
+        , returnType = Nothing
         , scope = TS.ModuleFunction
         , privacy = privacy
         , parameters = encoderParams ++ [ valueParam ]
@@ -838,6 +850,8 @@ generateConstructorConstructorFunction { name, privacy, args, typeVariables, typ
     in
     TS.FunctionDeclaration
         { name = "constructor"
+        , typeVariables = []
+        , returnType = Nothing
         , scope = TS.ClassMemberFunction
         , privacy = privacy
         , parameters = argParams
