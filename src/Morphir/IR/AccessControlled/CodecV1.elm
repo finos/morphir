@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.AccessControlled.Codec exposing (..)
+module Morphir.IR.AccessControlled.CodecV1 exposing (..)
 
 {-| Encode AccessControlled to JSON.
 -}
@@ -30,13 +30,13 @@ encodeAccessControlled encodeValue ac =
     case ac.access of
         Public ->
             Encode.list identity
-                [ Encode.string "Public"
+                [ Encode.string "public"
                 , encodeValue ac.value
                 ]
 
         Private ->
             Encode.list identity
-                [ Encode.string "Private"
+                [ Encode.string "private"
                 , encodeValue ac.value
                 ]
 
@@ -49,11 +49,11 @@ decodeAccessControlled decodeValue =
         |> Decode.andThen
             (\tag ->
                 case tag of
-                    "Public" ->
+                    "public" ->
                         Decode.map (AccessControlled Public)
                             (Decode.index 1 decodeValue)
 
-                    "Private" ->
+                    "private" ->
                         Decode.map (AccessControlled Private)
                             (Decode.index 1 decodeValue)
 

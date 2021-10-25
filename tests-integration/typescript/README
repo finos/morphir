@@ -1,0 +1,4 @@
+These tests manually exercise the TypeScript code generated for the reference model.
+
+After running `npm run build` and `npm run test` in the toplevel of the repo,
+you can compile these testcases with TypeScript using `npx tsc`.

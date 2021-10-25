@@ -6,7 +6,7 @@ import Json.Encode as Encode
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.FQName.Codec as FQName exposing (decodeFQName)
+import Morphir.IR.FQName.CodecV1 as FQName exposing (decodeFQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Type.DataCodec as DataCodec
