@@ -10,6 +10,7 @@
         "SDK.Tuple",
         "SDK.Result",
         "SDK.String",
+        "SDK.Dict",
         "Insight.UseCase1",
         "Insight.UseCase2",
         "Presentations.UKFintechMeetup",
