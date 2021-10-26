@@ -3,7 +3,7 @@ module Morphir.TypeScript.PrettyPrinter exposing (mapCompilationUnit, mapTypeDef
 {-| This module contains a pretty-printer that takes a TypeScript AST as an input and returns a formatted text
 representation.
 
-@docs Options, mapCompilationUnit, mapTypeDef, mapTypeExp
+@docs mapCompilationUnit, mapTypeDef, mapTypeExp
 
 -}
 
@@ -13,9 +13,17 @@ import Morphir.TypeScript.AST exposing (CompilationUnit, Expression(..), Functio
 import Morphir.TypeScript.PrettyPrinter.Expressions exposing (..)
 
 
+{-| Indent used in pretty printer. Note that we post-process the output with
+Prettier (<https://prettier.io/>) so changing this value won't affect the
+generated output.
+-}
+defaultIndent =
+    2
+
+
 {-| -}
-mapCompilationUnit : Options -> CompilationUnit -> Doc
-mapCompilationUnit opt cu =
+mapCompilationUnit : CompilationUnit -> Doc
+mapCompilationUnit cu =
     case cu of
         { dirPath, imports, typeDefs } ->
             concat
@@ -26,7 +34,7 @@ mapCompilationUnit opt cu =
                     |> String.join newLine
                 , newLine ++ newLine
                 , typeDefs
-                    |> List.map (mapTypeDef opt)
+                    |> List.map mapTypeDef
                     |> List.map (\mappedTypeDef -> mappedTypeDef ++ newLine ++ newLine)
                     |> String.join newLine
                 ]
@@ -54,8 +62,8 @@ exportIfPublic privacy =
 
 {-| Map a type definition to text.
 -}
-mapTypeDef : Options -> TypeDef -> Doc
-mapTypeDef opt typeDef =
+mapTypeDef : TypeDef -> Doc
+mapTypeDef typeDef =
     case typeDef of
         Namespace { name, privacy, content } ->
             concat
@@ -64,9 +72,9 @@ mapTypeDef opt typeDef =
                 , name
                 , " {" ++ newLine
                 , content
-                    |> List.map (mapTypeDef opt)
+                    |> List.map mapTypeDef
                     |> List.map (\mappedTypeDef -> mappedTypeDef ++ newLine)
-                    |> indentLines opt.indentDepth
+                    |> indentLines defaultIndent
                 , newLine ++ "}"
                 ]
 
@@ -85,15 +93,15 @@ mapTypeDef opt typeDef =
                 , privacy |> exportIfPublic
                 , "type "
                 , name
-                , mapGenericVariables opt variables
+                , mapGenericVariables variables
                 , " = "
-                , mapTypeExp opt typeExpression
+                , mapTypeExp typeExpression
                 , newLine
                 , newLine
-                , mapMaybeStatement opt decoder
+                , mapMaybeStatement decoder
                 , newLine
                 , newLine
-                , mapMaybeStatement opt encoder
+                , mapMaybeStatement encoder
                 ]
 
         VariantClass { name, privacy, variables, body, constructor, decoder, encoder } ->
@@ -104,28 +112,28 @@ mapTypeDef opt typeDef =
                         [ privacy |> exportIfPublic
                         , "class "
                         , name
-                        , mapGenericVariables opt variables
+                        , mapGenericVariables variables
                         , " {"
                         ]
 
                 mainbody : List String
                 mainbody =
-                    [ body |> List.map (mapStatement opt) >> String.join newLine
+                    [ body |> List.map mapStatement >> String.join newLine
                     , newLine
-                    , mapMaybeStatement opt constructor
+                    , mapMaybeStatement constructor
                     ]
             in
             concat
                 [ preface
                 , newLine
-                , mainbody |> indentLines opt.indentDepth
+                , mainbody |> indentLines defaultIndent
                 , "}"
                 , newLine
                 , newLine
-                , mapMaybeStatement opt decoder
+                , mapMaybeStatement decoder
                 , newLine
                 , newLine
-                , mapMaybeStatement opt encoder
+                , mapMaybeStatement encoder
                 , newLine
                 ]
 
@@ -203,18 +211,18 @@ mapExpression expression =
                 ]
 
 
-mapMaybeStatement : Options -> Maybe Statement -> String
-mapMaybeStatement opt maybeStatement =
+mapMaybeStatement : Maybe Statement -> String
+mapMaybeStatement maybeStatement =
     case maybeStatement of
         Just statement ->
-            mapStatement opt statement
+            mapStatement statement
 
         Nothing ->
             ""
 
 
-mapStatement : Options -> Statement -> String
-mapStatement opt statement =
+mapStatement : Statement -> String
+mapStatement statement =
     case statement of
         FunctionDeclaration { name, scope, parameters, body, privacy } ->
             let
@@ -239,10 +247,10 @@ mapStatement opt statement =
                 [ prefaceKeywords
                 , name
                 , "("
-                , String.join ", " (parameters |> List.map (mapParameter opt))
+                , String.join ", " (parameters |> List.map mapParameter)
                 , ") {"
                 , newLine
-                , body |> List.map (mapStatement opt) |> indentLines opt.indentDepth
+                , body |> List.map mapStatement |> indentLines defaultIndent
                 , newLine
                 , "}"
                 ]
@@ -254,7 +262,7 @@ mapStatement opt statement =
             concat
                 [ "let "
                 , mapExpression lhsExpression
-                , mapMaybeAnnotation opt maybeAnnotation
+                , mapMaybeAnnotation maybeAnnotation
                 , " = "
                 , mapExpression rhsExpression
                 , ";"
@@ -263,7 +271,7 @@ mapStatement opt statement =
         AssignmentStatement lhsExpression maybeAnnotation rhsExpression ->
             concat
                 [ mapExpression lhsExpression
-                , mapMaybeAnnotation opt maybeAnnotation
+                , mapMaybeAnnotation maybeAnnotation
                 , " = "
                 , mapExpression rhsExpression
                 , ";"
@@ -273,21 +281,21 @@ mapStatement opt statement =
             concat [ mapExpression expression, ";" ]
 
 
-mapParameter : Options -> Parameter -> String
-mapParameter opt { modifiers, name, typeAnnotation } =
+mapParameter : Parameter -> String
+mapParameter { modifiers, name, typeAnnotation } =
     concat
         [ modifiers |> String.join " "
         , " "
         , name
-        , mapMaybeAnnotation opt typeAnnotation
+        , mapMaybeAnnotation typeAnnotation
         ]
 
 
-mapMaybeAnnotation : Options -> Maybe TypeExp -> String
-mapMaybeAnnotation opt maybeTypeExp =
+mapMaybeAnnotation : Maybe TypeExp -> String
+mapMaybeAnnotation maybeTypeExp =
     case maybeTypeExp of
         Nothing ->
             ""
 
         Just typeExp ->
-            ": " ++ mapTypeExp opt typeExp
+            ": " ++ mapTypeExp typeExp

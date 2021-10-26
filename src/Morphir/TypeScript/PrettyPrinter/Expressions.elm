@@ -1,4 +1,4 @@
-module Morphir.TypeScript.PrettyPrinter.Expressions exposing (Options, mapField, mapGenericVariables, mapObjectExp, mapTypeExp, namespaceNameFromPackageAndModule)
+module Morphir.TypeScript.PrettyPrinter.Expressions exposing (mapField, mapGenericVariables, mapObjectExp, mapTypeExp, namespaceNameFromPackageAndModule)
 
 import Morphir.File.SourceCode exposing (Doc, concat, indentLines, newLine)
 import Morphir.IR.Name as Name
@@ -6,15 +6,12 @@ import Morphir.IR.Path exposing (Path)
 import Morphir.TypeScript.AST exposing (ObjectExp, Privacy(..), TypeDef(..), TypeExp(..), namespaceNameFromPackageAndModule)
 
 
-{-| Formatting options.
--}
-type alias Options =
-    { indentDepth : Int
-    }
+defaultIndent =
+    2
 
 
-mapGenericVariables : Options -> List TypeExp -> String
-mapGenericVariables opt variables =
+mapGenericVariables : List TypeExp -> String
+mapGenericVariables variables =
     case List.length variables of
         0 ->
             ""
@@ -22,28 +19,28 @@ mapGenericVariables opt variables =
         _ ->
             concat
                 [ "<"
-                , String.join ", " (variables |> List.map (mapTypeExp opt))
+                , String.join ", " (variables |> List.map mapTypeExp)
                 , ">"
                 ]
 
 
 {-| Map a field to text (from an object or interface)
 -}
-mapField : Options -> ( String, TypeExp ) -> Doc
-mapField opt ( fieldName, fieldType ) =
-    concat [ fieldName, ": ", mapTypeExp opt fieldType, ";" ]
+mapField : ( String, TypeExp ) -> Doc
+mapField ( fieldName, fieldType ) =
+    concat [ fieldName, ": ", mapTypeExp fieldType, ";" ]
 
 
 {-| Map an object expression or interface definiton to text
 -}
-mapObjectExp : Options -> ObjectExp -> Doc
-mapObjectExp opt objectExp =
+mapObjectExp : ObjectExp -> Doc
+mapObjectExp objectExp =
     concat
         [ "{"
         , newLine
         , objectExp
-            |> List.map (mapField opt)
-            |> indentLines opt.indentDepth
+            |> List.map mapField
+            |> indentLines defaultIndent
         , newLine
         , "}"
         ]
@@ -51,8 +48,8 @@ mapObjectExp opt objectExp =
 
 {-| Map a type expression to text.
 -}
-mapTypeExp : Options -> TypeExp -> Doc
-mapTypeExp opt typeExp =
+mapTypeExp : TypeExp -> Doc
+mapTypeExp typeExp =
     case typeExp of
         Any ->
             "any"
@@ -61,7 +58,7 @@ mapTypeExp opt typeExp =
             "boolean"
 
         List listType ->
-            "Array<" ++ mapTypeExp opt listType ++ ">"
+            "Array<" ++ mapTypeExp listType ++ ">"
 
         LiteralString stringval ->
             "\"" ++ stringval ++ "\""
@@ -70,9 +67,9 @@ mapTypeExp opt typeExp =
             concat
                 [ "Map"
                 , "<"
-                , mapTypeExp opt keyType
+                , mapTypeExp keyType
                 , ", "
-                , mapTypeExp opt valueType
+                , mapTypeExp valueType
                 , ">"
                 ]
 
@@ -80,7 +77,7 @@ mapTypeExp opt typeExp =
             "number"
 
         Object fieldList ->
-            mapObjectExp opt fieldList
+            mapObjectExp fieldList
 
         String ->
             "string"
@@ -89,7 +86,7 @@ mapTypeExp opt typeExp =
             concat
                 [ "["
                 , tupleTypesList
-                    |> List.map (mapTypeExp opt)
+                    |> List.map mapTypeExp
                     |> String.join ", "
                 , "]"
                 ]
@@ -113,11 +110,11 @@ mapTypeExp opt typeExp =
             in
             concat
                 [ processed_name
-                , mapGenericVariables opt variables
+                , mapGenericVariables variables
                 ]
 
         Union types ->
-            types |> List.map (mapTypeExp opt) |> String.join " | "
+            types |> List.map mapTypeExp |> String.join " | "
 
         Variable name ->
             name
