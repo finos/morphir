@@ -215,34 +215,6 @@ export function encodeFloat(value: number): number {
   return value;
 }
 
-export function encodeCustomType(encoderMap: CodecMap, value: any): any {
-  if (encoderMap.has(value["kind"])) {
-    const encoderFn: any = encoderMap.get(value["kind"]);
-    return encoderFn(value);
-  } else {
-    throw new DecodeError(
-      `Didn't find encoder for type variant: ${value["kind"]}`
-    );
-  }
-}
-
-export function encodeCustomTypeVariant(
-  argNames: Array<string>,
-  argEncoders: CodecList,
-  value: object
-): Array<any> {
-  if (argNames.length == 0) {
-    return value["kind"];
-  } else {
-    var result = [value["kind"]];
-    for (var i = 0; i < argNames.length; i++) {
-      const name = argNames[i];
-      result.push(argEncoders[i](value[name]));
-    }
-    return result;
-  }
-}
-
 export function encodeDict<K, V>(
   encodeKey: (any) => K,
   encodeValue: (any) => V,
