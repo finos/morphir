@@ -83,55 +83,6 @@ export function decodeFloat(input: any): number {
   return input;
 }
 
-export function decodeCustomType(decoderMap: CodecMap, input: any): object {
-  if (typeof input == "string") input = [input];
-  if (!(input instanceof Array)) {
-    throw new DecodeError(`Expected Array, got ${typeof input}`);
-  }
-  if (!(typeof input[0] == "string")) {
-    throw new DecodeError(`Expected String, got ${typeof input}`);
-  }
-  if (!decoderMap.has(input[0])) {
-    let variantNames = Array.from(decoderMap.keys());
-    let variantNameString = variantNames.join(", ");
-    throw new DecodeError(
-      `Expected one of "${variantNameString}", got ${input[0]}`
-    );
-  }
-  return decoderMap.get(input[0])(input);
-}
-
-export function decodeCustomTypeVariant(
-  kind: string,
-  argNames: Array<string>,
-  argDecoders: CodecList,
-  input: any
-): object {
-  if (typeof input == "string") input = [input];
-
-  if (input[0] != kind) {
-    throw new DecodeError(`Expected kind ${kind}, got ${input[0]}`);
-  }
-
-  const argCount = input.length - 1;
-  if (argCount != argDecoders.length) {
-    throw new DecodeError(
-      `Expected ${argDecoders.length} args for custom type "${kind}", got ${argCount}`
-    );
-  }
-
-  var result = {
-    kind: kind,
-  };
-
-  for (var i = 0; i < argDecoders.length; i++) {
-    var paramName = argNames[i];
-    result[paramName] = argDecoders[i](input[i + 1]);
-  }
-
-  return result;
-}
-
 export function decodeDict<K, V>(
   decodeKey: (any) => K,
   decodeValue: (any) => V,
@@ -164,7 +115,10 @@ export function decodeList<T>(decodeElement: (any) => T, input: any): Array<T> {
   return inputArray.map(decodeElement);
 }
 
-export function decodeRecord(fieldDecoders: CodecMap, input: any): object {
+export function decodeRecord<recordType>(
+  fieldDecoders: CodecMap,
+  input: any
+): recordType {
   if (!(input instanceof Object)) {
     throw new DecodeError(`Expected Object, got ${typeof input}`);
   }
@@ -192,14 +146,26 @@ export function decodeRecord(fieldDecoders: CodecMap, input: any): object {
     }
     result[name] = decoder(inputObject[name]);
   });
-
+  // @ts-ignore
   return result;
+  // This function should only be called by the morphir-generated 'decoder' functions.
+  // When called by one of those functions, those functions are responsible for
+  // constructing the `fieldDecoders` Map correctly. If the `fieldDecoders` map is
+  // constructed properly, then the function output will be of the correct type, and
+  // results should be type-safe.
+
+  // However, if this function were called with the wrong inputs, then it may not return
+  // the expected type. For this reason, the compiler rightly raises an error here.
+
+  // Hopefully in future this approach to decoders can be changed to remove the error.
+  // For now, it is necesary to override the error with @ts-ignore, and trust that the
+  // function will only be called as intended.
 }
 
-export function decodeTuple(
+export function decodeTuple<tupleType>(
   elementDecoders: CodecList,
   input: any
-): Array<any> {
+): tupleType {
   if (!(input instanceof Array)) {
     throw new DecodeError(`Expected Array, got ${typeof input}`);
   }
@@ -209,7 +175,20 @@ export function decodeTuple(
   for (var i = 0; i < inputArray.length; i++) {
     result.push(elementDecoders[i](inputArray[i]));
   }
+  // @ts-ignore
   return result;
+  // This function should only be called by the morphir-generated 'decoder' functions.
+  // When called by one of those functions, those functions are responsible for
+  // constructing the `elementDecoders` list correctly. If the `elementDecoders` list is
+  // constructed properly, then the function output will be of the correct type, and
+  // results should be type-safe.
+
+  // However, if this function were called with the wrong inputs, then it may not return
+  // the expected type. For this reason, the compiler rightly raises an error here.
+
+  // Hopefully in future this approach to decoders can be changed to remove the error.
+  // For now, it is necesary to override the error with @ts-ignore, and trust that the
+  // function will only be called as intended.
 }
 
 export function encodeUnit(value: []): any {
@@ -295,4 +274,49 @@ export function encodeTuple(
     result.push(elementEncoders[i](value[i]));
   }
   return result;
+}
+
+export function preprocessCustomTypeVariant(
+  kindString: String,
+  numArgs: number,
+  input: any
+): void {
+  if (typeof input == "string") input = [input];
+  if (!(input instanceof Array)) {
+    throw new DecodeError(`Expected Array, got ${typeof input}`);
+  }
+  if (!(input.length == numArgs + 1)) {
+    throw new DecodeError(
+      `Expected Array of length ${numArgs + 1}, got ${input.length}`
+    );
+  }
+  if (typeof input[0] != "string") {
+    throw new DecodeError(
+      `Expected first argument to be ${kindString}, got ${input[0]}`
+    );
+  }
+  if (input[0] != kindString) {
+    throw new DecodeError(`Expected kind ${kindString}, got ${input[0]}`);
+  }
+}
+
+export function parseKindFromCustomTypeInput(input: any): string {
+  if (typeof input == "string") input = [input];
+  if (!(input instanceof Array)) {
+    throw new DecodeError(`Expected Array, got ${typeof input}`);
+  }
+  if (!(typeof input[0] == "string")) {
+    throw new DecodeError(`Expected String, got ${typeof input}`);
+  }
+  return input[0];
+}
+
+export function raiseDecodeErrorFromCustomType(
+  customTypeName: string,
+  kind: string
+): void {
+  throw new DecodeError(
+    `Error while attempting to decode an instance of ${customTypeName}.` +
+      ` "${kind}" is not a valid 'kind' field for ${customTypeName}.`
+  );
 }
