@@ -2,7 +2,35 @@
 
 The purpose of this document is to make it easier for new contributors to get up-to-speed on the project.
 
-## Prerequisites
+## Project Setup
+
+### JavaScript Tooling
+
+The project uses Node.js and NPM as the runtime and package manager. You can download them from 
+[this link](https://nodejs.org/en/download/).
+
+We use [Gulp](https://gulpjs.com/) as our build tool. You can use NPM to install it:
+
+```
+npm install -g gulp
+```
+
+### Elm Tooling
+
+The easiest way to install the Elm tooling is using NPM. Here's a list of Elm tools we use:
+
+- `npm install -g elm`
+- `npm install -g elm-test`
+- `npm install -g elm-format`
+- `npm install -g elm-live` 
+
+### IDE
+
+Most contributors are using [IntelliJ](https://www.jetbrains.com/idea/download) with the 
+[Elm plugin](https://plugins.jetbrains.com/plugin/10268-elm). [VS Code](https://code.visualstudio.com/download) with the 
+[Elm plugin](https://marketplace.visualstudio.com/items?itemName=Elmtooling.elm-ls-vscode) is another popular choice.
+
+## Learning Material
 
 In order to contribute to this project you need to be familiar with Elm and understand some language processing / compiler concepts that are core to Morphir. 
 We collected a series of learning materials for you to make it easier to fill any knowledge gaps. Feel free to skip any of these if you feel like you are an expert. 
@@ -24,6 +52,3 @@ If you have any doubts though it's better to glance through them. We included th
     - [Deeper dive](https://www.youtube.com/watch?v=VKM1eLoN-gI) (12 mins)
 
 
-## Project Setup
-
-TODO
