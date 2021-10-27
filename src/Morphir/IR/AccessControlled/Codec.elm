@@ -25,38 +25,44 @@ import Json.Encode as Encode
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 
 
-encodeAccessControlled : (a -> Encode.Value) -> AccessControlled a -> Encode.Value
-encodeAccessControlled encodeValue ac =
-    case ac.access of
+encodeAccess : Access -> Encode.Value
+encodeAccess access =
+    case access of
         Public ->
-            Encode.list identity
-                [ Encode.string "Public"
-                , encodeValue ac.value
-                ]
+            Encode.string "Public"
 
         Private ->
-            Encode.list identity
-                [ Encode.string "Private"
-                , encodeValue ac.value
-                ]
+            Encode.string "Private"
+
+
+encodeAccessControlled : (a -> Encode.Value) -> AccessControlled a -> Encode.Value
+encodeAccessControlled encodeValue ac =
+    Encode.object
+        [ ( "access" , encodeAccess ac.access )
+        , ( "value" , encodeValue ac.value )
+        ]
+
+
+decodeAccess : Decode.Decoder String -> Decode.Decoder Access
+decodeAccess =
+    Decode.andThen
+        (\str ->
+            case str of
+                "Public" ->
+                    Decode.succeed Public
+
+                "Private" ->
+                    Decode.succeed Private
+
+                other ->
+                    Decode.fail <| "Unknown access controlled type: " ++ other
+        )
 
 
 {-| Decode AccessControlled from JSON.
 -}
 decodeAccessControlled : Decode.Decoder a -> Decode.Decoder (AccessControlled a)
 decodeAccessControlled decodeValue =
-    Decode.index 0 Decode.string
-        |> Decode.andThen
-            (\tag ->
-                case tag of
-                    "Public" ->
-                        Decode.map (AccessControlled Public)
-                            (Decode.index 1 decodeValue)
-
-                    "Private" ->
-                        Decode.map (AccessControlled Private)
-                            (Decode.index 1 decodeValue)
-
-                    other ->
-                        Decode.fail <| "Unknown access controlled type: " ++ other
-            )
+    Decode.map2 AccessControlled
+        (Decode.field "access" Decode.string |> decodeAccess)
+        (Decode.field "value" decodeValue)
