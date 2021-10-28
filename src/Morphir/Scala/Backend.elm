@@ -18,6 +18,7 @@
 module Morphir.Scala.Backend exposing
     ( mapDistribution, mapFunctionBody, mapType, mapTypeMember
     , Options
+    , mapValue
     )
 
 {-| This module encapsulates the Scala backend. It takes the Morphir IR as the input and returns an in-memory
@@ -487,7 +488,7 @@ mapType tpe =
 -}
 mapFunctionBody : Distribution -> Value.Definition ta (Type ()) -> Scala.Value
 mapFunctionBody distribution valueDef =
-    mapValue distribution
+    mapValue
         (valueDef.inputTypes
             |> List.map (\( name, _, _ ) -> name)
             |> Set.fromList
@@ -495,8 +496,10 @@ mapFunctionBody distribution valueDef =
         valueDef.body
 
 
-mapValue : Distribution -> Set Name -> Value ta (Type ()) -> Scala.Value
-mapValue distribution inScopeVars value =
+{-| Generate Scala for a value.
+-}
+mapValue : Set Name -> Value ta (Type ()) -> Scala.Value
+mapValue inScopeVars value =
     case value of
         Literal tpe literal ->
             let
@@ -517,16 +520,7 @@ mapValue distribution inScopeVars value =
                     Scala.Literal (Scala.StringLit v)
 
                 WholeNumberLiteral v ->
-                    case tpe of
-                        Type.Reference () fQName [] ->
-                            if (distribution |> Distribution.lookupBaseTypeName fQName) == Just (fqn "Morphir.SDK" "Basics" "Float") then
-                                wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.IntegerLit v)
-
-                            else
-                                wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
-
-                        _ ->
-                            wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
+                    wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
 
                 FloatLiteral v ->
                     wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
