@@ -3,9 +3,8 @@ module Morphir.Visual.ViewIfThenElseNEW exposing (view)
 import Dict exposing (Dict)
 import Element exposing (Element)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Value as Value exposing (TypedValue, Value)
-import Morphir.Visual.Components.DecisionTree as DecisionTree exposing (LeftOrRight(..))
-import Morphir.Visual.Components.MultiaryDecisionTree as MultiaryDecisionTree
+import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value, toRawValue)
+import Morphir.Visual.Components.MultiaryDecisionTree as MultiaryDecisionTree exposing (Node)
 
 import Morphir.Visual.Config as Config exposing (Config)
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
@@ -13,10 +12,10 @@ import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> Element msg
 view config viewValue value =
-     DecisionTree.layout config viewValue (valueToTree config True value)
+     MultiaryDecisionTree.layout config viewValue (valueToTree config True value)
 
 
-valueToTree : Config msg -> Bool -> VisualTypedValue -> DecisionTree.Node
+valueToTree : Config msg -> Bool -> VisualTypedValue -> MultiaryDecisionTree.Node
 valueToTree config doEval value =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
@@ -25,19 +24,24 @@ valueToTree config doEval value =
                     if doEval then
                         case config |> Config.evaluate (Value.toRawValue condition) of
                             Ok (Value.Literal _ (BoolLiteral v)) ->
-                                Just v
+                                Value.toRawValue v
 
                             _ ->
                                 Nothing
 
                     else
                         Nothing
+                --mybranches : List (Node)
+                --mybranches =
+                --   [ valueToTree config (result == Just True) thenBranch ]
+                --thenBranch = valueToTree config (result == Just True) thenBranch
+                --elseBranch = valueToTree config (result == Just False) elseBranch
+                --
             in
-            DecisionTree.Branch
-                { condition = condition
-                , conditionValue = result
-                , thenBranch = valueToTree config (result == Just True) thenBranch
-                , elseBranch = valueToTree config (result == Just False) elseBranch
+            MultiaryDecisionTree.Branch
+                { subject = condition
+                , subjectEvaluationResult = result
+                , branches = valueToTree config (result == Just True) thenBranch
                 }
 
         Value.LetDefinition _ defName defValue inValue ->
@@ -70,4 +74,4 @@ valueToTree config doEval value =
                 inValue
 
         _ ->
-            DecisionTree.Leaf value
+            MultiaryDecisionTree.Leaf value
