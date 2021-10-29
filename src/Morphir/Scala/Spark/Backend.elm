@@ -1,10 +1,11 @@
 module Morphir.Scala.Spark.Backend exposing (..)
 
-import Dict
+import Dict exposing (Dict)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (TypedValue, Value)
@@ -26,6 +27,7 @@ type Error
     = FunctionNotFound FQName
     | RelationalBackendError RelationalBackend.Error
     | UnknownArgumentType (Type ())
+    | LambdaExpected TypedValue
 
 
 mapDistribution : Options -> Distribution -> FileMap
@@ -42,6 +44,13 @@ mapDistribution opt distro =
                 |> List.map
                     (\( moduleName, accessControlledModuleDef ) ->
                         let
+                            packagePath : List String
+                            packagePath =
+                                packageName
+                                    ++ moduleName
+                                    |> List.map (Name.toCamelCase >> String.toLower)
+
+                            object : Scala.TypeDecl
                             object =
                                 Scala.Object
                                     { modifiers = []
@@ -66,15 +75,16 @@ mapDistribution opt distro =
                                     , body = Nothing
                                     }
 
+                            compilationUnit : Scala.CompilationUnit
                             compilationUnit =
-                                { dirPath = []
+                                { dirPath = packagePath
                                 , fileName = "SparkJobs.scala"
-                                , packageDecl = []
+                                , packageDecl = packagePath
                                 , imports = []
                                 , typeDecls = [ Scala.Documented Nothing (Scala.withoutAnnotation object) ]
                                 }
                         in
-                        ( ( [], "SparkJobs.scala" )
+                        ( ( packagePath, "SparkJobs.scala" )
                         , PrettyPrinter.mapCompilationUnit (PrettyPrinter.Options 2 80) compilationUnit
                         )
                     )
@@ -108,7 +118,7 @@ mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionN
             body
                 |> RelationalBackend.mapFunctionBody
                 |> Result.mapError RelationalBackendError
-                |> Result.map mapRelation
+                |> Result.andThen mapRelation
     in
     ir
         |> IR.lookupValueDefinition fullyQualifiedFunctionName
@@ -131,48 +141,88 @@ mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionN
             )
 
 
-mapRelation : Relation -> Scala.Value
+mapRelation : Relation -> Result Error Scala.Value
 mapRelation relation =
     case relation of
         From name ->
-            Scala.Variable (Name.toCamelCase name)
+            Ok (Scala.Variable (Name.toCamelCase name))
 
         Where predicate sourceRelation ->
-            mapRelation sourceRelation
-                |> Spark.filter
-                    (mapColumnExpression predicate)
+            case predicate of
+                Value.Lambda _ _ body ->
+                    mapRelation sourceRelation
+                        |> Result.map
+                            (Spark.filter
+                                (mapColumnExpression body)
+                            )
+
+                _ ->
+                    Err (LambdaExpected predicate)
 
         Select columns sourceRelation ->
             mapRelation sourceRelation
-                |> Spark.select
-                    (columns |> List.map mapColumnExpression)
-
-        Join joinType predicate leftRelation rightRelation ->
-            mapRelation leftRelation
-                |> Spark.join (mapRelation rightRelation)
-                    (mapColumnExpression predicate)
-                    (case joinType of
-                        Inner ->
-                            "inner"
-
-                        Outer Left ->
-                            "left"
-
-                        Outer Right ->
-                            "right"
-
-                        Outer Full ->
-                            "full"
+                |> Result.map
+                    (Spark.select
+                        (columns |> List.map mapColumnExpression)
                     )
 
+        Join joinType predicate leftRelation rightRelation ->
+            Result.map2
+                (\left right ->
+                    Spark.join right
+                        (mapColumnExpression predicate)
+                        (case joinType of
+                            Inner ->
+                                "inner"
 
-mapColumnExpression : Value ta (Type ()) -> Scala.Value
+                            Outer Left ->
+                                "left"
+
+                            Outer Right ->
+                                "right"
+
+                            Outer Full ->
+                                "full"
+                        )
+                        left
+                )
+                (mapRelation leftRelation)
+                (mapRelation rightRelation)
+
+
+mapColumnExpression : TypedValue -> Scala.Value
 mapColumnExpression value =
     let
         default v =
             ScalaBackend.mapValue Set.empty v
+
+        mapLiteral : Literal -> Scala.Lit
+        mapLiteral l =
+            case l of
+                BoolLiteral bool ->
+                    Scala.BooleanLit bool
+
+                CharLiteral char ->
+                    Scala.CharacterLit char
+
+                StringLiteral string ->
+                    Scala.StringLit string
+
+                WholeNumberLiteral int ->
+                    Scala.IntegerLit int
+
+                FloatLiteral float ->
+                    Scala.FloatLit float
     in
     case value of
+        Value.Literal _ lit ->
+            Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "lit")
+                [ Scala.ArgValue Nothing (Scala.Literal (mapLiteral lit)) ]
+
+        Value.Field _ _ name ->
+            Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "col")
+                [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase name))) ]
+
         Value.Apply _ (Value.Apply _ (Value.Reference _ fqn) arg1) arg2 ->
             case FQName.toString fqn of
                 "Morphir.SDK:Basics:equal" ->
