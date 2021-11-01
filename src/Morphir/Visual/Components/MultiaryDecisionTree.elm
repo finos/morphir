@@ -13,6 +13,7 @@ type Node
 type alias BranchNode =
     { subject : VisualTypedValue
     , subjectEvaluationResult : Maybe RawValue
+    , display : Bool
     , branches : List ( Pattern (), Node )
     }
 
@@ -24,6 +25,7 @@ exampleTree =
     Branch
         { subject = Value.Variable ( 0, Type.Unit () ) [ "foo" ]
         , subjectEvaluationResult = Nothing
+        , display = True
         , branches =
             [ ( Value.ConstructorPattern () ( [], [], [ "yes" ] ) [], Leaf (Value.Variable ( 0, Type.Unit () ) [ "foo" ]) )
             , ( Value.WildcardPattern (), Leaf (Value.Variable ( 0, Type.Unit () ) [ "foo" ]) )

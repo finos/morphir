@@ -22,6 +22,7 @@
             "elm-community/list-extra": "8.2.3",
             "elm-community/maybe-extra": "5.2.0",
             "elm-explorations/test": "1.2.2",
+            "lemol/ant-design-icons-elm-ui": "1.0.0",
             "mdgriffith/elm-ui": "1.1.8",
             "stil4m/elm-syntax": "7.2.0"
         },
@@ -34,6 +35,7 @@
             "elm/virtual-dom": "1.0.2",
             "elm-community/intdict": "3.0.0",
             "elm-community/json-extra": "4.2.0",
+            "lemol/ant-design-icons-elm": "2.0.0",
             "myrho/elm-round": "1.0.4",
             "rtfeldman/elm-hex": "1.0.0",
             "rtfeldman/elm-iso8601-date-strings": "1.1.3",
