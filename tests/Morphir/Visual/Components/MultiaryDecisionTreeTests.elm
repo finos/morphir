@@ -1,10 +1,12 @@
-module Morphir.Visual.Components.MultiaryDecisionTreeTest exposing (..)
+module Morphir.Visual.Components.MultiaryDecisionTreeTests exposing (..)
 
 import Expect
+import Morphir.IR.Value exposing (Pattern(..))
 import Morphir.Visual.Components.MultiaryDecisionTree as MultiaryDecisionTree exposing (..)
+
 import Test exposing (..)
 
------------------------------------ Example Test: -----------------------------------------
+----------------------------------- Example Tests: -----------------------------------------
 exampleTest1 : Test
 exampleTest1 =
     test "two plus two equals four"
@@ -18,7 +20,7 @@ exampleTest2  =
 
 exampleTest3 : Test
 exampleTest3 =
-    test "this should pass"
+    test "this should pass" <|
         \_ ->
             Expect.equal "success" "success"
 
@@ -36,12 +38,6 @@ exampleTest4 =
                 |> List.length
                 |> Expect.equal 2
 ------------------------------------------------------------------------------------------
--- "describe" is used for grouping
-
-
-
-
-
 
 
 

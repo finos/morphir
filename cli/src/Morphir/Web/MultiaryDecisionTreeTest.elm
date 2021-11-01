@@ -1,5 +1,9 @@
 module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
+import TreeView as TV
+import Tree as T
+import Regex
+import Mwc.Button
 import Dict
 import Element exposing (Element, column, el, layout, none, padding, paddingEach, row, spacing, text)
 import Morphir.IR.Distribution exposing (Distribution(..))
@@ -36,7 +40,6 @@ main =
 
 type Msg
     = NoMsg
-
 
 viewNode : Int -> Maybe (Element Msg) -> Node -> List (Element Msg)
 viewNode depth maybeLabel node =
