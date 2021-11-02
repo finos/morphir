@@ -4371,6 +4371,107 @@ function _Browser_load(url)
 }
 
 
+// CREATE
+
+var _Regex_never = /.^/;
+
+var _Regex_fromStringWith = F2(function(options, string)
+{
+	var flags = 'g';
+	if (options.multiline) { flags += 'm'; }
+	if (options.caseInsensitive) { flags += 'i'; }
+
+	try
+	{
+		return $elm$core$Maybe$Just(new RegExp(string, flags));
+	}
+	catch(error)
+	{
+		return $elm$core$Maybe$Nothing;
+	}
+});
+
+
+// USE
+
+var _Regex_contains = F2(function(re, string)
+{
+	return string.match(re) !== null;
+});
+
+
+var _Regex_findAtMost = F3(function(n, re, str)
+{
+	var out = [];
+	var number = 0;
+	var string = str;
+	var lastIndex = re.lastIndex;
+	var prevLastIndex = -1;
+	var result;
+	while (number++ < n && (result = re.exec(string)))
+	{
+		if (prevLastIndex == re.lastIndex) break;
+		var i = result.length - 1;
+		var subs = new Array(i);
+		while (i > 0)
+		{
+			var submatch = result[i];
+			subs[--i] = submatch
+				? $elm$core$Maybe$Just(submatch)
+				: $elm$core$Maybe$Nothing;
+		}
+		out.push(A4($elm$regex$Regex$Match, result[0], result.index, number, _List_fromArray(subs)));
+		prevLastIndex = re.lastIndex;
+	}
+	re.lastIndex = lastIndex;
+	return _List_fromArray(out);
+});
+
+
+var _Regex_replaceAtMost = F4(function(n, re, replacer, string)
+{
+	var count = 0;
+	function jsReplacer(match)
+	{
+		if (count++ >= n)
+		{
+			return match;
+		}
+		var i = arguments.length - 3;
+		var submatches = new Array(i);
+		while (i > 0)
+		{
+			var submatch = arguments[i];
+			submatches[--i] = submatch
+				? $elm$core$Maybe$Just(submatch)
+				: $elm$core$Maybe$Nothing;
+		}
+		return replacer(A4($elm$regex$Regex$Match, match, arguments[arguments.length - 2], count, _List_fromArray(submatches)));
+	}
+	return string.replace(re, jsReplacer);
+});
+
+var _Regex_splitAtMost = F3(function(n, re, str)
+{
+	var string = str;
+	var out = [];
+	var start = re.lastIndex;
+	var restoreLastIndex = re.lastIndex;
+	while (n--)
+	{
+		var result = re.exec(string);
+		if (!result) break;
+		out.push(string.slice(start, result.index));
+		start = re.lastIndex;
+	}
+	out.push(string.slice(start));
+	re.lastIndex = restoreLastIndex;
+	return _List_fromArray(out);
+});
+
+var _Regex_infinity = Infinity;
+
+
 
 var _Bitwise_and = F2(function(a, b)
 {
@@ -5200,21 +5301,168 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
+var $author$project$Morphir$IR$Literal$BoolLiteral = function (a) {
+	return {$: 'BoolLiteral', a: a};
+};
+var $author$project$Morphir$IR$Value$ConstructorPattern = F3(
+	function (a, b, c) {
+		return {$: 'ConstructorPattern', a: a, b: b, c: c};
+	});
+var $author$project$Morphir$IR$Value$LiteralPattern = F2(
+	function (a, b) {
+		return {$: 'LiteralPattern', a: a, b: b};
+	});
 var $dosarf$elm_tree_view$Tree$Node = function (a) {
 	return {$: 'Node', a: a};
 };
-var $author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData = F2(
-	function (uid, label) {
-		return {label: label, uid: uid};
+var $author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData = F3(
+	function (uid, subject, pattern) {
+		return {pattern: pattern, subject: subject, uid: uid};
 	});
+var $author$project$Morphir$IR$Value$WildcardPattern = function (a) {
+	return {$: 'WildcardPattern', a: a};
+};
 var $dosarf$elm_tree_view$TreeView$Configuration = F3(
 	function (uidThunk, labelThunk, cssClasses) {
 		return {cssClasses: cssClasses, labelThunk: labelThunk, uidThunk: uidThunk};
 	});
 var $dosarf$elm_tree_view$TreeView$defaultCssClasses = {bulletCollapsedCssClass: 'tree-view-bullet-collapsed', bulletExpandedCssClass: 'tree-view-bullet-expanded', bulletLeafCssClass: 'tree-view-bullet-leaf', indentationCssClass: 'tree-view-indentation', selectedTreeNodeCssClass: 'tree-view-selected-node', treeViewCssClass: 'tree-view'};
+var $elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
+		} else {
+			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
+		}
+	});
+var $elm$core$List$concat = function (lists) {
+	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
+};
+var $elm$core$String$cons = _String_cons;
+var $elm$core$String$fromChar = function (_char) {
+	return A2($elm$core$String$cons, _char, '');
+};
+var $elm$core$String$fromFloat = _String_fromNumber;
+var $elm$core$Char$toUpper = _Char_toUpper;
+var $author$project$Morphir$IR$Name$capitalize = function (string) {
+	var _v0 = $elm$core$String$uncons(string);
+	if (_v0.$ === 'Just') {
+		var _v1 = _v0.a;
+		var headChar = _v1.a;
+		var tailString = _v1.b;
+		return A2(
+			$elm$core$String$cons,
+			$elm$core$Char$toUpper(headChar),
+			tailString);
+	} else {
+		return string;
+	}
+};
+var $author$project$Morphir$IR$Name$toList = function (words) {
+	return words;
+};
+var $author$project$Morphir$IR$Name$toCamelCase = function (name) {
+	var _v0 = $author$project$Morphir$IR$Name$toList(name);
+	if (!_v0.b) {
+		return '';
+	} else {
+		var head = _v0.a;
+		var tail = _v0.b;
+		return A2(
+			$elm$core$String$join,
+			'',
+			A2(
+				$elm$core$List$cons,
+				head,
+				A2($elm$core$List$map, $author$project$Morphir$IR$Name$capitalize, tail)));
+	}
+};
+var $author$project$Morphir$IR$Name$toTitleCase = function (name) {
+	return A2(
+		$elm$core$String$join,
+		'',
+		A2(
+			$elm$core$List$map,
+			$author$project$Morphir$IR$Name$capitalize,
+			$author$project$Morphir$IR$Name$toList(name)));
+};
+var $author$project$Morphir$Visual$ViewPattern$patternAsText = function (pattern) {
+	switch (pattern.$) {
+		case 'WildcardPattern':
+			return '_';
+		case 'AsPattern':
+			if (pattern.b.$ === 'WildcardPattern') {
+				var name = pattern.c;
+				return $author$project$Morphir$IR$Name$toCamelCase(name);
+			} else {
+				var subject = pattern.b;
+				var name = pattern.c;
+				return $author$project$Morphir$Visual$ViewPattern$patternAsText(subject) + (' as ' + $author$project$Morphir$IR$Name$toCamelCase(name));
+			}
+		case 'TuplePattern':
+			var elems = pattern.b;
+			return '( ' + (A2(
+				$elm$core$String$join,
+				', ',
+				A2($elm$core$List$map, $author$project$Morphir$Visual$ViewPattern$patternAsText, elems)) + ' )');
+		case 'ConstructorPattern':
+			var _v1 = pattern.b;
+			var localName = _v1.c;
+			var args = pattern.c;
+			return A2(
+				$elm$core$String$join,
+				' ',
+				$elm$core$List$concat(
+					_List_fromArray(
+						[
+							_List_fromArray(
+							[
+								$author$project$Morphir$IR$Name$toTitleCase(localName)
+							]),
+							A2($elm$core$List$map, $author$project$Morphir$Visual$ViewPattern$patternAsText, args)
+						])));
+		case 'EmptyListPattern':
+			return '[]';
+		case 'HeadTailPattern':
+			var head = pattern.b;
+			var tail = pattern.c;
+			return $author$project$Morphir$Visual$ViewPattern$patternAsText(head) + (' :: ' + $author$project$Morphir$Visual$ViewPattern$patternAsText(tail));
+		case 'LiteralPattern':
+			var literal = pattern.b;
+			switch (literal.$) {
+				case 'BoolLiteral':
+					var bool = literal.a;
+					return bool ? 'Yes' : 'No';
+				case 'CharLiteral':
+					var _char = literal.a;
+					return $elm$core$String$fromChar(_char);
+				case 'StringLiteral':
+					var string = literal.a;
+					return string;
+				case 'WholeNumberLiteral':
+					var _int = literal.a;
+					return $elm$core$String$fromInt(_int);
+				default:
+					var _float = literal.a;
+					return $elm$core$String$fromFloat(_float);
+			}
+		default:
+			return '()';
+	}
+};
+var $author$project$Morphir$Web$MultiaryDecisionTreeTest$getLabel = function (maybeLabel) {
+	if (maybeLabel.$ === 'Just') {
+		var label = maybeLabel.a;
+		return $author$project$Morphir$Visual$ViewPattern$patternAsText(label) + '  ->  ';
+	} else {
+		return '';
+	}
+};
 var $author$project$Morphir$Web$MultiaryDecisionTreeTest$nodeLabel = function (n) {
 	var node = n.a;
-	return node.data.label;
+	return _Utils_ap(
+		$author$project$Morphir$Web$MultiaryDecisionTreeTest$getLabel(node.data.pattern),
+		node.data.subject);
 };
 var $dosarf$elm_tree_view$TreeView$NodeUid = function (a) {
 	return {$: 'NodeUid', a: a};
@@ -5224,6 +5472,84 @@ var $author$project$Morphir$Web$MultiaryDecisionTreeTest$nodeUid = function (n) 
 	return $dosarf$elm_tree_view$TreeView$NodeUid(node.data.uid);
 };
 var $author$project$Morphir$Web$MultiaryDecisionTreeTest$configuration = A3($dosarf$elm_tree_view$TreeView$Configuration, $author$project$Morphir$Web$MultiaryDecisionTreeTest$nodeUid, $author$project$Morphir$Web$MultiaryDecisionTreeTest$nodeLabel, $dosarf$elm_tree_view$TreeView$defaultCssClasses);
+var $elm$regex$Regex$Match = F4(
+	function (match, index, number, submatches) {
+		return {index: index, match: match, number: number, submatches: submatches};
+	});
+var $elm$regex$Regex$find = _Regex_findAtMost(_Regex_infinity);
+var $author$project$Morphir$IR$Name$fromList = function (words) {
+	return words;
+};
+var $elm$regex$Regex$fromStringWith = _Regex_fromStringWith;
+var $elm$regex$Regex$fromString = function (string) {
+	return A2(
+		$elm$regex$Regex$fromStringWith,
+		{caseInsensitive: false, multiline: false},
+		string);
+};
+var $elm$regex$Regex$never = _Regex_never;
+var $elm$core$String$toLower = _String_toLower;
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var $author$project$Morphir$IR$Name$fromString = function (string) {
+	var wordPattern = A2(
+		$elm$core$Maybe$withDefault,
+		$elm$regex$Regex$never,
+		$elm$regex$Regex$fromString('([a-zA-Z][a-z]*|[0-9]+)'));
+	return $author$project$Morphir$IR$Name$fromList(
+		A2(
+			$elm$core$List$map,
+			$elm$core$String$toLower,
+			A2(
+				$elm$core$List$map,
+				function ($) {
+					return $.match;
+				},
+				A2($elm$regex$Regex$find, wordPattern, string))));
+};
+var $author$project$Morphir$IR$Path$fromList = function (names) {
+	return names;
+};
+var $elm$regex$Regex$split = _Regex_splitAtMost(_Regex_infinity);
+var $author$project$Morphir$IR$Path$fromString = function (string) {
+	var separatorRegex = A2(
+		$elm$core$Maybe$withDefault,
+		$elm$regex$Regex$never,
+		$elm$regex$Regex$fromString('[^\\w\\s]+'));
+	return $author$project$Morphir$IR$Path$fromList(
+		A2(
+			$elm$core$List$map,
+			$author$project$Morphir$IR$Name$fromString,
+			A2($elm$regex$Regex$split, separatorRegex, string)));
+};
+var $author$project$Morphir$IR$FQName$fromString = F2(
+	function (fqNameString, splitter) {
+		var _v0 = A2($elm$core$String$split, splitter, fqNameString);
+		if (((_v0.b && _v0.b.b) && _v0.b.b.b) && (!_v0.b.b.b.b)) {
+			var moduleNameString = _v0.a;
+			var _v1 = _v0.b;
+			var packageNameString = _v1.a;
+			var _v2 = _v1.b;
+			var localNameString = _v2.a;
+			return _Utils_Tuple3(
+				$author$project$Morphir$IR$Path$fromString(moduleNameString),
+				$author$project$Morphir$IR$Path$fromString(packageNameString),
+				$author$project$Morphir$IR$Name$fromString(localNameString));
+		} else {
+			return _Utils_Tuple3(
+				_List_fromArray(
+					[_List_Nil]),
+				_List_Nil,
+				_List_Nil);
+		}
+	});
 var $dosarf$elm_tree_view$TreeView$Guts = F9(
 	function (uidThunk, labelThunk, itemThunk, cssClasses, forest, annotatedNodes, collapsedNodeUids, visibleAnnotatedNodes, selection) {
 		return {annotatedNodes: annotatedNodes, collapsedNodeUids: collapsedNodeUids, cssClasses: cssClasses, forest: forest, itemThunk: itemThunk, labelThunk: labelThunk, selection: selection, uidThunk: uidThunk, visibleAnnotatedNodes: visibleAnnotatedNodes};
@@ -5453,15 +5779,31 @@ var $author$project$Morphir$Web$MultiaryDecisionTreeTest$initialModel = function
 						$dosarf$elm_tree_view$Tree$Node(
 						{
 							children: _List_Nil,
-							data: A2($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '1.1', 'yes')
+							data: A3(
+								$author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData,
+								'1.1',
+								'Yes',
+								$elm$core$Maybe$Just(
+									A2(
+										$author$project$Morphir$IR$Value$LiteralPattern,
+										_Utils_Tuple0,
+										$author$project$Morphir$IR$Literal$BoolLiteral(true))))
 						}),
 						$dosarf$elm_tree_view$Tree$Node(
 						{
 							children: _List_Nil,
-							data: A2($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '1.2', 'no')
+							data: A3(
+								$author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData,
+								'1.2',
+								'No',
+								$elm$core$Maybe$Just(
+									A2(
+										$author$project$Morphir$IR$Value$LiteralPattern,
+										_Utils_Tuple0,
+										$author$project$Morphir$IR$Literal$BoolLiteral(false))))
 						})
 					]),
-				data: A2($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '1', 'isFoo')
+				data: A3($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '1', 'isFoo', $elm$core$Maybe$Nothing)
 			}),
 			$dosarf$elm_tree_view$Tree$Node(
 			{
@@ -5474,23 +5816,100 @@ var $author$project$Morphir$Web$MultiaryDecisionTreeTest$initialModel = function
 									$dosarf$elm_tree_view$Tree$Node(
 									{
 										children: _List_Nil,
-										data: A2($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '2.1.1', 'yesandyes')
+										data: A3(
+											$author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData,
+											'2.1.1',
+											'YesAndYes',
+											$elm$core$Maybe$Just(
+												A2(
+													$author$project$Morphir$IR$Value$LiteralPattern,
+													_Utils_Tuple0,
+													$author$project$Morphir$IR$Literal$BoolLiteral(true))))
 									}),
 									$dosarf$elm_tree_view$Tree$Node(
 									{
 										children: _List_Nil,
-										data: A2($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '2.1.2', 'yesandno')
+										data: A3(
+											$author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData,
+											'2.1.2',
+											'YesAndNo',
+											$elm$core$Maybe$Just(
+												A2(
+													$author$project$Morphir$IR$Value$LiteralPattern,
+													_Utils_Tuple0,
+													$author$project$Morphir$IR$Literal$BoolLiteral(true))))
 									})
 								]),
-							data: A2($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '2.1', 'isBar')
+							data: A3(
+								$author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData,
+								'2.1',
+								'isBar',
+								$elm$core$Maybe$Just(
+									A2(
+										$author$project$Morphir$IR$Value$LiteralPattern,
+										_Utils_Tuple0,
+										$author$project$Morphir$IR$Literal$BoolLiteral(true))))
 						}),
 						$dosarf$elm_tree_view$Tree$Node(
 						{
 							children: _List_Nil,
-							data: A2($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '2.2', 'No')
+							data: A3(
+								$author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData,
+								'2.2',
+								'No',
+								$elm$core$Maybe$Just(
+									A2(
+										$author$project$Morphir$IR$Value$LiteralPattern,
+										_Utils_Tuple0,
+										$author$project$Morphir$IR$Literal$BoolLiteral(true))))
 						})
 					]),
-				data: A2($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '2', 'isFoo')
+				data: A3($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '2', 'isFoo', $elm$core$Maybe$Nothing)
+			}),
+			$dosarf$elm_tree_view$Tree$Node(
+			{
+				children: _List_fromArray(
+					[
+						$dosarf$elm_tree_view$Tree$Node(
+						{
+							children: _List_Nil,
+							data: A3(
+								$author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData,
+								'3.1',
+								'foo',
+								$elm$core$Maybe$Just(
+									A3(
+										$author$project$Morphir$IR$Value$ConstructorPattern,
+										_Utils_Tuple0,
+										A2($author$project$Morphir$IR$FQName$fromString, 'My:Sample:EnumValue1', ':'),
+										_List_Nil)))
+						}),
+						$dosarf$elm_tree_view$Tree$Node(
+						{
+							children: _List_Nil,
+							data: A3(
+								$author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData,
+								'3.2',
+								'bar',
+								$elm$core$Maybe$Just(
+									A3(
+										$author$project$Morphir$IR$Value$ConstructorPattern,
+										_Utils_Tuple0,
+										A2($author$project$Morphir$IR$FQName$fromString, 'My:Sample:EnumValue2', ':'),
+										_List_Nil)))
+						}),
+						$dosarf$elm_tree_view$Tree$Node(
+						{
+							children: _List_Nil,
+							data: A3(
+								$author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData,
+								'3.3',
+								'baz',
+								$elm$core$Maybe$Just(
+									$author$project$Morphir$IR$Value$WildcardPattern(_Utils_Tuple0)))
+						})
+					]),
+				data: A3($author$project$Morphir$Web$MultiaryDecisionTreeTest$NodeData, '3', 'enum', $elm$core$Maybe$Nothing)
 			})
 		]);
 	return _Utils_Tuple2(
@@ -6338,14 +6757,6 @@ var $rtfeldman$elm_css$Css$Structure$compactHelp = F2(
 var $rtfeldman$elm_css$Css$Structure$Keyframes = function (a) {
 	return {$: 'Keyframes', a: a};
 };
-var $elm$core$List$append = F2(
-	function (xs, ys) {
-		if (!ys.b) {
-			return xs;
-		} else {
-			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
-		}
-	});
 var $rtfeldman$elm_css$Css$Structure$withKeyframeDeclarations = F2(
 	function (keyframesByName, compactedDeclarations) {
 		return A2(
@@ -6384,15 +6795,6 @@ var $elm$core$Maybe$map = F2(
 				f(value));
 		} else {
 			return $elm$core$Maybe$Nothing;
-		}
-	});
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
 		}
 	});
 var $rtfeldman$elm_css$Css$Structure$Output$charsetToString = function (charset) {
@@ -6704,9 +7106,6 @@ var $rtfeldman$elm_css$Css$Structure$Output$prettyPrint = function (_v0) {
 					'\n\n',
 					A2($elm$core$List$map, $rtfeldman$elm_css$Css$Structure$Output$prettyPrintDeclaration, declarations))
 				])));
-};
-var $elm$core$List$concat = function (lists) {
-	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
 };
 var $elm$core$List$concatMap = F2(
 	function (f, list) {
@@ -7097,7 +7496,6 @@ var $rtfeldman$elm_css$Css$Structure$concatMapLastStyleBlock = F2(
 			first,
 			A2($rtfeldman$elm_css$Css$Structure$concatMapLastStyleBlock, update, rest));
 	});
-var $elm$core$String$cons = _String_cons;
 var $rtfeldman$elm_css$ElmCssVendor$Murmur3$HashData = F4(
 	function (shift, seed, hash, charsProcessed) {
 		return {charsProcessed: charsProcessed, hash: hash, seed: seed, shift: shift};
@@ -8819,16 +9217,8 @@ var $author$project$Morphir$Web$MultiaryDecisionTreeTest$update = F2(
 				}),
 			$elm$core$Platform$Cmd$none);
 	});
-var $rtfeldman$elm_css$Css$Preprocess$AppendProperty = function (a) {
-	return {$: 'AppendProperty', a: a};
-};
-var $rtfeldman$elm_css$Css$property = F2(
-	function (key, value) {
-		return $rtfeldman$elm_css$Css$Preprocess$AppendProperty(key + (':' + value));
-	});
-var $rtfeldman$elm_css$Css$backgroundColor = function (c) {
-	return A2($rtfeldman$elm_css$Css$property, 'background-color', c.value);
-};
+var $rtfeldman$elm_css$Css$Structure$Compatible = {$: 'Compatible'};
+var $rtfeldman$elm_css$Css$auto = {alignItemsOrAuto: $rtfeldman$elm_css$Css$Structure$Compatible, cursor: $rtfeldman$elm_css$Css$Structure$Compatible, flexBasis: $rtfeldman$elm_css$Css$Structure$Compatible, intOrAuto: $rtfeldman$elm_css$Css$Structure$Compatible, justifyContentOrAuto: $rtfeldman$elm_css$Css$Structure$Compatible, lengthOrAuto: $rtfeldman$elm_css$Css$Structure$Compatible, lengthOrAutoOrCoverOrContain: $rtfeldman$elm_css$Css$Structure$Compatible, lengthOrNumberOrAutoOrNoneOrContent: $rtfeldman$elm_css$Css$Structure$Compatible, overflow: $rtfeldman$elm_css$Css$Structure$Compatible, pointerEvents: $rtfeldman$elm_css$Css$Structure$Compatible, tableLayout: $rtfeldman$elm_css$Css$Structure$Compatible, textRendering: $rtfeldman$elm_css$Css$Structure$Compatible, touchAction: $rtfeldman$elm_css$Css$Structure$Compatible, value: 'auto'};
 var $rtfeldman$elm_css$VirtualDom$Styled$Attribute = F3(
 	function (a, b, c) {
 		return {$: 'Attribute', a: a, b: b, c: c};
@@ -8894,29 +9284,6 @@ var $achutkiran$material_components_elm$Mwc$Button$Type = function (a) {
 	return {$: 'Type', a: a};
 };
 var $achutkiran$material_components_elm$Mwc$Button$raised = $achutkiran$material_components_elm$Mwc$Button$Type($achutkiran$material_components_elm$Mwc$Button$Raised);
-var $rtfeldman$elm_css$Css$Structure$Compatible = {$: 'Compatible'};
-var $rtfeldman$elm_css$Css$cssFunction = F2(
-	function (funcName, args) {
-		return funcName + ('(' + (A2($elm$core$String$join, ', ', args) + ')'));
-	});
-var $rtfeldman$elm_css$Css$rgb = F3(
-	function (r, g, b) {
-		return {
-			alpha: 1,
-			blue: b,
-			color: $rtfeldman$elm_css$Css$Structure$Compatible,
-			green: g,
-			red: r,
-			value: A2(
-				$rtfeldman$elm_css$Css$cssFunction,
-				'rgb',
-				A2(
-					$elm$core$List$map,
-					$elm$core$String$fromInt,
-					_List_fromArray(
-						[r, g, b])))
-		};
-	});
 var $achutkiran$material_components_elm$Mwc$Button$Normal = {$: 'Normal'};
 var $achutkiran$material_components_elm$Mwc$Button$defaultConfig = {dense: false, disabled: false, icon: '', label: '', onClick: $elm$core$Maybe$Nothing, otherAttr: _List_Nil, type_: $achutkiran$material_components_elm$Mwc$Button$Normal};
 var $achutkiran$material_components_elm$Mwc$Button$propToConfig = F2(
@@ -9073,17 +9440,7 @@ var $achutkiran$material_components_elm$Mwc$Button$view = function (properties) 
 };
 var $author$project$Morphir$Web$MultiaryDecisionTreeTest$expandAllCollapseAllButtons = A2(
 	$rtfeldman$elm_css$Html$Styled$div,
-	_List_fromArray(
-		[
-			$rtfeldman$elm_css$Html$Styled$Attributes$css(
-			_List_fromArray(
-				[
-					$rtfeldman$elm_css$Css$backgroundColor(
-					A3($rtfeldman$elm_css$Css$rgb, 128, 252, 252)),
-					$rtfeldman$elm_css$Css$backgroundColor(
-					A3($rtfeldman$elm_css$Css$rgb, 140, 128, 252))
-				]))
-		]),
+	_List_Nil,
 	_List_fromArray(
 		[
 			$achutkiran$material_components_elm$Mwc$Button$view(
@@ -9217,38 +9574,6 @@ var $rtfeldman$elm_css$VirtualDom$Styled$map = F2(
 		}
 	});
 var $rtfeldman$elm_css$Html$Styled$map = $rtfeldman$elm_css$VirtualDom$Styled$map;
-var $rtfeldman$elm_css$Css$prop1 = F2(
-	function (key, arg) {
-		return A2($rtfeldman$elm_css$Css$property, key, arg.value);
-	});
-var $rtfeldman$elm_css$Css$padding = $rtfeldman$elm_css$Css$prop1('padding');
-var $rtfeldman$elm_css$Css$PxUnits = {$: 'PxUnits'};
-var $elm$core$String$fromFloat = _String_fromNumber;
-var $rtfeldman$elm_css$Css$Internal$lengthConverter = F3(
-	function (units, unitLabel, numericValue) {
-		return {
-			absoluteLength: $rtfeldman$elm_css$Css$Structure$Compatible,
-			calc: $rtfeldman$elm_css$Css$Structure$Compatible,
-			flexBasis: $rtfeldman$elm_css$Css$Structure$Compatible,
-			fontSize: $rtfeldman$elm_css$Css$Structure$Compatible,
-			length: $rtfeldman$elm_css$Css$Structure$Compatible,
-			lengthOrAuto: $rtfeldman$elm_css$Css$Structure$Compatible,
-			lengthOrAutoOrCoverOrContain: $rtfeldman$elm_css$Css$Structure$Compatible,
-			lengthOrMinMaxDimension: $rtfeldman$elm_css$Css$Structure$Compatible,
-			lengthOrNone: $rtfeldman$elm_css$Css$Structure$Compatible,
-			lengthOrNoneOrMinMaxDimension: $rtfeldman$elm_css$Css$Structure$Compatible,
-			lengthOrNumber: $rtfeldman$elm_css$Css$Structure$Compatible,
-			lengthOrNumberOrAutoOrNoneOrContent: $rtfeldman$elm_css$Css$Structure$Compatible,
-			numericValue: numericValue,
-			textIndent: $rtfeldman$elm_css$Css$Structure$Compatible,
-			unitLabel: unitLabel,
-			units: units,
-			value: _Utils_ap(
-				$elm$core$String$fromFloat(numericValue),
-				unitLabel)
-		};
-	});
-var $rtfeldman$elm_css$Css$px = A2($rtfeldman$elm_css$Css$Internal$lengthConverter, $rtfeldman$elm_css$Css$PxUnits, 'px');
 var $achutkiran$material_components_elm$Mwc$TextField$Label = function (a) {
 	return {$: 'Label', a: a};
 };
@@ -9516,6 +9841,17 @@ var $achutkiran$material_components_elm$Mwc$TextField$view = function (propertie
 				$achutkiran$material_components_elm$Mwc$TextField$checkIcon(config)
 			]));
 };
+var $rtfeldman$elm_css$Css$Preprocess$AppendProperty = function (a) {
+	return {$: 'AppendProperty', a: a};
+};
+var $rtfeldman$elm_css$Css$property = F2(
+	function (key, value) {
+		return $rtfeldman$elm_css$Css$Preprocess$AppendProperty(key + (':' + value));
+	});
+var $rtfeldman$elm_css$Css$prop1 = F2(
+	function (key, arg) {
+		return A2($rtfeldman$elm_css$Css$property, key, arg.value);
+	});
 var $rtfeldman$elm_css$Css$width = $rtfeldman$elm_css$Css$prop1('width');
 var $author$project$Morphir$Web$MultiaryDecisionTreeTest$selectedNodeDetails = function (model) {
 	var selectedDetails = A2(
@@ -9524,7 +9860,7 @@ var $author$project$Morphir$Web$MultiaryDecisionTreeTest$selectedNodeDetails = f
 		A2(
 			$elm$core$Maybe$map,
 			function (nodeData) {
-				return nodeData.uid + (': ' + nodeData.label);
+				return nodeData.uid + (': ' + nodeData.subject);
 			},
 			model.selectedNode));
 	return A2(
@@ -9534,12 +9870,7 @@ var $author$project$Morphir$Web$MultiaryDecisionTreeTest$selectedNodeDetails = f
 				$rtfeldman$elm_css$Html$Styled$Attributes$css(
 				_List_fromArray(
 					[
-						$rtfeldman$elm_css$Css$width(
-						$rtfeldman$elm_css$Css$px(400)),
-						$rtfeldman$elm_css$Css$backgroundColor(
-						A3($rtfeldman$elm_css$Css$rgb, 140, 128, 252)),
-						$rtfeldman$elm_css$Css$padding(
-						$rtfeldman$elm_css$Css$px(10))
+						$rtfeldman$elm_css$Css$width($rtfeldman$elm_css$Css$auto)
 					]))
 			]),
 		_List_fromArray(
@@ -9832,10 +10163,7 @@ var $author$project$Morphir$Web$MultiaryDecisionTreeTest$view = function (model)
 				$rtfeldman$elm_css$Html$Styled$Attributes$css(
 				_List_fromArray(
 					[
-						$rtfeldman$elm_css$Css$backgroundColor(
-						A3($rtfeldman$elm_css$Css$rgb, 252, 128, 250)),
-						$rtfeldman$elm_css$Css$padding(
-						$rtfeldman$elm_css$Css$px(10))
+						$rtfeldman$elm_css$Css$width($rtfeldman$elm_css$Css$auto)
 					]))
 			]),
 		_List_fromArray(

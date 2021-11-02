@@ -1,10 +1,13 @@
 module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
 import Browser
+import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
+
 import Dict
 import Element exposing (Element, column, el, fill, layout, none, padding, paddingEach, px, row, shrink, spacing, table, text)
 import Html.Styled.Attributes exposing (css)
-import Html
+import Html exposing (a)
+
 import Html.Styled exposing (Html, div, fromUnstyled, map, toUnstyled)
 import Css exposing (auto, px, width)
 import Morphir.IR.Distribution exposing (Distribution(..))
@@ -24,24 +27,30 @@ import TreeView as TreeView
 import Mwc.Button
 import Mwc.TextField
 
-
+-- define data type for values we put into tree node
 type alias NodeData = {
     uid : String
-    , label : String }
+    , subject : String
+    , pattern : Maybe (Pattern())
+    }
 
+getLabel : Maybe (Pattern()) -> String
+getLabel maybeLabel =
+    case maybeLabel of
+        Just label -> ViewPattern.patternAsText(label) ++ "  ->  "
+        Nothing -> ""
+-- ViewPattern.patternAsText(node.data.pattern) ++ "->" ++ node.data.subject
+-- define a function to calculate the text representation of a node
 nodeLabel : Tree.Node NodeData -> String
 nodeLabel n =
     case n of
-        Tree.Node node -> node.data.label
+       Tree.Node node -> getLabel(node.data.pattern) ++ node.data.subject
 
+-- define another function to calculate the uid of a node
 nodeUid : Tree.Node NodeData -> TreeView.NodeUid String
 nodeUid n =
     case n of
         Tree.Node node -> TreeView.NodeUid node.data.uid
-
-configuration : TreeView.Configuration NodeData String
-configuration =
-    TreeView.Configuration nodeUid nodeLabel TreeView.defaultCssClasses
 
 initialModel : () -> (Model, Cmd Msg)
 initialModel () =
@@ -49,27 +58,46 @@ initialModel () =
         rootNodes =
             [ Tree.Node
                 { children =
-                    [ Tree.Node { children = [], data = NodeData "1.1" "yes"}
-                    , Tree.Node { children = [], data = NodeData "1.2" "no"} ],
-                    data = NodeData "1" "isFoo"
+                    [ Tree.Node { children = [], data = NodeData "1.1" "Yes" (Just (Value.LiteralPattern () (BoolLiteral True)))}
+                    , Tree.Node { children = [], data = NodeData "1.2" "No" (Just (Value.LiteralPattern () (BoolLiteral False)))} ],
+                    data = NodeData "1" "isFoo" Nothing
                 }
             , Tree.Node
                 { children =
                     [ Tree.Node
                     {
                     children = [ Tree.Node
-                                { children = [], data = NodeData "2.1.1" "yesandyes" },
+                                { children = [], data = NodeData "2.1.1" "YesAndYes"  (Just( Value.LiteralPattern () (BoolLiteral True))) },
                                 Tree.Node
-                                { children = [], data = NodeData "2.1.2" "yesandno"} ]
+                                { children = [], data = NodeData "2.1.2" "YesAndNo"  (Just( Value.LiteralPattern () (BoolLiteral True)))} ]
                     ,
-                    data = NodeData "2.1" "isBar"},
+                    data = NodeData "2.1" "isBar"  (Just( Value.LiteralPattern () (BoolLiteral True)))},
                      Tree.Node
                      {
                      children = [],
-                     data = NodeData "2.2" "No" }
+                     data = NodeData "2.2" "No"  (Just ( Value.LiteralPattern () (BoolLiteral True)))}
                      ]
 
-                , data = NodeData "2" "isFoo" }
+                , data = NodeData "2" "isFoo" Nothing
+                }
+              , Tree.Node
+                { children = [
+                Tree.Node {
+                    children = [],
+                    data = NodeData "3.1" "foo" (Just ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") []))
+                    },
+                Tree.Node {
+                    children = [],
+                    data = NodeData "3.2" "bar" (Just ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue2" ":") []))
+                    },
+                Tree.Node {
+                    children = [],
+                    data = NodeData "3.3" "baz" (Just ( Value.WildcardPattern ()))
+                    }
+                ],
+                data = NodeData "3" "enum" Nothing
+
+                }
             ]
     in
         ( { rootNodes = rootNodes
@@ -79,16 +107,24 @@ initialModel () =
         , Cmd.none
         )
 
+-- initialize the TreeView model
 type alias Model =
     { rootNodes : List (Tree.Node NodeData)
     , treeModel : TreeView.Model NodeData String Never ()
     , selectedNode : Maybe NodeData
     }
 
+--construct a configuration for your tree view
+configuration : TreeView.Configuration NodeData String
+configuration =
+    TreeView.Configuration nodeUid nodeLabel TreeView.defaultCssClasses
+
+-- otherwise interact with your tree view in the usual TEA manner
 type Msg =
   TreeViewMsg (TreeView.Msg String)
   | ExpandAll
   | CollapseAll
+
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update message model =
@@ -110,7 +146,7 @@ update message model =
 expandAllCollapseAllButtons : Html Msg
 expandAllCollapseAllButtons =
     div
-      [ css [Css.backgroundColor (Css.rgb 128 252 252), Css.backgroundColor (Css.rgb 140 128 252)]]
+      []
       [ Mwc.Button.view
           [ Mwc.Button.raised
           , Mwc.Button.onClick ExpandAll
@@ -127,28 +163,29 @@ selectedNodeDetails : Model -> Html Msg
 selectedNodeDetails model =
     let
         selectedDetails =
-            Maybe.map (\nodeData -> nodeData.uid ++ ": " ++ nodeData.label) model.selectedNode
+            Maybe.map (\nodeData -> nodeData.uid ++ ": " ++ nodeData.subject) model.selectedNode
                 |> Maybe.withDefault "(nothing selected)"
     in
         div
-            [ css [ width (Css.px 400), Css.backgroundColor (Css.rgb 140 128 252), Css.padding (Css.px 10) ] ]
+            [ css [ width (auto) ] ]
             [ Mwc.TextField.view
                 [ Mwc.TextField.readonly True
                 , Mwc.TextField.label selectedDetails
                 ]
             ]
 
+-- avilitiy to view tree
 view : Model -> Html Msg
 view model =
         div
-            [ css [ Css.backgroundColor (Css.rgb 252 128 250), Css.padding (Css.px 10) ]]
+            [ css [width (auto)]]
             [ expandAllCollapseAllButtons
             , selectedNodeDetails model
             , map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
             ]
 
 
-
+-- if (or when) you want the tree view to navigate up/down between visible nodes and expand/collapse nodes on arrow key presse
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.map TreeViewMsg (TreeView.subscriptions model.treeModel)
