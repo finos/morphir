@@ -37,7 +37,7 @@ type alias NodeData = {
 getLabel : Maybe (Pattern()) -> String
 getLabel maybeLabel =
     case maybeLabel of
-        Just label -> ViewPattern.patternAsText(label) ++ "  ->  "
+        Just label -> ViewPattern.patternAsText(label) ++ " - "
         Nothing -> ""
 -- ViewPattern.patternAsText(node.data.pattern) ++ "->" ++ node.data.subject
 -- define a function to calculate the text representation of a node
