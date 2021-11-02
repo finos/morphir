@@ -7,6 +7,7 @@
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {
+            "achutkiran/material-components-elm": "1.2.1",
             "cuducos/elm-format-number": "8.1.4",
             "dosarf/elm-tree-view": "3.0.0",
             "elm/browser": "1.0.2",
@@ -25,6 +26,7 @@
             "elm-explorations/test": "1.2.2",
             "lemol/ant-design-icons-elm-ui": "1.0.0",
             "mdgriffith/elm-ui": "1.1.8",
+            "rtfeldman/elm-css": "16.1.0",
             "stil4m/elm-syntax": "7.2.0"
         },
         "indirect": {

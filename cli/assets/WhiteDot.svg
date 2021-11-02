@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://web.resource.org/cc/"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://inkscape.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   sodipodi:docname="WhiteDot.svg"
+   sodipodi:docbase="/var/home/ilmari/Misc"
+   inkscape:version="0.41.1"
+   sodipodi:version="0.32"
+   id="svg2"
+   height="16.000100pt"
+   width="16.000000pt">
+  <defs
+     id="defs3" />
+  <sodipodi:namedview
+     inkscape:window-y="0"
+     inkscape:window-x="0"
+     inkscape:window-height="952"
+     inkscape:window-width="1272"
+     inkscape:current-layer="layer1"
+     inkscape:document-units="px"
+     inkscape:cy="9.1225567"
+     inkscape:cx="8.2639898"
+     inkscape:zoom="27.329677"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     borderopacity="1.0"
+     bordercolor="#666666"
+     pagecolor="#ffffff"
+     id="base" />
+  <metadata
+     id="metadata4">
+    <rdf:RDF
+       id="RDF5">
+      <cc:Work
+         id="Work6"
+         rdf:about="">
+        <dc:format
+           id="format7">image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage"
+           id="type9" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     id="layer1"
+     inkscape:groupmode="layer"
+     inkscape:label="Layer 1">
+    <path
+       transform="translate(1.151359,-1.125423)"
+       d="M 14.473641 11.125485 A 5.6250000 5.6250000 0 1 1  3.2236414,11.125485 A 5.6250000 5.6250000 0 1 1  14.473641 11.125485 z"
+       sodipodi:cy="11.125485"
+       sodipodi:cx="8.8486414"
+       id="path1291"
+       style="stroke-opacity:1.0000000;stroke-dashoffset:0.0000000;stroke-miterlimit:40.000000;stroke-width:1.2500000;stroke:#000000;fill-rule:nonzero;fill-opacity:1.0000000;fill:#ffffff"
+       sodipodi:type="arc"
+       sodipodi:rx="5.6250000"
+       sodipodi:ry="5.6250000" />
+  </g>
+</svg>
