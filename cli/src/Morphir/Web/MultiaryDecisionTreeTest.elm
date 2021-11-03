@@ -167,7 +167,7 @@ selectedNodeDetails model =
                 |> Maybe.withDefault "(nothing selected)"
     in
         div
-            [ css [ width (auto) ] ]
+            []
             [ Mwc.TextField.view
                 [ Mwc.TextField.readonly True
                 , Mwc.TextField.label selectedDetails
@@ -178,7 +178,7 @@ selectedNodeDetails model =
 view : Model -> Html Msg
 view model =
         div
-            [ css [width (auto)]]
+            []
             [ expandAllCollapseAllButtons
             , selectedNodeDetails model
             , map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
