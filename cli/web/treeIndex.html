@@ -6,17 +6,27 @@
   <script src="treeStuff.js"></script>
   <style>
     table.tree-view {
-<!--      background-color: blue;-->
+    /*background-color: blue;*/
+    overflow: scroll;
+    width: 25%;
+    min-width: 512px;
+    white-space: nowrap;
+    display: inline-block;
+    overflow: auto;
+    }
+
+    td {
+      min-width:24px;
     }
 
     tr.tree-view {
-<!--      background-color: green;-->
+      /*background-color: green;*/
     }
 
     td.tree-view {
       padding: 4px;
       font-size: 1.5em;
-<!--      background-color: red;-->
+      /*background-color: red;*/
     }
 
     td.tree-view-selected-node {
@@ -29,10 +39,9 @@
 
     td.tree-view-bullet-expanded {
       background: url(https://img.icons8.com/material-outlined/24/000000/minus-sign.png);
-      transform: rotate(180deg);
       background-repeat: no-repeat;
       background-size: contain;
-      width: 1em;
+      width: 24px;
     }
 
     label.tree-view-bullet-expanded {
@@ -45,7 +54,7 @@
       background: url(https://img.icons8.com/material-outlined/24/000000/plus--v1.png);
       background-repeat: no-repeat;
       background-size: contain;
-      width: 1em;
+      width: 24px;
     }
 
     label.tree-view-bullet-collapsed {
@@ -58,7 +67,7 @@
       background: url(https://img.icons8.com/material/24/000000/sort-right--v1.png);
       background-repeat: no-repeat;
       background-size: contain;
-      width: 1em;
+      width: 24px;
     }
 
     #navigableTreeContent {
@@ -66,6 +75,8 @@
       height: 500px;
       overflow: auto;
     }
+
+
 
 
   </style>

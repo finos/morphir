@@ -67,15 +67,15 @@ initialModel () =
                     [ Tree.Node
                     {
                     children = [ Tree.Node
-                                { children = [], data = NodeData "2.1.1" "YesAndYes"  (Just( Value.LiteralPattern () (BoolLiteral True))) },
+                                { children = [], data = NodeData "2.1.1" "YesAndYes========================"  (Just( Value.LiteralPattern () (BoolLiteral True))) },
                                 Tree.Node
-                                { children = [], data = NodeData "2.1.2" "YesAndNo"  (Just( Value.LiteralPattern () (BoolLiteral True)))} ]
+                                { children = [], data = NodeData "2.1.2" "YesAndNo"  (Just( Value.LiteralPattern () (BoolLiteral False)))} ]
                     ,
                     data = NodeData "2.1" "isBar"  (Just( Value.LiteralPattern () (BoolLiteral True)))},
                      Tree.Node
                      {
                      children = [],
-                     data = NodeData "2.2" "No"  (Just ( Value.LiteralPattern () (BoolLiteral True)))}
+                     data = NodeData "2.2" "No"  (Just ( Value.LiteralPattern () (BoolLiteral False)))}
                      ]
 
                 , data = NodeData "2" "isFoo" Nothing
