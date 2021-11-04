@@ -4,11 +4,11 @@ import Browser
 import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
 
 import Dict
-import Element exposing (Element, column, el, fill, layout, none, padding, paddingEach, px, row, shrink, spacing, table, text)
-import Html.Styled.Attributes exposing (css)
+import Element exposing (Element, column, el, fill, html, layout, none, padding, paddingEach, px, row, shrink, spacing, table)
+import Html.Styled.Attributes exposing (css, placeholder)
 import Html exposing (a)
 
-import Html.Styled exposing (Html, div, fromUnstyled, map, toUnstyled)
+import Html.Styled exposing (Html, div, fromUnstyled, map, option, select, text, toUnstyled)
 import Css exposing (auto, px, width)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName
@@ -179,7 +179,10 @@ view : Model -> Html Msg
 view model =
         div
             [ css [width (auto)]]
-            [ expandAllCollapseAllButtons
+            [
+            select [] [option [] [text "Cash"], option [] [text "Inventory"], option [] [text "Pending Trades"]]
+            , select [] [option [] [text "Is offshore"], option [] [text "Is not offshore"]]
+            , expandAllCollapseAllButtons
             , selectedNodeDetails model
             , map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
             ]
