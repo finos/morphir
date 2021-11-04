@@ -78,6 +78,14 @@
       overflow: auto;
     }
 
+    .hidden-on-start {
+      display: none;
+    }
+
+    .sub-selector {
+
+    }
+
 
 
 
@@ -93,6 +101,14 @@
     var app = Elm.Morphir.Web.MultiaryDecisionTreeTest.init({
     node : document.getElementById('elm'),
     flags : {}
+    });
+    document.getElementById('bank-type').addEventListener('change', function () {
+      var style = this.value == 1 ? 'none' : 'inline-block';
+      document.getElementById('cash-type').style.display = style;
+    });
+    document.getElementById('bank-type').addEventListener('change', function () {
+      var style = this.value == 1 ? 'inline-block' : 'none';
+      document.getElementById('negative-type').style.display = style;
     });
 </script>
 

@@ -5,7 +5,7 @@ import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
 
 import Dict
 import Element exposing (Element, column, el, fill, html, layout, none, padding, paddingEach, px, row, shrink, spacing, table)
-import Html.Styled.Attributes exposing (css, placeholder)
+import Html.Styled.Attributes exposing (class, css, id, placeholder, value)
 import Html exposing (a)
 
 import Html.Styled exposing (Html, div, fromUnstyled, map, option, select, text, toUnstyled)
@@ -180,8 +180,14 @@ view model =
         div
             [ css [width (auto)]]
             [
-            select [] [option [] [text "Cash"], option [] [text "Inventory"], option [] [text "Pending Trades"]]
-            , select [] [option [] [text "Is offshore"], option [] [text "Is not offshore"]]
+            select [id "first"] [option [value "0"] [text "Cash"], option [value "1"] [text "Inventory"], option [value "2"] [text "Pending Trades"]]
+            , select [id "bank-type", class "sub-selector"] [option [value "0"] [text "Central Bank"], option [value "1"] [text "Onshore"]]
+            , select [id "cash-type", class "sub-selector"] [option [value "0"] [text "Segregated Cash"], option [value "1"] [text "Not"]]
+            , select [id "negative-type", class "hidden-on-start sub-selector"] [option [value "0"] [text "NetUSD is Negative"], option [value "1"] [text "NetUSD is Positive"]]
+            --, select [id "classify-type"] [option [] [text "Classify by Counter-Party ID"], option [] [text "Don't"]]
+            --, select [id "bottom-level"] [option [] [text "FRD"], option [] [text "BOE"], option [] [text "SNB"]
+            --    , option [] [text "ECB"], option [] [text "BOJ"], option [] [text "RBA"]
+            --    , option [] [text "BOC"], option [] [text "Others"]]
             , expandAllCollapseAllButtons
             , selectedNodeDetails model
             , map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
