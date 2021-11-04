@@ -12,7 +12,7 @@ import Html.Styled exposing (Html, div, fromUnstyled, map, toUnstyled, var)
 import Css exposing (auto, px, width)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName
-import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Literal as Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Type as Type
@@ -107,7 +107,8 @@ initialModel () =
             --    , data = NodeData "2" "isFoo" Nothing
             --    }
             ----- Value.patternMatch () (Variable.Value () "enum")
-            ----  List (
+
+            ----  List ( ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") [] ), "bar")
             --  , Tree.Node
             --    { children = [
             --    Tree.Node {
@@ -220,7 +221,7 @@ subscriptions model =
     Sub.map TreeViewMsg (TreeView.subscriptions model.treeModel)
 
 
-
+--
 main =
     Browser.element
         {
@@ -233,8 +234,8 @@ main =
 
 -- translation should take in a value and its parameters and a unid
 -- Tree.Node NodeData
-translation : Value () ()-> Int -> String
-translation value uid =
+translation : Value () ()-> Int -> Maybe (Pattern()) -> String
+translation value uid pattern =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
             let
@@ -250,12 +251,37 @@ translation value uid =
                 --}
                 --
 
-                toString condition ++ " -- CONDISH -- " ++ (fromInt uid) ++ "< -- uid" ++ (fromInt newid) ++ "< -- newid" ++ translation thenBranch newid ++ translation elseBranch newid
+                toString condition ++ " -- CONDISH -- " ++ (fromInt uid) ++ "< -- uid" ++ (fromInt newid) ++ "< -- newid" ++ translation thenBranch newid pattern ++ translation elseBranch newid pattern
 
-        --Value.PatternMatch tpe param patterns ->
+
+        Value.PatternMatch tpe param patterns ->
+                    let
+                        data = NodeData (fromInt uid) (Value.toString param) pattern
+                        newid = uid + 1
+                        children : List ( Tree.Node NodeData )
+                        children = [ ]
+                        first =
+                            case List.head patterns of
+                                Just val ->
+                                    val
+                                Nothing ->
+                                     ( Value.WildcardPattern (),  (Value.Variable () []))
+
+
+                    in
+                        --Tree.Node {
+                        -- data = data, children = children
+                        --}
+
+                        toString param ++ " -- CONDISH -- " ++ (fromInt uid) ++ "< -- uid" ++ (fromInt newid) ++ "< -- newid" ++ translation (Tuple.second first) newid (Just (Tuple.first first) )
+
         _ ->
             Value.toString value ++ (fromInt uid) ++ " ------ "
             --Tree.Node { data = NodeData "cara" "is" Nothing, children = [] }
+
+
+-- pass in a bunch of variables
+-- call the enterpreteur to do any business logic
 
 -- Tree.Node NodeData
 translation2 : Value () ()-> Int -> Maybe (Pattern()) -> Tree.Node NodeData
@@ -277,39 +303,60 @@ translation2 value uid pattern =
 
 
 
-        --Value.PatternMatch tpe param patterns ->
+        Value.PatternMatch tpe param patterns ->
+            let
+                data = NodeData (fromInt uid) (Value.toString param) pattern
+                newid = uid + 1
+                children : List ( Tree.Node NodeData )
+                children = [ ]
+            in
+                Tree.Node {
+                 data = data, children = children
+                }
         _ ->
             --Value.toString value ++ (fromInt uid) ++ " ------ "
             Tree.Node { data = NodeData (fromInt uid) (Value.toString value) pattern, children = [] }
 
-
+--
 --main =
 --    layout
 --            []
 --            <|
 --            (el [ padding 10 ]
---
---                --(Element.text (Value.toString (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"])
---                --(Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"]) (Value.Variable () ["No"]))
---                --
---                -- (Element.text
---                --    (translation
---                --        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"])(Value.Variable () ["No"])) "1"
---                --    )
---                -- )
---                --(Element.text
---                --    (translation
---                --        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes1"]) (Value.IfThenElse () (Value.Variable () ["isBar"]) (Value.Variable () ["Yes2"]) (Value.Variable () ["No"]))) 1
---                --    )
---                --)
---                --(Element.text
---                --    (translation2
---                --        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes1"]) (Value.IfThenElse () (Value.Variable () ["isBar"]) (Value.Variable () ["Yes2"]) (Value.Variable () ["No"]))) 1
---                --    )
---                --)
---
---
---            )
+
+                --(Element.text (Value.toString (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"])
+                --(Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"]) (Value.Variable () ["No"]))
+                --
+                -- (Element.text
+                --    (translation
+                --        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"])(Value.Variable () ["No"])) "1"
+                --    )
+                -- )
+                --(Element.text
+                --    (translation
+                --        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes1"]) (Value.IfThenElse () (Value.Variable () ["isBar"]) (Value.Variable () ["Yes2"]) (Value.Variable () ["No"]))) 1
+                --    )
+                --)
+                --(Element.text
+                --    (translation2
+                --        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes1"]) (Value.IfThenElse () (Value.Variable () ["isBar"]) (Value.Variable () ["Yes2"]) (Value.Variable () ["No"]))) 1
+                --    )
+                --)
+            --    (Element.text
+            --        (translation
+            --        -- ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") []
+            --            (Value.patternMatch () (Value.Variable () ["LALALA"])
+            --                  [
+            --                  ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") [], (Value.Variable () ["BAR"]))
+            --                    , ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue2" ":") [], (Value.Variable () ["CAAR"]))
+            --                    , ( Value.WildcardPattern (),  (Value.Variable () ["DAR"]))
+            --                  ])
+            --            1 Nothing
+            --        )
+            --    )
+            --
+            --
+            --)
 
 
 
