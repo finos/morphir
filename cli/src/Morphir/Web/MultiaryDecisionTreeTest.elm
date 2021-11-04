@@ -43,7 +43,7 @@ type alias NodeData = {
 getLabel : Maybe (Pattern()) -> String
 getLabel maybeLabel =
     case maybeLabel of
-        Just label -> ViewPattern.patternAsText(label) ++ "  ->  "
+        Just label -> ViewPattern.patternAsText(label) ++ " - "
         Nothing -> ""
 -- ViewPattern.patternAsText(node.data.pattern) ++ "->" ++ node.data.subject
 -- define a function to calculate the text representation of a node
@@ -145,7 +145,8 @@ initialModel () =
     let
         rootNodes =
                     [convert
-                        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"]) (Value.IfThenElse () (Value.Variable () ["isBar"]) (Value.Variable () ["Yes"]) (Value.Variable () ["No"]))) 1 Nothing
+                        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"]) (Value.IfThenElse () (Value.Variable () ["isBar"])
+                        (Value.Variable () ["Yes"]) (Value.Variable () ["No"]))) 1 Nothing
                     ]
         --rootNodes =
         --    [ Tree.Node
@@ -193,6 +194,7 @@ initialModel () =
         --
         --        }
         --    ]
+
     in
         ( { rootNodes = rootNodes
         , treeModel = TreeView.initializeModel configuration rootNodes
