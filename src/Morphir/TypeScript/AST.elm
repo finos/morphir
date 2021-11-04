@@ -66,6 +66,11 @@ type Expression
     = ArrayLiteralExpression (List Expression)
     | Call CallExpression
     | Identifier String
+    | IntLiteralExpression Int
+    | IndexedExpression
+        { object : Expression
+        , index : Expression
+        }
     | MemberExpression
         { object : Expression
         , member : Expression
@@ -108,6 +113,8 @@ parameter modifiers name typeAnnotation =
 type Statement
     = FunctionDeclaration
         { name : String
+        , typeVariables : List TypeExp
+        , returnType : Maybe TypeExp
         , scope : FunctionScope
         , parameters : List Parameter
         , body : List Statement
@@ -117,6 +124,7 @@ type Statement
     | AssignmentStatement Expression (Maybe TypeExp) Expression
     | ExpressionStatement Expression
     | ReturnStatement Expression
+    | SwitchStatement Expression (List ( Expression, List Statement ))
 
 
 {-| Represents a type definition.
@@ -164,6 +172,7 @@ Only a small subset of the type-system is currently implemented.
 type TypeExp
     = Any
     | Boolean
+    | FunctionTypeExp (List Parameter) TypeExp
     | List TypeExp {- Represents a Morphir 'List' type, as a Typescript 'Array' type -}
     | LiteralString String
     | Map TypeExp TypeExp
