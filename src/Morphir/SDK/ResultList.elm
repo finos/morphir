@@ -3,6 +3,7 @@ module Morphir.SDK.ResultList exposing
     , fromList
     , filter, filterOrFail, map, mapOrFail
     , errors, successes, partition
+    , keepAllErrors, keepFirstError
     )
 
 {-| This module contains operations that are specific to lists of results. These operations are very useful for modeling
@@ -25,6 +26,11 @@ itself.
 # Decomposing
 
 @docs errors, successes, partition
+
+
+# Mapping to single result
+
+@docs keepAllErrors, keepFirstError
 
 -}
 
@@ -200,3 +206,53 @@ mapOrFail : (a -> Result e b) -> ResultList e a -> ResultList e b
 mapOrFail f resultList =
     resultList
         |> List.map (Result.andThen f)
+
+
+{-| Turn a list of results into a single result keeping all errors.
+-}
+keepAllErrors : ResultList e a -> Result (List e) (List a)
+keepAllErrors results =
+    let
+        oks : List a
+        oks =
+            results
+                |> List.filterMap
+                    (\result ->
+                        result
+                            |> Result.toMaybe
+                    )
+
+        errs : List e
+        errs =
+            results
+                |> List.filterMap
+                    (\result ->
+                        case result of
+                            Ok _ ->
+                                Nothing
+
+                            Err e ->
+                                Just e
+                    )
+    in
+    case errs of
+        [] ->
+            Ok oks
+
+        _ ->
+            Err errs
+
+
+{-| Turn a list of results into a single result keeping only the first error.
+-}
+keepFirstError : ResultList e a -> Result e (List a)
+keepFirstError results =
+    case keepAllErrors results of
+        Ok a ->
+            Ok a
+
+        Err errs ->
+            errs
+                |> List.head
+                |> Maybe.map Err
+                |> Maybe.withDefault (Ok [])
