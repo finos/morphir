@@ -173,7 +173,7 @@ selectedNodeDetails model =
                 , Mwc.TextField.label selectedDetails
                 ]
             ]
-
+--TODO: hide next dropdowns until current dropdown has been selected
 -- avilitiy to view tree
 view : Model -> Html Msg
 view model =
@@ -181,13 +181,30 @@ view model =
             [ css [width (auto)]]
             [
             select [id "first"] [option [value "0"] [text "Cash"], option [value "1"] [text "Inventory"], option [value "2"] [text "Pending Trades"]]
-            , select [id "bank-type", class "sub-selector"] [option [value "0"] [text "Central Bank"], option [value "1"] [text "Onshore"]]
-            , select [id "cash-type", class "sub-selector"] [option [value "0"] [text "Segregated Cash"], option [value "1"] [text "Not"]]
-            , select [id "negative-type", class "hidden-on-start sub-selector"] [option [value "0"] [text "NetUSD is Negative"], option [value "1"] [text "NetUSD is Positive"]]
-            --, select [id "classify-type"] [option [] [text "Classify by Counter-Party ID"], option [] [text "Don't"]]
-            --, select [id "bottom-level"] [option [] [text "FRD"], option [] [text "BOE"], option [] [text "SNB"]
-            --    , option [] [text "ECB"], option [] [text "BOJ"], option [] [text "RBA"]
-            --    , option [] [text "BOC"], option [] [text "Others"]]
+            , select [id "bank-type"] [option [value "0"] [text "Central Bank"], option [value "1"] [text "Onshore"]]
+            , div [id "cash-sub-a", class "selector"] [
+                select [id "cash-type"] [option [value "0"] [text "Segregated Cash"]]
+                , select [id "classify-type"] [option [value "0"] [text "Classify by Counter-Party ID"], option [value "1"] [text "Don't"]]
+                , div [id "classify-sub-a", class "selector"] [
+                    select [id "bottom-level-a"] [option [] [text "FRD"], option [] [text "BOE"], option [] [text "SNB"]
+                    , option [] [text "ECB"], option [] [text "BOJ"], option [] [text "RBA"]
+                    , option [] [text "BOC"], option [] [text "Others"]]
+                ]
+                , div [id "classify-sub-b", class "hidden-on-start"] [
+                    select [id "bottom-level-b"] [option [] [text "FRD2"], option [] [text "BOE"], option [] [text "SNB"]
+                    , option [] [text "ECB"], option [] [text "BOJ"], option [] [text "RBA"]
+                    , option [] [text "BOC"], option [] [text "Others"]]
+                ]
+            ]
+            , div [id "cash-sub-b", class "hidden-on-start cash-sub"] [
+                select [id "negative-type"] [option [value "0"] [text "NetUSD is Negative"], option [value "1"] [text "NetUSD is Positive"]]
+                , div [id "negative-sub-a", class "selector"] [
+                    select [id "5C55-type"] [option [value "0"] [text "Yes"], option [value "1"] [text "Is Feed44 and CostCentre Not 5C55"]]
+                    , div [id "5C55-sub", class "hidden-on-start"] [
+                        select [id "bottom-level-c"] [option [value "0"] [text "Yes"], option [value "1"] [text "Yes"]]
+                    ]
+                ]
+            ]
             , expandAllCollapseAllButtons
             , selectedNodeDetails model
             , map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
