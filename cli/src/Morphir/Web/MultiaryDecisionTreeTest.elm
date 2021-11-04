@@ -6,11 +6,11 @@ import List exposing (foldl, foldr, head, map)
 import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
 
 import Dict
-import Element exposing (Element, column, el, fill, layout, none, padding, paddingEach, px, row, shrink, spacing, table, text)
-import Html.Styled.Attributes exposing (css)
+import Element exposing (Element, column, el, fill, layout, none, padding, paddingEach, px, row, shrink, spacing, table)
+import Html.Styled.Attributes exposing (class, css, id, value)
 import Html exposing (a)
 
-import Html.Styled exposing (Html, div, fromUnstyled, toUnstyled)
+import Html.Styled exposing (Html, div, fromUnstyled, option, select, text, toUnstyled)
 import Css exposing (auto, px, width)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName
@@ -224,9 +224,26 @@ update message model =
 
 -- Use 'setselectionTo'
 -- Outline path based on the UID?
-highlightPath :
-    --TreeView.
-
+--highlightPath :
+--    --TreeView.
+-- avilitiy to view tree
+view : Model -> Html Msg
+view model =
+        div
+            [ css [width (auto)]]
+            [
+            select [id "first"] [option [value "0"] [text "Cash"], option [value "1"] [text "Inventory"], option [value "2"] [text "Pending Trades"]]
+            , select [id "bank-type", class "sub-selector"] [option [value "0"] [text "Central Bank"], option [value "1"] [text "Onshore"]]
+            , select [id "cash-type", class "sub-selector"] [option [value "0"] [text "Segregated Cash"], option [value "1"] [text "Not"]]
+            , select [id "negative-type", class "hidden-on-start sub-selector"] [option [value "0"] [text "NetUSD is Negative"], option [value "1"] [text "NetUSD is Positive"]]
+            --, select [id "classify-type"] [option [] [text "Classify by Counter-Party ID"], option [] [text "Don't"]]
+            --, select [id "bottom-level"] [option [] [text "FRD"], option [] [text "BOE"], option [] [text "SNB"]
+            --    , option [] [text "ECB"], option [] [text "BOJ"], option [] [text "RBA"]
+            --    , option [] [text "BOC"], option [] [text "Others"]]
+            , expandAllCollapseAllButtons
+            , selectedNodeDetails model
+            , Html.Styled.map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
+            ]
 
 -------
 expandAllCollapseAllButtons : Html Msg
@@ -261,15 +278,15 @@ selectedNodeDetails model =
             ]
 
 -- ability to view tree
-view : Model -> Html Msg
-view model =
-        div
-            [ css [width (auto)]]
-            [ expandAllCollapseAllButtons
-            , selectedNodeDetails model
-            , Html.Styled.map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
-
-            ]
+--view : Model -> Html Msg
+--view model =
+--        div
+--            [ css [width (auto)]]
+--            [ expandAllCollapseAllButtons
+--            , selectedNodeDetails model
+--            , Html.Styled.map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
+--
+--            ]
 
 -- if (or when) you want the tree view to navigate up/down between visible nodes and expand/collapse nodes on arrow key presse
 subscriptions : Model -> Sub Msg
