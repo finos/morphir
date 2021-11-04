@@ -19,6 +19,7 @@ module Morphir.IR.SDK.Dict exposing (dictType, fromListValue, moduleName, module
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
@@ -27,9 +28,10 @@ import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.SDK.Maybe exposing (just, maybeType, nothing)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Native as Native
+import Morphir.Value.Native.Comparable exposing (compareValue)
 
 
 moduleName : ModuleName
@@ -137,9 +139,225 @@ fromListValue a list =
     Value.Apply a (Value.Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) list
 
 
+toListValue : a -> Value ta a -> Value ta a
+toListValue a list =
+    Value.Apply a (Value.Reference a ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "to", "list" ] )) list
+
+
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
-    [ ( "fromList", Native.unaryStrict (\_ arg -> Ok (fromListValue () arg)) )
+    [ ( "empty"
+      , \eval args ->
+            Ok (Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) (Value.List () []))
+      )
+    , ( "singleton"
+      , Native.binaryStrict
+            (\key value ->
+                Ok
+                    (Value.Apply ()
+                        (Value.Reference ()
+                            ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )
+                        )
+                        (Value.List () [ Value.Tuple () [ key, value ] ])
+                    )
+            )
+      )
+
+    {- update -}
+    , ( "insert"
+      , Native.trinaryStrict
+            (\keyToAdd valueToAdd dict ->
+                case dict of
+                    Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                        case arg of
+                            Value.List _ list ->
+                                let
+                                    find initList updatedList =
+                                        case initList of
+                                            [] ->
+                                                Ok (updatedList ++ [ Value.Tuple () [ keyToAdd, valueToAdd ] ])
+
+                                            head :: tail ->
+                                                case head of
+                                                    Value.Tuple _ [ key, _ ] ->
+                                                        case compareValue key keyToAdd of
+                                                            Ok LT ->
+                                                                find tail (List.concat [ updatedList, [ head ] ])
+
+                                                            Ok GT ->
+                                                                Ok (List.concat [ updatedList, [ Value.Tuple () [ keyToAdd, valueToAdd ], head ], tail ])
+
+                                                            Ok EQ ->
+                                                                Ok (List.concat [ updatedList, [ Value.Tuple () [ keyToAdd, valueToAdd ] ], tail ])
+
+                                                            Err error ->
+                                                                Err error
+
+                                                    _ ->
+                                                        Err TupleExpected
+                                in
+                                find list [] |> Result.map (\updatedList -> Value.List () updatedList |> Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )))
+
+                            _ ->
+                                Err (ExpectedList arg)
+
+                    _ ->
+                        Err (UnexpectedArguments [ dict ])
+            )
+      )
+    , ( "update"
+      , \eval args ->
+            case args of
+                [ arg1, fun, arg2 ] ->
+                    Result.map2
+                        (\keyToUpdate dict ->
+                            case dict of
+                                Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                                    case arg of
+                                        Value.List _ list ->
+                                            let
+                                                find : List RawValue -> List RawValue -> Result Error (List RawValue)
+                                                find initList updatedList =
+                                                    case initList of
+                                                        [] ->
+                                                            Ok updatedList
+
+                                                        head :: tail ->
+                                                            case head of
+                                                                Value.Tuple _ [ key, value ] ->
+                                                                    case compareValue key keyToUpdate of
+                                                                        Ok LT ->
+                                                                            find tail (List.append updatedList [ head ])
+
+                                                                        Ok GT ->
+                                                                            find [] (List.append updatedList tail)
+
+                                                                        Ok EQ ->
+                                                                            eval (Value.Apply () fun value)
+                                                                                |> Result.andThen
+                                                                                    (\updatedValue ->
+                                                                                        find [] (List.concat [ updatedList, [ Value.Tuple () [ keyToUpdate, updatedValue ] ], tail ])
+                                                                                    )
+
+                                                                        Err error ->
+                                                                            Err error
+
+                                                                _ ->
+                                                                    Err TupleExpected
+                                            in
+                                            find list [] |> Result.map (\updatedList -> Value.List () updatedList |> Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )))
+
+                                        _ ->
+                                            Err (ExpectedList arg)
+
+                                _ ->
+                                    Err (UnexpectedArguments [ dict ])
+                        )
+                        (eval arg1)
+                        (eval arg2)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "remove"
+      , Native.binaryStrict
+            (\keyToRemove dict ->
+                case dict of
+                    Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                        case arg of
+                            Value.List _ list ->
+                                let
+                                    find l ans =
+                                        case l of
+                                            [] ->
+                                                Ok ans
+
+                                            head :: tail ->
+                                                case head of
+                                                    Value.Tuple _ [ key, _ ] ->
+                                                        if key == keyToRemove then
+                                                            find tail ans
+
+                                                        else
+                                                            find tail (List.append ans [ head ])
+
+                                                    _ ->
+                                                        Err TupleExpected
+                                in
+                                find list [] |> Result.map (\updatedList -> Value.List () updatedList |> Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )))
+
+                            _ ->
+                                Err (ExpectedList arg)
+
+                    _ ->
+                        Err (UnexpectedArguments [ dict ])
+            )
+      )
+    , ( "isEmpty"
+      , Native.unaryStrict
+            (\_ dict ->
+                case dict of
+                    Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                        case arg of
+                            Value.List _ list ->
+                                let
+                                    find l =
+                                        case l of
+                                            [] ->
+                                                Ok (Value.Literal () (BoolLiteral True))
+
+                                            head :: tail ->
+                                                case head of
+                                                    Value.Tuple _ [ key, value ] ->
+                                                        Ok (Value.Literal () (BoolLiteral False))
+
+                                                    _ ->
+                                                        Err TupleExpected
+                                in
+                                find list
+
+                            _ ->
+                                Err (ExpectedList arg)
+
+                    _ ->
+                        Err (UnexpectedArguments [ dict ])
+            )
+      )
+    , ( "member"
+      , Native.binaryStrict
+            (\keyToGet dict ->
+                case dict of
+                    Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                        case arg of
+                            Value.List _ list ->
+                                let
+                                    find l =
+                                        case l of
+                                            [] ->
+                                                Ok (Value.Literal () (BoolLiteral False))
+
+                                            head :: tail ->
+                                                case head of
+                                                    Value.Tuple _ [ key, value ] ->
+                                                        if key == keyToGet then
+                                                            Ok (Value.Literal () (BoolLiteral True))
+
+                                                        else
+                                                            find tail
+
+                                                    _ ->
+                                                        Err TupleExpected
+                                in
+                                find list
+
+                            _ ->
+                                Err (ExpectedList arg)
+
+                    _ ->
+                        Err (UnexpectedArguments [ dict ])
+            )
+      )
     , ( "get"
       , Native.binaryStrict
             (\keyToGet dict ->
@@ -174,4 +392,96 @@ nativeFunctions =
                         Err (UnexpectedArguments [ dict ])
             )
       )
+    , ( "size"
+      , Native.unaryStrict
+            (\_ dict ->
+                case dict of
+                    Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                        case arg of
+                            Value.List _ list ->
+                                let
+                                    find l length =
+                                        case l of
+                                            [] ->
+                                                Ok length
+
+                                            head :: tail ->
+                                                case head of
+                                                    Value.Tuple _ [ _, _ ] ->
+                                                        find tail (length + 1)
+
+                                                    _ ->
+                                                        Err TupleExpected
+                                in
+                                find list 0 |> Result.map (\len -> Value.Literal () (WholeNumberLiteral len))
+
+                            _ ->
+                                Err (ExpectedList arg)
+
+                    _ ->
+                        Err (UnexpectedArguments [ dict ])
+            )
+      )
+    , ( "keys"
+      , Native.unaryStrict
+            (\_ dict ->
+                case dict of
+                    Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                        case arg of
+                            Value.List _ list ->
+                                let
+                                    find l keysList =
+                                        case l of
+                                            [] ->
+                                                Ok keysList
+
+                                            head :: tail ->
+                                                case head of
+                                                    Value.Tuple _ [ key, _ ] ->
+                                                        find tail (List.append keysList [ key ])
+
+                                                    _ ->
+                                                        Err TupleExpected
+                                in
+                                find list [] |> Result.map (\keyList -> Value.List () keyList)
+
+                            _ ->
+                                Err (ExpectedList arg)
+
+                    _ ->
+                        Err (UnexpectedArguments [ dict ])
+            )
+      )
+    , ( "value"
+      , Native.unaryStrict
+            (\_ dict ->
+                case dict of
+                    Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "from", "list" ] )) arg ->
+                        case arg of
+                            Value.List _ list ->
+                                let
+                                    find l valuesList =
+                                        case l of
+                                            [] ->
+                                                Ok valuesList
+
+                                            head :: tail ->
+                                                case head of
+                                                    Value.Tuple _ [ _, value ] ->
+                                                        find tail (List.append valuesList [ value ])
+
+                                                    _ ->
+                                                        Err TupleExpected
+                                in
+                                find list [] |> Result.map (\valueList -> Value.List () valueList)
+
+                            _ ->
+                                Err (ExpectedList arg)
+
+                    _ ->
+                        Err (UnexpectedArguments [ dict ])
+            )
+      )
+    , ( "toList", Native.unaryStrict (\_ arg -> Ok (toListValue () arg)) )
+    , ( "fromList", Native.unaryStrict (\_ arg -> Ok (fromListValue () arg)) )
     ]

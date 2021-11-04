@@ -3,7 +3,6 @@ module Morphir.Value.Native.Comparable exposing (..)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native.Eq as Eq
 
 
 lessThan : RawValue -> RawValue -> Result Error Bool
@@ -18,6 +17,7 @@ lessThan arg1 arg2 =
                     _ ->
                         False
             )
+
 
 lessThanOrEqual : RawValue -> RawValue -> Result Error Bool
 lessThanOrEqual arg1 arg2 =

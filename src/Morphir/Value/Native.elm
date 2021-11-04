@@ -4,6 +4,7 @@ module Morphir.Value.Native exposing
     , unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
     , floatLiteral, intLiteral, oneOf, stringLiteral
     , decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
+    , trinaryLazy, trinaryStrict
     )
 
 {-| This module contains an API and some tools to implement native functions. Native functions are functions that are
@@ -134,6 +135,17 @@ binaryLazy f =
                 Err (UnexpectedArguments args)
 
 
+trinaryLazy : (Eval -> RawValue -> RawValue -> RawValue -> Result Error RawValue) -> Function
+trinaryLazy f =
+    \eval args ->
+        case args of
+            [ arg1, arg2, arg3 ] ->
+                f eval arg1 arg2 arg3
+
+            _ ->
+                Err (UnexpectedArguments args)
+
+
 {-| Create a native function that takes exactly two arguments. Evaluate both arguments before passing then to the supplied
 function.
 
@@ -154,6 +166,23 @@ binaryStrict f =
                     (\a1 ->
                         eval arg2
                             |> Result.andThen (f a1)
+                    )
+        )
+
+
+trinaryStrict : (RawValue -> RawValue -> RawValue -> Result Error RawValue) -> Function
+trinaryStrict f =
+    trinaryLazy
+        (\eval arg1 arg2 arg3 ->
+            eval arg1
+                |> Result.andThen
+                    (\a1 ->
+                        eval arg2
+                            |> Result.andThen
+                                (\a2 ->
+                                    eval arg3
+                                        |> Result.andThen (f a1 a2)
+                                )
                     )
         )
 
