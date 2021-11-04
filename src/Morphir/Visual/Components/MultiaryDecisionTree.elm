@@ -12,10 +12,10 @@ type Node
     = Branch BranchNode
     | Leaf VisualTypedValue
 
-getPattern : ( a, b ) -> a
---- some method for getting pattern from list
-
-getNode : ( a, b ) -> b
+--getPattern : ( a, b ) -> a
+----- some method for getting pattern from list
+--
+--getNode : ( a, b ) -> b
 --- some method for getting pattern from list
 
 type alias BranchNode =
@@ -28,34 +28,34 @@ type alias BranchNode =
 -- folding or reducing
 -- fold left --> more efficient
 -- value thus far and new element
-displayList : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> BranchNode -> Element msg
-displaylist config viewValue root =
-    -- somehow iteratively call listHelp
-    -- listHelp config viewValue root.branches[0]
-    listHelp config viewValue (root
-
-
-listHelp : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> ( Pattern(), Node ) -> Element msg
-listHelp config viewValue (pattern, node) =
-    -- let , in :: to get these values
-    -- get pattern as its own variable
-    -- get node as its own variable
-
-    -- case match to see if its a branch or a leaf
-    -- case rootNode of
-           -- Branch branch ->
-           -- within branch we want to display the
-
+--displayList : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> BranchNode -> Element msg
+--displaylist config viewValue root =
+--    -- somehow iteratively call listHelp
+--    -- listHelp config viewValue root.branches[0]
+--    listHelp config viewValue (root
+--
+--
+--listHelp : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> ( Pattern(), Node ) -> Element msg
+--listHelp config viewValue (pattern, node) =
+--    -- let , in :: to get these values
+--    -- get pattern as its own variable
+--    -- get node as its own variable
+--
+--    -- case match to see if its a branch or a leaf
+--    -- case rootNode of
+--           -- Branch branch ->
+--           -- within branch we want to display the
+--
 
 
 
 
 -- ( List.map (\x -> layoutHelp config viewValue x) branch.branches )
 
-
-[
-(COND 1, NODE 1),
-(COND 2, NODE 2)
-]
+--
+--[
+--(COND 1, NODE 1),
+--(COND 2, NODE 2)
+--]
 
 
