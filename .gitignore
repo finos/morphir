@@ -9,3 +9,5 @@ generated/
 out/
 redistributable/Scala
 cli/web/insightapp.js
+cli/treeStuff.js
+cli/index.html
