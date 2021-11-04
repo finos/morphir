@@ -123,25 +123,8 @@ convert value uid pattern =
 
         _ -> Tree.Node { data = NodeData (fromInt uid) (Value.toString value) pattern, children = [] }
 
-getPattern : ( Pattern va, Value ta val ) -> Pattern va
-getPattern value =
-    first(value)
-
-getValue : ( Pattern va , Value ta val ) -> Value ta val
-getValue value =
-    second(value)
-
-allPatterns : List (Pattern va, Value ta va) -> List (Pattern va)
-allPatterns list =
-    map getPattern list
-
-allValues : List (Pattern va, Value ta va) -> List (Value ta va)
-allValues list =
-    map getValue list
-
 initialModel : () -> (Model, Cmd Msg)
 initialModel () =
-
     let
         rootNodes =
                     [convert
@@ -239,6 +222,13 @@ update message model =
         , selectedNode = TreeView.getSelected treeModel |> Maybe.map .node |> Maybe.map Tree.dataOf
         }, Cmd.none )
 
+-- Use 'setselectionTo'
+-- Outline path based on the UID?
+highlightPath :
+    --TreeView.
+
+
+-------
 expandAllCollapseAllButtons : Html Msg
 expandAllCollapseAllButtons =
     div
