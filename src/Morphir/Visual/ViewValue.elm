@@ -31,6 +31,7 @@ import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue, rawToVisualTypedValue, typedToVisualTypedValue)
 import Morphir.Visual.XRayView as XRayView
+import Morphir.Visual.ViewMultiaryDecisionTree as ViewMultiaryDecisionTree
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
@@ -259,9 +260,10 @@ viewValueByLanguageFeature config value =
 
                 Value.IfThenElse _ _ _ _ ->
                     ViewIfThenElse.view config (viewValue config) value
-
+                      --ViewMultiaryDecisionTree.main
                 Value.PatternMatch tpe param patterns ->
                     ViewPatternMatch.view config viewValue param patterns
+                    --  ViewMultiaryDecisionTree.main
 
                 Value.Unit _ ->
                     el [] (text "not set")
