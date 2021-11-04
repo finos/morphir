@@ -74,60 +74,51 @@ nodeUid n =
     case n of
         Tree.Node node -> TreeView.NodeUid node.data.uid
 
+-- walk through wire frame
+-- confused why top level doesnt have anything corresponding
 
 initialModel : () -> (Model, Cmd Msg)
 initialModel () =
     let
         rootNodes =
-            [translation2
-                (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"]) (Value.IfThenElse () (Value.Variable () ["isBar"]) (Value.Variable () ["Yes"]) (Value.Variable () ["No"]))) 1 Nothing
-            ]
-            --[ Tree.Node
-            --    { children =
-            --        [ Tree.Node { children = [], data = NodeData "1.1" "Yes" (Just (Value.LiteralPattern () (BoolLiteral True)))}
-            --        , Tree.Node { children = [], data = NodeData "1.2" "No" (Just (Value.LiteralPattern () (BoolLiteral False)))} ],
-            --        data = NodeData "1" "isFoo" Nothing
-            --    }
-            --, Tree.Node
-            --    { children =
-            --        [ Tree.Node
-            --        {
-            --        children = [ Tree.Node
-            --                    { children = [], data = NodeData "2.1.1" "YesAndYes"  (Just( Value.LiteralPattern () (BoolLiteral True))) },
-            --                    Tree.Node
-            --                    { children = [], data = NodeData "2.1.2" "YesAndNo"  (Just( Value.LiteralPattern () (BoolLiteral True)))} ]
-            --        ,
-            --        data = NodeData "2.1" "isBar"  (Just( Value.LiteralPattern () (BoolLiteral True)))},
-            --         Tree.Node
-            --         {
-            --         children = [],
-            --         data = NodeData "2.2" "No"  (Just ( Value.LiteralPattern () (BoolLiteral False)))}
-            --         ]
-            --
-            --    , data = NodeData "2" "isFoo" Nothing
-            --    }
-            ----- Value.patternMatch () (Variable.Value () "enum")
 
-            ----  List ( ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") [] ), "bar")
-            --  , Tree.Node
-            --    { children = [
-            --    Tree.Node {
-            --        children = [],
-            --        data = NodeData "3.1" "foo" (Just ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") []))
-            --        },
-            --    Tree.Node {
-            --        children = [],
-            --        data = NodeData "3.2" "bar" (Just ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue2" ":") []))
-            --        },
-            --    Tree.Node {
-            --        children = [],
-            --        data = NodeData "3.3" "baz" (Just ( Value.WildcardPattern ()))
-            --        }
-            --    ],
-            --    data = NodeData "3" "enum" Nothing
-            --
-            --    }
-            --]
+            listToNode [
+                (Value.patternMatch () (Value.Variable () ["Type"])
+                [
+                (( Value.LiteralPattern () (StringLiteral "1")), ( Value.IfThenElse () (Value.Variable () ["Cash"])
+                        (Value.IfThenElse () (Value.Variable () ["Is Central Bank"])
+                            ( Value.IfThenElse () (Value.Variable () ["Is Segregated Cash"])
+                                (Value.PatternMatch () (Value.Variable () ["Classify By Counter Party ID"]) [
+                                    ( Value.LiteralPattern () (StringLiteral "FRD"), (Value.Variable () ["1.A.4.1"]))
+                                  , ( Value.LiteralPattern () (StringLiteral "BOE"), (Value.Variable () ["1.A.4.2"]))
+                                  ])
+                                (Value.PatternMatch () (Value.Variable () ["Classify By Counter Party ID"]) [
+                                  ( Value.LiteralPattern () (StringLiteral "FRD"), (Value.Variable () ["1.A.4.1"]))
+                                , ( Value.LiteralPattern () (StringLiteral "BOE"), (Value.Variable () ["1.A.4.2"]))
+                                ])
+                            ) (Value.Variable () ["Is Segregated Cash"]) ) --,
+                        ( Value.IfThenElse () (Value.Variable () ["Is On Shore"])
+                            ( Value.IfThenElse () (Value.Variable () ["Is NetUsd Amount Negative"])
+                                (Value.Variable () ["O.W.9"])
+                                (Value.PatternMatch () (Value.Variable () ["Is Feed44 and CostCenter Not 5C55"]) [
+                                  ( Value.LiteralPattern () (StringLiteral "Yes"), (Value.Variable () ["1.U.1"]))
+                                , ( Value.LiteralPattern () (StringLiteral "Yes"), (Value.Variable () ["1.U.4"]))
+                                ])
+                            )
+                            ( Value.IfThenElse () (Value.Variable () ["Is NetUsd Amount Negative"])
+                                (Value.Variable () ["O.W.10"])
+                                (Value.PatternMatch () (Value.Variable () ["Is Feed44 and CostCenter Not 5C55"]) [
+                                  ( Value.LiteralPattern () (StringLiteral "Yes"), (Value.Variable () ["1.U.2"]))
+                                , ( Value.LiteralPattern () (StringLiteral "Yes"), (Value.Variable () ["1.U.4"]))
+                                ])
+                            )
+
+                         )
+                    ) ),
+                (( Value.LiteralPattern () (StringLiteral "2")), (Value.Variable () ["Inventory"] ))
+                , (( Value.LiteralPattern () (StringLiteral "3")), (Value.Variable () ["Pending Trades"]))
+                ] )
+               ]
     in
         ( { rootNodes = rootNodes
         , treeModel = TreeView.initializeModel configuration rootNodes
@@ -230,94 +221,73 @@ main =
         update = update,
         subscriptions = subscriptions
         }
-
-
--- translation should take in a value and its parameters and a unid
--- Tree.Node NodeData
-translation : Value () ()-> Int -> Maybe (Pattern()) -> String
-translation value uid pattern =
-    case value of
-        Value.IfThenElse _ condition thenBranch elseBranch ->
-            let
-                data = NodeData (fromInt uid) (Value.toString condition) Nothing
-
-                children : List ( Tree.Node data )
-                children = []
-
-                newid = uid + 1
-            in
-                --Tree.Node {
-                -- data = data, children = children
-                --}
-                --
-
-                toString condition ++ " -- CONDISH -- " ++ (fromInt uid) ++ "< -- uid" ++ (fromInt newid) ++ "< -- newid" ++ translation thenBranch newid pattern ++ translation elseBranch newid pattern
-
-
-        Value.PatternMatch tpe param patterns ->
-                    let
-                        data = NodeData (fromInt uid) (Value.toString param) pattern
-                        newid = uid + 1
-                        children : List ( Tree.Node NodeData )
-                        children = [ ]
-                        first =
-                            case List.head patterns of
-                                Just val ->
-                                    val
-                                Nothing ->
-                                     ( Value.WildcardPattern (),  (Value.Variable () []))
-
-
-                    in
-                        --Tree.Node {
-                        -- data = data, children = children
-                        --}
-
-                        toString param ++ " -- CONDISH -- " ++ (fromInt uid) ++ "< -- uid" ++ (fromInt newid) ++ "< -- newid" ++ translation (Tuple.second first) newid (Just (Tuple.first first) )
-
-        _ ->
-            Value.toString value ++ (fromInt uid) ++ " ------ "
-            --Tree.Node { data = NodeData "cara" "is" Nothing, children = [] }
+toMaybeList : List(Pattern(), Value () () ) -> List(Maybe(Pattern()), Value () () )
+toMaybeList list =
+    let
+        patterns = List.map Tuple.first list
+        maybePatterns = List.map Just patterns
+        values = List.map Tuple.second list
+    in
+        List.map2 Tuple.pair maybePatterns values
 
 
 -- pass in a bunch of variables
 -- call the enterpreteur to do any business logic
 
+listToNode : List (Value () () ) -> List (Tree.Node NodeData)
+listToNode values =
+    let
+        uids = List.range 1 (List.length values)
+    in
+        List.map2 toTranslate values uids
+
+toTranslate : Value () () -> Int -> Tree.Node NodeData
+toTranslate value uid =
+    translation2 (Nothing, value) (fromInt uid)
+
 -- Tree.Node NodeData
-translation2 : Value () ()-> Int -> Maybe (Pattern()) -> Tree.Node NodeData
-translation2 value uid pattern =
+translation2 : (Maybe (Pattern()), Value () ())-> String -> Tree.Node NodeData
+translation2 (pattern, value) uid  =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
             let
 
-                data = NodeData (fromInt uid) (Value.toString condition) pattern
-                newid = uid + 1
+                data = NodeData (uid) (Value.toString condition) pattern
+                uids = createUIDS 2 uid
+                list = [(Just( Value.LiteralPattern () (BoolLiteral True)), thenBranch), (Just( Value.LiteralPattern () (BoolLiteral False)), elseBranch) ]
                 children : List ( Tree.Node NodeData )
-                children = [translation2 thenBranch newid (Just( Value.LiteralPattern () (BoolLiteral True))),
-                            translation2 elseBranch newid (Just( Value.LiteralPattern () (BoolLiteral False)))
-                    ]
+                children = List.map2 translation2 list uids
+
             in
                 Tree.Node {
                  data = data, children = children
                 }
 
-
-
         Value.PatternMatch tpe param patterns ->
             let
-                data = NodeData (fromInt uid) (Value.toString param) pattern
-                newid = uid + 1
+                data = NodeData uid (Value.toString param) pattern
+                maybePatterns = (toMaybeList patterns)
+                uids = createUIDS (List.length maybePatterns) uid
                 children : List ( Tree.Node NodeData )
-                children = [ ]
+                children = List.map2 translation2 maybePatterns uids
             in
                 Tree.Node {
                  data = data, children = children
                 }
         _ ->
             --Value.toString value ++ (fromInt uid) ++ " ------ "
-            Tree.Node { data = NodeData (fromInt uid) (Value.toString value) pattern, children = [] }
+            Tree.Node { data = NodeData uid (Value.toString value) pattern, children = [] }
 
---
+createUIDS : Int -> String -> List ( String )
+createUIDS range currentUID =
+    let
+        intRange = List.range 1 range
+        stringRange = List.map fromInt intRange
+        appender int = String.append (currentUID ++ ".") int
+
+    in
+        List.map appender stringRange
+----
 --main =
 --    layout
 --            []
@@ -342,21 +312,21 @@ translation2 value uid pattern =
                 --        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes1"]) (Value.IfThenElse () (Value.Variable () ["isBar"]) (Value.Variable () ["Yes2"]) (Value.Variable () ["No"]))) 1
                 --    )
                 --)
-            --    (Element.text
-            --        (translation
-            --        -- ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") []
-            --            (Value.patternMatch () (Value.Variable () ["LALALA"])
-            --                  [
-            --                  ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") [], (Value.Variable () ["BAR"]))
-            --                    , ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue2" ":") [], (Value.Variable () ["CAAR"]))
-            --                    , ( Value.WildcardPattern (),  (Value.Variable () ["DAR"]))
-            --                  ])
-            --            1 Nothing
-            --        )
-            --    )
-            --
-            --
-            --)
+                --(Element.text
+                --    (translation2
+                --    -- ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") []
+                --        (Nothing, (Value.patternMatch () (Value.Variable () ["LALALA"])
+                --              [
+                --              ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") [], (Value.Variable () ["BAR"]))
+                --                , ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue2" ":") [], (Value.Variable () ["CAAR"]))
+                --                , ( Value.WildcardPattern (),  (Value.Variable () ["DAR"]))
+                --              ]))
+                --        1
+                --    )
+                --)
+
+
+
 
 
 

@@ -11,6 +11,8 @@ module Morphir.Visual.ViewMultiaryDecisionTree exposing (main)
 --
 --
 import Browser
+import Element.Background as Background
+import Element.Border as Border
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
@@ -28,7 +30,7 @@ import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
 import Morphir.IR.Value exposing (RawValue)
 import Mwc.Button
 import Mwc.TextField
-import Element exposing (Element)
+import Element exposing (Element, rgb)
 import Morphir.Visual.Components.MultiaryDecisionTree as MultiaryDecisionTree exposing (Model, Msg(..), NodeData, configuration, expandAllCollapseAllButtons, selectedNodeDetails)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
@@ -115,6 +117,11 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.map TreeViewMsg (TreeView.subscriptions model.treeModel)
 
+-- map messages from tree view
+-- both element and html have map --> map would invoke constructor --> specify name html.map --> internally call constructor
+-- in view
+-- Element.html
+
 -- avilitiy to view tree
 view : Model -> Html Msg
 view model =
@@ -124,21 +131,38 @@ view model =
             ,selectedNodeDetails model
             , map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
             ]
-main =
-    Element.layout
+
+---- BLOCKER : tree view returns HTML vs Element msg
+
+--dog : Element msg
+--dog =
+--    Element.el
+--        [ Background.color (rgb 0 0.5 0)
+--        , Border.color (rgb 0 0.7 0)
+--
+--        ]
+        --(Element.text)
+
+
 
 --
 --display : config
 --
 --
---main =
---    Browser.element
---        {
---        init = initialModel,
---        view = view >> toUnstyled,
---        update = update,
---        subscriptions = subscriptions
---        }
+main =
+    Browser.element
+        {
+        init = initialModel,
+        view = view >> toUnstyled,
+        update = update,
+        subscriptions = subscriptions
+        }
+-- eventually extend update function to functionpage/modulepage/etc
+-- update function can be called by the other update functions
+-- new code that handles treeview wrapper
+-- call existing function passing in state of tree and the msg
+
+-- multiple isntances of treeview in developapp --> state of tree should be tied to ir
 --
 --valueToTree : Config msg -> Bool -> VisualTypedValue -> MultiaryDecisionTree.Node
 --valueToTree config doEval value =
