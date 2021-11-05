@@ -15,6 +15,7 @@
     display: inline-block;
     overflow: auto;
     font-family: sans-serif;
+    height: 100%;
     }
 
     td {
@@ -106,35 +107,7 @@
     node : document.getElementById('elm'),
     flags : {}
     });
-    document.getElementById('bank-type').addEventListener('change', function () {
-      var style = this.value == 1 ? 'none' : 'inline-block';
-      document.getElementById('cash-sub-a').style.display = style;
-    });
 
-    document.getElementById('bank-type').addEventListener('change', function () {
-      var style = this.value == 1 ? 'inline-block' : 'none';
-      document.getElementById('cash-sub-b').style.display = style;
-    });
-
-    document.getElementById('classify-type').addEventListener('change', function () {
-      var style = this.value == 1 ? 'none' : 'inline-block';
-      document.getElementById('classify-sub-a').style.display = style;
-    });
-
-    document.getElementById('classify-type').addEventListener('change', function () {
-      var style = this.value == 1 ? 'inline-block' : 'none';
-      document.getElementById('classify-sub-b').style.display = style;
-    });
-
-    document.getElementById('5C55-type').addEventListener('change', function () {
-      var style = this.value == 1 ? 'none' : 'inline-block';
-      document.getElementById('5C55-sub').style.display = style;
-    });
-
-    document.getElementById('5C55-type').addEventListener('change', function () {
-      var style = this.value == 1 ? 'inline-block' : 'none';
-      document.getElementById('5C55-sub').style.display = style;
-    });
 
 
 </script>

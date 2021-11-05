@@ -67,7 +67,7 @@ initialModel () =
                     [ Tree.Node
                     {
                     children = [ Tree.Node
-                                { children = [], data = NodeData "2.1.1" "YesAndYes========================"  (Just( Value.LiteralPattern () (BoolLiteral True))) },
+                                { children = [], data = NodeData "2.1.1" "YesAndYes"  (Just( Value.LiteralPattern () (BoolLiteral True))) },
                                 Tree.Node
                                 { children = [], data = NodeData "2.1.2" "YesAndNo"  (Just( Value.LiteralPattern () (BoolLiteral False)))} ]
                     ,
@@ -103,6 +103,7 @@ initialModel () =
         ( { rootNodes = rootNodes
         , treeModel = TreeView.initializeModel configuration rootNodes
         , selectedNode = Nothing
+        , selectedType = Nothing
         }
         , Cmd.none
         )
@@ -112,6 +113,7 @@ type alias Model =
     { rootNodes : List (Tree.Node NodeData)
     , treeModel : TreeView.Model NodeData String Never ()
     , selectedNode : Maybe NodeData
+    , selectedType : Maybe RootType
     }
 
 --construct a configuration for your tree view
@@ -125,6 +127,15 @@ type Msg =
   | ExpandAll
   | CollapseAll
 
+type alias RootType =
+    {rType : String}
+
+typeList : List RootType
+typeList =
+    [ RootType "Cash"
+    , RootType "Inventory"
+    , RootType "Pending Trades"
+    ]
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update message model =
@@ -173,38 +184,24 @@ selectedNodeDetails model =
                 , Mwc.TextField.label selectedDetails
                 ]
             ]
+
 --TODO: hide next dropdowns until current dropdown has been selected
+--TODO: see if i can change html elements by innerText
 -- avilitiy to view tree
 view : Model -> Html Msg
 view model =
+    let
+      selectedRootType =
+          case model.selectedType of
+              Nothing -> "No root type selected. Click here to select"
+              Just roottype -> roottype.rType
+
+
+    in
         div
             [ css [width (auto)]]
             [
             select [id "first"] [option [value "0"] [text "Cash"], option [value "1"] [text "Inventory"], option [value "2"] [text "Pending Trades"]]
-            , select [id "bank-type"] [option [value "0"] [text "Central Bank"], option [value "1"] [text "Onshore"]]
-            , div [id "cash-sub-a", class "selector"] [
-                select [id "cash-type"] [option [value "0"] [text "Segregated Cash"]]
-                , select [id "classify-type"] [option [value "0"] [text "Classify by Counter-Party ID"], option [value "1"] [text "Don't"]]
-                , div [id "classify-sub-a", class "selector"] [
-                    select [id "bottom-level-a"] [option [] [text "FRD"], option [] [text "BOE"], option [] [text "SNB"]
-                    , option [] [text "ECB"], option [] [text "BOJ"], option [] [text "RBA"]
-                    , option [] [text "BOC"], option [] [text "Others"]]
-                ]
-                , div [id "classify-sub-b", class "hidden-on-start"] [
-                    select [id "bottom-level-b"] [option [] [text "FRD2"], option [] [text "BOE"], option [] [text "SNB"]
-                    , option [] [text "ECB"], option [] [text "BOJ"], option [] [text "RBA"]
-                    , option [] [text "BOC"], option [] [text "Others"]]
-                ]
-            ]
-            , div [id "cash-sub-b", class "hidden-on-start cash-sub"] [
-                select [id "negative-type"] [option [value "0"] [text "NetUSD is Negative"], option [value "1"] [text "NetUSD is Positive"]]
-                , div [id "negative-sub-a", class "selector"] [
-                    select [id "5C55-type"] [option [value "0"] [text "Yes"], option [value "1"] [text "Is Feed44 and CostCentre Not 5C55"]]
-                    , div [id "5C55-sub", class "hidden-on-start"] [
-                        select [id "bottom-level-c"] [option [value "0"] [text "Yes"], option [value "1"] [text "Yes"]]
-                    ]
-                ]
-            ]
             , expandAllCollapseAllButtons
             , selectedNodeDetails model
             , map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
