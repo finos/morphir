@@ -16,16 +16,15 @@
 
 
 module Morphir.Scala.Backend exposing
-    ( mapDistribution, mapFunctionBody, mapType, mapTypeMember
+    ( mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue
     , Options
-    , mapValue
     )
 
 {-| This module encapsulates the Scala backend. It takes the Morphir IR as the input and returns an in-memory
 representation of files generated. The consumer is responsible for getting the input IR and saving the output
 to the file-system.
 
-@docs mapDistribution, mapFunctionBody, mapType, mapTypeMember
+@docs mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue
 
 
 # Options
