@@ -1,31 +1,53 @@
 module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
 import Browser
-import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
+import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value(..), toString, unit, variable)
 
 import Dict
 import Element exposing (Element, column, el, fill, html, layout, none, padding, paddingEach, px, row, shrink, spacing, table)
 import Html.Styled.Attributes exposing (class, css, id, placeholder, value)
 import Html exposing (a)
 
+
 import Html.Styled exposing (Html, div, fromUnstyled, map, option, select, text, toUnstyled)
+
 import Css exposing (auto, px, width)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName
-import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Literal as Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value
-import Morphir.Visual.Components.MultiaryDecisionTree exposing (Node(..))
+import Morphir.IR.Value as Value exposing (ifThenElse, patternMatch)
+import Morphir.Visual.Components.MultiaryDecisionTree
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ViewPattern as ViewPattern
 import Morphir.Visual.ViewValue as ViewValue
+import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
+import Parser exposing (number)
+import String exposing (fromInt)
 import Tree as Tree
 import TreeView as TreeView
 import Mwc.Button
 import Mwc.TextField
+
+--load ir and figure out what to show
+
+-- reading an ir and selecting the function in it to visualize
+
+-- scratch view value integration
+-- use example data structures to feed
+-- replace piece with hand written ir and function that turns it into ha
+-- still hard coded examples
+-- hard coding if then els eand pattern match
+-- translate back into ir version of that
+
+-- we have these examples
+-- piece that turns ir into data strcutre
+-- Value.IfThenElse () (var "isFoo") (var "Yes") (var "No")
+-- Value.PatternMatch () (var "isFoo") List
+
 
 -- define data type for values we put into tree node
 type alias NodeData = {
@@ -39,6 +61,8 @@ getLabel maybeLabel =
     case maybeLabel of
         Just label -> ViewPattern.patternAsText(label) ++ " - "
         Nothing -> ""
+
+
 -- ViewPattern.patternAsText(node.data.pattern) ++ "->" ++ node.data.subject
 -- define a function to calculate the text representation of a node
 nodeLabel : Tree.Node NodeData -> String
@@ -52,58 +76,55 @@ nodeUid n =
     case n of
         Tree.Node node -> TreeView.NodeUid node.data.uid
 
+-- walk through wire frame
+-- confused why top level doesnt have anything corresponding
+
 initialModel : () -> (Model, Cmd Msg)
 initialModel () =
     let
         rootNodes =
-            [ Tree.Node
-                { children =
-                    [ Tree.Node { children = [], data = NodeData "1.1" "Yes" (Just (Value.LiteralPattern () (BoolLiteral True)))}
-                    , Tree.Node { children = [], data = NodeData "1.2" "No" (Just (Value.LiteralPattern () (BoolLiteral False)))} ],
-                    data = NodeData "1" "isFoo" Nothing
-                }
-            , Tree.Node
-                { children =
-                    [ Tree.Node
-                    {
-                    children = [ Tree.Node
-                                { children = [], data = NodeData "2.1.1" "YesAndYes"  (Just( Value.LiteralPattern () (BoolLiteral True))) },
-                                Tree.Node
-                                { children = [], data = NodeData "2.1.2" "YesAndNo"  (Just( Value.LiteralPattern () (BoolLiteral False)))} ]
-                    ,
-                    data = NodeData "2.1" "isBar"  (Just( Value.LiteralPattern () (BoolLiteral True)))},
-                     Tree.Node
-                     {
-                     children = [],
-                     data = NodeData "2.2" "No"  (Just ( Value.LiteralPattern () (BoolLiteral False)))}
-                     ]
 
-                , data = NodeData "2" "isFoo" Nothing
-                }
-              , Tree.Node
-                { children = [
-                Tree.Node {
-                    children = [],
-                    data = NodeData "3.1" "foo" (Just ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") []))
-                    },
-                Tree.Node {
-                    children = [],
-                    data = NodeData "3.2" "bar" (Just ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue2" ":") []))
-                    },
-                Tree.Node {
-                    children = [],
-                    data = NodeData "3.3" "baz" (Just ( Value.WildcardPattern ()))
-                    }
-                ],
-                data = NodeData "3" "enum" Nothing
+            listToNode [
+                (Value.patternMatch () (Value.Variable () ["Type"])
+                [
+                (( Value.LiteralPattern () (StringLiteral "1")), ( Value.IfThenElse () (Value.Variable () ["Cash"])
+                        (Value.IfThenElse () (Value.Variable () ["Is Central Bank"])
+                            ( Value.IfThenElse () (Value.Variable () ["Is Segregated Cash"])
+                                (Value.PatternMatch () (Value.Variable () ["Classify By Counter Party ID"]) [
+                                    ( Value.LiteralPattern () (StringLiteral "FRD"), (Value.Variable () ["1.A.4.1"]))
+                                  , ( Value.LiteralPattern () (StringLiteral "BOE"), (Value.Variable () ["1.A.4.2"]))
+                                  ])
+                                (Value.PatternMatch () (Value.Variable () ["Classify By Counter Party ID"]) [
+                                  ( Value.LiteralPattern () (StringLiteral "FRD"), (Value.Variable () ["1.A.4.1"]))
+                                , ( Value.LiteralPattern () (StringLiteral "BOE"), (Value.Variable () ["1.A.4.2"]))
+                                ])
+                            ) (Value.Variable () ["Is Segregated Cash"]) ) --,
+                        ( Value.IfThenElse () (Value.Variable () ["Is On Shore"])
+                            ( Value.IfThenElse () (Value.Variable () ["Is NetUsd Amount Negative"])
+                                (Value.Variable () ["O.W.9"])
+                                (Value.PatternMatch () (Value.Variable () ["Is Feed44 and CostCenter Not 5C55"]) [
+                                  ( Value.LiteralPattern () (StringLiteral "Yes"), (Value.Variable () ["1.U.1"]))
+                                , ( Value.LiteralPattern () (StringLiteral "Yes"), (Value.Variable () ["1.U.4"]))
+                                ])
+                            )
+                            ( Value.IfThenElse () (Value.Variable () ["Is NetUsd Amount Negative"])
+                                (Value.Variable () ["O.W.10"])
+                                (Value.PatternMatch () (Value.Variable () ["Is Feed44 and CostCenter Not 5C55"]) [
+                                  ( Value.LiteralPattern () (StringLiteral "Yes"), (Value.Variable () ["1.U.2"]))
+                                , ( Value.LiteralPattern () (StringLiteral "Yes"), (Value.Variable () ["1.U.4"]))
+                                ])
+                            )
 
-                }
-            ]
+                         )
+                    ) ),
+                (( Value.LiteralPattern () (StringLiteral "2")), (Value.Variable () ["Inventory"] ))
+                , (( Value.LiteralPattern () (StringLiteral "3")), (Value.Variable () ["Pending Trades"]))
+                ] )
+               ]
     in
         ( { rootNodes = rootNodes
         , treeModel = TreeView.initializeModel configuration rootNodes
         , selectedNode = Nothing
-        , selectedType = Nothing
         }
         , Cmd.none
         )
@@ -113,7 +134,6 @@ type alias Model =
     { rootNodes : List (Tree.Node NodeData)
     , treeModel : TreeView.Model NodeData String Never ()
     , selectedNode : Maybe NodeData
-    , selectedType : Maybe RootType
     }
 
 --construct a configuration for your tree view
@@ -127,15 +147,6 @@ type Msg =
   | ExpandAll
   | CollapseAll
 
-type alias RootType =
-    {rType : String}
-
-typeList : List RootType
-typeList =
-    [ RootType "Cash"
-    , RootType "Inventory"
-    , RootType "Pending Trades"
-    ]
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update message model =
@@ -185,26 +196,24 @@ selectedNodeDetails model =
                 ]
             ]
 
---TODO: hide next dropdowns until current dropdown has been selected
---TODO: see if i can change html elements by innerText
 -- avilitiy to view tree
 view : Model -> Html Msg
 view model =
-    let
-      selectedRootType =
-          case model.selectedType of
-              Nothing -> "No root type selected. Click here to select"
-              Just roottype -> roottype.rType
-
-
-    in
         div
             [ css [width (auto)]]
             [
             select [id "first"] [option [value "0"] [text "Cash"], option [value "1"] [text "Inventory"], option [value "2"] [text "Pending Trades"]]
+            , select [id "bank-type", class "sub-selector"] [option [value "0"] [text "Central Bank"], option [value "1"] [text "Onshore"]]
+            , select [id "cash-type", class "sub-selector"] [option [value "0"] [text "Segregated Cash"], option [value "1"] [text "Not"]]
+            , select [id "negative-type", class "hidden-on-start sub-selector"] [option [value "0"] [text "NetUSD is Negative"], option [value "1"] [text "NetUSD is Positive"]]
+            --, select [id "classify-type"] [option [] [text "Classify by Counter-Party ID"], option [] [text "Don't"]]
+            --, select [id "bottom-level"] [option [] [text "FRD"], option [] [text "BOE"], option [] [text "SNB"]
+            --    , option [] [text "ECB"], option [] [text "BOJ"], option [] [text "RBA"]
+            --    , option [] [text "BOC"], option [] [text "Others"]]
             , expandAllCollapseAllButtons
             , selectedNodeDetails model
             , map TreeViewMsg (TreeView.view model.treeModel |> fromUnstyled)
+
             ]
 
 
@@ -214,7 +223,7 @@ subscriptions model =
     Sub.map TreeViewMsg (TreeView.subscriptions model.treeModel)
 
 
-
+--
 main =
     Browser.element
         {
@@ -223,3 +232,132 @@ main =
         update = update,
         subscriptions = subscriptions
         }
+toMaybeList : List(Pattern(), Value () () ) -> List(Maybe(Pattern()), Value () () )
+toMaybeList list =
+    let
+        patterns = List.map Tuple.first list
+        maybePatterns = List.map Just patterns
+        values = List.map Tuple.second list
+    in
+        List.map2 Tuple.pair maybePatterns values
+
+
+-- pass in a bunch of variables
+-- call the enterpreteur to do any business logic
+
+listToNode : List (Value () () ) -> List (Tree.Node NodeData)
+listToNode values =
+    let
+        uids = List.range 1 (List.length values)
+    in
+        List.map2 toTranslate values uids
+
+toTranslate : Value () () -> Int -> Tree.Node NodeData
+toTranslate value uid =
+    translation2 (Nothing, value) (fromInt uid)
+
+-- Tree.Node NodeData
+translation2 : (Maybe (Pattern()), Value () ())-> String -> Tree.Node NodeData
+translation2 (pattern, value) uid  =
+    case value of
+        Value.IfThenElse _ condition thenBranch elseBranch ->
+            let
+
+                data = NodeData (uid) (Value.toString condition) pattern
+                uids = createUIDS 2 uid
+                list = [(Just( Value.LiteralPattern () (BoolLiteral True)), thenBranch), (Just( Value.LiteralPattern () (BoolLiteral False)), elseBranch) ]
+                children : List ( Tree.Node NodeData )
+                children = List.map2 translation2 list uids
+
+            in
+                Tree.Node {
+                 data = data, children = children
+                }
+
+        Value.PatternMatch tpe param patterns ->
+            let
+                data = NodeData uid (Value.toString param) pattern
+                maybePatterns = (toMaybeList patterns)
+                uids = createUIDS (List.length maybePatterns) uid
+                children : List ( Tree.Node NodeData )
+                children = List.map2 translation2 maybePatterns uids
+            in
+                Tree.Node {
+                 data = data, children = children
+                }
+        _ ->
+            --Value.toString value ++ (fromInt uid) ++ " ------ "
+            Tree.Node { data = NodeData uid (Value.toString value) pattern, children = [] }
+
+createUIDS : Int -> String -> List ( String )
+createUIDS range currentUID =
+    let
+        intRange = List.range 1 range
+        stringRange = List.map fromInt intRange
+        appender int = String.append (currentUID ++ ".") int
+
+    in
+        List.map appender stringRange
+----
+--main =
+--    layout
+--            []
+--            <|
+--            (el [ padding 10 ]
+
+                --(Element.text (Value.toString (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"])
+                --(Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"]) (Value.Variable () ["No"]))
+                --
+                -- (Element.text
+                --    (translation
+                --        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes"])(Value.Variable () ["No"])) "1"
+                --    )
+                -- )
+                --(Element.text
+                --    (translation
+                --        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes1"]) (Value.IfThenElse () (Value.Variable () ["isBar"]) (Value.Variable () ["Yes2"]) (Value.Variable () ["No"]))) 1
+                --    )
+                --)
+                --(Element.text
+                --    (translation2
+                --        (Value.IfThenElse () (Value.Variable () ["isFoo"]) (Value.Variable () ["Yes1"]) (Value.IfThenElse () (Value.Variable () ["isBar"]) (Value.Variable () ["Yes2"]) (Value.Variable () ["No"]))) 1
+                --    )
+                --)
+                --(Element.text
+                --    (translation2
+                --    -- ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") []
+                --        (Nothing, (Value.patternMatch () (Value.Variable () ["LALALA"])
+                --              [
+                --              ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue1" ":") [], (Value.Variable () ["BAR"]))
+                --                , ( Value.ConstructorPattern () (FQName.fromString "My:Sample:EnumValue2" ":") [], (Value.Variable () ["CAAR"]))
+                --                , ( Value.WildcardPattern (),  (Value.Variable () ["DAR"]))
+                --              ]))
+                --        1
+                --    )
+                --)
+
+
+
+
+
+
+--getLabel: Maybe (Pattern ()) -> String
+--
+--getLabel pattern =
+--    Element.table []
+--            { data = pattern
+--            , columns =
+--                [ { header = none
+--                  , width = px 150
+--                  , view =
+--                        \myLabel ->
+--                            ViewPattern.patternAsText(pattern)
+--                  }
+--                , { header = none
+--                  , width = px 150
+--                  , view =
+--                        \myLabel ->
+--                            "  ->  "
+--                  }
+--                ]
+--            }
