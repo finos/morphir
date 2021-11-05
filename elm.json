@@ -17,6 +17,7 @@
         "Morphir.SDK.Aggregate",
         "Morphir.SDK.Dict",
         "Morphir.SDK.ResultList",
+        "Morphir.SDK.Validate",
         "Morphir.IR",
         "Morphir.IR.Name",
         "Morphir.IR.Path",
