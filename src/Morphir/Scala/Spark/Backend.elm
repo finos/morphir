@@ -216,12 +216,10 @@ mapColumnExpression value =
     in
     case value of
         Value.Literal _ lit ->
-            Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "lit")
-                [ Scala.ArgValue Nothing (Scala.Literal (mapLiteral lit)) ]
+            Spark.literal (Scala.Literal (mapLiteral lit))
 
         Value.Field _ _ name ->
-            Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "col")
-                [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase name))) ]
+            Spark.column (Name.toCamelCase name)
 
         Value.Apply _ (Value.Apply _ (Value.Reference _ fqn) arg1) arg2 ->
             case FQName.toString fqn of

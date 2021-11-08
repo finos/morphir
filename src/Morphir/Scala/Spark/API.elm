@@ -8,6 +8,18 @@ dataFrame =
     Scala.TypeRef [ "org", "apache", "spark", "sql" ] "DataFrame"
 
 
+literal : Scala.Value -> Scala.Value
+literal lit =
+    Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "lit")
+        [ Scala.ArgValue Nothing lit ]
+
+
+column : String -> Scala.Value
+column name =
+    Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "col")
+        [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit name)) ]
+
+
 select : List Scala.Value -> Scala.Value -> Scala.Value
 select columns from =
     Scala.Apply
