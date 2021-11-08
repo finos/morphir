@@ -20,6 +20,26 @@ column name =
         [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit name)) ]
 
 
+when : Scala.Value -> Scala.Value -> Scala.Value
+when cond thenBranch =
+    Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "when")
+        [ Scala.ArgValue Nothing cond, Scala.ArgValue Nothing thenBranch ]
+
+
+andWhen : Scala.Value -> Scala.Value -> Scala.Value -> Scala.Value
+andWhen cond thenBranch soFar =
+    Scala.Apply
+        (Scala.Select soFar "when")
+        [ Scala.ArgValue Nothing cond, Scala.ArgValue Nothing thenBranch ]
+
+
+otherwise : Scala.Value -> Scala.Value -> Scala.Value
+otherwise elseBranch soFar =
+    Scala.Apply
+        (Scala.Select soFar "otherwise")
+        [ Scala.ArgValue Nothing elseBranch ]
+
+
 select : List Scala.Value -> Scala.Value -> Scala.Value
 select columns from =
     Scala.Apply
