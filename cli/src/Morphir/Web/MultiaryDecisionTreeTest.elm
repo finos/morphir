@@ -72,24 +72,23 @@ getLabel maybeLabel =
             ""
 
 
-evaluateHighlight : Dict Name RawValue -> RawValue -> Pattern () -> Bool
-evaluateHighlight variable value pattern =
+evaluateHighlight : Dict Name RawValue -> String -> Pattern () -> Bool
+evaluateHighlight variables value pattern =
     let
+        evaluation : Maybe.Maybe RawValue
         evaluation =
-            Interpreter.evaluateValue Dict.empty IR.empty variable [] value
+            variables |> Dict.get (Name.fromString value)
     in
     case evaluation of
-        Ok val ->
-            if
-                Interpreter.matchPattern pattern val
-                    == Err (Error.PatternMismatch pattern value)
-            then
-                False
+        Just val ->
+            case Interpreter.matchPattern pattern val of
+                Ok _ ->
+                    True
 
-            else
-                True
+                Err _ ->
+                    False
 
-        Err e ->
+        Nothing ->
             False
 
 
@@ -121,14 +120,14 @@ initialModel () =
         rootNodes =
             listToNode
                 [ Value.patternMatch ()
-                    (Value.Variable () [ "Classify By Position Type" ])
+                    (Value.Variable () (Name.fromString "Classify By Position Type"))
                     [ ( Value.LiteralPattern () (StringLiteral "Cash")
                       , Value.IfThenElse ()
-                            (Value.Variable () [ "Is Central Bank" ])
+                            (Value.Variable () (Name.fromString "Is Central Bank"))
                             (Value.IfThenElse ()
-                                (Value.Variable () [ "Is Segregated Cash" ])
+                                (Value.Variable () (Name.fromString "Is Segregated Cash"))
                                 (Value.PatternMatch ()
-                                    (Value.Variable () [ "Classify By Counter Party ID" ])
+                                    (Value.Variable () (Name.fromString "Classify By Counter Party ID"))
                                     [ ( Value.LiteralPattern () (StringLiteral "FRD"), Value.Variable () [ "1.A.4.1" ] )
                                     , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "1.A.4.2" ] )
                                     , ( Value.LiteralPattern () (StringLiteral "SNB"), Value.Variable () [ "1.A.4.3" ] )
@@ -140,7 +139,7 @@ initialModel () =
                                     ]
                                 )
                                 (Value.PatternMatch ()
-                                    (Value.Variable () [ "Classify By Counter Party ID" ])
+                                    (Value.Variable () (Name.fromString "Classify By Counter Party ID"))
                                     [ ( Value.LiteralPattern () (StringLiteral "FRD"), Value.Variable () [ "1.A.3.1" ] )
                                     , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "1.A.3.2" ] )
                                     , ( Value.LiteralPattern () (StringLiteral "SNB"), Value.Variable () [ "1.A.3.3" ] )
@@ -153,7 +152,7 @@ initialModel () =
                                 )
                             )
                             (Value.IfThenElse ()
-                                (Value.Variable () [ "Is On Shore" ])
+                                (Value.Variable () (Name.fromString "Is On Shore"))
                                 (Value.IfThenElse ()
                                     (Value.Variable () [ "Is NetUsd Amount Negative" ])
                                     (Value.Variable () [ "O.W.9" ])
@@ -463,6 +462,15 @@ type NodeDataMsg
     = EditContent String String -- uid content
 
 
+
+-- evaluate condition
+-- variable dictionary --> interpreter looks up to get corresponding value
+-- all it will do is dictionary look up
+-- in real world those will be functions --> business logic
+-- type as a variable -->
+-- type and currenctly selected drop down
+
+
 viewNodeData : Maybe NodeData -> Tree.Node NodeData -> Html.Html NodeDataMsg
 viewNodeData selectedNode node =
     let
@@ -471,15 +479,13 @@ viewNodeData selectedNode node =
 
         dict =
             Dict.fromList
-                --[ ( [ "Type" ], Value.Literal () (StringLiteral "1") )
-                --, ( [ "Type" ], Value.Literal () (StringLiteral "2") )
-                --, ( [ "Type" ], Value.Literal () (StringLiteral "3") )
-                --]
-                --[ ( [ "Is Central Bank" ], Value.Literal () (BoolLiteral True) )
-                --, ( [ "Is Central Bank" ], Value.Literal () (BoolLiteral False) )
-                --]
-                []
+                [ ( Name.fromString "Classify By Position Type", Value.Literal () (StringLiteral "Cash") )
+                , ( Name.fromString "Is Central Bank", Value.Literal () (BoolLiteral True) )
+                , ( Name.fromString "Is Segregated Cash", Value.Literal () (BoolLiteral True) )
+                , ( Name.fromString "Classify By Counter Party ID", Value.Literal () (StringLiteral "FRD") )
+                ]
 
+        --[]
         selected =
             selectedNode
                 |> Maybe.map (\sN -> nodeData.uid == sN.uid)
@@ -491,15 +497,15 @@ viewNodeData selectedNode node =
         --            (Value.Variable () [ "Type" ])
         --           (withDefault (WildcardPattern ()) nodeData.pattern)
         --        )
-        correctPathNumber =
-            length nodeData.uid // 2 |> Debug.log ("homie" ++ nodeData.uid)
-
-        correctPath =
-            withDefault (Value.Literal () (BoolLiteral True)) (Array.get correctPathNumber (Array.fromList mylist)) |> Debug.log ("the correct path" ++ fromInt correctPathNumber)
-
+        --correctPathNumber =
+        --    length nodeData.uid // 2 |> Debug.log ("homie" ++ nodeData.uid)
+        --
+        --correctPath =
+        --    withDefault (Value.Literal () (BoolLiteral True)) (Array.get correctPathNumber (Array.fromList mylist)) |> Debug.log ("the correct path" ++ fromInt correctPathNumber)
         highlight =
             evaluateHighlight dict
-                correctPath
+                nodeData.subject
+                --correctPath
                 (withDefault (WildcardPattern ()) nodeData.pattern)
 
         --|> Debug.log ("logging " ++ getLabel nodeData.pattern ++ " subbie " ++ nodeData.subject)
