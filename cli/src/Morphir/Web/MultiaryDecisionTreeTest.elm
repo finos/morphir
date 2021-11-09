@@ -36,6 +36,7 @@ import String exposing (fromInt, length)
 import Svg.Attributes exposing (style)
 import Tree as Tree
 import TreeView as TreeView
+import Tuple exposing (first)
 
 
 
@@ -471,19 +472,50 @@ type NodeDataMsg
 -- type and currenctly selected drop down
 
 
+convertToDict : Dict String String -> Dict Name (Value ta ())
+convertToDict dict =
+    let
+        dictList =
+            Dict.toList dict
+    in
+    Dict.fromList (List.map convertToDictHelper dictList)
+
+
+convertToDictHelper : ( String, String ) -> ( Name, Value ta () )
+convertToDictHelper ( k, v ) =
+    case v of
+        "True" ->
+            ( Name.fromString k, Value.Literal () (BoolLiteral True) )
+
+        "False" ->
+            ( Name.fromString k, Value.Literal () (BoolLiteral False) )
+
+        _ ->
+            ( Name.fromString k, Value.Literal () (StringLiteral v) )
+
+
 viewNodeData : Maybe NodeData -> Tree.Node NodeData -> Html.Html NodeDataMsg
 viewNodeData selectedNode node =
     let
         nodeData =
             Tree.dataOf node
 
-        dict =
-            Dict.fromList
-                [ ( Name.fromString "Classify By Position Type", Value.Literal () (StringLiteral "Cash") )
-                , ( Name.fromString "Is Central Bank", Value.Literal () (BoolLiteral True) )
-                , ( Name.fromString "Is Segregated Cash", Value.Literal () (BoolLiteral True) )
-                , ( Name.fromString "Classify By Counter Party ID", Value.Literal () (StringLiteral "FRD") )
-                ]
+        --dict =
+        --    Dict.fromList
+        --        [ ( Name.fromString "Classify By Position Type", Value.Literal () (StringLiteral "Cash") )
+        --        , ( Name.fromString "Is Central Bank", Value.Literal () (BoolLiteral True) )
+        --        , ( Name.fromString "Is Segregated Cash", Value.Literal () (BoolLiteral True) )
+        --        , ( Name.fromString "Classify By Counter Party ID", Value.Literal () (StringLiteral "FRD") )
+        --        ]
+        dict2 =
+            convertToDict
+                (Dict.fromList
+                    [ ( "Classify By Position Type", "Cash" )
+                    , ( "Is Central Bank", "True" )
+                    , ( "Is Segregated Cash", "True" )
+                    , ( "Classify By Counter Party ID", "FRD" )
+                    ]
+                )
 
         --[]
         selected =
@@ -503,7 +535,7 @@ viewNodeData selectedNode node =
         --correctPath =
         --    withDefault (Value.Literal () (BoolLiteral True)) (Array.get correctPathNumber (Array.fromList mylist)) |> Debug.log ("the correct path" ++ fromInt correctPathNumber)
         highlight =
-            evaluateHighlight dict
+            evaluateHighlight dict2
                 nodeData.subject
                 --correctPath
                 (withDefault (WildcardPattern ()) nodeData.pattern)
@@ -513,31 +545,8 @@ viewNodeData selectedNode node =
     if highlight then
         text (getLabel nodeData.pattern ++ nodeData.subject ++ "  Highlight")
             |> toUnstyled
-        --|> Debug.log nodeData.subject
+        --|> Debug.log dict
 
     else
         text (getLabel nodeData.pattern ++ nodeData.subject)
             |> toUnstyled
-
-
-
---getLabel: Maybe (Pattern ()) -> String
---
---getLabel pattern =
---    Element.table []
---            { data = pattern
---            , columns =
---                [ { header = none
---                  , width = px 150
---                  , view =
---                        \myLabel ->
---                            ViewPattern.patternAsText(pattern)
---                  }
---                , { header = none
---                  , width = px 150
---                  , view =
---                        \myLabel ->
---                            "  ->  "
---                  }
---                ]
---            }
