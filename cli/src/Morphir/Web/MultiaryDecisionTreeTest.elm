@@ -467,7 +467,7 @@ viewNodeData selectedNode node =
         --        )
         highlight =
             evaluateHighlight dict
-                (Value.Variable () [ "Type" ])
+                (Value.Literal () (StringLiteral "1"))
                 (withDefault (WildcardPattern ()) nodeData.pattern)
                 |> Debug.log "testing"
     in
