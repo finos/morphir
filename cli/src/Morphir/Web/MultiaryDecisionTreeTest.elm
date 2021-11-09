@@ -1,5 +1,6 @@
 module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
+import Array exposing (fromList, get)
 import Browser
 import Css exposing (auto, bold, fontSize, px, width, xxSmall)
 import Dict exposing (Dict, values)
@@ -31,7 +32,7 @@ import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 import Mwc.Button
 import Mwc.TextField
 import Parser exposing (number)
-import String exposing (fromInt)
+import String exposing (fromInt, length)
 import Svg.Attributes exposing (style)
 import Tree as Tree
 import TreeView as TreeView
@@ -83,13 +84,13 @@ evaluateHighlight variable value pattern =
                 Interpreter.matchPattern pattern val
                     == Err (Error.PatternMismatch pattern value)
             then
-                false
+                False
 
             else
-                true
+                True
 
         Err e ->
-            false
+            False
 
 
 
@@ -120,56 +121,63 @@ initialModel () =
         rootNodes =
             listToNode
                 [ Value.patternMatch ()
-                    (Value.Variable () [ "Type" ])
-                    [ ( Value.LiteralPattern () (StringLiteral "1")
+                    (Value.Variable () [ "Classify By Position Type" ])
+                    [ ( Value.LiteralPattern () (StringLiteral "Cash")
                       , Value.IfThenElse ()
-                            (Value.Variable () [ "Cash" ])
+                            (Value.Variable () [ "Is Central Bank" ])
                             (Value.IfThenElse ()
-                                (Value.Variable () [ "Is Central Bank" ])
-                                (Value.IfThenElse ()
-                                    (Value.Variable () [ "Is Segregated Cash" ])
-                                    (Value.PatternMatch ()
-                                        (Value.Variable () [ "Classify By Counter Party ID" ])
-                                        [ ( Value.LiteralPattern () (StringLiteral "FRD"), Value.Variable () [ "1.A.4.1" ] )
-                                        , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "1.A.4.2" ] )
-                                        ]
-                                    )
-                                    (Value.PatternMatch ()
-                                        (Value.Variable () [ "Classify By Counter Party ID" ])
-                                        [ ( Value.LiteralPattern () (StringLiteral "FRD"), Value.Variable () [ "1.A.4.1" ] )
-                                        , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "1.A.4.2" ] )
-                                        ]
-                                    )
-                                )
                                 (Value.Variable () [ "Is Segregated Cash" ])
+                                (Value.PatternMatch ()
+                                    (Value.Variable () [ "Classify By Counter Party ID" ])
+                                    [ ( Value.LiteralPattern () (StringLiteral "FRD"), Value.Variable () [ "1.A.4.1" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "1.A.4.2" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "SNB"), Value.Variable () [ "1.A.4.3" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "ECB"), Value.Variable () [ "1.A.4.4" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "BOI"), Value.Variable () [ "1.A.4.5" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "RBA"), Value.Variable () [ "1.A.4.6" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "BOC"), Value.Variable () [ "1.A.4.7" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "Others"), Value.Variable () [ "1.A.4.8" ] )
+                                    ]
+                                )
+                                (Value.PatternMatch ()
+                                    (Value.Variable () [ "Classify By Counter Party ID" ])
+                                    [ ( Value.LiteralPattern () (StringLiteral "FRD"), Value.Variable () [ "1.A.3.1" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "1.A.3.2" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "SNB"), Value.Variable () [ "1.A.3.3" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "ECB"), Value.Variable () [ "1.A.3.4" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "BOI"), Value.Variable () [ "1.A.3.5" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "RBA"), Value.Variable () [ "1.A.3.6" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "BOC"), Value.Variable () [ "1.A.3.7" ] )
+                                    , ( Value.LiteralPattern () (StringLiteral "Others"), Value.Variable () [ "1.A.3.8" ] )
+                                    ]
+                                )
                             )
-                            --,
                             (Value.IfThenElse ()
                                 (Value.Variable () [ "Is On Shore" ])
                                 (Value.IfThenElse ()
                                     (Value.Variable () [ "Is NetUsd Amount Negative" ])
                                     (Value.Variable () [ "O.W.9" ])
-                                    (Value.PatternMatch ()
+                                    (Value.IfThenElse ()
                                         (Value.Variable () [ "Is Feed44 and CostCenter Not 5C55" ])
-                                        [ ( Value.LiteralPattern () (StringLiteral "Yes"), Value.Variable () [ "1.U.1" ] )
-                                        , ( Value.LiteralPattern () (StringLiteral "Yes"), Value.Variable () [ "1.U.4" ] )
-                                        ]
+                                        (Value.Variable () [ "1.U.1" ])
+                                        (Value.Variable () [ "1.U.4" ])
                                     )
                                 )
                                 (Value.IfThenElse ()
                                     (Value.Variable () [ "Is NetUsd Amount Negative" ])
                                     (Value.Variable () [ "O.W.10" ])
-                                    (Value.PatternMatch ()
+                                    --
+                                    (Value.IfThenElse ()
                                         (Value.Variable () [ "Is Feed44 and CostCenter Not 5C55" ])
-                                        [ ( Value.LiteralPattern () (StringLiteral "Yes"), Value.Variable () [ "1.U.2" ] )
-                                        , ( Value.LiteralPattern () (StringLiteral "Yes"), Value.Variable () [ "1.U.4" ] )
-                                        ]
+                                        (Value.Variable () [ "1.U.2" ])
+                                        (Value.Variable () [ "1.U.4" ])
                                     )
+                                 --
                                 )
                             )
                       )
-                    , ( Value.LiteralPattern () (StringLiteral "2"), Value.Variable () [ "Inventory" ] )
-                    , ( Value.LiteralPattern () (StringLiteral "3"), Value.Variable () [ "Pending Trades" ] )
+                    , ( Value.LiteralPattern () (StringLiteral "Inventory"), Value.Unit () )
+                    , ( Value.LiteralPattern () (StringLiteral "Pending Trades"), Value.Unit () )
                     ]
                 ]
     in
@@ -331,6 +339,16 @@ subscriptions model =
     Sub.map TreeViewMsg (TreeView.subscriptions2 model.treeModel)
 
 
+mylist : List (Value () ())
+mylist =
+    [ Value.Literal () (BoolLiteral True)
+    , Value.Literal () (StringLiteral "Cash")
+    , Value.Literal () (BoolLiteral True)
+    , Value.Literal () (BoolLiteral False)
+    , Value.Literal () (StringLiteral "SNB")
+    ]
+
+
 main =
     Browser.element
         { init = initialModel
@@ -452,7 +470,15 @@ viewNodeData selectedNode node =
             Tree.dataOf node
 
         dict =
-            Dict.fromList [ ( [ "Type" ], Value.Literal () (StringLiteral "1") ) ]
+            Dict.fromList
+                --[ ( [ "Type" ], Value.Literal () (StringLiteral "1") )
+                --, ( [ "Type" ], Value.Literal () (StringLiteral "2") )
+                --, ( [ "Type" ], Value.Literal () (StringLiteral "3") )
+                --]
+                --[ ( [ "Is Central Bank" ], Value.Literal () (BoolLiteral True) )
+                --, ( [ "Is Central Bank" ], Value.Literal () (BoolLiteral False) )
+                --]
+                []
 
         selected =
             selectedNode
@@ -465,15 +491,23 @@ viewNodeData selectedNode node =
         --            (Value.Variable () [ "Type" ])
         --           (withDefault (WildcardPattern ()) nodeData.pattern)
         --        )
+        correctPathNumber =
+            length nodeData.uid // 2 |> Debug.log ("homie" ++ nodeData.uid)
+
+        correctPath =
+            withDefault (Value.Literal () (BoolLiteral True)) (Array.get correctPathNumber (Array.fromList mylist)) |> Debug.log ("the correct path" ++ fromInt correctPathNumber)
+
         highlight =
             evaluateHighlight dict
-                (Value.Literal () (StringLiteral "1"))
+                correctPath
                 (withDefault (WildcardPattern ()) nodeData.pattern)
-                |> Debug.log "testing"
+
+        --|> Debug.log ("logging " ++ getLabel nodeData.pattern ++ " subbie " ++ nodeData.subject)
     in
     if highlight then
-        text (getLabel nodeData.pattern ++ nodeData.subject ++ "Highlight")
+        text (getLabel nodeData.pattern ++ nodeData.subject ++ "  Highlight")
             |> toUnstyled
+        --|> Debug.log nodeData.subject
 
     else
         text (getLabel nodeData.pattern ++ nodeData.subject)
