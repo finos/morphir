@@ -163,7 +163,13 @@ mapRelation relation =
             mapRelation sourceRelation
                 |> Result.map
                     (Spark.select
-                        (columns |> List.map mapColumnExpression)
+                        (columns
+                            |> List.map
+                                (\( columnName, columnValue ) ->
+                                    mapColumnExpression columnValue
+                                        |> Spark.alias (Name.toCamelCase columnName)
+                                )
+                        )
                     )
 
         Join joinType predicate leftRelation rightRelation ->

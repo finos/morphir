@@ -40,6 +40,13 @@ otherwise elseBranch soFar =
         [ Scala.ArgValue Nothing elseBranch ]
 
 
+alias : String -> Scala.Value -> Scala.Value
+alias name value =
+    Scala.Apply
+        (Scala.Select value "alias")
+        [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit name)) ]
+
+
 select : List Scala.Value -> Scala.Value -> Scala.Value
 select columns from =
     Scala.Apply

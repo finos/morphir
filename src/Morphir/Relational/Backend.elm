@@ -1,11 +1,12 @@
 module Morphir.Relational.Backend exposing (..)
 
-import Morphir.IR.Value as Value exposing (TypedValue)
-import Morphir.Relational.IR exposing (Relation(..))
+import Morphir.IR.Value as V exposing (TypedValue)
+import Morphir.Relational.IR as R exposing (Relation(..))
 
 
 type Error
-    = Unhandled
+    = UnhandledValue TypedValue
+    | UnknownValueReturnedByMapFunction TypedValue
 
 
 mapFunctionBody : TypedValue -> Result Error Relation
@@ -16,19 +17,31 @@ mapFunctionBody body =
 mapValue : TypedValue -> Result Error Relation
 mapValue value =
     case value of
-        Value.Variable _ varName ->
-            Ok (From varName)
+        V.Variable _ varName ->
+            Ok (R.From varName)
 
-        Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter" ] )) predicate) sourceRelation ->
+        V.Apply _ (V.Apply _ (V.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter" ] )) predicate) sourceRelation ->
             mapValue sourceRelation
                 |> Result.map
                     (\source ->
-                        Where predicate source
+                        R.Where predicate source
                     )
+
+        V.Apply _ (V.Apply _ (V.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) (V.Lambda _ argPattern mapping)) sourceRelation ->
+            case mapping of
+                V.Record _ fields ->
+                    mapValue sourceRelation
+                        |> Result.map
+                            (\source ->
+                                R.Select fields source
+                            )
+
+                other ->
+                    Err (UnknownValueReturnedByMapFunction other)
 
         other ->
             let
                 _ =
                     Debug.log "Relational.Backend.mapValue unhandled" other
             in
-            Err Unhandled
+            Err (UnhandledValue other)
