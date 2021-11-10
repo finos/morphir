@@ -14,9 +14,9 @@
     white-space: nowrap;
     display: inline-block;
     overflow: auto;
-    font-family: sans-serif;
     height: 100%;
     border-right: solid;
+    font-family: verdana, sans-serif;
     }
 
     td {
@@ -29,12 +29,13 @@
 
     td.tree-view {
       padding: 4px;
-      font-size: 1.25em;
+      font-size: .7em;
 <!--      background-color: red;-->
     }
 
     td.tree-view-selected-node {
-      background-color: #8899FF;
+      font-weight : bold;
+<!--      color: green;-->
     }
 
     td.tree-view-indentation {
@@ -45,12 +46,12 @@
       background: url(https://img.icons8.com/material-outlined/24/000000/minus-sign.png);
       background-repeat: no-repeat;
       background-size: contain;
-      width: 24px;
+      width: 20px;
     }
 
     label.tree-view-bullet-expanded {
       opacity: 0;
-      padding-left: 6px;
+      padding-left: 3px;
       cursor: pointer;
     }
 
@@ -58,12 +59,12 @@
       background: url(https://img.icons8.com/material-outlined/24/000000/plus--v1.png);
       background-repeat: no-repeat;
       background-size: contain;
-      width: 24px;
+      width: 20px;
     }
 
     label.tree-view-bullet-collapsed {
       opacity: 0;
-      padding-left: 6px;
+      padding-left: 3px;
       cursor: pointer;
     }
 
@@ -71,7 +72,7 @@
       background: url(https://img.icons8.com/material/24/000000/sort-right--v1.png);
       background-repeat: no-repeat;
       background-size: contain;
-      width: 24px;
+      width: 20px;
     }
 
     #navigableTreeContent {
@@ -142,6 +143,7 @@
     node : document.getElementById('elm'),
     flags : {}
     });
+
     const targetDiv = document.getElementById("all-dropdowns");
     const hideButton = document.getElementById("hide-button");
     hideButton.onclick = function () {
