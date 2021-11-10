@@ -8,6 +8,45 @@ dataFrame =
     Scala.TypeRef [ "org", "apache", "spark", "sql" ] "DataFrame"
 
 
+literal : Scala.Value -> Scala.Value
+literal lit =
+    Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "lit")
+        [ Scala.ArgValue Nothing lit ]
+
+
+column : String -> Scala.Value
+column name =
+    Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "col")
+        [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit name)) ]
+
+
+when : Scala.Value -> Scala.Value -> Scala.Value
+when cond thenBranch =
+    Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "when")
+        [ Scala.ArgValue Nothing cond, Scala.ArgValue Nothing thenBranch ]
+
+
+andWhen : Scala.Value -> Scala.Value -> Scala.Value -> Scala.Value
+andWhen cond thenBranch soFar =
+    Scala.Apply
+        (Scala.Select soFar "when")
+        [ Scala.ArgValue Nothing cond, Scala.ArgValue Nothing thenBranch ]
+
+
+otherwise : Scala.Value -> Scala.Value -> Scala.Value
+otherwise elseBranch soFar =
+    Scala.Apply
+        (Scala.Select soFar "otherwise")
+        [ Scala.ArgValue Nothing elseBranch ]
+
+
+alias : String -> Scala.Value -> Scala.Value
+alias name value =
+    Scala.Apply
+        (Scala.Select value "alias")
+        [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit name)) ]
+
+
 select : List Scala.Value -> Scala.Value -> Scala.Value
 select columns from =
     Scala.Apply

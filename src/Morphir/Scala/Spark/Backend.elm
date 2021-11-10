@@ -163,7 +163,13 @@ mapRelation relation =
             mapRelation sourceRelation
                 |> Result.map
                     (Spark.select
-                        (columns |> List.map mapColumnExpression)
+                        (columns
+                            |> List.map
+                                (\( columnName, columnValue ) ->
+                                    mapColumnExpression columnValue
+                                        |> Spark.alias (Name.toCamelCase columnName)
+                                )
+                        )
                     )
 
         Join joinType predicate leftRelation rightRelation ->
@@ -216,12 +222,10 @@ mapColumnExpression value =
     in
     case value of
         Value.Literal _ lit ->
-            Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "lit")
-                [ Scala.ArgValue Nothing (Scala.Literal (mapLiteral lit)) ]
+            Spark.literal (Scala.Literal (mapLiteral lit))
 
         Value.Field _ _ name ->
-            Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "col")
-                [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit (Name.toCamelCase name))) ]
+            Spark.column (Name.toCamelCase name)
 
         Value.Apply _ (Value.Apply _ (Value.Reference _ fqn) arg1) arg2 ->
             case FQName.toString fqn of
@@ -230,6 +234,46 @@ mapColumnExpression value =
 
                 _ ->
                     default value
+
+        Value.IfThenElse _ _ _ _ ->
+            let
+                toIfElseChain : TypedValue -> ( List ( TypedValue, TypedValue ), TypedValue )
+                toIfElseChain v =
+                    case v of
+                        Value.IfThenElse _ cond thenBranch elseBranch ->
+                            let
+                                ( nestedCases, otherwise ) =
+                                    toIfElseChain elseBranch
+                            in
+                            ( ( cond, thenBranch ) :: nestedCases, otherwise )
+
+                        _ ->
+                            ( [], v )
+
+                toScala : ( List ( TypedValue, TypedValue ), TypedValue ) -> Scala.Value -> Scala.Value
+                toScala ( cases, otherwise ) soFar =
+                    case cases of
+                        [] ->
+                            Spark.otherwise (mapColumnExpression otherwise) soFar
+
+                        ( headCond, headBranch ) :: tailCases ->
+                            toScala ( tailCases, otherwise )
+                                (Spark.andWhen
+                                    (mapColumnExpression headCond)
+                                    (mapColumnExpression headBranch)
+                                    soFar
+                                )
+            in
+            case value |> toIfElseChain of
+                ( [], otherwise ) ->
+                    mapColumnExpression otherwise
+
+                ( ( firstCond, firstBranch ) :: otherCases, otherwise ) ->
+                    toScala ( otherCases, otherwise )
+                        (Spark.when
+                            (mapColumnExpression firstCond)
+                            (mapColumnExpression firstBranch)
+                        )
 
         _ ->
             default value
