@@ -319,7 +319,7 @@ helperFunctionValue value1 =
                 StringLiteral string ->
                     "AVL (String) = " ++ string
 
-                IntLiteral int ->
+                WholeNumberLiteral int ->
                     "AVL (Int) = " ++ String.fromInt int
 
                 FloatLiteral float ->

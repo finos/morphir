@@ -85,11 +85,12 @@ basicRecordOne =
     }
 
 
-basicRecordMany : { foo : String, bar : Bool, baz : Int }
+basicRecordMany : { foo : String, bar : Bool, baz : Int, record : { foo : String } }
 basicRecordMany =
     { foo = "bar"
     , bar = False
     , baz = 15
+    , record = basicRecordOne
     }
 
 
@@ -248,11 +249,28 @@ basicIfThenElse4 greenApple redApple amberApple greenPear redPear =
             ]
 
 
-basicPatternMatchWildcard : String -> Int
-basicPatternMatchWildcard s =
-    case s of
+basicPatternMatchWildcard : String -> String -> String -> Int
+basicPatternMatchWildcard s p q =
+    case ( s, p, q ) of
         _ ->
             1
+
+
+nestedPatternMatch : String -> String -> String -> String -> String -> Int
+nestedPatternMatch a b c d e =
+    case ( a, b ) of
+        ( "foo", "bar" ) ->
+            case ( d, e ) of
+                _ ->
+                    1
+
+        _ ->
+            case c of
+                "bar" ->
+                    2
+
+                _ ->
+                    3
 
 
 basicUpdateRecord : FooBarBazRecord -> FooBarBazRecord
@@ -323,3 +341,147 @@ functionToMethod2 =
 functionToMethod3 : String
 functionToMethod3 =
     Types.fooBarBazToString (FooBarBazRecord "foo" False 43)
+
+
+functionString : String -> String
+functionString myStr =
+    functionString2 myStr |> String.trim
+
+
+functionString2 : String -> String
+functionString2 temp =
+    temp
+
+
+functionString3 : String -> String
+functionString3 myStr =
+    myStr |> String.trim
+
+
+parseMonth : String -> Maybe Int
+parseMonth userInput =
+    String.toInt userInput
+        |> Maybe.andThen toValidMonth
+
+
+parseMonth2 : String -> Maybe Int
+parseMonth2 userInput =
+    String.toInt userInput
+        |> Maybe.map (\input -> Just input)
+        |> Maybe.withDefault Nothing
+
+
+toValidMonth : Int -> Maybe Int
+toValidMonth month =
+    if 1 <= month && month <= 12 then
+        Just month
+
+    else
+        Nothing
+
+
+maybeMap2 : String -> String -> Maybe Int
+maybeMap2 input1 input2 =
+    Maybe.map2 (+) (String.toInt input1) (String.toInt input2)
+
+
+maybeMap2Lambda : String -> String -> Maybe Int
+maybeMap2Lambda input1 input2 =
+    Maybe.map2 (\val1 val2 -> val1 + val2) (String.toInt input1) (String.toInt input2)
+
+
+maybeMap3 : String -> String -> String -> Maybe Int
+maybeMap3 input1 input2 input3 =
+    Maybe.map3 (\val1 val2 val3 -> val1 * val2 * val3) (String.toInt input1) (String.toInt input2) (String.toInt input3)
+
+
+maybeMap4 : String -> String -> String -> String -> Maybe Int
+maybeMap4 input1 input2 input3 input4 =
+    Maybe.map4 (\val1 val2 val3 val4 -> val1 * val2 * val3 * val4) (String.toInt input1) (String.toInt input2) (String.toInt input3) (String.toInt input4)
+
+
+maybeMap5 : String -> String -> String -> String -> String -> Maybe Int
+maybeMap5 input1 input2 input3 input4 input5 =
+    Maybe.map5 (\val1 val2 val3 val4 val5 -> val1 * val2 * val3 * val4 + val5) (String.toInt input1) (String.toInt input2) (String.toInt input3) (String.toInt input4) (String.toInt input5)
+
+
+listAll : List Int -> Bool
+listAll list =
+    List.all
+        (\val ->
+            if modBy 2 val == 0 then
+                True
+
+            else
+                False
+        )
+        list
+
+
+isEven : Int -> Bool
+isEven value =
+    if modBy 2 value == 0 then
+        True
+
+    else
+        False
+
+
+modByTest : Int -> Int
+modByTest value =
+    modBy 2 value
+
+
+listAny : List Int -> Bool
+listAny list =
+    List.any isEven list
+
+
+listPartition : List Int -> ( List Int, List Int )
+listPartition list =
+    List.partition (\x -> x < 3) list
+
+
+listPartition2 : List Int -> ( List Int, List Int )
+listPartition2 list =
+    List.partition isEven list
+
+
+listUnzip : List ( Int, String ) -> ( List Int, List String )
+listUnzip list =
+    List.unzip list
+
+
+listConcatMap : List Int -> Int -> List Int
+listConcatMap list num =
+    List.concatMap (\value -> value |> List.repeat num) list
+
+
+listMap2 : List Int -> List Int -> List Int
+listMap2 list1 list2 =
+    List.map2 (+) list1 list2
+
+
+listFoldl1 : Int -> List Int -> Int
+listFoldl1 value list1 =
+    List.foldl (+) value list1
+
+
+listFoldl2 : List Int -> List Int -> List number
+listFoldl2 list1 list2 =
+    List.foldl (::) list1 list2
+
+
+listFoldr1 : Int -> List Int -> Int
+listFoldr1 value list1 =
+    List.foldr (+) value list1
+
+
+listFoldr2 : List Int -> List Int -> List number
+listFoldr2 list1 list2 =
+    List.foldr (::) list1 list2
+
+
+listCons : Int -> List Int -> List Int
+listCons value list =
+    value :: list

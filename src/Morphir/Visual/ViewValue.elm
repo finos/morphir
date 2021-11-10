@@ -7,9 +7,7 @@ import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
-import Morphir.Elm.Frontend as Frontend
-import Morphir.IR as IR exposing (IR)
-import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR as IR
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
@@ -24,23 +22,20 @@ import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
-import Morphir.Visual.ViewField as ViewField
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
 import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
+import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
+import Morphir.Visual.ViewRecord as ViewRecord
 import Morphir.Visual.ViewReference as ViewReference
 import Morphir.Visual.ViewTuple as ViewTuple
 import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue, rawToVisualTypedValue, typedToVisualTypedValue)
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.Theme.Light exposing (black, gray, silver, white)
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
 viewDefinition config ( _, _, valueName ) valueDef =
     let
-        _ =
-            Debug.log "variables" config.state.variables
-
         definitionElem =
             definition config
                 (nameToText valueName)
@@ -65,8 +60,9 @@ viewDefinition config ( _, _, valueName ) valueDef =
                                 , Element.el
                                     [ Font.bold
                                     , Border.solid
-                                    , Border.rounded 4
-                                    , Background.color silver
+                                    , Border.rounded 3
+                                    , Background.color config.state.theme.colors.lightest
+                                    , Font.color config.state.theme.colors.darkest
                                     , smallPadding config.state.theme |> padding
                                     , smallSpacing config.state.theme |> spacing
                                     , onClick (config.handlers.onReferenceClicked fqName True)
@@ -128,6 +124,9 @@ viewValueByLanguageFeature config value =
                 Value.List ( index, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
                     ViewList.view config (viewValue config) itemType items
 
+                Value.Record _ items ->
+                    ViewRecord.view config (viewValue config) items
+
                 Value.Variable ( index, tpe ) name ->
                     let
                         variableValue : Maybe RawValue
@@ -152,8 +151,51 @@ viewValueByLanguageFeature config value =
                 Value.Reference _ fQName ->
                     ViewReference.view config (viewValue config) fQName
 
-                Value.Field _ subjectValue fieldName ->
-                    ViewField.view (viewValue config) subjectValue fieldName
+                Value.Field ( index1, tpe ) subjectValue fieldName ->
+                    let
+                        defaultValue =
+                            Element.row
+                                [ spacing 10 ]
+                                [ viewValue config subjectValue
+                                , text (nameToText fieldName)
+                                ]
+                    in
+                    case Config.evaluate (subjectValue |> Value.toRawValue) config of
+                        Ok valueType ->
+                            case valueType |> rawToVisualTypedValue (config.irContext.distribution |> IR.fromDistribution) of
+                                Ok (Value.Variable ( index, _ ) variableName) ->
+                                    let
+                                        variableValue : Maybe RawValue
+                                        variableValue =
+                                            Dict.get variableName config.state.variables
+                                    in
+                                    el
+                                        [ onMouseEnter (config.handlers.onHoverOver index variableValue)
+                                        , onMouseLeave (config.handlers.onHoverLeave index)
+                                        , Element.below
+                                            (if config.state.popupVariables.variableIndex == index then
+                                                el [ smallPadding config.state.theme |> padding ] (viewPopup config)
+
+                                             else
+                                                Element.text "Not Found"
+                                            )
+                                        , width fill
+                                        , center
+                                        ]
+                                        (String.concat
+                                            [ "the "
+                                            , nameToText variableName
+                                            , "'s "
+                                            , nameToText fieldName
+                                            ]
+                                            |> text
+                                        )
+
+                                _ ->
+                                    defaultValue
+
+                        Err error ->
+                            defaultValue
 
                 Value.Apply _ fun arg ->
                     let
@@ -218,6 +260,12 @@ viewValueByLanguageFeature config value =
                 Value.IfThenElse _ _ _ _ ->
                     ViewIfThenElse.view config (viewValue config) value
 
+                Value.PatternMatch tpe param patterns ->
+                    ViewPatternMatch.view config viewValue param patterns
+
+                Value.Unit _ ->
+                    el [] (text "not set")
+
                 other ->
                     Element.column
                         [ Background.color (rgb 1 0.6 0.6)
@@ -243,53 +291,39 @@ viewValueByLanguageFeature config value =
 
 viewPopup : Config msg -> Element msg
 viewPopup config =
-    Element.column []
-        [ case config.state.popupVariables.variableValue of
-            Just rawValue ->
+    config.state.popupVariables.variableValue
+        |> Maybe.map
+            (\rawValue ->
                 let
                     visualTypedVal : Result TypeError VisualTypedValue
                     visualTypedVal =
                         rawToVisualTypedValue (IR.fromDistribution config.irContext.distribution) rawValue
+
+                    popUpStyle : Element msg -> Element msg
+                    popUpStyle elementMsg =
+                        el
+                            [ Border.shadow
+                                { offset = ( 2, 2 )
+                                , size = 2
+                                , blur = 2
+                                , color = config.state.theme.colors.darkest
+                                }
+                            , Background.color config.state.theme.colors.lightest
+                            , Font.bold
+                            , Font.color config.state.theme.colors.darkest
+                            , Border.rounded 4
+                            , Font.center
+                            , mediumPadding config.state.theme |> padding
+                            , htmlAttribute (style "position" "absolute")
+                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
+                            ]
+                            elementMsg
                 in
                 case visualTypedVal of
                     Ok visualTypedValue ->
-                        el
-                            [ Border.shadow
-                                { offset = ( 2, 2 )
-                                , size = 2
-                                , blur = 2
-                                , color = gray
-                                }
-                            , Background.color black
-                            , Font.bold
-                            , Font.color white
-                            , Border.rounded 4
-                            , Font.center
-                            , mediumPadding config.state.theme |> padding
-                            , htmlAttribute (style "position" "absolute")
-                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
-                            ]
-                            (viewValue config visualTypedValue)
+                        popUpStyle (viewValue config visualTypedValue)
 
                     Err error ->
-                        el
-                            [ Border.shadow
-                                { offset = ( 2, 2 )
-                                , size = 2
-                                , blur = 2
-                                , color = gray
-                                }
-                            , Background.color black
-                            , Font.bold
-                            , Font.color white
-                            , Border.rounded 4
-                            , Font.center
-                            , mediumPadding config.state.theme |> padding
-                            , htmlAttribute (style "position" "absolute")
-                            , htmlAttribute (style "transition" "all 0.2s ease-in-out")
-                            ]
-                            (text (Infer.typeErrorToMessage error))
-
-            Nothing ->
-                el [] (text "")
-        ]
+                        popUpStyle (text (Infer.typeErrorToMessage error))
+            )
+        |> Maybe.withDefault (el [] (text ""))

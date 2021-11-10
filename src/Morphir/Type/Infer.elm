@@ -2,7 +2,7 @@ module Morphir.Type.Infer exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.Compiler as Compiler
-import Morphir.IR exposing (IR)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -15,7 +15,7 @@ import Morphir.IR.Type as Type exposing (Specification(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Type.Class as Class exposing (Class)
-import Morphir.Type.Constraint exposing (Constraint(..), class, equality)
+import Morphir.Type.Constraint as Constraint exposing (Constraint(..), class, equality, isRecursive)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaTuple, metaUnit, metaVar, variableByName)
 import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
@@ -34,6 +34,7 @@ type ValueTypeError
 type TypeError
     = TypeErrors (List TypeError)
     | ClassConstraintViolation MetaType Class
+    | RecursiveConstraint MetaType MetaType
     | LookupError LookupError
     | UnknownError String
     | UnifyError UnificationError
@@ -149,9 +150,12 @@ typeErrorToMessage typeError =
             in
             mapUnificationError unificationError
 
+        RecursiveConstraint metaType1 metaType2 ->
+            String.concat [ "Recursive constraint: '", MetaType.toString metaType1, "' == '", MetaType.toString metaType2, "'" ]
+
 
 inferValueDefinition : IR -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
-inferValueDefinition refs def =
+inferValueDefinition ir def =
     let
         ( annotatedDef, lastVarIndex ) =
             annotateDefinition 1 def
@@ -162,7 +166,7 @@ inferValueDefinition refs def =
                 cs =
                     constrainDefinition
                         (MetaType.variableByIndex 0)
-                        refs
+                        ir
                         Dict.empty
                         annotatedDef
 
@@ -173,13 +177,13 @@ inferValueDefinition refs def =
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
         solution =
-            solve refs constraints
+            solve ir constraints
 
         _ =
             Debug.log "Generated solutions" (solution |> Result.map (Tuple.second >> Solve.toList) |> Result.withDefault [] |> List.length)
     in
     solution
-        |> Result.map (applySolutionToAnnotatedDefinition annotatedDef)
+        |> Result.map (applySolutionToAnnotatedDefinition ir annotatedDef)
 
 
 inferValue : IR -> Value () va -> Result TypeError (TypedValue va)
@@ -199,7 +203,7 @@ inferValue ir untypedValue =
             solve ir constraints
     in
     solution
-        |> Result.map (applySolutionToAnnotatedValue annotatedValue)
+        |> Result.map (applySolutionToAnnotatedValue ir annotatedValue)
 
 
 annotateDefinition : Int -> Value.Definition ta va -> ( Value.Definition ta ( va, Variable ), Int )
@@ -929,7 +933,7 @@ constrainLiteral thisTypeVar literalValue =
         StringLiteral _ ->
             expectExactType MetaType.stringType
 
-        IntLiteral _ ->
+        WholeNumberLiteral _ ->
             ConstraintSet.singleton
                 (class (metaVar thisTypeVar) Class.Number)
 
@@ -946,34 +950,32 @@ solveHelp : IR -> SolutionMap -> ConstraintSet -> Result TypeError ( ConstraintS
 solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
     --let
     --    _ =
-    --        Debug.log "constraints so far" constraints
+    --        Debug.log "constraints so far" (constraints |> List.length)
     --
     --    _ =
-    --        Debug.log "solutions so far" (solutionsSoFar |> Solve.toList)
+    --        Debug.log "solutions so far" (solutionsSoFar |> Solve.toList |> List.length)
     --in
-    constraints
-        |> validateConstraints
-        |> Result.andThen
-            (\nonTrivialConstraints ->
-                nonTrivialConstraints
-                    |> Solve.findSubstitution refs
-                    |> Result.mapError UnifyError
-                    |> Result.andThen
-                        (\maybeNewSolutions ->
-                            case maybeNewSolutions of
-                                Nothing ->
-                                    Ok ( ConstraintSet.fromList nonTrivialConstraints, solutionsSoFar )
+    case validateConstraints constraints of
+        Ok nonTrivialConstraints ->
+            case Solve.findSubstitution refs nonTrivialConstraints of
+                Ok maybeNewSolutions ->
+                    case maybeNewSolutions of
+                        Nothing ->
+                            Ok ( ConstraintSet.fromList nonTrivialConstraints, solutionsSoFar )
 
-                                Just newSolutions ->
-                                    solutionsSoFar
-                                        |> Solve.mergeSolutions refs newSolutions
-                                        |> Result.mapError UnifyError
-                                        |> Result.andThen
-                                            (\mergedSolutions ->
-                                                solveHelp refs mergedSolutions (constraintSet |> ConstraintSet.applySubstitutions mergedSolutions)
-                                            )
-                        )
-            )
+                        Just newSolutions ->
+                            case Solve.mergeSolutions refs newSolutions solutionsSoFar of
+                                Ok mergedSolutions ->
+                                    solveHelp refs mergedSolutions (constraintSet |> ConstraintSet.applySubstitutions mergedSolutions)
+
+                                Err error ->
+                                    Err (UnifyError error)
+
+                Err error ->
+                    Err (UnifyError error)
+
+        Err error ->
+            Err error
 
 
 validateConstraints : List Constraint -> Result TypeError (List Constraint)
@@ -992,15 +994,19 @@ validateConstraints constraints =
                         else
                             Err (ClassConstraintViolation metaType class)
 
-                    _ ->
-                        Ok constraint
+                    Equality metaType1 metaType2 ->
+                        if isRecursive constraint then
+                            Err (RecursiveConstraint metaType1 metaType2)
+
+                        else
+                            Ok constraint
             )
         |> ListOfResults.liftAllErrors
         |> Result.mapError typeErrors
 
 
-applySolutionToAnnotatedDefinition : Value.Definition ta ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> Value.Definition ta ( va, Type () )
-applySolutionToAnnotatedDefinition annotatedDef ( residualConstraints, solutionMap ) =
+applySolutionToAnnotatedDefinition : IR -> Value.Definition ta ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> Value.Definition ta ( va, Type () )
+applySolutionToAnnotatedDefinition ir annotatedDef ( residualConstraints, solutionMap ) =
     annotatedDef
         |> Value.mapDefinitionAttributes identity
             (\( va, metaVar ) ->
@@ -1011,11 +1017,11 @@ applySolutionToAnnotatedDefinition annotatedDef ( residualConstraints, solutionM
                     |> Maybe.withDefault (metaVar |> MetaType.toName |> Type.Variable ())
                 )
             )
-        |> (\valDef -> { valDef | body = valDef.body |> fixNumberLiterals })
+        |> (\valDef -> { valDef | body = valDef.body |> fixNumberLiterals ir })
 
 
-applySolutionToAnnotatedValue : Value () ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> TypedValue va
-applySolutionToAnnotatedValue annotatedValue ( residualConstraints, solutionMap ) =
+applySolutionToAnnotatedValue : IR -> Value () ( va, Variable ) -> ( ConstraintSet, SolutionMap ) -> TypedValue va
+applySolutionToAnnotatedValue ir annotatedValue ( residualConstraints, solutionMap ) =
     annotatedValue
         |> Value.mapValueAttributes identity
             (\( va, metaVar ) ->
@@ -1026,17 +1032,17 @@ applySolutionToAnnotatedValue annotatedValue ( residualConstraints, solutionMap 
                     |> Maybe.withDefault (metaVar |> MetaType.toName |> Type.Variable ())
                 )
             )
-        |> fixNumberLiterals
+        |> fixNumberLiterals ir
 
 
-fixNumberLiterals : Value ta ( va, Type () ) -> Value ta ( va, Type () )
-fixNumberLiterals typedValue =
+fixNumberLiterals : IR -> Value ta ( va, Type () ) -> Value ta ( va, Type () )
+fixNumberLiterals ir typedValue =
     typedValue
         |> Value.rewriteValue
             (\value ->
                 case value of
-                    Value.Literal ( va, tpe ) (IntLiteral v) ->
-                        if tpe == floatType () then
+                    Value.Literal ( va, tpe ) (WholeNumberLiteral v) ->
+                        if (ir |> IR.resolveType tpe) == floatType () then
                             Value.Literal ( va, tpe ) (FloatLiteral (toFloat v)) |> Just
 
                         else

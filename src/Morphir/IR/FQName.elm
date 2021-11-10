@@ -15,14 +15,11 @@
 -}
 
 
-module Morphir.IR.FQName exposing
-    ( FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn, toString
-    , fromString
-    )
+module Morphir.IR.FQName exposing (FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn, toString, fromString)
 
 {-| Module to work with fully-qualified names. A qualified name is a combination of a package path, a module path and a local name.
 
-@docs FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn, toString
+@docs FQName, fQName, fromQName, getPackagePath, getModulePath, getLocalName, fqn, toString, fromString
 
 -}
 

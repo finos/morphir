@@ -36,7 +36,7 @@ type Literal
     = BoolLiteral Bool
     | CharLiteral Char
     | StringLiteral String
-    | IntLiteral Int
+    | WholeNumberLiteral Int
     | FloatLiteral Float
 
 
@@ -65,7 +65,7 @@ stringLiteral value =
 -}
 intLiteral : Int -> Literal
 intLiteral value =
-    IntLiteral value
+    WholeNumberLiteral value
 
 
 {-| Represents a floating-point number. Some possible values: `1.25`, `-13.4`

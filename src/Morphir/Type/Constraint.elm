@@ -1,7 +1,9 @@
 module Morphir.Type.Constraint exposing (..)
 
+import Dict exposing (Dict)
 import Morphir.Type.Class exposing (Class)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
+import Set
 
 
 type Constraint
@@ -33,8 +35,8 @@ equivalent constraint1 constraint2 =
                 False
 
 
-substitute : Variable -> MetaType -> Constraint -> Constraint
-substitute var replacement constraint =
+substituteVariable : Variable -> MetaType -> Constraint -> Constraint
+substituteVariable var replacement constraint =
     case constraint of
         Equality metaType1 metaType2 ->
             Equality
@@ -47,11 +49,45 @@ substitute var replacement constraint =
                 cls
 
 
+substituteVariables : Dict Variable MetaType -> Constraint -> Constraint
+substituteVariables replacements constraint =
+    case constraint of
+        Equality metaType1 metaType2 ->
+            Equality
+                (metaType1 |> MetaType.substituteVariables replacements)
+                (metaType2 |> MetaType.substituteVariables replacements)
+
+        Class metaType cls ->
+            Class
+                (metaType |> MetaType.substituteVariables replacements)
+                cls
+
+
 isTrivial : Constraint -> Bool
 isTrivial constraint =
     case constraint of
         Equality metaType1 metaType2 ->
             metaType1 == metaType2
+
+        Class _ _ ->
+            False
+
+
+isRecursive : Constraint -> Bool
+isRecursive constraint =
+    case constraint of
+        Equality metaType1 metaType2 ->
+            let
+                rawMetaType1 =
+                    MetaType.removeAliases metaType1
+
+                rawMetaType2 =
+                    MetaType.removeAliases metaType2
+            in
+            (rawMetaType1 /= rawMetaType2)
+                && (MetaType.variables rawMetaType1 |> Set.isEmpty |> not)
+                && (MetaType.variables rawMetaType2 |> Set.isEmpty |> not)
+                && (MetaType.contains rawMetaType1 rawMetaType2 || MetaType.contains rawMetaType2 rawMetaType1)
 
         Class _ _ ->
             False

@@ -1,23 +1,26 @@
 module Morphir.Web.DevelopApp.ModulePage exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, alignTop, column, el, fill, height, link, paddingXY, rgb, row, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignRight, alignTop, column, el, explain, fill, height, link, padding, paddingXY, rgb, row, scrollbars, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Element.Input as Input exposing (labelHidden)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
-import Morphir.Value.Interpreter as Interpreter
-import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
-import Morphir.Visual.Edit as Edit
-import Morphir.Visual.Theme as Theme
+import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Config exposing (Config, HighlightState(..), PopupScreenRecord)
+import Morphir.Visual.Theme as Theme exposing (Theme)
+import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common exposing (scaled, viewAsCard)
+import Morphir.Web.DevelopApp.Common exposing (viewAsCard)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
 
@@ -26,7 +29,7 @@ type alias Model =
     { moduleName : List String
     , filter : Maybe String
     , viewType : ViewType
-    , argState : Dict FQName (Dict Name RawValue)
+    , argState : Dict FQName (Dict Name ValueEditor.EditorState)
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     , popupVariables : PopupScreenRecord
     }
@@ -36,8 +39,9 @@ type alias Handlers msg =
     { expandReference : FQName -> Bool -> msg
     , expandVariable : Int -> Maybe RawValue -> msg
     , shrinkVariable : Int -> msg
-    , argValueUpdated : FQName -> Name -> RawValue -> msg
+    , argValueUpdated : FQName -> Name -> ValueEditor.EditorState -> msg
     , invalidArgValue : FQName -> Name -> String -> msg
+    , jumpToTestCases : FQName -> msg
     }
 
 
@@ -59,7 +63,7 @@ routeParser =
             , viewType = viewType
             , argState = Dict.empty
             , expandedValues = Dict.empty
-            , popupVariables = { variableIndex = 0, variableValue = Nothing }
+            , popupVariables = PopupScreenRecord 0 Nothing
             }
         )
         (UrlParser.s "module"
@@ -89,20 +93,31 @@ viewTitle model =
     "Morphir - " ++ (model.moduleName |> String.join " / ")
 
 
-viewPage : Handlers msg -> (String -> msg) -> Distribution -> Model -> Element msg
-viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as distribution) model =
+viewPage : Theme -> Handlers msg -> (String -> msg) -> Distribution -> Model -> Element msg
+viewPage theme handlers valueFilterChanged ((Library packageName _ packageDef) as distribution) model =
     let
         moduleName =
             model.moduleName |> List.map Name.fromString
+
+        ir : IR
+        ir =
+            IR.fromDistribution distribution
     in
     case packageDef.modules |> Dict.get moduleName of
         Just accessControlledModuleDef ->
             column
                 [ width fill
-                , spacing (scaled 4)
+                , height fill
+                , spacing (theme |> Theme.scaled 4)
                 ]
-                [ viewModuleControls valueFilterChanged model
-                , wrappedRow [ spacing (scaled 4) ]
+                [ viewModuleControls theme valueFilterChanged model
+                , wrappedRow
+                    [ padding (theme |> Theme.scaled 4)
+                    , spacing (theme |> Theme.scaled 4)
+                    , width fill
+                    , height fill
+                    , scrollbars
+                    ]
                     (accessControlledModuleDef.value.values
                         |> Dict.toList
                         |> List.filterMap
@@ -128,13 +143,14 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
                                 if matchesFilter then
                                     Just
                                         (el [ alignTop ]
-                                            (viewAsCard
-                                                (column [ spacing 5 ]
-                                                    [ valueName
-                                                        |> Name.toHumanWords
-                                                        |> String.join " "
-                                                        |> text
-                                                    , viewArgumentEditors handlers model valueFQName accessControlledValueDef.value
+                                            (viewAsCard theme
+                                                (column [ width fill, spacing 5 ]
+                                                    [ Theme.header theme
+                                                        { left = [ nameToText valueName |> text ]
+                                                        , middle = []
+                                                        , right = [ theme |> Theme.button (handlers.jumpToTestCases valueFQName) "Scenarios" theme.colors.primaryHighlight ]
+                                                        }
+                                                    , viewArgumentEditors ir handlers model valueFQName accessControlledValueDef.value
                                                     ]
                                                 )
                                                 (case model.viewType of
@@ -157,8 +173,8 @@ viewPage handlers valueFilterChanged ((Library packageName _ packageDef) as dist
             text (String.join " " [ "Module", model.moduleName |> String.join ".", "not found" ])
 
 
-viewModuleControls : (String -> msg) -> Model -> Element msg
-viewModuleControls valueFilterChanged model =
+viewModuleControls : Theme -> (String -> msg) -> Model -> Element msg
+viewModuleControls theme valueFilterChanged model =
     let
         viewTypeBackground expectedType =
             if model.viewType == expectedType then
@@ -169,8 +185,9 @@ viewModuleControls valueFilterChanged model =
     in
     row
         [ width fill
-        , spacing (scaled 2)
+        , spacing (theme |> Theme.scaled 2)
         , height shrink
+        , padding 5
         ]
         [ Input.text
             [ paddingXY 10 4
@@ -185,12 +202,12 @@ viewModuleControls valueFilterChanged model =
         , el []
             (row [ spacing 5 ]
                 [ link [ paddingXY 6 4, Border.rounded 3, viewTypeBackground XRayView ]
-                    { url = makeURL model
+                    { url = makeURL { model | viewType = XRayView }
                     , label = text "x-ray"
                     }
                 , text "|"
                 , link [ paddingXY 6 4, Border.rounded 3, viewTypeBackground InsightView ]
-                    { url = makeURL model
+                    { url = makeURL { model | viewType = InsightView }
                     , label = text "insight"
                     }
                 ]
@@ -205,6 +222,7 @@ viewValue handlers model distribution valueFQName valueDef =
         validArgValues =
             model.argState
                 |> Dict.get valueFQName
+                |> Maybe.map (\args -> args |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ())))
                 |> Maybe.withDefault Dict.empty
 
         config : Config msg
@@ -218,6 +236,7 @@ viewValue handlers model distribution valueFQName valueDef =
                 , variables = validArgValues
                 , popupVariables = model.popupVariables
                 , theme = Theme.fromConfig Nothing
+                , highlightState = Nothing
                 }
             , handlers =
                 { onReferenceClicked = handlers.expandReference
@@ -229,30 +248,19 @@ viewValue handlers model distribution valueFQName valueDef =
     ViewValue.viewDefinition config valueFQName valueDef
 
 
-viewArgumentEditors : Handlers msg -> Model -> FQName -> Value.Definition () (Type ()) -> Element msg
-viewArgumentEditors handlers model fQName valueDef =
+viewArgumentEditors : IR -> Handlers msg -> Model -> FQName -> Value.Definition () (Type ()) -> Element msg
+viewArgumentEditors ir handlers model fQName valueDef =
     valueDef.inputTypes
         |> List.map
             (\( argName, _, argType ) ->
-                row
-                    [ Background.color (rgb 1 1 1)
-                    , Border.rounded 5
-                    , spacing 10
-                    ]
-                    [ el [ paddingXY 10 0 ]
-                        (text (argName |> Name.toHumanWords |> String.join " "))
-                    , el []
-                        (Edit.editValue
-                            argType
-                            (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName))
-                            (handlers.argValueUpdated fQName argName)
-                            (handlers.invalidArgValue fQName argName)
-                        )
-                    ]
+                ( argName
+                , ValueEditor.view ir
+                    argType
+                    (handlers.argValueUpdated fQName argName)
+                    (model.argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
+                )
             )
-        |> wrappedRow
-            [ spacing 5
-            ]
+        |> FieldList.view
 
 
 makeURL : Model -> String

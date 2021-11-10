@@ -102,7 +102,7 @@ positiveOutcomes =
         dealOpened3 =
             Value.Apply dealEventType
                 dealOpened2
-                (Value.Literal (intType ()) (IntLiteral 1500))
+                (Value.Literal (intType ()) (WholeNumberLiteral 1500))
 
         dealCommandType =
             Type.Reference () (fqn "BooksAndRecords" "BooksAndRecords" "DealCmd") []

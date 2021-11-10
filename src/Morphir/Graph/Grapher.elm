@@ -1,7 +1,7 @@
 module Morphir.Graph.Grapher exposing
     ( Node(..), Verb(..), Edge, GraphEntry(..), Graph
     , mapDistribution, mapPackageDefinition, mapModuleTypes, mapModuleValues, mapTypeDefinition, mapValueDefinition
-    , graphEntryToComparable, nodeType, verbToString, nodeFQN, getNodeType
+    , graphEntryToComparable, nodeType, verbToString, nodeFQN, asEnum, edgeFromTuple, edgeToTuple, fqnToString
     )
 
 {-| The Grapher module analyses a distribution to build a graph for dependency and lineage tracking purposes.
@@ -21,13 +21,13 @@ enterprises. The result of processing is a [Graph](#Graph), which is a collectio
 
 # Utilities
 
-@docs graphEntryToComparable, nodeType, verbToString, nodeFQN, getNodeType
+@docs graphEntryToComparable, nodeType, verbToString, nodeFQN, asEnum, edgeFromTuple, edgeToTuple, fqnToString
 
 -}
 
 import Dict exposing (Dict)
 import List.Extra exposing (uniqueBy)
-import Morphir.IR.AccessControlled exposing (withPublicAccess)
+import Morphir.IR.AccessControlled exposing (Access(..), withPublicAccess)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module
@@ -45,6 +45,8 @@ The types of constructs that we're interested in tracking are:
   - **Field** - Represents a field within a Record.
   - **Type** - Represents a Type or Type Alias, which we want to track aliases through their hierarchies.
   - **Function** - Represents a Function.
+  - **Enum** - Represents a restricted set of single name values.
+  - **Function** - Represents a type that defines a strong unit of measure.
   - **Unknown** - Questionable practice, but it's useful to identify relationships we might want to track in the future.
 
 -}
@@ -53,6 +55,8 @@ type Node
     | Field FQName Name
     | Type FQName
     | Function FQName
+    | Enum FQName
+    | UnitOfMeasure FQName
     | Unknown String
 
 
@@ -77,7 +81,9 @@ type Verb
     | Calls
     | Produces
     | Parameterizes
+    | Measures
     | Unions
+    | Enumerates
 
 
 {-| Defines an edge in the graph as a triple of the subject node, the relationship, and the object node.
@@ -175,7 +181,7 @@ mapTypeDefinition packageName moduleName typeName typeDef =
         fqn =
             ( packageName, moduleName, typeName )
 
-        triples =
+        edges =
             case typeDef of
                 -- This is a definition of a record, so we want to collect that and its fields.
                 Type.TypeAliasDefinition _ (Type.Record _ fields) ->
@@ -232,40 +238,139 @@ mapTypeDefinition packageName moduleName typeName typeDef =
                         typeNode =
                             Type fqn
 
-                        leafEntries =
-                            case accessControlledCtors |> withPublicAccess of
-                                Just ctors ->
-                                    ctors
-                                        |> Dict.toList
-                                        |> List.map
-                                            (\( _, namesAndTypes ) ->
-                                                namesAndTypes
-                                                    |> List.concatMap
-                                                        (\( _, tipe ) ->
-                                                            leafType tipe
-                                                                |> List.concatMap
-                                                                    (\leafFqn ->
-                                                                        let
-                                                                            leafNode =
-                                                                                Type leafFqn
-                                                                        in
-                                                                        [ NodeEntry leafNode
-                                                                        , EdgeEntry (Edge typeNode Unions leafNode)
-                                                                        ]
-                                                                    )
-                                                        )
-                                            )
-                                        |> List.concat
+                        -- An enum, which represents a set of simple names
+                        enums =
+                            asEnum typeDef
+                                |> List.map
+                                    (\name ->
+                                        EdgeEntry (Edge typeNode Enumerates (Enum ( FQName.getPackagePath fqn, FQName.getModulePath fqn, name )))
+                                    )
 
-                                Nothing ->
-                                    []
+                        -- A unit of measure type, which represents the declaration of a strong base type as opposed to a weaker alias.
+                        unitOfMeasures =
+                            asUnitOfMeasure typeDef
+                                |> Maybe.map
+                                    (\measureFqn ->
+                                        EdgeEntry (Edge typeNode Measures (UnitOfMeasure measureFqn))
+                                    )
+                                |> Maybe.map (\x -> [ NodeEntry (UnitOfMeasure fqn), x ])
+                                |> Maybe.withDefault []
+
+                        unions =
+                            if not (isUnitOfMeasure typeDef) then
+                                case accessControlledCtors |> withPublicAccess of
+                                    Just ctors ->
+                                        ctors
+                                            |> Dict.toList
+                                            |> List.map
+                                                (\( _, namesAndTypes ) ->
+                                                    -- If this is a simple enum, extract the values
+                                                    -- Otherwise, it's a complex union
+                                                    namesAndTypes
+                                                        |> List.concatMap
+                                                            (\( _, tipe ) ->
+                                                                leafType tipe
+                                                                    |> List.concatMap
+                                                                        (\leafFqn ->
+                                                                            let
+                                                                                leafNode =
+                                                                                    Type leafFqn
+                                                                            in
+                                                                            [ NodeEntry leafNode
+                                                                            , EdgeEntry (Edge typeNode Unions leafNode)
+                                                                            ]
+                                                                        )
+                                                            )
+                                                )
+                                            |> List.concat
+
+                                    Nothing ->
+                                        []
+
+                            else
+                                []
                     in
-                    NodeEntry typeNode :: leafEntries
+                    NodeEntry typeNode :: (unions ++ enums ++ unitOfMeasures)
 
                 _ ->
                     []
     in
-    triples
+    edges
+
+
+isEnum : Dict a (List b) -> Bool
+isEnum constructors =
+    constructors
+        |> Dict.toList
+        |> List.all
+            (\( name, args ) ->
+                List.isEmpty args
+            )
+
+
+{-| -}
+asEnum : Type.Definition ta -> List Name
+asEnum typeDef =
+    case typeDef of
+        Type.CustomTypeDefinition _ accessControlledCtors ->
+            case accessControlledCtors |> withPublicAccess of
+                Just constructors ->
+                    if isEnum constructors then
+                        constructors
+                            |> Dict.keys
+
+                    else
+                        []
+
+                _ ->
+                    []
+
+        _ ->
+            []
+
+
+isUnitOfMeasure : Type.Definition ta -> Bool
+isUnitOfMeasure typeDef =
+    case typeDef of
+        Type.CustomTypeDefinition _ accessControlledCtors ->
+            let
+                values =
+                    accessControlledCtors
+                        |> withPublicAccess
+                        |> Maybe.map Dict.values
+                        |> Maybe.withDefault []
+            in
+            case values of
+                [ [ ( _, Type.Reference _ _ _ ) ] ] ->
+                    True
+
+                _ ->
+                    False
+
+        _ ->
+            False
+
+
+asUnitOfMeasure : Type.Definition ta -> Maybe FQName
+asUnitOfMeasure typeDef =
+    case typeDef of
+        Type.CustomTypeDefinition _ accessControlledCtors ->
+            let
+                values =
+                    accessControlledCtors
+                        |> withPublicAccess
+                        |> Maybe.map Dict.values
+                        |> Maybe.withDefault []
+            in
+            case values of
+                [ [ ( name, Type.Reference _ fqn _ ) ] ] ->
+                    Just fqn
+
+                _ ->
+                    Nothing
+
+        _ ->
+            Nothing
 
 
 {-| Process [Functions](#Type) specifically and ignore the rest.
@@ -465,6 +570,12 @@ nodeType node =
         Function _ ->
             "Function"
 
+        Enum _ ->
+            "Enum"
+
+        UnitOfMeasure _ ->
+            "Unit"
+
         Unknown _ ->
             "Unknown"
 
@@ -487,6 +598,12 @@ nodeFQN node =
         Function fqn ->
             fqn
 
+        Enum fqn ->
+            fqn
+
+        UnitOfMeasure fqn ->
+            fqn
+
         Unknown s ->
             ( [], [], [ s ] )
 
@@ -501,6 +618,24 @@ nodeToKey node =
 
         _ ->
             referenceToKey (nodeFQN node)
+
+
+{-| Converte Edge record to tuple
+-}
+edgeToTuple : Edge -> ( Node, Verb, Node )
+edgeToTuple edge =
+    ( edge.subject, edge.verb, edge.object )
+
+
+{-| Converte Edge record to tuple
+-}
+edgeFromTuple : ( Node, Verb, Node ) -> Edge
+edgeFromTuple tuple =
+    let
+        ( subject, verb, object ) =
+            tuple
+    in
+    Edge subject verb object
 
 
 {-| Utility for dealing with comparable.
@@ -546,6 +681,12 @@ verbToString verb =
         Unions ->
             "unions"
 
+        Enumerates ->
+            "enumerates"
+
+        Measures ->
+            "measures"
+
 
 {-| Utility for dealing with comparable.
 -}
@@ -584,6 +725,12 @@ graphEntryToComparable entry =
                         Function fqn ->
                             fqnToString fqn
 
+                        Enum fqn ->
+                            fqnToString fqn
+
+                        UnitOfMeasure fqn ->
+                            fqnToString fqn
+
                         Unknown s ->
                             "unknown:" ++ s
                    )
@@ -594,24 +741,3 @@ graphEntryToComparable entry =
 
         EdgeEntry edge ->
             "EdgeEntry: " ++ edgeToString edge
-
-
-{-| Finds the IsA relation to a Type for a given Node
--}
-getNodeType : Node -> Graph -> Maybe FQName
-getNodeType node graph =
-    graph
-        |> List.filterMap
-            (\e ->
-                case e of
-                    EdgeEntry edge ->
-                        if edge.subject == node && edge.verb == IsA then
-                            Just (nodeFQN edge.object)
-
-                        else
-                            Nothing
-
-                    _ ->
-                        Nothing
-            )
-        |> List.head

@@ -19,6 +19,7 @@ module Morphir.Elm.Frontend exposing
     ( packageDefinitionFromSource, mapDeclarationsToType
     , defaultDependencies
     , Options, ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation, mapSource
+    , mapValueToFile
     )
 
 {-| The Elm frontend turns Elm source code into Morphir IR.
@@ -34,6 +35,7 @@ module Morphir.Elm.Frontend exposing
 @docs defaultDependencies
 
 @docs Options, ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation, mapSource
+@docs mapValueToFile
 
 -}
 
@@ -45,19 +47,22 @@ import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
 import Elm.Syntax.Expression as Expression exposing (Expression, Function, FunctionImplementation)
 import Elm.Syntax.File exposing (File)
-import Elm.Syntax.Infix as Infix
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
-import Elm.Syntax.Range as Range exposing (Range)
+import Elm.Syntax.Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
+import Json.Encode as Encode
 import Morphir.Compiler as Compiler
+import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName, fQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -173,6 +178,53 @@ defaultDependencies =
     Dict.fromList
         [ ( SDK.packageName, SDK.packageSpec )
         ]
+
+
+{-| -}
+mapValueToFile : IR -> Type () -> String -> Result String IR
+mapValueToFile ir outputType content =
+    let
+        sourceA =
+            { path = "My/Package/A.elm"
+            , content =
+                String.join "\n"
+                    [ "module My.Package.A exposing (..)"
+                    , ""
+                    , "fooFunction : " ++ (outputType |> Type.toString |> String.replace "Morphir.SDK." "")
+                    , ""
+                    , "fooFunction = " ++ content
+                    ]
+            }
+
+        packageName =
+            Path.fromString "My.Package"
+
+        moduleA =
+            Path.fromString "A"
+
+        packageInfo =
+            { name =
+                packageName
+            , exposedModules =
+                Set.fromList
+                    [ moduleA
+                    ]
+            }
+    in
+    mapSource (Options False) packageInfo defaultDependencies [ sourceA ]
+        |> Result.map
+            (\packageDef ->
+                packageDef
+                    |> Package.mapDefinitionAttributes (\_ -> ()) identity
+                    |> Package.mapDefinitionAttributes identity (\_ -> outputType)
+                    |> Library packageName Dict.empty
+                    |> IR.fromDistribution
+            )
+        |> Result.mapError (\errorList -> errorList |> Debug.toString)
+
+
+
+--Encode.list CompilerCodec.encodeError
 
 
 {-| -}
@@ -991,10 +1043,10 @@ mapExpression sourceFile (Node range exp) =
             mapOperator sourceLocation op
 
         Expression.Integer value ->
-            Ok (Value.Literal sourceLocation (IntLiteral value))
+            Ok (Value.Literal sourceLocation (WholeNumberLiteral value))
 
         Expression.Hex value ->
-            Ok (Value.Literal sourceLocation (IntLiteral value))
+            Ok (Value.Literal sourceLocation (WholeNumberLiteral value))
 
         Expression.Floatable value ->
             Ok (Value.Literal sourceLocation (FloatLiteral value))
@@ -1117,10 +1169,10 @@ mapPattern sourceFile (Node range pattern) =
             Ok (Value.LiteralPattern sourceLocation (StringLiteral string))
 
         Pattern.IntPattern int ->
-            Ok (Value.LiteralPattern sourceLocation (IntLiteral int))
+            Ok (Value.LiteralPattern sourceLocation (WholeNumberLiteral int))
 
         Pattern.HexPattern int ->
-            Ok (Value.LiteralPattern sourceLocation (IntLiteral int))
+            Ok (Value.LiteralPattern sourceLocation (WholeNumberLiteral int))
 
         Pattern.FloatPattern float ->
             Ok (Value.LiteralPattern sourceLocation (FloatLiteral float))
@@ -1166,11 +1218,19 @@ mapPattern sourceFile (Node range pattern) =
                         |> QName.fromName (qualifiedNameRef.moduleName |> List.map Name.fromString)
                         |> FQName.fromQName []
             in
-            argNodes
-                |> List.map (mapPattern sourceFile)
-                |> ListOfResults.liftAllErrors
-                |> Result.mapError List.concat
-                |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
+            case ( qualifiedNameRef.moduleName, qualifiedNameRef.name ) of
+                ( [], "True" ) ->
+                    Ok (Value.LiteralPattern sourceLocation (BoolLiteral True))
+
+                ( [], "False" ) ->
+                    Ok (Value.LiteralPattern sourceLocation (BoolLiteral False))
+
+                _ ->
+                    argNodes
+                        |> List.map (mapPattern sourceFile)
+                        |> ListOfResults.liftAllErrors
+                        |> Result.mapError List.concat
+                        |> Result.map (Value.ConstructorPattern sourceLocation qualifiedName)
 
         Pattern.AsPattern subjectNode aliasNode ->
             mapPattern sourceFile subjectNode
@@ -1658,7 +1718,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                 |> Result.mapError (ResolveError sourceLocation >> List.singleton)
 
         Value.Reference sourceLocation ( [], modulePath, localName ) ->
-            if variables |> Dict.member localName then
+            if List.isEmpty modulePath && (variables |> Dict.member localName) then
                 Ok (Value.Variable sourceLocation localName)
 
             else

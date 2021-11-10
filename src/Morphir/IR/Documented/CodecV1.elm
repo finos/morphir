@@ -15,21 +15,23 @@
 -}
 
 
-module Morphir.Graph.TriplesBackend exposing (..)
+module Morphir.IR.Documented.CodecV1 exposing (..)
 
-import Dict
-import Morphir.File.FileMap exposing (FileMap)
-import Morphir.IR.Distribution exposing (Distribution)
-
-
-type alias Options =
-    {}
+import Json.Decode as Decode
+import Json.Encode as Encode
+import Morphir.IR.Documented exposing (Documented)
 
 
+encodeDocumented : (a -> Encode.Value) -> Documented a -> Encode.Value
+encodeDocumented encodeValue d =
+    Encode.list identity
+        [ Encode.string d.doc
+        , encodeValue d.value
+        ]
 
--- TODO: implement RDF
 
-
-mapDistribution : Options -> Distribution -> FileMap
-mapDistribution opt distro =
-    Dict.empty
+decodeDocumented : Decode.Decoder a -> Decode.Decoder (Documented a)
+decodeDocumented decodeValue =
+    Decode.map2 Documented
+        (Decode.index 0 Decode.string)
+        (Decode.index 1 decodeValue)

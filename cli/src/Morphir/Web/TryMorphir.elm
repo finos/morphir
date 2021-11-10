@@ -2,18 +2,24 @@ module Morphir.Web.TryMorphir exposing (..)
 
 import Browser
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, height, layout, none, padding, paddingXY, paragraph, rgb, row, scrollbars, shrink, spacing, text, width)
+import Element exposing (Element, alignRight, column, el, fill, height, layout, none, padding, paddingXY, paragraph, rgb, row, scrollbars, shrink, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Element.Input as Input
 import Html exposing (Attribute, Html)
+import Json.Encode as Encode
 import Morphir.Compiler as Compiler
 import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
 import Morphir.IR as IR exposing (IR)
+import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
 import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Type.Codec as TypeCodec
+import Morphir.IR.Value as Value
+import Morphir.IR.Value.Codec as ValueCodec
 import Morphir.Type.Infer as Infer
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.XRayView as XRayView
@@ -41,12 +47,18 @@ type alias Model =
     { source : String
     , maybePackageDef : Maybe (Package.Definition () (Type ()))
     , errors : List Compiler.Error
+    , irView : IRView
     }
+
+
+type IRView
+    = VisualView
+    | JsonView
 
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    update (Change sampleSource) { source = "", maybePackageDef = Nothing, errors = [] }
+    update (ChangeSource sampleSource) { source = "", maybePackageDef = Nothing, errors = [], irView = VisualView }
 
 
 moduleSource : String -> SourceFile
@@ -61,13 +73,14 @@ moduleSource sourceValue =
 
 
 type Msg
-    = Change String
+    = ChangeSource String
+    | ChangeIRView IRView
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Change sourceCode ->
+        ChangeSource sourceCode ->
             let
                 opts =
                     { typesOnly = False }
@@ -126,6 +139,13 @@ update msg model =
             , Cmd.none
             )
 
+        ChangeIRView viewType ->
+            ( { model
+                | irView = viewType
+              }
+            , Cmd.none
+            )
+
 
 
 -- VIEW
@@ -149,12 +169,12 @@ view model =
             [ width fill
             , height fill
             ]
-            (viewPackageResult model.source Change model.maybePackageDef model.errors)
+            (viewPackageResult model.source ChangeSource model.maybePackageDef model.errors model.irView)
         )
 
 
-viewPackageResult : String -> (String -> msg) -> Maybe (Package.Definition () (Type ())) -> List Compiler.Error -> Element msg
-viewPackageResult sourceCode onSourceChange maybePackageDef errors =
+viewPackageResult : String -> (String -> Msg) -> Maybe (Package.Definition () (Type ())) -> List Compiler.Error -> IRView -> Element Msg
+viewPackageResult sourceCode onSourceChange maybePackageDef errors irView =
     row
         [ width fill
         , height fill
@@ -207,7 +227,10 @@ viewPackageResult sourceCode onSourceChange maybePackageDef errors =
             , height fill
             , scrollbars
             ]
-            [ el [ height shrink, padding 10 ] (text "Morphir IR")
+            [ row [ width fill ]
+                [ el [ height shrink, padding 10 ] (text "Morphir IR")
+                , viewIRViewTabs irView
+                ]
             , el
                 [ width fill
                 , height fill
@@ -216,7 +239,7 @@ viewPackageResult sourceCode onSourceChange maybePackageDef errors =
                 ]
                 (case maybePackageDef of
                     Just packageDef ->
-                        viewPackageDefinition (\_ -> Html.div [] []) packageDef
+                        viewPackageDefinition (\_ -> Html.div [] []) packageDef irView
 
                     Nothing ->
                         Element.none
@@ -225,17 +248,17 @@ viewPackageResult sourceCode onSourceChange maybePackageDef errors =
         ]
 
 
-viewPackageDefinition : (va -> Html msg) -> Package.Definition () (Type ()) -> Element msg
-viewPackageDefinition viewAttribute packageDef =
+viewPackageDefinition : (va -> Html Msg) -> Package.Definition () (Type ()) -> IRView -> Element Msg
+viewPackageDefinition viewAttribute packageDef irView =
     packageDef.modules
         |> Dict.toList
         |> List.map
-            (\( moduleName, moduleDef ) -> viewModuleDefinition viewAttribute moduleDef.value)
+            (\( moduleName, moduleDef ) -> viewModuleDefinition viewAttribute moduleDef.value irView)
         |> column []
 
 
-viewModuleDefinition : (va -> Html msg) -> Module.Definition () (Type ()) -> Element msg
-viewModuleDefinition viewAttribute moduleDef =
+viewModuleDefinition : (va -> Html Msg) -> Module.Definition () (Type ()) -> IRView -> Element Msg
+viewModuleDefinition viewAttribute moduleDef irView =
     column []
         [ moduleDef.types
             |> viewDict
@@ -301,22 +324,33 @@ viewModuleDefinition viewAttribute moduleDef =
                             , Background.color (rgb 1 1 1)
                             , width fill
                             ]
-                            (XRayView.viewValueDefinition
-                                (\tpe ->
-                                    row
-                                        [ spacing 5
-                                        , Background.color (rgb 1 0.9 0.8)
-                                        ]
-                                        [ text ":"
-                                        , XRayView.viewType tpe
-                                        ]
-                                )
-                                valueDef
-                            )
+                            (viewValue irView valueDef)
                         ]
                 )
             |> column [ spacing 20 ]
         ]
+
+
+viewValue : IRView -> AccessControlled (Value.Definition () (Type ())) -> Element Msg
+viewValue irView valueDef =
+    case irView of
+        VisualView ->
+            XRayView.viewValueDefinition
+                (\tpe ->
+                    row
+                        [ spacing 5
+                        , Background.color (rgb 1 0.9 0.8)
+                        ]
+                        [ text ":"
+                        , XRayView.viewType tpe
+                        ]
+                )
+                valueDef
+
+        JsonView ->
+            ValueCodec.encodeValue (always Encode.null) (TypeCodec.encodeType (always Encode.null)) valueDef.value.body
+                |> Encode.encode 2
+                |> text
 
 
 viewFields : List ( Element msg, Element msg ) -> Element msg
@@ -345,6 +379,35 @@ viewDict viewKey viewVal dict =
                     ]
             )
         |> column []
+
+
+viewIRViewTabs : IRView -> Element Msg
+viewIRViewTabs irView =
+    let
+        button viewType labelText =
+            Input.button
+                [ paddingXY 10 5
+                , Background.color
+                    (if viewType == irView then
+                        rgb 0.8 0.85 0.9
+
+                     else
+                        rgb 0.9 0.9 0.9
+                    )
+                , Border.rounded 3
+                ]
+                { onPress = Just (ChangeIRView viewType)
+                , label = el [] (text labelText)
+                }
+    in
+    row
+        [ alignRight
+        , paddingXY 10 0
+        , spacing 10
+        ]
+        [ button VisualView "Visual"
+        , button JsonView "JSON"
+        ]
 
 
 subscriptions : Model -> Sub Msg

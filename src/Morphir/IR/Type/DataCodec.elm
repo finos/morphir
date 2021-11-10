@@ -55,7 +55,7 @@ encodeData ir tpe =
                     Ok
                         (\value ->
                             case value of
-                                Value.Literal _ (IntLiteral v) ->
+                                Value.Literal _ (WholeNumberLiteral v) ->
                                     Ok (Encode.int v)
 
                                 _ ->
@@ -93,16 +93,30 @@ encodeData ir tpe =
                         |> Result.map
                             (\encodeItem value ->
                                 case value of
-                                    Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) v ->
+                                    Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) v ->
                                         encodeItem v
 
-                                    Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
+                                    Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
                                         Ok Encode.null
 
                                     _ ->
                                         Err (String.concat [ "Expected Just or Nothing but found: ", Debug.toString value ])
                             )
 
+                --( [ [ "result" ] ], [ "result" ], [ itemType ] ) ->
+                --    encodeData ir itemType
+                --        |> Result.map
+                --            (\encodeItem value ->
+                --                case value of
+                --                    Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) v ->
+                --                        encodeItem v
+                --
+                --                    Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ->
+                --                        encodeItem error
+                --
+                --                    _ ->
+                --                        Err (String.concat [ "Expected Ok or Error but found: ", Debug.toString value ])
+                --            )
                 _ ->
                     Debug.todo "implement"
 
@@ -251,7 +265,7 @@ decodeData ir tpe =
                     Ok (Decode.map (\value -> Value.Literal () (BoolLiteral value)) Decode.bool)
 
                 ( [ [ "basics" ] ], [ "int" ], [] ) ->
-                    Ok (Decode.map (\value -> Value.Literal () (IntLiteral value)) Decode.int)
+                    Ok (Decode.map (\value -> Value.Literal () (WholeNumberLiteral value)) Decode.int)
 
                 ( [ [ "basics" ] ], [ "float" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (FloatLiteral value)) Decode.float)

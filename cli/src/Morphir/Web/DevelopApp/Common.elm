@@ -4,15 +4,11 @@ import Element exposing (Element, column, el, fill, height, minimum, padding, rg
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Morphir.Visual.Theme as Theme exposing (Theme)
 
 
-scaled : Int -> Int
-scaled =
-    Element.modular 10 1.25 >> round
-
-
-viewAsCard : Element msg -> Element msg -> Element msg
-viewAsCard header content =
+viewAsCard : Theme -> Element msg -> Element msg -> Element msg
+viewAsCard theme header content =
     let
         gray =
             rgb 0.9 0.9 0.9
@@ -31,7 +27,7 @@ viewAsCard header content =
         [ el
             [ width fill
             , padding 2
-            , Font.size (scaled 2)
+            , Font.size (theme |> Theme.scaled 2)
             ]
             header
         , el
@@ -43,3 +39,14 @@ viewAsCard header content =
             ]
             content
         ]
+
+
+insertInList : Int -> List a -> List a
+insertInList index list =
+    let
+        list2 =
+            list |> List.drop index
+    in
+    List.append (list2 |> List.take 1)
+        list2
+        |> List.append (list |> List.take index)

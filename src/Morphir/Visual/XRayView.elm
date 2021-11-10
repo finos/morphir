@@ -98,8 +98,17 @@ viewTreeNode viewValueAttr (TreeNode maybeTag nodeType treeNodes) =
 viewValueAsHeader : Value ta va -> Element msg
 viewValueAsHeader value =
     let
-        nodeLabel : String -> Element msg
-        nodeLabel labelText =
+        dataLabel : String -> Element msg
+        dataLabel labelText =
+            el
+                [ paddingXY 6 3
+                , Border.rounded 3
+                , Background.color (rgb 0.9 0.9 1)
+                ]
+                (text labelText)
+
+        logicLabel : String -> Element msg
+        logicLabel labelText =
             el
                 [ paddingXY 6 3
                 , Border.rounded 3
@@ -114,78 +123,78 @@ viewValueAsHeader value =
     case value of
         Value.Literal _ lit ->
             header
-                [ nodeLabel "Literal"
+                [ dataLabel "Literal"
                 , viewLiteral lit
                 ]
 
         Value.Constructor _ fQName ->
             header
-                [ nodeLabel "Constructor"
+                [ dataLabel "Constructor"
                 , viewConstructorName fQName
                 ]
 
         Value.Tuple _ items ->
             if List.isEmpty items then
-                header [ nodeLabel "Tuple", text "()" ]
+                header [ dataLabel "Tuple", text "()" ]
 
             else
-                header [ nodeLabel "Tuple" ]
+                header [ dataLabel "Tuple" ]
 
         Value.List _ items ->
             if List.isEmpty items then
-                header [ nodeLabel "List", text "[]" ]
+                header [ dataLabel "List", text "[]" ]
 
             else
-                header [ nodeLabel "List" ]
+                header [ dataLabel "List" ]
 
         Value.Record _ fields ->
             if List.isEmpty fields then
-                header [ nodeLabel "Record", text "{}" ]
+                header [ dataLabel "Record", text "{}" ]
 
             else
-                header [ nodeLabel "Record" ]
+                header [ dataLabel "Record" ]
 
         Value.Variable _ varName ->
-            header [ nodeLabel "Variable", text (varName |> Name.toCamelCase) ]
+            header [ logicLabel "Variable", text (varName |> Name.toCamelCase) ]
 
         Value.Reference _ fQName ->
             header
-                [ nodeLabel "Reference"
+                [ logicLabel "Reference"
                 , viewReferenceName fQName
                 ]
 
         Value.Field _ _ fieldName ->
-            header [ nodeLabel "Field", text (fieldName |> Name.toCamelCase) ]
+            header [ logicLabel "Field", text (fieldName |> Name.toCamelCase) ]
 
         Value.FieldFunction _ fieldName ->
-            header [ nodeLabel "FieldFunction", text (fieldName |> Name.toCamelCase) ]
+            header [ logicLabel "FieldFunction", text (fieldName |> Name.toCamelCase) ]
 
         Value.Apply _ _ _ ->
-            header [ nodeLabel "Apply" ]
+            header [ logicLabel "Apply" ]
 
         Value.Lambda _ _ _ ->
-            header [ nodeLabel "Lambda" ]
+            header [ logicLabel "Lambda" ]
 
         Value.LetDefinition _ _ _ _ ->
-            header [ nodeLabel "LetDefinition" ]
+            header [ logicLabel "LetDefinition" ]
 
         Value.LetRecursion _ _ _ ->
-            header [ nodeLabel "LetRecursion" ]
+            header [ logicLabel "LetRecursion" ]
 
         Value.Destructure _ _ _ _ ->
-            header [ nodeLabel "Destructure" ]
+            header [ logicLabel "Destructure" ]
 
         Value.IfThenElse _ _ _ _ ->
-            header [ nodeLabel "IfThenElse" ]
+            header [ logicLabel "IfThenElse" ]
 
         Value.PatternMatch _ _ _ ->
-            header [ nodeLabel "PatternMatch" ]
+            header [ logicLabel "PatternMatch" ]
 
         Value.UpdateRecord _ _ _ ->
-            header [ nodeLabel "UpdateRecord" ]
+            header [ logicLabel "UpdateRecord" ]
 
         Value.Unit _ ->
-            header [ nodeLabel "Unit" ]
+            header [ logicLabel "Unit" ]
 
 
 viewPatternAsHeader : Pattern va -> Element msg
@@ -436,7 +445,7 @@ viewLiteral lit =
         StringLiteral string ->
             text (String.concat [ "\"", string, "\"" ])
 
-        IntLiteral int ->
+        WholeNumberLiteral int ->
             text (String.fromInt int)
 
         FloatLiteral float ->

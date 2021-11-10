@@ -126,7 +126,7 @@ moduleResolverTests =
                             ]
                         )
                         (Dict.fromList
-                            [ ( [ "zero" ], AccessControlled Private (Value.Definition [] (Basics.intType ()) (Value.Literal () (IntLiteral 42))) )
+                            [ ( [ "zero" ], AccessControlled Private (Value.Definition [] (Basics.intType ()) (Value.Literal () (WholeNumberLiteral 42))) )
                             ]
                         )
                 }

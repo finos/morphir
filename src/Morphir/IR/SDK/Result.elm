@@ -23,8 +23,11 @@ import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
-import Morphir.IR.SDK.Maybe exposing (maybeType)
+import Morphir.IR.SDK.Maybe as Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
+import Morphir.IR.Value as Value exposing (Value)
+import Morphir.Value.Error exposing (Error(..))
+import Morphir.Value.Native as Native
 
 
 moduleName : ModuleName
@@ -111,6 +114,275 @@ moduleSpec =
     }
 
 
+nativeFunctions : List ( String, Native.Function )
+nativeFunctions =
+    [ ( "andThen"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value1 ->
+                                        eval (Value.Apply () fun value1)
+
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ->
+                                        Ok (err () error)
+
+                                    _ ->
+                                        Err (ExpectedResult evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "map"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value1 ->
+                                        eval (Value.Apply () fun value1) |> Result.map (\value -> ok () value)
+
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ->
+                                        Ok (err () error)
+
+                                    _ ->
+                                        Err (ExpectedResult evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "map2"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2 ] ->
+                    Result.map2
+                        (\evaluatedArg1 evaluatedArg2 ->
+                            case ( evaluatedArg1, evaluatedArg2 ) of
+                                ( Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value1, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value2 ) ->
+                                    eval (Value.Apply () (Value.Apply () fun value1) value2) |> Result.map (\value -> ok () value)
+
+                                ( Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error, _ ) ->
+                                    Ok (err () error)
+
+                                ( _, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ) ->
+                                    Ok (err () error)
+
+                                _ ->
+                                    Err (UnexpectedArguments [ evaluatedArg1, evaluatedArg2 ])
+                        )
+                        (eval arg1)
+                        (eval arg2)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "map3"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2, arg3 ] ->
+                    Result.map3
+                        (\evaluatedArg1 evaluatedArg2 evaluatedArg3 ->
+                            case ( evaluatedArg1, evaluatedArg2, evaluatedArg3 ) of
+                                ( Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value1, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value2, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value3 ) ->
+                                    eval (Value.Apply () (Value.Apply () (Value.Apply () fun value1) value2) value3) |> Result.map (\value -> ok () value)
+
+                                ( Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error, _, _ ) ->
+                                    Ok (err () error)
+
+                                ( _, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error, _ ) ->
+                                    Ok (err () error)
+
+                                ( _, _, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ) ->
+                                    Ok (err () error)
+
+                                _ ->
+                                    Err (UnexpectedArguments [ evaluatedArg1, evaluatedArg2, evaluatedArg3 ])
+                        )
+                        (eval arg1)
+                        (eval arg2)
+                        (eval arg3)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "map4"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2, arg3, arg4 ] ->
+                    Result.map4
+                        (\evaluatedArg1 evaluatedArg2 evaluatedArg3 evaluatedArg4 ->
+                            case [ evaluatedArg1, evaluatedArg2, evaluatedArg3, evaluatedArg4 ] of
+                                [ Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value1, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value2, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value3, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value4 ] ->
+                                    eval (Value.Apply () (Value.Apply () (Value.Apply () (Value.Apply () fun value1) value2) value3) value4) |> Result.map (\value -> ok () value)
+
+                                [ Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error, _, _, _ ] ->
+                                    Ok (err () error)
+
+                                [ _, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error, _, _ ] ->
+                                    Ok (err () error)
+
+                                [ _, _, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error, _ ] ->
+                                    Ok (err () error)
+
+                                [ _, _, _, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ] ->
+                                    Ok (err () error)
+
+                                _ ->
+                                    Err (UnexpectedArguments [ evaluatedArg1, evaluatedArg2, evaluatedArg3, evaluatedArg4 ])
+                        )
+                        (eval arg1)
+                        (eval arg2)
+                        (eval arg3)
+                        (eval arg4)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "map5"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2, arg3, arg4, arg5 ] ->
+                    Result.map5
+                        (\evaluatedArg1 evaluatedArg2 evaluatedArg3 evaluatedArg4 evaluatedArg5 ->
+                            case [ evaluatedArg1, evaluatedArg2, evaluatedArg3, evaluatedArg4, evaluatedArg5 ] of
+                                [ Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value1, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value2, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value3, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value4, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value5 ] ->
+                                    eval (Value.Apply () (Value.Apply () (Value.Apply () (Value.Apply () (Value.Apply () fun value1) value2) value3) value4) value5) |> Result.map (\value -> ok () value)
+
+                                [ Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error, _, _, _, _ ] ->
+                                    Ok (err () error)
+
+                                [ _, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error, _, _, _ ] ->
+                                    Ok (err () error)
+
+                                [ _, _, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error, _, _ ] ->
+                                    Ok (err () error)
+
+                                [ _, _, _, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error, _ ] ->
+                                    Ok (err () error)
+
+                                [ _, _, _, _, Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ] ->
+                                    Ok (err () error)
+
+                                _ ->
+                                    Err (UnexpectedArguments [ evaluatedArg1, evaluatedArg2, evaluatedArg3, evaluatedArg4 ])
+                        )
+                        (eval arg1)
+                        (eval arg2)
+                        (eval arg3)
+                        (eval arg4)
+                        (eval arg5)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "withDefault"
+      , \eval args ->
+            case args of
+                [ arg1, arg2 ] ->
+                    eval arg2
+                        |> Result.andThen
+                            (\evaluatedArg2 ->
+                                case evaluatedArg2 of
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value ->
+                                        Ok value
+
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ->
+                                        eval arg1
+
+                                    _ ->
+                                        Err (ExpectedResult evaluatedArg2)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "toMaybe"
+      , \eval args ->
+            case args of
+                [ arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value ->
+                                        Ok (Maybe.just () value)
+
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ->
+                                        Ok (Maybe.nothing ())
+
+                                    _ ->
+                                        Err (ExpectedResult evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "fromMaybe"
+      , \eval args ->
+            case args of
+                [ arg1, arg2 ] ->
+                    eval arg2
+                        |> Result.andThen
+                            (\evaluatedArg2 ->
+                                case evaluatedArg2 of
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) value ->
+                                        Ok (ok () value)
+
+                                    Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
+                                        eval arg1 |> Result.map (\error -> err () error)
+
+                                    _ ->
+                                        Err (ExpectedResult evaluatedArg2)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "mapError"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value ->
+                                        Ok (ok () value)
+
+                                    Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ->
+                                        eval (Value.Apply () fun error) |> Result.map (\errorValue -> err () errorValue)
+
+                                    _ ->
+                                        Err (ExpectedResult evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    ]
+
+
 resultType : a -> Type a -> Type a -> Type a
 resultType attributes errorType itemType =
     Reference attributes (toFQName moduleName "result") [ errorType, itemType ]
+
+
+ok : va -> Value ta va -> Value ta va
+ok va value =
+    Value.Apply va (Value.Constructor va (toFQName moduleName "Ok")) value
+
+
+err : va -> Value ta va -> Value ta va
+err va error =
+    Value.Apply va (Value.Constructor va (toFQName moduleName "Err")) error
