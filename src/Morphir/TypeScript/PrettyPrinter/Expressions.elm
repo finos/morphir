@@ -1,9 +1,9 @@
-module Morphir.TypeScript.PrettyPrinter.Expressions exposing (mapField, mapGenericVariables, mapObjectExp, mapTypeExp, namespaceNameFromPackageAndModule)
+module Morphir.TypeScript.PrettyPrinter.Expressions exposing (..)
 
 import Morphir.File.SourceCode exposing (Doc, concat, indentLines, newLine)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path exposing (Path)
-import Morphir.TypeScript.AST exposing (ObjectExp, Privacy(..), TypeDef(..), TypeExp(..), namespaceNameFromPackageAndModule)
+import Morphir.TypeScript.AST exposing (ObjectExp, Parameter, Privacy(..), TypeDef(..), TypeExp(..), namespaceNameFromPackageAndModule)
 
 
 defaultIndent =
@@ -22,6 +22,26 @@ mapGenericVariables variables =
                 , String.join ", " (variables |> List.map mapTypeExp)
                 , ">"
                 ]
+
+
+mapParameter : Parameter -> String
+mapParameter { modifiers, name, typeAnnotation } =
+    concat
+        [ modifiers |> String.join " "
+        , " "
+        , name
+        , mapMaybeAnnotation typeAnnotation
+        ]
+
+
+mapMaybeAnnotation : Maybe TypeExp -> String
+mapMaybeAnnotation maybeTypeExp =
+    case maybeTypeExp of
+        Nothing ->
+            ""
+
+        Just typeExp ->
+            ": " ++ mapTypeExp typeExp
 
 
 {-| Map a field to text (from an object or interface)
@@ -56,6 +76,14 @@ mapTypeExp typeExp =
 
         Boolean ->
             "boolean"
+
+        FunctionTypeExp params rtnTypeExp ->
+            concat
+                [ "("
+                , params |> List.map mapParameter |> String.join ", "
+                , ") => "
+                , mapTypeExp rtnTypeExp
+                ]
 
         List listType ->
             "Array<" ++ mapTypeExp listType ++ ">"
