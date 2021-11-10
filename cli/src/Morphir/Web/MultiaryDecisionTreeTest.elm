@@ -505,9 +505,8 @@ viewNodeData selectedNode node =
                 (Dict.fromList
                     [ ( "Classify By Position Type", "Cash" )
                     , ( "Is Central Bank", "True" )
-
-                    --, ( "Is Segregated Cash", "True" )
-                    --, ( "Classify By Counter Party ID", "FRD" )
+                    , ( "Is Segregated Cash", "True" )
+                    , ( "Classify By Counter Party ID", "FRD" )
                     ]
                 )
 
