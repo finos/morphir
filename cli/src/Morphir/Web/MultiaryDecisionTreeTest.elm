@@ -1,45 +1,30 @@
 module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
-import Array exposing (fromList, get)
 import Browser
-import Css exposing (auto, bold, fontSize, px, width, xxSmall)
 import Dict exposing (Dict, values)
-import Element exposing (Element, column, el, fill, html, layout, none, padding, paddingEach, px, row, shrink, spacing, table)
-import Html exposing (a)
-import Html.Styled exposing (Html, div, fromUnstyled, input, map, option, select, text, toUnstyled)
-import Html.Styled.Attributes exposing (class, css, id, placeholder, type_, value)
-import Html.Styled.Events exposing (onInput)
+import Element exposing (Color, Element, column, el, fill, html, layout, mouseOver, none, padding, paddingEach, paddingXY, px, rgb, row, shrink, spacing, table, text)
+import Html exposing (Html, a, button, label, map, option, select)
+import Html.Attributes exposing (class, disabled, for, id, selected, value)
+import Html.Events exposing (onClick, onInput)
 import Maybe exposing (withDefault)
-import Morphir.Graph.Grapher exposing (Node(..))
-import Morphir.IR as IR
-import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal as Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Package as Package
-import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Pattern(..), RawValue, Value(..), ifThenElse, patternMatch, toString, unit, variable)
 import Morphir.SDK.Bool exposing (false, true)
-import Morphir.Value.Error as Error
 import Morphir.Value.Interpreter as Interpreter exposing (matchPattern)
-import Morphir.Visual.Components.DecisionTable exposing (Match(..))
-import Morphir.Visual.Components.MultiaryDecisionTree
-import Morphir.Visual.Config exposing (Config, HighlightState(..))
-import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ViewPattern as ViewPattern
-import Morphir.Visual.ViewValue as ViewValue
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
-import Mwc.Button
-import Mwc.TextField
-import Parser exposing (number)
 import String exposing (fromInt, length)
-import Svg.Attributes exposing (style)
 import Tree as Tree
 import TreeView as TreeView
 import Tuple exposing (first)
 
 
+t =
+    Element.text
 
+
+
+--text = Html.Styled.text
 --load ir and figure out what to show
 -- reading an ir and selecting the function in it to visualize
 -- scratch view value integration
@@ -106,6 +91,7 @@ nodeLabel n =
 
 
 
+-- define another function to calculate the uid of a node
 -- define another function to calculate the uid of a node
 --nodeUid : Tree.Node NodeData -> TreeView.NodeUid String
 --nodeUid n =
@@ -182,6 +168,7 @@ initialModel () =
                 ]
     in
     ( { rootNodes = rootNodes
+      , dict = Dict.empty
       , treeModel = TreeView.initializeModel2 configuration rootNodes
       , selectedNode = Nothing
       }
@@ -197,6 +184,7 @@ type alias Model =
     { rootNodes : List (Tree.Node NodeData)
     , treeModel : TreeView.Model NodeData String NodeDataMsg (Maybe NodeData)
     , selectedNode : Maybe NodeData
+    , dict : Dict String String
     }
 
 
@@ -222,6 +210,14 @@ configuration =
 
 type Msg
     = TreeViewMsg (TreeView.Msg2 String NodeDataMsg)
+    | SetRoot String
+    | SetBank String
+    | SetSegCash String
+    | SetCode String
+    | SetShore String
+    | SetNegative String
+    | SetFeed String
+    | RedoTree
 
 
 setNodeContent : String -> String -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData) -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData)
@@ -242,44 +238,94 @@ setNodeHighlight nodeUid highlight treeModel =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
-    let
-        treeModel =
-            case message of
-                TreeViewMsg (TreeView.CustomMsg nodeDataMsg) ->
-                    case nodeDataMsg of
-                        EditContent nodeUid content ->
-                            setNodeHighlight nodeUid True model.treeModel
+    case message of
+        SetRoot s1 ->
+            ( { model | dict = Dict.insert "Classify By Position Type" s1 model.dict }, Cmd.none )
 
-                TreeViewMsg tvMsg ->
-                    TreeView.update2 tvMsg model.treeModel
+        SetBank s1 ->
+            let
+                newDict1 =
+                    Dict.insert "Is Central Bank" s1 model.dict
 
-        selectedNode =
-            TreeView.getSelected treeModel |> Maybe.map .node |> Maybe.map Tree.dataOf
-    in
-    ( { model
-        | treeModel = treeModel
-        , selectedNode = selectedNode
-      }
-    , Cmd.none
-    )
+                newDict2 =
+                    Dict.remove "Is Segregated Cash" newDict1
+
+                newDict3 =
+                    Dict.remove "Classify By Counter Party ID" newDict2
+
+                newDict4 =
+                    Dict.remove "Is On Shore" newDict3
+
+                newDict5 =
+                    Dict.remove "Is NetUsd Amount Negative" newDict4
+
+                newDict6 =
+                    Dict.remove "Is Feed44 and CostCenter Not 5C55" newDict5
+            in
+            ( { model | dict = newDict6 }, Cmd.none )
+
+        SetSegCash s1 ->
+            ( { model | dict = Dict.insert "Is Segregated Cash" s1 model.dict }, Cmd.none )
+
+        SetCode s1 ->
+            --do the same with classify by counter party ID.
+            --find a way to send the key as well as the value
+            ( { model | dict = Dict.insert "Classify By Counter Party ID" s1 model.dict }, Cmd.none )
+
+        SetShore s1 ->
+            ( { model | dict = Dict.insert "Is On Shore" s1 model.dict }, Cmd.none )
+
+        SetNegative s1 ->
+            let
+                newDict =
+                    Dict.insert "Is NetUsd Amount Negative" s1 model.dict
+
+                newDict1 =
+                    Dict.remove "Is Feed44 and CostCenter Not 5C55" newDict
+            in
+            ( { model | dict = newDict1 }, Cmd.none )
+
+        SetFeed s1 ->
+            ( { model | dict = Dict.insert "Is Feed44 and CostCenter Not 5C55" s1 model.dict }, Cmd.none )
+
+        RedoTree ->
+            Debug.log "Im Highlighting"
+                ( model, Cmd.none )
+
+        _ ->
+            let
+                treeModel =
+                    case message of
+                        TreeViewMsg (TreeView.CustomMsg nodeDataMsg) ->
+                            case nodeDataMsg of
+                                EditContent nodeUid content ->
+                                    setNodeHighlight nodeUid True model.treeModel
+
+                        TreeViewMsg tvMsg ->
+                            TreeView.update2 tvMsg model.treeModel
+
+                        _ ->
+                            model.treeModel
+
+                selectedNode =
+                    TreeView.getSelected treeModel |> Maybe.map .node |> Maybe.map Tree.dataOf
+            in
+            ( { model
+                | treeModel = treeModel
+                , selectedNode = selectedNode
+              }
+            , Cmd.none
+            )
 
 
+overColor : Color
+overColor =
+    rgb 0.9 0.9 0.1
 
---expandAllCollapseAllButtons : Html Msg
---expandAllCollapseAllButtons =
---    div
---        []
---        [ Mwc.Button.view
---            [ Mwc.Button.raised
---            , Mwc.Button.onClick ExpandAll
---            , Mwc.Button.label "Expand all"
---            ]
---        , Mwc.Button.view
---            [ Mwc.Button.raised
---            , Mwc.Button.onClick CollapseAll
---            , Mwc.Button.label "Collapse all"
---            ]
---        ]
+
+white : Color
+white =
+    rgb 1 1 1
 
 
 selectedNodeDetails : Model -> Html Msg
@@ -291,39 +337,119 @@ selectedNodeDetails model =
 
         --selectedHighlight = Maybe.map (\nodeData -> nodeData.highlight) model.selectedNode
     in
-    div
-        [ css [ width auto ] ]
-        [ Mwc.TextField.view
-            [ Mwc.TextField.readonly True
-            , Mwc.TextField.label selectedDetails
-            ]
+    Html.div
+        []
+        [ Html.text selectedDetails
         ]
 
 
 
 -- avilitiy to view tree
+--key is branches, value is string for case or True/False for if else
 
 
-view : Model -> Html Msg
+view : Model -> Html.Html Msg
 view model =
-    div
-        [ css [ width auto ] ]
-        [ select [ id "first" ] [ option [ value "0" ] [ text "Cash" ], option [ value "1" ] [ text "Inventory" ], option [ value "2" ] [ text "Pending Trades" ] ]
-        , select [ id "bank-type", class "sub-selector" ] [ option [ value "0" ] [ text "Central Bank" ], option [ value "1" ] [ text "Onshore" ] ]
-        , select [ id "cash-type", class "sub-selector" ] [ option [ value "0" ] [ text "Segregated Cash" ], option [ value "1" ] [ text "Not" ] ]
-        , select [ id "negative-type", class "hidden-on-start sub-selector" ] [ option [ value "0" ] [ text "NetUSD is Negative" ], option [ value "1" ] [ text "NetUSD is Positive" ] ]
-
-        --, select [id "classify-type"] [option [] [text "Classify by Counter-Party ID"], option [] [text "Don't"]]
-        --, select [id "bottom-level"] [option [] [text "FRD"], option [] [text "BOE"], option [] [text "SNB"]
-        --    , option [] [text "ECB"], option [] [text "BOJ"], option [] [text "RBA"]
-        --    , option [] [text "BOC"], option [] [text "Others"]]
-        --, expandAllCollapseAllButtons
+    --layout [] dropdown
+    Html.div
+        [ id "top-level" ]
+        [ dropdowns model
         , selectedNodeDetails model
-        , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel |> fromUnstyled)
+        , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel)
         ]
 
 
 
+--
+
+
+main =
+    Browser.element
+        { init = initialModel
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }
+
+
+dropdowns : Model -> Html.Html Msg
+dropdowns model =
+    Html.div []
+        [ Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Position Type" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Central Bank" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Segregated Cash" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Counter Party ID" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is On Shore" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is NetUsd Amount Negative" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Feed44 and CostCenter Not 5C55" model.dict))
+        , Html.div [ id "all-dropdowns" ]
+            [ label [ for "cash-select" ] [ Html.text "Choose a type: " ]
+            , select [ id "cash-select", onInput SetRoot, class "dropdown" ]
+                [ option [ value "", disabled True, selected True ] [ Html.text "Type" ]
+                , option [ value "Cash" ] [ Html.text "Cash" ]
+                , option [ value "Inventory" ] [ Html.text "Inventory" ]
+                , option [ value "Pending Trades" ] [ Html.text "Pending Trades" ]
+                ]
+
+            --, Html.div [ id "cash-child" ] [
+            , label [ for "central-bank-select" ] [ Html.text "Choose a bank: " ]
+            , select [ id "central-bank-select", onInput SetBank, class "dropdown" ]
+                [ option [ value "", disabled True, selected True ] [ Html.text "Is Central Bank" ]
+                , option [ value "True" ] [ Html.text "Yes" ]
+                , option [ value "False" ] [ Html.text "No" ]
+                ]
+            , Html.div [ id "central-bank-yes-child" ]
+                [ label [ for "seg-cash-select" ] [ Html.text "Choose T/F: " ]
+                , select [ id "seg-cash-select", onInput SetSegCash, class "dropdown" ]
+                    [ option [ value "", disabled True, selected True ] [ Html.text "Is Segregated Cash" ]
+                    , option [ value "True" ] [ Html.text "Yes" ]
+                    , option [ value "False" ] [ Html.text "No" ]
+                    ]
+                , label [ for "code-select" ] [ Html.text "Choose a code " ]
+                , select [ id "code-select", onInput SetCode, class "dropdown" ]
+                    [ option [ value "", disabled True, selected True ] [ Html.text "Classify By Counter Party ID" ]
+                    , option [ value "FRD" ] [ Html.text "FRD" ]
+                    , option [ value "BOE" ] [ Html.text "BOE" ]
+                    , option [ value "SNB" ] [ Html.text "SNB" ]
+                    , option [ value "ECB" ] [ Html.text "ECB" ]
+                    , option [ value "BOJ" ] [ Html.text "BOJ" ]
+                    , option [ value "RBA" ] [ Html.text "RBA" ]
+                    , option [ value "BOC" ] [ Html.text "BOC" ]
+                    , option [ value "other" ] [ Html.text "other" ]
+                    ]
+                ]
+            , Html.div [ id "central-bank-no-child" ]
+                [ label [ for "on-shore-select" ] [ Html.text "Choose T/F: " ]
+                , select [ id "on-shore-select", onInput SetShore, class "dropdown" ]
+                    [ option [ value "", disabled True, selected True ] [ Html.text "Is On Shore" ]
+                    , option [ value "True" ] [ Html.text "Yes" ]
+                    , option [ value "False" ] [ Html.text "No" ]
+                    ]
+                , label [ for "negative-select" ] [ Html.text "Choose T/F: " ]
+                , select [ id "negative-select", onInput SetNegative, class "dropdown" ]
+                    [ option [ value "", disabled True, selected True ] [ Html.text "Is NetUsd Amount Negative" ]
+                    , option [ value "True" ] [ Html.text "Yes" ]
+                    , option [ value "False" ] [ Html.text "No" ]
+                    ]
+                , Html.div [ id "negative-no-child" ]
+                    [ label [ for "negative-no-child-select" ] [ Html.text "Choose T/F: " ]
+                    , select [ id "negative-no-child-select", onInput SetFeed, class "dropdown" ]
+                        [ option [ value "", disabled True, selected True ] [ Html.text "Is Feed44 and CostCenter Not 5C55" ]
+                        , option [ value "True" ] [ Html.text "Yes" ]
+                        , option [ value "False" ] [ Html.text "No" ]
+                        ]
+                    ]
+                ]
+
+            --]
+            ]
+        , button [ id "hide-button" ] [ Html.text "Hide Selections " ]
+        , button [ id "tree-button", onClick RedoTree ] [ Html.text "Show me da monay" ]
+        ]
+
+
+
+--construct a configuration for your tree view
 -- if (or when) you want the tree view to navigate up/down between visible nodes and expand/collapse nodes on arrow key presse
 
 
@@ -340,15 +466,6 @@ mylist =
     , Value.Literal () (BoolLiteral False)
     , Value.Literal () (StringLiteral "SNB")
     ]
-
-
-main =
-    Browser.element
-        { init = initialModel
-        , view = view >> toUnstyled
-        , update = update
-        , subscriptions = subscriptions
-        }
 
 
 toMaybeList : List ( Pattern (), Value () () ) -> List ( Maybe (Pattern ()), Value () () )
@@ -503,10 +620,11 @@ viewNodeData selectedNode node =
         dict2 =
             convertToDict
                 (Dict.fromList
-                    [ ( "Classify By Position Type", "Cash" )
-                    , ( "Is Central Bank", "True" )
+                    [ ( "Classify By Position Type", "sakdnajdbaj" )
+                    , ( "Is Central Bank", "Cash" )
                     , ( "Is Segregated Cash", "True" )
-                    , ( "Classify By Counter Party ID", "FRD" )
+                    , ( "Classify By Counter Party ID", "True" )
+                    , ( "1.A.4.1", "FRD" )
                     ]
                 )
 
@@ -521,14 +639,13 @@ viewNodeData selectedNode node =
                 nodeData.subject
                 --correctPath
                 (withDefault (WildcardPattern ()) nodeData.pattern)
+                |> Debug.log ("Stuff: " ++ nodeData.subject)
 
         --|> Debug.log ("logging " ++ getLabel nodeData.pattern ++ " subbie " ++ nodeData.subject)
     in
     if highlight then
-        text (getLabel nodeData.pattern ++ nodeData.subject ++ "  Highlight")
-            |> toUnstyled
+        Html.text (getLabel nodeData.pattern ++ nodeData.subject ++ "  Highlight")
         --|> Debug.log dict
 
     else
-        text (getLabel nodeData.pattern ++ nodeData.subject)
-            |> toUnstyled
+        Html.text (getLabel nodeData.pattern ++ nodeData.subject)
