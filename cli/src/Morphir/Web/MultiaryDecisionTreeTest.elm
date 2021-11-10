@@ -2,21 +2,20 @@ module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
 import Browser
 import Dict exposing (Dict, values)
-import Element exposing (Color, Element, column, el, fill, html, layout, mouseOver, none, padding, paddingEach, paddingXY, px, rgb, row, shrink, spacing, table, text)
-import Html exposing (Html, a, button, label, map, option, select)
+import Element exposing (Color, Element, rgb)
+import Html exposing (Html, button, label, map, option, select)
 import Html.Attributes exposing (class, disabled, for, id, selected, value)
 import Html.Events exposing (onClick, onInput)
 import Maybe exposing (withDefault)
-import Morphir.IR.Literal as Literal exposing (Literal(..))
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Value as Value exposing (Pattern(..), RawValue, Value(..), ifThenElse, patternMatch, toString, unit, variable)
-import Morphir.SDK.Bool exposing (false, true)
-import Morphir.Value.Interpreter as Interpreter exposing (matchPattern)
+import Morphir.IR.Value as Value exposing (Pattern(..), RawValue, Value(..))
+import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.ViewPattern as ViewPattern
-import String exposing (fromInt, length)
+import String exposing (fromInt)
 import Tree as Tree
 import TreeView as TreeView
-import Tuple exposing (first)
+import Tuple
 
 
 t =
@@ -44,7 +43,6 @@ type alias NodeData =
     { uid : String
     , subject : String
     , pattern : Maybe (Pattern ())
-    , highlight : Bool
     }
 
 
@@ -58,9 +56,21 @@ getLabel maybeLabel =
             ""
 
 
-evaluateHighlight : Dict Name RawValue -> String -> Pattern () -> Bool
-evaluateHighlight variables value pattern =
+evaluateHighlight : String -> Pattern () -> Bool
+evaluateHighlight value pattern =
     let
+        variables : Dict Name RawValue
+        variables =
+            convertToDict
+                (Dict.fromList
+                    [ ( "Classify By Position Type", "_" )
+                    , ( "Is Central Bank", "Cash" )
+                    , ( "Is Segregated Cash", "True" )
+                    , ( "Classify By Counter Party ID", "False" )
+                    , ( "1.A.3.1", "FRD" )
+                    ]
+                )
+
         evaluation : Maybe.Maybe RawValue
         evaluation =
             variables |> Dict.get (Name.fromString value)
@@ -79,7 +89,6 @@ evaluateHighlight variables value pattern =
 
 
 
--- ViewPattern.patternAsText(node.data.pattern) ++ "->" ++ node.data.subject
 -- define a function to calculate the text representation of a node
 
 
@@ -220,22 +229,6 @@ type Msg
     | RedoTree
 
 
-setNodeContent : String -> String -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData) -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData)
-setNodeContent nodeUid subject treeModel =
-    TreeView.updateNodeData
-        (\nodeData -> nodeData.uid == nodeUid)
-        (\nodeData -> { nodeData | subject = subject })
-        treeModel
-
-
-setNodeHighlight : String -> Bool -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData) -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData)
-setNodeHighlight nodeUid highlight treeModel =
-    TreeView.updateNodeData
-        (\nodeData -> nodeData.uid == nodeUid)
-        (\nodeData -> { nodeData | highlight = highlight })
-        treeModel
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
     case message of
@@ -296,11 +289,6 @@ update message model =
             let
                 treeModel =
                     case message of
-                        TreeViewMsg (TreeView.CustomMsg nodeDataMsg) ->
-                            case nodeDataMsg of
-                                EditContent nodeUid content ->
-                                    setNodeHighlight nodeUid True model.treeModel
-
                         TreeViewMsg tvMsg ->
                             TreeView.update2 tvMsg model.treeModel
 
@@ -318,9 +306,11 @@ update message model =
             )
 
 
-overColor : Color
-overColor =
-    rgb 0.9 0.9 0.1
+
+--
+--overColor : Color
+--overColor =
+--    rgb 0.9 0.9 0.1
 
 
 white : Color
@@ -334,8 +324,6 @@ selectedNodeDetails model =
         selectedDetails =
             Maybe.map (\nodeData -> nodeData.uid ++ ": " ++ nodeData.subject) model.selectedNode
                 |> Maybe.withDefault "(nothing selected)"
-
-        --selectedHighlight = Maybe.map (\nodeData -> nodeData.highlight) model.selectedNode
     in
     Html.div
         []
@@ -350,17 +338,12 @@ selectedNodeDetails model =
 
 view : Model -> Html.Html Msg
 view model =
-    --layout [] dropdown
     Html.div
         [ id "top-level" ]
         [ dropdowns model
         , selectedNodeDetails model
         , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel)
         ]
-
-
-
---
 
 
 main =
@@ -390,8 +373,6 @@ dropdowns model =
                 , option [ value "Inventory" ] [ Html.text "Inventory" ]
                 , option [ value "Pending Trades" ] [ Html.text "Pending Trades" ]
                 ]
-
-            --, Html.div [ id "cash-child" ] [
             , label [ for "central-bank-select" ] [ Html.text "Choose a bank: " ]
             , select [ id "central-bank-select", onInput SetBank, class "dropdown" ]
                 [ option [ value "", disabled True, selected True ] [ Html.text "Is Central Bank" ]
@@ -440,8 +421,6 @@ dropdowns model =
                         ]
                     ]
                 ]
-
-            --]
             ]
         , button [ id "hide-button" ] [ Html.text "Hide Selections " ]
         , button [ id "tree-button", onClick RedoTree ] [ Html.text "Show me da monay" ]
@@ -456,16 +435,6 @@ dropdowns model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.map TreeViewMsg (TreeView.subscriptions2 model.treeModel)
-
-
-mylist : List (Value () ())
-mylist =
-    [ Value.Literal () (BoolLiteral True)
-    , Value.Literal () (StringLiteral "Cash")
-    , Value.Literal () (BoolLiteral True)
-    , Value.Literal () (BoolLiteral False)
-    , Value.Literal () (StringLiteral "SNB")
-    ]
 
 
 toMaybeList : List ( Pattern (), Value () () ) -> List ( Maybe (Pattern ()), Value () () )
@@ -483,11 +452,6 @@ toMaybeList list =
     List.map2 Tuple.pair maybePatterns values
 
 
-
--- pass in a bunch of variables
--- call the enterpreteur to do any business logic
-
-
 listToNode : List (Value () ()) -> List (Tree.Node NodeData)
 listToNode values =
     let
@@ -499,20 +463,16 @@ listToNode values =
 
 toTranslate : Value () () -> Int -> Tree.Node NodeData
 toTranslate value uid =
-    translation2 ( Nothing, value ) (fromInt uid)
+    translation ( Nothing, value ) (fromInt uid)
 
 
-
--- Tree.Node NodeData
-
-
-translation2 : ( Maybe (Pattern ()), Value () () ) -> String -> Tree.Node NodeData
-translation2 ( pattern, value ) uid =
+translation : ( Maybe (Pattern ()), Value () () ) -> String -> Tree.Node NodeData
+translation ( pattern, value ) uid =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
             let
                 data =
-                    NodeData uid (Value.toString condition) pattern false
+                    NodeData uid (Value.toString condition) pattern
 
                 uids =
                     createUIDS 2 uid
@@ -522,7 +482,7 @@ translation2 ( pattern, value ) uid =
 
                 children : List (Tree.Node NodeData)
                 children =
-                    List.map2 translation2 list uids
+                    List.map2 translation list uids
             in
             Tree.Node
                 { data = data
@@ -532,7 +492,7 @@ translation2 ( pattern, value ) uid =
         Value.PatternMatch tpe param patterns ->
             let
                 data =
-                    NodeData uid (Value.toString param) pattern false
+                    NodeData uid (Value.toString param) pattern
 
                 maybePatterns =
                     toMaybeList patterns
@@ -542,7 +502,7 @@ translation2 ( pattern, value ) uid =
 
                 children : List (Tree.Node NodeData)
                 children =
-                    List.map2 translation2 maybePatterns uids
+                    List.map2 translation maybePatterns uids
             in
             Tree.Node
                 { data = data
@@ -550,8 +510,7 @@ translation2 ( pattern, value ) uid =
                 }
 
         _ ->
-            --Value.toString value ++ (fromInt uid) ++ " ------ "
-            Tree.Node { data = NodeData uid (Value.toString value) pattern false, children = [] }
+            Tree.Node { data = NodeData uid (Value.toString value) pattern, children = [] }
 
 
 createUIDS : Int -> String -> List String
@@ -610,42 +569,17 @@ viewNodeData selectedNode node =
         nodeData =
             Tree.dataOf node
 
-        --dict =
-        --    Dict.fromList
-        --        [ ( Name.fromString "Classify By Position Type", Value.Literal () (StringLiteral "Cash") )
-        --        , ( Name.fromString "Is Central Bank", Value.Literal () (BoolLiteral True) )
-        --        , ( Name.fromString "Is Segregated Cash", Value.Literal () (BoolLiteral True) )
-        --        , ( Name.fromString "Classify By Counter Party ID", Value.Literal () (StringLiteral "FRD") )
-        --        ]
-        dict2 =
-            convertToDict
-                (Dict.fromList
-                    [ ( "Classify By Position Type", "sakdnajdbaj" )
-                    , ( "Is Central Bank", "Cash" )
-                    , ( "Is Segregated Cash", "True" )
-                    , ( "Classify By Counter Party ID", "True" )
-                    , ( "1.A.4.1", "FRD" )
-                    ]
-                )
-
-        --[]
-        selected =
-            selectedNode
-                |> Maybe.map (\sN -> nodeData.uid == sN.uid)
-                |> Maybe.withDefault False
-
         highlight =
-            evaluateHighlight dict2
+            evaluateHighlight
                 nodeData.subject
-                --correctPath
                 (withDefault (WildcardPattern ()) nodeData.pattern)
-                |> Debug.log ("Stuff: " ++ nodeData.subject)
-
-        --|> Debug.log ("logging " ++ getLabel nodeData.pattern ++ " subbie " ++ nodeData.subject)
     in
     if highlight then
-        Html.text (getLabel nodeData.pattern ++ nodeData.subject ++ "  Highlight")
-        --|> Debug.log dict
+        Html.div
+            [ class "highlighted-node"
+            ]
+            [ Html.text (nodeLabel node)
+            ]
 
     else
-        Html.text (getLabel nodeData.pattern ++ nodeData.subject)
+        Html.text (nodeLabel node)
