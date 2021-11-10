@@ -13,7 +13,7 @@ import Morphir.IR.Value as Value exposing (Pattern(..), RawValue, Value(..), ifT
 import Morphir.SDK.Bool exposing (false, true)
 import Morphir.Value.Interpreter as Interpreter exposing (matchPattern)
 import Morphir.Visual.ViewPattern as ViewPattern
-import String exposing (fromInt, length)
+import String exposing (fromInt, join, length, split)
 import Tree as Tree
 import TreeView as TreeView
 import Tuple exposing (first)
@@ -240,7 +240,8 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
     case message of
         SetRoot s1 ->
-            ( { model | dict = Dict.insert "Classify By Position Type" s1 model.dict }, Cmd.none )
+            Debug.log ("TESTSTUFF: " ++ join ":" (split "/" s1))
+                ( { model | dict = Dict.insert "Classify By Position Type" s1 model.dict }, Cmd.none )
 
         SetBank s1 ->
             let
@@ -372,16 +373,14 @@ main =
         }
 
 
+
+--idea is to make values equal to the key/value for dict and split on /
+
+
 dropdowns : Model -> Html.Html Msg
 dropdowns model =
     Html.div []
-        [ Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Position Type" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Central Bank" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Segregated Cash" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Counter Party ID" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is On Shore" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is NetUsd Amount Negative" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Feed44 and CostCenter Not 5C55" model.dict))
+        [ Html.text (join "--------------" (List.map2 (\x y -> x ++ ":" ++ y) (Dict.keys model.dict) (Dict.values model.dict)))
         , Html.div [ id "all-dropdowns" ]
             [ label [ for "cash-select" ] [ Html.text "Choose a type: " ]
             , select [ id "cash-select", onInput SetRoot, class "dropdown" ]
@@ -620,6 +619,7 @@ viewNodeData selectedNode node =
         dict2 =
             convertToDict
                 (Dict.fromList
+                    --subject, pattern
                     [ ( "Classify By Position Type", "sakdnajdbaj" )
                     , ( "Is Central Bank", "Cash" )
                     , ( "Is Segregated Cash", "True" )
@@ -639,9 +639,8 @@ viewNodeData selectedNode node =
                 nodeData.subject
                 --correctPath
                 (withDefault (WildcardPattern ()) nodeData.pattern)
-                |> Debug.log ("Stuff: " ++ nodeData.subject)
-
-        --|> Debug.log ("logging " ++ getLabel nodeData.pattern ++ " subbie " ++ nodeData.subject)
+                --|> Debug.log ("Stuff: " ++ nodeData.subject)
+                |> Debug.log ("pattern: " ++ getLabel nodeData.pattern ++ " subject: " ++ nodeData.subject)
     in
     if highlight then
         Html.text (getLabel nodeData.pattern ++ nodeData.subject ++ "  Highlight")
