@@ -501,78 +501,7 @@ view model =
     --layout [] dropdown
     Html.div
         [ id "top-level" ]
-        [ Html.div []
-            [ Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Position Type" model.dict))
-            , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Central Bank" model.dict))
-            , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Segregated Cash" model.dict))
-            , Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Counter Party ID" model.dict))
-            , Html.text (Maybe.withDefault "unknown" (Dict.get "Is On Shore" model.dict))
-            , Html.text (Maybe.withDefault "unknown" (Dict.get "Is NetUsd Amount Negative" model.dict))
-            , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Feed44 and CostCenter Not 5C55" model.dict))
-            , Html.div [ id "all-dropdowns" ]
-                [ label [ for "cash-select" ] [ Html.text "Choose a type: " ]
-                , select [ id "cash-select", onInput SetRoot, class "dropdown" ]
-                    [ option [ value "", disabled True, selected True ] [ Html.text "Type" ]
-                    , option [ value "Cash" ] [ Html.text "Cash" ]
-                    , option [ value "Inventory" ] [ Html.text "Inventory" ]
-                    , option [ value "Pending Trades" ] [ Html.text "Pending Trades" ]
-                    ]
-
-                --, Html.div [ id "cash-child" ] [
-                , label [ for "central-bank-select" ] [ Html.text "Choose a bank: " ]
-                , select [ id "central-bank-select", onInput SetBank, class "dropdown" ]
-                    [ option [ value "", disabled True, selected True ] [ Html.text "Is Central Bank" ]
-                    , option [ value "True" ] [ Html.text "Yes" ]
-                    , option [ value "False" ] [ Html.text "No" ]
-                    ]
-                , Html.div [ id "central-bank-yes-child" ]
-                    [ label [ for "seg-cash-select" ] [ Html.text "Choose T/F: " ]
-                    , select [ id "seg-cash-select", onInput SetSegCash, class "dropdown" ]
-                        [ option [ value "", disabled True, selected True ] [ Html.text "Is Segregated Cash" ]
-                        , option [ value "True" ] [ Html.text "Yes" ]
-                        , option [ value "False" ] [ Html.text "No" ]
-                        ]
-                    , label [ for "code-select" ] [ Html.text "Choose a code " ]
-                    , select [ id "code-select", onInput SetCode, class "dropdown" ]
-                        [ option [ value "", disabled True, selected True ] [ Html.text "Classify By Counter Party ID" ]
-                        , option [ value "FRD" ] [ Html.text "FRD" ]
-                        , option [ value "BOE" ] [ Html.text "BOE" ]
-                        , option [ value "SNB" ] [ Html.text "SNB" ]
-                        , option [ value "ECB" ] [ Html.text "ECB" ]
-                        , option [ value "BOJ" ] [ Html.text "BOJ" ]
-                        , option [ value "RBA" ] [ Html.text "RBA" ]
-                        , option [ value "BOC" ] [ Html.text "BOC" ]
-                        , option [ value "other" ] [ Html.text "other" ]
-                        ]
-                    ]
-                , Html.div [ id "central-bank-no-child" ]
-                    [ label [ for "on-shore-select" ] [ Html.text "Choose T/F: " ]
-                    , select [ id "on-shore-select", onInput SetShore, class "dropdown" ]
-                        [ option [ value "", disabled True, selected True ] [ Html.text "Is On Shore" ]
-                        , option [ value "True" ] [ Html.text "Yes" ]
-                        , option [ value "False" ] [ Html.text "No" ]
-                        ]
-                    , label [ for "negative-select" ] [ Html.text "Choose T/F: " ]
-                    , select [ id "negative-select", onInput SetNegative, class "dropdown" ]
-                        [ option [ value "", disabled True, selected True ] [ Html.text "Is NetUsd Amount Negative" ]
-                        , option [ value "True" ] [ Html.text "Yes" ]
-                        , option [ value "False" ] [ Html.text "No" ]
-                        ]
-                    , Html.div [ id "negative-no-child" ]
-                        [ label [ for "negative-no-child-select" ] [ Html.text "Choose T/F: " ]
-                        , select [ id "negative-no-child-select", onInput SetFeed, class "dropdown" ]
-                            [ option [ value "", disabled True, selected True ] [ Html.text "Is Feed44 and CostCenter Not 5C55" ]
-                            , option [ value "True" ] [ Html.text "Yes" ]
-                            , option [ value "False" ] [ Html.text "No" ]
-                            ]
-                        ]
-                    ]
-
-                --]
-                ]
-            ]
-        , button [ id "hide-button" ] [ Html.text "Hide Selections " ]
-        , button [ id "tree-button", onClick RedoTree ] [ Html.text "Show me da monay" ]
+        [ dropdowns model
         , map TreeViewMsg (TreeView.view model.treeModel)
         ]
 
@@ -588,6 +517,82 @@ main =
         , update = update
         , subscriptions = subscriptions
         }
+
+
+dropdowns : Model -> Html.Html Msg
+dropdowns model =
+    Html.div []
+        [ Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Position Type" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Central Bank" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Segregated Cash" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Counter Party ID" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is On Shore" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is NetUsd Amount Negative" model.dict))
+        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Feed44 and CostCenter Not 5C55" model.dict))
+        , Html.div [ id "all-dropdowns" ]
+            [ label [ for "cash-select" ] [ Html.text "Choose a type: " ]
+            , select [ id "cash-select", onInput SetRoot, class "dropdown" ]
+                [ option [ value "", disabled True, selected True ] [ Html.text "Type" ]
+                , option [ value "Cash" ] [ Html.text "Cash" ]
+                , option [ value "Inventory" ] [ Html.text "Inventory" ]
+                , option [ value "Pending Trades" ] [ Html.text "Pending Trades" ]
+                ]
+
+            --, Html.div [ id "cash-child" ] [
+            , label [ for "central-bank-select" ] [ Html.text "Choose a bank: " ]
+            , select [ id "central-bank-select", onInput SetBank, class "dropdown" ]
+                [ option [ value "", disabled True, selected True ] [ Html.text "Is Central Bank" ]
+                , option [ value "True" ] [ Html.text "Yes" ]
+                , option [ value "False" ] [ Html.text "No" ]
+                ]
+            , Html.div [ id "central-bank-yes-child" ]
+                [ label [ for "seg-cash-select" ] [ Html.text "Choose T/F: " ]
+                , select [ id "seg-cash-select", onInput SetSegCash, class "dropdown" ]
+                    [ option [ value "", disabled True, selected True ] [ Html.text "Is Segregated Cash" ]
+                    , option [ value "True" ] [ Html.text "Yes" ]
+                    , option [ value "False" ] [ Html.text "No" ]
+                    ]
+                , label [ for "code-select" ] [ Html.text "Choose a code " ]
+                , select [ id "code-select", onInput SetCode, class "dropdown" ]
+                    [ option [ value "", disabled True, selected True ] [ Html.text "Classify By Counter Party ID" ]
+                    , option [ value "FRD" ] [ Html.text "FRD" ]
+                    , option [ value "BOE" ] [ Html.text "BOE" ]
+                    , option [ value "SNB" ] [ Html.text "SNB" ]
+                    , option [ value "ECB" ] [ Html.text "ECB" ]
+                    , option [ value "BOJ" ] [ Html.text "BOJ" ]
+                    , option [ value "RBA" ] [ Html.text "RBA" ]
+                    , option [ value "BOC" ] [ Html.text "BOC" ]
+                    , option [ value "other" ] [ Html.text "other" ]
+                    ]
+                ]
+            , Html.div [ id "central-bank-no-child" ]
+                [ label [ for "on-shore-select" ] [ Html.text "Choose T/F: " ]
+                , select [ id "on-shore-select", onInput SetShore, class "dropdown" ]
+                    [ option [ value "", disabled True, selected True ] [ Html.text "Is On Shore" ]
+                    , option [ value "True" ] [ Html.text "Yes" ]
+                    , option [ value "False" ] [ Html.text "No" ]
+                    ]
+                , label [ for "negative-select" ] [ Html.text "Choose T/F: " ]
+                , select [ id "negative-select", onInput SetNegative, class "dropdown" ]
+                    [ option [ value "", disabled True, selected True ] [ Html.text "Is NetUsd Amount Negative" ]
+                    , option [ value "True" ] [ Html.text "Yes" ]
+                    , option [ value "False" ] [ Html.text "No" ]
+                    ]
+                , Html.div [ id "negative-no-child" ]
+                    [ label [ for "negative-no-child-select" ] [ Html.text "Choose T/F: " ]
+                    , select [ id "negative-no-child-select", onInput SetFeed, class "dropdown" ]
+                        [ option [ value "", disabled True, selected True ] [ Html.text "Is Feed44 and CostCenter Not 5C55" ]
+                        , option [ value "True" ] [ Html.text "Yes" ]
+                        , option [ value "False" ] [ Html.text "No" ]
+                        ]
+                    ]
+                ]
+
+            --]
+            ]
+        , button [ id "hide-button" ] [ Html.text "Hide Selections " ]
+        , button [ id "tree-button", onClick RedoTree ] [ Html.text "Show me da monay" ]
+        ]
 
 
 
