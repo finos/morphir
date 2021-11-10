@@ -8,14 +8,16 @@
   <style>
     table.tree-view {
 <!--    background-color: blue;-->
-    overflow: scroll;
+      float:left;
+<!--    overflow: scroll;-->
     width: 25%;
     min-width: 512px;
     white-space: nowrap;
     display: inline-block;
     overflow-Y: scroll;
-    height: 480px;
+    height: 626px;
     border-right: solid;
+    border-bottom: solid;
     font-family: verdana, sans-serif;
     }
 
@@ -86,12 +88,17 @@
     }
 
     #all-dropdowns {
-      padding: 16px;
+
+
+      float:left;
+      height:680px;
+      padding: 20px;
       background-color: #1c5d94;
-      width: 25%;
-      min-width: 480px;
-      overflow-y: scroll;
-      height: 100px;
+      width: 22%;
+
+<!--      overflow-y: scroll;-->
+<!--      resize: vertical;-->
+<!--      height: 100px;-->
     }
 
     .dropdown {
@@ -102,6 +109,7 @@
     #cash-child {
       display: none;
       background-color: red;
+      color : green;
     }
 
     #central-bank-yes-child {
@@ -121,7 +129,7 @@
     }
 
     #top-level {
-      border: solid;
+<!--      border: solid;-->
 <!--      background-color: cornflowerblue;-->
     }
 
@@ -131,6 +139,12 @@
 
 
   </style>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
 </head>
 
 <body>

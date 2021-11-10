@@ -1,10 +1,15 @@
 module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
+--import Bootstrap.Alert exposing (h1)
+--import Bootstrap.Badge as Badge
+
+import Bootstrap.Alert exposing (h1)
+import Bootstrap.Badge as Badge
 import Browser
 import Dict exposing (Dict, values)
 import Element exposing (Color, Element, column, el, fill, html, layout, mouseOver, none, padding, paddingEach, paddingXY, px, rgb, row, shrink, spacing, table, text)
 import Html exposing (Html, a, button, label, map, option, select)
-import Html.Attributes exposing (class, disabled, for, id, selected, value)
+import Html.Attributes as Html exposing (class, disabled, for, id, selected, style, value)
 import Html.Events exposing (onClick, onInput)
 import Maybe exposing (withDefault)
 import Morphir.IR.Literal as Literal exposing (Literal(..))
@@ -353,7 +358,8 @@ view model =
     --layout [] dropdown
     Html.div
         [ id "top-level" ]
-        [ dropdowns model
+        [ h1 [ style "color" "#1c5d94" ] [ Html.text "Arboretum " ]
+        , dropdowns model
         , selectedNodeDetails model
         , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel)
         ]
@@ -382,7 +388,7 @@ dropdowns model =
         , Html.text (Maybe.withDefault "unknown" (Dict.get "Is On Shore" model.dict))
         , Html.text (Maybe.withDefault "unknown" (Dict.get "Is NetUsd Amount Negative" model.dict))
         , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Feed44 and CostCenter Not 5C55" model.dict))
-        , Html.div [ id "all-dropdowns" ]
+        , Html.div [ id "all-dropdowns", Html.style "color" "white" ]
             [ label [ for "cash-select" ] [ Html.text "Choose a type: " ]
             , select [ id "cash-select", onInput SetRoot, class "dropdown" ]
                 [ option [ value "", disabled True, selected True ] [ Html.text "Type" ]
@@ -644,7 +650,7 @@ viewNodeData selectedNode node =
         --|> Debug.log ("logging " ++ getLabel nodeData.pattern ++ " subbie " ++ nodeData.subject)
     in
     if highlight then
-        Html.text (getLabel nodeData.pattern ++ nodeData.subject ++ "  Highlight")
+        Html.text (getLabel nodeData.pattern ++ nodeData.subject ++ "  Highlight!!")
         --|> Debug.log dict
 
     else
