@@ -1,41 +1,19 @@
 module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
-import Array exposing (fromList, get)
 import Browser
-import Css exposing (auto, bold, fontSize, px, width, xxSmall)
 import Dict exposing (Dict, values)
 import Element exposing (Color, Element, column, el, fill, html, layout, mouseOver, none, padding, paddingEach, paddingXY, px, rgb, row, shrink, spacing, table, text)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Events as Events
 import Html exposing (Html, a, button, label, map, option, select)
 import Html.Attributes exposing (class, disabled, for, id, selected, value)
 import Html.Events exposing (onClick, onInput)
 import Maybe exposing (withDefault)
-import Morphir.Graph.Grapher exposing (Node(..))
-import Morphir.IR as IR
-import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal as Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Package as Package
-import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Pattern(..), RawValue, Value(..), ifThenElse, patternMatch, toString, unit, variable)
 import Morphir.SDK.Bool exposing (false, true)
-import Morphir.Value.Error as Error
 import Morphir.Value.Interpreter as Interpreter exposing (matchPattern)
-import Morphir.Visual.Components.DecisionTable exposing (Match(..))
-import Morphir.Visual.Components.MultiaryDecisionTree
-import Morphir.Visual.Config exposing (Config, HighlightState(..))
-import Morphir.Visual.Theme as Theme
 import Morphir.Visual.ViewPattern as ViewPattern
-import Morphir.Visual.ViewValue as ViewValue
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
-import Mwc.Button
-import Mwc.TextField
-import Parser exposing (number)
 import String exposing (fromInt, length)
-import Svg.Attributes exposing (style)
 import Tree as Tree
 import TreeView as TreeView
 import Tuple exposing (first)
@@ -290,6 +268,8 @@ update message model =
             ( { model | dict = Dict.insert "Is Segregated Cash" s1 model.dict }, Cmd.none )
 
         SetCode s1 ->
+            --do the same with classify by counter party ID.
+            --find a way to send the key as well as the value
             ( { model | dict = Dict.insert "Classify By Counter Party ID" s1 model.dict }, Cmd.none )
 
         SetShore s1 ->
@@ -336,74 +316,6 @@ update message model =
               }
             , Cmd.none
             )
-
-
-type Dropdown a
-    = Normal (Maybe a)
-    | Select (List a)
-
-
-type DropdownAction a
-    = OpenList
-    | ClickedOption a
-
-
-type alias Choice =
-    { name : String }
-
-
-type alias Example =
-    { name : String }
-
-
-bankList : List Choice
-bankList =
-    [ Choice "Central Bank"
-    , Choice "On Shore"
-    ]
-
-
-cashList : List Choice
-cashList =
-    [ Choice "Segregated"
-    , Choice "Not Segregated"
-    ]
-
-
-classifyList : List Choice
-classifyList =
-    [ Choice "By Counter Party ID"
-    , Choice "No Counter Party ID"
-    ]
-
-
-fedList : List Choice
-fedList =
-    [ Choice "FRD"
-    , Choice "BOE"
-    , Choice "SNB"
-    , Choice "ECB"
-    , Choice "BOJ"
-    , Choice "RBA"
-    , Choice "BOC"
-    , Choice "Others"
-    ]
-
-
-rootList : List Choice
-rootList =
-    [ Choice "Cash"
-    , Choice "Inventory"
-    , Choice "Pending Trades"
-    ]
-
-
-exampleList : List Example
-exampleList =
-    [ Example "option 1"
-    , Example "option 2"
-    , Example "option 3"
-    ]
 
 
 overColor : Color
@@ -708,11 +620,11 @@ viewNodeData selectedNode node =
         dict2 =
             convertToDict
                 (Dict.fromList
-                    [ ( "Classify By Position Type", "Cash" )
-                    , ( "Is Central Bank", "True" )
-
-                    --, ( "Is Segregated Cash", "True" )
-                    --, ( "Classify By Counter Party ID", "FRD" )
+                    [ ( "Classify By Position Type", "sakdnajdbaj" )
+                    , ( "Is Central Bank", "Cash" )
+                    , ( "Is Segregated Cash", "True" )
+                    , ( "Classify By Counter Party ID", "True" )
+                    , ( "1.A.4.1", "FRD" )
                     ]
                 )
 
@@ -727,6 +639,7 @@ viewNodeData selectedNode node =
                 nodeData.subject
                 --correctPath
                 (withDefault (WildcardPattern ()) nodeData.pattern)
+                |> Debug.log ("Stuff: " ++ nodeData.subject)
 
         --|> Debug.log ("logging " ++ getLabel nodeData.pattern ++ " subbie " ++ nodeData.subject)
     in
