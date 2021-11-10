@@ -227,6 +227,7 @@ type Msg
     | SetShore String
     | SetNegative String
     | SetFeed String
+    | RedoTree
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -323,6 +324,10 @@ update message model =
 
         SetFeed s1 ->
             ( { model | dict = Dict.insert "Is Feed44 and CostCenter Not 5C55" s1 model.dict }, Cmd.none )
+
+        RedoTree ->
+            Debug.log "Im Highlighting"
+                ( model, Cmd.none )
 
         _ ->
             let
@@ -521,11 +526,13 @@ view model =
                     , option [ value "False" ] [ Html.text "No" ]
                     ]
                 , Html.div [ id "central-bank-yes-child" ]
-                    [ select [ id "seg-cash-select", onInput SetSegCash, class "dropdown" ]
+                    [ label [ for "seg-cash-select" ] [ Html.text "Choose T/F: " ]
+                    , select [ id "seg-cash-select", onInput SetSegCash, class "dropdown" ]
                         [ option [ value "", disabled True, selected True ] [ Html.text "Is Segregated Cash" ]
                         , option [ value "True" ] [ Html.text "Yes" ]
                         , option [ value "False" ] [ Html.text "No" ]
                         ]
+                    , label [ for "code-select" ] [ Html.text "Choose a code " ]
                     , select [ id "code-select", onInput SetCode, class "dropdown" ]
                         [ option [ value "", disabled True, selected True ] [ Html.text "Classify By Counter Party ID" ]
                         , option [ value "FRD" ] [ Html.text "FRD" ]
@@ -539,18 +546,21 @@ view model =
                         ]
                     ]
                 , Html.div [ id "central-bank-no-child" ]
-                    [ select [ id "on-shore-select", onInput SetShore, class "dropdown" ]
+                    [ label [ for "on-shore-select" ] [ Html.text "Choose T/F: " ]
+                    , select [ id "on-shore-select", onInput SetShore, class "dropdown" ]
                         [ option [ value "", disabled True, selected True ] [ Html.text "Is On Shore" ]
                         , option [ value "True" ] [ Html.text "Yes" ]
                         , option [ value "False" ] [ Html.text "No" ]
                         ]
+                    , label [ for "negative-select" ] [ Html.text "Choose T/F: " ]
                     , select [ id "negative-select", onInput SetNegative, class "dropdown" ]
                         [ option [ value "", disabled True, selected True ] [ Html.text "Is NetUsd Amount Negative" ]
                         , option [ value "True" ] [ Html.text "Yes" ]
                         , option [ value "False" ] [ Html.text "No" ]
                         ]
                     , Html.div [ id "negative-no-child" ]
-                        [ select [ id "negative-no-child-select", onInput SetFeed, class "dropdown" ]
+                        [ label [ for "negative-no-child-select" ] [ Html.text "Choose T/F: " ]
+                        , select [ id "negative-no-child-select", onInput SetFeed, class "dropdown" ]
                             [ option [ value "", disabled True, selected True ] [ Html.text "Is Feed44 and CostCenter Not 5C55" ]
                             , option [ value "True" ] [ Html.text "Yes" ]
                             , option [ value "False" ] [ Html.text "No" ]
@@ -562,6 +572,7 @@ view model =
                 ]
             ]
         , button [ id "hide-button" ] [ Html.text "Hide Selections " ]
+        , button [ id "tree-button", onClick RedoTree ] [ Html.text "Show me da monay" ]
         , map TreeViewMsg (TreeView.view model.treeModel)
         ]
 

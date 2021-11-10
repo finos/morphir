@@ -86,15 +86,14 @@
 
     #all-dropdowns {
       padding: 16px;
-      min-width: 1256px;
       background-color: #1c5d94;
       width: 25%;
-      min-width: 512px;
+      min-width: 480px;
 
     }
 
     .dropdown {
-      display: inline-block;
+      display: block;
       font-size: 18px;
     }
 
@@ -157,8 +156,8 @@
 
     document.getElementById('cash-select').addEventListener('change', function () {
       console.log('showing');
-      var style = this.value == 'Cash' ? 'inline-block' : 'none';
-      var oppStyle = this.value == 'Cash' ? 'none' : 'inline-block';
+      var style = this.value == 'Cash' ? 'block' : 'none';
+      var oppStyle = this.value == 'Cash' ? 'none' : 'block';
       document.getElementById('central-bank-select').style.display = style;
       document.getElementById('central-bank-yes-child').style.display = 'none';
       document.getElementById('central-bank-no-child').style.display = 'none';
@@ -172,8 +171,8 @@
 
 
     document.getElementById('central-bank-select').addEventListener('change', function () {
-      var style = this.value == 'True' ? 'inline-block' : 'none';
-      var oppStyle = this.value == 'False' ? 'inline-block' : 'none';
+      var style = this.value == 'True' ? 'block' : 'none';
+      var oppStyle = this.value == 'False' ? 'block' : 'none';
       document.getElementById('central-bank-yes-child').style.display = style;
       document.getElementById('central-bank-no-child').style.display = oppStyle;
       document.getElementById('negative-no-child-select').selectedIndex = 0;
@@ -186,7 +185,7 @@
 
 
     document.getElementById('negative-select').addEventListener('change', function () {
-      var style = this.value == 'False' ? 'inline-block' : 'none';
+      var style = this.value == 'False' ? 'block' : 'none';
       document.getElementById('negative-no-child').style.display = style;
       document.getElementById('negative-no-child-select').selectedIndex = 0;
     });
