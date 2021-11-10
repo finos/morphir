@@ -222,8 +222,6 @@ configuration =
 
 type Msg
     = TreeViewMsg (TreeView.Msg2 String NodeDataMsg)
-    | ExpandAll
-    | CollapseAll
 
 
 setNodeContent : String -> String -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData) -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData)
@@ -255,12 +253,6 @@ update message model =
                 TreeViewMsg tvMsg ->
                     TreeView.update2 tvMsg model.treeModel
 
-                ExpandAll ->
-                    TreeView.expandAll model.treeModel
-
-                CollapseAll ->
-                    TreeView.collapseAll model.treeModel
-
         selectedNode =
             TreeView.getSelected treeModel |> Maybe.map .node |> Maybe.map Tree.dataOf
     in
@@ -272,21 +264,22 @@ update message model =
     )
 
 
-expandAllCollapseAllButtons : Html Msg
-expandAllCollapseAllButtons =
-    div
-        []
-        [ Mwc.Button.view
-            [ Mwc.Button.raised
-            , Mwc.Button.onClick ExpandAll
-            , Mwc.Button.label "Expand all"
-            ]
-        , Mwc.Button.view
-            [ Mwc.Button.raised
-            , Mwc.Button.onClick CollapseAll
-            , Mwc.Button.label "Collapse all"
-            ]
-        ]
+
+--expandAllCollapseAllButtons : Html Msg
+--expandAllCollapseAllButtons =
+--    div
+--        []
+--        [ Mwc.Button.view
+--            [ Mwc.Button.raised
+--            , Mwc.Button.onClick ExpandAll
+--            , Mwc.Button.label "Expand all"
+--            ]
+--        , Mwc.Button.view
+--            [ Mwc.Button.raised
+--            , Mwc.Button.onClick CollapseAll
+--            , Mwc.Button.label "Collapse all"
+--            ]
+--        ]
 
 
 selectedNodeDetails : Model -> Html Msg
@@ -324,7 +317,7 @@ view model =
         --, select [id "bottom-level"] [option [] [text "FRD"], option [] [text "BOE"], option [] [text "SNB"]
         --    , option [] [text "ECB"], option [] [text "BOJ"], option [] [text "RBA"]
         --    , option [] [text "BOC"], option [] [text "Others"]]
-        , expandAllCollapseAllButtons
+        --, expandAllCollapseAllButtons
         , selectedNodeDetails model
         , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel |> fromUnstyled)
         ]
@@ -512,8 +505,9 @@ viewNodeData selectedNode node =
                 (Dict.fromList
                     [ ( "Classify By Position Type", "Cash" )
                     , ( "Is Central Bank", "True" )
-                    , ( "Is Segregated Cash", "True" )
-                    , ( "Classify By Counter Party ID", "FRD" )
+
+                    --, ( "Is Segregated Cash", "True" )
+                    --, ( "Classify By Counter Party ID", "FRD" )
                     ]
                 )
 
@@ -523,17 +517,6 @@ viewNodeData selectedNode node =
                 |> Maybe.map (\sN -> nodeData.uid == sN.uid)
                 |> Maybe.withDefault False
 
-        --updatedNode =
-        --    setNodeHighlight nodeData.uid
-        --        (evaluateHighlight dict
-        --            (Value.Variable () [ "Type" ])
-        --           (withDefault (WildcardPattern ()) nodeData.pattern)
-        --        )
-        --correctPathNumber =
-        --    length nodeData.uid // 2 |> Debug.log ("homie" ++ nodeData.uid)
-        --
-        --correctPath =
-        --    withDefault (Value.Literal () (BoolLiteral True)) (Array.get correctPathNumber (Array.fromList mylist)) |> Debug.log ("the correct path" ++ fromInt correctPathNumber)
         highlight =
             evaluateHighlight dict2
                 nodeData.subject
