@@ -6,6 +6,7 @@ import Element exposing (Color, Element, column, el, fill, html, layout, mouseOv
 import Html exposing (Html, a, button, label, map, option, select)
 import Html.Attributes exposing (class, disabled, for, id, selected, value)
 import Html.Events exposing (onClick, onInput)
+import List exposing (drop, head, tail, take)
 import Maybe exposing (withDefault)
 import Morphir.IR.Literal as Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
@@ -210,6 +211,8 @@ configuration =
 
 type Msg
     = TreeViewMsg (TreeView.Msg2 String NodeDataMsg)
+    | SetDictValue String
+    | SetDictValueErase String
     | SetRoot String
     | SetBank String
     | SetSegCash String
@@ -239,9 +242,39 @@ setNodeHighlight nodeUid highlight treeModel =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
     case message of
-        SetRoot s1 ->
-            Debug.log ("TESTSTUFF: " ++ join ":" (split "/" s1))
-                ( { model | dict = Dict.insert "Classify By Position Type" s1 model.dict }, Cmd.none )
+        SetDictValueErase s1 ->
+            let
+                --Debug.log ("TESTSTUFF: " ++ join ":" (split "/" s1))
+                newList =
+                    split "/" s1
+
+                newKey =
+                    join "" (take 1 newList)
+
+                newValue =
+                    join "" (drop 1 newList)
+
+                newDict1 =
+                    Dict.insert newKey newValue Dict.empty
+            in
+            ( { model | dict = newDict1 }, Cmd.none )
+
+        SetDictValue s1 ->
+            let
+                --Debug.log ("TESTSTUFF: " ++ join ":" (split "/" s1))
+                newList =
+                    split "/" s1
+
+                newKey =
+                    join "" (take 1 newList)
+
+                newValue =
+                    join "" (drop 1 newList)
+
+                newDict1 =
+                    Dict.insert newKey newValue model.dict
+            in
+            ( { model | dict = newDict1 }, Cmd.none )
 
         SetBank s1 ->
             let
@@ -290,8 +323,7 @@ update message model =
             ( { model | dict = Dict.insert "Is Feed44 and CostCenter Not 5C55" s1 model.dict }, Cmd.none )
 
         RedoTree ->
-            Debug.log "Im Highlighting"
-                ( model, Cmd.none )
+            ( { model | treeModel = TreeView.initializeModel2 (configuration2 model) model.rootNodes }, Cmd.none )
 
         _ ->
             let
@@ -383,59 +415,63 @@ dropdowns model =
         [ Html.text (join "--------------" (List.map2 (\x y -> x ++ ":" ++ y) (Dict.keys model.dict) (Dict.values model.dict)))
         , Html.div [ id "all-dropdowns" ]
             [ label [ for "cash-select" ] [ Html.text "Choose a type: " ]
-            , select [ id "cash-select", onInput SetRoot, class "dropdown" ]
+            , select [ id "cash-select", onInput SetDictValueErase, class "dropdown" ]
                 [ option [ value "", disabled True, selected True ] [ Html.text "Type" ]
-                , option [ value "Cash" ] [ Html.text "Cash" ]
-                , option [ value "Inventory" ] [ Html.text "Inventory" ]
-                , option [ value "Pending Trades" ] [ Html.text "Pending Trades" ]
+                , option [ value "Is Central Bank/Cash" ] [ Html.text "Cash" ]
+                , option [ value "/Inventory" ] [ Html.text "Inventory" ]
+                , option [ value "/Pending Trades" ] [ Html.text "Pending Trades" ]
                 ]
 
             --, Html.div [ id "cash-child" ] [
             , label [ for "central-bank-select" ] [ Html.text "Choose a bank: " ]
-            , select [ id "central-bank-select", onInput SetBank, class "dropdown" ]
+            , select [ id "central-bank-select", onInput SetDictValue, class "dropdown" ]
                 [ option [ value "", disabled True, selected True ] [ Html.text "Is Central Bank" ]
-                , option [ value "True" ] [ Html.text "Yes" ]
-                , option [ value "False" ] [ Html.text "No" ]
+                , option [ value "Is Segregated Cash/True" ] [ Html.text "Yes" ]
+                , option [ value "Is On Shore/False" ] [ Html.text "No" ]
                 ]
             , Html.div [ id "central-bank-yes-child" ]
                 [ label [ for "seg-cash-select" ] [ Html.text "Choose T/F: " ]
-                , select [ id "seg-cash-select", onInput SetSegCash, class "dropdown" ]
+                , select [ id "seg-cash-select", onInput SetDictValue, class "dropdown" ]
                     [ option [ value "", disabled True, selected True ] [ Html.text "Is Segregated Cash" ]
-                    , option [ value "True" ] [ Html.text "Yes" ]
-                    , option [ value "False" ] [ Html.text "No" ]
+                    , option [ value "Classify By Counter Party ID/True" ] [ Html.text "Yes" ]
+                    , option [ value "Classify By Counter Party ID/False" ] [ Html.text "No" ]
                     ]
+
+                --will have to add another dropdown here for the other codes, based on answer of previous
                 , label [ for "code-select" ] [ Html.text "Choose a code " ]
-                , select [ id "code-select", onInput SetCode, class "dropdown" ]
+                , select [ id "code-select", onInput SetDictValue, class "dropdown" ]
                     [ option [ value "", disabled True, selected True ] [ Html.text "Classify By Counter Party ID" ]
-                    , option [ value "FRD" ] [ Html.text "FRD" ]
-                    , option [ value "BOE" ] [ Html.text "BOE" ]
-                    , option [ value "SNB" ] [ Html.text "SNB" ]
-                    , option [ value "ECB" ] [ Html.text "ECB" ]
-                    , option [ value "BOJ" ] [ Html.text "BOJ" ]
-                    , option [ value "RBA" ] [ Html.text "RBA" ]
-                    , option [ value "BOC" ] [ Html.text "BOC" ]
-                    , option [ value "other" ] [ Html.text "other" ]
+                    , option [ value "1.A.4.1/FRD" ] [ Html.text "FRD" ]
+                    , option [ value "1.A.4.2/BOE" ] [ Html.text "BOE" ]
+                    , option [ value "1.A.4.3/SNB" ] [ Html.text "SNB" ]
+                    , option [ value "1.A.4.4/ECB" ] [ Html.text "ECB" ]
+                    , option [ value "1.A.4.5/BOJ" ] [ Html.text "BOJ" ]
+                    , option [ value "1.A.4.6/RBA" ] [ Html.text "RBA" ]
+                    , option [ value "1.A.4.7/BOC" ] [ Html.text "BOC" ]
+                    , option [ value "1.A.4.8/other" ] [ Html.text "other" ]
                     ]
                 ]
             , Html.div [ id "central-bank-no-child" ]
                 [ label [ for "on-shore-select" ] [ Html.text "Choose T/F: " ]
                 , select [ id "on-shore-select", onInput SetShore, class "dropdown" ]
                     [ option [ value "", disabled True, selected True ] [ Html.text "Is On Shore" ]
-                    , option [ value "True" ] [ Html.text "Yes" ]
-                    , option [ value "False" ] [ Html.text "No" ]
+                    , option [ value "Is NetUsd Amount Negative/True" ] [ Html.text "Yes" ]
+                    , option [ value "Is NetUsd Amount Negative/False" ] [ Html.text "No" ]
                     ]
+
+                --need another branch here
                 , label [ for "negative-select" ] [ Html.text "Choose T/F: " ]
                 , select [ id "negative-select", onInput SetNegative, class "dropdown" ]
                     [ option [ value "", disabled True, selected True ] [ Html.text "Is NetUsd Amount Negative" ]
-                    , option [ value "True" ] [ Html.text "Yes" ]
-                    , option [ value "False" ] [ Html.text "No" ]
+                    , option [ value "O.W.9/True" ] [ Html.text "Yes" ]
+                    , option [ value "Is Feed44 and CostCenter Not 5C55/False" ] [ Html.text "No" ]
                     ]
                 , Html.div [ id "negative-no-child" ]
                     [ label [ for "negative-no-child-select" ] [ Html.text "Choose T/F: " ]
                     , select [ id "negative-no-child-select", onInput SetFeed, class "dropdown" ]
                         [ option [ value "", disabled True, selected True ] [ Html.text "Is Feed44 and CostCenter Not 5C55" ]
-                        , option [ value "True" ] [ Html.text "Yes" ]
-                        , option [ value "False" ] [ Html.text "No" ]
+                        , option [ value "1.U.1/True" ] [ Html.text "Yes" ]
+                        , option [ value "1.U.4/False" ] [ Html.text "No" ]
                         ]
                     ]
                 ]
@@ -620,12 +656,13 @@ viewNodeData selectedNode node =
             convertToDict
                 (Dict.fromList
                     --subject, pattern
-                    [ ( "Classify By Position Type", "sakdnajdbaj" )
-                    , ( "Is Central Bank", "Cash" )
-                    , ( "Is Segregated Cash", "True" )
-                    , ( "Classify By Counter Party ID", "True" )
-                    , ( "1.A.4.1", "FRD" )
-                    ]
+                    --[ ( "Classify By Position Type", "sakdnajdbaj" )
+                    --, ( "Is Central Bank", "Cash" )
+                    --, ( "Is Segregated Cash", "True" )
+                    --, ( "Classify By Counter Party ID", "True" )
+                    --, ( "1.A.4.1", "FRD" )
+                    --]
+                    []
                 )
 
         --[]
@@ -648,3 +685,60 @@ viewNodeData selectedNode node =
 
     else
         Html.text (getLabel nodeData.pattern ++ nodeData.subject)
+
+
+viewNodeData2 : Model -> Maybe NodeData -> Tree.Node NodeData -> Html.Html NodeDataMsg
+viewNodeData2 model selectedNode node =
+    let
+        nodeData =
+            Tree.dataOf node
+
+        --dict =
+        --    Dict.fromList
+        --        [ ( Name.fromString "Classify By Position Type", Value.Literal () (StringLiteral "Cash") )
+        --        , ( Name.fromString "Is Central Bank", Value.Literal () (BoolLiteral True) )
+        --        , ( Name.fromString "Is Segregated Cash", Value.Literal () (BoolLiteral True) )
+        --        , ( Name.fromString "Classify By Counter Party ID", Value.Literal () (StringLiteral "FRD") )
+        --        ]
+        dict2 =
+            --pass in my dict, changes it to tuples i guess
+            convertToDict
+                (Dict.fromList
+                    --subject, pattern
+                    --[ ( "Classify By Position Type", "sakdnajdbaj" )
+                    --, ( "Is Central Bank", "Cash" )
+                    --, ( "Is Segregated Cash", "True" )
+                    --, ( "Classify By Counter Party ID", "True" )
+                    --, ( "1.A.4.1", "FRD" )
+                    --]
+                    (List.append
+                        [ ( "Classify By Position Type", "sakdnajdbaj" ) ]
+                        (List.map2 Tuple.pair (Dict.keys model.dict) (Dict.values model.dict))
+                    )
+                )
+
+        --[]
+        selected =
+            selectedNode
+                |> Maybe.map (\sN -> nodeData.uid == sN.uid)
+                |> Maybe.withDefault False
+
+        highlight =
+            evaluateHighlight dict2
+                nodeData.subject
+                --correctPath
+                (withDefault (WildcardPattern ()) nodeData.pattern)
+                --|> Debug.log ("Stuff: " ++ nodeData.subject)
+                |> Debug.log ("pattern: " ++ getLabel nodeData.pattern ++ " subject: " ++ nodeData.subject)
+    in
+    if highlight then
+        Html.text (getLabel nodeData.pattern ++ nodeData.subject ++ "  Highlight")
+        --|> Debug.log dict
+
+    else
+        Html.text (getLabel nodeData.pattern ++ nodeData.subject)
+
+
+configuration2 : Model -> TreeView.Configuration2 NodeData String NodeDataMsg (Maybe NodeData)
+configuration2 model =
+    TreeView.Configuration2 nodeUidOf (viewNodeData2 model) TreeView.defaultCssClasses

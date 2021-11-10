@@ -160,8 +160,8 @@
 
     document.getElementById('cash-select').addEventListener('change', function () {
       console.log('showing');
-      var style = this.value == 'Cash' ? 'block' : 'none';
-      var oppStyle = this.value == 'Cash' ? 'none' : 'block';
+      var style = this.value == 'Is Central Bank/Cash' ? 'block' : 'none';
+      var oppStyle = this.value == 'Is Central Bank/Cash' ? 'none' : 'block';
       document.getElementById('central-bank-select').style.display = style;
       document.getElementById('central-bank-yes-child').style.display = 'none';
       document.getElementById('central-bank-no-child').style.display = 'none';
@@ -175,8 +175,8 @@
 
 
     document.getElementById('central-bank-select').addEventListener('change', function () {
-      var style = this.value == 'True' ? 'block' : 'none';
-      var oppStyle = this.value == 'False' ? 'block' : 'none';
+      var style = this.value == 'Is Segregated Cash/True' ? 'block' : 'none';
+      var oppStyle = this.value == 'Is One Shore/False' ? 'block' : 'none';
       document.getElementById('central-bank-yes-child').style.display = style;
       document.getElementById('central-bank-no-child').style.display = oppStyle;
       document.getElementById('negative-no-child-select').selectedIndex = 0;
@@ -189,7 +189,7 @@
 
 
     document.getElementById('negative-select').addEventListener('change', function () {
-      var style = this.value == 'False' ? 'block' : 'none';
+      var style = this.value == 'Is Feed44 and CostCenter Not 5C55/False' ? 'block' : 'none';
       document.getElementById('negative-no-child').style.display = style;
       document.getElementById('negative-no-child-select').selectedIndex = 0;
     });
