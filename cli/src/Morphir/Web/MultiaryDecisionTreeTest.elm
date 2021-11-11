@@ -38,6 +38,7 @@ t =
 -- Value.IfThenElse () (var "isFoo") (var "Yes") (var "No")
 -- Value.PatternMatch () (var "isFoo") List
 -- define data type for values we put into tree node
+-- Alias to represent information within Node.
 
 
 type alias NodeData =
@@ -45,6 +46,10 @@ type alias NodeData =
     , subject : String
     , pattern : Maybe (Pattern ())
     }
+
+
+
+-- Styling visual representation with Pattern
 
 
 getLabel : Maybe (Pattern ()) -> String
@@ -55,6 +60,10 @@ getLabel maybeLabel =
 
         Nothing ->
             ""
+
+
+
+-- Evaluates node and pattern based on whether or not it is within the dictionary
 
 
 evaluateHighlight : Dict Name RawValue -> String -> Pattern () -> Bool
@@ -68,10 +77,10 @@ evaluateHighlight variables value pattern =
         Just val ->
             case Interpreter.matchPattern pattern val of
                 Ok _ ->
-                    True
+                    True |> Debug.log "is this doing anything -- true"
 
                 Err _ ->
-                    False
+                    False |> Debug.log "is this doing anything -- false"
 
         Nothing ->
             False
@@ -139,12 +148,12 @@ initialModel () =
                             (Value.IfThenElse ()
                                 (Value.Variable () (Name.fromString "Is On Shore"))
                                 (Value.IfThenElse ()
-                                    (Value.Variable () [ "Is NetUsd Amount Negative" ])
-                                    (Value.Variable () [ "O.W.9" ])
+                                    (Value.Variable () (Name.fromString "Is NetUsd Amount Negative"))
+                                    (Value.Variable () (Name.fromString "O.W.9"))
                                     (Value.IfThenElse ()
-                                        (Value.Variable () [ "Is Feed44 and CostCenter Not 5C55" ])
-                                        (Value.Variable () [ "1.U.1" ])
-                                        (Value.Variable () [ "1.U.4" ])
+                                        (Value.Variable () (Name.fromString "Is Feed44 and CostCenter Not 5C55"))
+                                        (Value.Variable () (Name.fromString "1.U.1"))
+                                        (Value.Variable () (Name.fromString "1.U.4"))
                                     )
                                 )
                                 (Value.IfThenElse ()
@@ -325,13 +334,6 @@ update message model =
               }
             , Cmd.none
             )
-
-
-
---
---overColor : Color
---overColor =
---    rgb 0.9 0.9 0.1
 
 
 white : Color
