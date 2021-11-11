@@ -122,7 +122,27 @@
       display: none;
     }
 
+    #code-select-1 {
+      display: none;
+    }
+
+    #code-select-2 {
+      display: none;
+    }
+
     #negative-no-child {
+      display: none;
+    }
+
+    #negative-no-child-2 {
+      display: none;
+    }
+
+    #negative-select {
+      display: none;
+    }
+
+    #negative-select-2 {
       display: none;
     }
 
@@ -164,7 +184,6 @@
 
 
     document.getElementById('cash-select').addEventListener('change', function () {
-      console.log('showing');
       var style = this.value == 'Is Central Bank/Cash' ? 'block' : 'none';
       var oppStyle = this.value == 'Is Central Bank/Cash' ? 'none' : 'block';
       document.getElementById('central-bank-select').style.display = style;
@@ -175,7 +194,7 @@
       document.getElementById('negative-select').selectedIndex = 0;
       document.getElementById('on-shore-select').selectedIndex = 0;
       document.getElementById('seg-cash-select').selectedIndex = 0;
-      document.getElementById('code-select').selectedIndex = 0;
+      document.getElementById('code-select-1').selectedIndex = 0;
     });
 
 
@@ -188,15 +207,33 @@
       document.getElementById('negative-select').selectedIndex = 0;
       document.getElementById('on-shore-select').selectedIndex = 0;
       document.getElementById('seg-cash-select').selectedIndex = 0;
-      document.getElementById('code-select').selectedIndex = 0;
-
+      document.getElementById('code-select-1').selectedIndex = 0;
     });
 
+    document.getElementById('seg-cash-select').addEventListener('change', function () {
+      var style = this.value == 'Classify By Counter Party ID/True' ? 'block' : 'none';
+      var oppStyle = this.value == 'Classify By Counter Party ID/False' ? 'block' : 'none';
+      document.getElementById('code-select-1').style.display = style;
+      document.getElementById('code-select-2').style.display = oppStyle;
+    });
+
+    document.getElementById('on-shore-select').addEventListener('change', function () {
+      var style = this.value == 'Is NetUsd Amount Negative/True' ? 'block' : 'none';
+      var oppStyle = this.value == 'Is NetUsd Amount Negative/False' ? 'block' : 'none';
+      document.getElementById('negative-select').style.display = style;
+      document.getElementById('negative-select-2').style.display = oppStyle;
+    });
 
     document.getElementById('negative-select').addEventListener('change', function () {
       var style = this.value == 'Is Feed44 and CostCenter Not 5C55/False' ? 'block' : 'none';
       document.getElementById('negative-no-child').style.display = style;
       document.getElementById('negative-no-child-select').selectedIndex = 0;
+    });
+
+    document.getElementById('negative-select-2').addEventListener('change', function () {
+      var style = this.value == 'Is Feed44 and CostCenter Not 5C55/False' ? 'block' : 'none';
+      document.getElementById('negative-no-child-2').style.display = style;
+      document.getElementById('negative-no-child-select-2').selectedIndex = 0;
     });
 
 
