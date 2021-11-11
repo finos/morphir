@@ -69,9 +69,11 @@
   "dependencies": {
     "chalk": "^4.1.1",
     "commander": "^4.1.1",
+    "elm-css": "github:rtfeldman/elm-css",
     "express": "^4.17.1",
     "fs-extra": "^9.1.0",
     "get-stdin": "^8.0.0",
+    "list-extra": "github:elm-community/list-extra",
     "log-timestamp": "^0.3.0",
     "prettier": "^2.4.1"
   }

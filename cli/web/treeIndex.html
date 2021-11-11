@@ -13,8 +13,10 @@
     min-width: 512px;
     white-space: nowrap;
     display: inline-block;
-    overflow: auto;
-    font-family: sans-serif;
+    overflow-Y: scroll;
+    height: 480px;
+    border-right: solid;
+    font-family: verdana, sans-serif;
     }
 
     td {
@@ -27,12 +29,13 @@
 
     td.tree-view {
       padding: 4px;
-      font-size: 1.5em;
+      font-size: .7em;
 <!--      background-color: red;-->
     }
 
     td.tree-view-selected-node {
-      background-color: #8899FF;
+      font-weight : bold;
+<!--      color: green;-->
     }
 
     td.tree-view-indentation {
@@ -43,12 +46,12 @@
       background: url(https://img.icons8.com/material-outlined/24/000000/minus-sign.png);
       background-repeat: no-repeat;
       background-size: contain;
-      width: 24px;
+      width: 20px;
     }
 
     label.tree-view-bullet-expanded {
       opacity: 0;
-      padding-left: 6px;
+      padding-left: 3px;
       cursor: pointer;
     }
 
@@ -56,12 +59,12 @@
       background: url(https://img.icons8.com/material-outlined/24/000000/plus--v1.png);
       background-repeat: no-repeat;
       background-size: contain;
-      width: 24px;
+      width: 20px;
     }
 
     label.tree-view-bullet-collapsed {
       opacity: 0;
-      padding-left: 6px;
+      padding-left: 3px;
       cursor: pointer;
     }
 
@@ -69,7 +72,7 @@
       background: url(https://img.icons8.com/material/24/000000/sort-right--v1.png);
       background-repeat: no-repeat;
       background-size: contain;
-      width: 24px;
+      width: 20px;
     }
 
     #navigableTreeContent {
@@ -78,7 +81,82 @@
       overflow: auto;
     }
 
+    .hidden-on-start {
+      display: none;
+    }
 
+    #all-dropdowns {
+      padding: 16px;
+      background-color: #1c5d94;
+      width: 25%;
+      min-width: 480px;
+      overflow-y: scroll;
+      height: 100px;
+      resize: vertical;
+    }
+
+    .dropdown {
+      display: block;
+      font-size: 18px;
+    }
+
+    .l-d {
+      display: none;
+    }
+
+    #cash-select-label {
+      display: block;
+    }
+
+    #cash-child {
+      display: none;
+      background-color: red;
+    }
+
+    #central-bank-yes-child {
+      display: none;
+    }
+
+    #central-bank-no-child {
+      display: none;
+    }
+
+    #central-bank-select {
+      display: none;
+    }
+
+    #code-select-1 {
+      display: none;
+    }
+
+    #code-select-2 {
+      display: none;
+    }
+
+    #negative-no-child {
+      display: none;
+    }
+
+    #negative-no-child-2 {
+      display: none;
+    }
+
+    #negative-select {
+      display: none;
+    }
+
+    #negative-select-2 {
+      display: none;
+    }
+
+    #top-level {
+      border: solid;
+<!--      background-color: cornflowerblue;-->
+    }
+
+    body {
+<!--      background-color: cyan;-->
+    }
 
 
   </style>
@@ -94,6 +172,85 @@
     node : document.getElementById('elm'),
     flags : {}
     });
+
+    const targetDiv = document.getElementById("all-dropdowns");
+    const hideButton = document.getElementById("hide-button");
+    hideButton.onclick = function () {
+      if (targetDiv.style.display !== "none") {
+        targetDiv.style.display = "none";
+        hideButton.innerText = "Show Selections";
+      } else {
+        targetDiv.style.display = "block"
+        hideButton.innerText = "Hide Selections";
+      }
+    };
+
+
+    document.getElementById('cash-select').addEventListener('change', function () {
+      var style = this.value == 'Is Central Bank/Cash' ? 'block' : 'none';
+      var oppStyle = this.value == 'Is Central Bank/Cash' ? 'none' : 'block';
+      document.getElementById('central-bank-select').style.display = style;
+      document.getElementById('central-bank-select-label').style.display = style;
+      document.getElementById('central-bank-yes-child').style.display = 'none';
+      document.getElementById('central-bank-no-child').style.display = 'none';
+      document.getElementById('central-bank-select').selectedIndex = 0;
+      document.getElementById('negative-no-child-select').selectedIndex = 0;
+      document.getElementById('negative-select').selectedIndex = 0;
+      document.getElementById('on-shore-select').selectedIndex = 0;
+      document.getElementById('seg-cash-select').selectedIndex = 0;
+      document.getElementById('code-select-1').selectedIndex = 0;
+    });
+
+
+    document.getElementById('central-bank-select').addEventListener('change', function () {
+      var style = this.value == 'Is Segregated Cash/True' ? 'block' : 'none';
+      var oppStyle = this.value == 'Is On Shore/False' ? 'block' : 'none';
+      document.getElementById('central-bank-yes-child').style.display = style;
+      document.getElementById('seg-cash-select-label').style.display = style;
+      document.getElementById('central-bank-no-child').style.display = oppStyle;
+      document.getElementById('on-shore-select-label').style.display = oppStyle;
+      document.getElementById('negative-no-child-select').selectedIndex = 0;
+      document.getElementById('negative-select').selectedIndex = 0;
+      document.getElementById('on-shore-select').selectedIndex = 0;
+      document.getElementById('seg-cash-select').selectedIndex = 0;
+      document.getElementById('code-select-1').selectedIndex = 0;
+    });
+
+    document.getElementById('seg-cash-select').addEventListener('change', function () {
+      var style = this.value == 'Classify By Counter Party ID/True' ? 'block' : 'none';
+      var oppStyle = this.value == 'Classify By Counter Party ID/False' ? 'block' : 'none';
+      document.getElementById('code-select-1').style.display = style;
+      document.getElementById('code-select-1-label').style.display = style;
+      document.getElementById('code-select-1').selectedIndex = 0;
+      document.getElementById('code-select-2').style.display = oppStyle;
+      document.getElementById('code-select-2-label').style.display = oppStyle;
+      document.getElementById('code-select-2').selectedIndex = 0;
+    });
+
+    document.getElementById('on-shore-select').addEventListener('change', function () {
+      var style = this.value == 'Is NetUsd Amount Negative/True' ? 'block' : 'none';
+      var oppStyle = this.value == 'Is NetUsd Amount Negative/False' ? 'block' : 'none';
+      document.getElementById('negative-select').style.display = style;
+      document.getElementById('negative-select-label').style.display = style;
+      document.getElementById('negative-select-2').style.display = oppStyle;
+      document.getElementById('negative-select-2-label').style.display = oppStyle;
+    });
+
+    document.getElementById('negative-select').addEventListener('change', function () {
+      var style = this.value == 'Is Feed44 and CostCenter Not 5C55/False' ? 'block' : 'none';
+      document.getElementById('negative-no-child').style.display = style;
+      document.getElementById('negative-no-child-select-label').style.display = style;
+      document.getElementById('negative-no-child-select').selectedIndex = 0;
+    });
+
+    document.getElementById('negative-select-2').addEventListener('change', function () {
+      var style = this.value == 'Is Feed44 and CostCenter Not 5C55/False' ? 'block' : 'none';
+      document.getElementById('negative-no-child-2').style.display = style;
+      document.getElementById('negative-no-child-select-2-label').style.display = style;
+      document.getElementById('negative-no-child-select-2').selectedIndex = 0;
+    });
+
+
 </script>
 
 </body>
