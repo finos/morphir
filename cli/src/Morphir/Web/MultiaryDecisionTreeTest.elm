@@ -11,7 +11,6 @@ import Maybe exposing (withDefault)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Value as Value exposing (Pattern(..), RawValue, Value(..))
-import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.ViewPattern as ViewPattern
 import String exposing (fromInt, join, split)
 import Tree as Tree
@@ -24,21 +23,7 @@ t =
 
 
 
---text = Html.Styled.text
---load ir and figure out what to show
--- reading an ir and selecting the function in it to visualize
--- scratch view value integration
--- use example data structures to feed
--- replace piece with hand written ir and function that turns it into ha
--- still hard coded examples
--- hard coding if then els eand pattern match
--- translate back into ir version of that
--- we have these examples
--- piece that turns ir into data strcutre
--- Value.IfThenElse () (var "isFoo") (var "Yes") (var "No")
--- Value.PatternMatch () (var "isFoo") List
--- define data type for values we put into tree node
--- Alias to represent information within Node.
+-- Data type to represent condition and pattern of each node.
 
 
 type alias NodeData =
@@ -49,7 +34,7 @@ type alias NodeData =
 
 
 
--- Styling visual representation with Pattern
+-- Styling visual representation of a Pattern
 
 
 getLabel : Maybe (Pattern ()) -> String
@@ -63,7 +48,7 @@ getLabel maybeLabel =
 
 
 
--- Evaluates node and pattern based on whether or not it is within the dictionary
+-- Evaluates node and pattern based on whether or not it is within variables which is passed from the dropdowns
 
 
 evaluateHighlight : Dict Name RawValue -> String -> Pattern () -> Bool
@@ -75,19 +60,14 @@ evaluateHighlight variables value pattern =
     in
     case evaluation of
         Just val ->
-            case Interpreter.matchPattern pattern val of
-                Ok _ ->
-                    True |> Debug.log "is this doing anything -- true"
-
-                Err _ ->
-                    False |> Debug.log "is this doing anything -- false"
+            True
 
         Nothing ->
             False
 
 
 
--- define a function to calculate the text representation of a node
+-- Text representation of a node
 
 
 nodeLabel : Tree.Node NodeData -> String
@@ -98,14 +78,8 @@ nodeLabel n =
 
 
 
--- define another function to calculate the uid of a node
--- define another function to calculate the uid of a node
---nodeUid : Tree.Node NodeData -> TreeView.NodeUid String
---nodeUid n =
---    case n of
---        Tree.Node node -> TreeView.NodeUid node.data.uid
--- walk through wire frame
--- confused why top level doesnt have anything corresponding
+-- Takes IR and creates a tree of nodes
+-- call list to node every time we call the tree model
 
 
 initialModel : () -> ( Model, Cmd Msg )
@@ -157,13 +131,13 @@ initialModel () =
                                     )
                                 )
                                 (Value.IfThenElse ()
-                                    (Value.Variable () [ "Is NetUsd Amount Negative" ])
-                                    (Value.Variable () [ "O.W.10" ])
+                                    (Value.Variable () (Name.fromString "Is NetUsd Amount Negative"))
+                                    (Value.Variable () (Name.fromString "O.W.10"))
                                     --
                                     (Value.IfThenElse ()
-                                        (Value.Variable () [ "Is Feed44 and CostCenter Not 5C55" ])
-                                        (Value.Variable () [ "1.U.2" ])
-                                        (Value.Variable () [ "1.U.4" ])
+                                        (Value.Variable () (Name.fromString "Is Feed44 and CostCenter Not 5C55"))
+                                        (Value.Variable () (Name.fromString "1.U.2"))
+                                        (Value.Variable () (Name.fromString "1.U.4"))
                                     )
                                  --
                                 )
@@ -184,7 +158,16 @@ initialModel () =
 
 
 
--- initialize the TreeView model
+-- dont need to call evaluate highlight if value isnt highlighted
+-- pass argument from previous level --> from parent level
+-- would be the best if in node data we could keep it in
+-- evaluate highlight shouldnt be called in the view function
+-- elm renders the browswer call back that potentially can be called 7829329 times a second
+-- in view function shouldnt have any heavy opperations --> should all be done in update functioon
+-- do all calculations in update function
+-- have highlight flag in node data--> calculating the
+-- intially all set to false --> then when you update --> it updates
+-- Initialize the TreeView model
 
 
 type alias Model =
@@ -193,6 +176,10 @@ type alias Model =
     , selectedNode : Maybe NodeData
     , dict : Dict String String
     }
+
+
+
+-- Gets unique ID of Node.
 
 
 nodeUidOf : Tree.Node NodeData -> TreeView.NodeUid String
@@ -211,10 +198,6 @@ configuration =
     TreeView.Configuration2 nodeUidOf viewNodeData TreeView.defaultCssClasses
 
 
-
--- otherwise interact with your tree view in the usual TEA manner
-
-
 type Msg
     = TreeViewMsg (TreeView.Msg2 String NodeDataMsg)
     | SetDictValue String
@@ -227,6 +210,10 @@ type Msg
     | SetNegative String
     | SetFeed String
     | RedoTree
+
+
+
+-- Updates the tree as drop downs are selected
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -367,6 +354,16 @@ view model =
         , selectedNodeDetails model
         , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel)
         ]
+
+
+
+-- when changing highlight state --> changing root nodes
+-- when assigning tree model --> thats the point where we could invoke highlight state
+-- we can pass in
+-- invoke a function that calculates the root nodes
+-- store org ir
+-- in pudate we want to have root nodes that are changing
+-- store original ir in the model
 
 
 main =
@@ -523,6 +520,11 @@ translation ( pattern, value ) uid =
         Value.IfThenElse _ condition thenBranch elseBranch ->
             let
                 data =
+                    -- if new flag is false,
+                    -- if its true, run evaluate highlihgt --> pass down value of that
+                    -- add in evaluatehighlight
+                    -- highlight flag
+                    -- stop calling evaluate highlight when flag is false
                     NodeData uid (Value.toString condition) pattern
 
                 uids =
@@ -620,30 +622,16 @@ viewNodeData selectedNode node =
         nodeData =
             Tree.dataOf node
 
-        --dict =
-        --    Dict.fromList
-        --        [ ( Name.fromString "Classify By Position Type", Value.Literal () (StringLiteral "Cash") )
-        --        , ( Name.fromString "Is Central Bank", Value.Literal () (BoolLiteral True) )
-        --        , ( Name.fromString "Is Segregated Cash", Value.Literal () (BoolLiteral True) )
-        --        , ( Name.fromString "Classify By Counter Party ID", Value.Literal () (StringLiteral "FRD") )
-        --        ]
         dict2 =
             convertToDict
                 (Dict.fromList
                     []
                 )
 
-        --[]
-        selected =
-            selectedNode
-                |> Maybe.map (\sN -> nodeData.uid == sN.uid)
-                |> Maybe.withDefault False
-
         highlight =
             evaluateHighlight dict2
                 nodeData.subject
                 (withDefault (WildcardPattern ()) nodeData.pattern)
-                --|> Debug.log ("Stuff: " ++ nodeData.subject)
                 |> Debug.log ("pattern: " ++ getLabel nodeData.pattern ++ " subject: " ++ nodeData.subject)
     in
     if highlight then
@@ -663,42 +651,20 @@ viewNodeData2 model selectedNode node =
         nodeData =
             Tree.dataOf node
 
-        --dict =
-        --    Dict.fromList
-        --        [ ( Name.fromString "Classify By Position Type", Value.Literal () (StringLiteral "Cash") )
-        --        , ( Name.fromString "Is Central Bank", Value.Literal () (BoolLiteral True) )
-        --        , ( Name.fromString "Is Segregated Cash", Value.Literal () (BoolLiteral True) )
-        --        , ( Name.fromString "Classify By Counter Party ID", Value.Literal () (StringLiteral "FRD") )
-        --        ]
         dict2 =
             --pass in my dict, changes it to tuples i guess
             convertToDict
                 (Dict.fromList
-                    --subject, pattern
-                    --[ ( "Classify By Position Type", "sakdnajdbaj" )
-                    --, ( "Is Central Bank", "Cash" )
-                    --, ( "Is Segregated Cash", "True" )
-                    --, ( "Classify By Counter Party ID", "True" )
-                    --, ( "1.A.4.1", "FRD" )
-                    --]
                     (List.append
-                        [ ( "Classify By Position Type", "sakdnajdbaj" ) ]
+                        [ ( "Classify By Position Type", "_" ) ]
                         (List.map2 Tuple.pair (Dict.keys model.dict) (Dict.values model.dict))
                     )
                 )
 
-        --[]
-        selected =
-            selectedNode
-                |> Maybe.map (\sN -> nodeData.uid == sN.uid)
-                |> Maybe.withDefault False
-
         highlight =
             evaluateHighlight dict2
                 nodeData.subject
-                --correctPath
                 (withDefault (WildcardPattern ()) nodeData.pattern)
-                --|> Debug.log ("Stuff: " ++ nodeData.subject)
                 |> Debug.log ("pattern: " ++ getLabel nodeData.pattern ++ " subject: " ++ nodeData.subject)
     in
     if highlight then
