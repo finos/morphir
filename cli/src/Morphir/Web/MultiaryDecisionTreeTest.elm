@@ -5,6 +5,7 @@ module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
 import Bootstrap.Alert exposing (h1)
 import Bootstrap.Badge as Badge
+import Bootstrap.Button as Button
 import Browser
 import Dict exposing (Dict, values)
 import Element exposing (Color, Element, column, el, fill, html, layout, mouseOver, none, padding, paddingEach, paddingXY, px, rgb, row, shrink, spacing, table, text)
@@ -355,13 +356,14 @@ selectedNodeDetails model =
 
 view : Model -> Html.Html Msg
 view model =
-    --layout [] dropdown
     Html.div
-        [ id "top-level" ]
-        [ h1 [ style "color" "#1c5d94" ] [ Html.text "Arboretum " ]
-        , dropdowns model
-        , selectedNodeDetails model
+        [ class "center-screen" ]
+        --[ Html.div
+        --[ class "colored-background" ]
+        [ dropdowns model
         , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel)
+
+        --]
         ]
 
 
@@ -381,15 +383,17 @@ main =
 dropdowns : Model -> Html.Html Msg
 dropdowns model =
     Html.div []
-        [ Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Position Type" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Central Bank" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Segregated Cash" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Counter Party ID" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is On Shore" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is NetUsd Amount Negative" model.dict))
-        , Html.text (Maybe.withDefault "unknown" (Dict.get "Is Feed44 and CostCenter Not 5C55" model.dict))
-        , Html.div [ id "all-dropdowns", Html.style "color" "white" ]
-            [ label [ for "cash-select" ] [ Html.text "Choose a type: " ]
+        [ --Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Position Type" model.dict))
+          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Is Central Bank" model.dict))
+          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Is Segregated Cash" model.dict))
+          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Counter Party ID" model.dict))
+          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Is On Shore" model.dict))
+          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Is NetUsd Amount Negative" model.dict))
+          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Is Feed44 and CostCenter Not 5C55" model.dict))
+          --,
+          Html.div [ id "all-dropdowns", Html.style "color" "white" ]
+            [ label [ class "title-arboretum" ] [ Html.text "Arboretum" ]
+            , label [ for "cash-select" ] [ Html.text "Choose a type: " ]
             , select [ id "cash-select", onInput SetRoot, class "dropdown" ]
                 [ option [ value "", disabled True, selected True ] [ Html.text "Type" ]
                 , option [ value "Cash" ] [ Html.text "Cash" ]
@@ -446,11 +450,10 @@ dropdowns model =
                         ]
                     ]
                 ]
-
-            --]
+            , button [ id "hide-button" ] [ Html.text "Hide Selections" ]
             ]
-        , button [ id "hide-button" ] [ Html.text "Hide Selections " ]
-        , button [ id "tree-button", onClick RedoTree ] [ Html.text "Show me da monay" ]
+
+        --, button [ id "tree-button", onClick RedoTree ] [ Html.text "Show me da monay" ]
         ]
 
 

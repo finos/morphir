@@ -7,17 +7,18 @@
 <!--  TODOS: Line up arrows, change font-->
   <style>
     table.tree-view {
-<!--    background-color: blue;-->
-      float:left;
-<!--    overflow: scroll;-->
+    background-color: white;
     width: 25%;
+    overflow:hidden; /* we can use a clearfix or overflow:hidden, I prefer overflow:hidden for most cases*/
+
     min-width: 512px;
-    white-space: nowrap;
-    display: inline-block;
+    display: block;
     overflow-Y: scroll;
-    height: 626px;
-    border-right: solid;
-    border-bottom: solid;
+    height: 624px;
+    border-right: solid 2em;
+    border-top: solid 3em;
+    border-bottom: solid 3em;
+    border-color :  #1c5d94;
     font-family: verdana, sans-serif;
     }
 
@@ -87,23 +88,30 @@
       display: none;
     }
 
+    .wrapper {
+      margin-right: auto; /* 1 */
+      margin-left:  auto; /* 1 */
+      max-width: 960px; /* 2 */
+      padding-right: 10px; /* 3 */
+      padding-left:  10px; /* 3 */
+    }
+
     #all-dropdowns {
-
-
-      float:left;
-      height:680px;
-      padding: 20px;
+      flex: 1;
+      z-index: 0;
+      height:624px;
+      padding: 35px;
       background-color: #1c5d94;
-      width: 22%;
-
-<!--      overflow-y: scroll;-->
-<!--      resize: vertical;-->
-<!--      height: 100px;-->
+      width: 300px;
     }
 
     .dropdown {
       display: block;
       font-size: 18px;
+    }
+    .title-arboretum {
+      font-size: 40px;
+      display: block;
     }
 
     #cash-child {
@@ -128,9 +136,16 @@
       display: none;
     }
 
+    .center-screen {
+      display : flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #005093;
+    }
+
     #top-level {
-<!--      border: solid;-->
-<!--      background-color: cornflowerblue;-->
+
     }
 
     body {
