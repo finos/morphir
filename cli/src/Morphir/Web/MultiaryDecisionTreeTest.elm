@@ -224,55 +224,74 @@ update message model =
                             (Dict.get "classifyByPositionType" model.dict)
                         )
                         Dict.empty
-
-                newDict2 =
-                    Dict.insert "isCentralBank" s1 newDict1
-
-                --Dict.empty |> Dict.insert ...
+                        |> Dict.insert "isCentralBank" s1
             in
-            ( { model | dict = newDict2, treeModel = TreeView.initializeModel2 (configuration2 model newDict2) (listToNode [ model.originalIR ]) }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 (configuration2 model newDict1) (listToNode [ model.originalIR ])
+              }
+            , Cmd.none
+            )
 
         SetDictValueSegCash s1 ->
             let
                 newDict1 =
                     Dict.remove "classifyByCounterPartyID" model.dict
-
-                newDict2 =
-                    Dict.insert "isSegregatedCash" s1 newDict1
+                        |> Dict.insert "isSegregatedCash" s1
             in
-            ( { model | dict = newDict2, treeModel = TreeView.initializeModel2 (configuration2 model newDict2) (listToNode [ model.originalIR ]) }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 (configuration2 model newDict1) (listToNode [ model.originalIR ])
+              }
+            , Cmd.none
+            )
 
         SetDictValueCode s1 ->
             let
                 newDict1 =
                     Dict.insert "classifyByCounterPartyID" s1 model.dict
             in
-            ( { model | dict = newDict1, treeModel = TreeView.initializeModel2 (configuration2 model newDict1) (listToNode [ model.originalIR ]) }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 (configuration2 model newDict1) (listToNode [ model.originalIR ])
+              }
+            , Cmd.none
+            )
 
         SetDictValueShore s1 ->
             --needs to unset isNetUsdAmountNegative & isFeed44andCostCenterNot5C55
             let
                 newDict1 =
                     Dict.remove "isNetUsdAmountNegative" model.dict
+                        |> Dict.remove "isFeed44andCostCenterNot5C55"
+                        |> Dict.insert "isOnShore" s1
 
-                newDict2 =
-                    Dict.remove "isFeed44andCostCenterNot5C55" newDict1
-
-                newDict3 =
-                    Dict.insert "isOnShore" s1 newDict2
+                --newDict2 =
+                --    Dict.remove "isFeed44andCostCenterNot5C55" newDict1
+                --
+                --newDict3 =
+                --    Dict.insert "isOnShore" s1 newDict2
             in
-            ( { model | dict = newDict3, treeModel = TreeView.initializeModel2 (configuration2 model newDict3) (listToNode [ model.originalIR ]) }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 (configuration2 model newDict1) (listToNode [ model.originalIR ])
+              }
+            , Cmd.none
+            )
 
         SetDictValueNegative s1 ->
             --needs to unset isFeed44andCostCenterNot5C55
             let
                 newDict1 =
                     Dict.remove "isFeed44andCostCenterNot5C55" model.dict
-
-                newDict2 =
-                    Dict.insert "isNetUsdAmountNegative" s1 newDict1
+                        |> Dict.insert "isNetUsdAmountNegative" s1
             in
-            ( { model | dict = newDict2, treeModel = TreeView.initializeModel2 (configuration2 model newDict2) (listToNode [ model.originalIR ]) }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 (configuration2 model newDict1) (listToNode [ model.originalIR ])
+              }
+            , Cmd.none
+            )
 
         SetDictValueFeed s1 ->
             let
@@ -332,10 +351,6 @@ view model =
         , selectedNodeDetails model
         , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel)
         ]
-
-
-
---
 
 
 main =
@@ -443,7 +458,8 @@ dropdowns model =
             --]
             ]
         , button [ id "hide-button" ] [ Html.text "Hide Selections " ]
-        , button [ id "tree-button", onClick RedoTree ] [ Html.text "Show me da monay" ]
+        , button [ id "tree-button", onClick RedoTree ] [ Html.text "highlight" ]
+        , button [ id "show-button" ] [ Html.text "Show me the world" ]
         ]
 
 
@@ -455,16 +471,6 @@ dropdowns model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.map TreeViewMsg (TreeView.subscriptions2 model.treeModel)
-
-
-mylist : List (Value () ())
-mylist =
-    [ Value.Literal () (BoolLiteral True)
-    , Value.Literal () (StringLiteral "Cash")
-    , Value.Literal () (BoolLiteral True)
-    , Value.Literal () (BoolLiteral False)
-    , Value.Literal () (StringLiteral "SNB")
-    ]
 
 
 toMaybeList : List ( Pattern (), Value () () ) -> List ( Maybe (Pattern ()), Value () () )
@@ -482,11 +488,6 @@ toMaybeList list =
     List.map2 Tuple.pair maybePatterns values
 
 
-
--- pass in a bunch of variables
--- call the enterpreteur to do any business logic
-
-
 listToNode : List (Value () ()) -> List (Tree.Node NodeData)
 listToNode values =
     let
@@ -499,10 +500,6 @@ listToNode values =
 toTranslate : Value () () -> Int -> Tree.Node NodeData
 toTranslate value uid =
     translation2 ( Nothing, value ) (fromInt uid)
-
-
-
--- Tree.Node NodeData
 
 
 translation2 : ( Maybe (Pattern ()), Value () () ) -> String -> Tree.Node NodeData
@@ -570,15 +567,6 @@ createUIDS range currentUID =
 
 type NodeDataMsg
     = EditContent String String -- uid content
-
-
-
--- evaluate condition
--- variable dictionary --> interpreter looks up to get corresponding value
--- all it will do is dictionary look up
--- in real world those will be functions --> business logic
--- type as a variable -->
--- type and currenctly selected drop down
 
 
 convertToDict : Dict String String -> Dict Name (Value ta ())
@@ -676,7 +664,6 @@ viewNodeData2 model myDict selectedNode node =
                     )
                 )
 
-        --[]
         selected =
             selectedNode
                 |> Maybe.map (\sN -> nodeData.uid == sN.uid)
