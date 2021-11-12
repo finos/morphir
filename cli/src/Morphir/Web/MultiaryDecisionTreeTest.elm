@@ -4,7 +4,7 @@ import Browser
 import Dict exposing (Dict, values)
 import Element exposing (Color, Element, rgb)
 import Html exposing (Html, button, label, map, option, select)
-import Html.Attributes exposing (class, disabled, for, id, selected, value)
+import Html.Attributes as Html exposing (class, disabled, for, id, selected, value)
 import Html.Events exposing (onClick, onInput)
 import List exposing (drop, head, tail, take)
 import Maybe exposing (withDefault)
@@ -348,10 +348,13 @@ selectedNodeDetails model =
 view : Model -> Html.Html Msg
 view model =
     Html.div
-        [ id "top-level" ]
+        [ class "center-screen" ]
+        --[ Html.div
+        --[ class "colored-background" ]
         [ dropdowns model
-        , selectedNodeDetails model
         , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel)
+
+        --]
         ]
 
 
@@ -367,17 +370,15 @@ main =
 dropdowns : Model -> Html.Html Msg
 dropdowns model =
     Html.div []
-        [ Html.text (join "--------------" (List.map2 (\x y -> x ++ ":" ++ y) (Dict.keys model.dict) (Dict.values model.dict)))
-        , Html.div [ id "all-dropdowns" ]
-            [ label [ id "cash-select-label", for "cash-select" ] [ Html.text "Choose a type: " ]
+        [ Html.div [ id "all-dropdowns", Html.style "color" "white" ]
+            [ label [ class "title-arboretum" ] [ Html.text "Arboretum" ]
+            , label [ id "cash-select-label", for "cash-select" ] [ Html.text "Choose a type: " ]
             , select [ id "cash-select", onInput SetDictValueRoot, class "dropdown" ]
                 [ option [ value "", disabled True, selected True ] [ Html.text "Type" ]
                 , option [ value "Is Central Bank/Cash" ] [ Html.text "Cash" ]
                 , option [ value "/Inventory" ] [ Html.text "Inventory" ]
                 , option [ value "/Pending Trades" ] [ Html.text "Pending Trades" ]
                 ]
-
-            --, Html.div [ id "cash-child" ] [
             , label [ id "central-bank-select-label", for "central-bank-select", class "l-d" ] [ Html.text "Choose a bank: " ]
             , select [ id "central-bank-select", onInput SetDictValueBank, class "dropdown" ]
                 [ option [ value "", disabled True, selected True ] [ Html.text "Is Central Bank" ]
@@ -456,10 +457,8 @@ dropdowns model =
                         ]
                     ]
                 ]
+            , button [ id "show-button" ] [ Html.text "Show me all inputs" ]
             ]
-        , button [ id "hide-button" ] [ Html.text "Hide Selections " ]
-        , button [ id "tree-button", onClick RedoTree ] [ Html.text "highlight" ]
-        , button [ id "show-button" ] [ Html.text "Show me all inputs" ]
         ]
 
 

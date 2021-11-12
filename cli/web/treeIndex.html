@@ -7,16 +7,20 @@
 <!--  TODOS: Line up arrows, change font-->
   <style>
     table.tree-view {
-<!--    background-color: blue;-->
-    overflow: scroll;
+    background-color: white;
     width: 25%;
+    overflow:hidden; /* we can use a clearfix or overflow:hidden, I prefer overflow:hidden for most cases*/
     min-width: 512px;
-    white-space: nowrap;
-    display: inline-block;
+    display: block;
     overflow-Y: scroll;
-    height: 480px;
-    border-right: solid;
-    font-family: verdana, sans-serif;
+    height: 624px;
+    border-right: solid 2em;
+    border-top: solid 3em;
+    border-bottom: solid 3em;
+    border-color :  #1c5d94;
+<!--    font-family: verdana, sans-serif;-->
+    padding-left: 2%;
+    padding-top: 2%;
     }
 
     td {
@@ -90,19 +94,31 @@
       display: none;
     }
 
+    .wrapper {
+      margin-right: auto; /* 1 */
+      margin-left:  auto; /* 1 */
+      max-width: 960px; /* 2 */
+      padding-right: 10px; /* 3 */
+      padding-left:  10px; /* 3 */
+    }
+
     #all-dropdowns {
-      padding: 16px;
+      flex: 1;
+      z-index: 0;
+      height:624px;
+      padding: 35px;
       background-color: #1c5d94;
-      width: 25%;
-      min-width: 480px;
-      overflow-y: scroll;
-      height: 100px;
-      resize: vertical;
+      width: 300px;
+
     }
 
     .dropdown {
       display: block;
       font-size: 18px;
+    }
+    .title-arboretum {
+      font-size: 40px;
+      display: block;
     }
 
     .l-d {
@@ -116,6 +132,7 @@
     #cash-child {
       display: none;
       background-color: red;
+      color : green;
     }
 
     #central-bank-yes-child {
@@ -142,6 +159,14 @@
       display: none;
     }
 
+
+    .center-screen {
+      display : flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #005093;
+    }
     #negative-no-child-2 {
       display: none;
     }
@@ -155,8 +180,7 @@
     }
 
     #top-level {
-      border: solid;
-<!--      background-color: cornflowerblue;-->
+
     }
 
     body {
@@ -165,6 +189,12 @@
 
 
   </style>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
 </head>
 
 <body>
@@ -178,17 +208,18 @@
     flags : {}
     });
 
-    const targetDiv = document.getElementById("all-dropdowns");
-    const hideButton = document.getElementById("hide-button");
-    hideButton.onclick = function () {
-      if (targetDiv.style.display !== "none") {
-        targetDiv.style.display = "none";
-        hideButton.innerText = "Show Selections";
-      } else {
-        targetDiv.style.display = "block"
-        hideButton.innerText = "Hide Selections";
-      }
-    };
+<!--    const targetDiv = document.getElementById("all-dropdowns");-->
+<!--    const hideButton = document.getElementById("hide-button");-->
+<!--    hideButton.onclick = function () {-->
+<!--      if (targetDiv.style.display !== "none") {-->
+<!--        targetDiv.style.display = "none";-->
+<!--        hideButton.innerText = "Show Selections";-->
+<!--      } -->
+<!--      else {-->
+<!--        targetDiv.style.display = "block"-->
+<!--        hideButton.innerText = "Hide Selections";-->
+<!--      }-->
+<!--    };-->
 
     const showButton = document.getElementById("show-button");
     showButton.onclick = function () {
