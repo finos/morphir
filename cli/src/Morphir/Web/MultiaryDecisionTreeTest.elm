@@ -214,7 +214,7 @@ update message model =
         SetDictValueRoot s1 ->
             let
                 newDict1 =
-                    Dict.insert "classifyByPositionType" s1 Dict.empty
+                    Dict.insert "classifyByPositionType" s1 model.dict
             in
             ( { model
                 | dict = newDict1
@@ -227,13 +227,7 @@ update message model =
             --should unset everything except for classifyByPositionType
             let
                 newDict1 =
-                    Dict.insert "classifyByPositionType"
-                        (withDefault
-                            "isCentralBank/Cash"
-                            (Dict.get "classifyByPositionType" model.dict)
-                        )
-                        Dict.empty
-                        |> Dict.insert "isCentralBank" s1
+                    Dict.insert "isCentralBank" s1 model.dict
             in
             ( { model
                 | dict = newDict1
@@ -245,8 +239,7 @@ update message model =
         SetDictValueSegCash s1 ->
             let
                 newDict1 =
-                    Dict.remove "classifyByCounterPartyID" model.dict
-                        |> Dict.insert "isSegregatedCash" s1
+                    Dict.insert "isSegregatedCash" s1 model.dict
             in
             ( { model
                 | dict = newDict1
@@ -271,9 +264,7 @@ update message model =
             --needs to unset isNetUsdAmountNegative & isFeed44andCostCenterNot5C55
             let
                 newDict1 =
-                    Dict.remove "isNetUsdAmountNegative" model.dict
-                        |> Dict.remove "isFeed44andCostCenterNot5C55"
-                        |> Dict.insert "isOnShore" s1
+                    Dict.insert "isOnShore" s1 model.dict
             in
             ( { model
                 | dict = newDict1
@@ -286,8 +277,7 @@ update message model =
             --needs to unset isFeed44andCostCenterNot5C55
             let
                 newDict1 =
-                    Dict.remove "isFeed44andCostCenterNot5C55" model.dict
-                        |> Dict.insert "isNetUsdAmountNegative" s1
+                    Dict.insert "isNetUsdAmountNegative" s1 model.dict
             in
             ( { model
                 | dict = newDict1
