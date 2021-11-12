@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Morphir.Web.MultiaryDecisionTreeTest</title>
   <script src="treeStuff.js"></script>
-<!--  TODOS: Line up arrows, change font-->
+  <!--  TODOS: Line up arrows, change font-->
   <style>
     table.tree-view {
     background-color: white;
@@ -121,43 +121,15 @@
       display: block;
     }
 
-    .l-d {
-      display: none;
-    }
-
-    #cash-select-label {
-      display: block;
-    }
-
-    #cash-child {
-      display: none;
-      background-color: red;
-      color : green;
-    }
-
-    #central-bank-yes-child {
-      display: none;
-    }
-
-    #central-bank-no-child {
-      display: none;
-    }
-
-    #central-bank-select {
-      display: none;
-    }
-
-    #code-select-1 {
-      display: none;
-    }
-
     #code-select-2 {
       display: none;
     }
 
-    #negative-no-child {
+    #code-select-2-label {
       display: none;
     }
+
+
 
 
     .center-screen {
@@ -171,7 +143,7 @@
       display: none;
     }
 
-    #negative-select {
+    #negative-no-child-2-label {
       display: none;
     }
 
@@ -179,13 +151,10 @@
       display: none;
     }
 
-    #top-level {
-
+    #negative-select-2-label {
+      display: none;
     }
 
-    body {
-<!--      background-color: cyan;-->
-    }
 
 
   </style>
@@ -208,76 +177,6 @@
     flags : {}
     });
 
-<!--    const targetDiv = document.getElementById("all-dropdowns");-->
-<!--    const hideButton = document.getElementById("hide-button");-->
-<!--    hideButton.onclick = function () {-->
-<!--      if (targetDiv.style.display !== "none") {-->
-<!--        targetDiv.style.display = "none";-->
-<!--        hideButton.innerText = "Show Selections";-->
-<!--      } -->
-<!--      else {-->
-<!--        targetDiv.style.display = "block"-->
-<!--        hideButton.innerText = "Hide Selections";-->
-<!--      }-->
-<!--    };-->
-
-    const showButton = document.getElementById("show-button");
-    showButton.onclick = function () {
-      document.getElementById('central-bank-select-label').style.display = 'block';
-      document.getElementById('central-bank-select').style.display = 'block';
-      document.getElementById('central-bank-yes-child').style.display = 'block';
-      document.getElementById('central-bank-no-child').style.display = 'block';
-      document.getElementById('seg-cash-select-label').style.display = 'block';
-      document.getElementById('seg-cash-select').style.display = 'block';
-      document.getElementById('code-select-1-label').style.display = 'block';
-      document.getElementById('code-select-1').style.display = 'block';
-      document.getElementById('code-select-2-label').style.display = 'block';
-      document.getElementById('code-select-2').style.display = 'block';
-      document.getElementById('on-shore-select-label').style.display = 'block';
-      document.getElementById('on-shore-select').style.display = 'block';
-      document.getElementById('negative-no-child').style.display = 'block';
-      document.getElementById('negative-select-label').style.display = 'block';
-      document.getElementById('negative-select').style.display = 'block';
-      document.getElementById('negative-no-child-select-label').style.display = 'block';
-      document.getElementById('negative-no-child-select').style.display = 'block';
-      document.getElementById('negative-no-child-2').style.display = 'block';
-      document.getElementById('negative-select-2-label').style.display = 'block';
-      document.getElementById('negative-select-2').style.display = 'block';
-      document.getElementById('negative-no-child-select-2-label').style.display = 'block';
-      document.getElementById('negative-no-child-select-2').style.display = 'block';
-
-    };
-
-    document.getElementById('cash-select').addEventListener('change', function () {
-      var style = this.value == 'Is Central Bank/Cash' ? 'block' : 'none';
-      var oppStyle = this.value == 'Is Central Bank/Cash' ? 'none' : 'block';
-      document.getElementById('central-bank-select').style.display = style;
-      document.getElementById('central-bank-select-label').style.display = style;
-      document.getElementById('central-bank-yes-child').style.display = 'none';
-      document.getElementById('central-bank-no-child').style.display = 'none';
-      document.getElementById('central-bank-select').selectedIndex = 0;
-      document.getElementById('negative-no-child-select').selectedIndex = 0;
-      document.getElementById('negative-select').selectedIndex = 0;
-      document.getElementById('on-shore-select').selectedIndex = 0;
-      document.getElementById('seg-cash-select').selectedIndex = 0;
-      document.getElementById('code-select-1').selectedIndex = 0;
-    });
-
-
-    document.getElementById('central-bank-select').addEventListener('change', function () {
-      var style = this.value == 'Is Segregated Cash/True' ? 'block' : 'none';
-      var oppStyle = this.value == 'Is On Shore/False' ? 'block' : 'none';
-      document.getElementById('central-bank-yes-child').style.display = style;
-      document.getElementById('seg-cash-select-label').style.display = style;
-      document.getElementById('central-bank-no-child').style.display = oppStyle;
-      document.getElementById('on-shore-select-label').style.display = oppStyle;
-      document.getElementById('negative-no-child-select').selectedIndex = 0;
-      document.getElementById('negative-select').selectedIndex = 0;
-      document.getElementById('on-shore-select').selectedIndex = 0;
-      document.getElementById('seg-cash-select').selectedIndex = 0;
-      document.getElementById('code-select-1').selectedIndex = 0;
-    });
-
     document.getElementById('seg-cash-select').addEventListener('change', function () {
       var style = this.value == 'Classify By Counter Party ID/True' ? 'block' : 'none';
       var oppStyle = this.value == 'Classify By Counter Party ID/False' ? 'block' : 'none';
@@ -294,23 +193,15 @@
       var oppStyle = this.value == 'Is NetUsd Amount Negative/False' ? 'block' : 'none';
       document.getElementById('negative-select').style.display = style;
       document.getElementById('negative-select-label').style.display = style;
+      document.getElementById('negative-no-child-select').style.display = style;
+      document.getElementById('negative-no-child-select-label').style.display = style;
+      document.getElementById('negative-no-child-2').style.display = oppStyle;
       document.getElementById('negative-select-2').style.display = oppStyle;
       document.getElementById('negative-select-2-label').style.display = oppStyle;
+      document.getElementById('negative-no-child-select-2').style.display = oppStyle;
+      document.getElementById('negative-no-child-select-2-label').style.display = oppStyle;
     });
 
-    document.getElementById('negative-select').addEventListener('change', function () {
-      var style = this.value == 'Is Feed44 and CostCenter Not 5C55/False' ? 'block' : 'none';
-      document.getElementById('negative-no-child').style.display = style;
-      document.getElementById('negative-no-child-select-label').style.display = style;
-      document.getElementById('negative-no-child-select').selectedIndex = 0;
-    });
-
-    document.getElementById('negative-select-2').addEventListener('change', function () {
-      var style = this.value == 'Is Feed44 and CostCenter Not 5C55/False' ? 'block' : 'none';
-      document.getElementById('negative-no-child-2').style.display = style;
-      document.getElementById('negative-no-child-select-2-label').style.display = style;
-      document.getElementById('negative-no-child-select-2').selectedIndex = 0;
-    });
 
 
 </script>
