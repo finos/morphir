@@ -1,28 +1,22 @@
 module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
---import Bootstrap.Alert exposing (h1)
---import Bootstrap.Badge as Badge
-
-import Bootstrap.Alert exposing (h1)
-import Bootstrap.Badge as Badge
-import Bootstrap.Button as Button
 import Browser
 import Dict exposing (Dict, values)
-import Element exposing (Color, Element, column, el, fill, html, layout, mouseOver, none, padding, paddingEach, paddingXY, px, rgb, row, shrink, spacing, table, text)
-import Html exposing (Html, a, button, label, map, option, select)
-import Html.Attributes as Html exposing (class, disabled, for, id, selected, style, value)
+import Element exposing (Color, Element, rgb)
+import Html exposing (Html, button, label, map, option, select)
+import Html.Attributes as Html exposing (class, disabled, for, id, selected, value)
 import Html.Events exposing (onClick, onInput)
+import List exposing (drop, head, tail, take)
 import Maybe exposing (withDefault)
-import Morphir.IR.Literal as Literal exposing (Literal(..))
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Value as Value exposing (Pattern(..), RawValue, Value(..), ifThenElse, patternMatch, toString, unit, variable)
-import Morphir.SDK.Bool exposing (false, true)
-import Morphir.Value.Interpreter as Interpreter exposing (matchPattern)
+import Morphir.IR.Value as Value exposing (Pattern(..), RawValue, Value(..))
+import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.ViewPattern as ViewPattern
-import String exposing (fromInt, length)
+import String exposing (fromInt, join, split)
 import Tree as Tree
 import TreeView as TreeView
-import Tuple exposing (first)
+import Tuple
 
 
 t =
@@ -30,20 +24,7 @@ t =
 
 
 
---text = Html.Styled.text
---load ir and figure out what to show
--- reading an ir and selecting the function in it to visualize
--- scratch view value integration
--- use example data structures to feed
--- replace piece with hand written ir and function that turns it into ha
--- still hard coded examples
--- hard coding if then els eand pattern match
--- translate back into ir version of that
--- we have these examples
--- piece that turns ir into data strcutre
--- Value.IfThenElse () (var "isFoo") (var "Yes") (var "No")
--- Value.PatternMatch () (var "isFoo") List
--- define data type for values we put into tree node
+-- Data type to represent condition and pattern of each node.
 
 
 type alias NodeData =
@@ -52,6 +33,10 @@ type alias NodeData =
     , pattern : Maybe (Pattern ())
     , highlight : Bool
     }
+
+
+
+-- Styling visual representation of a Pattern
 
 
 getLabel : Maybe (Pattern ()) -> String
@@ -64,7 +49,11 @@ getLabel maybeLabel =
             ""
 
 
-evaluateHighlight : Dict Name RawValue -> String -> Pattern () -> Bool
+
+-- Evaluates node and pattern based on whether or not it is within variables which is passed from the dropdowns
+
+
+evaluateHighlight : Dict Name (Value () ()) -> String -> Pattern () -> Bool
 evaluateHighlight variables value pattern =
     let
         evaluation : Maybe.Maybe RawValue
@@ -85,8 +74,7 @@ evaluateHighlight variables value pattern =
 
 
 
--- ViewPattern.patternAsText(node.data.pattern) ++ "->" ++ node.data.subject
--- define a function to calculate the text representation of a node
+-- Text representation of a node
 
 
 nodeLabel : Tree.Node NodeData -> String
@@ -97,93 +85,82 @@ nodeLabel n =
 
 
 
--- define another function to calculate the uid of a node
--- define another function to calculate the uid of a node
---nodeUid : Tree.Node NodeData -> TreeView.NodeUid String
---nodeUid n =
---    case n of
---        Tree.Node node -> TreeView.NodeUid node.data.uid
--- walk through wire frame
--- confused why top level doesnt have anything corresponding
+-- Takes IR and creates a tree of nodes
+-- call list to node every time we call the tree model
 
 
 initialModel : () -> ( Model, Cmd Msg )
 initialModel () =
     let
-        rootNodes =
-            listToNode
-                [ Value.patternMatch ()
-                    (Value.Variable () (Name.fromString "Classify By Position Type"))
-                    [ ( Value.LiteralPattern () (StringLiteral "Cash")
-                      , Value.IfThenElse ()
-                            (Value.Variable () (Name.fromString "Is Central Bank"))
+        originalIR =
+            Value.patternMatch ()
+                (Value.Variable () (Name.fromString "Classify By Position Type"))
+                [ ( Value.LiteralPattern () (StringLiteral "Cash")
+                  , Value.IfThenElse ()
+                        (Value.Variable () (Name.fromString "Is Central Bank"))
+                        (Value.IfThenElse ()
+                            (Value.Variable () (Name.fromString "Is Segregated Cash"))
+                            (Value.PatternMatch ()
+                                (Value.Variable () (Name.fromString "Classify By Counter Party ID"))
+                                [ ( Value.LiteralPattern () (StringLiteral "FRD"), Value.Variable () [ "1.A.4.1" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "1.A.4.2" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "SNB"), Value.Variable () [ "1.A.4.3" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "ECB"), Value.Variable () [ "1.A.4.4" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "BOI"), Value.Variable () [ "1.A.4.5" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "RBA"), Value.Variable () [ "1.A.4.6" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "BOC"), Value.Variable () [ "1.A.4.7" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "Others"), Value.Variable () [ "1.A.4.8" ] )
+                                ]
+                            )
+                            (Value.PatternMatch ()
+                                (Value.Variable () (Name.fromString "Classify By Counter Party ID"))
+                                [ ( Value.LiteralPattern () (StringLiteral "FRD"), Value.Variable () [ "1.A.3.1" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "1.A.3.2" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "SNB"), Value.Variable () [ "1.A.3.3" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "ECB"), Value.Variable () [ "1.A.3.4" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "BOI"), Value.Variable () [ "1.A.3.5" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "RBA"), Value.Variable () [ "1.A.3.6" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "BOC"), Value.Variable () [ "1.A.3.7" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "Others"), Value.Variable () [ "1.A.3.8" ] )
+                                ]
+                            )
+                        )
+                        (Value.IfThenElse ()
+                            (Value.Variable () (Name.fromString "Is On Shore"))
                             (Value.IfThenElse ()
-                                (Value.Variable () (Name.fromString "Is Segregated Cash"))
-                                (Value.PatternMatch ()
-                                    (Value.Variable () (Name.fromString "Classify By Counter Party ID"))
-                                    [ ( Value.LiteralPattern () (StringLiteral "FRD"), Value.Variable () [ "1.A.4.1" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "1.A.4.2" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "SNB"), Value.Variable () [ "1.A.4.3" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "ECB"), Value.Variable () [ "1.A.4.4" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "BOI"), Value.Variable () [ "1.A.4.5" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "RBA"), Value.Variable () [ "1.A.4.6" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "BOC"), Value.Variable () [ "1.A.4.7" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "Others"), Value.Variable () [ "1.A.4.8" ] )
-                                    ]
-                                )
-                                (Value.PatternMatch ()
-                                    (Value.Variable () (Name.fromString "Classify By Counter Party ID"))
-                                    [ ( Value.LiteralPattern () (StringLiteral "FRD"), Value.Variable () [ "1.A.3.1" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "1.A.3.2" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "SNB"), Value.Variable () [ "1.A.3.3" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "ECB"), Value.Variable () [ "1.A.3.4" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "BOI"), Value.Variable () [ "1.A.3.5" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "RBA"), Value.Variable () [ "1.A.3.6" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "BOC"), Value.Variable () [ "1.A.3.7" ] )
-                                    , ( Value.LiteralPattern () (StringLiteral "Others"), Value.Variable () [ "1.A.3.8" ] )
-                                    ]
+                                (Value.Variable () (Name.fromString "Is NetUsd Amount Negative"))
+                                (Value.Variable () (Name.fromString "O.W.9"))
+                                (Value.IfThenElse ()
+                                    (Value.Variable () (Name.fromString "Is Feed44 and CostCenter Not 5C55"))
+                                    (Value.Variable () (Name.fromString "1.U.1"))
+                                    (Value.Variable () (Name.fromString "1.U.4"))
                                 )
                             )
                             (Value.IfThenElse ()
-                                (Value.Variable () (Name.fromString "Is On Shore"))
+                                (Value.Variable () (Name.fromString "Is NetUsd Amount Negative"))
+                                (Value.Variable () (Name.fromString "O.W.10"))
+                                --
                                 (Value.IfThenElse ()
-                                    (Value.Variable () [ "Is NetUsd Amount Negative" ])
-                                    (Value.Variable () [ "O.W.9" ])
-                                    (Value.IfThenElse ()
-                                        (Value.Variable () [ "Is Feed44 and CostCenter Not 5C55" ])
-                                        (Value.Variable () [ "1.U.1" ])
-                                        (Value.Variable () [ "1.U.4" ])
-                                    )
+                                    (Value.Variable () (Name.fromString "Is Feed44 and CostCenter Not 5C55"))
+                                    (Value.Variable () (Name.fromString "1.U.2"))
+                                    (Value.Variable () (Name.fromString "1.U.4"))
                                 )
-                                (Value.IfThenElse ()
-                                    (Value.Variable () [ "Is NetUsd Amount Negative" ])
-                                    (Value.Variable () [ "O.W.10" ])
-                                    --
-                                    (Value.IfThenElse ()
-                                        (Value.Variable () [ "Is Feed44 and CostCenter Not 5C55" ])
-                                        (Value.Variable () [ "1.U.2" ])
-                                        (Value.Variable () [ "1.U.4" ])
-                                    )
-                                 --
-                                )
+                             --
                             )
-                      )
-                    , ( Value.LiteralPattern () (StringLiteral "Inventory"), Value.Unit () )
-                    , ( Value.LiteralPattern () (StringLiteral "Pending Trades"), Value.Unit () )
-                    ]
+                        )
+                  )
+                , ( Value.LiteralPattern () (StringLiteral "Inventory"), Value.Unit () )
+                , ( Value.LiteralPattern () (StringLiteral "Pending Trades"), Value.Unit () )
                 ]
     in
-    ( { rootNodes = rootNodes
+    ( { rootNodes = listToNode [ originalIR ] Dict.empty
       , dict = Dict.empty
-      , treeModel = TreeView.initializeModel2 configuration rootNodes
+      , treeModel = TreeView.initializeModel2 configuration (listToNode [ originalIR ] Dict.empty)
       , selectedNode = Nothing
+      , originalIR = originalIR
       }
     , Cmd.none
     )
-
-
-
--- initialize the TreeView model
 
 
 type alias Model =
@@ -191,7 +168,12 @@ type alias Model =
     , treeModel : TreeView.Model NodeData String NodeDataMsg (Maybe NodeData)
     , selectedNode : Maybe NodeData
     , dict : Dict String String
+    , originalIR : Value () ()
     }
+
+
+
+-- Gets unique ID of Node.
 
 
 nodeUidOf : Tree.Node NodeData -> TreeView.NodeUid String
@@ -210,103 +192,124 @@ configuration =
     TreeView.Configuration2 nodeUidOf viewNodeData TreeView.defaultCssClasses
 
 
-
--- otherwise interact with your tree view in the usual TEA manner
-
-
 type Msg
     = TreeViewMsg (TreeView.Msg2 String NodeDataMsg)
-    | SetRoot String
-    | SetBank String
-    | SetSegCash String
-    | SetCode String
-    | SetShore String
-    | SetNegative String
-    | SetFeed String
+    | SetDictValueRoot String
+    | SetDictValueBank String
+    | SetDictValueSegCash String
+    | SetDictValueCode String
+    | SetDictValueShore String
+    | SetDictValueNegative String
+    | SetDictValueFeed String
     | RedoTree
 
 
-setNodeContent : String -> String -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData) -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData)
-setNodeContent nodeUid subject treeModel =
-    TreeView.updateNodeData
-        (\nodeData -> nodeData.uid == nodeUid)
-        (\nodeData -> { nodeData | subject = subject })
-        treeModel
 
-
-setNodeHighlight : String -> Bool -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData) -> TreeView.Model NodeData String NodeDataMsg (Maybe NodeData)
-setNodeHighlight nodeUid highlight treeModel =
-    TreeView.updateNodeData
-        (\nodeData -> nodeData.uid == nodeUid)
-        (\nodeData -> { nodeData | highlight = highlight })
-        treeModel
+-- Updates the tree as drop downs are selected
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
     case message of
-        SetRoot s1 ->
-            ( { model | dict = Dict.insert "Classify By Position Type" s1 model.dict }, Cmd.none )
-
-        SetBank s1 ->
+        SetDictValueRoot s1 ->
             let
                 newDict1 =
-                    Dict.insert "Is Central Bank" s1 model.dict
-
-                newDict2 =
-                    Dict.remove "Is Segregated Cash" newDict1
-
-                newDict3 =
-                    Dict.remove "Classify By Counter Party ID" newDict2
-
-                newDict4 =
-                    Dict.remove "Is On Shore" newDict3
-
-                newDict5 =
-                    Dict.remove "Is NetUsd Amount Negative" newDict4
-
-                newDict6 =
-                    Dict.remove "Is Feed44 and CostCenter Not 5C55" newDict5
+                    Dict.insert "classifyByPositionType" s1 Dict.empty
             in
-            ( { model | dict = newDict6 }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
 
-        SetSegCash s1 ->
-            ( { model | dict = Dict.insert "Is Segregated Cash" s1 model.dict }, Cmd.none )
-
-        SetCode s1 ->
-            --do the same with classify by counter party ID.
-            --find a way to send the key as well as the value
-            ( { model | dict = Dict.insert "Classify By Counter Party ID" s1 model.dict }, Cmd.none )
-
-        SetShore s1 ->
-            ( { model | dict = Dict.insert "Is On Shore" s1 model.dict }, Cmd.none )
-
-        SetNegative s1 ->
+        SetDictValueBank s1 ->
+            --should unset everything except for classifyByPositionType
             let
-                newDict =
-                    Dict.insert "Is NetUsd Amount Negative" s1 model.dict
-
                 newDict1 =
-                    Dict.remove "Is Feed44 and CostCenter Not 5C55" newDict
+                    Dict.insert "classifyByPositionType"
+                        (withDefault
+                            "isCentralBank/Cash"
+                            (Dict.get "classifyByPositionType" model.dict)
+                        )
+                        Dict.empty
+                        |> Dict.insert "isCentralBank" s1
             in
-            ( { model | dict = newDict1 }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
 
-        SetFeed s1 ->
-            ( { model | dict = Dict.insert "Is Feed44 and CostCenter Not 5C55" s1 model.dict }, Cmd.none )
+        SetDictValueSegCash s1 ->
+            let
+                newDict1 =
+                    Dict.remove "classifyByCounterPartyID" model.dict
+                        |> Dict.insert "isSegregatedCash" s1
+            in
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
+
+        SetDictValueCode s1 ->
+            let
+                newDict1 =
+                    Dict.insert "classifyByCounterPartyID" s1 model.dict
+            in
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
+
+        SetDictValueShore s1 ->
+            --needs to unset isNetUsdAmountNegative & isFeed44andCostCenterNot5C55
+            let
+                newDict1 =
+                    Dict.remove "isNetUsdAmountNegative" model.dict
+                        |> Dict.remove "isFeed44andCostCenterNot5C55"
+                        |> Dict.insert "isOnShore" s1
+            in
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
+
+        SetDictValueNegative s1 ->
+            --needs to unset isFeed44andCostCenterNot5C55
+            let
+                newDict1 =
+                    Dict.remove "isFeed44andCostCenterNot5C55" model.dict
+                        |> Dict.insert "isNetUsdAmountNegative" s1
+            in
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
+
+        SetDictValueFeed s1 ->
+            let
+                newDict1 =
+                    Dict.insert "isFeed44andCostCenterNot5C55" s1 model.dict
+            in
+            ( { model | dict = newDict1, treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1) }, Cmd.none )
 
         RedoTree ->
-            Debug.log "Im Highlighting"
-                ( model, Cmd.none )
+            ( { model | treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] Dict.empty) }, Cmd.none )
 
         _ ->
             let
                 treeModel =
                     case message of
-                        TreeViewMsg (TreeView.CustomMsg nodeDataMsg) ->
-                            case nodeDataMsg of
-                                EditContent nodeUid content ->
-                                    setNodeHighlight nodeUid True model.treeModel
-
                         TreeViewMsg tvMsg ->
                             TreeView.update2 tvMsg model.treeModel
 
@@ -324,11 +327,6 @@ update message model =
             )
 
 
-overColor : Color
-overColor =
-    rgb 0.9 0.9 0.1
-
-
 white : Color
 white =
     rgb 1 1 1
@@ -340,18 +338,11 @@ selectedNodeDetails model =
         selectedDetails =
             Maybe.map (\nodeData -> nodeData.uid ++ ": " ++ nodeData.subject) model.selectedNode
                 |> Maybe.withDefault "(nothing selected)"
-
-        --selectedHighlight = Maybe.map (\nodeData -> nodeData.highlight) model.selectedNode
     in
     Html.div
         []
         [ Html.text selectedDetails
         ]
-
-
-
--- avilitiy to view tree
---key is branches, value is string for case or True/False for if else
 
 
 view : Model -> Html.Html Msg
@@ -367,10 +358,6 @@ view model =
         ]
 
 
-
---
-
-
 main =
     Browser.element
         { init = initialModel
@@ -383,77 +370,95 @@ main =
 dropdowns : Model -> Html.Html Msg
 dropdowns model =
     Html.div []
-        [ --Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Position Type" model.dict))
-          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Is Central Bank" model.dict))
-          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Is Segregated Cash" model.dict))
-          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Classify By Counter Party ID" model.dict))
-          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Is On Shore" model.dict))
-          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Is NetUsd Amount Negative" model.dict))
-          --, Html.text (Maybe.withDefault "unknown" (Dict.get "Is Feed44 and CostCenter Not 5C55" model.dict))
-          --,
-          Html.div [ id "all-dropdowns", Html.style "color" "white" ]
+        [ Html.div [ id "all-dropdowns", Html.style "color" "white" ]
             [ label [ class "title-arboretum" ] [ Html.text "Arboretum" ]
-            , label [ for "cash-select" ] [ Html.text "Choose a type: " ]
-            , select [ id "cash-select", onInput SetRoot, class "dropdown" ]
+            , label [ id "cash-select-label", for "cash-select" ] [ Html.text "Choose a type: " ]
+            , select [ id "cash-select", onInput SetDictValueRoot, class "dropdown" ]
                 [ option [ value "", disabled True, selected True ] [ Html.text "Type" ]
-                , option [ value "Cash" ] [ Html.text "Cash" ]
-                , option [ value "Inventory" ] [ Html.text "Inventory" ]
-                , option [ value "Pending Trades" ] [ Html.text "Pending Trades" ]
+                , option [ value "Is Central Bank/Cash" ] [ Html.text "Cash" ]
+                , option [ value "/Inventory" ] [ Html.text "Inventory" ]
+                , option [ value "/Pending Trades" ] [ Html.text "Pending Trades" ]
                 ]
-
-            --, Html.div [ id "cash-child" ] [
-            , label [ for "central-bank-select" ] [ Html.text "Choose a bank: " ]
-            , select [ id "central-bank-select", onInput SetBank, class "dropdown" ]
+            , label [ id "central-bank-select-label", for "central-bank-select", class "l-d" ] [ Html.text "Choose a bank: " ]
+            , select [ id "central-bank-select", onInput SetDictValueBank, class "dropdown" ]
                 [ option [ value "", disabled True, selected True ] [ Html.text "Is Central Bank" ]
-                , option [ value "True" ] [ Html.text "Yes" ]
-                , option [ value "False" ] [ Html.text "No" ]
+                , option [ value "Is Segregated Cash/True" ] [ Html.text "Yes" ]
+                , option [ value "Is On Shore/False" ] [ Html.text "No" ]
                 ]
             , Html.div [ id "central-bank-yes-child" ]
-                [ label [ for "seg-cash-select" ] [ Html.text "Choose T/F: " ]
-                , select [ id "seg-cash-select", onInput SetSegCash, class "dropdown" ]
+                [ label [ id "seg-cash-select-label", for "seg-cash-select", class "l-d" ] [ Html.text "Choose T/F: " ]
+                , select [ id "seg-cash-select", onInput SetDictValueSegCash, class "dropdown" ]
                     [ option [ value "", disabled True, selected True ] [ Html.text "Is Segregated Cash" ]
-                    , option [ value "True" ] [ Html.text "Yes" ]
-                    , option [ value "False" ] [ Html.text "No" ]
+                    , option [ value "Classify By Counter Party ID/True" ] [ Html.text "Yes" ]
+                    , option [ value "Classify By Counter Party ID/False" ] [ Html.text "No" ]
                     ]
-                , label [ for "code-select" ] [ Html.text "Choose a code " ]
-                , select [ id "code-select", onInput SetCode, class "dropdown" ]
+
+                --will have to add another dropdown here for the other codes, based on answer of previous
+                , label [ id "code-select-1-label", for "code-select-1", class "l-d" ] [ Html.text "Choose a code " ]
+                , select [ id "code-select-1", onInput SetDictValueCode, class "dropdown" ]
                     [ option [ value "", disabled True, selected True ] [ Html.text "Classify By Counter Party ID" ]
-                    , option [ value "FRD" ] [ Html.text "FRD" ]
-                    , option [ value "BOE" ] [ Html.text "BOE" ]
-                    , option [ value "SNB" ] [ Html.text "SNB" ]
-                    , option [ value "ECB" ] [ Html.text "ECB" ]
-                    , option [ value "BOJ" ] [ Html.text "BOJ" ]
-                    , option [ value "RBA" ] [ Html.text "RBA" ]
-                    , option [ value "BOC" ] [ Html.text "BOC" ]
-                    , option [ value "other" ] [ Html.text "other" ]
+                    , option [ value "1.A.4.1/FRD" ] [ Html.text "FRD" ]
+                    , option [ value "1.A.4.2/BOE" ] [ Html.text "BOE" ]
+                    , option [ value "1.A.4.3/SNB" ] [ Html.text "SNB" ]
+                    , option [ value "1.A.4.4/ECB" ] [ Html.text "ECB" ]
+                    , option [ value "1.A.4.5/BOI" ] [ Html.text "BOJ" ]
+                    , option [ value "1.A.4.6/RBA" ] [ Html.text "RBA" ]
+                    , option [ value "1.A.4.7/BOC" ] [ Html.text "BOC" ]
+                    , option [ value "1.A.4.8/other" ] [ Html.text "other" ]
+                    ]
+                , label [ id "code-select-2-label", for "code-select-2", class "l-d" ] [ Html.text "Choose a code " ]
+                , select [ id "code-select-2", onInput SetDictValueCode, class "dropdown" ]
+                    [ option [ value "", disabled True, selected True ] [ Html.text "Classify By Counter Party ID" ]
+                    , option [ value "1.A.3.1/FRD" ] [ Html.text "FRD" ]
+                    , option [ value "1.A.3.2/BOE" ] [ Html.text "BOE" ]
+                    , option [ value "1.A.3.3/SNB" ] [ Html.text "SNB" ]
+                    , option [ value "1.A.3.4/ECB" ] [ Html.text "ECB" ]
+                    , option [ value "1.A.3.5/BOI" ] [ Html.text "BOJ" ]
+                    , option [ value "1.A.3.6/RBA" ] [ Html.text "RBA" ]
+                    , option [ value "1.A.3.7/BOC" ] [ Html.text "BOC" ]
+                    , option [ value "1.A.3.8/other" ] [ Html.text "other" ]
                     ]
                 ]
             , Html.div [ id "central-bank-no-child" ]
-                [ label [ for "on-shore-select" ] [ Html.text "Choose T/F: " ]
-                , select [ id "on-shore-select", onInput SetShore, class "dropdown" ]
+                [ label [ id "on-shore-select-label", for "on-shore-select", class "l-d" ] [ Html.text "Choose T/F: " ]
+                , select [ id "on-shore-select", onInput SetDictValueShore, class "dropdown" ]
                     [ option [ value "", disabled True, selected True ] [ Html.text "Is On Shore" ]
-                    , option [ value "True" ] [ Html.text "Yes" ]
-                    , option [ value "False" ] [ Html.text "No" ]
+                    , option [ value "Is NetUsd Amount Negative/True" ] [ Html.text "Yes" ]
+                    , option [ value "Is NetUsd Amount Negative/False" ] [ Html.text "No" ]
                     ]
-                , label [ for "negative-select" ] [ Html.text "Choose T/F: " ]
-                , select [ id "negative-select", onInput SetNegative, class "dropdown" ]
+
+                --need another branch here
+                , label [ id "negative-select-label", for "negative-select", class "l-d" ] [ Html.text "Choose T/F: " ]
+                , select [ id "negative-select", onInput SetDictValueNegative, class "dropdown" ]
                     [ option [ value "", disabled True, selected True ] [ Html.text "Is NetUsd Amount Negative" ]
-                    , option [ value "True" ] [ Html.text "Yes" ]
-                    , option [ value "False" ] [ Html.text "No" ]
+                    , option [ value "O.W.9/True" ] [ Html.text "Yes" ]
+                    , option [ value "Is Feed44 and CostCenter Not 5C55/False" ] [ Html.text "No" ]
                     ]
                 , Html.div [ id "negative-no-child" ]
-                    [ label [ for "negative-no-child-select" ] [ Html.text "Choose T/F: " ]
-                    , select [ id "negative-no-child-select", onInput SetFeed, class "dropdown" ]
+                    [ label [ id "negative-no-child-select-label", for "negative-no-child-select", class "l-d" ] [ Html.text "Choose T/F: " ]
+                    , select [ id "negative-no-child-select", onInput SetDictValueFeed, class "dropdown" ]
                         [ option [ value "", disabled True, selected True ] [ Html.text "Is Feed44 and CostCenter Not 5C55" ]
-                        , option [ value "True" ] [ Html.text "Yes" ]
-                        , option [ value "False" ] [ Html.text "No" ]
+                        , option [ value "1.U.1/True" ] [ Html.text "Yes" ]
+                        , option [ value "1.U.4/False" ] [ Html.text "No" ]
+                        ]
+                    ]
+                , label [ id "negative-select-2-label", for "negative-select-2", class "l-d" ] [ Html.text "Choose T/F: " ]
+                , select [ id "negative-select-2", onInput SetDictValueNegative, class "dropdown" ]
+                    [ option [ value "", disabled True, selected True ] [ Html.text "Is NetUsd Amount Negative" ]
+                    , option [ value "O.W.10/True" ] [ Html.text "Yes" ]
+                    , option [ value "Is Feed44 and CostCenter Not 5C55/False" ] [ Html.text "No" ]
+                    ]
+                , Html.div [ id "negative-no-child-2" ]
+                    [ label [ id "negative-no-child-select-2-label", for "negative-no-child-select-2", class "l-d" ] [ Html.text "Choose T/F: " ]
+                    , select [ id "negative-no-child-select-2", onInput SetDictValueFeed, class "dropdown" ]
+                        [ option [ value "", disabled True, selected True ] [ Html.text "Is Feed44 and CostCenter Not 5C55" ]
+                        , option [ value "1.U.2/True" ] [ Html.text "Yes" ]
+                        , option [ value "1.U.4/False" ] [ Html.text "No" ]
                         ]
                     ]
                 ]
-            , button [ id "hide-button" ] [ Html.text "Hide Selections" ]
+            , button [ id "show-button" ] [ Html.text "Show me all inputs" ]
             ]
-
-        --, button [ id "tree-button", onClick RedoTree ] [ Html.text "Show me da monay" ]
         ]
 
 
@@ -465,16 +470,6 @@ dropdowns model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.map TreeViewMsg (TreeView.subscriptions2 model.treeModel)
-
-
-mylist : List (Value () ())
-mylist =
-    [ Value.Literal () (BoolLiteral True)
-    , Value.Literal () (StringLiteral "Cash")
-    , Value.Literal () (BoolLiteral True)
-    , Value.Literal () (BoolLiteral False)
-    , Value.Literal () (StringLiteral "SNB")
-    ]
 
 
 toMaybeList : List ( Pattern (), Value () () ) -> List ( Maybe (Pattern ()), Value () () )
@@ -492,36 +487,57 @@ toMaybeList list =
     List.map2 Tuple.pair maybePatterns values
 
 
-
--- pass in a bunch of variables
--- call the enterpreteur to do any business logic
-
-
-listToNode : List (Value () ()) -> List (Tree.Node NodeData)
-listToNode values =
+listToNode : List (Value () ()) -> Dict String String -> List (Tree.Node NodeData)
+listToNode values dict =
     let
         uids =
             List.range 1 (List.length values)
     in
-    List.map2 toTranslate values uids
+    List.map2 (\value uid -> toTranslate value uid dict) values uids
 
 
-toTranslate : Value () () -> Int -> Tree.Node NodeData
-toTranslate value uid =
-    translation2 ( Nothing, value ) (fromInt uid)
+toTranslate : Value () () -> Int -> Dict String String -> Tree.Node NodeData
+toTranslate value uid dict =
+    let
+        newDict =
+            convertToDict
+                (Dict.fromList
+                    (List.append
+                        [ ( "Classify By Position Type", "" ) ]
+                        (List.map helper (List.map (split "/") (Dict.values dict)))
+                    )
+                )
+    in
+    translation ( Nothing, value ) (fromInt uid) False newDict
 
 
+getCurrentHighlightState : Bool -> Dict Name (Value () ()) -> Maybe (Pattern ()) -> Value () () -> String -> Bool
+getCurrentHighlightState previous dict pattern subject uid =
+    if Dict.size dict > 1 then
+        if String.length uid == 1 then
+            True
 
--- Tree.Node NodeData
+        else if previous then
+            evaluateHighlight dict (Value.toString subject) (withDefault (WildcardPattern ()) pattern)
+
+        else
+            False
+
+    else
+        False
 
 
-translation2 : ( Maybe (Pattern ()), Value () () ) -> String -> Tree.Node NodeData
-translation2 ( pattern, value ) uid =
+translation : ( Maybe (Pattern ()), Value () () ) -> String -> Bool -> Dict Name (Value () ()) -> Tree.Node NodeData
+translation ( pattern, value ) uid previousHighlightState dict =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
             let
+                currentHighlightState : Bool
+                currentHighlightState =
+                    getCurrentHighlightState previousHighlightState dict pattern condition uid
+
                 data =
-                    NodeData uid (Value.toString condition) pattern false
+                    NodeData uid (Value.toString condition) pattern currentHighlightState
 
                 uids =
                     createUIDS 2 uid
@@ -531,7 +547,7 @@ translation2 ( pattern, value ) uid =
 
                 children : List (Tree.Node NodeData)
                 children =
-                    List.map2 translation2 list uids
+                    List.map2 (\myList myUID -> translation myList myUID currentHighlightState dict) list uids
             in
             Tree.Node
                 { data = data
@@ -540,8 +556,12 @@ translation2 ( pattern, value ) uid =
 
         Value.PatternMatch tpe param patterns ->
             let
+                currentHighlightState : Bool
+                currentHighlightState =
+                    getCurrentHighlightState previousHighlightState dict pattern param uid
+
                 data =
-                    NodeData uid (Value.toString param) pattern false
+                    NodeData uid (Value.toString param) pattern currentHighlightState
 
                 maybePatterns =
                     toMaybeList patterns
@@ -551,7 +571,7 @@ translation2 ( pattern, value ) uid =
 
                 children : List (Tree.Node NodeData)
                 children =
-                    List.map2 translation2 maybePatterns uids
+                    List.map2 (\myList myUID -> translation myList myUID currentHighlightState dict) maybePatterns uids
             in
             Tree.Node
                 { data = data
@@ -559,8 +579,12 @@ translation2 ( pattern, value ) uid =
                 }
 
         _ ->
-            --Value.toString value ++ (fromInt uid) ++ " ------ "
-            Tree.Node { data = NodeData uid (Value.toString value) pattern false, children = [] }
+            let
+                currentHighlightState : Bool
+                currentHighlightState =
+                    getCurrentHighlightState previousHighlightState dict pattern value uid
+            in
+            Tree.Node { data = NodeData uid (Value.toString value) pattern currentHighlightState, children = [] }
 
 
 createUIDS : Int -> String -> List String
@@ -580,15 +604,6 @@ createUIDS range currentUID =
 
 type NodeDataMsg
     = EditContent String String -- uid content
-
-
-
--- evaluate condition
--- variable dictionary --> interpreter looks up to get corresponding value
--- all it will do is dictionary look up
--- in real world those will be functions --> business logic
--- type as a variable -->
--- type and currenctly selected drop down
 
 
 convertToDict : Dict String String -> Dict Name (Value ta ())
@@ -618,43 +633,23 @@ viewNodeData selectedNode node =
     let
         nodeData =
             Tree.dataOf node
-
-        --dict =
-        --    Dict.fromList
-        --        [ ( Name.fromString "Classify By Position Type", Value.Literal () (StringLiteral "Cash") )
-        --        , ( Name.fromString "Is Central Bank", Value.Literal () (BoolLiteral True) )
-        --        , ( Name.fromString "Is Segregated Cash", Value.Literal () (BoolLiteral True) )
-        --        , ( Name.fromString "Classify By Counter Party ID", Value.Literal () (StringLiteral "FRD") )
-        --        ]
-        dict2 =
-            convertToDict
-                (Dict.fromList
-                    [ ( "Classify By Position Type", "sakdnajdbaj" )
-                    , ( "Is Central Bank", "Cash" )
-                    , ( "Is Segregated Cash", "True" )
-                    , ( "Classify By Counter Party ID", "True" )
-                    , ( "1.A.4.1", "FRD" )
-                    ]
-                )
-
-        --[]
-        selected =
-            selectedNode
-                |> Maybe.map (\sN -> nodeData.uid == sN.uid)
-                |> Maybe.withDefault False
-
-        highlight =
-            evaluateHighlight dict2
-                nodeData.subject
-                --correctPath
-                (withDefault (WildcardPattern ()) nodeData.pattern)
-                |> Debug.log ("Stuff: " ++ nodeData.subject)
-
-        --|> Debug.log ("logging " ++ getLabel nodeData.pattern ++ " subbie " ++ nodeData.subject)
     in
-    if highlight then
-        Html.text (getLabel nodeData.pattern ++ nodeData.subject ++ "  Highlight!!")
-        --|> Debug.log dict
+    if nodeData.highlight then
+        Html.div
+            [ class "highlighted-node"
+            ]
+            [ Html.text (nodeLabel node)
+            ]
 
     else
-        Html.text (getLabel nodeData.pattern ++ nodeData.subject)
+        Html.text (nodeLabel node)
+
+
+helper : List String -> ( String, String )
+helper l =
+    case l of
+        [ s1, s2 ] ->
+            ( s1, s2 )
+
+        _ ->
+            ( "oh", "no" )
