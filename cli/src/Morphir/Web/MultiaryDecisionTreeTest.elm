@@ -163,19 +163,6 @@ initialModel () =
     )
 
 
-
--- dont need to call evaluate highlight if value isnt highlighted
--- pass argument from previous level --> from parent level
--- would be the best if in node data we could keep it in
--- evaluate highlight shouldnt be called in the view function
--- elm renders the browswer call back that potentially can be called 7829329 times a second
--- in view function shouldnt have any heavy opperations --> should all be done in update functioon
--- do all calculations in update function
--- have highlight flag in node data--> calculating the
--- intially all set to false --> then when you update --> it updates
--- Initialize the TreeView model
-
-
 type alias Model =
     { rootNodes : List (Tree.Node NodeData)
     , treeModel : TreeView.Model NodeData String NodeDataMsg (Maybe NodeData)
@@ -231,7 +218,7 @@ update message model =
             in
             ( { model
                 | dict = newDict1
-                , treeModel = TreeView.initializeModel2 (configuration2 model newDict1) (listToNode [ model.originalIR ] newDict1)
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
               }
             , Cmd.none
             )
@@ -246,65 +233,78 @@ update message model =
                             (Dict.get "classifyByPositionType" model.dict)
                         )
                         Dict.empty
-
-                newDict2 =
-                    Dict.insert "isCentralBank" s1 newDict1
-
-                --Dict.empty |> Dict.insert ...
+                        |> Dict.insert "isCentralBank" s1
             in
-            ( { model | dict = newDict2, treeModel = TreeView.initializeModel2 (configuration2 model newDict2) (listToNode [ model.originalIR ] newDict2) }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
 
         SetDictValueSegCash s1 ->
             let
                 newDict1 =
                     Dict.remove "classifyByCounterPartyID" model.dict
-
-                newDict2 =
-                    Dict.insert "isSegregatedCash" s1 newDict1
+                        |> Dict.insert "isSegregatedCash" s1
             in
-            ( { model | dict = newDict2, treeModel = TreeView.initializeModel2 (configuration2 model newDict2) (listToNode [ model.originalIR ] newDict2) }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
 
         SetDictValueCode s1 ->
             let
                 newDict1 =
                     Dict.insert "classifyByCounterPartyID" s1 model.dict
             in
-            ( { model | dict = newDict1, treeModel = TreeView.initializeModel2 (configuration2 model newDict1) (listToNode [ model.originalIR ] newDict1) }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
 
         SetDictValueShore s1 ->
             --needs to unset isNetUsdAmountNegative & isFeed44andCostCenterNot5C55
             let
                 newDict1 =
                     Dict.remove "isNetUsdAmountNegative" model.dict
-
-                newDict2 =
-                    Dict.remove "isFeed44andCostCenterNot5C55" newDict1
-
-                newDict3 =
-                    Dict.insert "isOnShore" s1 newDict2
+                        |> Dict.remove "isFeed44andCostCenterNot5C55"
+                        |> Dict.insert "isOnShore" s1
             in
-            ( { model | dict = newDict3, treeModel = TreeView.initializeModel2 (configuration2 model newDict3) (listToNode [ model.originalIR ] newDict3) }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
 
         SetDictValueNegative s1 ->
             --needs to unset isFeed44andCostCenterNot5C55
             let
                 newDict1 =
                     Dict.remove "isFeed44andCostCenterNot5C55" model.dict
-
-                newDict2 =
-                    Dict.insert "isNetUsdAmountNegative" s1 newDict1
+                        |> Dict.insert "isNetUsdAmountNegative" s1
             in
-            ( { model | dict = newDict2, treeModel = TreeView.initializeModel2 (configuration2 model newDict2) (listToNode [ model.originalIR ] newDict2) }, Cmd.none )
+            ( { model
+                | dict = newDict1
+                , treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1)
+              }
+            , Cmd.none
+            )
 
         SetDictValueFeed s1 ->
             let
                 newDict1 =
                     Dict.insert "isFeed44andCostCenterNot5C55" s1 model.dict
             in
-            ( { model | dict = newDict1, treeModel = TreeView.initializeModel2 (configuration2 model newDict1) (listToNode [ model.originalIR ] newDict1) }, Cmd.none )
+            ( { model | dict = newDict1, treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1) }, Cmd.none )
 
         RedoTree ->
-            ( { model | treeModel = TreeView.initializeModel2 (configuration2 model model.dict) (listToNode [ model.originalIR ] Dict.empty) }, Cmd.none )
+            ( { model | treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] Dict.empty) }, Cmd.none )
 
         _ ->
             let
@@ -353,16 +353,6 @@ view model =
         , selectedNodeDetails model
         , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel)
         ]
-
-
-
--- when changing highlight state --> changing root nodes
--- when assigning tree model --> thats the point where we could invoke highlight state
--- we can pass in
--- invoke a function that calculates the root nodes
--- store org ir
--- in pudate we want to have root nodes that are changing
--- store original ir in the model
 
 
 main =
@@ -466,11 +456,10 @@ dropdowns model =
                         ]
                     ]
                 ]
-
-            --]
             ]
         , button [ id "hide-button" ] [ Html.text "Hide Selections " ]
-        , button [ id "tree-button", onClick RedoTree ] [ Html.text "Show me da monay" ]
+        , button [ id "tree-button", onClick RedoTree ] [ Html.text "highlight" ]
+        , button [ id "show-button" ] [ Html.text "Show me the world" ]
         ]
 
 
@@ -514,16 +503,8 @@ toTranslate value uid dict =
         newDict =
             convertToDict
                 (Dict.fromList
-                    --subject, pattern
-                    --[ ( "Classify By Position Type", "sakdnajdbaj" )
-                    --, ( "Is Central Bank", "Cash" )
-                    --, ( "Is Segregated Cash", "True" )
-                    --, ( "Classify By Counter Party ID", "True" )
-                    --, ( "1.A.4.1", "FRD" )
-                    --]
                     (List.append
                         [ ( "Classify By Position Type", "" ) ]
-                        --(List.map2 Tuple.pair (Dict.keys model.dict) (Dict.values model.dict))
                         (List.map helper (List.map (split "/") (Dict.values dict)))
                     )
                 )
@@ -549,15 +530,6 @@ getCurrentHighlightState previous dict pattern subject uid =
 
 translation : ( Maybe (Pattern ()), Value () () ) -> String -> Bool -> Dict Name (Value () ()) -> Tree.Node NodeData
 translation ( pattern, value ) uid previousHighlightState dict =
-    -- if dict is empty --> highlight is false
-    -- else :: not empty
-    -- if previousHighlightSTATE is false --> it is false
-    -- if previousHighlightState is true
-    -- evaluate highlight pass in dictionary
-    -- evaluateHighlight dict2
-    --                nodeData.subject
-    --                --correctPath
-    --                (withDefault (WildcardPattern ()) nodeData.pattern)
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
             let
@@ -566,11 +538,6 @@ translation ( pattern, value ) uid previousHighlightState dict =
                     getCurrentHighlightState previousHighlightState dict pattern condition uid
 
                 data =
-                    -- if new flag is false, keep unhighlighted
-                    -- if its true, run evaluate highlihgt --> pass down value of that
-                    -- add in evaluatehighlight
-                    -- highlight flag
-                    -- stop calling evaluate highlight when flag is false
                     NodeData uid (Value.toString condition) pattern currentHighlightState
 
                 uids =
@@ -640,15 +607,6 @@ type NodeDataMsg
     = EditContent String String -- uid content
 
 
-
--- evaluate condition
--- variable dictionary --> interpreter looks up to get corresponding value
--- all it will do is dictionary look up
--- in real world those will be functions --> business logic
--- type as a variable -->
--- type and currenctly selected drop down
-
-
 convertToDict : Dict String String -> Dict Name (Value ta ())
 convertToDict dict =
     let
@@ -676,24 +634,6 @@ viewNodeData selectedNode node =
     let
         nodeData =
             Tree.dataOf node
-
-        dict2 =
-            convertToDict
-                (Dict.fromList
-                    []
-                )
-
-        ----[]
-        --selected =
-        --    selectedNode
-        --        |> Maybe.map (\sN -> nodeData.uid == sN.uid)
-        --        |> Maybe.withDefault False
-        --
-        --highlight =
-        --    evaluateHighlight dict2
-        --        nodeData.subject
-        --        --correctPath
-        --        (withDefault (WildcardPattern ()) nodeData.pattern)
     in
     if nodeData.highlight then
         Html.div
@@ -714,49 +654,3 @@ helper l =
 
         _ ->
             ( "oh", "no" )
-
-
-viewNodeData2 : Model -> Dict String String -> Maybe NodeData -> Tree.Node NodeData -> Html.Html NodeDataMsg
-viewNodeData2 model myDict selectedNode node =
-    let
-        nodeData =
-            Tree.dataOf node
-
-        dict2 =
-            --pass in my dict, changes it to tuples i guess
-            convertToDict
-                (Dict.fromList
-                    --subject, pattern
-                    --[ ( "Classify By Position Type", "sakdnajdbaj" )
-                    --, ( "Is Central Bank", "Cash" )
-                    --, ( "Is Segregated Cash", "True" )
-                    --, ( "Classify By Counter Party ID", "True" )
-                    --, ( "1.A.4.1", "FRD" )
-                    --]
-                    (List.append
-                        [ ( "Classify By Position Type", "" ) ]
-                        --(List.map2 Tuple.pair (Dict.keys model.dict) (Dict.values model.dict))
-                        (List.map helper (List.map (split "/") (Dict.values myDict)))
-                    )
-                )
-
-        --highlight =
-        --    evaluateHighlight dict2
-        --        nodeData.subject
-        --        --correctPath
-        --        (withDefault (WildcardPattern ()) nodeData.pattern)
-    in
-    if nodeData.highlight then
-        Html.div
-            [ class "highlighted-node"
-            ]
-            [ Html.text (nodeLabel node)
-            ]
-
-    else
-        Html.text (nodeLabel node)
-
-
-configuration2 : Model -> Dict String String -> TreeView.Configuration2 NodeData String NodeDataMsg (Maybe NodeData)
-configuration2 model myDict =
-    TreeView.Configuration2 nodeUidOf (viewNodeData2 model myDict) TreeView.defaultCssClasses

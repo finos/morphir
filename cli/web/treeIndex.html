@@ -190,6 +190,32 @@
       }
     };
 
+    const showButton = document.getElementById("show-button");
+    showButton.onclick = function () {
+      document.getElementById('central-bank-select-label').style.display = 'block';
+      document.getElementById('central-bank-select').style.display = 'block';
+      document.getElementById('central-bank-yes-child').style.display = 'block';
+      document.getElementById('central-bank-no-child').style.display = 'block';
+      document.getElementById('seg-cash-select-label').style.display = 'block';
+      document.getElementById('seg-cash-select').style.display = 'block';
+      document.getElementById('code-select-1-label').style.display = 'block';
+      document.getElementById('code-select-1').style.display = 'block';
+      document.getElementById('code-select-2-label').style.display = 'block';
+      document.getElementById('code-select-2').style.display = 'block';
+      document.getElementById('on-shore-select-label').style.display = 'block';
+      document.getElementById('on-shore-select').style.display = 'block';
+      document.getElementById('negative-no-child').style.display = 'block';
+      document.getElementById('negative-select-label').style.display = 'block';
+      document.getElementById('negative-select').style.display = 'block';
+      document.getElementById('negative-no-child-select-label').style.display = 'block';
+      document.getElementById('negative-no-child-select').style.display = 'block';
+      document.getElementById('negative-no-child-2').style.display = 'block';
+      document.getElementById('negative-select-2-label').style.display = 'block';
+      document.getElementById('negative-select-2').style.display = 'block';
+      document.getElementById('negative-no-child-select-2-label').style.display = 'block';
+      document.getElementById('negative-no-child-select-2').style.display = 'block';
+
+    };
 
     document.getElementById('cash-select').addEventListener('change', function () {
       var style = this.value == 'Is Central Bank/Cash' ? 'block' : 'none';
