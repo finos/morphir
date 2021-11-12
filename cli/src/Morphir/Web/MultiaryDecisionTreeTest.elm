@@ -459,7 +459,7 @@ dropdowns model =
             ]
         , button [ id "hide-button" ] [ Html.text "Hide Selections " ]
         , button [ id "tree-button", onClick RedoTree ] [ Html.text "highlight" ]
-        , button [ id "show-button" ] [ Html.text "Show me the world" ]
+        , button [ id "show-button" ] [ Html.text "Show me all inputs" ]
         ]
 
 
