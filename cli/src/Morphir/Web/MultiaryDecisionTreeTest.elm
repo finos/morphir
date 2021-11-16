@@ -2,11 +2,9 @@ module Morphir.Web.MultiaryDecisionTreeTest exposing (..)
 
 import Browser
 import Dict exposing (Dict, values)
-import Element exposing (Color, Element, rgb)
 import Html exposing (Html, button, label, map, option, select)
 import Html.Attributes as Html exposing (class, disabled, for, id, selected, value)
 import Html.Events exposing (onClick, onInput)
-import List exposing (drop, head, tail, take)
 import Maybe exposing (withDefault)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
@@ -17,10 +15,6 @@ import String exposing (fromInt, join, split)
 import Tree as Tree
 import TreeView as TreeView
 import Tuple
-
-
-t =
-    Element.text
 
 
 
@@ -106,7 +100,7 @@ initialModel () =
                                 , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "I.A.4.2" ] )
                                 , ( Value.LiteralPattern () (StringLiteral "SNB"), Value.Variable () [ "I.A.4.3" ] )
                                 , ( Value.LiteralPattern () (StringLiteral "ECB"), Value.Variable () [ "I.A.4.4" ] )
-                                , ( Value.LiteralPattern () (StringLiteral "BOI"), Value.Variable () [ "I.A.4.5" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "BOJ"), Value.Variable () [ "I.A.4.5" ] )
                                 , ( Value.LiteralPattern () (StringLiteral "RBA"), Value.Variable () [ "I.A.4.6" ] )
                                 , ( Value.LiteralPattern () (StringLiteral "BOC"), Value.Variable () [ "I.A.4.7" ] )
                                 , ( Value.LiteralPattern () (StringLiteral "Others"), Value.Variable () [ "I.A.4.8" ] )
@@ -118,7 +112,7 @@ initialModel () =
                                 , ( Value.LiteralPattern () (StringLiteral "BOE"), Value.Variable () [ "I.A.3.2" ] )
                                 , ( Value.LiteralPattern () (StringLiteral "SNB"), Value.Variable () [ "I.A.3.3" ] )
                                 , ( Value.LiteralPattern () (StringLiteral "ECB"), Value.Variable () [ "I.A.3.4" ] )
-                                , ( Value.LiteralPattern () (StringLiteral "BOI"), Value.Variable () [ "I.A.3.5" ] )
+                                , ( Value.LiteralPattern () (StringLiteral "BOJ"), Value.Variable () [ "I.A.3.5" ] )
                                 , ( Value.LiteralPattern () (StringLiteral "RBA"), Value.Variable () [ "I.A.3.6" ] )
                                 , ( Value.LiteralPattern () (StringLiteral "BOC"), Value.Variable () [ "I.A.3.7" ] )
                                 , ( Value.LiteralPattern () (StringLiteral "Others"), Value.Variable () [ "I.A.3.8" ] )
@@ -201,7 +195,6 @@ type Msg
     | SetDictValueShore String
     | SetDictValueNegative String
     | SetDictValueFeed String
-    | RedoTree
 
 
 
@@ -293,9 +286,6 @@ update message model =
             in
             ( { model | dict = newDict1, treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] newDict1) }, Cmd.none )
 
-        RedoTree ->
-            ( { model | treeModel = TreeView.initializeModel2 configuration (listToNode [ model.originalIR ] Dict.empty) }, Cmd.none )
-
         _ ->
             let
                 treeModel =
@@ -317,11 +307,6 @@ update message model =
             )
 
 
-white : Color
-white =
-    rgb 1 1 1
-
-
 selectedNodeDetails : Model -> Html Msg
 selectedNodeDetails model =
     let
@@ -339,12 +324,8 @@ view : Model -> Html.Html Msg
 view model =
     Html.div
         [ class "center-screen" ]
-        --[ Html.div
-        --[ class "colored-background" ]
         [ dropdowns model
         , map TreeViewMsg (TreeView.view2 model.selectedNode model.treeModel)
-
-        --]
         ]
 
 
@@ -369,7 +350,7 @@ dropdowns model =
                 , option [ value "/Inventory" ] [ Html.text "Inventory" ]
                 , option [ value "/Pending Trades" ] [ Html.text "Pending Trades" ]
                 ]
-            , label [ id "central-bank-select-label", for "central-bank-select", class "l-d" ] [ Html.text "Uses Central Bank?:" ]
+            , label [ id "central-bank-select-label", for "central-bank-select", class "l-d" ] [ Html.text "Is Counterparty a Central Bank?:" ]
             , select [ id "central-bank-select", onInput SetDictValueBank, class "dropdown" ]
                 [ option [ value "", disabled True, selected True ] [ Html.text "Select" ]
                 , option [ value "Is Segregated Cash/True" ] [ Html.text "Yes" ]
@@ -382,8 +363,6 @@ dropdowns model =
                     , option [ value "Classify By Counter Party ID/True" ] [ Html.text "Yes" ]
                     , option [ value "Classify By Counter Party ID/False" ] [ Html.text "No" ]
                     ]
-
-                --will have to add another dropdown here for the other codes, based on answer of previous
                 , label [ id "code-select-1-label", for "code-select-1", class "l-d" ] [ Html.text "Select Counterparty ID:" ]
                 , select [ id "code-select-1", onInput SetDictValueCode, class "dropdown" ]
                     [ option [ value "", disabled True, selected True ] [ Html.text "Select" ]
@@ -391,7 +370,7 @@ dropdowns model =
                     , option [ value "I.A.4.2/BOE" ] [ Html.text "BOE" ]
                     , option [ value "I.A.4.3/SNB" ] [ Html.text "SNB" ]
                     , option [ value "I.A.4.4/ECB" ] [ Html.text "ECB" ]
-                    , option [ value "I.A.4.5/BOI" ] [ Html.text "BOJ" ]
+                    , option [ value "I.A.4.5/BOJ" ] [ Html.text "BOJ" ]
                     , option [ value "I.A.4.6/RBA" ] [ Html.text "RBA" ]
                     , option [ value "I.A.4.7/BOC" ] [ Html.text "BOC" ]
                     , option [ value "I.A.4.8/other" ] [ Html.text "other" ]
@@ -403,7 +382,7 @@ dropdowns model =
                     , option [ value "I.A.3.2/BOE" ] [ Html.text "BOE" ]
                     , option [ value "I.A.3.3/SNB" ] [ Html.text "SNB" ]
                     , option [ value "I.A.3.4/ECB" ] [ Html.text "ECB" ]
-                    , option [ value "I.A.3.5/BOI" ] [ Html.text "BOJ" ]
+                    , option [ value "I.A.3.5/BOJ" ] [ Html.text "BOJ" ]
                     , option [ value "I.A.3.6/RBA" ] [ Html.text "RBA" ]
                     , option [ value "I.A.3.7/BOC" ] [ Html.text "BOC" ]
                     , option [ value "I.A.3.8/other" ] [ Html.text "other" ]
@@ -416,8 +395,6 @@ dropdowns model =
                     , option [ value "Is NetUsd Amount Negative/True" ] [ Html.text "Yes" ]
                     , option [ value "Is NetUsd Amount Negative/False" ] [ Html.text "No" ]
                     ]
-
-                --need another branch here
                 , label [ id "negative-select-label", for "negative-select", class "l-d" ] [ Html.text "NetUSD Amount: " ]
                 , select [ id "negative-select", onInput SetDictValueNegative, class "dropdown" ]
                     [ option [ value "", disabled True, selected True ] [ Html.text "Select" ]
@@ -425,7 +402,7 @@ dropdowns model =
                     , option [ value "Is Feed44 and CostCenter Not 5C55/False" ] [ Html.text "Negative" ]
                     ]
                 , Html.div [ id "negative-no-child" ]
-                    [ label [ id "negative-no-child-select-label", for "negative-no-child-select", class "l-d" ] [ Html.text "Is Feed44 and CostCenter Not 5C55: " ]
+                    [ label [ id "negative-no-child-select-label", for "negative-no-child-select", class "l-d" ] [ Html.text "Is Cost Center Not 5C55: " ]
                     , select [ id "negative-no-child-select", onInput SetDictValueFeed, class "dropdown" ]
                         [ option [ value "", disabled True, selected True ] [ Html.text "Select" ]
                         , option [ value "I.U.1/True" ] [ Html.text "Yes" ]
@@ -439,7 +416,7 @@ dropdowns model =
                     , option [ value "Is Feed44 and CostCenter Not 5C55/False" ] [ Html.text "No" ]
                     ]
                 , Html.div [ id "negative-no-child-2" ]
-                    [ label [ id "negative-no-child-select-2-label", for "negative-no-child-select-2", class "l-d" ] [ Html.text "Is Feed44 and CostCenter Not 5C55: " ]
+                    [ label [ id "negative-no-child-select-2-label", for "negative-no-child-select-2", class "l-d" ] [ Html.text "Is Cost Center Not 5C55: " ]
                     , select [ id "negative-no-child-select-2", onInput SetDictValueFeed, class "dropdown" ]
                         [ option [ value "", disabled True, selected True ] [ Html.text "Select" ]
                         , option [ value "I.U.2/True" ] [ Html.text "Yes" ]
@@ -449,11 +426,6 @@ dropdowns model =
                 ]
             ]
         ]
-
-
-
---construct a configuration for your tree view
--- if (or when) you want the tree view to navigate up/down between visible nodes and expand/collapse nodes on arrow key presse
 
 
 subscriptions : Model -> Sub Msg
