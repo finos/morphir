@@ -259,10 +259,9 @@ viewValueByLanguageFeature config value =
 
                 Value.IfThenElse _ _ _ _ ->
                     ViewIfThenElse.view config (viewValue config) value
-                      --ViewMultiaryDecisionTree.main
+
                 Value.PatternMatch tpe param patterns ->
                     ViewPatternMatch.view config viewValue param patterns
-                    --  ViewMultiaryDecisionTree.main
 
                 Value.Unit _ ->
                     el [] (text "not set")
