@@ -46,7 +46,6 @@
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {
-        "achutkiran/material-components-elm": "1.2.1 <= v < 2.0.0",
         "chain-partners/elm-bignum": "1.0.1 <= v < 2.0.0",
         "cmditch/elm-bigint": "1.0.1 <= v < 2.0.0",
         "cuducos/elm-format-number": "8.1.4 <= v < 9.0.0",
@@ -66,7 +65,6 @@
         "justinmimbs/date": "3.2.1 <= v < 4.0.0",
         "mdgriffith/elm-ui": "1.1.8 <= v < 2.0.0",
         "pzp1997/assoc-list": "1.0.0 <= v < 2.0.0",
-        "rtfeldman/elm-css": "16.1.1 <= v < 17.0.0",
         "rundis/elm-bootstrap": "5.2.0 <= v < 6.0.0",
         "stil4m/elm-syntax": "7.2.1 <= v < 8.0.0"
     },
