@@ -67,20 +67,11 @@ evaluateHighlight variables value pattern =
             False
 
 
-
--- Text representation of a node
-
-
 nodeLabel : Tree.Node NodeData -> String
 nodeLabel n =
     case n of
         Tree.Node node ->
             getLabel node.data.pattern ++ node.data.subject
-
-
-
--- Takes IR and creates a tree of nodes
--- call list to node every time we call the tree model
 
 
 initialModel : () -> ( Model, Cmd Msg )
@@ -166,19 +157,11 @@ type alias Model =
     }
 
 
-
--- Gets unique ID of Node.
-
-
 nodeUidOf : Tree.Node NodeData -> TreeView.NodeUid String
 nodeUidOf n =
     case n of
         Tree.Node node ->
             TreeView.NodeUid node.data.uid
-
-
-
---construct a configuration for your tree view
 
 
 configuration : TreeView.Configuration2 NodeData String NodeDataMsg (Maybe NodeData)
@@ -197,10 +180,6 @@ type Msg
     | SetDictValueFeed String
 
 
-
--- Updates the tree as drop downs are selected
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
     case message of
@@ -217,7 +196,6 @@ update message model =
             )
 
         SetDictValueBank s1 ->
-            --should unset everything except for classifyByPositionType
             let
                 newDict1 =
                     Dict.insert "isCentralBank" s1 model.dict
@@ -254,7 +232,6 @@ update message model =
             )
 
         SetDictValueShore s1 ->
-            --needs to unset isNetUsdAmountNegative & isFeed44andCostCenterNot5C55
             let
                 newDict1 =
                     Dict.insert "isOnShore" s1 model.dict
@@ -267,7 +244,6 @@ update message model =
             )
 
         SetDictValueNegative s1 ->
-            --needs to unset isFeed44andCostCenterNot5C55
             let
                 newDict1 =
                     Dict.insert "isNetUsdAmountNegative" s1 model.dict
