@@ -79,7 +79,8 @@ nodeLabel n =
 
 
 
--- takes in an IR and returns an initial model
+-- takes in an IR, calls a function to get a decision tree which is represented by a root node,
+-- and returns an initial model
 
 
 initialModel : () -> ( Model, Cmd Msg )
@@ -156,6 +157,10 @@ initialModel () =
     )
 
 
+
+-- holds a dictionary and the original IR to enable realtime highlighting
+
+
 type alias Model =
     { rootNodes : List (Tree.Node NodeData)
     , treeModel : TreeView.Model NodeData String NodeDataMsg (Maybe NodeData)
@@ -186,6 +191,10 @@ type Msg
     | SetDictValueShore String
     | SetDictValueNegative String
     | SetDictValueFeed String
+
+
+
+-- updates based on drop downs, collapsible and expandable buttons, and selections
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -291,19 +300,6 @@ update message model =
             )
 
 
-selectedNodeDetails : Model -> Html Msg
-selectedNodeDetails model =
-    let
-        selectedDetails =
-            Maybe.map (\nodeData -> nodeData.uid ++ ": " ++ nodeData.subject) model.selectedNode
-                |> Maybe.withDefault "(nothing selected)"
-    in
-    Html.div
-        []
-        [ Html.text selectedDetails
-        ]
-
-
 view : Model -> Html.Html Msg
 view model =
     Html.div
@@ -320,6 +316,10 @@ main =
         , update = update
         , subscriptions = subscriptions
         }
+
+
+
+-- hard coded dropdowns
 
 
 dropdowns : Model -> Html.Html Msg
@@ -417,6 +417,10 @@ subscriptions model =
     Sub.map TreeViewMsg (TreeView.subscriptions2 model.treeModel)
 
 
+
+-- converts to a list with maybe pattern to enable conversion from IR to decision tree represented by root node
+
+
 toMaybeList : List ( Pattern (), Value () () ) -> List ( Maybe (Pattern ()), Value () () )
 toMaybeList list =
     let
@@ -432,6 +436,10 @@ toMaybeList list =
     List.map2 Tuple.pair maybePatterns values
 
 
+
+-- converts a list of values to a list of tree nodes and nodedata
+
+
 listToNode : List (Value () ()) -> Dict String String -> List (Tree.Node NodeData)
 listToNode values dict =
     let
@@ -439,6 +447,10 @@ listToNode values dict =
             List.range 1 (List.length values)
     in
     List.map2 (\value uid -> toTranslate value uid dict) values uids
+
+
+
+-- translates value to tree node and node data
 
 
 toTranslate : Value () () -> Int -> Dict String String -> Tree.Node NodeData
@@ -456,6 +468,10 @@ toTranslate value uid dict =
     translation ( Nothing, value ) (fromInt uid) False newDict
 
 
+
+-- checks if parent is highlighted and runs an evaluate highlight to see if the current node should be highlighted
+
+
 getCurrentHighlightState : Bool -> Dict Name (Value () ()) -> Maybe (Pattern ()) -> Value () () -> String -> Bool
 getCurrentHighlightState previous dict pattern subject uid =
     if Dict.size dict > 1 then
@@ -470,6 +486,11 @@ getCurrentHighlightState previous dict pattern subject uid =
 
     else
         False
+
+
+
+-- takes in the tuple and recursively matches whether it is and If Then Else, Pattern Match, or Value
+-- traces to the leaves of the tree and then returns a root node that represents the entire decision tree
 
 
 translation : ( Maybe (Pattern ()), Value () () ) -> String -> Bool -> Dict Name (Value () ()) -> Tree.Node NodeData
@@ -532,6 +553,10 @@ translation ( pattern, value ) uid previousHighlightState dict =
             Tree.Node { data = NodeData uid (Value.toString value) pattern currentHighlightState, children = [] }
 
 
+
+-- creates UID in the formation 1 and 1.1 and 1.1.1
+
+
 createUIDS : Int -> String -> List String
 createUIDS range currentUID =
     let
@@ -549,6 +574,10 @@ createUIDS range currentUID =
 
 type NodeDataMsg
     = EditContent String String -- uid content
+
+
+
+-- convert the dictionary of strings to a dictionary of name values
 
 
 convertToDict : Dict String String -> Dict Name (Value ta ())
@@ -571,6 +600,10 @@ convertToDictHelper ( k, v ) =
 
         _ ->
             ( Name.fromString k, Value.Literal () (StringLiteral v) )
+
+
+
+-- returns the HTML msg based on whether or not a node is highlighted
 
 
 viewNodeData : Maybe NodeData -> Tree.Node NodeData -> Html.Html NodeDataMsg
