@@ -144,6 +144,9 @@ mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionN
 mapRelation : Relation -> Result Error Scala.Value
 mapRelation relation =
     case relation of
+        Values values ->
+            Debug.todo "not implemented yet"
+
         From name ->
             Ok (Scala.Variable (Name.toCamelCase name))
 
