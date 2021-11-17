@@ -67,11 +67,19 @@ evaluateHighlight variables value pattern =
             False
 
 
+
+-- creates label from nodedata
+
+
 nodeLabel : Tree.Node NodeData -> String
 nodeLabel n =
     case n of
         Tree.Node node ->
             getLabel node.data.pattern ++ node.data.subject
+
+
+
+-- takes in an IR and returns an initial model
 
 
 initialModel : () -> ( Model, Cmd Msg )
