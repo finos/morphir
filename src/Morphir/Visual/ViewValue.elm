@@ -28,8 +28,6 @@ import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewRecord as ViewRecord
-import Morphir.Visual.ViewReference as ViewReference
-import Morphir.Visual.ViewTuple as ViewTuple
 import Morphir.Visual.XRayView as XRayView
 
 
@@ -194,7 +192,7 @@ viewValueByLanguageFeature config value =
                     in
                     case Config.evaluate (subjectValue |> Value.toRawValue) config of
                         Ok valueType ->
-                            case valueType |> fromRawValue (config.irContext.distribution |> IR.fromDistribution) of
+                            case valueType |> fromRawValue config.ir of
                                 Ok (Value.Variable ( index, _ ) variableName) ->
                                     let
                                         variableValue : Maybe RawValue
@@ -329,7 +327,7 @@ viewPopup config =
                 let
                     visualTypedVal : Result TypeError EnrichedValue
                     visualTypedVal =
-                        fromRawValue (IR.fromDistribution config.irContext.distribution) rawValue
+                        fromRawValue config.ir rawValue
 
                     popUpStyle : Element msg -> Element msg
                     popUpStyle elementMsg =

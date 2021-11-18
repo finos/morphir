@@ -20,7 +20,7 @@ import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Config exposing (Config, HighlightState(..), PopupScreenRecord)
+import Morphir.Visual.Config as Config exposing (Config, HighlightState(..), PopupScreenRecord)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
@@ -136,13 +136,13 @@ viewScenarios theme handlers distribution model =
                     )
                 |> Maybe.withDefault ( [], Type.Unit () )
 
+        ir : IR
+        ir =
+            IR.fromDistribution distribution
+
         config : Int -> Config msg
         config index =
-            { irContext =
-                { distribution = distribution
-                , nativeFunctions = SDK.nativeFunctions
-                }
-            , state =
+            Config.fromIR ir
                 { expandedFunctions =
                     Array.get index model.testCaseStates
                         |> Maybe.map .expandedValues
@@ -167,16 +167,10 @@ viewScenarios theme handlers distribution model =
                 , theme = Theme.fromConfig Nothing
                 , highlightState = Nothing
                 }
-            , handlers =
                 { onReferenceClicked = handlers.expandReference index
                 , onHoverOver = handlers.expandVariable index
                 , onHoverLeave = handlers.shrinkVariable index
                 }
-            }
-
-        ir : IR
-        ir =
-            IR.fromDistribution distribution
     in
     Array.toList model.testCaseStates
         |> List.indexedMap

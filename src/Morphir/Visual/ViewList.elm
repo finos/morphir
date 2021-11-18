@@ -4,6 +4,7 @@ import Dict
 import Element exposing (Element, centerX, centerY, el, fill, height, indexedTable, none, padding, spacing, table, text, width)
 import Element.Border as Border
 import Element.Font as Font
+import Morphir.IR as IR
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
@@ -20,7 +21,7 @@ view config viewValue itemType items =
             (text "[ ]")
 
     else
-        case itemType of
+        case config.ir |> IR.resolveType itemType of
             Type.Record _ fields ->
                 indexedTable
                     [ centerX, centerY ]
@@ -28,7 +29,7 @@ view config viewValue itemType items =
                         items
                             |> List.map
                                 (\item ->
-                                    config.irContext.distribution |> Distribution.resolveRecordConstructors item
+                                    config.ir |> IR.resolveRecordConstructors item
                                 )
                     , columns =
                         fields
@@ -67,14 +68,6 @@ view config viewValue itemType items =
                                     }
                                 )
                     }
-
-            Type.Reference _ fQName typeArgs ->
-                case config.irContext.distribution |> Distribution.resolveTypeReference fQName typeArgs of
-                    Ok resolvedItemType ->
-                        view config viewValue resolvedItemType items
-
-                    Err _ ->
-                        viewAsList config viewValue items
 
             _ ->
                 viewAsList config viewValue items
