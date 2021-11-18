@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
+import Element exposing (Element, column, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
@@ -115,11 +115,34 @@ viewValueByLanguageFeature config value =
                 Value.Literal _ literal ->
                     ViewLiteral.view config literal
 
-                Value.Constructor _ fQName ->
-                    ViewReference.view config (viewValue config) fQName
+                Value.Constructor _ (( packageName, moduleName, localName ) as fQName) ->
+                    Element.row
+                        [ smallPadding config.state.theme |> padding
+                        , smallSpacing config.state.theme |> spacing
+                        , onClick (config.handlers.onReferenceClicked fQName False)
+                        ]
+                        [ Element.el []
+                            (text
+                                (nameToText localName)
+                            )
+                        ]
 
                 Value.Tuple _ elems ->
-                    ViewTuple.view config (viewValue config) elems
+                    column
+                        [ mediumSpacing config.state.theme |> spacing
+                        ]
+                        [ Element.row
+                            [ mediumSpacing config.state.theme |> spacing
+                            , smallPadding config.state.theme |> padding
+                            ]
+                            [ text "("
+                            , elems
+                                |> List.map (viewValue config)
+                                |> List.intersperse (text ",")
+                                |> Element.row [ smallSpacing config.state.theme |> spacing ]
+                            , text ")"
+                            ]
+                        ]
 
                 Value.List ( index, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
                     ViewList.view config (viewValue config) itemType items
@@ -148,8 +171,17 @@ viewValueByLanguageFeature config value =
                         ]
                         (text (nameToText name))
 
-                Value.Reference _ fQName ->
-                    ViewReference.view config (viewValue config) fQName
+                Value.Reference _ (( packageName, moduleName, localName ) as fQName) ->
+                    Element.row
+                        [ smallPadding config.state.theme |> padding
+                        , smallSpacing config.state.theme |> spacing
+                        , onClick (config.handlers.onReferenceClicked fQName False)
+                        ]
+                        [ Element.el []
+                            (text
+                                (nameToText localName)
+                            )
+                        ]
 
                 Value.Field ( index1, tpe ) subjectValue fieldName ->
                     let
