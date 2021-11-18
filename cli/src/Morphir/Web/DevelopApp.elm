@@ -5,8 +5,9 @@ import Array.Extra
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, px, rgb, row, scrollbars, spacing, text, width)
+import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, pointer, px, rgb, row, scrollbars, spacing, text, width)
 import Element.Background as Background
+import Element.Events exposing (onClick)
 import Element.Font as Font
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
@@ -15,17 +16,21 @@ import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Package as Package
+import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Path as Path
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
+import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Web.DevelopApp.Common exposing (insertInList, viewAsCard)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (makeURL)
+import Set exposing (Set)
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as UrlParser exposing ((</>), (<?>))
@@ -59,6 +64,8 @@ type alias Model =
     , serverState : ServerState
     , testSuite : TestSuite
     , functionStates : Dict FQName FunctionPage.Model
+    , collapsedModules : Set TreeLayout.NodePath
+    , selectedModule : Maybe ( TreeLayout.NodePath, ModuleName )
     }
 
 
@@ -88,6 +95,8 @@ init _ url key =
       , serverState = ServerReady
       , testSuite = Dict.empty
       , functionStates = Dict.empty
+      , collapsedModules = Set.empty
+      , selectedModule = Nothing
       }
     , Cmd.batch [ httpMakeModel ]
     )
@@ -121,6 +130,9 @@ type Msg
     | FunctionEditTestCase Int
     | FunctionSaveTestCase Int
     | SaveTestSuite FunctionPage.Model
+    | ExpandModule TreeLayout.NodePath
+    | CollapseModule TreeLayout.NodePath
+    | SelectModule TreeLayout.NodePath ModuleName
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -792,6 +804,15 @@ update msg model =
                 in
                 ( { model | testSuite = newTestSuite }, httpSaveTestSuite getIR newTestSuite )
 
+        ExpandModule nodePath ->
+            ( { model | collapsedModules = model.collapsedModules |> Set.remove nodePath }, Cmd.none )
+
+        CollapseModule nodePath ->
+            ( { model | collapsedModules = model.collapsedModules |> Set.insert nodePath }, Cmd.none )
+
+        SelectModule nodePath moduleName ->
+            ( { model | selectedModule = Just ( nodePath, moduleName ) }, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -947,29 +968,23 @@ viewBody model =
         IRLoading ->
             text "Loading the IR ..."
 
-        IRLoaded ((Library _ _ packageDef) as distribution) ->
+        IRLoaded ((Library packageName _ packageDef) as distribution) ->
             case model.currentPage of
                 Home ->
                     viewAsCard model.theme
                         (text "Modules")
-                        (column
-                            [ padding 10
-                            , spacing 10
-                            ]
-                            (packageDef.modules
-                                |> Dict.toList
-                                |> List.map
-                                    (\( moduleName, _ ) ->
-                                        link []
-                                            { url =
-                                                "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
-                                            , label =
-                                                moduleName
-                                                    |> List.map (Name.toHumanWords >> String.join " ")
-                                                    |> String.join " / "
-                                                    |> text
-                                            }
-                                    )
+                        (TreeLayout.view TreeLayout.defaultTheme
+                            { onCollapse = CollapseModule
+                            , onExpand = ExpandModule
+                            , collapsedPaths = model.collapsedModules
+                            , selectedPaths =
+                                model.selectedModule
+                                    |> Maybe.map (Tuple.first >> Set.singleton)
+                                    |> Maybe.withDefault Set.empty
+                            }
+                            (viewModuleNames packageName
+                                []
+                                (packageDef.modules |> Dict.keys)
                             )
                         )
 
@@ -1087,3 +1102,55 @@ httpSaveTestSuite ir testSuite =
                 )
                 (decodeTestSuite ir)
         }
+
+
+viewModuleNames : PackageName -> ModuleName -> List ModuleName -> TreeLayout.Node Msg
+viewModuleNames packageName currentModule moduleNames =
+    let
+        currentModuleName =
+            currentModule
+                |> List.reverse
+                |> List.head
+
+        childModuleNames =
+            moduleNames
+                |> List.filterMap
+                    (\moduleName ->
+                        if currentModule |> Path.isPrefixOf moduleName then
+                            moduleName |> List.drop (List.length currentModule) |> List.head
+
+                        else
+                            Nothing
+                    )
+                |> Set.fromList
+                |> Set.toList
+    in
+    TreeLayout.Node
+        (\nodePath ->
+            case currentModuleName of
+                Just name ->
+                    if List.isEmpty childModuleNames then
+                        link []
+                            { url =
+                                "/module/" ++ (currentModule |> List.map Name.toTitleCase |> String.join ".")
+                            , label =
+                                text (name |> Name.toHumanWords |> String.join " ")
+                            }
+
+                    else
+                        el
+                            [ onClick (SelectModule nodePath currentModule)
+                            , pointer
+                            ]
+                            (text (name |> Name.toHumanWords |> String.join " "))
+
+                Nothing ->
+                    text (packageName |> List.map (Name.toHumanWords >> String.join " ") |> String.join " - ")
+        )
+        Array.empty
+        (childModuleNames
+            |> List.map
+                (\name ->
+                    viewModuleNames packageName (currentModule ++ [ name ]) moduleNames
+                )
+        )
