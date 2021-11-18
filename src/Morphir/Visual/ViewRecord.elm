@@ -6,11 +6,11 @@ import Element.Font as Font
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding)
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
-view : Config msg -> (VisualTypedValue -> Element msg) -> List ( Name, VisualTypedValue ) -> Element msg
+view : Config msg -> (EnrichedValue -> Element msg) -> List ( Name, EnrichedValue ) -> Element msg
 view config viewValue items =
     Element.table
         [ centerX, centerY ]

@@ -6,15 +6,15 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Value as Value exposing (TypedValue, Value)
 import Morphir.Visual.Components.DecisionTree as DecisionTree exposing (LeftOrRight(..))
 import Morphir.Visual.Config as Config exposing (Config)
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 
 
-view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> Element msg
+view : Config msg -> (EnrichedValue -> Element msg) -> EnrichedValue -> Element msg
 view config viewValue value =
     DecisionTree.layout config viewValue (valueToTree config True value)
 
 
-valueToTree : Config msg -> Bool -> VisualTypedValue -> DecisionTree.Node
+valueToTree : Config msg -> Bool -> EnrichedValue -> DecisionTree.Node
 valueToTree config doEval value =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
