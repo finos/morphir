@@ -2,16 +2,16 @@ module Morphir.Visual.Components.MultiaryDecisionTree exposing (..)
 
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value)
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 
 
 type Node
     = Branch BranchNode
-    | Leaf VisualTypedValue
+    | Leaf EnrichedValue
 
 
 type alias BranchNode =
-    { subject : VisualTypedValue
+    { subject : EnrichedValue
     , subjectEvaluationResult : Maybe RawValue
     , branches : List ( Pattern (), Node )
     }

@@ -9,8 +9,8 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Value exposing (RawValue, TypedValue, Value)
 import Morphir.Type.Infer as Infer
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord, VisualState)
+import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.ViewValue as ViewValue
-import Morphir.Visual.VisualTypedValue exposing (rawToVisualTypedValue)
 
 
 type alias Model =
@@ -94,7 +94,7 @@ viewTable config references testCases =
 
 viewTestCase : Config msg -> IR -> RawValue -> Element msg
 viewTestCase config references rawValue =
-    case rawToVisualTypedValue references rawValue of
+    case fromRawValue references rawValue of
         Ok typedValue ->
             el [ centerX, centerY ] (ViewValue.viewValue config typedValue)
 

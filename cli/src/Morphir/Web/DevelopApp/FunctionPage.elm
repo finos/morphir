@@ -21,10 +21,10 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, HighlightState(..), PopupScreenRecord)
+import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
-import Morphir.Visual.VisualTypedValue exposing (rawToVisualTypedValue)
 import Morphir.Web.DevelopApp.Common exposing (viewAsCard)
 import Url.Parser as UrlParser exposing ((</>))
 
@@ -354,7 +354,7 @@ viewActualOutput theme config references testCase fQName =
 
 viewRawValue : Config msg -> IR -> RawValue -> Element msg
 viewRawValue config ir rawValue =
-    case rawToVisualTypedValue ir rawValue of
+    case fromRawValue ir rawValue of
         Ok typedValue ->
             el [ spacing 5, padding 5 ] (ViewValue.viewValue config typedValue)
 
