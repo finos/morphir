@@ -1740,6 +1740,7 @@ toString value =
 
                 ConstructorPattern _ ( packageName, moduleName, localName ) argPatterns ->
                     let
+                        constructorString : String
                         constructorString =
                             String.join "."
                                 [ Path.toString Name.toTitleCase "." packageName
