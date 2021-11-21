@@ -43,6 +43,7 @@
         "Morphir.Scala.PrettyPrinter",
         "Morphir.Value.Interpreter",
         "Morphir.Value.Native",
+        "Morphir.Metadata",
         "Morphir.Graph.Grapher"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",

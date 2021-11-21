@@ -38,7 +38,7 @@ import Morphir.Scala.AST exposing (Documented)
 {-| Structure for holding metadata information from processing the distribution.
 -}
 type Metadata ta
-    = Metadata Modules (Types ta) Enums BaseTypes (Types ta) Aliases
+    = Metadata Modules (Types ta) Enums BaseTypes UnionTypes Aliases
 
 
 {-| The registry of modules through entire distribution.
@@ -61,17 +61,17 @@ type alias Enums =
 
 
 {-| The registry of base types through the entire distribution.
-A base type is any union type that has only one single argument option.
+A base type is any union type that has only one single-argument option.
 -}
 type alias BaseTypes =
     Dict FQName FQName
 
 
-{-| The registry of base types through the entire distribution.
-A base type is any union type that has more than one single argument option.
+{-| The registry of union types through the entire distribution.
+A union type is any ADT that has more than one single-argument option.
 -}
 type alias UnionTypes =
-    Dict FQName FQName
+    (Types ta)
 
 
 {-| The registry of aliases through the entire distribution.
@@ -152,9 +152,9 @@ getBaseTypes meta =
             baseTypes
 
 
-{-| Access function for getting the base type registry from a Metadata structure.
+{-| Access function for getting the union type registry from a Metadata structure.
 -}
-getUnions : Metadata ta -> Types ta
+getUnions : Metadata ta -> UnionTypes
 getUnions meta =
     case meta of
         Metadata _ _ _ _ unions _ ->
