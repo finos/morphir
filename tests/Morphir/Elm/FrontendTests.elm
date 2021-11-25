@@ -19,11 +19,12 @@ module Morphir.Elm.FrontendTests exposing (..)
 import Dict exposing (Dict)
 import Expect exposing (Expectation)
 import Json.Encode as Encode
-import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
+import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation, parseRawValue)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
+import Morphir.IR as IR
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (fQName)
+import Morphir.IR.FQName as FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
@@ -36,7 +37,7 @@ import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Rule as Rule
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
-import Morphir.IR.Value exposing (Definition, Pattern(..), Value(..))
+import Morphir.IR.Value as Value exposing (Definition, Pattern(..), RawValue, Value(..))
 import Set
 import Test exposing (..)
 
@@ -45,6 +46,40 @@ opts : Frontend.Options
 opts =
     { typesOnly = False
     }
+
+
+parseRawValueTests : Test
+parseRawValueTests =
+    let
+        positiveTest : String -> RawValue -> Test
+        positiveTest input expectedResult =
+            test input
+                (\_ ->
+                    parseRawValue IR.empty input
+                        |> Expect.equal (Ok expectedResult)
+                )
+    in
+    describe "parseRawValue"
+        [ positiveTest "1 + 2"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                    (Value.Literal () (WholeNumberLiteral 1))
+                )
+                (Value.Literal () (WholeNumberLiteral 2))
+            )
+        , positiveTest "List.filter ((+) 1) []"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "filter"))
+                    (Value.Apply ()
+                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                        (Value.Literal () (WholeNumberLiteral 1))
+                    )
+                )
+                (Value.List () [])
+            )
+        ]
 
 
 frontendTest : Test
