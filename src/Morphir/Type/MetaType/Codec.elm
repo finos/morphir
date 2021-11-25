@@ -16,19 +16,19 @@ encodeMetaType metaType =
                 , encodeVariable variable
                 ]
 
-        MetaRef fQName ->
+        MetaRef _ fQName _ _ ->
             Encode.list identity
                 [ Encode.string "meta_ref"
                 , encodeFQName fQName
                 ]
 
-        MetaTuple metaTypes ->
+        MetaTuple _ metaTypes ->
             Encode.list identity
                 [ Encode.string "meta_tuple"
                 , Encode.list encodeMetaType metaTypes
                 ]
 
-        MetaRecord maybeVar dict ->
+        MetaRecord _ maybeVar dict ->
             Encode.list identity
                 [ Encode.string "meta_record"
                 , case maybeVar of
@@ -48,14 +48,7 @@ encodeMetaType metaType =
                         )
                 ]
 
-        MetaApply metaType1 metaType2 ->
-            Encode.list identity
-                [ Encode.string "meta_apply"
-                , encodeMetaType metaType1
-                , encodeMetaType metaType2
-                ]
-
-        MetaFun metaType1 metaType2 ->
+        MetaFun _ metaType1 metaType2 ->
             Encode.list identity
                 [ Encode.string "meta_fun"
                 , encodeMetaType metaType1
@@ -67,14 +60,7 @@ encodeMetaType metaType =
                 [ Encode.string "meta_unit"
                 ]
 
-        MetaAlias fQName subject ->
-            Encode.list identity
-                [ Encode.string "meta_alias"
-                , encodeFQName fQName
-                , encodeMetaType subject
-                ]
-
 
 encodeVariable : Variable -> Encode.Value
-encodeVariable ( i, s ) =
-    Encode.list Encode.int [ i, s ]
+encodeVariable ( n, i, s ) =
+    Encode.list identity [ encodeName n, Encode.int i, Encode.int s ]
