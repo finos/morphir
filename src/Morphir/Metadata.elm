@@ -1,5 +1,5 @@
 module Morphir.Metadata exposing
-    ( BaseTypes, EnumExtensionComponent, Enums, Modules, Types, Aliases, Metadata
+    ( BaseTypes, EnumExtensionComponent, Enums, Modules, Types, Aliases, Metadata, UnionTypes
     , mapDistribution
     , getTypes, getEnums, getBaseTypes, getAliases, getDocumentation, getModules, getEnumsWithExtensions, enumExtensionName, getUnions, isEnumExtension
     )
@@ -33,12 +33,13 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Constructors, Specification(..), Type(..))
 import Morphir.Scala.AST exposing (Documented)
+import Html exposing (table)
 
 
 {-| Structure for holding metadata information from processing the distribution.
 -}
 type Metadata ta
-    = Metadata Modules (Types ta) Enums BaseTypes (Types ta) Aliases
+    = Metadata Modules (Types ta) Enums BaseTypes (UnionTypes ta) Aliases
 
 
 {-| The registry of modules through entire distribution.
@@ -61,17 +62,17 @@ type alias Enums =
 
 
 {-| The registry of base types through the entire distribution.
-A base type is any union type that has only one single argument option.
+A base type is any union type that has only one single-argument option.
 -}
 type alias BaseTypes =
     Dict FQName FQName
 
 
-{-| The registry of base types through the entire distribution.
-A base type is any union type that has more than one single argument option.
+{-| The registry of union types through the entire distribution.
+A union type is any ADT that has more than one single-argument option.
 -}
-type alias UnionTypes =
-    Dict FQName FQName
+type alias UnionTypes ta =
+    Dict FQName (Documented (Type.Definition ta))
 
 
 {-| The registry of aliases through the entire distribution.
@@ -152,9 +153,9 @@ getBaseTypes meta =
             baseTypes
 
 
-{-| Access function for getting the base type registry from a Metadata structure.
+{-| Access function for getting the union type registry from a Metadata structure.
 -}
-getUnions : Metadata ta -> Types ta
+getUnions : Metadata ta -> UnionTypes ta
 getUnions meta =
     case meta of
         Metadata _ _ _ _ unions _ ->

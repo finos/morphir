@@ -7,19 +7,19 @@ import Html exposing (Html)
 import Html.Attributes
 import Morphir.Visual.Common exposing (element)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing)
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 import Svg
 import Svg.Attributes
 
 
 type Node
     = Branch BranchNode
-    | Leaf VisualTypedValue
+    | Leaf EnrichedValue
 
 
 type alias BranchNode =
-    { condition : VisualTypedValue
+    { condition : EnrichedValue
     , conditionValue : Maybe Bool
     , thenBranch : Node
     , elseBranch : Node
@@ -101,12 +101,12 @@ toCssColor (Color r g b) =
     String.concat [ "rgb(", String.fromInt r, ",", String.fromInt g, ",", String.fromInt b, ")" ]
 
 
-layout : Config msg -> (VisualTypedValue -> Element msg) -> Node -> Element msg
+layout : Config msg -> (EnrichedValue -> Element msg) -> Node -> Element msg
 layout config viewValue rootNode =
     layoutHelp config NotHighlighted viewValue rootNode
 
 
-layoutHelp : Config msg -> HighlightState -> (VisualTypedValue -> Element msg) -> Node -> Element msg
+layoutHelp : Config msg -> HighlightState -> (EnrichedValue -> Element msg) -> Node -> Element msg
 layoutHelp config highlightState viewValue rootNode =
     let
         depthOf : (BranchNode -> Node) -> Node -> Int

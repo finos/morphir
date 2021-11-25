@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
 import Dict exposing (Dict)
-import Element exposing (Element, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
+import Element exposing (Element, column, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
@@ -18,6 +18,7 @@ import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperato
 import Morphir.Visual.Common exposing (definition, nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Config as Config exposing (Config)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
@@ -27,9 +28,6 @@ import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewRecord as ViewRecord
-import Morphir.Visual.ViewReference as ViewReference
-import Morphir.Visual.ViewTuple as ViewTuple
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue, rawToVisualTypedValue, typedToVisualTypedValue)
 import Morphir.Visual.XRayView as XRayView
 
 
@@ -39,7 +37,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
         definitionElem =
             definition config
                 (nameToText valueName)
-                (viewValue config (valueDef.body |> typedToVisualTypedValue))
+                (viewValue config (valueDef.body |> fromTypedValue))
     in
     Element.column [ mediumSpacing config.state.theme |> spacing ]
         [ definitionElem
@@ -56,7 +54,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
                         (\( ( _, _, localName ) as fqName, valDef ) ->
                             Element.column
                                 [ smallSpacing config.state.theme |> spacing ]
-                                [ definition config (nameToText localName) (viewValue config (valDef.body |> typedToVisualTypedValue))
+                                [ definition config (nameToText localName) (viewValue config (valDef.body |> fromTypedValue))
                                 , Element.el
                                     [ Font.bold
                                     , Border.solid
@@ -74,12 +72,12 @@ viewDefinition config ( _, _, valueName ) valueDef =
         ]
 
 
-viewValue : Config msg -> VisualTypedValue -> Element msg
+viewValue : Config msg -> EnrichedValue -> Element msg
 viewValue config value =
     viewValueByValueType config value
 
 
-viewValueByValueType : Config msg -> VisualTypedValue -> Element msg
+viewValueByValueType : Config msg -> EnrichedValue -> Element msg
 viewValueByValueType config typedValue =
     let
         valueType : Type ()
@@ -106,7 +104,7 @@ viewValueByValueType config typedValue =
         viewValueByLanguageFeature config typedValue
 
 
-viewValueByLanguageFeature : Config msg -> VisualTypedValue -> Element msg
+viewValueByLanguageFeature : Config msg -> EnrichedValue -> Element msg
 viewValueByLanguageFeature config value =
     let
         valueElem : Element msg
@@ -115,11 +113,34 @@ viewValueByLanguageFeature config value =
                 Value.Literal _ literal ->
                     ViewLiteral.view config literal
 
-                Value.Constructor _ fQName ->
-                    ViewReference.view config (viewValue config) fQName
+                Value.Constructor _ (( packageName, moduleName, localName ) as fQName) ->
+                    Element.row
+                        [ smallPadding config.state.theme |> padding
+                        , smallSpacing config.state.theme |> spacing
+                        , onClick (config.handlers.onReferenceClicked fQName False)
+                        ]
+                        [ Element.el []
+                            (text
+                                (nameToText localName)
+                            )
+                        ]
 
                 Value.Tuple _ elems ->
-                    ViewTuple.view config (viewValue config) elems
+                    column
+                        [ mediumSpacing config.state.theme |> spacing
+                        ]
+                        [ Element.row
+                            [ mediumSpacing config.state.theme |> spacing
+                            , smallPadding config.state.theme |> padding
+                            ]
+                            [ text "("
+                            , elems
+                                |> List.map (viewValue config)
+                                |> List.intersperse (text ",")
+                                |> Element.row [ smallSpacing config.state.theme |> spacing ]
+                            , text ")"
+                            ]
+                        ]
 
                 Value.List ( index, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
                     ViewList.view config (viewValue config) itemType items
@@ -148,8 +169,17 @@ viewValueByLanguageFeature config value =
                         ]
                         (text (nameToText name))
 
-                Value.Reference _ fQName ->
-                    ViewReference.view config (viewValue config) fQName
+                Value.Reference _ (( packageName, moduleName, localName ) as fQName) ->
+                    Element.row
+                        [ smallPadding config.state.theme |> padding
+                        , smallSpacing config.state.theme |> spacing
+                        , onClick (config.handlers.onReferenceClicked fQName False)
+                        ]
+                        [ Element.el []
+                            (text
+                                (nameToText localName)
+                            )
+                        ]
 
                 Value.Field ( index1, tpe ) subjectValue fieldName ->
                     let
@@ -162,7 +192,7 @@ viewValueByLanguageFeature config value =
                     in
                     case Config.evaluate (subjectValue |> Value.toRawValue) config of
                         Ok valueType ->
-                            case valueType |> rawToVisualTypedValue (config.irContext.distribution |> IR.fromDistribution) of
+                            case valueType |> fromRawValue config.ir of
                                 Ok (Value.Variable ( index, _ ) variableName) ->
                                     let
                                         variableValue : Maybe RawValue
@@ -206,7 +236,7 @@ viewValueByLanguageFeature config value =
 
                 Value.LetDefinition _ _ _ _ ->
                     let
-                        unnest : Config msg -> VisualTypedValue -> ( List ( Name, Element msg ), Element msg )
+                        unnest : Config msg -> EnrichedValue -> ( List ( Name, Element msg ), Element msg )
                         unnest conf v =
                             case v of
                                 Value.LetDefinition _ defName def inVal ->
@@ -295,9 +325,9 @@ viewPopup config =
         |> Maybe.map
             (\rawValue ->
                 let
-                    visualTypedVal : Result TypeError VisualTypedValue
+                    visualTypedVal : Result TypeError EnrichedValue
                     visualTypedVal =
-                        rawToVisualTypedValue (IR.fromDistribution config.irContext.distribution) rawValue
+                        fromRawValue config.ir rawValue
 
                     popUpStyle : Element msg -> Element msg
                     popUpStyle elementMsg =
