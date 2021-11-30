@@ -1,5 +1,6 @@
 module Morphir.Relational.Backend exposing (..)
 
+import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as V exposing (TypedValue)
 import Morphir.Relational.IR as R exposing (Relation(..))
 
