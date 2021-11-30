@@ -10,7 +10,7 @@ automating things like data dictionaries, lineage tracking, and the such.
 
 # Types
 
-@docs BaseTypes, EnumExtensionComponent, Enums, Modules, Types, Aliases, Metadata
+@docs BaseTypes, EnumExtensionComponent, Enums, Modules, Types, Aliases, Metadata, UnionTypes
 
 
 # Processing
@@ -25,6 +25,7 @@ automating things like data dictionaries, lineage tracking, and the such.
 -}
 
 import Dict exposing (Dict)
+import Html exposing (table)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled, withPublicAccess)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
@@ -33,7 +34,6 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Constructors, Specification(..), Type(..))
 import Morphir.Scala.AST exposing (Documented)
-import Html exposing (table)
 
 
 {-| Structure for holding metadata information from processing the distribution.
@@ -409,6 +409,8 @@ extensionToEnum ( fqn, components ) =
     ( fqn, List.concatMap enumExtensionName components )
 
 
+{-| Extract the names out of an enum extension.
+-}
 enumExtensionName : EnumExtensionComponent -> List Name
 enumExtensionName ee =
     case ee of
