@@ -238,7 +238,7 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                                             (\( argName, a, argType ) ->
                                                 [ { modifiers = []
                                                   , tpe = mapType argType
-                                                  , name = argName |> Name.toCamelCase
+                                                  , name = mapValueName argName
                                                   , defaultValue = Nothing
                                                   }
                                                 ]
@@ -568,7 +568,7 @@ mapValue inScopeVars value =
                         )
 
         Variable a name ->
-            Scala.Variable (name |> Name.toCamelCase)
+            Scala.Variable (mapValueName name)
 
         Reference a fQName ->
             let
@@ -659,7 +659,7 @@ mapValue inScopeVars value =
             case argPattern of
                 AsPattern tpe (WildcardPattern _) alias ->
                     Scala.Lambda
-                        [ ( alias |> Name.toCamelCase, Just (mapType tpe) ) ]
+                        [ ( mapValueName alias, Just (mapType tpe) ) ]
                         (mapValue newInScopeVars bodyValue)
 
                 _ ->
@@ -887,11 +887,59 @@ mapValueName name =
         scalaName =
             Name.toCamelCase name
     in
-    if Set.member scalaName javaObjectMethods then
+    if Set.member scalaName scalaKeywords || Set.member scalaName javaObjectMethods then
         "_" ++ scalaName
 
     else
         scalaName
+
+
+{-| Scala keywords that cannot be used as variable name.
+-}
+scalaKeywords : Set String
+scalaKeywords =
+    Set.fromList
+        [ "abstract"
+        , "case"
+        , "catch"
+        , "class"
+        , "def"
+        , "do"
+        , "else"
+        , "extends"
+        , "false"
+        , "final"
+        , "finally"
+        , "for"
+        , "forSome"
+        , "if"
+        , "implicit"
+        , "import"
+        , "lazy"
+        , "macro"
+        , "match"
+        , "new"
+        , "null"
+        , "object"
+        , "override"
+        , "package"
+        , "private"
+        , "protected"
+        , "return"
+        , "sealed"
+        , "super"
+        , "this"
+        , "throw"
+        , "trait"
+        , "try"
+        , "true"
+        , "type"
+        , "val"
+        , "var"
+        , "while"
+        , "with"
+        , "yield"
+        ]
 
 
 {-| We cannot use any method names in `java.lang.Object` because values are represented as functions/values in a Scala
