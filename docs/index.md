@@ -12,8 +12,9 @@ programmatically in various ways:
 
 While the core idea behind Morphir is very simple it's still challenging to describe it because it doesn't fit into
 any well-known categories. To help you understand what it is and how you can use it to solve real-world problems we
-came up with a list of questions and short answers:
+put together a tutorial and list of questions and short answers:
 
+- [Tutorial](https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial)
 - [How do I define my domain model and business logic?](#how-do-I-define-my-domain-model-and-business-logic)
 - [How does Morphir turn logic into data?](#how-does-morphir-turn-logic-into-data)
 - [What does the data format look like?](#what-does-the-data-format-look-like)
