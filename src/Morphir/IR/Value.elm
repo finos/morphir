@@ -328,15 +328,15 @@ argument:
     --     )
 
 -}
-definitionToValue : Definition ta () -> Value ta ()
+definitionToValue : Definition ta va -> Value ta va
 definitionToValue def =
     case def.inputTypes of
         [] ->
             def.body
 
-        ( firstArgName, _, _ ) :: restOfArgs ->
-            Lambda ()
-                (AsPattern () (WildcardPattern ()) firstArgName)
+        ( firstArgName, va, _ ) :: restOfArgs ->
+            Lambda va
+                (AsPattern va (WildcardPattern va) firstArgName)
                 (definitionToValue
                     { def
                         | inputTypes = restOfArgs
@@ -1740,6 +1740,7 @@ toString value =
 
                 ConstructorPattern _ ( packageName, moduleName, localName ) argPatterns ->
                     let
+                        constructorString : String
                         constructorString =
                             String.join "."
                                 [ Path.toString Name.toTitleCase "." packageName

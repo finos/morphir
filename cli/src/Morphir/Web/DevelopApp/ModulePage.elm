@@ -15,7 +15,7 @@ import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Config exposing (Config, HighlightState(..), PopupScreenRecord)
+import Morphir.Visual.Config as Config exposing (Config, HighlightState(..), PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
@@ -227,23 +227,17 @@ viewValue handlers model distribution valueFQName valueDef =
 
         config : Config msg
         config =
-            { irContext =
-                { distribution = distribution
-                , nativeFunctions = SDK.nativeFunctions
-                }
-            , state =
+            Config.fromIR (IR.fromDistribution distribution)
                 { expandedFunctions = model.expandedValues |> Dict.toList |> List.map (\( ( fQName, _ ), rawValue ) -> ( fQName, rawValue )) |> Dict.fromList
                 , variables = validArgValues
                 , popupVariables = model.popupVariables
                 , theme = Theme.fromConfig Nothing
                 , highlightState = Nothing
                 }
-            , handlers =
                 { onReferenceClicked = handlers.expandReference
                 , onHoverOver = handlers.expandVariable
                 , onHoverLeave = handlers.shrinkVariable
                 }
-            }
     in
     ViewValue.viewDefinition config valueFQName valueDef
 

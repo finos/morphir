@@ -10,10 +10,10 @@ import Morphir.IR.Value as Value exposing (Pattern, TypedValue, Value)
 import Morphir.Value.Interpreter exposing (matchPattern)
 import Morphir.Visual.Components.DecisionTable as DecisionTable exposing (DecisionTable, Match(..), Rule, TypedPattern)
 import Morphir.Visual.Config as Config exposing (Config, HighlightState(..))
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 
 
-view : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> VisualTypedValue -> List ( Pattern ( Int, Type () ), VisualTypedValue ) -> Element msg
+view : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> EnrichedValue -> List ( Pattern ( Int, Type () ), EnrichedValue ) -> Element msg
 view config viewValue subject matches =
     let
         typedSubject : TypedValue
@@ -251,7 +251,7 @@ getNextHighlightState config currentMatch previousStates =
     List.append previousStates [ nextState ]
 
 
-toTypedValue : VisualTypedValue -> TypedValue
+toTypedValue : EnrichedValue -> TypedValue
 toTypedValue visualTypedValue =
     visualTypedValue
         |> Value.mapValueAttributes (always ()) (always Tuple.second (Value.valueAttribute visualTypedValue))

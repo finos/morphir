@@ -21,8 +21,8 @@ import Morphir.IR.Value as Value exposing (Pattern(..), Value, indexedMapValue)
 import Morphir.Value.Interpreter exposing (matchPattern)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config as Config exposing (Config, HighlightState(..), VisualState)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (mediumPadding)
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
 type alias TypedValue =
@@ -70,12 +70,12 @@ type alias Rule =
     }
 
 
-displayTable : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> DecisionTable -> Element msg
+displayTable : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> DecisionTable -> Element msg
 displayTable config viewValue table =
     tableHelp config viewValue table.decomposeInput table.rules
 
 
-tableHelp : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> List TypedValue -> List Rule -> Element msg
+tableHelp : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> List TypedValue -> List Rule -> Element msg
 tableHelp config viewValue headerFunctions rows =
     table [ Border.solid, Border.width 1 ]
         { data = rows
@@ -101,7 +101,7 @@ tableHelp config viewValue headerFunctions rows =
         }
 
 
-getColumnFromHeader : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> Int -> List TypedValue -> List (Column Rule msg)
+getColumnFromHeader : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> Int -> List TypedValue -> List (Column Rule msg)
 getColumnFromHeader config viewValue index decomposeInput =
     case decomposeInput of
         inputHead :: [] ->
@@ -114,10 +114,10 @@ getColumnFromHeader config viewValue index decomposeInput =
             []
 
 
-columnHelper : Config msg -> (Config msg -> VisualTypedValue -> Element msg) -> TypedValue -> Int -> List (Column Rule msg)
+columnHelper : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> TypedValue -> Int -> List (Column Rule msg)
 columnHelper config viewValue header index =
     let
-        head : VisualTypedValue
+        head : EnrichedValue
         head =
             toVisualTypedValue header
     in
@@ -148,7 +148,7 @@ updateConfig config highlightState =
     { config | state = updatedTableState }
 
 
-getCaseFromIndex : Config msg -> VisualTypedValue -> (Config msg -> VisualTypedValue -> Element msg) -> Maybe HighlightState -> Maybe Match -> Element msg
+getCaseFromIndex : Config msg -> EnrichedValue -> (Config msg -> EnrichedValue -> Element msg) -> Maybe HighlightState -> Maybe Match -> Element msg
 getCaseFromIndex config head viewValue highlightState rule =
     case rule of
         Just match ->
@@ -169,7 +169,7 @@ getCaseFromIndex config head viewValue highlightState rule =
 
                         Value.LiteralPattern va literal ->
                             let
-                                value : VisualTypedValue
+                                value : EnrichedValue
                                 value =
                                     toVisualTypedValue (Value.Literal va literal)
                             in
@@ -201,7 +201,7 @@ getCaseFromIndex config head viewValue highlightState rule =
             text "nothing"
 
 
-toVisualTypedValue : TypedValue -> VisualTypedValue
+toVisualTypedValue : TypedValue -> EnrichedValue
 toVisualTypedValue typedValue =
     typedValue
         |> indexedMapValue Tuple.pair 0

@@ -148,17 +148,17 @@ decodeType decodeAttributes =
 
 encodeField : (a -> Encode.Value) -> Field a -> Encode.Value
 encodeField encodeAttributes field =
-    Encode.list identity
-        [ encodeName field.name
-        , encodeType encodeAttributes field.tpe
+    Encode.object
+        [ ("name", encodeName field.name)
+        , ("tpe", encodeType encodeAttributes field.tpe)
         ]
 
 
 decodeField : Decode.Decoder a -> Decode.Decoder (Field a)
 decodeField decodeAttributes =
     Decode.map2 Field
-        (Decode.index 0 decodeName)
-        (Decode.index 1 (decodeType decodeAttributes))
+        (Decode.field "name" decodeName)
+        (Decode.field "tpe" (decodeType decodeAttributes))
 
 
 {-| -}

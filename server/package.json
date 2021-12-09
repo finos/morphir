@@ -9,6 +9,6 @@
     },
     "dependencies": {
         "express": "^4.16.1",
-        "morphir-bsq-transpiler": "^0.1.8"
+        "morphir-bsq-transpiler": "^0.1.10"
     }
 }

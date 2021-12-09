@@ -1,20 +1,17 @@
-module Morphir.TypeScript.PrettyPrinter.MapExpressions exposing (Options, mapGenericVariables, mapObjectExp, mapTypeExp, namespaceNameFromPackageAndModule)
+module Morphir.TypeScript.PrettyPrinter.Expressions exposing (..)
 
 import Morphir.File.SourceCode exposing (Doc, concat, indentLines, newLine)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path exposing (Path)
-import Morphir.TypeScript.AST exposing (ObjectExp, Privacy(..), TypeDef(..), TypeExp(..))
+import Morphir.TypeScript.AST exposing (ObjectExp, Parameter, Privacy(..), TypeDef(..), TypeExp(..), namespaceNameFromPackageAndModule)
 
 
-{-| Formatting options.
--}
-type alias Options =
-    { indentDepth : Int
-    }
+defaultIndent =
+    2
 
 
-mapGenericVariables : Options -> List TypeExp -> String
-mapGenericVariables opt variables =
+mapGenericVariables : List TypeExp -> String
+mapGenericVariables variables =
     case List.length variables of
         0 ->
             ""
@@ -22,26 +19,48 @@ mapGenericVariables opt variables =
         _ ->
             concat
                 [ "<"
-                , String.join ", " (variables |> List.map (mapTypeExp opt))
+                , String.join ", " (variables |> List.map mapTypeExp)
                 , ">"
                 ]
 
 
+mapParameter : Parameter -> String
+mapParameter { modifiers, name, typeAnnotation } =
+    concat
+        [ modifiers |> String.join " "
+        , " "
+        , name
+        , mapMaybeAnnotation typeAnnotation
+        ]
+
+
+mapMaybeAnnotation : Maybe TypeExp -> String
+mapMaybeAnnotation maybeTypeExp =
+    case maybeTypeExp of
+        Nothing ->
+            ""
+
+        Just typeExp ->
+            ": " ++ mapTypeExp typeExp
+
+
+{-| Map a field to text (from an object or interface)
+-}
+mapField : ( String, TypeExp ) -> Doc
+mapField ( fieldName, fieldType ) =
+    concat [ fieldName, ": ", mapTypeExp fieldType, ";" ]
+
+
 {-| Map an object expression or interface definiton to text
 -}
-mapObjectExp : Options -> ObjectExp -> Doc
-mapObjectExp opt objectExp =
-    let
-        mapField : ( String, TypeExp ) -> Doc
-        mapField ( fieldName, fieldType ) =
-            concat [ fieldName, ": ", mapTypeExp opt fieldType, ";" ]
-    in
+mapObjectExp : ObjectExp -> Doc
+mapObjectExp objectExp =
     concat
         [ "{"
         , newLine
         , objectExp
             |> List.map mapField
-            |> indentLines opt.indentDepth
+            |> indentLines defaultIndent
         , newLine
         , "}"
         ]
@@ -49,8 +68,8 @@ mapObjectExp opt objectExp =
 
 {-| Map a type expression to text.
 -}
-mapTypeExp : Options -> TypeExp -> Doc
-mapTypeExp opt typeExp =
+mapTypeExp : TypeExp -> Doc
+mapTypeExp typeExp =
     case typeExp of
         Any ->
             "any"
@@ -58,17 +77,35 @@ mapTypeExp opt typeExp =
         Boolean ->
             "boolean"
 
+        FunctionTypeExp params rtnTypeExp ->
+            concat
+                [ "("
+                , params |> List.map mapParameter |> String.join ", "
+                , ") => "
+                , mapTypeExp rtnTypeExp
+                ]
+
         List listType ->
-            "Array<" ++ mapTypeExp opt listType ++ ">"
+            "Array<" ++ mapTypeExp listType ++ ">"
 
         LiteralString stringval ->
             "\"" ++ stringval ++ "\""
+
+        Map keyType valueType ->
+            concat
+                [ "Map"
+                , "<"
+                , mapTypeExp keyType
+                , ", "
+                , mapTypeExp valueType
+                , ">"
+                ]
 
         Number ->
             "number"
 
         Object fieldList ->
-            mapObjectExp opt fieldList
+            mapObjectExp fieldList
 
         String ->
             "string"
@@ -77,7 +114,7 @@ mapTypeExp opt typeExp =
             concat
                 [ "["
                 , tupleTypesList
-                    |> List.map (mapTypeExp opt)
+                    |> List.map mapTypeExp
                     |> String.join ", "
                 , "]"
                 ]
@@ -101,11 +138,11 @@ mapTypeExp opt typeExp =
             in
             concat
                 [ processed_name
-                , mapGenericVariables opt variables
+                , mapGenericVariables variables
                 ]
 
         Union types ->
-            types |> List.map (mapTypeExp opt) |> String.join " | "
+            types |> List.map mapTypeExp |> String.join " | "
 
         Variable name ->
             name

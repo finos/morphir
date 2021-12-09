@@ -9,7 +9,9 @@ const http = require('isomorphic-git/http/node')
 const del = require('del')
 const elmMake = require('node-elm-compiler').compile
 const execa = require('execa');
+const mocha = require('gulp-mocha');
 const ts = require('gulp-typescript');
+const tsProject = ts.createProject('./tsconfig.json')
 
 const config = {
     morphirJvmVersion: '0.7.1',
@@ -19,7 +21,7 @@ const config = {
 const stdio = 'inherit';
 
 async function clean() {
-    return del([ 'dist' ])
+    return del(['dist'])
 }
 
 async function cloneMorphirJVM() {
@@ -40,6 +42,10 @@ function copyMorphirJVMAssets() {
 
 async function cleanupMorphirJVM() {
     return del(config.morphirJvmCloneDir.name + '/**', { force: true });
+}
+
+function checkElmDocs() {
+    return elmMake([], { docs: "docs.json" })
 }
 
 function make(rootDir, source, target) {
@@ -73,6 +79,7 @@ function makeTryMorphir() {
 
 const build =
     series(
+        checkElmDocs,
         makeCLI,
         makeDevCLI,
         makeDevServer,
@@ -83,7 +90,7 @@ const build =
 
 
 function morphirElmMake(projectDir, outputPath, options = {}) {
-    args = [ './cli/morphir-elm.js', 'make', '-p', projectDir, '-o', outputPath ]
+    args = ['./cli/morphir-elm.js', 'make', '-p', projectDir, '-o', outputPath]
     if (options.typesOnly) {
         args.push('--types-only')
     }
@@ -92,7 +99,7 @@ function morphirElmMake(projectDir, outputPath, options = {}) {
 }
 
 function morphirElmGen(inputPath, outputDir, target) {
-    args = [ './cli/morphir-elm.js', 'gen', '-i', inputPath, '-o', outputDir, '-t', target ]
+    args = ['./cli/morphir-elm.js', 'gen', '-i', inputPath, '-o', outputDir, '-t', target]
     console.log("Running: " + args.join(' '));
     return execa('node', args, { stdio })
 }
@@ -148,6 +155,7 @@ async function testIntegrationBuildScala(cb) {
     }
 }
 
+// Generate TypeScript API for reference model.
 async function testIntegrationGenTypeScript(cb) {
     await morphirElmGen(
         './tests-integration/generated/refModel/morphir-ir.json',
@@ -155,29 +163,27 @@ async function testIntegrationGenTypeScript(cb) {
         'TypeScript')
 }
 
-function testIntegrationBuildTypeScript(cb) {
-    return src('tests-integration/generated/refModel/src/typescript/**/*.ts')
-        .pipe(ts({
-            outFile: 'output.js'
-        }))
-        .pipe(dest('tests-integration/generated/refModel/src/typescript/output.js'));
+// Compile generated Typescript API and run integration tests.
+function testIntegrationTestTypeScript(cb) {
+    return src('tests-integration/typescript/TypesTest-refModel.ts')
+        .pipe(mocha({ require: 'ts-node/register' }));
 }
 
 const testIntegration = series(
-        testIntegrationClean,
-        testIntegrationMake,
-        parallel(
-            testIntegrationMorphirTest,
-            series(
-                testIntegrationGenScala,
-                testIntegrationBuildScala,
-            ),
-            series(
-                testIntegrationGenTypeScript,
-                //testIntegrationBuildTypeScript,
-            ),
-        )
+    testIntegrationClean,
+    testIntegrationMake,
+    parallel(
+        testIntegrationMorphirTest,
+        series(
+            testIntegrationGenScala,
+            testIntegrationBuildScala,
+        ),
+        series(
+            testIntegrationGenTypeScript,
+            testIntegrationTestTypeScript,
+        ),
     )
+)
 
 
 async function testMorphirIRMake(cb) {
@@ -185,6 +191,7 @@ async function testMorphirIRMake(cb) {
         { typesOnly: true })
 }
 
+// Generate TypeScript API for Morphir.IR itself.
 async function testMorphirIRGenTypeScript(cb) {
     await morphirElmGen(
         './tests-integration/generated/morphirIR/morphir-ir.json',
@@ -192,18 +199,16 @@ async function testMorphirIRGenTypeScript(cb) {
         'TypeScript')
 }
 
-function testMorphirIRBuildTypeScript(cb) {
-    return src('tests-integration/generated/morphirIR/src/typescript/**/*.ts')
-        .pipe(ts({
-            outFile: 'output.js'
-        }))
-        .pipe(dest('tests-integration/generated/morphirIR/src/typescript/output.js'));
+// Compile generated Typescript API and run integration tests.
+function testMorphirIRTestTypeScript(cb) {
+    return src('tests-integration/typescript/CodecsTest-Morphir-IR.ts')
+        .pipe(mocha({ require: 'ts-node/register' }));
 }
 
 testMorphirIR = series(
     testMorphirIRMake,
     testMorphirIRGenTypeScript,
-    //testMorphirIRBuildTypeScript,
+    testMorphirIRTestTypeScript,
 )
 
 
@@ -221,6 +226,7 @@ exports.build = build;
 exports.test = test;
 exports.testIntegration = testIntegration;
 exports.testMorphirIR = testMorphirIR;
+exports.testMorphirIRTypeScript = testMorphirIR;
 exports.default =
     series(
         clean,
