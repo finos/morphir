@@ -16,6 +16,7 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value, toRawValue)
 import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.ResultList as ResultList
 import Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
 import Morphir.Value.Native as Native
 
@@ -147,8 +148,6 @@ evaluateValue nativeFunctions ir variables arguments value =
                 |> Dict.get varName
                 -- If we cannot find the variable in the state we return an error.
                 |> Result.fromMaybe (VariableNotFound varName)
-                -- Do another round of evaluation in case there are unevaluated values in the variable (lazy evaluation)
-                |> Result.andThen (evaluateValue nativeFunctions ir variables [])
                 -- Wrap the error to make it easier to understand where it happened
                 |> Result.mapError (ErrorWhileEvaluatingVariable varName)
 
@@ -172,8 +171,17 @@ evaluateValue nativeFunctions ir variables arguments value =
                         |> Result.mapError (ErrorWhileEvaluatingReference fQName)
 
                 Nothing ->
-                    -- If this is a reference to another Morphir value we need to look it up and evaluate.
-                    evaluateFunctionValue nativeFunctions ir fQName arguments
+                    arguments
+                        |> List.map
+                            (evaluateValue
+                                nativeFunctions
+                                ir
+                                variables
+                                []
+                            )
+                        |> ResultList.keepFirstError
+                        -- If this is a reference to another Morphir value we need to look it up and evaluate.
+                        |> Result.andThen (evaluateFunctionValue nativeFunctions ir fQName)
 
         Value.Field _ subjectValue fieldName ->
             -- Field selection is evaluated by evaluating the subject first then matching on the resulting record and
