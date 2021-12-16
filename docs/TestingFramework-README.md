@@ -1,4 +1,4 @@
-##Testing Framework Guide
+## Testing Framework Guide
 The purpose of this document is how we can use Testing Framework within developer server.
 
 ## Prerequisites
@@ -19,7 +19,7 @@ The purpose of this document is how we can use Testing Framework within develope
    }
 ```
 
-####Example: 
+#### Example: 
 If we have a file with module name defined as:
 ```
 module Morphir.Reference.Model.Issues.Issue410 exposing (..)
@@ -129,18 +129,32 @@ c) Create a json object from FQName and Testcases
    http://localhost:8000/function/Morphir.Reference.Model:Issues.Issue410:addFunction
 ```
 ## Features
-####1. Add TestCases
-- You can clone as many testcase as you wanted with default values of testcase whose add testcase button you will click.
+#### 1. Add TestCases
+- You can add new testcase with empty input fields.
 
-####2. Edit TestCases
-- You can edit inputs and output will be change based on the new input values.
+#### 2. Clone TestCases
+- You can clone as many testcase as you wanted with default values of testcase whose clone testcase button you will click.
 
-####3. Easy Debugging
+#### 3. Edit & Save TestCases
+- You can edit and save inputs and expected output field values and actual output value will be change based on the new input values.
+
+#### 4. Delete TestCases
+- You can delete testcases anytime.
+
+#### 5. Save Changes
+- Every action performed in above scenarios will not affect the changes into morphir-tests.json file.
+- In order to save it there you can use save changes button for saving testcases into json file.
+  
+#### 6. Easy Debugging
 - This framework also allows user to match actual output with expected output.
 - If the actual output will be in green color then it matches otherwise it would be red.
 - It also shows the error if morphir interpreter is unable to evaluate your inputs.
- 
-**Note** - Nothing will be saved in database. Every cloned and edit testcase will update locally in page. Page reloading will remove all the local changes.
+
+#### 7. Build Integration
+- We have also exposed a build integration command for testing your model.
+- Use `morphir-elm test` and it will run all the test cases for all the functions all the test cases present in your morphir-tests.json file.
+- If Test pass then it will show you all function with number of pass testcases output highlighted in green color.
+- If Test fail then it will list you out all the functions with their fail test cases comparing difference in output highlighted in red color.
 
 ### Example
 - Output is not matching 
