@@ -10,6 +10,7 @@
         "IR.Type",
         "IR.Value",
         "IR.Module",
-        "IR.Package"
+        "IR.Package",
+        "IR.Distribution"
     ]
 }

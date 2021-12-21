@@ -22,9 +22,9 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
-import Morphir.IR.SDK.Common exposing (toFQName)
-import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
+import Morphir.IR.SDK.Basics exposing (boolType, intType)
+import Morphir.IR.SDK.Common exposing (toFQName, vSpec)
+import Morphir.IR.Type exposing (Specification(..), Type(..))
 
 
 moduleName : ModuleName
@@ -39,35 +39,21 @@ moduleSpec =
             [ ( Name.fromString "Char", OpaqueTypeSpecification [] |> Documented "Type that represents a single character." )
             ]
     , values =
-        let
-            -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.
-            dummyValueSpec : Value.Specification ()
-            dummyValueSpec =
-                Value.Specification [] (Type.Unit ())
-
-            valueNames : List String
-            valueNames =
-                [ "isUpper"
-                , "isLower"
-                , "isAlpha"
-                , "isAlphaNum"
-                , "isDigit"
-                , "isOctDigit"
-                , "isHexDigit"
-                , "toUpper"
-                , "toLower"
-                , "toLocaleUpper"
-                , "toLocaleLower"
-                , "toCode"
-                , "fromCode"
-                ]
-        in
-        valueNames
-            |> List.map
-                (\valueName ->
-                    ( Name.fromString valueName, dummyValueSpec )
-                )
-            |> Dict.fromList
+        Dict.fromList
+            [ vSpec "isUpper" [ ( "c", charType () ) ] (boolType ())
+            , vSpec "isLower" [ ( "c", charType () ) ] (boolType ())
+            , vSpec "isAlpha" [ ( "c", charType () ) ] (boolType ())
+            , vSpec "isAlphaNum" [ ( "c", charType () ) ] (boolType ())
+            , vSpec "isDigit" [ ( "c", charType () ) ] (boolType ())
+            , vSpec "isOctDigit" [ ( "c", charType () ) ] (boolType ())
+            , vSpec "isHexDigit" [ ( "c", charType () ) ] (boolType ())
+            , vSpec "toUpper" [ ( "c", charType () ) ] (charType ())
+            , vSpec "toLower" [ ( "c", charType () ) ] (charType ())
+            , vSpec "toLocaleUpper" [ ( "c", charType () ) ] (charType ())
+            , vSpec "toLocaleLower" [ ( "c", charType () ) ] (charType ())
+            , vSpec "toCode" [ ( "c", charType () ) ] (intType ())
+            , vSpec "fromCode" [ ( "c", intType () ) ] (charType ())
+            ]
     }
 
 

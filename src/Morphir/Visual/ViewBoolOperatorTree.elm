@@ -3,19 +3,18 @@ module Morphir.Visual.ViewBoolOperatorTree exposing (..)
 import Element exposing (Attribute, Element, centerX, centerY, fill, height, none, padding, spacing, width)
 import Element.Border
 import Element.Font as Font
-import Morphir.IR.Value exposing (TypedValue)
 import Morphir.Visual.BoolOperatorTree exposing (BoolOperator(..), BoolOperatorTree(..))
-import Morphir.Visual.Common exposing (VisualTypedValue)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 
 
-view : Config msg -> (VisualTypedValue -> Element msg) -> BoolOperatorTree -> Element msg
+view : Config msg -> (EnrichedValue -> Element msg) -> BoolOperatorTree -> Element msg
 view config viewValue boolOperatorTree =
     viewTreeNode config viewValue Vertical boolOperatorTree
 
 
-viewTreeNode : Config msg -> (VisualTypedValue -> Element msg) -> LayoutDirection -> BoolOperatorTree -> Element msg
+viewTreeNode : Config msg -> (EnrichedValue -> Element msg) -> LayoutDirection -> BoolOperatorTree -> Element msg
 viewTreeNode config viewValue direction boolOperatorTree =
     case boolOperatorTree of
         BoolOperatorBranch operator values ->

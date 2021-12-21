@@ -15,14 +15,14 @@
 -}
 
 
-module Morphir.IR.Distribution.Codec exposing (encodeDistribution, decodeDistribution)
+module Morphir.IR.Distribution.Codec exposing (encodeVersionedDistribution, decodeVersionedDistribution, encodeDistribution, decodeDistribution)
 
 {-| Codecs for types in the `Morphir.IR.Distribution` module.
 
 
 # Distribution
 
-@docs encodeDistribution, decodeDistribution
+@docs encodeVersionedDistribution, decodeVersionedDistribution, encodeDistribution, decodeDistribution
 
 -}
 
@@ -31,9 +31,56 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.Codec exposing (decodeUnit, encodeUnit)
 import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution.CodecV1 as CodecV1
 import Morphir.IR.Package.Codec as PackageCodec
 import Morphir.IR.Path.Codec exposing (decodePath, encodePath)
 import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
+
+
+{-| This is a manually managed version number to be able to handle breaking changes in the IR format more explicitly.
+-}
+currentFormatVersion : Int
+currentFormatVersion =
+    2
+
+
+{-| Encode distribution including a version number.
+-}
+encodeVersionedDistribution : Distribution -> Encode.Value
+encodeVersionedDistribution distro =
+    Encode.object
+        [ ( "formatVersion", Encode.int currentFormatVersion )
+        , ( "distribution", encodeDistribution distro )
+        ]
+
+
+{-| Decode distribution including a version number.
+-}
+decodeVersionedDistribution : Decode.Decoder Distribution
+decodeVersionedDistribution =
+    Decode.oneOf
+        [ Decode.field "formatVersion" Decode.int
+            |> Decode.andThen
+                (\formatVersion ->
+                    if formatVersion == currentFormatVersion then
+                        Decode.field "distribution" decodeDistribution
+
+                    else if formatVersion == 1 then
+                        Decode.field "distribution" CodecV1.decodeDistribution
+
+                    else
+                        Decode.fail
+                            (String.concat
+                                [ "The IR is using format version "
+                                , String.fromInt formatVersion
+                                , " but the latest format version is "
+                                , String.fromInt currentFormatVersion
+                                , ". Please regenerate it!"
+                                ]
+                            )
+                )
+        , Decode.fail "The IR is in an old format that doesn't have a format version on it. Please regenerate it!"
+        ]
 
 
 {-| Encode Distribution.
@@ -43,7 +90,7 @@ encodeDistribution distro =
     case distro of
         Library packagePath dependencies def ->
             Encode.list identity
-                [ Encode.string "library"
+                [ Encode.string "Library"
                 , encodePath packagePath
                 , dependencies
                     |> Dict.toList
@@ -68,7 +115,7 @@ decodeDistribution =
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "library" ->
+                    "Library" ->
                         Decode.map3 Library
                             (Decode.index 1 decodePath)
                             (Decode.index 2

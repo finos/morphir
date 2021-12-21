@@ -67,7 +67,7 @@ substituteVariable var replacement (ConstraintSet constraints) =
                 (\constraint ->
                     let
                         newConstraint =
-                            Constraint.substitute var replacement constraint
+                            Constraint.substituteVariable var replacement constraint
                     in
                     if Constraint.isTrivial newConstraint then
                         Nothing

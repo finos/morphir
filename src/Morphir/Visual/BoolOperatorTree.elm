@@ -3,12 +3,12 @@ module Morphir.Visual.BoolOperatorTree exposing (..)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Value as Value exposing (TypedValue)
-import Morphir.Visual.Common exposing (VisualTypedValue)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 
 
 type BoolOperatorTree
     = BoolOperatorBranch BoolOperator (List BoolOperatorTree)
-    | BoolValueLeaf VisualTypedValue
+    | BoolValueLeaf EnrichedValue
 
 
 type BoolOperator
@@ -16,7 +16,7 @@ type BoolOperator
     | Or
 
 
-fromTypedValue : VisualTypedValue -> BoolOperatorTree
+fromTypedValue : EnrichedValue -> BoolOperatorTree
 fromTypedValue typedValue =
     case typedValue of
         Value.Apply _ fun arg ->
@@ -48,7 +48,7 @@ fromTypedValue typedValue =
             BoolValueLeaf typedValue
 
 
-helperFunction : VisualTypedValue -> String -> List BoolOperatorTree
+helperFunction : EnrichedValue -> String -> List BoolOperatorTree
 helperFunction value operatorName =
     case value of
         Value.Apply _ fun arg ->

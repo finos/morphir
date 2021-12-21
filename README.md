@@ -100,10 +100,12 @@ Usage: morphir-elm gen [options]
 Generate code from Morphir IR
 
 Options:
-  -i, --input <path>   Source location where the Morphir IR will be loaded from. (default: "morphir-ir.json")
-  -o, --output <path>  Target location where the generated code will be saved. (default: "./dist")
-  -t, --target <type>  Language to Generate (Scala | SpringBoot | cypher | triples (default: "Scala")
-  -h, --help           output usage information
+  -i, --input <path>              Source location where the Morphir IR will be loaded from. (default: "morphir-ir.json")
+  -o, --output <path>             Target location where the generated code will be saved. (default: "./dist")
+  -t, --target <type>             Language to Generate (Scala | SpringBoot | cypher | triples). (default: "Scala")
+  -e, --target-version <version>  Language version to Generate. (default: "2.11")
+  -c, --copy-deps                 Copy the dependencies used by the generated code to the output path. (default: false)
+  -h, --help                      output usage information
 ```
 
 #### Examples

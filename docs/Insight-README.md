@@ -1,4 +1,5 @@
-**This document will describe how we can use Insight API into any UI.**
+##Insight API Guide
+The purpose of this document is how we can use Insight API into any UI.
 
 ## Prerequisites
 Morphir-elm package installed. Installation instructions: [morphir-elm installation](https://github.com/finos/morphir-elm/blob/master/README.md)
@@ -68,13 +69,12 @@ For more details on interoperability [JavaScript Interoperability ](https://guid
 ```
    var app = Elm.Morphir.Web.Insight.init({
    node: document.getElementById('app'),
-   flags: {
-             distribution : distribution 
-          ,  config : { fontSize : 12 , decimalDigit : 2}
+   flags: {  distribution : distribution 
+          ,  config : { fontSize : 12 , decimalDigit : 2 }
           }
    });
 ```
- - Distribution field in the flag is same what we are getting from morphir-ir.json file. No need to change anything store the data of json file into a variable(Name - distribution) and simply pass it in distribution field.
+ - Distribution field in the flag is same what we are getting from morphir-ir.json file. You can host this file on a server and then make an HTTP request to get the file data in JSON format. Store the JSON request into a variable(Name - distribution) and simply pass it in distribution field.
  - Config field is used to take the control over styling part. Padding and spacing between elements will adjust accordingly when you change the font size. Here, decimalDigit is used to set precision of numbers. You can simply skip any of these field if you don't want.Then these fields will initialize with default values fontSize = 12 and decimalDigit = 2.
    
 For more details on flags [Flags](https://guide.elm-lang.org/interop/flags.html)
@@ -95,14 +95,17 @@ For more details on ports [Ports](https://guide.elm-lang.org/interop/ports.html)
 ``` 
     limitTracking : Float -> Float -> Float -> Float -> Float -> List TrackingAdvantage
 ```
-- It means it is expecting 5 arguments of float type and returning a List type.
+- It means it is expecting 5 arguments of float type and returning a List of TrackingAdvantage type.
 ``` 
-    var argsList = [["literal",{},["float_literal", 14]],["literal",{},["float_literal", 4]],["literal",{},["float_literal", 13.5]],["literal",{},["float_literal", 36.3]],["literal",{},["float_literal", 62.3]]];
+    var argsList = [10 ,13 ,-16 ,15 ,-10];
     app.ports.receiveFunctionArguments.send(argsList);
 ```
 - For more details of encoding like how to encode `list, tuple, and record`
-[Encoding Decoding File](https://github.com/finos/morphir-elm/blob/master/src/Morphir/IR/Value/Codec.elm)
+[Encoding Decoding File](https://github.com/finos/morphir-elm/blob/master/src/Morphir/IR/Type/DataCodec.elm)
 - This file has all the functions of encoding and decoding of elm data types.
+  
+- For better understanding of json mapping from elm to json refer the below file. 
+[Json Mapping](https://github.com/finos/morphir-elm/blob/master/docs/json-mapping.md)
 
 ### Example File
 - If you are still confused like how to write code for all that steps, you can have a look at example file.

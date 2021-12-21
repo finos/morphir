@@ -4,6 +4,7 @@
 const path = require('path')
 const util = require('util')
 const fs = require('fs')
+const prettier = require("prettier");
 const readdir = util.promisify(fs.readdir)
 const mkdir = util.promisify(fs.mkdir)
 const readFile = util.promisify(fs.readFile)
@@ -18,8 +19,7 @@ async function make(projectDir, options) {
     const morphirJsonContent = await readFile(morphirJsonPath)
     const morphirJson = JSON.parse(morphirJsonContent.toString())
     const sourceFiles = await readElmSources(path.join(projectDir, morphirJson.sourceDirectory))
-    const packageDef = await packageDefinitionFromSource(morphirJson, sourceFiles, options)
-    return packageDef
+    return packageDefinitionFromSource(morphirJson, sourceFiles, options)
 }
 
 async function packageDefinitionFromSource(morphirJson, sourceFiles, options) {
@@ -36,8 +36,7 @@ async function packageDefinitionFromSource(morphirJson, sourceFiles, options) {
             }
         })
 
-        const opts =
-        {
+        const opts = {
             typesOnly: options.typesOnly
         }
 
@@ -46,28 +45,30 @@ async function packageDefinitionFromSource(morphirJson, sourceFiles, options) {
 }
 
 async function readElmSources(dir) {
-    const readElmSource = async function (filePath) {
+    const readElmSource = async function(filePath) {
         const content = await readFile(filePath)
         return {
             path: filePath,
             content: content.toString()
         }
     }
-    const readDir = async function (currentDir) {
-        const entries = await readdir(currentDir, { withFileTypes: true })
+    const readDir = async function(currentDir) {
+        const entries = await readdir(currentDir, {
+            withFileTypes: true
+        })
         const elmSources =
             entries
-                .filter(entry => entry.isFile() && entry.name.endsWith('.elm'))
-                .map(entry => readElmSource(path.join(currentDir, entry.name)))
+            .filter(entry => entry.isFile() && entry.name.endsWith('.elm'))
+            .map(entry => readElmSource(path.join(currentDir, entry.name)))
         const subDirSources =
             entries
-                .filter(entry => entry.isDirectory())
-                .map(entry => readDir(path.join(currentDir, entry.name)))
-                .reduce(async (soFarPromise, nextPromise) => {
-                    const soFar = await soFarPromise
-                    const next = await nextPromise
-                    return soFar.concat(next)
-                }, Promise.resolve([]))
+            .filter(entry => entry.isDirectory())
+            .map(entry => readDir(path.join(currentDir, entry.name)))
+            .reduce(async (soFarPromise, nextPromise) => {
+                const soFar = await soFarPromise
+                const next = await nextPromise
+                return soFar.concat(next)
+            }, Promise.resolve([]))
         return elmSources.concat(await subDirSources)
     }
 
@@ -75,22 +76,32 @@ async function readElmSources(dir) {
 }
 
 async function gen(input, outputPath, options) {
-    await mkdir(outputPath, { recursive: true })
+    await mkdir(outputPath, {
+        recursive: true
+    })
     const morphirIrJson = await readFile(path.resolve(input))
     const fileMap = await generate(options, JSON.parse(morphirIrJson.toString()))
 
 
     const writePromises =
-        fileMap.map(async ([[dirPath, fileName], content]) => {
+        fileMap.map(async ([
+            [dirPath, fileName], content
+        ]) => {
             const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)
             const filePath = path.join(fileDir, fileName)
             if (await fileExist(filePath)) {
                 console.log(`UPDATE - ${filePath}`)
             } else {
-                await mkdir(fileDir, { recursive: true })
+                await mkdir(fileDir, {
+                    recursive: true
+                })
                 console.log(`INSERT - ${filePath}`)
             }
-            return fsWriteFile(filePath, content)
+            if (options.target == 'TypeScript') {
+                return fsWriteFile(filePath, prettier.format(content, {parser: "typescript"}))
+            } else {
+                return fsWriteFile(filePath, content)
+            }
         })
     const filesToDelete = await findFilesToDelete(outputPath, fileMap)
     const deletePromises =
@@ -112,6 +123,8 @@ function copyRedistributables(options, outputPath) {
     } else if (options.target == 'Scala' && options.copyDeps) {
         copyFiles('Scala/sdk/src', outputPath)
         copyFiles(`Scala/sdk/src-${options.targetVersion}`, outputPath)
+    } else if (options.target == 'TypeScript') {
+        copyFiles('TypeScript/', outputPath)
     }
 }
 
@@ -123,7 +136,7 @@ function copyRecursiveSync(src, dest) {
         if (isDirectory) {
             if (!fs.existsSync(dest))
                 fs.mkdirSync(dest);
-            fs.readdirSync(src).forEach(function (childItemName) {
+            fs.readdirSync(src).forEach(function(childItemName) {
                 copyRecursiveSync(path.join(src, childItemName),
                     path.join(dest, childItemName));
             });
@@ -165,29 +178,33 @@ async function fileExist(filePath) {
 }
 
 async function findFilesToDelete(outputPath, fileMap) {
-    const readDir = async function (currentDir, generatedFiles) {
-        const entries = await readdir(currentDir, { withFileTypes: true })
+    const readDir = async function(currentDir, generatedFiles) {
+        const entries = await readdir(currentDir, {
+            withFileTypes: true
+        })
         const filesToDelete =
             entries
-                .filter(entry => {
-                    const entryPath = path.join(currentDir, entry.name)
-                    return entry.isFile() && !generatedFiles.includes(entryPath)
-                })
-                .map(entry => path.join(currentDir, entry.name))
+            .filter(entry => {
+                const entryPath = path.join(currentDir, entry.name)
+                return entry.isFile() && !generatedFiles.includes(entryPath)
+            })
+            .map(entry => path.join(currentDir, entry.name))
         const subDirFilesToDelete =
             entries
-                .filter(entry => entry.isDirectory())
-                .map(entry => readDir(path.join(currentDir, entry.name), generatedFiles))
-                .reduce(async (soFarPromise, nextPromise) => {
-                    const soFar = await soFarPromise
-                    const next = await nextPromise
-                    return soFar.concat(next)
-                }, Promise.resolve([]))
+            .filter(entry => entry.isDirectory())
+            .map(entry => readDir(path.join(currentDir, entry.name), generatedFiles))
+            .reduce(async (soFarPromise, nextPromise) => {
+                const soFar = await soFarPromise
+                const next = await nextPromise
+                return soFar.concat(next)
+            }, Promise.resolve([]))
         return filesToDelete.concat(await subDirFilesToDelete)
     }
 
     const files =
-        fileMap.map(([[dirPath, fileName], content]) => {
+        fileMap.map(([
+            [dirPath, fileName], content
+        ]) => {
             const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)
             return path.resolve(fileDir, fileName)
         })
@@ -195,10 +212,35 @@ async function findFilesToDelete(outputPath, fileMap) {
 }
 
 async function writeFile(filePath, content) {
-    await mkdir(path.dirname(filePath), { recursive: true })
+    await mkdir(path.dirname(filePath), {
+        recursive: true
+    })
     return await fsWriteFile(filePath, content)
 }
-
+async function test(projectDir) {
+    const morphirIRJsonPath = path.join(projectDir, 'morphir-ir.json')
+    const morphirIRJsonContent = await readFile(morphirIRJsonPath)
+    const morphirIRJson = JSON.parse(morphirIRJsonContent.toString())
+    const morphirTestsJsonPath = path.join(projectDir, 'morphir-tests.json')
+    const morphirTestsJsonContent = await readFile(morphirTestsJsonPath)
+    const morphirTestsJson = JSON.parse(morphirTestsJsonContent.toString())
+    return testResult(morphirIRJson, morphirTestsJson)
+}
+async function testResult(morphirIRJson, morphirTestsJson) {
+    return new Promise((resolve, reject) => {
+        worker.ports.jsonDecodeError.subscribe(err => {
+            reject(err)
+        })
+        worker.ports.runTestCasesResultError.subscribe(err => {
+            reject(err)
+        })
+        worker.ports.runTestCasesResult.subscribe(ok => {
+            resolve(ok)
+        })
+        worker.ports.runTestCases.send([morphirIRJson, morphirTestsJson])
+    });
+}
 exports.make = make;
 exports.gen = gen;
+exports.test = test;
 exports.writeFile = writeFile;

@@ -25,8 +25,11 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value exposing (Value)
-import Morphir.Value.Native as Native exposing (boolLiteral, charLiteral, eval1, eval2, expectLiteral, floatLiteral, intLiteral, oneOf, returnLiteral, stringLiteral)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.Value.Error exposing (Error(..))
+import Morphir.Value.Native as Native exposing (boolLiteral, decodeList, decodeLiteral, decodeRaw, encodeList, encodeLiteral, encodeRaw, eval1, eval2, eval3, floatLiteral, intLiteral, oneOf, stringLiteral)
+import Morphir.Value.Native.Comparable as Comparable exposing (compareValue, max, min)
+import Morphir.Value.Native.Eq as Eq
 
 
 moduleName : ModuleName
@@ -126,47 +129,53 @@ moduleSpec =
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
     [ ( "not"
-      , eval1 not (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval1 not (decodeLiteral boolLiteral) (encodeLiteral BoolLiteral)
       )
     , ( "and"
-      , eval2 (&&) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval2 (&&) (decodeLiteral boolLiteral) (decodeLiteral boolLiteral) (encodeLiteral BoolLiteral)
       )
     , ( "or"
-      , eval2 (||) (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval2 (||) (decodeLiteral boolLiteral) (decodeLiteral boolLiteral) (encodeLiteral BoolLiteral)
       )
     , ( "xor"
-      , eval2 xor (expectLiteral boolLiteral) (expectLiteral boolLiteral) (returnLiteral BoolLiteral)
+      , eval2 xor (decodeLiteral boolLiteral) (decodeLiteral boolLiteral) (encodeLiteral BoolLiteral)
       )
     , ( "add"
       , oneOf
-            [ eval2 (+) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , eval2 (+) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval2 (+) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
+            , eval2 (+) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "subtract"
       , oneOf
-            [ eval2 (-) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , eval2 (-) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval2 (-) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
+            , eval2 (-) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "multiply"
       , oneOf
-            [ eval2 (*) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , eval2 (*) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval2 (*) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
+            , eval2 (*) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "divide"
-      , eval2 (/) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+      , eval2 (/) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
       )
     , ( "integerDivide"
-      , eval2 (//) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral IntLiteral)
+      , eval2 (//) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
+      )
+    , ( "power"
+      , oneOf
+            [ eval2 (^) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
+            , eval2 (^) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
+            ]
       )
     , ( "equal"
       , Native.binaryStrict
             (\arg1 arg2 ->
                 -- We use structural equality similar to Elm with the difference that Elm fails when you try to compare
                 -- two functions but we will actually compare if the implementations are the same.
-                Ok (Value.Literal () (BoolLiteral (arg1 == arg2)))
+                Eq.equal arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
             )
       )
     , ( "notEqual"
@@ -174,43 +183,149 @@ nativeFunctions =
             (\arg1 arg2 ->
                 -- We use structural equality similar to Elm with the difference that Elm fails when you try to compare
                 -- two functions but we will actually compare if the implementations are the same.
-                Ok (Value.Literal () (BoolLiteral (arg1 /= arg2)))
+                Eq.notEqual arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
             )
       )
+    , ( "identity"
+      , Native.unaryStrict
+            (\arg1 -> arg1)
+      )
+    , ( "always"
+      , Native.binaryStrict
+            (\arg1 _ -> Ok arg1)
+      )
+    , ( "never"
+      , \eval args ->
+            Err (UnexpectedArguments args)
+      )
+    , ( "composeLeft"
+      , \eval args ->
+            case args of
+                [ fun1, fun2, arg1 ] ->
+                    eval
+                        (Value.Apply ()
+                            fun2
+                            arg1
+                        )
+                        |> Result.andThen
+                            (\arg2 ->
+                                eval
+                                    (Value.Apply ()
+                                        fun1
+                                        arg2
+                                    )
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "composeRight"
+      , \eval args ->
+            case args of
+                [ fun1, fun2, arg1 ] ->
+                    eval
+                        (Value.Apply ()
+                            fun1
+                            arg1
+                        )
+                        |> Result.andThen
+                            (\arg2 ->
+                                eval
+                                    (Value.Apply ()
+                                        fun2
+                                        arg2
+                                    )
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
     , ( "lessThan"
-      , oneOf
-            -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ eval2 (<) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
-            , eval2 (<) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
-            , eval2 (<) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
-            , eval2 (<) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
-            ]
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                Comparable.lessThan arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
+            )
       )
     , ( "greaterThan"
-      , oneOf
-            -- TODO: this is only a limited subset of comparable values, we should implement for all
-            [ eval2 (>) (expectLiteral intLiteral) (expectLiteral intLiteral) (returnLiteral BoolLiteral)
-            , eval2 (>) (expectLiteral floatLiteral) (expectLiteral floatLiteral) (returnLiteral BoolLiteral)
-            , eval2 (>) (expectLiteral charLiteral) (expectLiteral charLiteral) (returnLiteral BoolLiteral)
-            , eval2 (>) (expectLiteral stringLiteral) (expectLiteral stringLiteral) (returnLiteral BoolLiteral)
-            ]
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                Comparable.greaterThan arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
+            )
+      )
+    , ( "lessThanOrEqual"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                Comparable.lessThanOrEqual arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
+            )
+      )
+    , ( "greaterThanOrEqual"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                Comparable.greaterThanOrEqual arg1 arg2 |> Result.map (\bool -> Value.Literal () (BoolLiteral bool))
+            )
       )
     , ( "abs"
       , oneOf
-            [ eval1 abs (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , eval1 abs (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval1 abs (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
+            , eval1 abs (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "toFloat"
       , oneOf
-            [ eval1 toFloat (expectLiteral intLiteral) (returnLiteral FloatLiteral)
+            [ eval1 toFloat (decodeLiteral intLiteral) (encodeLiteral FloatLiteral)
             ]
       )
     , ( "negate"
       , oneOf
-            [ eval1 Basics.negate (expectLiteral intLiteral) (returnLiteral IntLiteral)
-            , eval1 Basics.negate (expectLiteral floatLiteral) (returnLiteral FloatLiteral)
+            [ eval1 Basics.negate (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
+            , eval1 Basics.negate (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
             ]
+      )
+    , ( "clamp"
+      , oneOf
+            [ eval3 Basics.clamp (decodeLiteral intLiteral) (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeLiteral WholeNumberLiteral)
+            , eval3 Basics.clamp (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (decodeLiteral floatLiteral) (encodeLiteral FloatLiteral)
+            ]
+      )
+    , ( "max"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                Comparable.max arg1 arg2
+            )
+      )
+    , ( "min"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                Comparable.min arg1 arg2
+            )
+      )
+    , ( "append"
+      , oneOf
+            [ eval2 (++) (decodeLiteral stringLiteral) (decodeLiteral stringLiteral) (encodeLiteral StringLiteral)
+            , eval2 (++) (decodeList decodeRaw) (decodeList decodeRaw) (encodeList encodeRaw)
+            ]
+      )
+    , ( "compare"
+      , Native.binaryStrict
+            (\arg1 arg2 ->
+                compareValue arg1 arg2
+                    |> Result.map
+                        (\order ->
+                            let
+                                val =
+                                    case order of
+                                        GT ->
+                                            "GT"
+
+                                        LT ->
+                                            "LT"
+
+                                        EQ ->
+                                            "EQ"
+                            in
+                            Value.Constructor () (toFQName moduleName val)
+                        )
+            )
       )
     ]
 
