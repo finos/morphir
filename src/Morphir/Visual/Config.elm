@@ -1,27 +1,23 @@
 module Morphir.Visual.Config exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.IR as IR
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
+import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue)
 import Morphir.Value.Interpreter as Interpreter
 import Morphir.Value.Native as Native
-import Morphir.Visual.Theme exposing (Theme)
+import Morphir.Visual.Theme as Theme exposing (Theme)
 
 
 type alias Config msg =
-    { irContext : IRContext
+    { ir : IR
+    , nativeFunctions : Dict FQName Native.Function
     , state : VisualState
     , handlers : EventHandlers msg
-    }
-
-
-type alias IRContext =
-    { distribution : Distribution
-    , nativeFunctions : Dict FQName Native.Function
     }
 
 
@@ -53,9 +49,18 @@ type HighlightState
     | Default
 
 
+fromIR : IR -> VisualState -> EventHandlers msg -> Config msg
+fromIR ir visualState eventHandlers =
+    { ir = ir
+    , nativeFunctions = SDK.nativeFunctions
+    , state = visualState
+    , handlers = eventHandlers
+    }
+
+
 evaluate : RawValue -> Config msg -> Result String RawValue
 evaluate value config =
-    Interpreter.evaluateValue config.irContext.nativeFunctions (IR.fromDistribution config.irContext.distribution) config.state.variables [] value
+    Interpreter.evaluateValue config.nativeFunctions config.ir config.state.variables [] value
         |> Result.mapError
             (\error ->
                 error

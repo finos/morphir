@@ -3,7 +3,7 @@
     "name": "finos/morphir-elm",
     "summary": "Morphir Elm bindings",
     "license": "Apache-2.0",
-    "version": "14.0.0",
+    "version": "14.1.0",
     "exposed-modules": [
         "Morphir.SDK.Decimal",
         "Morphir.SDK.Int",
@@ -43,13 +43,16 @@
         "Morphir.Scala.PrettyPrinter",
         "Morphir.Value.Interpreter",
         "Morphir.Value.Native",
-        "Morphir.Graph.Grapher"
+        "Morphir.Metadata",
+        "Morphir.Graph.Grapher",
+        "Morphir.Type.Cardinality"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {
         "chain-partners/elm-bignum": "1.0.1 <= v < 2.0.0",
         "cmditch/elm-bigint": "1.0.1 <= v < 2.0.0",
         "cuducos/elm-format-number": "8.1.4 <= v < 9.0.0",
+        "dosarf/elm-tree-view": "3.0.0 <= v < 4.0.0",
         "elm/browser": "1.0.2 <= v < 2.0.0",
         "elm/core": "1.0.4 <= v < 2.0.0",
         "elm/html": "1.0.0 <= v < 2.0.0",
@@ -65,6 +68,7 @@
         "justinmimbs/date": "3.2.1 <= v < 4.0.0",
         "mdgriffith/elm-ui": "1.1.8 <= v < 2.0.0",
         "pzp1997/assoc-list": "1.0.0 <= v < 2.0.0",
+        "rundis/elm-bootstrap": "5.2.0 <= v < 6.0.0",
         "stil4m/elm-syntax": "7.2.1 <= v < 8.0.0"
     },
     "test-dependencies": {}

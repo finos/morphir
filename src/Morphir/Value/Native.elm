@@ -40,6 +40,7 @@ Various utilities to help with implementing native functions.
 @docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
 @docs floatLiteral, intLiteral, oneOf, stringLiteral
 @docs decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
+@docs trinaryLazy, trinaryStrict
 
 -}
 
@@ -135,6 +136,7 @@ binaryLazy f =
                 Err (UnexpectedArguments args)
 
 
+{-| -}
 trinaryLazy : (Eval -> RawValue -> RawValue -> RawValue -> Result Error RawValue) -> Function
 trinaryLazy f =
     \eval args ->
@@ -170,6 +172,7 @@ binaryStrict f =
         )
 
 
+{-| -}
 trinaryStrict : (RawValue -> RawValue -> RawValue -> Result Error RawValue) -> Function
 trinaryStrict f =
     trinaryLazy

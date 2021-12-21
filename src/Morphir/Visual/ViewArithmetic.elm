@@ -5,11 +5,11 @@ import Element exposing (Element, centerX, column, padding, paddingEach, rgb, ro
 import Element.Border as Border
 import Morphir.Visual.Components.AritmeticExpressions exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
-view : Config msg -> (VisualTypedValue -> Element msg) -> ArithmeticOperatorTree -> Element msg
+view : Config msg -> (EnrichedValue -> Element msg) -> ArithmeticOperatorTree -> Element msg
 view config viewValue arithmeticOperatorTree =
     case arithmeticOperatorTree of
         ArithmeticOperatorBranch arithmeticOperator arithmeticOperatorTrees ->
