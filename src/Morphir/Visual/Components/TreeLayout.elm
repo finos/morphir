@@ -1,7 +1,7 @@
 module Morphir.Visual.Components.TreeLayout exposing (..)
 
 import Array exposing (Array)
-import Element exposing (Color, Element, column, el, fill, none, padding, paddingEach, pointer, px, rgb, row, text, width)
+import Element exposing (Color, Element, column, el, fill, height, none, padding, paddingEach, pointer, px, rgb, row, text, width)
 import Element.Background as Background
 import Element.Events exposing (onClick)
 import Element.Font as Font exposing (center)
@@ -49,7 +49,7 @@ type alias Config msg =
 
 view : Theme -> Config msg -> Node msg -> Element msg
 view theme config node =
-    column [] (viewSubTree theme config [] node)
+    column [ width fill, height fill ] (viewSubTree theme config [] node)
 
 
 viewSubTree : Theme -> Config msg -> NodePath -> Node msg -> List (Element msg)

@@ -5,31 +5,36 @@ import Array.Extra
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, column, el, fill, height, image, layout, link, none, padding, paddingXY, pointer, px, rgb, row, scrollbars, spacing, text, width)
+import Element exposing (Element, alignRight, column, el, explain, fill, fillPortion, height, html, image, layout, link, none, padding, paddingXY, pointer, px, rgb, row, scrollbars, spacing, table, text, width, wrappedRow)
 import Element.Background as Background
+import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Http exposing (Error(..), emptyBody, jsonBody)
+import Markdown
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Module exposing (ModuleName)
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
+import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
+import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.DevelopApp.Common exposing (insertInList, viewAsCard)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
-import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (makeURL)
+import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (ViewType(..), makeURL)
 import Set exposing (Set)
 import Url exposing (Url)
 import Url.Builder
@@ -877,7 +882,6 @@ view model =
                 , el
                     [ width fill
                     , height fill
-                    , scrollbars
                     ]
                     (viewBody model)
                 ]
@@ -971,22 +975,7 @@ viewBody model =
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
             case model.currentPage of
                 Home ->
-                    viewAsCard model.theme
-                        (text "Modules")
-                        (TreeLayout.view TreeLayout.defaultTheme
-                            { onCollapse = CollapseModule
-                            , onExpand = ExpandModule
-                            , collapsedPaths = model.collapsedModules
-                            , selectedPaths =
-                                model.selectedModule
-                                    |> Maybe.map (Tuple.first >> Set.singleton)
-                                    |> Maybe.withDefault Set.empty
-                            }
-                            (viewModuleNames packageName
-                                []
-                                (packageDef.modules |> Dict.keys)
-                            )
-                        )
+                    viewHome model packageName packageDef
 
                 Module moduleModel ->
                     ModulePage.viewPage
@@ -1034,6 +1023,379 @@ viewBody model =
                         }
                         distribution
                         functionPageModel
+
+
+viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
+viewHome model packageName packageDef =
+    let
+        gray =
+            rgb 0.9 0.9 0.9
+
+        white =
+            rgb 1 1 1
+
+        viewDefinitionsForModule : ModuleName -> Module.Definition () (Type ()) -> Element msg
+        viewDefinitionsForModule moduleName moduleDef =
+            let
+                sectionTitle =
+                    link []
+                        { url =
+                            "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
+                        , label =
+                            text (moduleName |> List.map (Name.toHumanWords >> String.join " ") |> String.join " - ")
+                        }
+
+                types =
+                    moduleDef.types
+                        |> Dict.toList
+                        |> List.map
+                            (\( typeName, typeDef ) ->
+                                viewType model.theme typeName typeDef.value.value typeDef.value.doc
+                            )
+
+                values =
+                    moduleDef.values
+                        |> Dict.toList
+                        |> List.map
+                            (\( valueName, valueDef ) ->
+                                viewValue model.theme moduleName valueName valueDef.value
+                            )
+            in
+            el [ padding (model.theme |> Theme.scaled 2) ]
+                (column [ height fill, width fill ]
+                    [ row
+                        [ spacing (model.theme |> Theme.scaled -3)
+                        , Font.size (model.theme |> Theme.scaled 3)
+                        ]
+                        [ text "📁"
+                        , sectionTitle
+                        ]
+                    , (types ++ values)
+                        |> wrappedRow
+                            [ padding (model.theme |> Theme.scaled 2)
+                            , spacing (model.theme |> Theme.scaled 2)
+                            ]
+                    ]
+                )
+
+        viewDefinitions : Maybe ModuleName -> Element msg
+        viewDefinitions maybeSelectedModuleName =
+            packageDef.modules
+                |> Dict.toList
+                |> List.filterMap
+                    (\( moduleName, accessControlledModuleDef ) ->
+                        case maybeSelectedModuleName of
+                            Just selectedModuleName ->
+                                if selectedModuleName |> Path.isPrefixOf moduleName then
+                                    Just (viewDefinitionsForModule moduleName accessControlledModuleDef.value)
+
+                                else
+                                    Nothing
+
+                            Nothing ->
+                                Just (viewDefinitionsForModule moduleName accessControlledModuleDef.value)
+                    )
+                |> column [ height fill, width fill, scrollbars ]
+    in
+    row
+        [ height fill
+        , width fill
+        ]
+        [ column
+            [ Background.color gray
+            , Border.rounded 3
+            , height fill
+            , width (fillPortion 2)
+            , padding 5
+            , spacing 5
+            ]
+            [ el
+                [ width fill
+                , padding 2
+                , Font.size (model.theme |> Theme.scaled 2)
+                ]
+                (text "Modules")
+            , el
+                [ Background.color white
+                , Border.rounded 3
+                , height fill
+                , width fill
+                , scrollbars
+                ]
+                (TreeLayout.view TreeLayout.defaultTheme
+                    { onCollapse = CollapseModule
+                    , onExpand = ExpandModule
+                    , collapsedPaths = model.collapsedModules
+                    , selectedPaths =
+                        model.selectedModule
+                            |> Maybe.map (Tuple.first >> Set.singleton)
+                            |> Maybe.withDefault Set.empty
+                    }
+                    (viewModuleNames packageName
+                        []
+                        (packageDef.modules |> Dict.keys)
+                    )
+                )
+            ]
+        , column
+            [ height fill
+            , width (fillPortion 8)
+            ]
+            [ viewDefinitions (model.selectedModule |> Maybe.map Tuple.second) ]
+        ]
+
+
+viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
+viewType theme typeName typeDef docs =
+    let
+        backgroundColor =
+            rgb 0.9529 0.9176 0.8078
+
+        viewAsCard header content =
+            let
+                white =
+                    rgb 1 1 1
+            in
+            column
+                [ Background.color backgroundColor
+                , Border.rounded 3
+                , padding 5
+                , spacing 5
+                ]
+                [ row
+                    [ width fill
+                    , paddingXY (theme |> Theme.scaled -2) (theme |> Theme.scaled -6)
+                    , spacing (theme |> Theme.scaled 2)
+                    , Font.size (theme |> Theme.scaled 2)
+                    ]
+                    [ el [ Font.bold ] header
+                    , el [ alignRight ] (text "type")
+                    ]
+                , el
+                    [ Background.color white
+                    , Border.rounded 3
+                    , height fill
+                    , width fill
+                    ]
+                    (if docs == "" then
+                        content
+
+                     else
+                        column []
+                            [ el
+                                [ padding (theme |> Theme.scaled -2)
+                                , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                , Border.color backgroundColor
+                                ]
+                                (html (Markdown.toHtml [] docs))
+                            , content
+                            ]
+                    )
+                ]
+    in
+    case typeDef of
+        Type.TypeAliasDefinition params (Type.Record _ fields) ->
+            let
+                viewFields =
+                    table
+                        [ width fill
+                        ]
+                        { columns =
+                            [ { header = none
+                              , width = fill
+                              , view =
+                                    \field ->
+                                        el
+                                            [ width fill
+                                            , height fill
+                                            , paddingXY 10 5
+                                            , Font.bold
+                                            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                            , Border.color backgroundColor
+                                            ]
+                                            (text (nameToText field.name))
+                              }
+                            , { header = none
+                              , width = fill
+                              , view =
+                                    \field ->
+                                        el
+                                            [ width fill
+                                            , height fill
+                                            , paddingXY 10 5
+                                            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                            , Border.color backgroundColor
+                                            ]
+                                            (XRayView.viewType field.tpe)
+                              }
+                            ]
+                        , data =
+                            fields
+                        }
+            in
+            viewAsCard
+                (typeName |> Name.toHumanWords |> String.join " " |> text)
+                viewFields
+
+        Type.TypeAliasDefinition params body ->
+            viewAsCard
+                (typeName |> Name.toHumanWords |> String.join " " |> text)
+                (row
+                    [ width fill
+                    , height fill
+                    , paddingXY 10 5
+                    , spacing 10
+                    ]
+                    [ text "="
+                    , XRayView.viewType body
+                    ]
+                )
+
+        Type.CustomTypeDefinition params accessControlledConstructors ->
+            let
+                isNewType : Maybe (Type ())
+                isNewType =
+                    case accessControlledConstructors.value |> Dict.toList of
+                        [ ( ctorName, [ ( _, baseType ) ] ) ] ->
+                            if ctorName == typeName then
+                                Just baseType
+
+                            else
+                                Nothing
+
+                        _ ->
+                            Nothing
+
+                isEnum =
+                    accessControlledConstructors.value
+                        |> Dict.values
+                        |> List.all List.isEmpty
+
+                viewConstructors =
+                    if isEnum then
+                        accessControlledConstructors.value
+                            |> Dict.toList
+                            |> List.map
+                                (\( ctorName, _ ) ->
+                                    el
+                                        [ width fill
+                                        , height fill
+                                        , paddingXY 10 5
+                                        , Font.bold
+                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                        , Border.color backgroundColor
+                                        ]
+                                        (text (nameToText ctorName))
+                                )
+                            |> column [ width fill ]
+
+                    else
+                        case isNewType of
+                            Just baseType ->
+                                el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType baseType)
+
+                            Nothing ->
+                                table
+                                    [ width fill
+                                    ]
+                                    { columns =
+                                        [ { header = none
+                                          , width = fill
+                                          , view =
+                                                \( ctorName, ctorArgs ) ->
+                                                    el
+                                                        [ width fill
+                                                        , height fill
+                                                        , paddingXY 10 5
+                                                        , Font.bold
+                                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                                        , Border.color backgroundColor
+                                                        ]
+                                                        (text (nameToText ctorName))
+                                          }
+                                        , { header = none
+                                          , width = fill
+                                          , view =
+                                                \( ctorName, ctorArgs ) ->
+                                                    el
+                                                        [ width fill
+                                                        , height fill
+                                                        , paddingXY 10 5
+                                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                                        , Border.color backgroundColor
+                                                        ]
+                                                        (ctorArgs
+                                                            |> List.map (Tuple.second >> XRayView.viewType)
+                                                            |> row [ spacing 5 ]
+                                                        )
+                                          }
+                                        ]
+                                    , data =
+                                        accessControlledConstructors.value |> Dict.toList
+                                    }
+            in
+            viewAsCard
+                (typeName |> Name.toHumanWords |> String.join " " |> text)
+                viewConstructors
+
+
+viewValue : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> Element msg
+viewValue theme moduleName valueName valueDef =
+    let
+        cardTitle =
+            link []
+                { url =
+                    "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ "?filter=" ++ nameToText valueName
+                , label =
+                    text (nameToText valueName)
+                }
+
+        isData =
+            List.isEmpty valueDef.inputTypes
+
+        backgroundColor =
+            if isData then
+                rgb 0.8 0.9 0.9
+
+            else
+                rgb 0.8 0.8 0.9
+
+        viewAsCard header content =
+            let
+                white =
+                    rgb 1 1 1
+            in
+            column
+                [ Background.color backgroundColor
+                , Border.rounded 3
+                , padding 5
+                , spacing 5
+                ]
+                [ row
+                    [ width fill
+                    , padding 2
+                    , spacing (theme |> Theme.scaled 2)
+                    , Font.size (theme |> Theme.scaled 2)
+                    ]
+                    [ el [ Font.bold ] header
+                    , el [ alignRight ]
+                        (if isData then
+                            text "value"
+
+                         else
+                            text "calculation"
+                        )
+                    ]
+                , el
+                    [ Background.color white
+                    , Border.rounded 3
+                    , height fill
+                    , width fill
+                    ]
+                    content
+                ]
+    in
+    viewAsCard cardTitle none
 
 
 
@@ -1129,23 +1491,18 @@ viewModuleNames packageName currentModule moduleNames =
         (\nodePath ->
             case currentModuleName of
                 Just name ->
-                    if List.isEmpty childModuleNames then
-                        link []
-                            { url =
-                                "/module/" ++ (currentModule |> List.map Name.toTitleCase |> String.join ".")
-                            , label =
-                                text (name |> Name.toHumanWords |> String.join " ")
-                            }
-
-                    else
-                        el
-                            [ onClick (SelectModule nodePath currentModule)
-                            , pointer
-                            ]
-                            (text (name |> Name.toHumanWords |> String.join " "))
+                    el
+                        [ onClick (SelectModule nodePath currentModule)
+                        , pointer
+                        ]
+                        (text (name |> Name.toHumanWords |> String.join " "))
 
                 Nothing ->
-                    text (packageName |> List.map (Name.toHumanWords >> String.join " ") |> String.join " - ")
+                    el
+                        [ onClick (SelectModule nodePath currentModule)
+                        , pointer
+                        ]
+                        (text (packageName |> List.map (Name.toHumanWords >> String.join " ") |> String.join " - "))
         )
         Array.empty
         (childModuleNames
