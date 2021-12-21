@@ -18,6 +18,7 @@
 module Morphir.IR exposing
     ( IR
     , fromPackageSpecifications, fromDistribution
+    , typeSpecifications
     , lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification, lookupValueDefinition
     , empty, resolveAliases, resolveType, resolveRecordConstructors
     )
@@ -34,6 +35,7 @@ module Morphir.IR exposing
 
 # Lookups
 
+@docs typeSpecifications
 @docs lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification, lookupValueDefinition
 
 
