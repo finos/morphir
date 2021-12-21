@@ -31,6 +31,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.Codec exposing (decodeUnit, encodeUnit)
 import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution.CodecV1 as CodecV1
 import Morphir.IR.Package.Codec as PackageCodec
 import Morphir.IR.Path.Codec exposing (decodePath, encodePath)
 import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
@@ -40,7 +41,7 @@ import Morphir.IR.Type.Codec exposing (decodeType, encodeType)
 -}
 currentFormatVersion : Int
 currentFormatVersion =
-    1
+    2
 
 
 {-| Encode distribution including a version number.
@@ -64,6 +65,9 @@ decodeVersionedDistribution =
                     if formatVersion == currentFormatVersion then
                         Decode.field "distribution" decodeDistribution
 
+                    else if formatVersion == 1 then
+                        Decode.field "distribution" CodecV1.decodeDistribution
+
                     else
                         Decode.fail
                             (String.concat
@@ -86,7 +90,7 @@ encodeDistribution distro =
     case distro of
         Library packagePath dependencies def ->
             Encode.list identity
-                [ Encode.string "library"
+                [ Encode.string "Library"
                 , encodePath packagePath
                 , dependencies
                     |> Dict.toList
@@ -111,7 +115,7 @@ decodeDistribution =
         |> Decode.andThen
             (\kind ->
                 case kind of
-                    "library" ->
+                    "Library" ->
                         Decode.map3 Library
                             (Decode.index 1 decodePath)
                             (Decode.index 2

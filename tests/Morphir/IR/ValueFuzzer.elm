@@ -117,7 +117,7 @@ stringFuzzer =
 intFuzzer : Fuzzer RawValue
 intFuzzer =
     Fuzz.int
-        |> Fuzz.map (IntLiteral >> Value.Literal ())
+        |> Fuzz.map (WholeNumberLiteral >> Value.Literal ())
 
 
 floatFuzzer : Fuzzer RawValue

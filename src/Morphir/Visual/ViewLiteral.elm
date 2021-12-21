@@ -29,7 +29,7 @@ view config literal =
             viewLiteralText "string-literal"
                 (String.concat [ "\"", string, "\"" ])
 
-        IntLiteral int ->
+        WholeNumberLiteral int ->
             viewLiteralText "int-literal"
                 (format { usLocale | decimals = Exact 0, negativePrefix = "- ( ", negativeSuffix = " )" }
                     (toFloat int)

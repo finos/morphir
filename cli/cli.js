@@ -4,6 +4,7 @@
 const path = require('path')
 const util = require('util')
 const fs = require('fs')
+const prettier = require("prettier");
 const readdir = util.promisify(fs.readdir)
 const mkdir = util.promisify(fs.mkdir)
 const readFile = util.promisify(fs.readFile)
@@ -96,7 +97,11 @@ async function gen(input, outputPath, options) {
                 })
                 console.log(`INSERT - ${filePath}`)
             }
-            return fsWriteFile(filePath, content)
+            if (options.target == 'TypeScript') {
+                return fsWriteFile(filePath, prettier.format(content, {parser: "typescript"}))
+            } else {
+                return fsWriteFile(filePath, content)
+            }
         })
     const filesToDelete = await findFilesToDelete(outputPath, fileMap)
     const deletePromises =
@@ -118,6 +123,8 @@ function copyRedistributables(options, outputPath) {
     } else if (options.target == 'Scala' && options.copyDeps) {
         copyFiles('Scala/sdk/src', outputPath)
         copyFiles(`Scala/sdk/src-${options.targetVersion}`, outputPath)
+    } else if (options.target == 'TypeScript') {
+        copyFiles('TypeScript/', outputPath)
     }
 }
 

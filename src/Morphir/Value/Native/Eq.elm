@@ -15,16 +15,16 @@ import Morphir.Value.Error exposing (Error(..))
 {-| Checks if two values are equal.
 -}
 equal : RawValue -> RawValue -> Result Error Bool
-equal a b =
-    if Value.isData a && Value.isData b then
-        Ok (a == b)
+equal arg1 arg2 =
+    if Value.isData arg1 && Value.isData arg2 then
+        Ok (arg1 == arg2)
 
     else
-        Err (UnexpectedArguments [ a, b ])
+        Err (UnexpectedArguments [ arg1, arg2 ])
 
 
 {-| Checks if two values are not equal.
 -}
 notEqual : RawValue -> RawValue -> Result Error Bool
-notEqual a b =
-    Result.map not (equal a b)
+notEqual arg1 arg2 =
+    Result.map not (equal arg1 arg2)

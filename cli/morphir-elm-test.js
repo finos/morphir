@@ -23,19 +23,22 @@ program
 
 cli.test(program.projectDir)
     .then(testResult => {
+        if(testResult.length == 0){
+            console.log(chalk.purple("No TestCases found in morphir-tests.json file."))
+        }
+        else{
+            for (let i = 0; i < testResult.length; i++) {
+                const testObject = testResult[i]
+                console.log(chalk.cyan(`Function Name - ${testObject["Function Name"]}`))
+                console.log(chalk.yellow(`Total TestCases - ${testObject["Total TestCases"]}`))
+                console.log(chalk.green(`Pass TestCases - ${testObject["Pass TestCases"]}\n`))
 
-        for (let i = 0; i < testResult.length; i++) {
-            const testObject = testResult[i]
-            console.log(chalk.cyan(`Function Name - ${testObject["Function Name"]}`))
-            console.log(chalk.yellow(`Total TestCases - ${testObject["Total TestCases"]}`))
-            console.log(chalk.green(`Pass TestCases - ${testObject["Pass TestCases"]}\n`))
-
+            }
         }
     })
     .catch((err) => {
 
-
-        if (err instanceof Object) {
+        if (err instanceof Object && err.length >= 0) {
             for (let i = 0; i < err.length; i++) {
                 const testObject = err[i]
                 console.log(chalk.cyan(`Function Name - ${testObject["Function Name"]}`))

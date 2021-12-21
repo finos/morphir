@@ -8,11 +8,11 @@ import Morphir.IR.Path as Path
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
-import Morphir.Visual.VisualTypedValue exposing (VisualTypedValue)
 
 
-view : Config msg -> (VisualTypedValue -> Element msg) -> VisualTypedValue -> List VisualTypedValue -> Element msg
+view : Config msg -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
 view config viewValue functionValue argValues =
     case ( functionValue, argValues ) of
         ( Value.Reference _ ( _, _, ("is" :: _) as localName ), [ argValue ] ) ->

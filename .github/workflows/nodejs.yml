@@ -5,9 +5,9 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -16,7 +16,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [10.x, 12.x]
+        node-version: [16.x]
 
     steps:
     - uses: actions/checkout@v2
@@ -54,7 +54,7 @@ jobs:
           key: ${{ runner.os }}-elm--home-${{ hashFiles('**/elm.json') }}
       - run: npm ci
       - name: Elm Publish
-        uses: dillonkearns/elm-publish-action@1.0.1
+        uses: dillonkearns/elm-publish-action@1.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-elm: ./node_modules/.bin/elm

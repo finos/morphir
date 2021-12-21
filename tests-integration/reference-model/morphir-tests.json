@@ -1,91 +1,724 @@
 [
-  [
-    [ [ [ "morphir" ], [ "reference" ], [ "model" ] ]
-    , [ [ "issues" ], [ "issue", "410" ] ]
-    , [ "add", "function" ]
-    ]
-  ,
     [
-      {
-        "inputs" : [ 4 , 5 ],
-        "expectedOutput" : 9,
-        "description" : "Add"
-      },
-      {
-        "inputs" : [ 14 , 15 ],
-        "expectedOutput" : 29,
-        "description" : "Add"
-      },
-      {
-        "inputs" : [ 12 , 26 ],
-        "expectedOutput" : 38,
-        "description" : "Add"
-      },
-      {
-        "inputs" : [ 122 , 126 ],
-        "expectedOutput" : 248,
-        "description" : "Add"
-      },
-      {
-        "inputs" : [ 10 , 1 ],
-        "expectedOutput" : 11,
-        "description" : "Add"
-      },
-      {
-        "inputs" : [ -10 , 1 ],
-        "expectedOutput" : -9,
-        "description" : "Add"
-      }
-    ]
-  ],
-  [
-    [ [ [ "morphir" ], [ "reference" ], [ "model" ] ]
-    , [ [ "insight" ], [ "use", "case", "1" ] ]
-    , [ "limit", "tracking" ]
-    ]
-    ,
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "insight"
+                ],
+                [
+                    "use",
+                    "case",
+                    "1"
+                ]
+            ],
+            [
+                "limit",
+                "tracking"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    10,
+                    0,
+                    0,
+                    12,
+                    13
+                ],
+                "expectedOutput": [],
+                "description": "List of Tracking Advantage"
+            },
+            {
+                "inputs": [
+                    10,
+                    5.5,
+                    10,
+                    12,
+                    13
+                ],
+                "expectedOutput": [
+                    {
+                        "direction": [
+                            "up"
+                        ],
+                        "code": "123456789",
+                        "velocity": -13
+                    },
+                    {
+                        "direction": [
+                            "down"
+                        ],
+                        "code": "987654321",
+                        "velocity": 6.6
+                    }
+                ],
+                "description": "List of Tracking Advantage"
+            },
+            {
+                "inputs": [
+                    -10,
+                    -5.5,
+                    10,
+                    12,
+                    -13
+                ],
+                "expectedOutput": [
+                    {
+                        "direction": [
+                            "up"
+                        ],
+                        "code": "123456789",
+                        "velocity": 6.6
+                    },
+                    {
+                        "direction": [
+                            "down"
+                        ],
+                        "code": "987654321",
+                        "velocity": 13
+                    },
+                    {
+                        "direction": [
+                            "up"
+                        ],
+                        "code": "123456789",
+                        "velocity": -12
+                    },
+                    {
+                        "direction": [
+                            "down"
+                        ],
+                        "code": "987654321",
+                        "velocity": -12
+                    }
+                ],
+                "description": "List of Tracking Advantage"
+            }
+        ]
+    ],
     [
-      {
-        "inputs" : [ 10 , 0 , 0 , 12 , 13 ],
-        "expectedOutput" : [],
-        "description" : "List of Tracking Advantage"
-      },
-      {
-        "inputs" : [ 10 , 5.5 , 10 , 12 , 13 ],
-        "expectedOutput" : [
-          { "direction" : ["Up"]
-          , "code" : "123456789"
-          , "velocity" : -13
-          },
-          { "direction" : ["Down"]
-          , "code" : "987654321"
-          , "velocity" : 6.6
-          }
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "issues"
+                ],
+                [
+                    "issue",
+                    "410"
+                ]
+            ],
+            [
+                "add",
+                "function"
+            ]
         ],
-        "description" : "List of Tracking Advantage"
-      },
-      {
-        "inputs" : [ -10 , -5.5 , 10 , 12 , -13 ],
-        "expectedOutput" : [
-          { "direction" : ["Up"]
-          , "code" : "123456789"
-          , "velocity" : 6.6
-          },
-          { "direction" : ["Down"]
-          , "code" : "987654321"
-          , "velocity" : 13
-          },
-          { "direction" : ["Up"]
-          , "code" : "123456789"
-          , "velocity" : -12
-          },
-          { "direction" : ["Down"]
-          , "code" : "987654321"
-          , "velocity" : -12
-          }
+        [
+            {
+                "inputs": [
+                    4,
+                    5
+                ],
+                "expectedOutput": 9,
+                "description": "Add"
+            },
+            {
+                "inputs": [
+                    14,
+                    15
+                ],
+                "expectedOutput": 29,
+                "description": "Add"
+            },
+            {
+                "inputs": [
+                    12,
+                    26
+                ],
+                "expectedOutput": 38,
+                "description": "Add"
+            },
+            {
+                "inputs": [
+                    122,
+                    126
+                ],
+                "expectedOutput": 248,
+                "description": "Add"
+            },
+            {
+                "inputs": [
+                    10,
+                    1
+                ],
+                "expectedOutput": 11,
+                "description": "Add"
+            },
+            {
+                "inputs": [
+                    -10,
+                    1
+                ],
+                "expectedOutput": -9,
+                "description": "Add"
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "string"
+                ]
+            ],
+            [
+                "is",
+                "digit"
+            ]
         ],
-        "description" : "List of Tracking Advantage"
-      }
+        [
+            {
+                "inputs": [
+                    "a"
+                ],
+                "expectedOutput": false,
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "string"
+                ]
+            ],
+            [
+                "string",
+                "all"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    "124334"
+                ],
+                "expectedOutput": true,
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "string"
+                ]
+            ],
+            [
+                "string",
+                "fold",
+                "l"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    "H",
+                    "time"
+                ],
+                "expectedOutput": "emitH",
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "string"
+                ]
+            ],
+            [
+                "string",
+                "fold",
+                "r"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    "x",
+                    "time"
+                ],
+                "expectedOutput": "timex",
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "s",
+                    "d",
+                    "k"
+                ],
+                [
+                    "string"
+                ]
+            ],
+            [
+                "string",
+                "map"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    "a/b/c"
+                ],
+                "expectedOutput": "a.b.c",
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "values"
+                ]
+            ],
+            [
+                "list",
+                "all"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    [
+                        1,
+                        2,
+                        3
+                    ]
+                ],
+                "expectedOutput": false,
+                "description": ""
+            },
+            {
+                "inputs": [
+                    [
+                        0,
+                        -2,
+                        2
+                    ]
+                ],
+                "expectedOutput": true,
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "values"
+                ]
+            ],
+            [
+                "list",
+                "any"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    [
+                        1,
+                        2,
+                        3
+                    ]
+                ],
+                "expectedOutput": true,
+                "description": ""
+            },
+            {
+                "inputs": [
+                    [
+                        1,
+                        3,
+                        -1
+                    ]
+                ],
+                "expectedOutput": false,
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "values"
+                ]
+            ],
+            [
+                "list",
+                "concat",
+                "map"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    [
+                        1,
+                        4
+                    ],
+                    2
+                ],
+                "expectedOutput": [
+                    1,
+                    1,
+                    4,
+                    4
+                ],
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "values"
+                ]
+            ],
+            [
+                "list",
+                "cons"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    2,
+                    [
+                        2,
+                        1,
+                        2,
+                        3
+                    ]
+                ],
+                "expectedOutput": [
+                    2,
+                    2,
+                    1,
+                    2,
+                    3
+                ],
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "values"
+                ]
+            ],
+            [
+                "list",
+                "foldl",
+                "1"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    3,
+                    [
+                        3,
+                        2,
+                        3,
+                        4
+                    ]
+                ],
+                "expectedOutput": 15,
+                "description": "Foldl Check"
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "values"
+                ]
+            ],
+            [
+                "list",
+                "map",
+                "2"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    [
+                        2
+                    ],
+                    [
+                        3
+                    ]
+                ],
+                "expectedOutput": [
+                    5
+                ],
+                "description": ""
+            },
+            {
+                "inputs": [
+                    [
+                        -3
+                    ],
+                    [
+                        3
+                    ]
+                ],
+                "expectedOutput": [
+                    0
+                ],
+                "description": ""
+            }
+        ]
+    ],
+    [
+        [
+            [
+                [
+                    "morphir"
+                ],
+                [
+                    "reference"
+                ],
+                [
+                    "model"
+                ]
+            ],
+            [
+                [
+                    "values"
+                ]
+            ],
+            [
+                "list",
+                "unzip"
+            ]
+        ],
+        [
+            {
+                "inputs": [
+                    [
+                        [
+                            1,
+                            "One"
+                        ],
+                        [
+                            2,
+                            "Two"
+                        ],
+                        [
+                            3,
+                            "Three"
+                        ],
+                        [
+                            4,
+                            "Four"
+                        ]
+                    ]
+                ],
+                "expectedOutput": [
+                    [
+                        1,
+                        2,
+                        3,
+                        4
+                    ],
+                    [
+                        "One",
+                        "Two",
+                        "Three",
+                        "Four"
+                    ]
+                ],
+                "description": ""
+            }
+        ]
     ]
-  ]
 ]

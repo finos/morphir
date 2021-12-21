@@ -7,7 +7,12 @@
         "Values",
         "ValueEditors",
         "Formulas",
+        "SDK.Tuple",
+        "SDK.Result",
+        "SDK.String",
+        "SDK.Dict",
         "Insight.UseCase1",
+        "Insight.UseCase2",
         "Presentations.UKFintechMeetup",
         "Issues.Issue210",
         "Issues.Issue227",
@@ -29,6 +34,8 @@
         "Issues.Issue409",
         "Issues.Issue410",
         "Issues.Issue448",
-        "Issues.Issue450"
+        "Issues.Issue450",
+        "Issues.Issue493",
+        "Issues.Issue571"
     ]
 }

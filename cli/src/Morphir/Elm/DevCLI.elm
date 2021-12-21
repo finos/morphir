@@ -155,7 +155,7 @@ mapTypeValue encodeOrDecode typeA =
                     isEncodingOrDecoding "stringLiteral" "StringLiteral"
 
                 ( [ [ "basics" ] ], [ "int" ], [] ) ->
-                    isEncodingOrDecoding "intLiteral" "IntLiteral"
+                    isEncodingOrDecoding "intLiteral" "WholeNumberLiteral"
 
                 ( [ [ "basics" ] ], [ "float" ], [] ) ->
                     isEncodingOrDecoding "floatLiteral" "FloatLiteral"

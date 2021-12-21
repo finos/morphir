@@ -18,7 +18,7 @@ import Morphir.IR.Type.DataCodec exposing (decodeData)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
-import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
+import Morphir.Visual.Config as Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme, ThemeConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Theme.Codec exposing (decodeThemeConfig)
 import Morphir.Visual.ViewValue as ViewValue
@@ -305,22 +305,17 @@ view model =
 
                 config : Config Msg
                 config =
-                    { irContext =
-                        { distribution = visualizationState.distribution
-                        , nativeFunctions = SDK.nativeFunctions
-                        }
-                    , state =
+                    Config.fromIR (IR.fromDistribution visualizationState.distribution)
                         { expandedFunctions = visualizationState.expandedFunctions
                         , variables = validArgValues
                         , popupVariables = visualizationState.popupVariables
                         , theme = model.theme
+                        , highlightState = Nothing
                         }
-                    , handlers =
                         { onReferenceClicked = ExpandReference
                         , onHoverOver = ExpandVariable
                         , onHoverLeave = ShrinkVariable
                         }
-                    }
 
                 valueFQName : FQName
                 valueFQName =

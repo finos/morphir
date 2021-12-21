@@ -15,7 +15,7 @@
 -}
 
 
-module Morphir.IR.SDK exposing (..)
+module Morphir.IR.SDK exposing (nativeFunctions, packageName, packageSpec)
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName exposing (FQName)
@@ -36,6 +36,7 @@ import Morphir.IR.SDK.Month as Month
 import Morphir.IR.SDK.Number as Number
 import Morphir.IR.SDK.Regex as Regex
 import Morphir.IR.SDK.Result as Result
+import Morphir.IR.SDK.ResultList as ResultList
 import Morphir.IR.SDK.Rule as Rule
 import Morphir.IR.SDK.SDKNativeFunctions as SDKNativeFunctions
 import Morphir.IR.SDK.Set as Set
@@ -64,6 +65,7 @@ packageSpec =
             , ( [ [ "month" ] ], Month.moduleSpec )
             , ( [ [ "result" ] ], Result.moduleSpec )
             , ( [ [ "list" ] ], List.moduleSpec )
+            , ( [ [ "result", "list" ] ], ResultList.moduleSpec )
             , ( [ [ "tuple" ] ], Tuple.moduleSpec )
             , ( [ [ "regex" ] ], Regex.moduleSpec )
             , ( [ [ "stateful", "app" ] ], StatefulApp.moduleSpec )
@@ -99,4 +101,9 @@ nativeFunctions =
         )
         [ moduleFunctions "Basics" Basics.nativeFunctions
         , moduleFunctions "List" List.nativeFunctions
+        , moduleFunctions "Maybe" Maybe.nativeFunctions
+        , moduleFunctions "String" String.nativeFunctions
+        , moduleFunctions "Tuple" Tuple.nativeFunctions
+        , moduleFunctions "Result" Result.nativeFunctions
+        , moduleFunctions "Dict" Dict.nativeFunctions
         ]

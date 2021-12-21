@@ -3,7 +3,8 @@ module Morphir.Value.Native exposing
     , Eval
     , unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
     , floatLiteral, intLiteral, oneOf, stringLiteral
-    , decodeFun1, decodeList, decodeLiteral, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeRaw, encodeResultList, encodeTuple2
+    , decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
+    , trinaryLazy, trinaryStrict
     )
 
 {-| This module contains an API and some tools to implement native functions. Native functions are functions that are
@@ -36,13 +37,14 @@ example the predicate in a `filter` will need to be evaluated on each item in th
 
 Various utilities to help with implementing native functions.
 
-@docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3, expectFun1
-@docs expectList, expectLiteral, floatLiteral, intLiteral, oneOf, returnList, returnLiteral, returnResultList, stringLiteral
+@docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
+@docs floatLiteral, intLiteral, oneOf, stringLiteral
+@docs decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
+@docs trinaryLazy, trinaryStrict
 
 -}
 
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
@@ -134,6 +136,18 @@ binaryLazy f =
                 Err (UnexpectedArguments args)
 
 
+{-| -}
+trinaryLazy : (Eval -> RawValue -> RawValue -> RawValue -> Result Error RawValue) -> Function
+trinaryLazy f =
+    \eval args ->
+        case args of
+            [ arg1, arg2, arg3 ] ->
+                f eval arg1 arg2 arg3
+
+            _ ->
+                Err (UnexpectedArguments args)
+
+
 {-| Create a native function that takes exactly two arguments. Evaluate both arguments before passing then to the supplied
 function.
 
@@ -158,6 +172,24 @@ binaryStrict f =
         )
 
 
+{-| -}
+trinaryStrict : (RawValue -> RawValue -> RawValue -> Result Error RawValue) -> Function
+trinaryStrict f =
+    trinaryLazy
+        (\eval arg1 arg2 arg3 ->
+            eval arg1
+                |> Result.andThen
+                    (\a1 ->
+                        eval arg2
+                            |> Result.andThen
+                                (\a2 ->
+                                    eval arg3
+                                        |> Result.andThen (f a1 a2)
+                                )
+                    )
+        )
+
+
 type alias Decoder a =
     Eval -> RawValue -> Result Error a
 
@@ -166,11 +198,13 @@ type alias Encode a =
     a -> Result Error RawValue
 
 
+{-| -}
 decodeRaw : Decoder RawValue
 decodeRaw eval value =
     eval value
 
 
+{-| -}
 encodeRaw : Encode RawValue
 encodeRaw value =
     Ok value
@@ -200,18 +234,20 @@ decodeList decodeItem eval value =
                 |> ListOfResults.liftFirstError
 
         Ok _ ->
-            Err (ExpectedLiteral value)
+            Err (ExpectedList value)
 
         Err error ->
             Err error
 
 
+{-| -}
 encodeTuple2 : ( Encode a, Encode b ) -> ( a, b ) -> Result Error RawValue
 encodeTuple2 ( encodeA, encodeB ) ( a, b ) =
     encodeB b
         |> Result.map2 (\a1 b1 -> Value.Tuple () [ a1, b1 ]) (encodeA a)
 
 
+{-| -}
 decodeTuple2 : ( Decoder a, Decoder b ) -> Decoder ( a, b )
 decodeTuple2 ( decodeA, decodeB ) eval value =
     case eval value of
@@ -219,7 +255,7 @@ decodeTuple2 ( decodeA, decodeB ) eval value =
             Result.map2 (\a1 b1 -> ( a1, b1 )) (decodeA eval val1) (decodeB eval val2)
 
         Ok _ ->
-            Err (ExpectedLiteral value)
+            Err (ExpectedTuple value)
 
         Err error ->
             Err error
@@ -245,18 +281,18 @@ boolLiteral lit =
             Ok v
 
         _ ->
-            Err (ExpectedBoolLiteral lit)
+            Err (ExpectedBoolLiteral (Value.Literal () lit))
 
 
 {-| -}
 intLiteral : Literal -> Result Error Int
 intLiteral lit =
     case lit of
-        IntLiteral v ->
+        WholeNumberLiteral v ->
             Ok v
 
         _ ->
-            Err (ExpectedBoolLiteral lit)
+            Err (ExpectedIntLiteral (Value.Literal () lit))
 
 
 {-| -}
@@ -267,7 +303,7 @@ floatLiteral lit =
             Ok v
 
         _ ->
-            Err (ExpectedBoolLiteral lit)
+            Err (ExpectedFloatLiteral (Value.Literal () lit))
 
 
 {-| -}
@@ -278,7 +314,7 @@ charLiteral lit =
             Ok v
 
         _ ->
-            Err (ExpectedBoolLiteral lit)
+            Err (ExpectedCharLiteral (Value.Literal () lit))
 
 
 {-| -}
@@ -289,7 +325,7 @@ stringLiteral lit =
             Ok v
 
         _ ->
-            Err (ExpectedBoolLiteral lit)
+            Err (ExpectedStringLiteral (Value.Literal () lit))
 
 
 {-| -}
@@ -307,6 +343,20 @@ encodeResultList listOfValueResults =
 
 
 {-| -}
+encodeMaybeResult : Maybe (Result Error RawValue) -> Result Error RawValue
+encodeMaybeResult maybeResult =
+    case maybeResult of
+        Just (Ok value) ->
+            Ok (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) value)
+
+        Just (Err error) ->
+            Err error
+
+        Nothing ->
+            Ok (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ))
+
+
+{-| -}
 encodeList : Encode a -> List a -> Result Error RawValue
 encodeList encodeA list =
     list
@@ -315,16 +365,37 @@ encodeList encodeA list =
         |> Result.map (Value.List ())
 
 
+{-| -}
 encodeMaybe : Encode a -> Maybe a -> Result Error RawValue
 encodeMaybe encodeA maybe =
     case maybe of
         Just a ->
-            encodeA a |> Result.map (Maybe.just ())
+            encodeA a |> Result.map (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )))
 
         Nothing ->
-            Ok (Maybe.nothing ())
+            Ok (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ))
 
 
+{-| -}
+decodeMaybe : Decoder a -> Decoder (Maybe a)
+decodeMaybe decodeItem eval value =
+    case eval value of
+        Ok (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
+            Ok Nothing
+
+        Ok (Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) val) ->
+            val
+                |> decodeItem eval
+                |> Result.map Just
+
+        Ok _ ->
+            Err (ExpectedMaybe value)
+
+        Err error ->
+            Err error
+
+
+{-| -}
 eval0 : r -> Encode r -> Function
 eval0 r encodeR =
     \eval args ->
@@ -368,6 +439,7 @@ eval2 f decodeA decodeB encodeR eval args =
             Err (UnexpectedArguments args)
 
 
+{-| -}
 eval3 : (a -> b -> c -> r) -> Decoder a -> Decoder b -> Decoder c -> Encode r -> Function
 eval3 f decodeA decodeB decodeC encodeR eval args =
     case args of

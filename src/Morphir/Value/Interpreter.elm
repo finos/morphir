@@ -1,13 +1,10 @@
-module Morphir.Value.Interpreter exposing
-    ( evaluate, evaluateValue, evaluateFunctionValue
-    , matchPattern
-    )
+module Morphir.Value.Interpreter exposing (evaluate, evaluateValue, evaluateFunctionValue, matchPattern)
 
 {-| This module contains an interpreter for Morphir expressions. The interpreter takes a piece of logic as input,
 evaluates it and returns the resulting data. In Morphir both logic and data is captured as a `Value` so the interpreter
 takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
-@docs evaluate, evaluateValue, evaluateFunctionValue
+@docs evaluate, evaluateValue, evaluateFunctionValue, matchPattern
 
 -}
 
@@ -19,6 +16,7 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Pattern, RawValue, Value, toRawValue)
 import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.ResultList as ResultList
 import Morphir.Value.Error exposing (Error(..), PatternMismatch(..))
 import Morphir.Value.Native as Native
 
@@ -29,6 +27,7 @@ type alias Variables =
     Dict Name RawValue
 
 
+{-| -}
 evaluateFunctionValue : Dict FQName Native.Function -> IR -> FQName -> List RawValue -> Result Error RawValue
 evaluateFunctionValue nativeFunctions ir fQName variableValues =
     ir
@@ -79,28 +78,35 @@ evaluateValue nativeFunctions ir variables arguments value =
             Ok value
 
         Value.Constructor _ fQName ->
-            case ir |> IR.lookupTypeSpecification (ir |> IR.resolveAliases fQName) of
-                Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
-                    Ok
-                        (Value.Record ()
-                            (List.map2 Tuple.pair
-                                (fields |> List.map .name)
-                                arguments
-                            )
-                        )
+            arguments
+                |> List.map (evaluateValue nativeFunctions ir variables [])
+                -- If any of those fails we return the first failure.
+                |> ListOfResults.liftFirstError
+                |> Result.andThen
+                    (\evaluatedArgs ->
+                        case ir |> IR.lookupTypeSpecification (ir |> IR.resolveAliases fQName) of
+                            Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
+                                Ok
+                                    (Value.Record ()
+                                        (List.map2 Tuple.pair
+                                            (fields |> List.map .name)
+                                            evaluatedArgs
+                                        )
+                                    )
 
-                _ ->
-                    let
-                        applyArgs : RawValue -> List RawValue -> RawValue
-                        applyArgs subject argsReversed =
-                            case argsReversed of
-                                [] ->
-                                    subject
+                            _ ->
+                                let
+                                    applyArgs : RawValue -> List RawValue -> RawValue
+                                    applyArgs subject argsReversed =
+                                        case argsReversed of
+                                            [] ->
+                                                subject
 
-                                lastArg :: restOfArgsReversed ->
-                                    Value.Apply () (applyArgs subject restOfArgsReversed) lastArg
-                    in
-                    Ok (applyArgs value (List.reverse arguments))
+                                            lastArg :: restOfArgsReversed ->
+                                                Value.Apply () (applyArgs subject restOfArgsReversed) lastArg
+                                in
+                                Ok (applyArgs value (List.reverse evaluatedArgs))
+                    )
 
         Value.Tuple _ elems ->
             -- For a tuple we need to evaluate each element and return them wrapped back into a tuple
@@ -142,8 +148,6 @@ evaluateValue nativeFunctions ir variables arguments value =
                 |> Dict.get varName
                 -- If we cannot find the variable in the state we return an error.
                 |> Result.fromMaybe (VariableNotFound varName)
-                -- Do another round of evaluation in case there are unevaluated values in the variable (lazy evaluation)
-                |> Result.andThen (evaluateValue nativeFunctions ir variables [])
                 -- Wrap the error to make it easier to understand where it happened
                 |> Result.mapError (ErrorWhileEvaluatingVariable varName)
 
@@ -167,28 +171,17 @@ evaluateValue nativeFunctions ir variables arguments value =
                         |> Result.mapError (ErrorWhileEvaluatingReference fQName)
 
                 Nothing ->
-                    -- If this is a reference to another Morphir value we need to look it up and evaluate.
-                    ir
-                        |> IR.lookupValueDefinition ( packageName, moduleName, localName )
-                        -- If we cannot find the value in the IR we return an error.
-                        |> Result.fromMaybe (ReferenceNotFound ( packageName, moduleName, localName ))
-                        |> Result.andThen
-                            (\referredValue ->
-                                let
-                                    rawValue : RawValue
-                                    rawValue =
-                                        Value.toRawValue referredValue.body
-                                in
-                                arguments
-                                    |> List.map (evaluateValue nativeFunctions ir variables [])
-                                    |> ListOfResults.liftFirstError
-                                    -- Wrap the error to make it easier to understand where it happened
-                                    |> Result.mapError (ErrorWhileEvaluatingReference fQName)
-                                    |> Result.andThen
-                                        (\evaluatedArgs ->
-                                            evaluateValue nativeFunctions ir Dict.empty evaluatedArgs rawValue
-                                        )
+                    arguments
+                        |> List.map
+                            (evaluateValue
+                                nativeFunctions
+                                ir
+                                variables
+                                []
                             )
+                        |> ResultList.keepFirstError
+                        -- If this is a reference to another Morphir value we need to look it up and evaluate.
+                        |> Result.andThen (evaluateFunctionValue nativeFunctions ir fQName)
 
         Value.Field _ subjectValue fieldName ->
             -- Field selection is evaluated by evaluating the subject first then matching on the resulting record and
@@ -249,7 +242,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                 -- If there are no arguments then our expression was invalid so we return an error.
                 |> Result.fromMaybe NoArgumentToPassToLambda
                 -- If the argument is available we first need to match it against the argument pattern.
-                -- In Morhpir (just like in Elm) you can opattern-match on the argument of a lambda.
+                -- In Morphir (just like in Elm) you can not pattern-match on the argument of a lambda.
                 |> Result.andThen
                     (\argumentValue ->
                         -- To match the pattern we call a helper function that both matches and extracts variables out
@@ -267,7 +260,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                             nativeFunctions
                             ir
                             (Dict.union argumentVariables variables)
-                            []
+                            (arguments |> List.tail |> Maybe.withDefault [])
                             body
                     )
 

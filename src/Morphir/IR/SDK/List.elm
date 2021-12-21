@@ -19,18 +19,19 @@ module Morphir.IR.SDK.List exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics exposing (boolType, intType, orderType)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
-import Morphir.IR.SDK.Maybe exposing (maybeType)
+import Morphir.IR.SDK.Maybe exposing (just, maybeType, nothing)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native exposing (decodeFun1, decodeList, decodeLiteral, decodeRaw, encodeList, encodeLiteral, encodeRaw, encodeResultList, eval2, intLiteral)
+import Morphir.Value.Native as Native exposing (decodeFun1, decodeList, decodeLiteral, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeRaw, encodeResultList, encodeTuple2, eval1, eval2, floatLiteral, intLiteral, oneOf)
+import Morphir.Value.Native.Comparable exposing (compareValue)
 
 
 moduleName : ModuleName
@@ -120,67 +121,641 @@ listType attributes itemType =
 
 construct : a -> Value ta a
 construct a =
-    Value.Reference a (toFQName moduleName "construct")
-
-
-nativeAppend : Native.Function
-nativeAppend eval args =
-    case args of
-        [ arg1, arg2 ] ->
-            eval arg1
-                |> Result.andThen
-                    (\evaluatedArg1 ->
-                        case evaluatedArg1 of
-                            Value.List _ items1 ->
-                                eval arg2
-                                    |> Result.andThen
-                                        (\evaluatedArg2 ->
-                                            case evaluatedArg2 of
-                                                Value.List _ items2 ->
-                                                    Ok (Value.List () (List.append items1 items2))
-
-                                                _ ->
-                                                    Err (UnexpectedArguments args)
-                                        )
-
-                            _ ->
-                                Err (UnexpectedArguments args)
-                    )
-
-        _ ->
-            Err (UnexpectedArguments args)
+    Value.Reference a (toFQName moduleName "cons")
 
 
 nativeFunctions : List ( String, Native.Function )
 nativeFunctions =
-    [ ( "sum"
-      , Native.unaryStrict
-            (\eval arg ->
-                case arg of
-                    Value.List _ value ->
-                        value
-                            |> List.foldl
-                                (\nextElem resultSoFar ->
-                                    resultSoFar
-                                        |> Result.andThen
-                                            (\resultValue ->
-                                                eval
+    [ ( "singleton", eval1 List.singleton decodeRaw (encodeList encodeRaw) )
+    , ( "repeat", eval2 List.repeat (decodeLiteral intLiteral) decodeRaw (encodeList encodeRaw) )
+    , ( "cons", eval2 (::) decodeRaw (decodeList decodeRaw) (encodeList encodeRaw) )
+    , ( "map", eval2 List.map (decodeFun1 encodeRaw decodeRaw) (decodeList decodeRaw) encodeResultList )
+    , ( "filter"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.List () listItems ->
+                                        let
+                                            evaluate : List RawValue -> List RawValue -> Result Error (List RawValue)
+                                            evaluate list items =
+                                                case items of
+                                                    [] ->
+                                                        Ok list
+
+                                                    head :: tail ->
+                                                        case eval (Value.Apply () fun head) of
+                                                            Ok (Value.Literal _ (BoolLiteral True)) ->
+                                                                evaluate (list ++ [ head ]) tail
+
+                                                            Ok (Value.Literal _ (BoolLiteral False)) ->
+                                                                evaluate list tail
+
+                                                            Ok other ->
+                                                                Err (ExpectedBoolLiteral other)
+
+                                                            Err other ->
+                                                                Err other
+                                        in
+                                        listItems |> evaluate [] |> Result.map (Value.List ())
+
+                                    _ ->
+                                        Err (ExpectedList evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "filterMap"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.List () listItems ->
+                                        let
+                                            evaluate : List RawValue -> List RawValue -> Result Error (List RawValue)
+                                            evaluate list items =
+                                                case items of
+                                                    [] ->
+                                                        Ok list
+
+                                                    head :: tail ->
+                                                        case eval (Value.Apply () fun head) of
+                                                            Ok (Value.Apply () (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) value) ->
+                                                                evaluate (list ++ [ value ]) tail
+
+                                                            Ok (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
+                                                                evaluate list tail
+
+                                                            Ok other ->
+                                                                Err (ExpectedBoolLiteral other)
+
+                                                            Err other ->
+                                                                Err other
+                                        in
+                                        listItems |> evaluate [] |> Result.map (Value.List ())
+
+                                    _ ->
+                                        Err (ExpectedList evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+
+    {- indexedMap -}
+    , ( "foldl"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2 ] ->
+                    eval arg2
+                        |> Result.andThen
+                            (\evaluatedArg2 ->
+                                case evaluatedArg2 of
+                                    Value.List () listItems ->
+                                        listItems
+                                            |> List.foldl
+                                                (\next resultSoFar ->
+                                                    resultSoFar
+                                                        |> Result.andThen
+                                                            (\soFar ->
+                                                                eval next
+                                                                    |> Result.andThen
+                                                                        (\evaluatedNext ->
+                                                                            eval (Value.Apply () (Value.Apply () fun evaluatedNext) soFar)
+                                                                        )
+                                                            )
+                                                )
+                                                (eval arg1)
+
+                                    _ ->
+                                        Err (ExpectedList evaluatedArg2)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "foldr"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2 ] ->
+                    eval arg2
+                        |> Result.andThen
+                            (\evaluatedArg2 ->
+                                case evaluatedArg2 of
+                                    Value.List () listItems ->
+                                        listItems
+                                            |> List.foldr
+                                                (\next resultSoFar ->
+                                                    resultSoFar
+                                                        |> Result.andThen
+                                                            (\soFar ->
+                                                                eval next
+                                                                    |> Result.andThen
+                                                                        (\evaluatedNext ->
+                                                                            eval (Value.Apply () (Value.Apply () fun evaluatedNext) soFar)
+                                                                        )
+                                                            )
+                                                )
+                                                (eval arg1)
+
+                                    _ ->
+                                        Err (ExpectedList evaluatedArg2)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "length", eval1 List.length (decodeList decodeRaw) (encodeLiteral WholeNumberLiteral) )
+    , ( "reverse", eval1 List.reverse (decodeList decodeRaw) (encodeList encodeRaw) )
+    , ( "member", eval2 List.member decodeRaw (decodeList decodeRaw) (encodeLiteral BoolLiteral) )
+    , ( "all"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.List () listItems ->
+                                        let
+                                            evaluate : List RawValue -> Result Error Bool
+                                            evaluate items =
+                                                case items of
+                                                    [] ->
+                                                        Ok True
+
+                                                    head1 :: tail1 ->
+                                                        case eval (Value.Apply () fun head1) of
+                                                            Ok (Value.Literal _ (BoolLiteral True)) ->
+                                                                evaluate tail1
+
+                                                            Ok (Value.Literal _ (BoolLiteral False)) ->
+                                                                Ok False
+
+                                                            Ok other ->
+                                                                Err (ExpectedBoolLiteral other)
+
+                                                            Err other ->
+                                                                Err other
+                                        in
+                                        evaluate listItems |> Result.map (\val -> Value.Literal () (BoolLiteral val))
+
+                                    _ ->
+                                        Err (ExpectedList evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "any"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.List () listItems ->
+                                        let
+                                            evaluate : List RawValue -> Result Error Bool
+                                            evaluate items =
+                                                case items of
+                                                    [] ->
+                                                        Ok False
+
+                                                    head1 :: tail1 ->
+                                                        case eval (Value.Apply () fun head1) of
+                                                            Ok (Value.Literal _ (BoolLiteral False)) ->
+                                                                evaluate tail1
+
+                                                            Ok (Value.Literal _ (BoolLiteral True)) ->
+                                                                Ok True
+
+                                                            Ok other ->
+                                                                Err (ExpectedBoolLiteral other)
+
+                                                            Err other ->
+                                                                Err other
+                                        in
+                                        evaluate listItems |> Result.map (\val -> Value.Literal () (BoolLiteral val))
+
+                                    _ ->
+                                        Err (ExpectedList evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "maximum"
+      , \eval args ->
+            case args of
+                [ arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.List () listItems ->
+                                        let
+                                            evaluate : List RawValue -> Result Error RawValue
+                                            evaluate items =
+                                                case items of
+                                                    [] ->
+                                                        Ok (nothing ())
+
+                                                    head :: tail ->
+                                                        tail
+                                                            |> List.foldl
+                                                                (\next resultSoFar ->
+                                                                    resultSoFar
+                                                                        |> Result.andThen
+                                                                            (\soFar ->
+                                                                                eval next
+                                                                                    |> Result.andThen
+                                                                                        (\evaluatedNext ->
+                                                                                            compareValue evaluatedNext soFar
+                                                                                                |> Result.map
+                                                                                                    (\order ->
+                                                                                                        case order of
+                                                                                                            LT ->
+                                                                                                                soFar
+
+                                                                                                            _ ->
+                                                                                                                evaluatedNext
+                                                                                                    )
+                                                                                        )
+                                                                            )
+                                                                )
+                                                                (eval head)
+                                                            |> Result.map (just ())
+                                        in
+                                        listItems |> evaluate
+
+                                    _ ->
+                                        Err (ExpectedList evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "minimum"
+      , \eval args ->
+            case args of
+                [ arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.List () listItems ->
+                                        let
+                                            evaluate : List RawValue -> Result Error RawValue
+                                            evaluate items =
+                                                case items of
+                                                    [] ->
+                                                        Ok (nothing ())
+
+                                                    head :: tail ->
+                                                        tail
+                                                            |> List.foldl
+                                                                (\next resultSoFar ->
+                                                                    resultSoFar
+                                                                        |> Result.andThen
+                                                                            (\soFar ->
+                                                                                eval next
+                                                                                    |> Result.andThen
+                                                                                        (\evaluatedNext ->
+                                                                                            compareValue evaluatedNext soFar
+                                                                                                |> Result.map
+                                                                                                    (\order ->
+                                                                                                        case order of
+                                                                                                            LT ->
+                                                                                                                evaluatedNext
+
+                                                                                                            _ ->
+                                                                                                                soFar
+                                                                                                    )
+                                                                                        )
+                                                                            )
+                                                                )
+                                                                (eval head)
+                                                            |> Result.map (just ())
+                                        in
+                                        listItems |> evaluate
+
+                                    _ ->
+                                        Err (ExpectedList evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "sum"
+      , oneOf
+            [ eval1 List.sum (decodeList (decodeLiteral floatLiteral)) (encodeLiteral FloatLiteral)
+            , eval1 List.sum (decodeList (decodeLiteral intLiteral)) (encodeLiteral WholeNumberLiteral)
+            ]
+      )
+    , ( "product"
+      , oneOf
+            [ eval1 List.product (decodeList (decodeLiteral floatLiteral)) (encodeLiteral FloatLiteral)
+            , eval1 List.product (decodeList (decodeLiteral intLiteral)) (encodeLiteral WholeNumberLiteral)
+            ]
+      )
+    , ( "append", eval2 List.append (decodeList decodeRaw) (decodeList decodeRaw) (encodeList encodeRaw) )
+    , ( "concat", eval1 List.concat (decodeList (decodeList decodeRaw)) (encodeList encodeRaw) )
+    , ( "intersperse", eval2 List.intersperse decodeRaw (decodeList decodeRaw) (encodeList encodeRaw) )
+
+    {- sort sortBy sortWith -}
+    , ( "indexedMap"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    Result.map
+                        (\evaluatedArg1 ->
+                            case evaluatedArg1 of
+                                Value.List () listItems1 ->
+                                    List.indexedMap
+                                        (\index item1 ->
+                                            eval
+                                                (Value.Apply ()
+                                                    (Value.Apply ()
+                                                        fun
+                                                        item1
+                                                    )
+                                                    (Value.Literal () (WholeNumberLiteral index))
+                                                )
+                                        )
+                                        listItems1
+                                        |> ListOfResults.liftFirstError
+                                        |> Result.map (Value.List ())
+
+                                _ ->
+                                    Err (UnexpectedArguments args)
+                        )
+                        (eval arg1)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "map2"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2 ] ->
+                    Result.map2
+                        (\evaluatedArg1 evaluatedArg2 ->
+                            case ( evaluatedArg1, evaluatedArg2 ) of
+                                ( Value.List () listItems1, Value.List () listItems2 ) ->
+                                    List.map2
+                                        (\item1 item2 ->
+                                            eval
+                                                (Value.Apply ()
+                                                    (Value.Apply ()
+                                                        fun
+                                                        item1
+                                                    )
+                                                    item2
+                                                )
+                                        )
+                                        listItems1
+                                        listItems2
+                                        |> ListOfResults.liftFirstError
+                                        |> Result.map (Value.List ())
+
+                                _ ->
+                                    Err (UnexpectedArguments args)
+                        )
+                        (eval arg1)
+                        (eval arg2)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "map3"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2, arg3 ] ->
+                    Result.map3
+                        (\evaluatedArg1 evaluatedArg2 evaluatedArg3 ->
+                            case ( evaluatedArg1, evaluatedArg2, evaluatedArg3 ) of
+                                ( Value.List () listItems1, Value.List () listItems2, Value.List () listItems3 ) ->
+                                    List.map3
+                                        (\item1 item2 item3 ->
+                                            eval
+                                                (Value.Apply ()
                                                     (Value.Apply ()
                                                         (Value.Apply ()
-                                                            (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
-                                                            nextElem
+                                                            fun
+                                                            item1
                                                         )
-                                                        resultValue
+                                                        item2
                                                     )
-                                            )
-                                )
-                                (Ok (Value.Literal () (IntLiteral 0)))
+                                                    item3
+                                                )
+                                        )
+                                        listItems1
+                                        listItems2
+                                        listItems3
+                                        |> ListOfResults.liftFirstError
+                                        |> Result.map (Value.List ())
 
-                    _ ->
-                        Err (UnexpectedArguments [ arg ])
-            )
+                                _ ->
+                                    Err (UnexpectedArguments args)
+                        )
+                        (eval arg1)
+                        (eval arg2)
+                        (eval arg3)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
       )
-    , ( "map", eval2 List.map (decodeFun1 encodeRaw decodeRaw) (decodeList decodeRaw) encodeResultList )
-    , ( "append", eval2 List.append (decodeList decodeRaw) (decodeList decodeRaw) (encodeList encodeRaw) )
-    , ( "range", eval2 List.range (decodeLiteral intLiteral) (decodeLiteral intLiteral) (encodeList (encodeLiteral IntLiteral)) )
+    , ( "map4"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2, arg3, arg4 ] ->
+                    Result.map4
+                        (\evaluatedArg1 evaluatedArg2 evaluatedArg3 evaluatedArg4 ->
+                            case [ evaluatedArg1, evaluatedArg2, evaluatedArg3, evaluatedArg4 ] of
+                                [ Value.List () listItems1, Value.List () listItems2, Value.List () listItems3, Value.List () listItems4 ] ->
+                                    List.map4
+                                        (\item1 item2 item3 item4 ->
+                                            eval
+                                                (Value.Apply ()
+                                                    (Value.Apply ()
+                                                        (Value.Apply ()
+                                                            (Value.Apply ()
+                                                                fun
+                                                                item1
+                                                            )
+                                                            item2
+                                                        )
+                                                        item3
+                                                    )
+                                                    item4
+                                                )
+                                        )
+                                        listItems1
+                                        listItems2
+                                        listItems3
+                                        listItems4
+                                        |> ListOfResults.liftFirstError
+                                        |> Result.map (Value.List ())
+
+                                _ ->
+                                    Err (UnexpectedArguments args)
+                        )
+                        (eval arg1)
+                        (eval arg2)
+                        (eval arg3)
+                        (eval arg4)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "map5"
+      , \eval args ->
+            case args of
+                [ fun, arg1, arg2, arg3, arg4, arg5 ] ->
+                    Result.map5
+                        (\evaluatedArg1 evaluatedArg2 evaluatedArg3 evaluatedArg4 evaluatedArg5 ->
+                            case [ evaluatedArg1, evaluatedArg2, evaluatedArg3, evaluatedArg4, evaluatedArg5 ] of
+                                [ Value.List () listItems1, Value.List () listItems2, Value.List () listItems3, Value.List () listItems4, Value.List () listItems5 ] ->
+                                    List.map5
+                                        (\item1 item2 item3 item4 item5 ->
+                                            eval
+                                                (Value.Apply ()
+                                                    (Value.Apply ()
+                                                        (Value.Apply ()
+                                                            (Value.Apply ()
+                                                                (Value.Apply ()
+                                                                    fun
+                                                                    item1
+                                                                )
+                                                                item2
+                                                            )
+                                                            item3
+                                                        )
+                                                        item4
+                                                    )
+                                                    item5
+                                                )
+                                        )
+                                        listItems1
+                                        listItems2
+                                        listItems3
+                                        listItems4
+                                        listItems5
+                                        |> ListOfResults.liftFirstError
+                                        |> Result.map (Value.List ())
+
+                                _ ->
+                                    Err (UnexpectedArguments args)
+                        )
+                        (eval arg1)
+                        (eval arg2)
+                        (eval arg3)
+                        (eval arg4)
+                        (eval arg5)
+                        |> Result.andThen identity
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "concatMap"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.List () listItems ->
+                                        let
+                                            evaluate : List RawValue -> List RawValue -> Result Error (List RawValue)
+                                            evaluate resultList items =
+                                                case items of
+                                                    [] ->
+                                                        Ok resultList
+
+                                                    head1 :: tail1 ->
+                                                        case eval (Value.Apply () fun head1) of
+                                                            Ok (Value.List () list) ->
+                                                                evaluate (resultList ++ list) tail1
+
+                                                            Ok other ->
+                                                                Err (ExpectedList other)
+
+                                                            Err other ->
+                                                                Err other
+                                        in
+                                        listItems
+                                            |> evaluate []
+                                            |> Result.map (Value.List ())
+
+                                    _ ->
+                                        Err (ExpectedList evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "isEmpty", eval1 List.isEmpty (decodeList decodeRaw) (encodeLiteral BoolLiteral) )
+    , ( "head", eval1 List.head (decodeList decodeRaw) (encodeMaybe encodeRaw) )
+    , ( "tail", eval1 List.tail (decodeList decodeRaw) (encodeMaybe (encodeList encodeRaw)) )
+    , ( "take", eval2 List.take (decodeLiteral intLiteral) (decodeList decodeRaw) (encodeList encodeRaw) )
+    , ( "drop", eval2 List.drop (decodeLiteral intLiteral) (decodeList decodeRaw) (encodeList encodeRaw) )
+    , ( "partition"
+      , \eval args ->
+            case args of
+                [ fun, arg1 ] ->
+                    eval arg1
+                        |> Result.andThen
+                            (\evaluatedArg1 ->
+                                case evaluatedArg1 of
+                                    Value.List () listItems ->
+                                        let
+                                            evaluate : List RawValue -> List RawValue -> List RawValue -> Result Error ( List RawValue, List RawValue )
+                                            evaluate list1 list2 items =
+                                                case items of
+                                                    [] ->
+                                                        Ok ( list1, list2 )
+
+                                                    head1 :: tail1 ->
+                                                        case eval (Value.Apply () fun head1) of
+                                                            Ok (Value.Literal _ (BoolLiteral True)) ->
+                                                                evaluate (list1 ++ [ head1 ]) list2 tail1
+
+                                                            Ok (Value.Literal _ (BoolLiteral False)) ->
+                                                                evaluate list1 (list2 ++ [ head1 ]) tail1
+
+                                                            Ok other ->
+                                                                Err (ExpectedBoolLiteral other)
+
+                                                            Err other ->
+                                                                Err other
+                                        in
+                                        listItems
+                                            |> evaluate [] []
+                                            |> Result.map
+                                                (\( list1, list2 ) ->
+                                                    Value.Tuple () [ Value.List () list1, Value.List () list2 ]
+                                                )
+
+                                    _ ->
+                                        Err (ExpectedList evaluatedArg1)
+                            )
+
+                _ ->
+                    Err (UnexpectedArguments args)
+      )
+    , ( "unzip", eval1 List.unzip (decodeList (decodeTuple2 ( decodeRaw, decodeRaw ))) (encodeTuple2 ( encodeList encodeRaw, encodeList encodeRaw )) )
     ]

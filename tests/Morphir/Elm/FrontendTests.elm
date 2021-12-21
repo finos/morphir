@@ -19,11 +19,12 @@ module Morphir.Elm.FrontendTests exposing (..)
 import Dict exposing (Dict)
 import Expect exposing (Expectation)
 import Json.Encode as Encode
-import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
+import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation, parseRawValue)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
+import Morphir.IR as IR
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (fQName)
+import Morphir.IR.FQName as FQName exposing (fQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
@@ -36,7 +37,7 @@ import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Rule as Rule
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Type as Type
-import Morphir.IR.Value exposing (Definition, Pattern(..), Value(..))
+import Morphir.IR.Value as Value exposing (Definition, Pattern(..), RawValue, Value(..))
 import Set
 import Test exposing (..)
 
@@ -45,6 +46,40 @@ opts : Frontend.Options
 opts =
     { typesOnly = False
     }
+
+
+parseRawValueTests : Test
+parseRawValueTests =
+    let
+        positiveTest : String -> RawValue -> Test
+        positiveTest input expectedResult =
+            test input
+                (\_ ->
+                    parseRawValue IR.empty input
+                        |> Expect.equal (Ok expectedResult)
+                )
+    in
+    describe "parseRawValue"
+        [ positiveTest "1 + 2"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                    (Value.Literal () (WholeNumberLiteral 1))
+                )
+                (Value.Literal () (WholeNumberLiteral 2))
+            )
+        , positiveTest "List.filter ((+) 1) []"
+            (Value.Apply ()
+                (Value.Apply ()
+                    (Value.Reference () (fqn "Morphir.SDK" "List" "filter"))
+                    (Value.Apply ()
+                        (Value.Reference () (fqn "Morphir.SDK" "Basics" "add"))
+                        (Value.Literal () (WholeNumberLiteral 1))
+                    )
+                )
+                (Value.List () [])
+            )
+        ]
 
 
 frontendTest : Test
@@ -360,8 +395,8 @@ valueTests =
     in
     describe "Values are mapped correctly"
         [ checkIR "()" <| Unit ()
-        , checkIR "1" <| Literal () (IntLiteral 1)
-        , checkIR "0x20" <| Literal () (IntLiteral 32)
+        , checkIR "1" <| Literal () (WholeNumberLiteral 1)
+        , checkIR "0x20" <| Literal () (WholeNumberLiteral 32)
         , checkIR "1.5" <| Literal () (FloatLiteral 1.5)
         , checkIR "\"foo\"" <| Literal () (StringLiteral "foo")
         , checkIR "True" <| Literal () (BoolLiteral True)
@@ -373,7 +408,7 @@ valueTests =
         --, checkIR "MyPack.Bar.foo" <| Reference () (fQName [] [ [ "my", "pack" ], [ "bar" ] ] [ "foo" ])
         , checkIR "foo bar" <| Apply () (ref "foo") (ref "bar")
         , checkIR "foo bar baz" <| Apply () (Apply () (ref "foo") (ref "bar")) (ref "baz")
-        , checkIR "-1" <| SDKBasics.negate () () (Literal () (IntLiteral 1))
+        , checkIR "-1" <| SDKBasics.negate () () (Literal () (WholeNumberLiteral 1))
         , checkIR "if foo then bar else baz" <| IfThenElse () (ref "foo") (ref "bar") (ref "baz")
         , checkIR "( foo, bar, baz )" <| Tuple () [ ref "foo", ref "bar", ref "baz" ]
         , checkIR "( foo )" <| ref "foo"
@@ -387,16 +422,16 @@ valueTests =
         , checkIR "\\_ -> foo " <| Lambda () (WildcardPattern ()) (ref "foo")
         , checkIR "\\'a' -> foo " <| Lambda () (LiteralPattern () (CharLiteral 'a')) (ref "foo")
         , checkIR "\\\"foo\" -> foo " <| Lambda () (LiteralPattern () (StringLiteral "foo")) (ref "foo")
-        , checkIR "\\42 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 42)) (ref "foo")
-        , checkIR "\\0x20 -> foo " <| Lambda () (LiteralPattern () (IntLiteral 32)) (ref "foo")
-        , checkIR "\\( 1, 2 ) -> foo " <| Lambda () (TuplePattern () [ LiteralPattern () (IntLiteral 1), LiteralPattern () (IntLiteral 2) ]) (ref "foo")
-        , checkIR "\\1 :: 2 -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (LiteralPattern () (IntLiteral 2))) (ref "foo")
+        , checkIR "\\42 -> foo " <| Lambda () (LiteralPattern () (WholeNumberLiteral 42)) (ref "foo")
+        , checkIR "\\0x20 -> foo " <| Lambda () (LiteralPattern () (WholeNumberLiteral 32)) (ref "foo")
+        , checkIR "\\( 1, 2 ) -> foo " <| Lambda () (TuplePattern () [ LiteralPattern () (WholeNumberLiteral 1), LiteralPattern () (WholeNumberLiteral 2) ]) (ref "foo")
+        , checkIR "\\1 :: 2 -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (WholeNumberLiteral 1)) (LiteralPattern () (WholeNumberLiteral 2))) (ref "foo")
         , checkIR "\\[] -> foo " <| Lambda () (EmptyListPattern ()) (ref "foo")
-        , checkIR "\\[ 1 ] -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (IntLiteral 1)) (EmptyListPattern ())) (ref "foo")
+        , checkIR "\\[ 1 ] -> foo " <| Lambda () (HeadTailPattern () (LiteralPattern () (WholeNumberLiteral 1)) (EmptyListPattern ())) (ref "foo")
         , checkIR "\\([] as bar) -> foo " <| Lambda () (AsPattern () (EmptyListPattern ()) (Name.fromString "bar")) (ref "foo")
-        , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [ [ "my" ] ] [ [ "test" ] ] [ "foo" ]) [ LiteralPattern () (IntLiteral 1), WildcardPattern () ]) (ref "foo")
+        , checkIR "\\(Foo 1 _) -> foo " <| Lambda () (ConstructorPattern () (fQName [ [ "my" ] ] [ [ "test" ] ] [ "foo" ]) [ LiteralPattern () (WholeNumberLiteral 1), WildcardPattern () ]) (ref "foo")
         , checkIR "\\Bar.Baz -> foo " <| Lambda () (ConstructorPattern () (fQName [ [ "my" ] ] [ [ "bar" ] ] [ "baz" ]) []) (ref "foo")
-        , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (IntLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
+        , checkIR "case a of\n  1 -> foo\n  _ -> bar" <| PatternMatch () (ref "a") [ ( LiteralPattern () (WholeNumberLiteral 1), ref "foo" ), ( WildcardPattern (), ref "bar" ) ]
         , checkIR "a <| b" <| Apply () (ref "a") (ref "b")
         , checkIR "a |> b" <| Apply () (ref "b") (ref "a")
         , checkIR "a |> b |> c" <| Apply () (ref "c") (Apply () (ref "b") (ref "a"))
