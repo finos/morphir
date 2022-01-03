@@ -5,13 +5,14 @@ import Array.Extra
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, alignRight, column, el, explain, fill, fillPortion, height, html, image, layout, link, none, padding, paddingXY, pointer, px, rgb, row, scrollbars, spacing, table, text, width, wrappedRow)
+import Element exposing (Element, alignRight, alignTop, column, el, explain, fill, fillPortion, height, html, image, layout, link, none, padding, paddingXY, paragraph, pointer, px, rgb, row, scrollbarY, scrollbars, spacing, table, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Http exposing (Error(..), emptyBody, jsonBody)
-import Markdown
+import Markdown.Parser as Markdown
+import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
 import Morphir.IR as IR exposing (IR)
@@ -25,7 +26,7 @@ import Morphir.IR.Path as Path
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
-import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Common exposing (nameToText, nameToTitleText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
@@ -35,6 +36,7 @@ import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.DevelopApp.Common exposing (insertInList, viewAsCard)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (ViewType(..), makeURL)
+import Parser exposing (deadEndsToString)
 import Set exposing (Set)
 import Url exposing (Url)
 import Url.Builder
@@ -1042,7 +1044,7 @@ viewHome model packageName packageDef =
                         { url =
                             "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
                         , label =
-                            text (moduleName |> List.map (Name.toHumanWords >> String.join " ") |> String.join " - ")
+                            text (moduleName |> List.map nameToTitleText |> String.join " - ")
                         }
 
                 types =
@@ -1072,7 +1074,9 @@ viewHome model packageName packageDef =
                         ]
                     , (types ++ values)
                         |> wrappedRow
-                            [ padding (model.theme |> Theme.scaled 2)
+                            [ width fill
+                            , height fill
+                            , padding (model.theme |> Theme.scaled 2)
                             , spacing (model.theme |> Theme.scaled 2)
                             ]
                     ]
@@ -1150,48 +1154,6 @@ viewType theme typeName typeDef docs =
     let
         backgroundColor =
             rgb 0.9529 0.9176 0.8078
-
-        viewAsCard header content =
-            let
-                white =
-                    rgb 1 1 1
-            in
-            column
-                [ Background.color backgroundColor
-                , Border.rounded 3
-                , padding 5
-                , spacing 5
-                ]
-                [ row
-                    [ width fill
-                    , paddingXY (theme |> Theme.scaled -2) (theme |> Theme.scaled -6)
-                    , spacing (theme |> Theme.scaled 2)
-                    , Font.size (theme |> Theme.scaled 2)
-                    ]
-                    [ el [ Font.bold ] header
-                    , el [ alignRight ] (text "type")
-                    ]
-                , el
-                    [ Background.color white
-                    , Border.rounded 3
-                    , height fill
-                    , width fill
-                    ]
-                    (if docs == "" then
-                        content
-
-                     else
-                        column []
-                            [ el
-                                [ padding (theme |> Theme.scaled -2)
-                                , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                , Border.color backgroundColor
-                                ]
-                                (html (Markdown.toHtml [] docs))
-                            , content
-                            ]
-                    )
-                ]
     in
     case typeDef of
         Type.TypeAliasDefinition params (Type.Record _ fields) ->
@@ -1233,22 +1195,23 @@ viewType theme typeName typeDef docs =
                             fields
                         }
             in
-            viewAsCard
-                (typeName |> Name.toHumanWords |> String.join " " |> text)
+            viewAsCard theme
+                (typeName |> nameToTitleText |> text)
+                "record"
+                backgroundColor
+                docs
                 viewFields
 
         Type.TypeAliasDefinition params body ->
-            viewAsCard
-                (typeName |> Name.toHumanWords |> String.join " " |> text)
-                (row
-                    [ width fill
-                    , height fill
-                    , paddingXY 10 5
-                    , spacing 10
+            viewAsCard theme
+                (typeName |> nameToTitleText |> text)
+                "is a"
+                backgroundColor
+                docs
+                (el
+                    [ paddingXY 10 5
                     ]
-                    [ text "="
-                    , XRayView.viewType body
-                    ]
+                    (XRayView.viewType body)
                 )
 
         Type.CustomTypeDefinition params accessControlledConstructors ->
@@ -1285,7 +1248,7 @@ viewType theme typeName typeDef docs =
                                         , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
                                         , Border.color backgroundColor
                                         ]
-                                        (text (nameToText ctorName))
+                                        (text (nameToTitleText ctorName))
                                 )
                             |> column [ width fill ]
 
@@ -1311,7 +1274,7 @@ viewType theme typeName typeDef docs =
                                                         , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
                                                         , Border.color backgroundColor
                                                         ]
-                                                        (text (nameToText ctorName))
+                                                        (text (nameToTitleText ctorName))
                                           }
                                         , { header = none
                                           , width = fill
@@ -1334,8 +1297,21 @@ viewType theme typeName typeDef docs =
                                         accessControlledConstructors.value |> Dict.toList
                                     }
             in
-            viewAsCard
-                (typeName |> Name.toHumanWords |> String.join " " |> text)
+            viewAsCard theme
+                (typeName |> nameToTitleText |> text)
+                (case isNewType of
+                    Just _ ->
+                        "wrapper"
+
+                    Nothing ->
+                        if isEnum then
+                            "enum"
+
+                        else
+                            "one of"
+                )
+                backgroundColor
+                docs
                 viewConstructors
 
 
@@ -1359,43 +1335,90 @@ viewValue theme moduleName valueName valueDef =
 
             else
                 rgb 0.8 0.8 0.9
-
-        viewAsCard header content =
-            let
-                white =
-                    rgb 1 1 1
-            in
-            column
-                [ Background.color backgroundColor
-                , Border.rounded 3
-                , padding 5
-                , spacing 5
-                ]
-                [ row
-                    [ width fill
-                    , padding 2
-                    , spacing (theme |> Theme.scaled 2)
-                    , Font.size (theme |> Theme.scaled 2)
-                    ]
-                    [ el [ Font.bold ] header
-                    , el [ alignRight ]
-                        (if isData then
-                            text "value"
-
-                         else
-                            text "calculation"
-                        )
-                    ]
-                , el
-                    [ Background.color white
-                    , Border.rounded 3
-                    , height fill
-                    , width fill
-                    ]
-                    content
-                ]
     in
-    viewAsCard cardTitle none
+    viewAsCard theme
+        cardTitle
+        (if isData then
+            "value"
+
+         else
+            "calculation"
+        )
+        backgroundColor
+        ""
+        none
+
+
+viewAsCard : Theme -> Element msg -> String -> Element.Color -> String -> Element msg -> Element msg
+viewAsCard theme header class backgroundColor docs content =
+    let
+        white =
+            rgb 1 1 1
+
+        cont =
+            el
+                [ alignTop
+                , height fill
+                , width fill
+                ]
+                content
+    in
+    column
+        [ Background.color backgroundColor
+        , Border.rounded 3
+        , padding 5
+        , spacing 5
+        ]
+        [ row
+            [ width fill
+            , paddingXY (theme |> Theme.scaled -2) (theme |> Theme.scaled -6)
+            , spacing (theme |> Theme.scaled 2)
+            , Font.size (theme |> Theme.scaled 2)
+            ]
+            [ el [ Font.bold ] header
+            , el [ alignRight ] (text class)
+            ]
+        , el
+            [ Background.color white
+            , Border.rounded 3
+            , width (theme |> Theme.scaled 16 |> px)
+            , height (theme |> Theme.scaled 12 |> px)
+            , scrollbarY
+            ]
+            (if docs == "" then
+                cont
+
+             else
+                column [ height fill, width fill ]
+                    [ el
+                        [ padding (theme |> Theme.scaled -2)
+                        , Border.widthEach { bottom = 3, top = 0, left = 0, right = 0 }
+                        , Border.color backgroundColor
+                        , height fill
+                        , width fill
+                        ]
+                        (let
+                            deadEndsToString deadEnds =
+                                deadEnds
+                                    |> List.map Markdown.deadEndToString
+                                    |> String.join "\n"
+                         in
+                         case
+                            docs
+                                |> Markdown.parse
+                                |> Result.mapError deadEndsToString
+                                |> Result.andThen (\ast -> Markdown.Renderer.render Markdown.Renderer.defaultHtmlRenderer ast)
+                         of
+                            Ok rendered ->
+                                rendered |> List.map html |> paragraph []
+
+                            Err errors ->
+                                text errors
+                        )
+                    , cont
+                    ]
+            )
+        ]
 
 
 
@@ -1495,14 +1518,14 @@ viewModuleNames packageName currentModule moduleNames =
                         [ onClick (SelectModule nodePath currentModule)
                         , pointer
                         ]
-                        (text (name |> Name.toHumanWords |> String.join " "))
+                        (text (name |> nameToTitleText))
 
                 Nothing ->
                     el
                         [ onClick (SelectModule nodePath currentModule)
                         , pointer
                         ]
-                        (text (packageName |> List.map (Name.toHumanWords >> String.join " ") |> String.join " - "))
+                        (text (packageName |> List.map nameToTitleText |> String.join " - "))
         )
         Array.empty
         (childModuleNames

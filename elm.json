@@ -52,6 +52,7 @@
         "chain-partners/elm-bignum": "1.0.1 <= v < 2.0.0",
         "cmditch/elm-bigint": "1.0.1 <= v < 2.0.0",
         "cuducos/elm-format-number": "8.1.4 <= v < 9.0.0",
+        "dillonkearns/elm-markdown": "7.0.0 <= v < 8.0.0",
         "dosarf/elm-tree-view": "3.0.0 <= v < 4.0.0",
         "elm/browser": "1.0.2 <= v < 2.0.0",
         "elm/core": "1.0.4 <= v < 2.0.0",
