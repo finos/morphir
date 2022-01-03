@@ -83,9 +83,11 @@ decodePackageInfo =
                 |> Decode.map Path.fromString
             )
         )
-        (Decode.field "exposedModules"
-            (Decode.list (Decode.string |> Decode.map Path.fromString)
-                |> Decode.map Set.fromList
+        (Decode.maybe
+            (Decode.field "exposedModules"
+                (Decode.list (Decode.string |> Decode.map Path.fromString)
+                    |> Decode.map Set.fromList
+                )
             )
         )
 
