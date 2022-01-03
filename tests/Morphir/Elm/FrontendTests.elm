@@ -157,7 +157,11 @@ frontendTest =
             { name =
                 packageName
             , exposedModules =
-                Nothing
+                Just
+                    (Set.fromList
+                        [ moduleA
+                        ]
+                    )
             }
 
         expected : Package.Definition () ()
@@ -267,7 +271,8 @@ valueTests =
     let
         packageInfo =
             { name = [ [ "my" ] ]
-            , exposedModules = Nothing
+            , exposedModules =
+                Just (Set.fromList [ [ [ "test" ] ] ])
             }
 
         otherPackage : Package.Specification ()
