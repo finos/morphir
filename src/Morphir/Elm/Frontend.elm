@@ -99,7 +99,7 @@ type alias Options =
 {-| -}
 type alias PackageInfo =
     { name : Path
-    , exposedModules : Set Path
+    , exposedModules : Maybe (Set Path)
     }
 
 
@@ -218,9 +218,11 @@ parseRawValue ir valueSourceCode =
             { name =
                 dummyPackageName
             , exposedModules =
-                Set.fromList
-                    [ dummyModuleName
-                    ]
+                Just
+                    (Set.fromList
+                        [ dummyModuleName
+                        ]
+                    )
             }
     in
     mapSource (Options False) packageInfo defaultDependencies [ dummyModule ]
@@ -267,9 +269,11 @@ mapValueToFile ir outputType content =
             { name =
                 packageName
             , exposedModules =
-                Set.fromList
-                    [ moduleA
-                    ]
+                Just
+                    (Set.fromList
+                        [ moduleA
+                        ]
+                    )
             }
     in
     mapSource (Options False) packageInfo defaultDependencies [ sourceA ]
@@ -504,18 +508,8 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
                     )
                 |> ListOfResults.liftAllErrors
 
-        exposedModuleNames : Set ModuleName
-        exposedModuleNames =
-            packageInfo.exposedModules
-                |> Set.map
-                    (\modulePath ->
-                        (packageInfo.name |> Path.toList)
-                            ++ (modulePath |> Path.toList)
-                            |> List.map Name.toTitleCase
-                    )
-
-        treeShakeModules : List ( ModuleName, ParsedFile ) -> List ( ModuleName, ParsedFile )
-        treeShakeModules allModules =
+        treeShakeModules : Set ModuleName -> List ( ModuleName, ParsedFile ) -> List ( ModuleName, ParsedFile )
+        treeShakeModules exposedModuleNames allModules =
             let
                 allUsedModules : Set ModuleName
                 allUsedModules =
@@ -561,38 +555,80 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
             else
                 Err [ CyclicModules cycles ]
     in
-    parseSources sourceFiles
-        |> Result.andThen
-            (\parsedFiles ->
-                let
-                    _ =
-                        Debug.log "Parsed sources" (parsedFiles |> List.length)
-
-                    parsedFilesByModuleName =
-                        parsedFiles
-                            |> Dict.fromList
-                in
-                parsedFiles
-                    |> treeShakeModules
-                    |> sortModules
-                    |> Result.andThen (mapParsedFiles opts dependencies packageInfo.name parsedFilesByModuleName)
-            )
-        |> Result.map
-            (\moduleDefs ->
-                { modules =
-                    moduleDefs
-                        |> Dict.toList
-                        |> List.map
-                            (\( modulePath, m ) ->
-                                if packageInfo.exposedModules |> Set.member modulePath then
-                                    ( modulePath, public m )
-
-                                else
-                                    ( modulePath, private m )
+    case packageInfo.exposedModules of
+        Just exposedModules ->
+            let
+                exposedModuleNames : Set ModuleName
+                exposedModuleNames =
+                    exposedModules
+                        |> Set.map
+                            (\modulePath ->
+                                (packageInfo.name |> Path.toList)
+                                    ++ (modulePath |> Path.toList)
+                                    |> List.map Name.toTitleCase
                             )
-                        |> Dict.fromList
-                }
-            )
+            in
+            parseSources sourceFiles
+                |> Result.andThen
+                    (\parsedFiles ->
+                        let
+                            _ =
+                                Debug.log "Parsed sources" (parsedFiles |> List.length)
+
+                            parsedFilesByModuleName =
+                                parsedFiles
+                                    |> Dict.fromList
+                        in
+                        parsedFiles
+                            |> treeShakeModules exposedModuleNames
+                            |> sortModules
+                            |> Result.andThen (mapParsedFiles opts dependencies packageInfo.name parsedFilesByModuleName)
+                    )
+                |> Result.map
+                    (\moduleDefs ->
+                        { modules =
+                            moduleDefs
+                                |> Dict.toList
+                                |> List.map
+                                    (\( modulePath, m ) ->
+                                        if exposedModules |> Set.member modulePath then
+                                            ( modulePath, public m )
+
+                                        else
+                                            ( modulePath, private m )
+                                    )
+                                |> Dict.fromList
+                        }
+                    )
+
+        Nothing ->
+            parseSources sourceFiles
+                |> Result.andThen
+                    (\parsedFiles ->
+                        let
+                            _ =
+                                Debug.log "Parsed sources" (parsedFiles |> List.length)
+
+                            parsedFilesByModuleName =
+                                parsedFiles
+                                    |> Dict.fromList
+                        in
+                        parsedFiles
+                            |> sortModules
+                            |> Result.andThen (mapParsedFiles opts dependencies packageInfo.name parsedFilesByModuleName)
+                    )
+                |> Result.map
+                    (\moduleDefs ->
+                        { modules =
+                            moduleDefs
+                                |> Dict.toList
+                                |> List.map
+                                    (\( modulePath, m ) ->
+                                        ( modulePath, public m )
+                                    )
+                                |> Dict.fromList
+                        }
+                    )
 
 
 mapParsedFiles : Options -> Dict Path (Package.Specification ()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))

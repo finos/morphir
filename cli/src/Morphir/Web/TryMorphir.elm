@@ -417,7 +417,7 @@ subscriptions model =
 
 packageInfo =
     { name = [ [ "my" ] ]
-    , exposedModules = Set.fromList [ [ [ "test" ] ] ]
+    , exposedModules = Nothing
     }
 
 
