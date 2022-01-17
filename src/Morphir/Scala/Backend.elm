@@ -42,7 +42,7 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (FQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Module as Module
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
@@ -57,7 +57,8 @@ import Set exposing (Set)
 {-| Placeholder for code generator options. Currently empty.
 -}
 type alias Options =
-    {}
+    { limitToModules : Maybe (Set ModuleName)
+    }
 
 
 {-| Entry point for the Scala backend. It takes the Morphir IR as the input and returns an in-memory
@@ -66,8 +67,13 @@ representation of files generated.
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
     case distro of
-        Distribution.Library packagePath dependencies packageDef ->
-            mapPackageDefinition opt distro packagePath packageDef
+        Distribution.Library packageName dependencies packageDef ->
+            case opt.limitToModules of
+                Just modulesToInclude ->
+                    mapPackageDefinition opt distro packageName (Package.selectModules modulesToInclude packageName packageDef)
+
+                Nothing ->
+                    mapPackageDefinition opt distro packageName packageDef
 
 
 mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> FileMap

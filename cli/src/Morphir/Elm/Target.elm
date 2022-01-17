@@ -22,9 +22,9 @@ import Morphir.TypeScript.Backend.Codec
 
 type BackendOptions
     = ScalaOptions Morphir.Scala.Backend.Options
-    | SpringBootOptions Morphir.Scala.Backend.Options
-    | SemanticOptions Morphir.Scala.Backend.Options
-    | CypherOptions Morphir.Scala.Backend.Options
+    | SpringBootOptions SpringBoot.Options
+    | SemanticOptions Cypher.Options
+    | CypherOptions Cypher.Options
     | TypeScriptOptions Morphir.TypeScript.Backend.Options
     | SparkOptions Morphir.Scala.Spark.Backend.Options
 
