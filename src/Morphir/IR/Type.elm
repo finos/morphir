@@ -23,7 +23,7 @@ module Morphir.IR.Type exposing
     , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification
     , Constructors
     , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition
-    , eraseAttributes, collectVariables, substituteTypeVariables, toString
+    , eraseAttributes, collectVariables, collectReferences, substituteTypeVariables, toString
     )
 
 {-| Like any other programming languages Morphir has a type system as well. This module defines the building blocks of
@@ -128,7 +128,7 @@ Here is the full definition for reference:
 
 #Utilities
 
-@docs eraseAttributes, collectVariables, substituteTypeVariables, toString
+@docs eraseAttributes, collectVariables, collectReferences, substituteTypeVariables, toString
 
 -}
 
@@ -592,6 +592,41 @@ collectVariables tpe =
         ExtensibleRecord _ subjectName fields ->
             collectUnion (fields |> List.map .tpe)
                 |> Set.insert subjectName
+
+        Function _ argType returnType ->
+            collectUnion [ argType, returnType ]
+
+        Unit _ ->
+            Set.empty
+
+
+{-| Collect all references in a type recursively.
+-}
+collectReferences : Type ta -> Set FQName
+collectReferences tpe =
+    let
+        collectUnion : List (Type ta) -> Set FQName
+        collectUnion values =
+            values
+                |> List.map collectReferences
+                |> List.foldl Set.union Set.empty
+    in
+    case tpe of
+        Variable _ _ ->
+            Set.empty
+
+        Reference _ fQName args ->
+            collectUnion args
+                |> Set.insert fQName
+
+        Tuple _ elements ->
+            collectUnion elements
+
+        Record _ fields ->
+            collectUnion (fields |> List.map .tpe)
+
+        ExtensibleRecord _ _ fields ->
+            collectUnion (fields |> List.map .tpe)
 
         Function _ argType returnType ->
             collectUnion [ argType, returnType ]

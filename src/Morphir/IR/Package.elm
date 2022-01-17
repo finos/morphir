@@ -20,7 +20,7 @@ module Morphir.IR.Package exposing
     , Definition, emptyDefinition
     , lookupModuleSpecification, lookupModuleDefinition, lookupTypeSpecification, lookupValueSpecification, lookupValueDefinition
     , PackageName, definitionToSpecification, definitionToSpecificationWithPrivate, eraseDefinitionAttributes, eraseSpecificationAttributes
-    , mapDefinitionAttributes, mapSpecificationAttributes
+    , mapDefinitionAttributes, mapSpecificationAttributes, selectModules
     )
 
 {-| A package is collection of types and values that are versioned together. If this sounds abstract just think of any
@@ -47,7 +47,7 @@ including implementation and private types and values.
 # Other utilities
 
 @docs PackageName, definitionToSpecification, definitionToSpecificationWithPrivate, eraseDefinitionAttributes, eraseSpecificationAttributes
-@docs mapDefinitionAttributes, mapSpecificationAttributes
+@docs mapDefinitionAttributes, mapSpecificationAttributes, selectModules
 
 -}
 
@@ -58,6 +58,7 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value
+import Set exposing (Set)
 
 
 {-| A package name is a globally unique identifier for a package. It is represented by a path, which is a list of names.
@@ -227,3 +228,56 @@ eraseDefinitionAttributes : Definition ta va -> Definition () ()
 eraseDefinitionAttributes def =
     def
         |> mapDefinitionAttributes (\_ -> ()) (\_ -> ())
+
+
+{-| Filter down the modules in this distribution to the specified modules and their transitive dependencies.
+-}
+selectModules : Set ModuleName -> PackageName -> Definition ta va -> Definition ta va
+selectModules modulesToInclude packageName packageDef =
+    let
+        findAllDependencies : Set ModuleName -> Set ModuleName
+        findAllDependencies current =
+            current
+                |> Set.toList
+                |> List.filterMap
+                    (\currentModuleName ->
+                        packageDef.modules
+                            |> Dict.get currentModuleName
+                            |> Maybe.map
+                                (\mDef ->
+                                    mDef.value
+                                        |> Module.dependsOnModules
+                                        |> Set.toList
+                                        |> List.filterMap
+                                            (\( pName, mName ) ->
+                                                if pName == packageName then
+                                                    Just mName
+
+                                                else
+                                                    Nothing
+                                            )
+                                        |> Set.fromList
+                                )
+                    )
+                |> List.foldl Set.union Set.empty
+
+        expandedModulesToInclude : Set ModuleName
+        expandedModulesToInclude =
+            Set.union
+                (findAllDependencies modulesToInclude)
+                modulesToInclude
+    in
+    if modulesToInclude == expandedModulesToInclude then
+        { packageDef
+            | modules =
+                packageDef.modules
+                    |> Dict.toList
+                    |> List.filter
+                        (\( moduleName, _ ) ->
+                            modulesToInclude |> Set.member moduleName
+                        )
+                    |> Dict.fromList
+        }
+
+    else
+        selectModules expandedModulesToInclude packageName packageDef
