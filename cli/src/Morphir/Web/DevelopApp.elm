@@ -73,7 +73,13 @@ type alias Model =
     , functionStates : Dict FQName FunctionPage.Model
     , collapsedModules : Set TreeLayout.NodePath
     , selectedModule : Maybe ( TreeLayout.NodePath, ModuleName )
+    , selectedDefinition : Maybe Definition
     }
+
+
+type Definition
+    = Value ( ModuleName, Name )
+    | Type ( ModuleName, Name )
 
 
 type IRState
@@ -104,6 +110,7 @@ init _ url key =
       , functionStates = Dict.empty
       , collapsedModules = Set.empty
       , selectedModule = Nothing
+      , selectedDefinition = Nothing
       }
     , Cmd.batch [ httpMakeModel ]
     )
@@ -140,6 +147,7 @@ type Msg
     | ExpandModule TreeLayout.NodePath
     | CollapseModule TreeLayout.NodePath
     | SelectModule TreeLayout.NodePath ModuleName
+    | SelectDefinition Definition
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -820,6 +828,9 @@ update msg model =
         SelectModule nodePath moduleName ->
             ( { model | selectedModule = Just ( nodePath, moduleName ) }, Cmd.none )
 
+        SelectDefinition definition ->
+            ( { model | selectedDefinition = Just definition }, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -1082,23 +1093,79 @@ viewHome model packageName packageDef =
                     ]
                 )
 
-        viewDefinitions : Maybe ModuleName -> Element msg
-        viewDefinitions maybeSelectedModuleName =
+        viewDefinitions : Maybe ModuleName -> Maybe Definition -> Element msg
+        viewDefinitions maybeSelectedModuleName maybeSelectedDefinition =
+            case maybeSelectedDefinition of
+                Just selectedDefinition ->
+                    case selectedDefinition of
+                        Value ( moduleName, valueName ) ->
+                            packageDef.modules
+                                |> Dict.get moduleName
+                                |> Maybe.andThen
+                                    (\accessControlledModuleDef ->
+                                        accessControlledModuleDef.value.values
+                                            |> Dict.get valueName
+                                            |> Maybe.map (.value >> viewValue model.theme moduleName valueName)
+                                    )
+                                |> Maybe.withDefault none
+
+                        Type ( moduleName, typeName ) ->
+                            packageDef.modules
+                                |> Dict.get moduleName
+                                |> Maybe.andThen
+                                    (\accessControlledModuleDef ->
+                                        accessControlledModuleDef.value.types
+                                            |> Dict.get typeName
+                                            |> Maybe.map
+                                                (\typeDef ->
+                                                    viewType model.theme typeName typeDef.value.value typeDef.value.doc
+                                                )
+                                    )
+                                |> Maybe.withDefault none
+
+                Nothing ->
+                    text "Please select a definition on the left"
+
+        moduleTypesAndValues : ModuleName -> Module.Definition () (Type ()) -> List ( Name, Element Msg )
+        moduleTypesAndValues moduleName moduleDef =
+            let
+                types =
+                    moduleDef.types
+                        |> Dict.toList
+                        |> List.map
+                            (\( typeName, typeDef ) ->
+                                ( typeName, viewTypeLabel model.theme moduleName typeName typeDef.value.value typeDef.value.doc )
+                            )
+
+                values =
+                    moduleDef.values
+                        |> Dict.toList
+                        |> List.map
+                            (\( valueName, valueDef ) ->
+                                ( valueName, viewValueLabel model.theme moduleName valueName valueDef.value )
+                            )
+            in
+            types ++ values
+
+        viewDefinitionLabels : Maybe ModuleName -> Element Msg
+        viewDefinitionLabels maybeSelectedModuleName =
             packageDef.modules
                 |> Dict.toList
-                |> List.filterMap
+                |> List.concatMap
                     (\( moduleName, accessControlledModuleDef ) ->
                         case maybeSelectedModuleName of
                             Just selectedModuleName ->
                                 if selectedModuleName |> Path.isPrefixOf moduleName then
-                                    Just (viewDefinitionsForModule moduleName accessControlledModuleDef.value)
+                                    moduleTypesAndValues moduleName accessControlledModuleDef.value
 
                                 else
-                                    Nothing
+                                    []
 
                             Nothing ->
-                                Just (viewDefinitionsForModule moduleName accessControlledModuleDef.value)
+                                moduleTypesAndValues moduleName accessControlledModuleDef.value
                     )
+                |> Dict.fromList
+                |> Dict.values
                 |> column [ height fill, width fill, scrollbars ]
     in
     row
@@ -1142,10 +1209,33 @@ viewHome model packageName packageDef =
                 )
             ]
         , column
+            [ Background.color gray
+            , Border.rounded 3
+            , height fill
+            , width (fillPortion 2)
+            , padding 5
+            , spacing 5
+            ]
+            [ el
+                [ width fill
+                , padding 2
+                , Font.size (model.theme |> Theme.scaled 2)
+                ]
+                (text "Concepts")
+            , el
+                [ Background.color white
+                , Border.rounded 3
+                , height fill
+                , width fill
+                , scrollbars
+                ]
+                (viewDefinitionLabels (model.selectedModule |> Maybe.map Tuple.second))
+            ]
+        , column
             [ height fill
             , width (fillPortion 8)
             ]
-            [ viewDefinitions (model.selectedModule |> Maybe.map Tuple.second) ]
+            [ viewDefinitions (model.selectedModule |> Maybe.map Tuple.second) model.selectedDefinition ]
         ]
 
 
@@ -1315,6 +1405,175 @@ viewType theme typeName typeDef docs =
                 viewConstructors
 
 
+viewTypeLabel : Theme -> ModuleName -> Name -> Type.Definition () -> String -> Element Msg
+viewTypeLabel theme moduleName typeName typeDef docs =
+    let
+        backgroundColor =
+            rgb 0.9529 0.9176 0.8078
+    in
+    case typeDef of
+        Type.TypeAliasDefinition params (Type.Record _ fields) ->
+            let
+                viewFields =
+                    table
+                        [ width fill
+                        ]
+                        { columns =
+                            [ { header = none
+                              , width = fill
+                              , view =
+                                    \field ->
+                                        el
+                                            [ width fill
+                                            , height fill
+                                            , paddingXY 10 5
+                                            , Font.bold
+                                            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                            , Border.color backgroundColor
+                                            ]
+                                            (text (nameToText field.name))
+                              }
+                            , { header = none
+                              , width = fill
+                              , view =
+                                    \field ->
+                                        el
+                                            [ width fill
+                                            , height fill
+                                            , paddingXY 10 5
+                                            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                            , Border.color backgroundColor
+                                            ]
+                                            (XRayView.viewType field.tpe)
+                              }
+                            ]
+                        , data =
+                            fields
+                        }
+            in
+            viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
+                theme
+                (typeName |> nameToTitleText |> text)
+                "record"
+                backgroundColor
+                docs
+                viewFields
+
+        Type.TypeAliasDefinition params body ->
+            viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
+                theme
+                (typeName |> nameToTitleText |> text)
+                "alias"
+                backgroundColor
+                docs
+                (el
+                    [ paddingXY 10 5
+                    ]
+                    (XRayView.viewType body)
+                )
+
+        Type.CustomTypeDefinition params accessControlledConstructors ->
+            let
+                isNewType : Maybe (Type ())
+                isNewType =
+                    case accessControlledConstructors.value |> Dict.toList of
+                        [ ( ctorName, [ ( _, baseType ) ] ) ] ->
+                            if ctorName == typeName then
+                                Just baseType
+
+                            else
+                                Nothing
+
+                        _ ->
+                            Nothing
+
+                isEnum =
+                    accessControlledConstructors.value
+                        |> Dict.values
+                        |> List.all List.isEmpty
+
+                viewConstructors =
+                    if isEnum then
+                        accessControlledConstructors.value
+                            |> Dict.toList
+                            |> List.map
+                                (\( ctorName, _ ) ->
+                                    el
+                                        [ width fill
+                                        , height fill
+                                        , paddingXY 10 5
+                                        , Font.bold
+                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                        , Border.color backgroundColor
+                                        ]
+                                        (text (nameToTitleText ctorName))
+                                )
+                            |> column [ width fill ]
+
+                    else
+                        case isNewType of
+                            Just baseType ->
+                                el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType baseType)
+
+                            Nothing ->
+                                table
+                                    [ width fill
+                                    ]
+                                    { columns =
+                                        [ { header = none
+                                          , width = fill
+                                          , view =
+                                                \( ctorName, ctorArgs ) ->
+                                                    el
+                                                        [ width fill
+                                                        , height fill
+                                                        , paddingXY 10 5
+                                                        , Font.bold
+                                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                                        , Border.color backgroundColor
+                                                        ]
+                                                        (text (nameToTitleText ctorName))
+                                          }
+                                        , { header = none
+                                          , width = fill
+                                          , view =
+                                                \( ctorName, ctorArgs ) ->
+                                                    el
+                                                        [ width fill
+                                                        , height fill
+                                                        , paddingXY 10 5
+                                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+                                                        , Border.color backgroundColor
+                                                        ]
+                                                        (ctorArgs
+                                                            |> List.map (Tuple.second >> XRayView.viewType)
+                                                            |> row [ spacing 5 ]
+                                                        )
+                                          }
+                                        ]
+                                    , data =
+                                        accessControlledConstructors.value |> Dict.toList
+                                    }
+            in
+            viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
+                theme
+                (typeName |> nameToTitleText |> text)
+                (case isNewType of
+                    Just _ ->
+                        "wrapper"
+
+                    Nothing ->
+                        if isEnum then
+                            "enum"
+
+                        else
+                            "one of"
+                )
+                backgroundColor
+                docs
+                viewConstructors
+
+
 viewValue : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> Element msg
 viewValue theme moduleName valueName valueDef =
     let
@@ -1349,6 +1608,36 @@ viewValue theme moduleName valueName valueDef =
         none
 
 
+viewValueLabel : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> Element Msg
+viewValueLabel theme moduleName valueName valueDef =
+    let
+        cardTitle =
+            text (nameToText valueName)
+
+        isData =
+            List.isEmpty valueDef.inputTypes
+
+        backgroundColor =
+            if isData then
+                rgb 0.8 0.9 0.9
+
+            else
+                rgb 0.8 0.8 0.9
+    in
+    viewAsLabel (SelectDefinition (Value ( moduleName, valueName )))
+        theme
+        cardTitle
+        (if isData then
+            "data"
+
+         else
+            "logic"
+        )
+        backgroundColor
+        ""
+        none
+
+
 viewAsCard : Theme -> Element msg -> String -> Element.Color -> String -> Element msg -> Element msg
 viewAsCard theme header class backgroundColor docs content =
     let
@@ -1364,16 +1653,14 @@ viewAsCard theme header class backgroundColor docs content =
                 content
     in
     column
-        [ Background.color backgroundColor
-        , Border.rounded 3
-        , padding 5
-        , spacing 5
+        [ padding (theme |> Theme.scaled 3)
+        , spacing (theme |> Theme.scaled 3)
         ]
         [ row
             [ width fill
             , paddingXY (theme |> Theme.scaled -2) (theme |> Theme.scaled -6)
             , spacing (theme |> Theme.scaled 2)
-            , Font.size (theme |> Theme.scaled 2)
+            , Font.size (theme |> Theme.scaled 3)
             ]
             [ el [ Font.bold ] header
             , el [ alignRight ] (text class)
@@ -1381,9 +1668,8 @@ viewAsCard theme header class backgroundColor docs content =
         , el
             [ Background.color white
             , Border.rounded 3
-            , width (theme |> Theme.scaled 16 |> px)
-            , height (theme |> Theme.scaled 12 |> px)
-            , scrollbarY
+            , width fill
+            , height fill
             ]
             (if docs == "" then
                 cont
@@ -1418,6 +1704,27 @@ viewAsCard theme header class backgroundColor docs content =
                     , cont
                     ]
             )
+        ]
+
+
+viewAsLabel : msg -> Theme -> Element msg -> String -> Element.Color -> String -> Element msg -> Element msg
+viewAsLabel clickMessage theme header class backgroundColor docs content =
+    row
+        [ width fill
+        , Font.size (theme |> Theme.scaled 2)
+        , onClick clickMessage
+        , pointer
+        ]
+        [ el
+            [ Font.bold
+            , paddingXY (theme |> Theme.scaled 0) (theme |> Theme.scaled -2)
+            ]
+            header
+        , el
+            [ alignRight
+            , paddingXY (theme |> Theme.scaled 0) (theme |> Theme.scaled -2)
+            ]
+            (el [] (text class))
         ]
 
 
