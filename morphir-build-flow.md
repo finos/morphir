@@ -21,11 +21,11 @@ Here's a list of the commands along with the supported options for each command 
 
 This command reads elm sources, translates to Morphir IR and outputs the IR into JSON.
 
-|        Option         | Requires | Description                                                                               |
-|:---------------------:|:--------:|:------------------------------------------------------------------------------------------|
-|   `-o`, `--output`    |  <path>  | Target file location where the Morphir IR will be saved.<br/>(default: "morphir-ir.json") |
-| `-p`, `--project-dir` |  <path>  | Root directory of the project where morphir.json is located.<br/>(default: ".")           |
-|    `-h`, `--help`     |    -     | Output usage information.                                                                 |
+|        Option         |   Requires   | Description                                                                               |
+|:---------------------:|:------------:|:------------------------------------------------------------------------------------------|
+|   `-o`, `--output`    | &lt;path&gt; | Target file location where the Morphir IR will be saved.<br/>(default: "morphir-ir.json") |
+| `-p`, `--project-dir` | &lt;path&gt; | Root directory of the project where morphir.json is located.<br/>(default: ".")           |
+|    `-h`, `--help`     |      -       | Output usage information.                                                                 |
 
 ## Command Process
 Here's a description of the processes involved with running each of these command
