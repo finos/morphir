@@ -49,7 +49,7 @@ Defines a standard format for storing and sharing business logic. A clear set of
 
 Supporting the development of your business’ needs in an ever-developing ecosystem based on firm standards and the integration of new languages.
 
-Check out [GitHub >>](https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial)
+Check out [GitHub >>](https://github.com/finos/morphir-examples/tree/master/tutorial)
 
 # Further reading
 
