@@ -8,13 +8,13 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 const config = {
   title: 'Morphir',
   tagline: `A multi-language system built on a data format that captures an application's domain model and business logic in a technology agnostic manner`,
-  url: 'https://finos.github.io/morphir',
-  baseUrl: '/morphir/',
+  url: 'https://finos.github.io/morphir/',
+  baseUrl: '/morphir-1/',
   onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
-  organizationName: 'finos',
-  projectName: 'morphir',
+  organizationName: 'zngly',
+  projectName: 'morphir-1',
   presets: [
     [
       'classic',
