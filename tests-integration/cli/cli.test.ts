@@ -46,12 +46,27 @@ describe("Testing Morphir-elm make command", () => {
             "logic level =",
             `   "Player level: " ++ level `
         ))
-        try {
-            const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
-            expect(IR.distribution[3].modules[0][1].value.types).toMatchObject([])
-        } catch (error) {
-            console.dir(error)
-        }
+
+        const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+        expect(IR.distribution[3].modules[0][1].value.types).toMatchObject([])
+    })
+
+    test("should create an IR with no values when no values are found in elm file", async () => {
+        fs.writeFileSync(path.join(PATH_TO_PROJECT, 'morphir.json'), JSON.stringify({
+            "name": "Package.Rentals",
+            "sourceDirectory": "src",
+            "exposedModules": []
+        }))
+        fs.writeFileSync(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
+            "module Package.Rentals exposing (Action)",
+            "",
+            "type Action",
+            `   = Rent`,
+            `   | Return`
+        ))
+
+        const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+        expect(IR.distribution[3].modules[0][1].value.values).toMatchObject([])
     })
 
     afterAll(async () => {
