@@ -1,9 +1,11 @@
 const path = require("path")
+const util = require("util")
 const fs = require('fs');
 const readFile = fs.readFileSync
 const mkdir = fs.mkdirSync
-const rmdir = fs.rmSync
+const rmdir = util.promisify(fs.rm)
 const cli = require("../../cli/cli")
+const writeFile = util.promisify(fs.writeFile)
 
 /**
  * create folder structure
@@ -17,47 +19,42 @@ const join = (...rest: String[]): String => rest.join("\n")
 describe("Testing Morphir-elm make command", () => {
     const PATH_TO_PROJECT: String = path.join(__dirname, 'temp/project')
     const CLI_OPTIONS = { typesOnly: false }
+    const morphirJSON = {
+        name: "Package",
+        sourceDirectory: "src",
+        exposedModules: ["Rentals"]
+    }
 
     beforeAll(async () => {
         // create the folders to house test data
         await mkdir(path.join(PATH_TO_PROJECT, '/src/Package'), { recursive: true })
     })
 
+    beforeEach(async () => {
+        await writeFile(path.join(PATH_TO_PROJECT, 'morphir.json'), JSON.stringify(morphirJSON))
+    })
+
     test("should create an IR with no modules when no elm files are found", async () => {
-        fs.writeFileSync(path.join(PATH_TO_PROJECT, 'morphir.json'), JSON.stringify({
-            "name": "Package.Rentals",
-            "sourceDirectory": "src",
-            "exposedModules": []
-        }))
         const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
         expect(IR.distribution[3].modules).toMatchObject([])
     })
 
     test("should create an IR with no types when no types are found in elm file", async () => {
-        fs.writeFileSync(path.join(PATH_TO_PROJECT, 'morphir.json'), JSON.stringify({
-            "name": "Package.Rentals",
-            "sourceDirectory": "src",
-            "exposedModules": []
-        }))
-        fs.writeFileSync(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
+        await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
             "module Package.Rentals exposing (logic)",
             "",
             "logic: String -> String",
             "logic level =",
-            `   "Player level: " ++ level `
+            `   String.append "Player level: " level`
         ))
 
         const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        expect(IR.distribution[3].modules[0][1].value.types).toMatchObject([])
+        const rentalsModule = IR.distribution[3].modules[0]
+        expect(rentalsModule[1].value.types).toMatchObject([])
     })
 
     test("should create an IR with no values when no values are found in elm file", async () => {
-        fs.writeFileSync(path.join(PATH_TO_PROJECT, 'morphir.json'), JSON.stringify({
-            "name": "Package.Rentals",
-            "sourceDirectory": "src",
-            "exposedModules": []
-        }))
-        fs.writeFileSync(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
+        await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
             "module Package.Rentals exposing (Action)",
             "",
             "type Action",
@@ -66,7 +63,27 @@ describe("Testing Morphir-elm make command", () => {
         ))
 
         const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        expect(IR.distribution[3].modules[0][1].value.values).toMatchObject([])
+        const rentalsModule = IR.distribution[3].modules[0]
+        expect(rentalsModule[1].value.values).toMatchObject([])
+    })
+
+    test("should create an IR with both types and values", async () => {
+        await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
+            "module Package.Rentals exposing (..)",
+            "",
+            "type Action",
+            `   = Rent`,
+            `   | Return`,
+            "",
+            "logic: String -> String",
+            "logic level =",
+            `   String.append "Player level: " level`
+        ))
+        const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+        const rentalsModule = IR.distribution[3].modules[0]
+        expect(rentalsModule[1].value.values).not.toMatchObject([])
+        expect(rentalsModule[1].value.types).not.toMatchObject([])
+
     })
 
     afterAll(async () => {
