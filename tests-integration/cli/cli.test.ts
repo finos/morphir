@@ -83,7 +83,24 @@ describe("Testing Morphir-elm make command", () => {
         const rentalsModule = IR.distribution[3].modules[0]
         expect(rentalsModule[1].value.values).not.toMatchObject([])
         expect(rentalsModule[1].value.types).not.toMatchObject([])
+    })
 
+    test("should create an IR with only types when typesOnly is set to true", async () => {
+        await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
+            "module Package.Rentals exposing (..)",
+            "",
+            "type Action",
+            `   = Rent`,
+            `   | Return`,
+            "",
+            "logic: String -> String",
+            "logic level =",
+            `   String.append "Player level: " level`
+        ))
+        const IR = await cli.make(PATH_TO_PROJECT, { typesOnly: true })
+        const rentalsModule = IR.distribution[3].modules[0]
+        expect(rentalsModule[1].value.values).toMatchObject([])
+        expect(rentalsModule[1].value.types).not.toMatchObject([])
     })
 
     afterAll(async () => {
