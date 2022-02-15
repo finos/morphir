@@ -1,5 +1,5 @@
 {
     "compilerOptions": {
-        "types": ["node", "mocha"]
+        "types": ["node", "mocha", "jest"]
     }
 }
