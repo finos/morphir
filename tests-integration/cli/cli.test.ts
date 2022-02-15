@@ -103,7 +103,7 @@ describe("Testing Morphir-elm make command", () => {
         expect(rentalsModule[1].value.types).not.toMatchObject([])
     })
 
-    test("should contain two modules when modules are only exposed", async () => {
+    test("should contain two modules", async () => {
         await writeFile(path.join(PATH_TO_PROJECT, 'morphir.json'), JSON.stringify({ ...morphirJSON, exposedModules: ["Rentals", "RentalTypes"] }))
         await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
             "module Package.Rentals exposing (..)",
@@ -122,26 +122,6 @@ describe("Testing Morphir-elm make command", () => {
         const IR = await cli.make(PATH_TO_PROJECT, { typesOnly: true })
         const modules = IR.distribution[3].modules
         expect(modules).toHaveLength(2)
-    })
-
-    test("should contain only required modules", async () => {
-        await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
-            "module Package.Rentals exposing (..)",
-            "",
-            "logic: String -> String",
-            "logic level =",
-            `   String.append "Player level: " level`
-        ))
-        await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'RentalTypes.elm'), join(
-            "module Package.RentalTypes exposing (..)",
-            "",
-            "type Action",
-            `   = Rent`,
-            `   | Return`,
-        ))
-        const IR = await cli.make(PATH_TO_PROJECT, { typesOnly: true })
-        const modules = IR.distribution[3].modules
-        expect(modules).toHaveLength(1)
     })
 
     afterAll(async () => {
