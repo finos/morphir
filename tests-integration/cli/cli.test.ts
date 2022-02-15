@@ -103,21 +103,28 @@ describe("Testing Morphir-elm make command", () => {
         expect(rentalsModule[1].value.types).not.toMatchObject([])
     })
 
+    test("should contain two modules", async () => {
+        await writeFile(path.join(PATH_TO_PROJECT, 'morphir.json'), JSON.stringify({ ...morphirJSON, exposedModules: ["Rentals", "RentalTypes"] }))
+        await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
+            "module Package.Rentals exposing (..)",
+            "",
+            "logic: String -> String",
+            "logic level =",
+            `   String.append "Player level: " level`
+        ))
+        await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'RentalTypes.elm'), join(
+            "module Package.RentalTypes exposing (..)",
+            "",
+            "type Action",
+            `   = Rent`,
+            `   | Return`,
+        ))
+        const IR = await cli.make(PATH_TO_PROJECT, { typesOnly: true })
+        const modules = IR.distribution[3].modules
+        expect(modules).toHaveLength(2)
+    })
+
     afterAll(async () => {
         await rmdir(path.join(__dirname, 'temp'), { recursive: true })
     })
-})
-
-
-describe("Testing Morphir-elm make with expected IR", () => {
-    test("should generate the expected IR", async () => {
-        const projectDir = path.join(__dirname, 'test-data', 'rentals')
-
-        const ir = await cli.make(projectDir, { typesOnly: false })
-        let file = await readFile(path.join(projectDir, 'expected-morphir-ir.json'))
-        const expectedJSON = JSON.parse(file.toString())
-
-        expect(ir).toStrictEqual(expectedJSON)
-    })
-
 })
