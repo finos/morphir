@@ -26,9 +26,6 @@ import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Package as Package exposing (PackageName)
 
 
-port packageDefinitionFromSourceResult : Encode.Value -> Cmd msg
-
-
 port jsonDecodeError : String -> Cmd msg
 
 
