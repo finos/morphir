@@ -7,12 +7,6 @@ const rmdir = util.promisify(fs.rm)
 const cli = require("../../cli/cli")
 const writeFile = util.promisify(fs.writeFile)
 
-/**
- * create folder structure
- * create morphir.json
- * create elm file
- */
-
 // utility function for joining strings with newlines
 const join = (...rest: String[]): String => rest.join("\n")
 
@@ -142,6 +136,38 @@ describe("Testing Morphir-elm make command", () => {
         const IR = await cli.make(PATH_TO_PROJECT, { typesOnly: true })
         const modules = IR.distribution[3].modules
         expect(modules).toHaveLength(1)
+    })
+
+    test("should have private scope if module not exposed", async () => {
+        await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'), join(
+            "module Package.Rentals exposing (..)",
+            "import Package.RentalTypes exposing (Action)",
+            "",
+            "logic: String -> String",
+            "logic level =",
+            `   String.append "Player level: " level`
+        ))
+        await writeFile(path.join(PATH_TO_PROJECT, 'src/Package', 'RentalTypes.elm'), join(
+            "module Package.RentalTypes exposing (..)",
+            "",
+            "type Action",
+            `   = Rent`,
+            `   | Return`,
+        ))
+        const IR = await cli.make(PATH_TO_PROJECT, { typesOnly: true })
+        const modules: Array<[Array<Array<string>>, any]> = IR.distribution[3].modules
+        const parseModuleName = (name: Array<Array<string>>): string => 
+                name.map(part => 
+                    part.map(s => s[0].toUpperCase() + s.substring(1)
+                        ).join("")
+                    ).join(".")
+
+        const rentalTypeModule = modules.find(module => {
+            console.log("module name:",parseModuleName(module[0]))
+            return parseModuleName(module[0]) === "RentalTypes"
+        })
+        await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(IR, null, 4))
+        expect(rentalTypeModule[1].access).toMatch(/[Pp]rivate/)
     })
 
     afterAll(async () => {
