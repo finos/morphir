@@ -8,10 +8,10 @@ const cli = require("../../cli/cli")
 const writeFile = util.promisify(fs.writeFile)
 
 // utility function for joining strings with newlines
-const join = (...rest: String[]): String => rest.join("\n")
+const join = (...rest: string[]): string => rest.join("\n")
 
 describe("Testing Morphir-elm make command", () => {
-    const PATH_TO_PROJECT: String = path.join(__dirname, 'temp/project')
+    const PATH_TO_PROJECT: string = path.join(__dirname, 'temp/project')
     const CLI_OPTIONS = { typesOnly: false }
     const morphirJSON = {
         name: "Package",
@@ -22,6 +22,10 @@ describe("Testing Morphir-elm make command", () => {
     beforeAll(async () => {
         // create the folders to house test data
         await mkdir(path.join(PATH_TO_PROJECT, '/src/Package'), { recursive: true })
+    })
+
+    afterAll(async () => {
+        await rmdir(path.join(__dirname, 'temp'), { recursive: true })
     })
 
     beforeEach(async () => {
@@ -156,21 +160,13 @@ describe("Testing Morphir-elm make command", () => {
         ))
         const IR = await cli.make(PATH_TO_PROJECT, { typesOnly: true })
         const modules: Array<[Array<Array<string>>, any]> = IR.distribution[3].modules
-        const parseModuleName = (name: Array<Array<string>>): string => 
-                name.map(part => 
-                    part.map(s => s[0].toUpperCase() + s.substring(1)
-                        ).join("")
-                    ).join(".")
+        const parseModuleName = (name: Array<Array<string>>): string =>
+            name.map(part =>
+                part.map(s => s[0].toUpperCase() + s.substring(1)
+                ).join("")
+            ).join(".")
 
-        const rentalTypeModule = modules.find(module => {
-            console.log("module name:",parseModuleName(module[0]))
-            return parseModuleName(module[0]) === "RentalTypes"
-        })
-        await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(IR, null, 4))
+        const rentalTypeModule = modules.find(module => parseModuleName(module[0]) === "RentalTypes")
         expect(rentalTypeModule[1].access).toMatch(/[Pp]rivate/)
-    })
-
-    afterAll(async () => {
-        await rmdir(path.join(__dirname, 'temp'), { recursive: true })
     })
 })
