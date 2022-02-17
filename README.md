@@ -47,7 +47,7 @@ Defines a standard format for storing and sharing business logic. A clear set of
 
 # An ecosystem of innovative features
 
-Supporting the development of your business’ needs in an ever-developing ecosystem based on firm standards and the integration of new languages.
+Supporting the development of your business' needs in an ever-developing ecosystem based on firm standards and the integration of new languages.
 
 Check out [Stephen Goldbaum's Morphir Examples on GitHub](https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial)
 
