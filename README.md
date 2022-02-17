@@ -5,11 +5,9 @@
 
 # Morphir
 
+Morphir is a library of tools that works to capture business logic as data.
+
 For the first time, business logic can be shared, stored, translated and visualised, all with the reliability of standardisation ensured in the Morphir framework.
-
----
-
-Morphir is a library of tools that works to capture business logic as data:
 
 ## What is it?
 
