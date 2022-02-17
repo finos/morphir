@@ -183,7 +183,7 @@ function Feature({ title, description, ...props }: FeatureItem) {
 					/>
 				)}
 				<div className='padding-horiz--md'>
-					<h3>{title}</h3>
+					<h2>{title}</h2>
 					<p>{description}</p>
 				</div>
 			</div>
