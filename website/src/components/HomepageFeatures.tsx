@@ -83,7 +83,7 @@ const FeatureList: FeatureItem[] = [
 							title: '✔️ Disseminates information through automation',
 							description: (
 								<>
-									Morphir’s automated processing helps disseminate information which otherwise may not be understood or
+									Morphir's automated processing helps disseminate information which otherwise may not be understood or
 									shared at all, a useful tool when brining elements of business logic to conversation outside of its
 									immediate audience (i.e developers).
 								</>
