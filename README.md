@@ -41,7 +41,7 @@ Defines a standard format for storing and sharing business logic. A clear set of
 
 ---
 
-[Morphir Resource Centre](https://morphir.zngly.com/)
+[Morphir Resource Centre](https://resources.finos.org/morphir/)
 
 ---
 
