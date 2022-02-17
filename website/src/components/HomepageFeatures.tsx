@@ -109,7 +109,7 @@ const FeatureList: FeatureItem[] = [
 					the integration of new languages.
 				</p>
 				<p>
-					Check out <a href='https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial'>GitHub</a>
+					Check out <a href='https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial'>Stephen Goldbaum's Morphir Examples on GitHub</a>
 				</p>
 			</>
 		),
