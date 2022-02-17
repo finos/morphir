@@ -131,6 +131,19 @@ insertEdge from to graph =
                         )
 
 
+{-| Get the outgoing edges of a given node in the graph in the form of a set of nodes that the edges point to.
+
+    graph =
+        empty
+            |> insertEdge 1 2
+            |> insertEdge 2 3
+            |> insertEdge 2 4
+
+    graph |> outgoingEdges 1 == Set.fromList [ 2 ]
+    graph |> outgoingEdges 2 == Set.fromList [ 3, 4 ]
+    graph |> outgoingEdges 3 == Set.empty
+
+-}
 outgoingEdges : comparableNode -> DAG comparableNode -> Set comparableNode
 outgoingEdges fromNode dag =
     dag
@@ -139,6 +152,20 @@ outgoingEdges fromNode dag =
         |> Maybe.withDefault Set.empty
 
 
+{-| Get the incoming edges of a given node in the graph in the form of a set of nodes that the edges point from.
+
+    graph =
+        empty
+            |> insertEdge 1 2
+            |> insertEdge 2 3
+            |> insertEdge 2 4
+            |> insertEdge 4 3
+
+    graph |> incomingEdges 1 == Set.empty
+    graph |> incomingEdges 2 == Set.fromList [ 1 ]
+    graph |> incomingEdges 3 == Set.fromList [ 2, 4 ]
+
+-}
 incomingEdges : comparableNode -> DAG comparableNode -> Set comparableNode
 incomingEdges toNode dag =
     dag
@@ -154,6 +181,26 @@ incomingEdges toNode dag =
         |> Set.fromList
 
 
+{-| Get a topological ordering (see <https://en.wikipedia.org/wiki/Directed_acyclic_graph#Topological_sorting_and_recognition>)
+of the nodes in the graph where the ordering follows the direction of the edges. The result is a list of lists of nodes
+because some nodes are not connected by any path so they have no specific ordering therefore we put them on the same
+level.
+
+    graph =
+        empty
+            |> insertEdge 1 2
+            |> insertEdge 2 3
+            |> insertEdge 2 4
+            |> insertEdge 4 5
+
+    forwardTopologicalOrdering graph ==
+        [ [ 1 ]
+        , [ 2 ]
+        , [ 3, 4 ]
+        , [ 5 ]
+        ]
+
+-}
 forwardTopologicalOrdering : DAG comparableNode -> List (List comparableNode)
 forwardTopologicalOrdering dag =
     let
@@ -184,12 +231,26 @@ forwardTopologicalOrdering dag =
             )
 
 
+{-| Get a topological ordering (see <https://en.wikipedia.org/wiki/Directed_acyclic_graph#Topological_sorting_and_recognition>)
+of the nodes in the graph where the ordering is the opposite of the direction of the edges. The result is a list of
+lists of nodes because some nodes are not connected by any path so they have no specific ordering therefore we put them
+on the same level.
+
+    graph =
+        empty
+            |> insertEdge 1 2
+            |> insertEdge 2 3
+            |> insertEdge 2 4
+            |> insertEdge 4 5
+
+    forwardTopologicalOrdering graph ==
+        [ [ 5 ]
+        , [ 3, 4 ]
+        , [ 2 ]
+        , [ 1 ]
+        ]
+
+-}
 backwardTopologicalOrdering : DAG comparableNode -> List (List comparableNode)
 backwardTopologicalOrdering dag =
     forwardTopologicalOrdering dag |> List.reverse
-
-
-levels : DAG comparableNode -> Dict comparableNode Int
-levels dag =
-    dag
-        |> Dict.map (\_ ( _, level ) -> level)
