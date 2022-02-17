@@ -8,6 +8,7 @@ import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type exposing (Type)
 import Morphir.Value.Native as Native
+import Set exposing (Set)
 
 
 type alias Repo =
@@ -15,6 +16,7 @@ type alias Repo =
     , dependencies : Dict PackageName (Package.Definition () (Type ()))
     , modules : Dict ModuleName (Module.Definition () (Type ()))
     , nativeFunctions : Dict FQName Native.Function
+    , moduleDependencyOf : Dict ModuleName (Set ModuleName)
     }
 
 
@@ -27,7 +29,8 @@ type alias Errors =
 
 
 type Error
-    = Error
+    = ModuleNotFound ModuleName
+    | ModuleHasDependents ModuleName (Set ModuleName)
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -38,6 +41,7 @@ empty packageName =
     , dependencies = Dict.empty
     , modules = Dict.empty
     , nativeFunctions = Dict.empty
+    , moduleDependencyOf = Dict.empty
     }
 
 
@@ -91,9 +95,46 @@ mergeModuleSource moduleName sourceCode repo =
 -}
 insertModule : ModuleName -> Module.Definition () (Type ()) -> Repo -> Result Errors Repo
 insertModule moduleName moduleDef repo =
+    -- TODO: add validation
     Ok
         { repo
             | modules =
                 repo.modules
                     |> Dict.insert moduleName moduleDef
         }
+
+
+deleteModule : ModuleName -> Repo -> Result Errors Repo
+deleteModule moduleName repo =
+    let
+        validationErrors : Maybe Errors
+        validationErrors =
+            case repo.modules |> Dict.get moduleName of
+                Nothing ->
+                    Just [ ModuleNotFound moduleName ]
+
+                Just _ ->
+                    case repo.moduleDependencyOf |> Dict.get moduleName of
+                        Just dependentModules ->
+                            if Set.isEmpty dependentModules then
+                                Nothing
+
+                            else
+                                Just [ ModuleHasDependents moduleName dependentModules ]
+
+                        Nothing ->
+                            Nothing
+    in
+    validationErrors
+        |> Maybe.map Err
+        |> Maybe.withDefault
+            (Ok
+                { repo
+                    | modules =
+                        repo.modules
+                            |> Dict.remove moduleName
+                    , moduleDependencyOf =
+                        repo.moduleDependencyOf
+                            |> Dict.remove moduleName
+                }
+            )
