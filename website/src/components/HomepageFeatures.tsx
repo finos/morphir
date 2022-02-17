@@ -116,7 +116,7 @@ const FeatureList: FeatureItem[] = [
 	},
 	{
 		title: (
-			<a href='https://morphir.zngly.com/' target='_blank'>
+			<a href='https://resources.finos.org/znglist/morphir/' target='_blank'>
 				Morphir Resource Centre
 			</a>
 		),
