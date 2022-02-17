@@ -131,23 +131,23 @@ const FeatureList: FeatureItem[] = [
 					<div className='col col--4'>
 						<h6>Introduction & Background</h6>
 						<div className={styles.furtherReading}>
-							<Link to={'http://morphir.finos.org/why_functional_programming'}>Why Functional Programming?</Link>
-							<Link to={'http://morphir.finos.org/whats_it_about'}>What's it all about?</Link>
-							<Link to={'http://morphir.finos.org/background'}>Background</Link>
-							<Link to={'http://morphir.finos.org/morphir_community'}>Community</Link>
-							<Link to={'https://morphir.zngly.com/'}>Resource Centre</Link>
+							<Link to={'http://morphir.finos.org/docs/why_functional_programming'}>Why Functional Programming?</Link>
+							<Link to={'http://morphir.finos.org/docs/whats_it_about'}>What's it all about?</Link>
+							<Link to={'http://morphir.finos.org/docs/background'}>Background</Link>
+							<Link to={'http://morphir.finos.org/docs/morphir_community'}>Community</Link>
+							<Link to={'https://resources.finos.org/znglist/morphir/'}>Resource Centre</Link>
 						</div>
 					</div>
 					<div className='col col--4'>
 						<h6>Using Morphir</h6>
 						<div className={styles.furtherReading}>
-							<Link to={'http://morphir.finos.org/what-makes-a-good-domain-model'}>What Makes a Good Model</Link>
-							<Link to={'http://morphir.finos.org/dev_bots'}>Development Automation (Dev Bots)</Link>
-							<Link to={'http://morphir.finos.org/application_modeling'}>Modeling an Application</Link>
+							<Link to={'http://morphir.finos.org/docs/what-makes-a-good-domain-model'}>What Makes a Good Model</Link>
+							<Link to={'http://morphir.finos.org/docs/dev_bots'}>Development Automation (Dev Bots)</Link>
+							<Link to={'http://morphir.finos.org/docs/application_modeling'}>Modeling an Application</Link>
 							<Link to={'https://github.com/finos/morphir-examples/tree/main/src/Morphir/Sample/Rules'}>
 								Modeling Decision Tables
 							</Link>
-							<Link to={'http://morphir.finos.org/modeling/modeling-for-database-developers.html'}>
+							<Link to={'http://morphir.finos.org/docs/modeling/modeling-for-database-developers.html'}>
 								Modeling for database developers
 							</Link>
 						</div>
@@ -155,10 +155,10 @@ const FeatureList: FeatureItem[] = [
 					<div className='col col--4'>
 						<h6>Applicability</h6>
 						<div className={styles.furtherReading}>
-							<Link to={'http://morphir.finos.org/shared_logic_modeling'}>
+							<Link to={'http://morphir.finos.org/docs/shared_logic_modeling'}>
 								Sharing Business Logic Across Application Boundaries
 							</Link>
-							<Link to={'http://morphir.finos.org/regtech_modeling'}>Regulatory Technology</Link>
+							<Link to={'http://morphir.finos.org/docs/regtech_modeling'}>Regulatory Technology</Link>
 						</div>
 					</div>
 				</section>
