@@ -102,7 +102,7 @@ Join Morphir on the FINOS Slack by signing up at https://finos-lf.slack.com/. Th
 
 [<img src="https://img.shields.io/badge/slack-@finos/morphir-green.svg?logo=slack">](https://finos-lf.slack.com/messages/morphir/)
 
-Reach out to help@finos.org for any issues when joining CSC on the FINOS Slack.
+Reach out to help@finos.org for any issues when joining Morphir on the FINOS Slack.
 
 ## License
 
