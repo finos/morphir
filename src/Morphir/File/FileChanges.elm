@@ -17,7 +17,7 @@ It should serialize into this JSON format:
 
 -}
 type alias FileChanges =
-    Dict String Change
+    Dict Path Change
 
 
 type Change

@@ -1,12 +1,16 @@
 module Morphir.IR.Repo exposing (..)
 
 import Dict exposing (Dict)
+import Morphir.Dependency.DAG as DAG exposing (DAG)
+import Morphir.Elm.ModuleName exposing (toIRModuleName)
+import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.File.FileChanges exposing (FileChanges)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
+import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
-import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.Value.Native as Native
 import Set exposing (Set)
 
@@ -16,7 +20,7 @@ type alias Repo =
     , dependencies : Dict PackageName (Package.Definition () (Type ()))
     , modules : Dict ModuleName (Module.Definition () (Type ()))
     , nativeFunctions : Dict FQName Native.Function
-    , moduleDependencyOf : Dict ModuleName (Set ModuleName)
+    , moduleDependencies : DAG ModuleName
     }
 
 
@@ -41,7 +45,7 @@ empty packageName =
     , dependencies = Dict.empty
     , modules = Dict.empty
     , nativeFunctions = Dict.empty
-    , moduleDependencyOf = Dict.empty
+    , moduleDependencies = DAG.empty
     }
 
 
@@ -81,6 +85,67 @@ mergeNativeFunctions newNativeFunction repo =
 -}
 applyFileChanges : FileChanges -> Repo -> Result Errors Repo
 applyFileChanges fileChanges repo =
+    parseNewElmModules fileChanges
+        |> Result.andThen orderElmModulesByDependency
+        |> Result.andThen
+            (\parsedModules ->
+                parsedModules
+                    |> List.foldl
+                        (\parsedModule repoResultForModule ->
+                            let
+                                moduleName : ModuleName
+                                moduleName =
+                                    ParsedModule.moduleName parsedModule
+                                        |> toIRModuleName repo.packageName
+
+                                typeNames : List Name
+                                typeNames =
+                                    extractTypeNames parsedModule
+                            in
+                            extractTypes parsedModule typeNames
+                                |> Result.map orderTypesByDependency
+                                |> Result.andThen
+                                    (\types ->
+                                        types
+                                            |> List.foldl
+                                                (\( typeName, typeDef ) repoResultForType ->
+                                                    repoResultForType
+                                                        |> Result.andThen (insertType moduleName typeName typeDef)
+                                                )
+                                                repoResultForModule
+                                    )
+                        )
+                        (Ok repo)
+            )
+
+
+parseNewElmModules : FileChanges -> Result Errors (List ParsedModule)
+parseNewElmModules fileChanges =
+    Debug.todo "implement"
+
+
+orderElmModulesByDependency : List ParsedModule -> Result Errors (List ParsedModule)
+orderElmModulesByDependency parsedModules =
+    Debug.todo "implement"
+
+
+extractTypeNames : ParsedModule -> List Name
+extractTypeNames parsedModule =
+    Debug.todo "implement"
+
+
+extractTypes : ParsedModule -> List Name -> Result Errors (List ( Name, Type.Definition () ))
+extractTypes parsedModule typeNames =
+    Debug.todo "implement"
+
+
+orderTypesByDependency : List ( Name, Type.Definition () ) -> List ( Name, Type.Definition () )
+orderTypesByDependency =
+    Debug.todo "implement"
+
+
+extractValueSignatures : ParsedModule -> List ( Name, Type () )
+extractValueSignatures parsedModule =
     Debug.todo "implement"
 
 
@@ -114,16 +179,15 @@ deleteModule moduleName repo =
                     Just [ ModuleNotFound moduleName ]
 
                 Just _ ->
-                    case repo.moduleDependencyOf |> Dict.get moduleName of
-                        Just dependentModules ->
-                            if Set.isEmpty dependentModules then
-                                Nothing
+                    let
+                        dependentModules =
+                            repo.moduleDependencies |> DAG.incomingEdges moduleName
+                    in
+                    if Set.isEmpty dependentModules then
+                        Nothing
 
-                            else
-                                Just [ ModuleHasDependents moduleName dependentModules ]
-
-                        Nothing ->
-                            Nothing
+                    else
+                        Just [ ModuleHasDependents moduleName dependentModules ]
     in
     validationErrors
         |> Maybe.map Err
@@ -133,8 +197,13 @@ deleteModule moduleName repo =
                     | modules =
                         repo.modules
                             |> Dict.remove moduleName
-                    , moduleDependencyOf =
-                        repo.moduleDependencyOf
+                    , moduleDependencies =
+                        repo.moduleDependencies
                             |> Dict.remove moduleName
                 }
             )
+
+
+insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
+insertType moduleName typeName typeDef repo =
+    Debug.todo "implement"
