@@ -105,7 +105,7 @@ const FeatureList: FeatureItem[] = [
 		description: (
 			<>
 				<p>
-					Supporting the development of your business’ needs in an ever-developing ecosystem based on firm standards and
+					Supporting the development of your business' needs in an ever-developing ecosystem based on firm standards and
 					the integration of new languages.
 				</p>
 				<p>
