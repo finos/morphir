@@ -91,7 +91,7 @@ const FeatureList: FeatureItem[] = [
 						},
 					].map(({ title, description }) => (
 						<div className='text--left col col--6'>
-							<h4>{title}</h4>
+							<h3>{title}</h3>
 							<p>{description}</p>
 						</div>
 					))}
