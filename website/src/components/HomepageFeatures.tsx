@@ -129,7 +129,7 @@ const FeatureList: FeatureItem[] = [
 			<div className='container'>
 				<section className='row text--center'>
 					<div className='col col--4'>
-						<h6>Introduction & Background</h6>
+						<h4>Introduction & Background</h4>
 						<div className={styles.furtherReading}>
 							<Link to={'http://morphir.finos.org/docs/why_functional_programming'}>Why Functional Programming?</Link>
 							<Link to={'http://morphir.finos.org/docs/whats_it_about'}>What's it all about?</Link>
@@ -139,7 +139,7 @@ const FeatureList: FeatureItem[] = [
 						</div>
 					</div>
 					<div className='col col--4'>
-						<h6>Using Morphir</h6>
+						<h4>Using Morphir</h4>
 						<div className={styles.furtherReading}>
 							<Link to={'http://morphir.finos.org/docs/what-makes-a-good-domain-model'}>What Makes a Good Model</Link>
 							<Link to={'http://morphir.finos.org/docs/dev_bots'}>Development Automation (Dev Bots)</Link>
@@ -153,7 +153,7 @@ const FeatureList: FeatureItem[] = [
 						</div>
 					</div>
 					<div className='col col--4'>
-						<h6>Applicability</h6>
+						<h4>Applicability</h4>
 						<div className={styles.furtherReading}>
 							<Link to={'http://morphir.finos.org/docs/shared_logic_modeling'}>
 								Sharing Business Logic Across Application Boundaries
