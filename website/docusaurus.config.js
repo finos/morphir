@@ -110,7 +110,7 @@ const config = {
         copyright: `Copyright © ${new Date().getFullYear()} - Morphir - FINOS - The Fintech Open Source Foundation`,
         logo: {
           alt: 'FINOS Logo',
-          src: 'img/finos_wordmark.svg',
+          src: 'img/finos-rgb.png',
           href: 'https://finos.org'
         },
       },
