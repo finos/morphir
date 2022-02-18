@@ -5,7 +5,8 @@ import Array.Extra
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, alignRight, alignTop, column, el, explain, fill, fillPortion, height, html, image, layout, link, none, padding, paddingXY, paragraph, pointer, px, rgb, row, scrollbarY, scrollbars, spacing, table, text, width, wrappedRow)
+import Element exposing (Element, alignRight, alignTop, column, el, explain, fill, fillPortion, height, html, image, layout, link, mouseOver, none, padding, paddingXY, paragraph,
+ pointer, px, rgb, row, scrollbarY, scrollbars, spacing, table, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -1149,6 +1150,48 @@ viewHome model packageName packageDef =
 
         viewDefinitionLabels : Maybe ModuleName -> Element Msg
         viewDefinitionLabels maybeSelectedModuleName =
+            let
+                buildElements =
+                    let
+                        selectionColor =
+                            Maybe.withDefault (rgb 0.8 0.9 0.9) TreeLayout.defaultTheme.colors.selectedRowBackground
+
+                        paintIfSelected : Name -> Name -> Element Msg -> Element Msg
+                        paintIfSelected selectedName name elem =
+                            if selectedName == name then
+                                el [ Background.color selectionColor, width fill ] elem
+
+                            else
+                                defaultElem elem
+
+                        defaultElem : Element Msg -> Element Msg
+                        defaultElem elem =
+                            el
+                                [ Border.color <| rgb 1 1 1
+                                , Border.widthEach
+                                    { bottom = 1
+                                    , left = 0
+                                    , top = 0
+                                    , right = 0
+                                    }
+                                , mouseOver [ Border.color <| rgb 0 0 0 ]
+                                , width fill
+                                ]
+                                elem
+                    in
+                    List.map
+                        (\( name, elem ) ->
+                            case model.selectedDefinition of
+                                Just (Value ( _, selectedName )) ->
+                                    paintIfSelected selectedName name elem
+
+                                Just (Type ( _, selectedName )) ->
+                                    paintIfSelected selectedName name elem
+
+                                Nothing ->
+                                    defaultElem elem
+                        )
+            in
             packageDef.modules
                 |> Dict.toList
                 |> List.concatMap
@@ -1164,9 +1207,8 @@ viewHome model packageName packageDef =
                             Nothing ->
                                 moduleTypesAndValues moduleName accessControlledModuleDef.value
                     )
-                |> Dict.fromList
-                |> Dict.values
-                |> column [ height fill, width fill, scrollbars ]
+                |> buildElements
+                |> column [ height fill, width fill ]
     in
     row
         [ height fill
