@@ -41,7 +41,7 @@ Defines a standard format for storing and sharing business logic. A clear set of
 
 ---
 
-[Morphir Resource Centre](https://morphir.zngly.com/)
+[Morphir Resource Centre](https://resources.finos.org/morphir/)
 
 ---
 
@@ -55,7 +55,7 @@ Check out [GitHub >>](https://github.com/stephengoldbaum/morphir-examples/tree/m
 
 | Introduction & Background                                                 | Using Morphir                                                                                              | Applicability                                                                        |
 | :------------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
-| [Resource Centre](https://morphir.zngly.com/)                             | [What Makes a Good Model](./docs/what-makes-a-good-domain-model)                                           | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling) |
+| [Resource Centre](https://resources.finos.org/morphir/)                             | [What Makes a Good Model](./docs/what-makes-a-good-domain-model)                                           | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling) |
 | [Background](./docs/background)                                           | [Development Automation (Dev Bots)](./docs/dev_bots)                                                       | [Regulatory Technology](./docs/regtech_modeling)                                     |
 | [Community](./docs/morphir_community)                                     | [Modeling an Application](./docs/application_modeling)                                                     |                                                                                      |
 | [What's it all about?](./docs/whats_it_about)                             | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                      |
