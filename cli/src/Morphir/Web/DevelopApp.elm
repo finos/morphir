@@ -5,12 +5,40 @@ import Array.Extra
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element exposing (Element, alignRight, alignTop, column, el, explain, fill, fillPortion, height, html, image, layout, link, mouseOver, none, padding, paddingXY, paragraph,
- pointer, px, rgb, row, scrollbarY, scrollbars, spacing, table, text, width, wrappedRow)
+import Element
+    exposing
+        ( Element
+        , alignRight
+        , alignTop
+        , column
+        , el
+        , explain
+        , fill
+        , fillPortion
+        , height
+        , html
+        , image
+        , layout
+        , link
+        , mouseOver
+        , none
+        , padding
+        , paddingXY
+        , paragraph
+        , pointer
+        , px
+        , rgb
+        , row
+        , scrollbars
+        , spacing
+        , text
+        , width
+        )
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
+import Html.Attributes exposing (default)
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Markdown.Parser as Markdown
 import Markdown.Renderer
@@ -219,12 +247,11 @@ update msg model =
             case model.currentPage of
                 Module moduleModel ->
                     if moduleModel.expandedValues |> Dict.member ( fQName, localName ) then
-                        case isFunctionPresent of
-                            True ->
-                                ( { model | currentPage = Module { moduleModel | expandedValues = moduleModel.expandedValues |> Dict.remove ( fQName, localName ) } }, Cmd.none )
+                        if isFunctionPresent then
+                            ( { model | currentPage = Module { moduleModel | expandedValues = moduleModel.expandedValues |> Dict.remove ( fQName, localName ) } }, Cmd.none )
 
-                            False ->
-                                ( model, Cmd.none )
+                        else
+                            ( model, Cmd.none )
 
                     else
                         ( { model
@@ -369,19 +396,18 @@ update msg model =
                                                             let
                                                                 updatedTestCaseStates =
                                                                     Array.set testCaseIndex
-                                                                        (case isFunctionPresent of
-                                                                            True ->
-                                                                                { testCaseState | expandedValues = Dict.remove fQName testCaseState.expandedValues }
+                                                                        (if isFunctionPresent then
+                                                                            { testCaseState | expandedValues = Dict.remove fQName testCaseState.expandedValues }
 
-                                                                            False ->
-                                                                                Distribution.lookupValueDefinition
-                                                                                    (QName moduleName localName)
-                                                                                    getDistribution
-                                                                                    |> Maybe.map
-                                                                                        (\valueDef ->
-                                                                                            { testCaseState | expandedValues = Dict.insert fQName valueDef testCaseState.expandedValues }
-                                                                                        )
-                                                                                    |> Maybe.withDefault testCaseState
+                                                                         else
+                                                                            Distribution.lookupValueDefinition
+                                                                                (QName moduleName localName)
+                                                                                getDistribution
+                                                                                |> Maybe.map
+                                                                                    (\valueDef ->
+                                                                                        { testCaseState | expandedValues = Dict.insert fQName valueDef testCaseState.expandedValues }
+                                                                                    )
+                                                                                |> Maybe.withDefault testCaseState
                                                                         )
                                                                         functionModel.testCaseStates
                                                             in
@@ -1048,51 +1074,8 @@ viewHome model packageName packageDef =
         white =
             rgb 1 1 1
 
-        viewDefinitionsForModule : ModuleName -> Module.Definition () (Type ()) -> Element msg
-        viewDefinitionsForModule moduleName moduleDef =
-            let
-                sectionTitle =
-                    link []
-                        { url =
-                            "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".")
-                        , label =
-                            text (moduleName |> List.map nameToTitleText |> String.join " - ")
-                        }
-
-                types =
-                    moduleDef.types
-                        |> Dict.toList
-                        |> List.map
-                            (\( typeName, typeDef ) ->
-                                viewType model.theme typeName typeDef.value.value typeDef.value.doc
-                            )
-
-                values =
-                    moduleDef.values
-                        |> Dict.toList
-                        |> List.map
-                            (\( valueName, valueDef ) ->
-                                viewValue model.theme moduleName valueName valueDef.value
-                            )
-            in
-            el [ padding (model.theme |> Theme.scaled 2) ]
-                (column [ height fill, width fill ]
-                    [ row
-                        [ spacing (model.theme |> Theme.scaled -3)
-                        , Font.size (model.theme |> Theme.scaled 3)
-                        ]
-                        [ text "📁"
-                        , sectionTitle
-                        ]
-                    , (types ++ values)
-                        |> wrappedRow
-                            [ width fill
-                            , height fill
-                            , padding (model.theme |> Theme.scaled 2)
-                            , spacing (model.theme |> Theme.scaled 2)
-                            ]
-                    ]
-                )
+        scrollableListStyles =
+            [ width fill, height fill, Background.color white, Border.rounded 3, scrollbars, paddingXY 5 5 ]
 
         viewDefinitions : Maybe ModuleName -> Maybe Definition -> Element msg
         viewDefinitions maybeSelectedModuleName maybeSelectedDefinition =
@@ -1213,14 +1196,14 @@ viewHome model packageName packageDef =
     row
         [ height fill
         , width fill
+        , spacing 10
+        , Background.color gray
         ]
         [ column
             [ Background.color gray
-            , Border.rounded 3
             , height fill
             , width (fillPortion 2)
-            , padding 5
-            , spacing 5
+            , paddingXY 0 5
             ]
             [ el
                 [ width fill
@@ -1229,12 +1212,7 @@ viewHome model packageName packageDef =
                 ]
                 (text "Modules")
             , el
-                [ Background.color white
-                , Border.rounded 3
-                , height fill
-                , width fill
-                , scrollbars
-                ]
+                scrollableListStyles
                 (TreeLayout.view TreeLayout.defaultTheme
                     { onCollapse = CollapseModule
                     , onExpand = ExpandModule
@@ -1252,11 +1230,9 @@ viewHome model packageName packageDef =
             ]
         , column
             [ Background.color gray
-            , Border.rounded 3
             , height fill
             , width (fillPortion 2)
-            , padding 5
-            , spacing 5
+            , paddingXY 0 5
             ]
             [ el
                 [ width fill
@@ -1265,17 +1241,14 @@ viewHome model packageName packageDef =
                 ]
                 (text "Concepts")
             , el
-                [ Background.color white
-                , Border.rounded 3
-                , height fill
-                , width fill
-                , scrollbars
-                ]
+                scrollableListStyles
                 (viewDefinitionLabels (model.selectedModule |> Maybe.map Tuple.second))
             ]
         , column
             [ height fill
             , width (fillPortion 8)
+            , paddingXY 10 10
+            , Background.color white
             ]
             [ viewDefinitions (model.selectedModule |> Maybe.map Tuple.second) model.selectedDefinition ]
         ]
@@ -1283,54 +1256,31 @@ viewHome model packageName packageDef =
 
 viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
 viewType theme typeName typeDef docs =
-    let
-        backgroundColor =
-            rgb 0.9529 0.9176 0.8078
-    in
     case typeDef of
         Type.TypeAliasDefinition params (Type.Record _ fields) ->
             let
+                fieldNames =
+                    \field ->
+                        el
+                            Theme.boldLabelStyles
+                            (text (nameToText field.name))
+
+                fieldTypes =
+                    \field ->
+                        el
+                            Theme.labelStyles
+                            (XRayView.viewType field.tpe)
+
                 viewFields =
-                    table
-                        [ width fill
-                        ]
-                        { columns =
-                            [ { header = none
-                              , width = fill
-                              , view =
-                                    \field ->
-                                        el
-                                            [ width fill
-                                            , height fill
-                                            , paddingXY 10 5
-                                            , Font.bold
-                                            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                            , Border.color backgroundColor
-                                            ]
-                                            (text (nameToText field.name))
-                              }
-                            , { header = none
-                              , width = fill
-                              , view =
-                                    \field ->
-                                        el
-                                            [ width fill
-                                            , height fill
-                                            , paddingXY 10 5
-                                            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                            , Border.color backgroundColor
-                                            ]
-                                            (XRayView.viewType field.tpe)
-                              }
-                            ]
-                        , data =
-                            fields
-                        }
+                    Theme.twoColumnTableView
+                        fields
+                        fieldNames
+                        fieldTypes
             in
             viewAsCard theme
                 (typeName |> nameToTitleText |> text)
                 "record"
-                backgroundColor
+                Theme.defaultColors.backgroundColor
                 docs
                 viewFields
 
@@ -1338,7 +1288,7 @@ viewType theme typeName typeDef docs =
             viewAsCard theme
                 (typeName |> nameToTitleText |> text)
                 "is a"
-                backgroundColor
+                Theme.defaultColors.backgroundColor
                 docs
                 (el
                     [ paddingXY 10 5
@@ -1373,13 +1323,7 @@ viewType theme typeName typeDef docs =
                             |> List.map
                                 (\( ctorName, _ ) ->
                                     el
-                                        [ width fill
-                                        , height fill
-                                        , paddingXY 10 5
-                                        , Font.bold
-                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                        , Border.color backgroundColor
-                                        ]
+                                        Theme.boldLabelStyles
                                         (text (nameToTitleText ctorName))
                                 )
                             |> column [ width fill ]
@@ -1390,44 +1334,26 @@ viewType theme typeName typeDef docs =
                                 el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType baseType)
 
                             Nothing ->
-                                table
-                                    [ width fill
-                                    ]
-                                    { columns =
-                                        [ { header = none
-                                          , width = fill
-                                          , view =
-                                                \( ctorName, ctorArgs ) ->
-                                                    el
-                                                        [ width fill
-                                                        , height fill
-                                                        , paddingXY 10 5
-                                                        , Font.bold
-                                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                                        , Border.color backgroundColor
-                                                        ]
-                                                        (text (nameToTitleText ctorName))
-                                          }
-                                        , { header = none
-                                          , width = fill
-                                          , view =
-                                                \( ctorName, ctorArgs ) ->
-                                                    el
-                                                        [ width fill
-                                                        , height fill
-                                                        , paddingXY 10 5
-                                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                                        , Border.color backgroundColor
-                                                        ]
-                                                        (ctorArgs
-                                                            |> List.map (Tuple.second >> XRayView.viewType)
-                                                            |> row [ spacing 5 ]
-                                                        )
-                                          }
-                                        ]
-                                    , data =
-                                        accessControlledConstructors.value |> Dict.toList
-                                    }
+                                let
+                                    constructorNames =
+                                        \( ctorName, _ ) ->
+                                            el
+                                                Theme.boldLabelStyles
+                                                (text (nameToTitleText ctorName))
+
+                                    constructorArgs =
+                                        \( _, ctorArgs ) ->
+                                            el
+                                                Theme.labelStyles
+                                                (ctorArgs
+                                                    |> List.map (Tuple.second >> XRayView.viewType)
+                                                    |> row [ spacing 5 ]
+                                                )
+                                in
+                                Theme.twoColumnTableView
+                                    (Dict.toList accessControlledConstructors.value)
+                                    constructorNames
+                                    constructorArgs
             in
             viewAsCard theme
                 (typeName |> nameToTitleText |> text)
@@ -1442,62 +1368,39 @@ viewType theme typeName typeDef docs =
                         else
                             "one of"
                 )
-                backgroundColor
+                Theme.defaultColors.backgroundColor
                 docs
                 viewConstructors
 
 
 viewTypeLabel : Theme -> ModuleName -> Name -> Type.Definition () -> String -> Element Msg
 viewTypeLabel theme moduleName typeName typeDef docs =
-    let
-        backgroundColor =
-            rgb 0.9529 0.9176 0.8078
-    in
     case typeDef of
         Type.TypeAliasDefinition params (Type.Record _ fields) ->
             let
+                fieldNames =
+                    \field ->
+                        el
+                            Theme.boldLabelStyles
+                            (text (nameToText field.name))
+
+                fieldTypes =
+                    \field ->
+                        el
+                            Theme.labelStyles
+                            (XRayView.viewType field.tpe)
+
                 viewFields =
-                    table
-                        [ width fill
-                        ]
-                        { columns =
-                            [ { header = none
-                              , width = fill
-                              , view =
-                                    \field ->
-                                        el
-                                            [ width fill
-                                            , height fill
-                                            , paddingXY 10 5
-                                            , Font.bold
-                                            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                            , Border.color backgroundColor
-                                            ]
-                                            (text (nameToText field.name))
-                              }
-                            , { header = none
-                              , width = fill
-                              , view =
-                                    \field ->
-                                        el
-                                            [ width fill
-                                            , height fill
-                                            , paddingXY 10 5
-                                            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                            , Border.color backgroundColor
-                                            ]
-                                            (XRayView.viewType field.tpe)
-                              }
-                            ]
-                        , data =
-                            fields
-                        }
+                    Theme.twoColumnTableView
+                        fields
+                        fieldNames
+                        fieldTypes
             in
             viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
                 theme
                 (typeName |> nameToTitleText |> text)
                 "record"
-                backgroundColor
+                Theme.defaultColors.backgroundColor
                 docs
                 viewFields
 
@@ -1506,7 +1409,7 @@ viewTypeLabel theme moduleName typeName typeDef docs =
                 theme
                 (typeName |> nameToTitleText |> text)
                 "alias"
-                backgroundColor
+                Theme.defaultColors.backgroundColor
                 docs
                 (el
                     [ paddingXY 10 5
@@ -1541,13 +1444,7 @@ viewTypeLabel theme moduleName typeName typeDef docs =
                             |> List.map
                                 (\( ctorName, _ ) ->
                                     el
-                                        [ width fill
-                                        , height fill
-                                        , paddingXY 10 5
-                                        , Font.bold
-                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                        , Border.color backgroundColor
-                                        ]
+                                        Theme.boldLabelStyles
                                         (text (nameToTitleText ctorName))
                                 )
                             |> column [ width fill ]
@@ -1558,44 +1455,26 @@ viewTypeLabel theme moduleName typeName typeDef docs =
                                 el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType baseType)
 
                             Nothing ->
-                                table
-                                    [ width fill
-                                    ]
-                                    { columns =
-                                        [ { header = none
-                                          , width = fill
-                                          , view =
-                                                \( ctorName, ctorArgs ) ->
-                                                    el
-                                                        [ width fill
-                                                        , height fill
-                                                        , paddingXY 10 5
-                                                        , Font.bold
-                                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                                        , Border.color backgroundColor
-                                                        ]
-                                                        (text (nameToTitleText ctorName))
-                                          }
-                                        , { header = none
-                                          , width = fill
-                                          , view =
-                                                \( ctorName, ctorArgs ) ->
-                                                    el
-                                                        [ width fill
-                                                        , height fill
-                                                        , paddingXY 10 5
-                                                        , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-                                                        , Border.color backgroundColor
-                                                        ]
-                                                        (ctorArgs
-                                                            |> List.map (Tuple.second >> XRayView.viewType)
-                                                            |> row [ spacing 5 ]
-                                                        )
-                                          }
-                                        ]
-                                    , data =
-                                        accessControlledConstructors.value |> Dict.toList
-                                    }
+                                let
+                                    constructorNames =
+                                        \( ctorName, _ ) ->
+                                            el
+                                                Theme.boldLabelStyles
+                                                (text (nameToTitleText ctorName))
+
+                                    constructorArgs =
+                                        \( _, ctorArgs ) ->
+                                            el
+                                                Theme.labelStyles
+                                                (ctorArgs
+                                                    |> List.map (Tuple.second >> XRayView.viewType)
+                                                    |> row [ spacing 5 ]
+                                                )
+                                in
+                                Theme.twoColumnTableView
+                                    (Dict.toList accessControlledConstructors.value)
+                                    constructorNames
+                                    constructorArgs
             in
             viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
                 theme
@@ -1611,7 +1490,7 @@ viewTypeLabel theme moduleName typeName typeDef docs =
                         else
                             "one of"
                 )
-                backgroundColor
+                Theme.defaultColors.backgroundColor
                 docs
                 viewConstructors
 
