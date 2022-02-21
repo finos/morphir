@@ -89,7 +89,7 @@ mergeNativeFunctions newNativeFunction repo =
 -}
 applyFileChanges : FileChanges -> Repo -> Result Errors Repo
 applyFileChanges fileChanges repo =
-    parseNewElmModules fileChanges
+    parseElmModules fileChanges
         |> Result.andThen orderElmModulesByDependency
         |> Result.andThen
             (\parsedModules ->
@@ -123,8 +123,9 @@ applyFileChanges fileChanges repo =
             )
 
 
-parseNewElmModules : FileChanges -> Result Errors (List ParsedModule)
-parseNewElmModules fileChanges =
+{-| convert New or Updated Elm modules into ParsedModules for further processing-}
+parseElmModules : FileChanges -> Result Errors (List ParsedModule)
+parseElmModules fileChanges =
     fileChanges
         |> Dict.toList
         |> List.filterMap
@@ -134,13 +135,13 @@ parseNewElmModules fileChanges =
 
                     Update source -> Just (path, source)
 
-                    _ -> Nothing
+                    Delete -> Nothing
             )
         |> List.map parseSource
         |> ResultList.keepAllErrors
 
 
-{-| Converts a list of sources into a list of ParsedModules. -}
+{-| Converts an elm source into a ParsedModule. -}
 parseSource: (Path, String) -> Result Error ParsedModule
 parseSource (path, content) =
     Elm.Parser.parse content
