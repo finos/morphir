@@ -1,17 +1,20 @@
 module Morphir.IR.Repo exposing (..)
 
 import Dict exposing (Dict)
+import Elm.Parser
 import Morphir.Dependency.DAG as DAG exposing (DAG)
 import Morphir.Elm.ModuleName exposing (toIRModuleName)
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
-import Morphir.File.FileChanges exposing (FileChanges)
+import Morphir.File.FileChanges exposing (Change(..), FileChanges, Path)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
+import Morphir.SDK.ResultList as ResultList
 import Morphir.Value.Native as Native
+import Parser
 import Set exposing (Set)
 
 
@@ -35,6 +38,7 @@ type alias Errors =
 type Error
     = ModuleNotFound ModuleName
     | ModuleHasDependents ModuleName (Set ModuleName)
+    | ParseError String (List Parser.DeadEnd)
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -121,7 +125,27 @@ applyFileChanges fileChanges repo =
 
 parseNewElmModules : FileChanges -> Result Errors (List ParsedModule)
 parseNewElmModules fileChanges =
-    Debug.todo "implement"
+    fileChanges
+        |> Dict.toList
+        |> List.filterMap
+            (\(path, content) ->
+                case content of
+                    Insert source -> Just (path, source)
+
+                    Update source -> Just (path, source)
+
+                    _ -> Nothing
+            )
+        |> List.map parseSource
+        |> ResultList.keepAllErrors
+
+
+{-| Converts a list of sources into a list of ParsedModules. -}
+parseSource: (Path, String) -> Result Error ParsedModule
+parseSource (path, content) =
+    Elm.Parser.parse content
+        |> Result.mapError (ParseError path)
+
 
 
 orderElmModulesByDependency : List ParsedModule -> Result Errors (List ParsedModule)
