@@ -5,7 +5,7 @@ import Elm.Parser
 import Elm.Processing as Processing exposing (ProcessContext)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.File exposing (File)
-import Elm.Syntax.Node exposing (Node(..))
+import Elm.Syntax.Node as Node exposing (Node(..))
 import Morphir.Dependency.DAG as DAG exposing (DAG)
 import Morphir.Elm.ModuleName exposing (toIRModuleName)
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
@@ -171,27 +171,21 @@ extractTypeNames parsedModule =
 
         extractTypeNamesFromFile : File -> List Name
         extractTypeNamesFromFile file =
-            let
-                extractFromNode : Node a -> a
-                extractFromNode node =
-                    case node of
-                        Node _ a -> a
-            in
             file.declarations
                 |> List.filterMap
                     (\node ->
                         let
                             dec: Declaration
-                            dec = extractFromNode node
+                            dec = Node.value node
 
                             typeNameFromDeclaration : Declaration -> Maybe String
                             typeNameFromDeclaration declaration =
                                 case declaration of
                                     CustomTypeDeclaration typ ->
-                                        typ.name |> extractFromNode |> Just
+                                        typ.name |> Node.value |> Just
 
                                     AliasDeclaration typeAlias ->
-                                        typeAlias.name |> extractFromNode |> Just
+                                        typeAlias.name |> Node.value |> Just
 
                                     _ -> Nothing
                         in
