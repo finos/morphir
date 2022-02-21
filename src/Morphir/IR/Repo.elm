@@ -2,14 +2,19 @@ module Morphir.IR.Repo exposing (..)
 
 import Dict exposing (Dict)
 import Elm.Parser
+import Elm.Processing as Processing exposing (ProcessContext)
+import Elm.Syntax.Declaration exposing (Declaration(..))
+import Elm.Syntax.File exposing (File)
+import Elm.Syntax.Node exposing (Node(..))
 import Morphir.Dependency.DAG as DAG exposing (DAG)
 import Morphir.Elm.ModuleName exposing (toIRModuleName)
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
+import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.File.FileChanges exposing (Change(..), FileChanges, Path)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.SDK.ResultList as ResultList
@@ -156,7 +161,48 @@ orderElmModulesByDependency parsedModules =
 
 extractTypeNames : ParsedModule -> List Name
 extractTypeNames parsedModule =
-    Debug.todo "implement"
+    let
+        withWellKnownOperators : ProcessContext -> ProcessContext
+        withWellKnownOperators context =
+            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
+
+        initialContext : ProcessContext
+        initialContext = Processing.init |> withWellKnownOperators
+
+        extractTypeNamesFromFile : File -> List Name
+        extractTypeNamesFromFile file =
+            let
+                extractFromNode : Node a -> a
+                extractFromNode node =
+                    case node of
+                        Node _ a -> a
+            in
+            file.declarations
+                |> List.filterMap
+                    (\node ->
+                        let
+                            dec: Declaration
+                            dec = extractFromNode node
+
+                            typeNameFromDeclaration : Declaration -> Maybe String
+                            typeNameFromDeclaration declaration =
+                                case declaration of
+                                    CustomTypeDeclaration typ ->
+                                        typ.name |> extractFromNode |> Just
+
+                                    AliasDeclaration typeAlias ->
+                                        typeAlias.name |> extractFromNode |> Just
+
+                                    _ -> Nothing
+                        in
+                        dec
+                            |> typeNameFromDeclaration
+                    )
+                |> List.map Name.fromString
+    in
+    parsedModule
+        |> Processing.process initialContext
+        |> extractTypeNamesFromFile
 
 
 extractTypes : ParsedModule -> List Name -> Result Errors (List ( Name, Type.Definition () ))
