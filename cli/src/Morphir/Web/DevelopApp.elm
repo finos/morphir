@@ -853,7 +853,12 @@ update msg model =
             ( { model | collapsedModules = model.collapsedModules |> Set.insert nodePath }, Cmd.none )
 
         SelectModule nodePath moduleName ->
-            ( { model | selectedModule = Just ( nodePath, moduleName ) }, Cmd.none )
+            ( { model
+                | selectedModule = Just ( nodePath, moduleName )
+                , selectedDefinition = Nothing
+              }
+            , Cmd.none
+            )
 
         SelectDefinition definition ->
             ( { model | selectedDefinition = Just definition }, Cmd.none )
@@ -1092,7 +1097,6 @@ viewHome model packageName packageDef =
                                             |> Maybe.map (.value >> viewValue model.theme moduleName valueName)
                                     )
                                 |> Maybe.withDefault none
-
                         Type ( moduleName, typeName ) ->
                             packageDef.modules
                                 |> Dict.get moduleName
@@ -1108,25 +1112,28 @@ viewHome model packageName packageDef =
                                 |> Maybe.withDefault none
 
                 Nothing ->
-                    text "Please select a definition on the left"
+                    text "Select a Definition on the left"
 
-        moduleTypesAndValues : ModuleName -> Module.Definition () (Type ()) -> List ( Name, Element Msg )
-        moduleTypesAndValues moduleName moduleDef =
+
+        moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List (Definition, Element Msg )
+        moduleDefinitionsAsUiElements moduleName moduleDef =
             let
+                types : List (Definition, Element Msg )
                 types =
                     moduleDef.types
                         |> Dict.toList
                         |> List.map
                             (\( typeName, typeDef ) ->
-                                ( typeName, viewTypeLabel model.theme moduleName typeName typeDef.value.value typeDef.value.doc )
+                               (Type (moduleName, typeName), viewTypeLabel model.theme moduleName typeName typeDef.value.value typeDef.value.doc)
                             )
 
+                values : List (Definition, Element Msg )
                 values =
                     moduleDef.values
                         |> Dict.toList
                         |> List.map
-                            (\( valueName, valueDef ) ->
-                                ( valueName, viewValueLabel model.theme moduleName valueName valueDef.value )
+                           (\( valueName, valueDef) ->
+                               (Value (moduleName, valueName),viewValueLabel model.theme (Value (moduleName, valueName)) valueName valueDef.value )
                             )
             in
             types ++ values
@@ -1134,18 +1141,15 @@ viewHome model packageName packageDef =
         viewDefinitionLabels : Maybe ModuleName -> Element Msg
         viewDefinitionLabels maybeSelectedModuleName =
             let
-                buildElements =
+                paintSelectedElement : List (Definition, Element Msg) -> List (Element Msg)
+                paintSelectedElement =
                     let
                         selectionColor =
                             Maybe.withDefault (rgb 0.8 0.9 0.9) TreeLayout.defaultTheme.colors.selectedRowBackground
 
-                        paintIfSelected : Name -> Name -> Element Msg -> Element Msg
-                        paintIfSelected selectedName name elem =
-                            if selectedName == name then
-                                el [ Background.color selectionColor, width fill ] elem
-
-                            else
-                                defaultElem elem
+                        paintIfSelected : Element Msg -> Element Msg
+                        paintIfSelected elem =
+                            el [ Background.color selectionColor, width fill ] elem
 
                         defaultElem : Element Msg -> Element Msg
                         defaultElem elem =
@@ -1163,17 +1167,24 @@ viewHome model packageName packageDef =
                                 elem
                     in
                     List.map
-                        (\( name, elem ) ->
+                        (\(def, elem)  ->
                             case model.selectedDefinition of
-                                Just (Value ( _, selectedName )) ->
-                                    paintIfSelected selectedName name elem
-
-                                Just (Type ( _, selectedName )) ->
-                                    paintIfSelected selectedName name elem
-
+                                Just selected ->
+                                    if selected == def then
+                                       paintIfSelected elem
+                                    else defaultElem elem
                                 Nothing ->
                                     defaultElem elem
+
                         )
+
+                defaultIfUnselected : List (Element Msg) -> List (Element Msg)
+                defaultIfUnselected definitionElementList =
+                    if List.isEmpty definitionElementList then
+                        [ text "Please select a module on the left!" ]
+
+                    else
+                        definitionElementList
             in
             packageDef.modules
                 |> Dict.toList
@@ -1182,15 +1193,16 @@ viewHome model packageName packageDef =
                         case maybeSelectedModuleName of
                             Just selectedModuleName ->
                                 if selectedModuleName |> Path.isPrefixOf moduleName then
-                                    moduleTypesAndValues moduleName accessControlledModuleDef.value
+                                    moduleDefinitionsAsUiElements moduleName accessControlledModuleDef.value
 
                                 else
                                     []
 
                             Nothing ->
-                                moduleTypesAndValues moduleName accessControlledModuleDef.value
+                                []
                     )
-                |> buildElements
+                |> paintSelectedElement
+                |> defaultIfUnselected
                 |> column [ height fill, width fill ]
     in
     row
@@ -1529,8 +1541,8 @@ viewValue theme moduleName valueName valueDef =
         none
 
 
-viewValueLabel : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> Element Msg
-viewValueLabel theme moduleName valueName valueDef =
+viewValueLabel : Theme -> Definition -> Name -> Value.Definition () (Type ()) -> Element Msg
+viewValueLabel theme definiton valueName valueDef =
     let
         cardTitle =
             text (nameToText valueName)
@@ -1545,7 +1557,7 @@ viewValueLabel theme moduleName valueName valueDef =
             else
                 rgb 0.8 0.8 0.9
     in
-    viewAsLabel (SelectDefinition (Value ( moduleName, valueName )))
+    viewAsLabel (SelectDefinition definiton)
         theme
         cardTitle
         (if isData then
