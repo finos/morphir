@@ -7,11 +7,6 @@ const rmdir = util.promisify(fs.rm)
 const cli = require("../../cli/cli")
 const writeFile = util.promisify(fs.writeFile)
 
-/**
- * create folder structure
- * create morphir.json
- * create elm file
- */
 
 // utility function for joining strings with newlines
 const join = (...rest: String[]): String => rest.join("\n")
