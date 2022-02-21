@@ -29,14 +29,14 @@ import Morphir.IR.Package as Package exposing (PackageName)
 port jsonDecodeError : String -> Cmd msg
 
 
-port incrementalBuild : (( Decode.Value, Decode.Value, List SourceFile, List IR ) -> msg) -> Sub msg
+port packageDefinitionFromSource : (( Decode.Value, Decode.Value, List SourceFile) -> msg) -> Sub msg
 
 
-port incrementalBuildResult : ( Encode.Value, Encode.Value ) -> Cmd msg
+port packageDefinitionFromSourceResult :  Encode.Value -> Cmd msg
 
 
 type Msg
-    = IncrementalBuild ( Decode.Value, Decode.Value, List SourceFile, List IR )
+    = PackageDefinitionFromSource ( Decode.Value, Decode.Value, List SourceFile)
 
 
 main : Platform.Program () () Msg
@@ -51,20 +51,18 @@ main =
 update : Msg -> () -> ( (), Cmd Msg )
 update msg model =
     case msg of
-        IncrementalBuild ( optionsJson, packageInfoJson, sourceFiles, irJson ) ->
+        PackageDefinitionFromSource ( optionsJson, packageInfoJson, sourceFiles) ->
             let
                 inputResult : Result Decode.Error ( Frontend.Options, PackageInfo )
                 inputResult =
                     Result.map2 Tuple.pair
                         (Decode.decodeValue FrontendCodec.decodeOptions optionsJson)
                         (Decode.decodeValue FrontendCodec.decodePackageInfo packageInfoJson)
-
-                -- (Decode.decodeValue FrontendCodec.decodePackageInfo packageInfoJson)
             in
             case inputResult of
                 Ok ( opts, packageInfo ) ->
                     let
-                        createEmptyRepo : Result (List Compiler.Error) (Package.Definition () () )
+                        createEmptyRepo : Result (List Compiler.Error) (Package.Definition Frontend.SourceLocation Frontend.SourceLocation )
                         createEmptyRepo =
                             Repo.Empty
 
@@ -79,7 +77,7 @@ update msg model =
 
 subscriptions : () -> Sub Msg
 subscriptions _ =
-    incrementalBuild IncrementalBuild
+    packageDefinitionFromSource PackageDefinitionFromSource
 
 
 encodeResult : (e -> Encode.Value) -> (a -> Encode.Value) -> Result e a -> Encode.Value
