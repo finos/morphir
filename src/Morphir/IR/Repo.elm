@@ -174,23 +174,15 @@ extractTypeNames parsedModule =
             file.declarations
                 |> List.filterMap
                     (\node ->
-                        let
-                            dec: Declaration
-                            dec = Node.value node
+                        case Node.value node of
+                            CustomTypeDeclaration typ ->
+                                typ.name |> Node.value |> Just
 
-                            typeNameFromDeclaration : Declaration -> Maybe String
-                            typeNameFromDeclaration declaration =
-                                case declaration of
-                                    CustomTypeDeclaration typ ->
-                                        typ.name |> Node.value |> Just
+                            AliasDeclaration typeAlias ->
+                                typeAlias.name |> Node.value |> Just
 
-                                    AliasDeclaration typeAlias ->
-                                        typeAlias.name |> Node.value |> Just
-
-                                    _ -> Nothing
-                        in
-                        dec
-                            |> typeNameFromDeclaration
+                            _ ->
+                                Nothing
                     )
                 |> List.map Name.fromString
     in
@@ -201,7 +193,17 @@ extractTypeNames parsedModule =
 
 extractTypes : ParsedModule -> List Name -> Result Errors (List ( Name, Type.Definition () ))
 extractTypes parsedModule typeNames =
-    Debug.todo "implement"
+    typeNames
+        |> List.map (\typeName ->
+            extractTypeDefinition parsedModule typeName
+        )
+        |> Ok
+
+extractTypeDefinition : ParsedModule -> Name -> (Name, Type.Definition ())
+extractTypeDefinition parsedModule typeName =
+    let
+        Processing.
+    in
 
 
 orderTypesByDependency : List ( Name, Type.Definition () ) -> List ( Name, Type.Definition () )
