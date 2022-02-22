@@ -1,13 +1,13 @@
 [![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://finosfoundation.atlassian.net/wiki/display/FINOS/Incubating)
 [<img src="https://img.shields.io/badge/slack-@finos/morphir-green.svg?logo=slack">](https://finos-lf.slack.com/messages/morphir/)
 
+<img src="https://github.com/finos/branding/blob/master/project-logos/active-project-logos/Morphir%20Logo/Horizontal/2020_Morphir_Logo_Horizontal.png?raw=true" width="450">
+
 # Morphir
 
+Morphir is a library of tools that works to capture business logic as data.
+
 For the first time, business logic can be shared, stored, translated and visualised, all with the reliability of standardisation ensured in the Morphir framework.
-
----
-
-Morphir is a library of tools that works to capture business logic as data:
 
 ## What is it?
 
@@ -47,12 +47,11 @@ Defines a standard format for storing and sharing business logic. A clear set of
 
 # An ecosystem of innovative features
 
-Supporting the development of your business’ needs in an ever-developing ecosystem based on firm standards and the integration of new languages.
+Supporting the development of your business' needs in an ever-developing ecosystem based on firm standards and the integration of new languages.
 
-Check out [GitHub >>](https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial)
+Check out [Stephen Goldbaum's Morphir Examples on GitHub](https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial)
 
 # Further reading
-
 | Introduction & Background                                                 | Using Morphir                                                                                              | Applicability                                                                        |
 | :------------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
 | [Resource Centre](https://resources.finos.org/morphir/)                             | [What Makes a Good Model](./docs/what-makes-a-good-domain-model)                                           | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling) |
@@ -61,6 +60,7 @@ Check out [GitHub >>](https://github.com/stephengoldbaum/morphir-examples/tree/m
 | [What's it all about?](./docs/whats_it_about)                             | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                      |
 | [Working Across Technologies](./docs/work_across_languages_and_platforms) | [Modeling for database developers](./docs/modeling/modeling-for-database-developers.md)                    |                                                                                      |
 | [Why we use Functional Programming?](./docs/why_functional_programming)   |                                                                                                            |                                                                                      |
+
 
 # Development setup
 
@@ -102,7 +102,7 @@ Join Morphir on the FINOS Slack by signing up at https://finos-lf.slack.com/. Th
 
 [<img src="https://img.shields.io/badge/slack-@finos/morphir-green.svg?logo=slack">](https://finos-lf.slack.com/messages/morphir/)
 
-Reach out to help@finos.org for any issues when joining CSC on the FINOS Slack.
+Reach out to help@finos.org for any issues when joining Morphir on the FINOS Slack.
 
 ## License
 
