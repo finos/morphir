@@ -22,8 +22,10 @@ import Json.Encode as Encode
 import Morphir.Compiler as Compiler
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
-import Morphir.IR as IR exposing (IR)
+import Morphir.File.FileChanges exposing (FileChanges)
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Repo as Repo exposing (empty)
 
 
 port jsonDecodeError : String -> Cmd msg
@@ -34,10 +36,13 @@ port packageDefinitionFromSource : (( Decode.Value, Decode.Value, List SourceFil
 
 port packageDefinitionFromSourceResult :  Encode.Value -> Cmd msg
 
+port incrementalBuild: (( Decode.Value, Decode.Value, List SourceFile, Distribution) -> msg) -> Sub msg
+
+port incrementalBuildResult: Encode.Value -> Cmd msg
 
 type Msg
     = PackageDefinitionFromSource ( Decode.Value, Decode.Value, List SourceFile)
-
+    | IncrementalBuild ( Decode.Value, Decode.Value, List SourceFile, Distribution)
 
 main : Platform.Program () () Msg
 main =
@@ -51,7 +56,7 @@ main =
 update : Msg -> () -> ( (), Cmd Msg )
 update msg model =
     case msg of
-        PackageDefinitionFromSource ( optionsJson, packageInfoJson, sourceFiles) ->
+        PackageDefinitionFromSource ( optionsJson, packageInfoJson, _) ->
             let
                 inputResult : Result Decode.Error ( Frontend.Options, PackageInfo )
                 inputResult =
@@ -60,12 +65,13 @@ update msg model =
                         (Decode.decodeValue FrontendCodec.decodePackageInfo packageInfoJson)
             in
             case inputResult of
-                Ok ( opts, packageInfo ) ->
+                Ok ( packageName) ->
                     let
                         createEmptyRepo : Result (List Compiler.Error) (Package.Definition Frontend.SourceLocation Frontend.SourceLocation )
                         createEmptyRepo =
-                            Repo.Empty
+                            Repo.empty packageName
 
+                    in
 
                 Err errorMessage ->
                     ( model
@@ -74,10 +80,17 @@ update msg model =
                         |> jsonDecodeError
                     )
 
+        IncrementalBuild (optionsJson, packageInfoJson, sourcefiles, distribution) ->
+            let
+                incrementalResult: Result Decode.Error (FileChanges.)
 
 subscriptions : () -> Sub Msg
 subscriptions _ =
-    packageDefinitionFromSource PackageDefinitionFromSource
+    Sub.batch
+        [ packageDefinitionFromSource PackageDefinitionFromSource
+        , incrementalBuild IncrementalBuild
+        ]
+
 
 
 encodeResult : (e -> Encode.Value) -> (a -> Encode.Value) -> Result e a -> Encode.Value
