@@ -35,6 +35,8 @@ type alias Errors =
 type Error
     = ModuleNotFound ModuleName
     | ModuleHasDependents ModuleName (Set ModuleName)
+    | ModuleAlreadyExist ModuleName
+    | CycleDetected -- ModuleName ModuleName
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -86,7 +88,7 @@ mergeNativeFunctions newNativeFunction repo =
 applyFileChanges : FileChanges -> Repo -> Result Errors Repo
 applyFileChanges fileChanges repo =
     parseNewElmModules fileChanges
-        |> Result.andThen orderElmModulesByDependency
+        |> Result.andThen (orderElmModulesByDependency repo)
         |> Result.andThen
             (\parsedModules ->
                 parsedModules
@@ -124,9 +126,91 @@ parseNewElmModules fileChanges =
     Debug.todo "implement"
 
 
-orderElmModulesByDependency : List ParsedModule -> Result Errors (List ParsedModule)
-orderElmModulesByDependency parsedModules =
-    Debug.todo "implement"
+orderElmModulesByDependency : Repo -> List ParsedModule -> Result Error (List ParsedModule)
+orderElmModulesByDependency repo parsedModules =
+    {- let
+          finalModuleGraph: DAG ModuleName
+          finalModuleGraph = DAG.empty
+
+          foldLeftInitialFunction: ParsedModule -> DAG ModuleName -> Result Error (DAG ModuleName)
+          foldLeftInitialFunction parsedModule =
+             let
+                  -- extract IR moduleName from ParsedModule
+                  fromModuleNameParam = parsedModule |> ParsedModule.moduleName |> toIRModuleName repo.packageName
+
+                  -- extract parsedMod Dependencies + format each moduleName to type ModuleName
+                  moduleDependencies: List ModuleName
+                  moduleDependencies =
+                      ParsedModule.importedModules parsedModule
+                           |> List.map (toIRModuleName repo.packageName)
+
+                  -- insert function to DAG Graph
+
+              in
+              moduleDependencies
+                   |> List.foldl (foldLeftInnerFunction)
+       in
+       parsedModules
+           |> List.foldl (foldLeftInitialFunction) finalGraph
+           |> Result.andThen (\functionAResult ->
+               case functionAResult of
+                   Err err ->
+                       case  err of
+                           _ ->
+                               CycleDetected
+                   Ok _ ->
+                       parsedModules
+           )
+    -}
+    let
+        moduleGraph : DAG ModuleName
+        moduleGraph =
+            DAG.empty
+
+        foldFunction : ParsedModule -> Result Error (DAG ModuleName) -> Result Error (DAG ModuleName)
+        foldFunction parsedModule graph =
+            let
+                moduleName : ModuleName
+                moduleName =
+                    ParsedModule.moduleName parsedModule
+                        |> toIRModuleName repo.packageName
+
+                moduleDependencies : List ModuleName
+                moduleDependencies =
+                    ParsedModule.importedModules parsedModule
+                        |> List.map (\modName -> toIRModuleName repo.packageName modName)
+
+                insertEdge : ModuleName -> Result Error (DAG ModuleName) -> Result Error (DAG ModuleName)
+                insertEdge toModule dag =
+                    dag
+                        |> Result.andThen
+                            (\graphValue ->
+                                graphValue
+                                    |> DAG.insertEdge moduleName toModule
+                                    |> Result.mapError
+                                        (\err ->
+                                            case err of
+                                                _ ->
+                                                    CycleDetected moduleName toModule
+                                        )
+                            )
+            in
+            moduleDependencies
+                |> List.foldl insertEdge graph
+    in
+    parsedModules
+        |> List.foldl foldFunction (Ok moduleGraph)
+        |> Result.andThen
+            (\finalGraph ->
+                finalGraph
+                    |> DAG.forwardTopologicalOrdering
+                    |> List.concat
+                    |> List.map2
+            )
+
+
+
+--Debug.todo "implement"
 
 
 extractTypeNames : ParsedModule -> List Name
@@ -160,13 +244,26 @@ mergeModuleSource moduleName sourceCode repo =
 -}
 insertModule : ModuleName -> Module.Definition () (Type ()) -> Repo -> Result Errors Repo
 insertModule moduleName moduleDef repo =
-    -- TODO: add validation
-    Ok
-        { repo
-            | modules =
-                repo.modules
-                    |> Dict.insert moduleName moduleDef
-        }
+    let
+        validationErrors : Maybe Errors
+        validationErrors =
+            case repo.modules |> Dict.get moduleName of
+                Just _ ->
+                    Just [ ModuleAlreadyExist moduleName ]
+
+                Nothing ->
+                    Nothing
+    in
+    validationErrors
+        |> Maybe.map Err
+        |> Maybe.withDefault
+            (Ok
+                { repo
+                    | modules =
+                        repo.modules
+                            |> Dict.insert moduleName moduleDef
+                }
+            )
 
 
 deleteModule : ModuleName -> Repo -> Result Errors Repo
