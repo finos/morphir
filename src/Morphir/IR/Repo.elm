@@ -6,7 +6,9 @@ import Elm.Processing as Processing exposing (ProcessContext)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Node as Node exposing (Node(..))
+import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation)
 import Morphir.Dependency.DAG as DAG exposing (DAG)
+import Morphir.Elm.Frontend exposing (SourceLocation)
 import Morphir.Elm.ModuleName exposing (toIRModuleName)
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
@@ -128,30 +130,34 @@ applyFileChanges fileChanges repo =
             )
 
 
-{-| convert New or Updated Elm modules into ParsedModules for further processing-}
+{-| convert New or Updated Elm modules into ParsedModules for further processing
+-}
 parseElmModules : FileChanges -> Result Errors (List ParsedModule)
 parseElmModules fileChanges =
     fileChanges
         |> Dict.toList
         |> List.filterMap
-            (\(path, content) ->
+            (\( path, content ) ->
                 case content of
-                    Insert source -> Just (path, source)
+                    Insert source ->
+                        Just ( path, source )
 
-                    Update source -> Just (path, source)
+                    Update source ->
+                        Just ( path, source )
 
-                    Delete -> Nothing
+                    Delete ->
+                        Nothing
             )
         |> List.map parseSource
         |> ResultList.keepAllErrors
 
 
-{-| Converts an elm source into a ParsedModule. -}
-parseSource: (Path, String) -> Result Error ParsedModule
-parseSource (path, content) =
+{-| Converts an elm source into a ParsedModule.
+-}
+parseSource : ( Path, String ) -> Result Error ParsedModule
+parseSource ( path, content ) =
     Elm.Parser.parse content
         |> Result.mapError (ParseError path)
-
 
 
 orderElmModulesByDependency : List ParsedModule -> Result Errors (List ParsedModule)
@@ -167,7 +173,8 @@ extractTypeNames parsedModule =
             List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
 
         initialContext : ProcessContext
-        initialContext = Processing.init |> withWellKnownOperators
+        initialContext =
+            Processing.init |> withWellKnownOperators
 
         extractTypeNamesFromFile : File -> List Name
         extractTypeNamesFromFile file =
@@ -194,16 +201,49 @@ extractTypeNames parsedModule =
 extractTypes : ParsedModule -> List Name -> Result Errors (List ( Name, Type.Definition () ))
 extractTypes parsedModule typeNames =
     typeNames
-        |> List.map (\typeName ->
-            extractTypeDefinition parsedModule typeName
-        )
-        |> Ok
+        |> List.map
+            (\typeName ->
+                let
+                    mapTypeAnnotation : ParsedModule -> Node TypeAnnotation -> Result Error (Type SourceLocation)
+                    mapTypeAnnotation parsedMod (Node range typeAnnotation) =
+                        Debug.todo "implement"
+                in
+                parsedModule
+                    |> ParsedModule.typeDeclarations
+                    |> List.filterMap
+                        (\dec ->
+                            case dec of
+                                AliasDeclaration typeAlias ->
+                                    mapTypeAnnotation parsedModule typeAlias.typeAnnotation
+                                        |> Result.map
+                                            (\typeExp ->
+                                                let
+                                                    name : Name
+                                                    name =
+                                                        typeAlias.name
+                                                            |> Node.value
+                                                            |> Name.fromString
 
-extractTypeDefinition : ParsedModule -> Name -> (Name, Type.Definition ())
-extractTypeDefinition parsedModule typeName =
-    let
-        Processing.
-    in
+                                                    typeParams =
+                                                        typeAlias.generics
+                                                            |> List.map (Node.value >> Name.fromString)
+
+                                                    doc =
+                                                        typeAlias.documentation
+                                                            |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
+                                                            |> Maybe.withDefault ""
+                                                in
+                                                (name, Type.)
+                                            )
+
+                                CustomTypeDeclaration typ ->
+                                    Debug.todo ""
+
+                                _ ->
+                                    Nothing
+                        )
+            )
+        |> Ok
 
 
 orderTypesByDependency : List ( Name, Type.Definition () ) -> List ( Name, Type.Definition () )
