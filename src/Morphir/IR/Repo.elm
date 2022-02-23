@@ -2,7 +2,7 @@ module Morphir.IR.Repo exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.Dependency.DAG as DAG exposing (DAG)
-import Morphir.Elm.ModuleName exposing (toIRModuleName)
+import Morphir.Elm.ModuleName as ElmModuleName exposing (toIRModuleName)
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.File.FileChanges exposing (FileChanges)
 import Morphir.IR.Distribution exposing (Distribution(..))
@@ -10,6 +10,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.Value.Native as Native
 import Set exposing (Set)
@@ -36,7 +37,8 @@ type Error
     = ModuleNotFound ModuleName
     | ModuleHasDependents ModuleName (Set ModuleName)
     | ModuleAlreadyExist ModuleName
-    | CycleDetected -- ModuleName ModuleName
+    | CycleDetected ModuleName ModuleName
+    | InvalidModuleName ElmModuleName.ModuleName
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -93,13 +95,8 @@ applyFileChanges fileChanges repo =
             (\parsedModules ->
                 parsedModules
                     |> List.foldl
-                        (\parsedModule repoResultForModule ->
+                        (\( moduleName, parsedModule ) repoResultForModule ->
                             let
-                                moduleName : ModuleName
-                                moduleName =
-                                    ParsedModule.moduleName parsedModule
-                                        |> toIRModuleName repo.packageName
-
                                 typeNames : List Name
                                 typeNames =
                                     extractTypeNames parsedModule
@@ -126,86 +123,84 @@ parseNewElmModules fileChanges =
     Debug.todo "implement"
 
 
-orderElmModulesByDependency : Repo -> List ParsedModule -> Result Error (List ParsedModule)
+orderElmModulesByDependency : Repo -> List ParsedModule -> Result Errors (List ( ModuleName, ParsedModule ))
 orderElmModulesByDependency repo parsedModules =
-    {- let
-          finalModuleGraph: DAG ModuleName
-          finalModuleGraph = DAG.empty
-
-          foldLeftInitialFunction: ParsedModule -> DAG ModuleName -> Result Error (DAG ModuleName)
-          foldLeftInitialFunction parsedModule =
-             let
-                  -- extract IR moduleName from ParsedModule
-                  fromModuleNameParam = parsedModule |> ParsedModule.moduleName |> toIRModuleName repo.packageName
-
-                  -- extract parsedMod Dependencies + format each moduleName to type ModuleName
-                  moduleDependencies: List ModuleName
-                  moduleDependencies =
-                      ParsedModule.importedModules parsedModule
-                           |> List.map (toIRModuleName repo.packageName)
-
-                  -- insert function to DAG Graph
-
-              in
-              moduleDependencies
-                   |> List.foldl (foldLeftInnerFunction)
-       in
-       parsedModules
-           |> List.foldl (foldLeftInitialFunction) finalGraph
-           |> Result.andThen (\functionAResult ->
-               case functionAResult of
-                   Err err ->
-                       case  err of
-                           _ ->
-                               CycleDetected
-                   Ok _ ->
-                       parsedModules
-           )
-    -}
     let
+        parsedModuleByName : Dict ModuleName ParsedModule
+        parsedModuleByName =
+            parsedModules
+                |> List.filterMap
+                    (\parsedModule ->
+                        ParsedModule.moduleName parsedModule
+                            |> toIRModuleName repo.packageName
+                            |> Maybe.map
+                                (\moduleName ->
+                                    ( moduleName
+                                    , parsedModule
+                                    )
+                                )
+                    )
+                |> Dict.fromList
+
         moduleGraph : DAG ModuleName
         moduleGraph =
             DAG.empty
 
-        foldFunction : ParsedModule -> Result Error (DAG ModuleName) -> Result Error (DAG ModuleName)
+        foldFunction : ParsedModule -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
         foldFunction parsedModule graph =
             let
-                moduleName : ModuleName
-                moduleName =
-                    ParsedModule.moduleName parsedModule
-                        |> toIRModuleName repo.packageName
+                validateIfModuleExistInPackage : ModuleName -> Bool
+                validateIfModuleExistInPackage modName =
+                    Path.isPrefixOf repo.packageName modName
 
                 moduleDependencies : List ModuleName
                 moduleDependencies =
                     ParsedModule.importedModules parsedModule
-                        |> List.map (\modName -> toIRModuleName repo.packageName modName)
+                        |> List.filterMap
+                            (\modName ->
+                                toIRModuleName repo.packageName modName
+                            )
 
-                insertEdge : ModuleName -> Result Error (DAG ModuleName) -> Result Error (DAG ModuleName)
-                insertEdge toModule dag =
+                insertEdge : ModuleName -> ModuleName -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
+                insertEdge fromModuleName toModule dag =
                     dag
                         |> Result.andThen
                             (\graphValue ->
                                 graphValue
-                                    |> DAG.insertEdge moduleName toModule
+                                    |> DAG.insertEdge fromModuleName toModule
                                     |> Result.mapError
                                         (\err ->
                                             case err of
                                                 _ ->
-                                                    CycleDetected moduleName toModule
+                                                    [ CycleDetected fromModuleName toModule ]
                                         )
                             )
+
+                elmModuleName =
+                    ParsedModule.moduleName parsedModule
             in
-            moduleDependencies
-                |> List.foldl insertEdge graph
+            elmModuleName
+                |> toIRModuleName repo.packageName
+                |> Result.fromMaybe [ InvalidModuleName elmModuleName ]
+                |> Result.andThen
+                    (\fromModuleName ->
+                        moduleDependencies
+                            |> List.foldl (insertEdge fromModuleName) graph
+                    )
     in
     parsedModules
         |> List.foldl foldFunction (Ok moduleGraph)
-        |> Result.andThen
-            (\finalGraph ->
-                finalGraph
-                    |> DAG.forwardTopologicalOrdering
+        |> Result.map
+            (\graph ->
+                graph
+                    |> DAG.backwardTopologicalOrdering
                     |> List.concat
-                    |> List.map2
+                    |> List.filterMap
+                        (\moduleName ->
+                            parsedModuleByName
+                                |> Dict.get moduleName
+                                |> Maybe.map (Tuple.pair moduleName)
+                        )
             )
 
 
