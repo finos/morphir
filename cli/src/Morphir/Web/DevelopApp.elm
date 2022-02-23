@@ -20,6 +20,7 @@ import Element
         , image
         , layout
         , link
+        , maximum
         , mouseOver
         , none
         , padding
@@ -38,7 +39,8 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
-import Html.Attributes exposing (default)
+import Element.Input
+import Html.Attributes exposing (default, style)
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Markdown.Parser as Markdown
 import Markdown.Renderer
@@ -70,6 +72,7 @@ import Set exposing (Set)
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as UrlParser exposing ((</>), (<?>))
+import Element exposing (spacingXY)
 
 
 
@@ -103,6 +106,7 @@ type alias Model =
     , collapsedModules : Set TreeLayout.NodePath
     , selectedModule : Maybe ( TreeLayout.NodePath, ModuleName )
     , selectedDefinition : Maybe Definition
+    , searchText : String
     }
 
 
@@ -140,6 +144,7 @@ init _ url key =
       , collapsedModules = Set.empty
       , selectedModule = Nothing
       , selectedDefinition = Nothing
+      , searchText = ""
       }
     , Cmd.batch [ httpMakeModel ]
     )
@@ -177,6 +182,7 @@ type Msg
     | CollapseModule TreeLayout.NodePath
     | SelectModule TreeLayout.NodePath ModuleName
     | SelectDefinition Definition
+    | SearchDefinition String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -863,6 +869,9 @@ update msg model =
         SelectDefinition definition ->
             ( { model | selectedDefinition = Just definition }, Cmd.none )
 
+        SearchDefinition definitionName ->
+            ( { model | searchText = definitionName }, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -1079,11 +1088,21 @@ viewHome model packageName packageDef =
         white =
             rgb 1 1 1
 
+        scrollableListStyles : List (Element.Attribute msg)
         scrollableListStyles =
-            [ width fill, height fill, Background.color white, Border.rounded 3, scrollbars, paddingXY 5 5 ]
+            [ width fill, height fill, Background.color white, Border.rounded 3, scrollbars, paddingXY 20 10 ]
 
-        viewDefinitions : Maybe ModuleName -> Maybe Definition -> Element msg
-        viewDefinitions maybeSelectedModuleName maybeSelectedDefinition =
+        columnHeading : String -> Element Msg
+        columnHeading headingText =
+            el
+                [ width fill
+                , padding 5
+                , Font.size (model.theme |> Theme.scaled 3)
+                ]
+                (text headingText)
+
+        viewDefinition : Maybe Definition -> Element msg
+        viewDefinition maybeSelectedDefinition =
             case maybeSelectedDefinition of
                 Just selectedDefinition ->
                     case selectedDefinition of
@@ -1097,6 +1116,7 @@ viewHome model packageName packageDef =
                                             |> Maybe.map (.value >> viewValue model.theme moduleName valueName)
                                     )
                                 |> Maybe.withDefault none
+
                         Type ( moduleName, typeName ) ->
                             packageDef.modules
                                 |> Dict.get moduleName
@@ -1112,28 +1132,27 @@ viewHome model packageName packageDef =
                                 |> Maybe.withDefault none
 
                 Nothing ->
-                    text "Select a Definition on the left"
+                    text "Please select a definition on the left!"
 
-
-        moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List (Definition, Element Msg )
+        moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List ( Definition, Element Msg )
         moduleDefinitionsAsUiElements moduleName moduleDef =
             let
-                types : List (Definition, Element Msg )
+                types : List ( Definition, Element Msg )
                 types =
                     moduleDef.types
                         |> Dict.toList
                         |> List.map
                             (\( typeName, typeDef ) ->
-                               (Type (moduleName, typeName), viewTypeLabel model.theme moduleName typeName typeDef.value.value typeDef.value.doc)
+                                ( Type ( moduleName, typeName ), viewTypeLabel model.theme moduleName typeName typeDef.value.value typeDef.value.doc )
                             )
 
-                values : List (Definition, Element Msg )
+                values : List ( Definition, Element Msg )
                 values =
                     moduleDef.values
                         |> Dict.toList
                         |> List.map
-                           (\( valueName, valueDef) ->
-                               (Value (moduleName, valueName),viewValueLabel model.theme (Value (moduleName, valueName)) valueName valueDef.value )
+                            (\( valueName, valueDef ) ->
+                                ( Value ( moduleName, valueName ), viewValueLabel model.theme (Value ( moduleName, valueName )) valueName valueDef.value )
                             )
             in
             types ++ values
@@ -1141,7 +1160,20 @@ viewHome model packageName packageDef =
         viewDefinitionLabels : Maybe ModuleName -> Element Msg
         viewDefinitionLabels maybeSelectedModuleName =
             let
-                paintSelectedElement : List (Definition, Element Msg) -> List (Element Msg)
+                searchFilter : List ( Definition, Element Msg ) -> List ( Definition, Element Msg )
+                searchFilter definitions =
+                    List.filter
+                        (\( definition, _ ) ->
+                            case definition of
+                                Value ( _, valueName ) ->
+                                    String.contains model.searchText (nameToText valueName)
+
+                                Type ( _, typeName ) ->
+                                    String.contains model.searchText (nameToText typeName)
+                        )
+                        definitions
+
+                paintSelectedElement : List ( Definition, Element Msg ) -> List (Element Msg)
                 paintSelectedElement =
                     let
                         selectionColor =
@@ -1161,27 +1193,33 @@ viewHome model packageName packageDef =
                                     , top = 0
                                     , right = 0
                                     }
-                                , mouseOver [ Border.color <| rgb 0 0 0 ]
+                                , mouseOver [ Border.color <| Theme.defaultColors.darkest ]
                                 , width fill
                                 ]
                                 elem
                     in
                     List.map
-                        (\(def, elem)  ->
+                        (\( def, elem ) ->
                             case model.selectedDefinition of
                                 Just selected ->
                                     if selected == def then
-                                       paintIfSelected elem
-                                    else defaultElem elem
+                                        paintIfSelected elem
+
+                                    else
+                                        defaultElem elem
+
                                 Nothing ->
                                     defaultElem elem
-
                         )
 
                 defaultIfUnselected : List (Element Msg) -> List (Element Msg)
                 defaultIfUnselected definitionElementList =
                     if List.isEmpty definitionElementList then
-                        [ text "Please select a module on the left!" ]
+                        if model.searchText == "" then
+                            [ text "Please select a module on the left!" ]
+
+                        else
+                            [ text "No matching definition in this module." ]
 
                     else
                         definitionElementList
@@ -1201,9 +1239,22 @@ viewHome model packageName packageDef =
                             Nothing ->
                                 []
                     )
+                |> searchFilter
                 |> paintSelectedElement
                 |> defaultIfUnselected
                 |> column [ height fill, width fill ]
+
+        searchInput =
+            Element.Input.search
+                [ height <| (fill |> maximum 30)
+                , Font.size 12
+                , padding 7
+                ]
+                { onChange = SearchDefinition
+                , text = model.searchText
+                , placeholder = Just (Element.Input.placeholder [] (text "Search for a definition"))
+                , label = Element.Input.labelLeft [ Font.size 15, paddingXY 0 7] (text "Search:")
+                }
     in
     row
         [ height fill
@@ -1216,13 +1267,9 @@ viewHome model packageName packageDef =
             , height fill
             , width (fillPortion 2)
             , paddingXY 0 5
+            , spacing 2
             ]
-            [ el
-                [ width fill
-                , padding 2
-                , Font.size (model.theme |> Theme.scaled 2)
-                ]
-                (text "Modules")
+            [ columnHeading "Modules"
             , el
                 scrollableListStyles
                 (TreeLayout.view TreeLayout.defaultTheme
@@ -1243,26 +1290,21 @@ viewHome model packageName packageDef =
         , column
             [ Background.color gray
             , height fill
-            , width (fillPortion 2)
+            , width (fillPortion 3)
             , paddingXY 0 5
             ]
-            [ el
-                [ width fill
-                , padding 2
-                , Font.size (model.theme |> Theme.scaled 2)
-                ]
-                (text "Concepts")
+            [ row [ width fill, padding 1] [ columnHeading "Definitions", searchInput ]
             , el
                 scrollableListStyles
                 (viewDefinitionLabels (model.selectedModule |> Maybe.map Tuple.second))
             ]
         , column
             [ height fill
-            , width (fillPortion 8)
+            , width (fillPortion 6)
             , paddingXY 10 10
             , Background.color white
             ]
-            [ viewDefinitions (model.selectedModule |> Maybe.map Tuple.second) model.selectedDefinition ]
+            [ viewDefinition model.selectedDefinition ]
         ]
 
 
@@ -1650,12 +1692,12 @@ viewAsLabel clickMessage theme header class backgroundColor docs content =
         ]
         [ el
             [ Font.bold
-            , paddingXY (theme |> Theme.scaled 0) (theme |> Theme.scaled -2)
+            , paddingXY 1 (theme |> Theme.scaled -3)
             ]
             header
         , el
             [ alignRight
-            , paddingXY (theme |> Theme.scaled 0) (theme |> Theme.scaled -2)
+            , paddingXY 1 (theme |> Theme.scaled -3)
             ]
             (el [] (text class))
         ]
