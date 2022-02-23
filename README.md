@@ -52,15 +52,14 @@ Supporting the development of your business' needs in an ever-developing ecosyst
 Check out [Stephen Goldbaum's Morphir Examples on GitHub](https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial)
 
 # Further reading
-| Introduction & Background                                                 | Using Morphir                                                                                              | Applicability                                                                        |
-| :------------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
-| [Resource Centre](https://resources.finos.org/morphir/)                             | [What Makes a Good Model](./docs/what-makes-a-good-domain-model)                                           | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling) |
-| [Background](./docs/background)                                           | [Development Automation (Dev Bots)](./docs/dev_bots)                                                       | [Regulatory Technology](./docs/regtech_modeling)                                     |
-| [Community](./docs/morphir_community)                                     | [Modeling an Application](./docs/application_modeling)                                                     |                                                                                      |
-| [What's it all about?](./docs/whats_it_about)                             | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                      |
-| [Working Across Technologies](./docs/work_across_languages_and_platforms) | [Modeling for database developers](./docs/modeling/modeling-for-database-developers.md)                    |                                                                                      |
-| [Why we use Functional Programming?](./docs/why_functional_programming)   |                                                                                                            |                                                                                      |
 
+| Introduction & Background                                                  | Using Morphir                                                                                                 | Applicability                                                                           |
+| :------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------------------------------- |
+| [Resource Centre](https://resources.finos.org/morphir/)                    | [What Makes a Good Model](./docs/what-makes-a-good-domain-model.md)                                           | [Sharing Business Logic Across Application Boundaries](./docs/shared_logic_modeling.md) |
+| [Background](./docs/background.md)                                         | [Development Automation (Dev Bots)](./docs/dev_bots.md)                                                       | [Regulatory Technology](./docs/regtech_modeling.md)                                     |
+| [Community](./docs/morphir_community.md)                                   | [Modeling an Application](./docs/application_modeling.md)                                                     |                                                                                         |
+| [What's it all about?](./docs/whats_it_about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules.md) |                                                                                         |
+| [Why we use Functional Programming?](./docs/why_functional_programming.md) | [Modeling for database developers](./docs/modeling/modeling-for-database-developers.md)                       |
 
 # Development setup
 
