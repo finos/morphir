@@ -966,7 +966,13 @@ solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
                         Just newSolutions ->
                             case Solve.mergeSolutions refs newSolutions solutionsSoFar of
                                 Ok mergedSolutions ->
-                                    solveHelp refs mergedSolutions (constraintSet |> ConstraintSet.applySubstitutions mergedSolutions)
+                                    let
+                                        -- Compare the latest set of solutions to the previous set and keep only the new solutions
+                                        newMergedSolutions : SolutionMap
+                                        newMergedSolutions =
+                                            solutionsSoFar |> Solve.diff mergedSolutions
+                                    in
+                                    solveHelp refs mergedSolutions (constraintSet |> ConstraintSet.applySubstitutions newMergedSolutions)
 
                                 Err error ->
                                     Err (UnifyError error)
@@ -984,17 +990,17 @@ validateConstraints constraints =
         |> List.map
             (\constraint ->
                 case constraint of
-                    Class (MetaVar _) _ ->
+                    Class _ (MetaVar _) _ ->
                         Ok constraint
 
-                    Class metaType class ->
+                    Class _ metaType class ->
                         if Class.member metaType class then
                             Ok constraint
 
                         else
                             Err (ClassConstraintViolation metaType class)
 
-                    Equality metaType1 metaType2 ->
+                    Equality _ metaType1 metaType2 ->
                         if isRecursive constraint then
                             Err (RecursiveConstraint metaType1 metaType2)
 
