@@ -45,6 +45,27 @@ get var (SolutionMap dict) =
     Dict.get var dict
 
 
+diff : SolutionMap -> SolutionMap -> SolutionMap
+diff (SolutionMap dict1) (SolutionMap dict2) =
+    dict1
+        |> Dict.toList
+        |> List.filterMap
+            (\( k, v1 ) ->
+                case dict2 |> Dict.get k of
+                    Just v2 ->
+                        if v1 == v2 then
+                            Nothing
+
+                        else
+                            Just ( k, v1 )
+
+                    Nothing ->
+                        Just ( k, v1 )
+            )
+        |> Dict.fromList
+        |> SolutionMap
+
+
 substituteVariable : Variable -> MetaType -> SolutionMap -> SolutionMap
 substituteVariable var replacement (SolutionMap solutions) =
     SolutionMap
@@ -77,7 +98,7 @@ findSubstitution ir constraints =
 
         firstConstraint :: restOfConstraints ->
             case firstConstraint of
-                Equality metaType1 metaType2 ->
+                Equality _ metaType1 metaType2 ->
                     unifyMetaType ir [] metaType1 metaType2
                         |> Result.andThen
                             (\solutions ->
@@ -88,7 +109,7 @@ findSubstitution ir constraints =
                                     Ok (Just solutions)
                             )
 
-                Class _ _ ->
+                Class _ _ _ ->
                     findSubstitution ir restOfConstraints
 
 
