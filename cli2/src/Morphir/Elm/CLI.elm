@@ -20,29 +20,35 @@ port module Morphir.Elm.CLI exposing (..)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.Compiler as Compiler
+import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.File.FileChanges exposing (FileChanges)
-import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
-import Morphir.IR.Package as Package exposing (PackageName)
-import Morphir.IR.Repo as Repo exposing (empty)
+import Morphir.File.FileChanges.Codec as FileChangesCodec
+import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution.Codec as DistroCodec
+import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 
 
 port jsonDecodeError : String -> Cmd msg
 
 
-port packageDefinitionFromSource : (( Decode.Value, Decode.Value, List SourceFile) -> msg) -> Sub msg
+port packageDefinitionFromSource : (( Decode.Value, Decode.Value, List SourceFile ) -> msg) -> Sub msg
 
 
-port packageDefinitionFromSourceResult :  Encode.Value -> Cmd msg
+port packageDefinitionFromSourceResult : Encode.Value -> Cmd msg
 
-port incrementalBuild: (( Decode.Value, Decode.Value, List SourceFile, Distribution) -> msg) -> Sub msg
 
-port incrementalBuildResult: Encode.Value -> Cmd msg
+port incrementalBuild : (( Decode.Value, Decode.Value, Decode.Value, Distribution ) -> msg) -> Sub msg
+
+
+port incrementalBuildResult : Encode.Value -> Cmd msg
+
 
 type Msg
-    = PackageDefinitionFromSource ( Decode.Value, Decode.Value, List SourceFile)
-    | IncrementalBuild ( Decode.Value, Decode.Value, List SourceFile, Distribution)
+    = PackageDefinitionFromSource ( Decode.Value, Decode.Value, List SourceFile )
+    | IncrementalBuild ( Decode.Value, Decode.Value, Decode.Value, Distribution )
+
 
 main : Platform.Program () () Msg
 main =
@@ -56,7 +62,7 @@ main =
 update : Msg -> () -> ( (), Cmd Msg )
 update msg model =
     case msg of
-        PackageDefinitionFromSource ( optionsJson, packageInfoJson, _) ->
+        PackageDefinitionFromSource ( optionsJson, packageInfoJson, sourceFiles ) ->
             let
                 inputResult : Result Decode.Error ( Frontend.Options, PackageInfo )
                 inputResult =
@@ -65,13 +71,19 @@ update msg model =
                         (Decode.decodeValue FrontendCodec.decodePackageInfo packageInfoJson)
             in
             case inputResult of
-                Ok ( packageName) ->
+                Ok ( _, packageInfo ) ->
                     let
-                        createEmptyRepo : Result (List Compiler.Error) (Package.Definition Frontend.SourceLocation Frontend.SourceLocation )
-                        createEmptyRepo =
-                            Repo.empty packageName
-
+                        emptyRepo : Repo
+                        emptyRepo =
+                            Repo.empty packageInfo.name
                     in
+                    -- add source file processing
+                    ( model
+                    , emptyRepo
+                        |> Repo.toDistribution
+                        |> DistroCodec.encodeDistribution
+                        |> packageDefinitionFromSourceResult
+                    )
 
                 Err errorMessage ->
                     ( model
@@ -80,9 +92,64 @@ update msg model =
                         |> jsonDecodeError
                     )
 
-        IncrementalBuild (optionsJson, packageInfoJson, sourcefiles, distribution) ->
+        IncrementalBuild ( optionsJson, packageInfoJson, fileChangesJson, distribution ) ->
             let
-                incrementalResult: Result Decode.Error (FileChanges.)
+                fileChangesResult : Result Decode.Error FileChanges
+                fileChangesResult =
+                    Decode.decodeValue FileChangesCodec.decodeFileChanges fileChangesJson
+
+                inputResult : Result Decode.Error ( Frontend.Options, PackageInfo )
+                inputResult =
+                    Result.map2 Tuple.pair
+                        (Decode.decodeValue FrontendCodec.decodeOptions optionsJson)
+                        (Decode.decodeValue FrontendCodec.decodePackageInfo packageInfoJson)
+
+                repoFromDistribution : Result Repo.Errors Repo
+                repoFromDistribution =
+                    Repo.fromDistribution distribution
+
+                result : ( (), Cmd msg )
+                result =
+                    case repoFromDistribution of
+                        Ok repo ->
+                            case fileChangesResult of
+                                Ok fileChanges ->
+                                    ( model
+                                    , Repo.applyFileChanges fileChanges repo
+                                        |> Result.map Repo.toDistribution
+                                        |> Result.mapError
+                                            (List.map
+                                                (\error ->
+                                                    case error of
+                                                        _ ->
+                                                            Compiler.ErrorsInSourceFile "" []
+                                                )
+                                            )
+                                        |> encodeResult (Encode.list CompilerCodec.encodeError) DistroCodec.encodeVersionedDistribution
+                                        |> incrementalBuildResult
+                                    )
+
+                                Err error ->
+                                    ( model
+                                    , error
+                                        |> Decode.errorToString
+                                        |> jsonDecodeError
+                                    )
+
+                        Err errors ->
+                            Debug.todo "Encode errors with repo error encoder"
+            in
+            case inputResult of
+                Ok ( _, _ ) ->
+                    result
+
+                Err errorMessage ->
+                    ( model
+                    , errorMessage
+                        |> Decode.errorToString
+                        |> jsonDecodeError
+                    )
+
 
 subscriptions : () -> Sub Msg
 subscriptions _ =
@@ -90,7 +157,6 @@ subscriptions _ =
         [ packageDefinitionFromSource PackageDefinitionFromSource
         , incrementalBuild IncrementalBuild
         ]
-
 
 
 encodeResult : (e -> Encode.Value) -> (a -> Encode.Value) -> Result e a -> Encode.Value

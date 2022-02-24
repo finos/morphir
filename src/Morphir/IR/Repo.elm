@@ -69,6 +69,13 @@ fromDistribution distro =
                     (Ok (empty packageName))
 
 
+{-| Creates a distribution from a valid Repo.
+-}
+toDistribution : Repo -> Distribution
+toDistribution repo =
+    Debug.todo "Implement"
+
+
 {-| Adds native functions to the repo. For now this will be mainly used to add `SDK.nativeFunctions`.
 -}
 mergeNativeFunctions : Dict FQName Native.Function -> Repo -> Result Errors Repo
