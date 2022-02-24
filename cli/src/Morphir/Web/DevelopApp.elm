@@ -58,7 +58,6 @@ import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText)
-import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme)
@@ -67,12 +66,12 @@ import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.DevelopApp.Common exposing (insertInList, viewAsCard)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (ViewType(..), makeURL)
+import Ordering exposing (Ordering)
 import Parser exposing (deadEndsToString)
 import Set exposing (Set)
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser as UrlParser exposing ((</>), (<?>))
-import Element exposing (spacingXY)
 
 
 
@@ -1160,6 +1159,22 @@ viewHome model packageName packageDef =
         viewDefinitionLabels : Maybe ModuleName -> Element Msg
         viewDefinitionLabels maybeSelectedModuleName =
             let
+                alphabeticalOrdering : List ( Definition, Element Msg ) -> List ( Definition, Element Msg )
+                alphabeticalOrdering list =
+                    let
+                        byDefinitionName : ( Definition, Element Msg ) -> String
+                        byDefinitionName definition =
+                            case definition of
+                                ( Value ( _, valueName ), _ ) ->
+                                    String.toLower (nameToText valueName)
+
+                                ( Type ( _, typeName ), _ ) ->
+                                    String.toLower (nameToText typeName)
+                    in
+                    List.sortWith
+                        (Ordering.byField byDefinitionName)
+                        list
+
                 searchFilter : List ( Definition, Element Msg ) -> List ( Definition, Element Msg )
                 searchFilter definitions =
                     List.filter
@@ -1240,11 +1255,12 @@ viewHome model packageName packageDef =
                                 []
                     )
                 |> searchFilter
+                |> alphabeticalOrdering
                 |> paintSelectedElement
                 |> defaultIfUnselected
                 |> column [ height fill, width fill ]
 
-        searchInput =
+        definitionFilter =
             Element.Input.search
                 [ height <| (fill |> maximum 30)
                 , Font.size 12
@@ -1253,7 +1269,7 @@ viewHome model packageName packageDef =
                 { onChange = SearchDefinition
                 , text = model.searchText
                 , placeholder = Just (Element.Input.placeholder [] (text "Search for a definition"))
-                , label = Element.Input.labelLeft [ Font.size 15, paddingXY 0 7] (text "Search:")
+                , label = Element.Input.labelLeft [] (columnHeading "Search:")
                 }
     in
     row
@@ -1293,7 +1309,7 @@ viewHome model packageName packageDef =
             , width (fillPortion 3)
             , paddingXY 0 5
             ]
-            [ row [ width fill, padding 1] [ columnHeading "Definitions", searchInput ]
+            [ definitionFilter
             , el
                 scrollableListStyles
                 (viewDefinitionLabels (model.selectedModule |> Maybe.map Tuple.second))
