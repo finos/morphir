@@ -40,7 +40,7 @@ const hashedContent = (contentOfFile: any) => {
     return gen_hash;
 }
 
-async function packageDefinitionFromSource(parsedMorphirJson :any, sourcedFiles :any, options:any, ) {
+async function packageDefinitionFromSource(parsedMorphirJson: any, sourcedFiles: any, options: any,) {
     return new Promise((resolve, reject) => {
         worker.ports.jsonDecodeError.subscribe((err: any) => {
             reject(err)
@@ -66,7 +66,7 @@ function pathDifference(keys1: Array<string>, keys2: Array<string>) {
     return keys1.filter(item => keys2.indexOf(item) < 0)
 }
 
-async function differenceAndHash(hashFilePath: string, filePath: string,
+async function differenceInHash(hashFilePath: string, filePath: string,
     fileHash: Map<string, string>, fileChangesMap: Map<string, Array<string>>, hashJson: any) {
 
     const readContent = await readFile(filePath)
@@ -75,11 +75,9 @@ async function differenceAndHash(hashFilePath: string, filePath: string,
         fileHash.set(key, hashJson[key])
     }
     if (fileHash.has(filePath)) {
-        if (fileHash.get(filePath)) {
-            if (fileHash.get(filePath) !== hash) {
-                fileHash.set(filePath, hash)
-                fileChangesMap.set(filePath, ['Updated', readContent.toString()])
-            }
+        if (fileHash.get(filePath) && (fileHash.get(filePath) !== hash)) {
+            fileHash.set(filePath, hash)
+            fileChangesMap.set(filePath, ['Updated', readContent.toString()])
         }
     }
     else {
@@ -95,20 +93,20 @@ async function differenceAndHash(hashFilePath: string, filePath: string,
 async function readElmSourceFiles(dir: string) {
     let fileHash = new Map<string, string>();
     let fileChangesMap = new Map<string, Array<string>>()
-    let keys2: Array<string> = []
+    let newPathList: Array<string> = []
     const readSourceFile = async function (filePath: string) {
         const hashFilePath: string = path.join(dir, '../morphir-hash.json')
-        keys2.push(filePath)
+        newPathList.push(filePath)
         try {
             await accessFile(hashFilePath)
             const readHashFile = await readFile(hashFilePath)
             let hashJson = JSON.parse(readHashFile.toString())
-            let keys1 = Object.keys(hashJson)
-            await differenceAndHash(hashFilePath, filePath, fileHash, fileChangesMap, hashJson)
-            let missing = pathDifference(keys1, keys2)
-            missing.map(file => {
+            let oldPathList = Object.keys(hashJson)
+            await differenceInHash(hashFilePath, filePath, fileHash, fileChangesMap, hashJson)
+            let difference = pathDifference(oldPathList, newPathList)
+            difference.map(file => {
                 fileHash.delete(file)
-                fileChangesMap.set(file, ['Deleted', 'No content'])
+                fileChangesMap.set(file, ['Deleted'])
             })
             let jsonObject = Object.fromEntries(fileHash)
             await fsWriteFile(hashFilePath, JSON.stringify(jsonObject, null, 2))
