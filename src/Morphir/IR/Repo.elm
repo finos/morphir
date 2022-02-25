@@ -1,19 +1,28 @@
 module Morphir.IR.Repo exposing (..)
 
 import Dict exposing (Dict)
+import Elm.Parser
+import Elm.Processing as Processing exposing (ProcessContext)
+import Elm.Syntax.Declaration exposing (Declaration(..))
+import Elm.Syntax.File exposing (File)
+import Elm.Syntax.Node as Node exposing (Node(..))
+import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Morphir.Dependency.DAG as DAG exposing (DAG)
 import Morphir.Elm.ModuleName as ElmModuleName exposing (toIRModuleName)
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
-import Morphir.File.FileChanges exposing (FileChanges)
-import Morphir.IR.AccessControlled exposing (public)
+import Morphir.Elm.WellKnownOperators as WellKnownOperators
+import Morphir.File.FileChanges exposing (Change(..), FileChanges, Path)
+import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName exposing (FQName, fQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Type)
+import Morphir.SDK.ResultList as ResultList
 import Morphir.Value.Native as Native
+import Parser
 import Set exposing (Set)
 
 
@@ -40,6 +49,7 @@ type Error
     | ModuleAlreadyExist ModuleName
     | CycleDetected ModuleName ModuleName
     | InvalidModuleName ElmModuleName.ModuleName
+    | ParseError String (List Parser.DeadEnd)
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -104,7 +114,7 @@ mergeNativeFunctions newNativeFunction repo =
 -}
 applyFileChanges : FileChanges -> Repo -> Result Errors Repo
 applyFileChanges fileChanges repo =
-    parseNewElmModules fileChanges
+    parseElmModules fileChanges
         |> Result.andThen (orderElmModulesByDependency repo)
         |> Result.andThen
             (\parsedModules ->
@@ -133,9 +143,34 @@ applyFileChanges fileChanges repo =
             )
 
 
-parseNewElmModules : FileChanges -> Result Errors (List ParsedModule)
-parseNewElmModules fileChanges =
-    Debug.todo "implement"
+{-| convert New or Updated Elm modules into ParsedModules for further processing
+-}
+parseElmModules : FileChanges -> Result Errors (List ParsedModule)
+parseElmModules fileChanges =
+    fileChanges
+        |> Dict.toList
+        |> List.filterMap
+            (\( path, content ) ->
+                case content of
+                    Insert source ->
+                        Just ( path, source )
+
+                    Update source ->
+                        Just ( path, source )
+
+                    Delete ->
+                        Nothing
+            )
+        |> List.map parseSource
+        |> ResultList.keepAllErrors
+
+
+{-| Converts an elm source into a ParsedModule.
+-}
+parseSource : ( Path, String ) -> Result Error ParsedModule
+parseSource ( path, content ) =
+    Elm.Parser.parse content
+        |> Result.mapError (ParseError path)
 
 
 orderElmModulesByDependency : Repo -> List ParsedModule -> Result Errors (List ( ModuleName, ParsedModule ))
@@ -221,12 +256,195 @@ orderElmModulesByDependency repo parsedModules =
 
 extractTypeNames : ParsedModule -> List Name
 extractTypeNames parsedModule =
-    Debug.todo "implement"
+    let
+        withWellKnownOperators : ProcessContext -> ProcessContext
+        withWellKnownOperators context =
+            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
+
+        initialContext : ProcessContext
+        initialContext =
+            Processing.init |> withWellKnownOperators
+
+        extractTypeNamesFromFile : File -> List Name
+        extractTypeNamesFromFile file =
+            file.declarations
+                |> List.filterMap
+                    (\node ->
+                        case Node.value node of
+                            CustomTypeDeclaration typ ->
+                                typ.name |> Node.value |> Just
+
+                            AliasDeclaration typeAlias ->
+                                typeAlias.name |> Node.value |> Just
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.map Name.fromString
+    in
+    parsedModule
+        |> Processing.process initialContext
+        |> extractTypeNamesFromFile
 
 
 extractTypes : ParsedModule -> List Name -> Result Errors (List ( Name, Type.Definition () ))
 extractTypes parsedModule typeNames =
-    Debug.todo "implement"
+    let
+        declarationsInParsedModule : List Declaration
+        declarationsInParsedModule =
+            parsedModule
+                |> ParsedModule.declarations
+                |> List.map Node.value
+
+        typeNameToDefinition : Result Errors (List ( Name, Type.Definition () ))
+        typeNameToDefinition =
+            declarationsInParsedModule
+                |> List.filterMap typeDeclarationToDefinition
+                |> ResultList.keepAllErrors
+                |> Result.mapError List.concat
+
+        typeDeclarationToDefinition : Declaration -> Maybe (Result Errors ( Name, Type.Definition () ))
+        typeDeclarationToDefinition declaration =
+            case declaration of
+                CustomTypeDeclaration customType ->
+                    let
+                        typeParams : List Name
+                        typeParams =
+                            customType.generics
+                                |> List.map (Node.value >> Name.fromString)
+
+                        constructorsResult : Result Errors (Type.Constructors ())
+                        constructorsResult =
+                            customType.constructors
+                                |> List.map
+                                    (\(Node _ constructor) ->
+                                        let
+                                            constructorName : Name
+                                            constructorName =
+                                                constructor.name
+                                                    |> Node.value
+                                                    |> Name.fromString
+
+                                            constructorArgsResult : Result Errors (List ( Name, Type () ))
+                                            constructorArgsResult =
+                                                constructor.arguments
+                                                    |> List.indexedMap
+                                                        (\index arg ->
+                                                            mapAnnotationToMorphirType arg
+                                                                |> Result.map
+                                                                    (\argType ->
+                                                                        ( [ "arg", String.fromInt (index + 1) ]
+                                                                        , argType
+                                                                        )
+                                                                    )
+                                                        )
+                                                    |> ResultList.keepAllErrors
+                                                    |> Result.mapError List.concat
+                                        in
+                                        constructorArgsResult
+                                            |> Result.map
+                                                (\constructorArgs ->
+                                                    ( constructorName, constructorArgs )
+                                                )
+                                    )
+                                |> ResultList.keepAllErrors
+                                |> Result.map Dict.fromList
+                                |> Result.mapError List.concat
+                    in
+                    constructorsResult
+                        |> Result.map
+                            (\constructors ->
+                                ( customType.name |> Node.value |> Name.fromString
+                                , Type.customTypeDefinition typeParams (withAccessControl True constructors)
+                                )
+                            )
+                        |> Just
+
+                AliasDeclaration typeAlias ->
+                    let
+                        typeParams : List Name
+                        typeParams =
+                            typeAlias.generics
+                                |> List.map (Node.value >> Name.fromString)
+                    in
+                    typeAlias.typeAnnotation
+                        |> mapAnnotationToMorphirType
+                        |> Result.map
+                            (\tpe ->
+                                ( typeAlias.name
+                                    |> Node.value
+                                    |> Name.fromString
+                                , Type.TypeAliasDefinition typeParams tpe
+                                )
+                            )
+                        |> Just
+
+                _ ->
+                    Nothing
+    in
+    typeNameToDefinition
+
+
+mapAnnotationToMorphirType : Node TypeAnnotation -> Result Errors (Type ())
+mapAnnotationToMorphirType (Node range typeAnnotation) =
+    case typeAnnotation of
+        GenericType varName ->
+            Ok (Type.Variable () (varName |> Name.fromString))
+
+        Typed (Node _ ( moduleName, localName )) argNodes ->
+            Result.map
+                (Type.Reference ()
+                    (fQName
+                        []
+                        (List.map Name.fromString moduleName)
+                        (Name.fromString localName)
+                    )
+                )
+                (argNodes
+                    |> List.map mapAnnotationToMorphirType
+                    |> ResultList.keepAllErrors
+                    |> Result.mapError List.concat
+                )
+
+        Unit ->
+            Ok (Type.Unit ())
+
+        Tupled typeAnnotationNodes ->
+            typeAnnotationNodes
+                |> List.map mapAnnotationToMorphirType
+                |> ResultList.keepAllErrors
+                |> Result.mapError List.concat
+                |> Result.map (Type.Tuple ())
+
+        Record fieldNodes ->
+            fieldNodes
+                |> List.map Node.value
+                |> List.map
+                    (\( Node _ argName, fieldTypeNode ) ->
+                        mapAnnotationToMorphirType fieldTypeNode
+                            |> Result.map (Type.Field (Name.fromString argName))
+                    )
+                |> ResultList.keepAllErrors
+                |> Result.map (Type.Record ())
+                |> Result.mapError List.concat
+
+        GenericRecord (Node _ argName) (Node _ fieldNodes) ->
+            fieldNodes
+                |> List.map Node.value
+                |> List.map
+                    (\( Node _ ags, fieldTypeNode ) ->
+                        mapAnnotationToMorphirType fieldTypeNode
+                            |> Result.map (Type.Field (Name.fromString ags))
+                    )
+                |> ResultList.keepAllErrors
+                |> Result.map (Type.ExtensibleRecord () (Name.fromString argName))
+                |> Result.mapError List.concat
+
+        FunctionTypeAnnotation argTypeNode returnTypeNode ->
+            Result.map2
+                (Type.Function ())
+                (mapAnnotationToMorphirType argTypeNode)
+                (mapAnnotationToMorphirType returnTypeNode)
 
 
 orderTypesByDependency : List ( Name, Type.Definition () ) -> List ( Name, Type.Definition () )
@@ -310,3 +528,12 @@ deleteModule moduleName repo =
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef repo =
     Debug.todo "implement"
+
+
+withAccessControl : Bool -> a -> AccessControlled a
+withAccessControl isExposed value =
+    if isExposed then
+        AccessControlled.public value
+
+    else
+        AccessControlled.private value
