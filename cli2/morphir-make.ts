@@ -6,12 +6,11 @@ import cli = require('./cli')
 
 // logging
 require('log-timestamp')
-console.log("ts workings")
 
 // Set up Commander
 const program = new Command()
 program
-    .name('morphir-make')
+    .name('morphir make')
     .description('Translate Elm sources to Morphir IR')
     .option('-p, --project-dir <path>', 'Root directory of the project where morphir.json is located.', '.')
     .option('-o, --output <path>', 'Target file location where the Morphir IR will be saved.', 'morphir-ir.json')
