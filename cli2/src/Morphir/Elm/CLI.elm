@@ -116,7 +116,7 @@ update msg model =
                                 )
                             )
                         |> encodeResult (Encode.list CompilerCodec.encodeError) DistroCodec.encodeVersionedDistribution
-                        |> (\a -> ( model, incrementalBuildResult a ))
+                        |> (\value -> ( model, incrementalBuildResult value ))
 
                 Err errorMessage ->
                     ( model
