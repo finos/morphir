@@ -294,7 +294,7 @@ extractTypes parsedModule typeNames =
                 _ ->
                     Nothing
     in
-    Debug.todo "implement"
+    typeNameToDefinition
 
 
 mapAnnotationToMorphirType : Node TypeAnnotation -> Result Errors (Type ())
