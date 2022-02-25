@@ -41,21 +41,3 @@ declarations parsedModule =
         |> (\file ->
                 file.declarations
            )
-
-
-typeDeclarations : ParsedModule -> List Declaration
-typeDeclarations parsedModule =
-    parsedModule
-        |> declarations
-        |> List.filterMap
-            (\dec ->
-                case Node.value dec of
-                    CustomTypeDeclaration typ ->
-                        Just (CustomTypeDeclaration typ)
-
-                    AliasDeclaration typAlias ->
-                        Just (AliasDeclaration typAlias)
-
-                    _ ->
-                        Nothing
-            )
