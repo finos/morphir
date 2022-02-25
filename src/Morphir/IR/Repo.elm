@@ -168,35 +168,21 @@ orderElmModulesByDependency parsedModules =
 
 extractTypeNames : ParsedModule -> List Name
 extractTypeNames parsedModule =
-    let
-        withWellKnownOperators : ProcessContext -> ProcessContext
-        withWellKnownOperators context =
-            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
-
-        initialContext : ProcessContext
-        initialContext =
-            Processing.init |> withWellKnownOperators
-
-        extractTypeNamesFromFile : File -> List Name
-        extractTypeNamesFromFile file =
-            file.declarations
-                |> List.filterMap
-                    (\node ->
-                        case Node.value node of
-                            CustomTypeDeclaration typ ->
-                                typ.name |> Node.value |> Just
-
-                            AliasDeclaration typeAlias ->
-                                typeAlias.name |> Node.value |> Just
-
-                            _ ->
-                                Nothing
-                    )
-                |> List.map Name.fromString
-    in
     parsedModule
-        |> Processing.process initialContext
-        |> extractTypeNamesFromFile
+        |> ParsedModule.declarations
+        |> List.filterMap
+            (\declarationNode ->
+                case Node.value declarationNode of
+                    CustomTypeDeclaration typ ->
+                        typ.name |> Node.value |> Just
+
+                    AliasDeclaration typeAlias ->
+                        typeAlias.name |> Node.value |> Just
+
+                    _ ->
+                        Nothing
+            )
+        |> List.map Name.fromString
 
 
 extractTypes : ParsedModule -> List Name -> Result Errors (List ( Name, Type.Definition () ))
