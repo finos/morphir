@@ -262,14 +262,6 @@ extractTypes parsedModule typeNames =
                                 |> ResultList.keepAllErrors
                                 |> Result.map Dict.fromList
                                 |> Result.mapError List.concat
-
-                        withAccessControl : Bool -> a -> AccessControlled a
-                        withAccessControl isExposed value =
-                            if isExposed then
-                                AccessControlled.public value
-
-                            else
-                                AccessControlled.private value
                     in
                     constructorsResult
                         |> Result.map
@@ -435,3 +427,12 @@ deleteModule moduleName repo =
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef repo =
     Debug.todo "implement"
+
+
+withAccessControl : Bool -> a -> AccessControlled a
+withAccessControl isExposed value =
+    if isExposed then
+        AccessControlled.public value
+
+    else
+        AccessControlled.private value
