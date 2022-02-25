@@ -3,22 +3,36 @@ module Morphir.Type.Constraint exposing (..)
 import Dict exposing (Dict)
 import Morphir.Type.Class exposing (Class)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
-import Set
+import Set exposing (Set)
 
 
 type Constraint
-    = Equality MetaType MetaType
-    | Class MetaType Class
+    = Equality (Set Variable) MetaType MetaType
+    | Class (Set Variable) MetaType Class
 
 
 equality : MetaType -> MetaType -> Constraint
-equality =
-    Equality
+equality metaType1 metaType2 =
+    Equality (Set.union (MetaType.variables metaType1) (MetaType.variables metaType2))
+        metaType1
+        metaType2
 
 
 class : MetaType -> Class -> Constraint
-class =
-    Class
+class metaType cls =
+    Class (MetaType.variables metaType)
+        metaType
+        cls
+
+
+variables : Constraint -> Set Variable
+variables constraint =
+    case constraint of
+        Equality vars _ _ ->
+            vars
+
+        Class vars _ _ ->
+            vars
 
 
 equivalent : Constraint -> Constraint -> Bool
@@ -28,7 +42,7 @@ equivalent constraint1 constraint2 =
 
     else
         case ( constraint1, constraint2 ) of
-            ( Equality a1 a2, Equality b1 b2 ) ->
+            ( Equality _ a1 a2, Equality _ b1 b2 ) ->
                 (a1 == b1 && a2 == b2) || (a1 == b2 && a2 == b1)
 
             _ ->
@@ -38,27 +52,35 @@ equivalent constraint1 constraint2 =
 substituteVariable : Variable -> MetaType -> Constraint -> Constraint
 substituteVariable var replacement constraint =
     case constraint of
-        Equality metaType1 metaType2 ->
-            Equality
-                (metaType1 |> MetaType.substituteVariable var replacement)
-                (metaType2 |> MetaType.substituteVariable var replacement)
+        Equality vars metaType1 metaType2 ->
+            if Set.member var vars then
+                equality
+                    (metaType1 |> MetaType.substituteVariable var replacement)
+                    (metaType2 |> MetaType.substituteVariable var replacement)
 
-        Class metaType cls ->
-            Class
-                (metaType |> MetaType.substituteVariable var replacement)
-                cls
+            else
+                constraint
+
+        Class vars metaType cls ->
+            if Set.member var vars then
+                class
+                    (metaType |> MetaType.substituteVariable var replacement)
+                    cls
+
+            else
+                constraint
 
 
 substituteVariables : Dict Variable MetaType -> Constraint -> Constraint
 substituteVariables replacements constraint =
     case constraint of
-        Equality metaType1 metaType2 ->
-            Equality
+        Equality _ metaType1 metaType2 ->
+            equality
                 (metaType1 |> MetaType.substituteVariables replacements)
                 (metaType2 |> MetaType.substituteVariables replacements)
 
-        Class metaType cls ->
-            Class
+        Class _ metaType cls ->
+            class
                 (metaType |> MetaType.substituteVariables replacements)
                 cls
 
@@ -66,17 +88,17 @@ substituteVariables replacements constraint =
 isTrivial : Constraint -> Bool
 isTrivial constraint =
     case constraint of
-        Equality metaType1 metaType2 ->
+        Equality _ metaType1 metaType2 ->
             metaType1 == metaType2
 
-        Class _ _ ->
+        Class _ _ _ ->
             False
 
 
 isRecursive : Constraint -> Bool
 isRecursive constraint =
     case constraint of
-        Equality metaType1 metaType2 ->
+        Equality _ metaType1 metaType2 ->
             let
                 rawMetaType1 =
                     MetaType.removeAliases metaType1
@@ -89,5 +111,5 @@ isRecursive constraint =
                 && (MetaType.variables rawMetaType2 |> Set.isEmpty |> not)
                 && (MetaType.contains rawMetaType1 rawMetaType2 || MetaType.contains rawMetaType2 rawMetaType1)
 
-        Class _ _ ->
+        Class _ _ _ ->
             False
