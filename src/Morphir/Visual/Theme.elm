@@ -1,6 +1,6 @@
 module Morphir.Visual.Theme exposing (..)
 
-import Element exposing (Color, Element, Attribute, column, el, fill, padding, paddingXY, rgb, rgb255, row, spacing, toRgb, width, height, table, none)
+import Element exposing (Color, Element, Attribute, column, el, fill, padding, paddingXY, rgb, rgb255, row, spacing, toRgb, width, height, table, none, mouseOver)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (center)
@@ -22,6 +22,7 @@ type alias Colors =
     , positive : Color
     , negative : Color
     , backgroundColor : Color
+    , selectionColor : Color
     }
 
 
@@ -40,19 +41,20 @@ defaultColors =
     , positive = rgb 0 0.6 0
     , negative = rgb 0.7 0 0
     , backgroundColor = rgb 0.9529 0.9176 0.8078
+    , selectionColor = rgb 0.8 0.9 0.9
     }
 
-labelStyles : List (Attribute msg)
-labelStyles =
+labelStyles : Theme -> List (Attribute msg)
+labelStyles theme =
             [ width fill
             , height fill
             , paddingXY 10 5
             , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-            , Border.color defaultColors.backgroundColor
+            , Border.color theme.colors.backgroundColor
             ]
 
-boldLabelStyles : List (Attribute msg)
-boldLabelStyles =  Font.bold :: labelStyles
+boldLabelStyles : Theme -> List (Attribute msg)
+boldLabelStyles theme =  Font.bold :: labelStyles theme
 
 fromConfig : Maybe ThemeConfig -> Theme
 fromConfig maybeConfig =
@@ -173,3 +175,18 @@ twoColumnTableView tableData leftView rightView =
             ]
         , data = tableData
         }
+
+defaultClickableListElem : Theme -> Element msg -> Element msg
+defaultClickableListElem theme elem =
+    el
+        [ Border.color <| theme.colors.lightest
+        , Border.widthEach
+            { bottom = 1
+            , left = 0
+            , top = 0
+            , right = 0
+            }
+        , mouseOver [ Border.color <| theme.colors.darkest ]
+        , width fill
+        ]
+        elem
