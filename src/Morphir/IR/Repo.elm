@@ -171,8 +171,8 @@ extractTypeNames parsedModule =
     parsedModule
         |> ParsedModule.declarations
         |> List.filterMap
-            (\declarationNode ->
-                case Node.value declarationNode of
+            (\(Node _ declaration) ->
+                case declaration of
                     CustomTypeDeclaration typ ->
                         typ.name |> Node.value |> Just
 
