@@ -5,6 +5,7 @@ import Morphir.Dependency.DAG as DAG exposing (DAG)
 import Morphir.Elm.ModuleName as ElmModuleName exposing (toIRModuleName)
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.File.FileChanges exposing (FileChanges)
+import Morphir.IR.AccessControlled exposing (public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
@@ -71,6 +72,20 @@ fromDistribution distro =
                                 )
                     )
                     (Ok (empty packageName))
+
+
+{-| Creates a distribution from an existing repo
+-}
+toDistribution : Repo -> Distribution
+toDistribution repo =
+    Library repo.packageName
+        (repo.dependencies
+            |> Dict.map (always Package.definitionToSpecification)
+        )
+        { modules =
+            repo.modules
+                |> Dict.map (always public)
+        }
 
 
 {-| Adds native functions to the repo. For now this will be mainly used to add `SDK.nativeFunctions`.
@@ -202,10 +217,6 @@ orderElmModulesByDependency repo parsedModules =
                                 |> Maybe.map (Tuple.pair moduleName)
                         )
             )
-
-
-
---Debug.todo "implement"
 
 
 extractTypeNames : ParsedModule -> List Name
