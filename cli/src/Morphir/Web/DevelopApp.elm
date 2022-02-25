@@ -32,6 +32,7 @@ import Element
         , row
         , scrollbars
         , spacing
+        , spacingXY
         , text
         , width
         )
@@ -40,7 +41,6 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
-import Html.Attributes exposing (default, style)
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Markdown.Parser as Markdown
 import Markdown.Renderer
@@ -63,10 +63,10 @@ import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common exposing (insertInList, viewAsCard)
+import Morphir.Web.DevelopApp.Common exposing (insertInList, viewAsCard, ifThenElse)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (ViewType(..), makeURL)
-import Ordering exposing (Ordering)
+import Ordering
 import Parser exposing (deadEndsToString)
 import Set exposing (Set)
 import Url exposing (Url)
@@ -106,6 +106,8 @@ type alias Model =
     , selectedModule : Maybe ( TreeLayout.NodePath, ModuleName )
     , selectedDefinition : Maybe Definition
     , searchText : String
+    , showValues : Bool
+    , showTypes : Bool
     }
 
 
@@ -144,6 +146,8 @@ init _ url key =
       , selectedModule = Nothing
       , selectedDefinition = Nothing
       , searchText = ""
+      , showValues = True
+      , showTypes = True
       }
     , Cmd.batch [ httpMakeModel ]
     )
@@ -182,6 +186,8 @@ type Msg
     | SelectModule TreeLayout.NodePath ModuleName
     | SelectDefinition Definition
     | SearchDefinition String
+    | ToggleValues Bool
+    | ToggleTypes Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -871,6 +877,12 @@ update msg model =
         SearchDefinition definitionName ->
             ( { model | searchText = definitionName }, Cmd.none )
 
+        ToggleValues isToggled ->
+            ( { model | showValues = isToggled }, Cmd.none )
+        
+        ToggleTypes isToggled ->
+            ( { model | showTypes = isToggled }, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -1154,7 +1166,7 @@ viewHome model packageName packageDef =
                                 ( Value ( moduleName, valueName ), viewValueLabel model.theme (Value ( moduleName, valueName )) valueName valueDef.value )
                             )
             in
-            types ++ values
+           (ifThenElse model.showValues values []) ++ (ifThenElse model.showTypes types [])
 
         viewDefinitionLabels : Maybe ModuleName -> Element Msg
         viewDefinitionLabels maybeSelectedModuleName =
@@ -1260,16 +1272,38 @@ viewHome model packageName packageDef =
                 |> defaultIfUnselected
                 |> column [ height fill, width fill ]
 
+        definitionFilter : Element Msg
         definitionFilter =
             Element.Input.search
                 [ height <| (fill |> maximum 30)
                 , Font.size 12
                 , padding 7
+                , width (fillPortion 7)
                 ]
                 { onChange = SearchDefinition
                 , text = model.searchText
                 , placeholder = Just (Element.Input.placeholder [] (text "Search for a definition"))
                 , label = Element.Input.labelLeft [] (columnHeading "Search:")
+                }
+
+        valueCheckbox : Element Msg
+        valueCheckbox =
+            Element.Input.checkbox
+                [ width (fillPortion 2) ]
+                { onChange = ToggleValues
+                , checked = model.showValues
+                , icon = Element.Input.defaultCheckbox
+                , label = Element.Input.labelLeft [] (text "values: ")
+                }
+
+        typeCheckbox : Element Msg
+        typeCheckbox =
+            Element.Input.checkbox
+                [ width (fillPortion 2) ]
+                { onChange = ToggleTypes
+                , checked = model.showTypes
+                , icon = Element.Input.defaultCheckbox
+                , label = Element.Input.labelLeft [] (text "types: ")
                 }
     in
     row
@@ -1309,7 +1343,7 @@ viewHome model packageName packageDef =
             , width (fillPortion 3)
             , paddingXY 0 5
             ]
-            [ definitionFilter
+            [ row [ width fill, spacingXY 10 0 ] [ definitionFilter, valueCheckbox, typeCheckbox ]
             , el
                 scrollableListStyles
                 (viewDefinitionLabels (model.selectedModule |> Maybe.map Tuple.second))
