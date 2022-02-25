@@ -1,12 +1,9 @@
 {-
    Copyright 2020 Morgan Stanley
-
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
-
        http://www.apache.org/licenses/LICENSE-2.0
-
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +16,6 @@ port module Morphir.Elm.CLI exposing (..)
 
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.Compiler as Compiler
 import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
@@ -94,54 +90,33 @@ update msg model =
 
         IncrementalBuild ( optionsJson, packageInfoJson, fileChangesJson, distribution ) ->
             let
-                fileChangesResult : Result Decode.Error FileChanges
-                fileChangesResult =
-                    Decode.decodeValue FileChangesCodec.decodeFileChanges fileChangesJson
-
-                inputResult : Result Decode.Error ( Frontend.Options, PackageInfo )
-                inputResult =
-                    Result.map2 Tuple.pair
+                decodeInputs : Result Decode.Error ( Frontend.Options, PackageInfo, FileChanges )
+                decodeInputs =
+                    Result.map3
+                        (\options packageInfo fileChanges -> ( options, packageInfo, fileChanges ))
                         (Decode.decodeValue FrontendCodec.decodeOptions optionsJson)
                         (Decode.decodeValue FrontendCodec.decodePackageInfo packageInfoJson)
+                        (Decode.decodeValue FileChangesCodec.decodeFileChanges fileChangesJson)
 
                 repoFromDistribution : Result Repo.Errors Repo
                 repoFromDistribution =
                     Repo.fromDistribution distribution
-
-                result : ( (), Cmd msg )
-                result =
-                    case repoFromDistribution of
-                        Ok repo ->
-                            case fileChangesResult of
-                                Ok fileChanges ->
-                                    ( model
-                                    , Repo.applyFileChanges fileChanges repo
-                                        |> Result.map Repo.toDistribution
-                                        |> Result.mapError
-                                            (List.map
-                                                (\error ->
-                                                    case error of
-                                                        _ ->
-                                                            Compiler.ErrorsInSourceFile "" []
-                                                )
-                                            )
-                                        |> encodeResult (Encode.list CompilerCodec.encodeError) DistroCodec.encodeVersionedDistribution
-                                        |> incrementalBuildResult
-                                    )
-
-                                Err error ->
-                                    ( model
-                                    , error
-                                        |> Decode.errorToString
-                                        |> jsonDecodeError
-                                    )
-
-                        Err errors ->
-                            Debug.todo "Encode errors with repo error encoder"
             in
-            case inputResult of
-                Ok ( _, _ ) ->
-                    result
+            case decodeInputs of
+                Ok ( _, _, fileChanges ) ->
+                    repoFromDistribution
+                        |> Result.andThen (Repo.applyFileChanges fileChanges)
+                        |> Result.map Repo.toDistribution
+                        |> Result.mapError
+                            (List.map
+                                (\error ->
+                                    case error of
+                                        _ ->
+                                            Debug.todo "Implement"
+                                )
+                            )
+                        |> encodeResult (Encode.list CompilerCodec.encodeError) DistroCodec.encodeVersionedDistribution
+                        |> (\a -> ( model, incrementalBuildResult a ))
 
                 Err errorMessage ->
                     ( model
