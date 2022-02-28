@@ -1,8 +1,4 @@
 node_modules
+morphir-elm.ts
 package-lock.json
 package.json
-lib
-lib/cli.js
-lib/morphir-elm.js
-lib/morphir.js
-morphir-elm.ts
