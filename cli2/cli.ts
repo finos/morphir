@@ -22,14 +22,15 @@ async function make(projectDir: string, options: any) {
     const sourcedFiles = await readElmSourceFiles(path.join(projectDir, parsedMorphirJson.sourceDirectory))
 
     //To check if the morphir-ir.json already exists
+    let morphirIR: any = null
     const morphirIrPath: string = path.join(projectDir, 'morphir-ir.json')
     try {
-        await accessFile(morphirIrPath, fs.constants.F_OK)
-        console.log(`${morphirIrPath}, will be passed to the worker along side changed to update the ir`)
+        const morphirIRFile = await readFile(morphirIrPath)
+        morphirIR = JSON.parse(morphirIRFile.toString())
     } catch (err) {
         console.log(`${err}, not found`)
-        // return packageDefinitionFromSource(parsedMorphirJson, sourcedFiles, options)
     }
+    return packageDefinitionFromSource(parsedMorphirJson, sourcedFiles, options, morphirIR)
 }
 
 //generating a hash with md5 algorithm for the content of the read file
@@ -40,27 +41,39 @@ const hashedContent = (contentOfFile: any) => {
     return gen_hash;
 }
 
-// async function packageDefinitionFromSource(parsedMorphirJson: any, sourcedFiles: any, options: any,) {
-//     return new Promise((resolve, reject) => {
-//         worker.ports.jsonDecodeError.subscribe((err: any) => {
-//             reject(err)
-//         })
+async function packageDefinitionFromSource(parsedMorphirJson: any, sourcedFiles: any, options: any, morphirIR: any) {
+    return new Promise((resolve, reject) => {
+        worker.ports.jsonDecodeError.subscribe((err: any) => {
+            reject(err)
+        })
+        
+        worker.ports.incrementalBuildResult.subscribe(([err, ok]: any) => {
+            if (err) {
+                reject(err)
+            } else {
+                resolve(ok)
+            }
+        })
 
-//         worker.ports.packageDefinitionFromSourceResult.subscribe(([err, ok]: any) => {
-//             if (err) {
-//                 reject(err)
-//             } else {
-//                 resolve(ok)
-//             }
-//         })
+        worker.ports.packageDefinitionFromSourceResult.subscribe(([err, ok]: any) => {
+            if (err) {
+                reject(err)
+            } else {
+                resolve(ok)
+            }
+        })
 
-//         const opts = {
-//             typesOnly: options.typesOnly
-//         }
-
-//         worker.ports.packageDefinitionFromSource.send([opts, parsedMorphirJson, sourcedFiles])
-//     })
-// }
+        const opts = {
+            typesOnly: options.typesOnly
+        }
+        
+        if(morphirIR == null){
+            worker.ports.packageDefinitionFromSource.send([opts, parsedMorphirJson, sourcedFiles])
+        }else{
+            worker.ports.incrementalBuild.send([opts, parsedMorphirJson,sourcedFiles, morphirIR])
+        }
+    })
+}
 
 function pathDifference(keys1: Array<string>, keys2: Array<string>) {
     return keys1.filter(item => keys2.indexOf(item) < 0)
