@@ -50,3 +50,10 @@ insertInList index list =
     List.append (list2 |> List.take 1)
         list2
         |> List.append (list |> List.take index)
+
+ifThenElse : Bool -> a -> a -> a
+ifThenElse boolValue ifTrue ifFalse =
+    if boolValue then
+        ifTrue
+    else
+        ifFalse
