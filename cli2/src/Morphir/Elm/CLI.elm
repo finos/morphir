@@ -16,7 +16,6 @@ port module Morphir.Elm.CLI exposing (..)
 
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.File.FileChanges exposing (FileChanges)
@@ -36,15 +35,31 @@ port packageDefinitionFromSource : (( Decode.Value, Decode.Value, List SourceFil
 port packageDefinitionFromSourceResult : Encode.Value -> Cmd msg
 
 
-port incrementalBuild : (( Decode.Value, Decode.Value, Decode.Value, Distribution ) -> msg) -> Sub msg
+port incrementalBuild :
+    ({ optionsJson : Decode.Value
+     , packageInfoJson : Decode.Value
+     , fileChangesJson : Decode.Value
+     , distribution : Distribution
+     }
+     -> msg
+    )
+    -> Sub msg
 
 
 port incrementalBuildResult : Encode.Value -> Cmd msg
 
 
+type alias PassedValues =
+    { optionsJson : Decode.Value
+    , packageInfoJson : Decode.Value
+    , fileChangesJson : Decode.Value
+    , distribution : Distribution
+    }
+
+
 type Msg
     = PackageDefinitionFromSource ( Decode.Value, Decode.Value, List SourceFile )
-    | IncrementalBuild ( Decode.Value, Decode.Value, Decode.Value, Distribution )
+    | IncrementalBuild PassedValues
 
 
 main : Platform.Program () () Msg
@@ -89,7 +104,7 @@ update msg model =
                         |> jsonDecodeError
                     )
 
-        IncrementalBuild ( optionsJson, packageInfoJson, fileChangesJson, distribution ) ->
+        IncrementalBuild { optionsJson, packageInfoJson, fileChangesJson, distribution } ->
             let
                 decodeInputs : Result Decode.Error ( Frontend.Options, PackageInfo, FileChanges )
                 decodeInputs =
