@@ -22,7 +22,8 @@ program
     .option('-m, --modules-to-include <comma.separated,list.of,module.names>', 'Limit the set of modules that will be included.')
     .parse(process.argv)
 
-cli.gen(program.input, path.resolve(program.output), program.opts())
+const dirAndOutput = program.opts()
+cli.gen(dirAndOutput.input, path.resolve(dirAndOutput.output), program.opts())
     .then(() => {
         console.log("Done.")
     })

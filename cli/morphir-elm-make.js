@@ -22,7 +22,7 @@ const dirAndOutput = program.opts()
 cli.make(dirAndOutput.projectDir, program.opts())
     .then((packageDef) => {
         console.log(`Writing file ${program.output}.`)
-        cli.writeFile(program.output, JSON.stringify(packageDef, null, 4))
+        cli.writeFile(dirAndOutput.output, JSON.stringify(packageDef, null, 4))
             .then(() => {
                 console.log('Done.')
             })
