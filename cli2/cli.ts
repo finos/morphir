@@ -28,7 +28,7 @@ async function make(projectDir: string, options: any) {
         console.log(`${morphirIrPath}, will be passed to the worker along side changed to update the ir`)
     } catch (err) {
         console.log(`${err}, not found`)
-        return packageDefinitionFromSource(parsedMorphirJson, sourcedFiles, options)
+        // return packageDefinitionFromSource(parsedMorphirJson, sourcedFiles, options)
     }
 }
 
@@ -40,27 +40,27 @@ const hashedContent = (contentOfFile: any) => {
     return gen_hash;
 }
 
-async function packageDefinitionFromSource(parsedMorphirJson: any, sourcedFiles: any, options: any,) {
-    return new Promise((resolve, reject) => {
-        worker.ports.jsonDecodeError.subscribe((err: any) => {
-            reject(err)
-        })
+// async function packageDefinitionFromSource(parsedMorphirJson: any, sourcedFiles: any, options: any,) {
+//     return new Promise((resolve, reject) => {
+//         worker.ports.jsonDecodeError.subscribe((err: any) => {
+//             reject(err)
+//         })
 
-        worker.ports.packageDefinitionFromSourceResult.subscribe(([err, ok]: any) => {
-            if (err) {
-                reject(err)
-            } else {
-                resolve(ok)
-            }
-        })
+//         worker.ports.packageDefinitionFromSourceResult.subscribe(([err, ok]: any) => {
+//             if (err) {
+//                 reject(err)
+//             } else {
+//                 resolve(ok)
+//             }
+//         })
 
-        const opts = {
-            typesOnly: options.typesOnly
-        }
+//         const opts = {
+//             typesOnly: options.typesOnly
+//         }
 
-        worker.ports.packageDefinitionFromSource.send([opts, parsedMorphirJson, sourcedFiles])
-    })
-}
+//         worker.ports.packageDefinitionFromSource.send([opts, parsedMorphirJson, sourcedFiles])
+//     })
+// }
 
 function pathDifference(keys1: Array<string>, keys2: Array<string>) {
     return keys1.filter(item => keys2.indexOf(item) < 0)
