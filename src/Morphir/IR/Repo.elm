@@ -48,6 +48,7 @@ type Error
     | ModuleHasDependents ModuleName (Set ModuleName)
     | ModuleAlreadyExist ModuleName
     | CycleDetected ModuleName ModuleName
+    | TypeDependencyCycle Name Name
     | InvalidModuleName ElmModuleName.ModuleName
     | ParseError String (List Parser.DeadEnd)
 
@@ -127,14 +128,15 @@ applyFileChanges fileChanges repo =
                                     extractTypeNames parsedModule
                             in
                             extractTypes parsedModule typeNames
-                                |> Result.map orderTypesByDependency
+                                |> Result.andThen orderTypesByDependency
                                 |> Result.andThen
                                     (\types ->
                                         types
                                             |> List.foldl
                                                 (\( typeName, typeDef ) repoResultForType ->
                                                     repoResultForType
-                                                        |> Result.andThen (insertType moduleName typeName typeDef)
+                                                        |> Result.andThen
+                                                            (insertType moduleName typeName typeDef)
                                                 )
                                                 repoResultForModule
                                     )
@@ -433,9 +435,52 @@ mapAnnotationToMorphirType (Node range typeAnnotation) =
                 (mapAnnotationToMorphirType returnTypeNode)
 
 
-orderTypesByDependency : List ( Name, Type.Definition () ) -> List ( Name, Type.Definition () )
-orderTypesByDependency =
-    Debug.todo "implement"
+orderTypesByDependency : List ( Name, Type.Definition () ) -> Result Errors (List ( Name, Type.Definition () ))
+orderTypesByDependency typeNamesAndDefinitions =
+    let
+        typeNameByDefinition : Dict Name (Type.Definition ())
+        typeNameByDefinition =
+            Dict.fromList typeNamesAndDefinitions
+
+        {-| Handling types without dependencies -}
+        {-| How to get the type definition for types created in a different module -}
+        {-| Validate type names reference -}
+        extractTypeDependencies : Type.Definition () -> List Name
+        extractTypeDependencies definitions =
+            Debug.todo "implement"
+
+        typeNamesGraph : Result Errors (DAG Name)
+        typeNamesGraph =
+            typeNamesAndDefinitions
+                |> List.foldl
+                    (\( fromName, definition ) graphResultSoFar ->
+                        definition
+                            |> extractTypeDependencies
+                            |> List.foldl
+                                (\toName graphResult ->
+                                    graphResult
+                                        |> Result.andThen
+                                            (DAG.insertEdge fromName toName
+                                                >> Result.mapError (always [ TypeDependencyCycle fromName toName ])
+                                            )
+                                )
+                                graphResultSoFar
+                    )
+                    (Ok DAG.empty)
+    in
+    typeNamesGraph
+        |> Result.map DAG.backwardTopologicalOrdering
+        |> Result.map List.concat
+        |> Result.map
+            (\orderedNames ->
+                orderedNames
+                    |> List.filterMap
+                        (\name ->
+                            typeNameByDefinition
+                                |> Dict.get name
+                                |> Maybe.map (Tuple.pair name)
+                        )
+            )
 
 
 extractValueSignatures : ParsedModule -> List ( Name, Type () )
