@@ -18,8 +18,8 @@ program
     .option('-t, --types-only', 'Only include type information in the IR, no values.', false)
     .parse(process.argv)
 
-
-cli.make(program.projectDir, program.opts())
+const dirAndOutput = program.opts()
+cli.make(dirAndOutput.projectDir, program.opts())
     .then((packageDef) => {
         console.log(`Writing file ${program.output}.`)
         cli.writeFile(program.output, JSON.stringify(packageDef, null, 4))
