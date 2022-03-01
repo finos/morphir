@@ -24,6 +24,7 @@ import Morphir.File.FileChanges.Codec as FileChangesCodec
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
+import Morphir.IR.Repo.Codec as RepoCodec
 
 
 port jsonDecodeError : String -> Cmd msg
@@ -107,15 +108,7 @@ update msg model =
                     repoFromDistribution
                         |> Result.andThen (Repo.applyFileChanges fileChanges)
                         |> Result.map Repo.toDistribution
-                        |> Result.mapError
-                            (List.map
-                                (\error ->
-                                    case error of
-                                        _ ->
-                                            Debug.todo "Implement"
-                                )
-                            )
-                        |> encodeResult (Encode.list CompilerCodec.encodeError) DistroCodec.encodeVersionedDistribution
+                        |> encodeResult (Encode.list RepoCodec.encodeError) DistroCodec.encodeVersionedDistribution
                         |> (\value -> ( model, incrementalBuildResult value ))
 
                 Err errorMessage ->
