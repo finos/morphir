@@ -16,7 +16,6 @@ port module Morphir.Elm.CLI exposing (..)
 
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
@@ -25,6 +24,7 @@ import Morphir.File.FileChanges.Codec as FileChangesCodec
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
+import Morphir.IR.Repo.Codec as RepoCodec
 
 
 port jsonDecodeError : String -> Cmd msg
@@ -36,15 +36,31 @@ port packageDefinitionFromSource : (( Decode.Value, Decode.Value, List SourceFil
 port packageDefinitionFromSourceResult : Encode.Value -> Cmd msg
 
 
-port incrementalBuild : (( Decode.Value, Decode.Value, Decode.Value, Distribution ) -> msg) -> Sub msg
+port incrementalBuild :
+    ({ optionsJson : Decode.Value
+     , packageInfoJson : Decode.Value
+     , fileChangesJson : Decode.Value
+     , distribution : Distribution
+     }
+     -> msg
+    )
+    -> Sub msg
 
 
 port incrementalBuildResult : Encode.Value -> Cmd msg
 
 
+type alias PassedValues =
+    { optionsJson : Decode.Value
+    , packageInfoJson : Decode.Value
+    , fileChangesJson : Decode.Value
+    , distribution : Distribution
+    }
+
+
 type Msg
     = PackageDefinitionFromSource ( Decode.Value, Decode.Value, List SourceFile )
-    | IncrementalBuild ( Decode.Value, Decode.Value, Decode.Value, Distribution )
+    | IncrementalBuild PassedValues
 
 
 main : Platform.Program () () Msg
@@ -89,7 +105,7 @@ update msg model =
                         |> jsonDecodeError
                     )
 
-        IncrementalBuild ( optionsJson, packageInfoJson, fileChangesJson, distribution ) ->
+        IncrementalBuild { optionsJson, packageInfoJson, fileChangesJson, distribution } ->
             let
                 decodeInputs : Result Decode.Error ( Frontend.Options, PackageInfo, FileChanges )
                 decodeInputs =
@@ -109,15 +125,7 @@ update msg model =
                         |> Result.mapError (IncrementalFrontend.RepoError >> List.singleton)
                         |> Result.andThen (IncrementalFrontend.applyFileChanges fileChanges)
                         |> Result.map Repo.toDistribution
-                        |> Result.mapError
-                            (List.map
-                                (\error ->
-                                    case error of
-                                        _ ->
-                                            Debug.todo "Implement"
-                                )
-                            )
-                        |> encodeResult (Encode.list CompilerCodec.encodeError) DistroCodec.encodeVersionedDistribution
+                        |> encodeResult (Encode.list RepoCodec.encodeError) DistroCodec.encodeVersionedDistribution
                         |> (\value -> ( model, incrementalBuildResult value ))
 
                 Err errorMessage ->
