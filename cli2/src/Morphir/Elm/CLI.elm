@@ -19,6 +19,7 @@ import Json.Encode as Encode
 import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
+import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.File.FileChanges exposing (FileChanges)
 import Morphir.File.FileChanges.Codec as FileChangesCodec
 import Morphir.IR.Distribution exposing (Distribution(..))
@@ -105,7 +106,8 @@ update msg model =
             case decodeInputs of
                 Ok ( _, _, fileChanges ) ->
                     repoFromDistribution
-                        |> Result.andThen (Repo.applyFileChanges fileChanges)
+                        |> Result.mapError (IncrementalFrontend.RepoError >> List.singleton)
+                        |> Result.andThen (IncrementalFrontend.applyFileChanges fileChanges)
                         |> Result.map Repo.toDistribution
                         |> Result.mapError
                             (List.map
