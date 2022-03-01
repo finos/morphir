@@ -1095,14 +1095,11 @@ viewHome model packageName packageDef =
         gray =
             rgb 0.9 0.9 0.9
 
-        white =
-            rgb 1 1 1
-
         scrollableListStyles : List (Element.Attribute msg)
         scrollableListStyles =
             [ width fill
             , height fill
-            , Background.color white
+            , Background.color model.theme.colors.lightest
             , Border.rounded 3
             , scrollbars
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
@@ -1168,7 +1165,7 @@ viewHome model packageName packageDef =
                         |> Dict.toList
                         |> List.map
                             (\( valueName, valueDef ) ->
-                                ( Value ( moduleName, valueName ), viewValueLabel model.theme (Value ( moduleName, valueName )) valueName valueDef.value )
+                                ( Value ( moduleName, valueName ), viewValueLabel model.theme moduleName (Value ( moduleName, valueName )) valueName valueDef.value )
                             )
             in
             ifThenElse model.showValues values [] ++ ifThenElse model.showTypes types []
@@ -1346,7 +1343,7 @@ viewHome model packageName packageDef =
             [ height fill
             , width (fillPortion 6)
             , padding (model.theme |> Theme.scaled 1)
-            , Background.color white
+            , Background.color model.theme.colors.lightest
             ]
             [ viewDefinition model.selectedDefinition ]
         ]
@@ -1473,6 +1470,21 @@ viewType theme typeName typeDef docs =
 
 viewTypeLabel : Theme -> ModuleName -> Name -> Type.Definition () -> String -> Element Msg
 viewTypeLabel theme moduleName typeName typeDef docs =
+
+    let
+
+        createLabel : Element Msg -> Element Msg
+        createLabel content =
+            viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
+                    theme
+                    (el [Font.color (rgb 0.5 0.5 0.5)] (text "ⓣ "))
+                    (typeName |> nameToTitleText |> text)
+                    (moduleNameToPathString moduleName)
+                    Theme.defaultColors.backgroundColor
+                    docs
+                    content
+
+    in
     case typeDef of
         Type.TypeAliasDefinition params (Type.Record _ fields) ->
             let
@@ -1494,21 +1506,10 @@ viewTypeLabel theme moduleName typeName typeDef docs =
                         fieldNames
                         fieldTypes
             in
-            viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
-                theme
-                (typeName |> nameToTitleText |> text)
-                "record"
-                Theme.defaultColors.backgroundColor
-                docs
-                viewFields
+            createLabel viewFields
 
         Type.TypeAliasDefinition params body ->
-            viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
-                theme
-                (typeName |> nameToTitleText |> text)
-                "alias"
-                Theme.defaultColors.backgroundColor
-                docs
+            createLabel
                 (el
                     [ paddingXY 10 5
                     ]
@@ -1574,23 +1575,7 @@ viewTypeLabel theme moduleName typeName typeDef docs =
                                     constructorNames
                                     constructorArgs
             in
-            viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
-                theme
-                (typeName |> nameToTitleText |> text)
-                (case isNewType of
-                    Just _ ->
-                        "wrapper"
-
-                    Nothing ->
-                        if isEnum then
-                            "enum"
-
-                        else
-                            "one of"
-                )
-                Theme.defaultColors.backgroundColor
-                docs
-                viewConstructors
+            createLabel viewConstructors
 
 
 viewValue : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> Element msg
@@ -1627,8 +1612,8 @@ viewValue theme moduleName valueName valueDef =
         none
 
 
-viewValueLabel : Theme -> Definition -> Name -> Value.Definition () (Type ()) -> Element Msg
-viewValueLabel theme definiton valueName valueDef =
+viewValueLabel : Theme -> ModuleName -> Definition -> Name -> Value.Definition () (Type ()) -> Element Msg
+viewValueLabel theme moduleName definiton valueName valueDef =
     let
         cardTitle =
             text (nameToText valueName)
@@ -1645,13 +1630,9 @@ viewValueLabel theme definiton valueName valueDef =
     in
     viewAsLabel (SelectDefinition definiton)
         theme
+        (el [Font.color (rgb 0.5 0.5 0.5)] (text "ⓥ "))
         cardTitle
-        (if isData then
-            "data"
-
-         else
-            "logic"
-        )
+        (moduleNameToPathString moduleName)
         backgroundColor
         ""
         none
@@ -1726,21 +1707,23 @@ viewAsCard theme header class backgroundColor docs content =
         ]
 
 
-viewAsLabel : msg -> Theme -> Element msg -> String -> Element.Color -> String -> Element msg -> Element msg
-viewAsLabel clickMessage theme header class backgroundColor docs content =
+viewAsLabel : msg -> Theme -> Element msg -> Element msg -> String -> Element.Color -> String -> Element msg -> Element msg
+viewAsLabel clickMessage theme icon header class backgroundColor docs content =
     row
         [ width fill
         , Font.size (theme |> Theme.scaled 2)
         , onClick clickMessage
         , pointer
         ]
-        [ el
+        [ icon
+        , el
             [ Font.bold
             , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
             ]
             header
         , el
             [ alignRight
+            , Font.color (rgb 0.5 0.5 0.5)
             , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
             ]
             (el [] (text class))
@@ -1870,3 +1853,8 @@ definitionName definition =
 
         Type ( _, typeName ) ->
             typeName
+
+
+moduleNameToPathString : ModuleName -> String
+moduleNameToPathString moduleName =
+    Path.toString (Name.toHumanWords >> String.join " ") " / " moduleName
