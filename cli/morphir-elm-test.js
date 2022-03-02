@@ -20,8 +20,8 @@ program
     .option('-p, --project-dir <path>', 'Root directory of the project where morphir.json is located.', '.')
     .parse(process.argv)
 
-
-cli.test(program.projectDir)
+const dirAndOutput = program.opts()
+cli.test(dirAndOutput.projectDir)
     .then(testResult => {
         if(testResult.length == 0){
             console.log(chalk.purple("No TestCases found in morphir-tests.json file."))

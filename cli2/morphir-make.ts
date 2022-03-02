@@ -1,17 +1,16 @@
 #!/usr/bin/env node
-'use strict'
 
 // NPM imports
-const commander = require('commander')
-const cli = require('./cli')
+import {Command} from 'commander'
+import cli = require('./cli')
 
 // logging
 require('log-timestamp')
 
 // Set up Commander
-const program = new commander.Command()
+const program = new Command()
 program
-    .name('morphir-elm make')
+    .name('morphir make')
     .description('Translate Elm sources to Morphir IR')
     .option('-p, --project-dir <path>', 'Root directory of the project where morphir.json is located.', '.')
     .option('-o, --output <path>', 'Target file location where the Morphir IR will be saved.', 'morphir-ir.json')
@@ -21,16 +20,16 @@ program
 const dirAndOutput = program.opts()
 cli.make(dirAndOutput.projectDir, program.opts())
     .then((packageDef) => {
-        console.log(`Writing file ${program.output}.`)
+        console.log(`Writing file ${dirAndOutput.output}.`)
         cli.writeFile(dirAndOutput.output, JSON.stringify(packageDef, null, 4))
             .then(() => {
                 console.log('Done.')
             })
-            .catch((err) => {
+            .catch((err: any) => {
                 console.error(`Could not write file: ${err}`)
             })
     })
-    .catch((err) => {
+    .catch((err: { code: string; path: any }) => {
         if (err.code == 'ENOENT') {
             console.error(`Could not find file at '${err.path}'`)
         } else {
