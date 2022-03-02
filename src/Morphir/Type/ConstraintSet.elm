@@ -3,7 +3,7 @@ module Morphir.Type.ConstraintSet exposing (..)
 import Dict
 import Morphir.Type.Constraint as Constraint exposing (Constraint(..))
 import Morphir.Type.MetaType exposing (MetaType, Variable)
-import Morphir.Type.Solve exposing (SolutionMap(..))
+import Morphir.Type.Solve as Solve exposing (SolutionMap(..))
 
 
 type ConstraintSet
@@ -79,9 +79,9 @@ substituteVariable var replacement (ConstraintSet constraints) =
 
 
 applySubstitutions : SolutionMap -> ConstraintSet -> ConstraintSet
-applySubstitutions (SolutionMap substitutions) constraintSet =
+applySubstitutions substitutions constraintSet =
     substitutions
-        |> Dict.toList
+        |> Solve.toList
         |> List.foldl
             (\( var, replacement ) soFar ->
                 soFar |> substituteVariable var replacement

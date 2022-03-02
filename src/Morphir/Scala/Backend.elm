@@ -713,16 +713,16 @@ mapValue inScopeVars value =
                                     , name = mapValueName defName
                                     , typeArgs = []
                                     , args =
-                                        [ def.inputTypes
+                                        def.inputTypes
                                             |> List.map
                                                 (\( argName, _, argType ) ->
-                                                    { modifiers = []
-                                                    , tpe = mapType argType
-                                                    , name = argName |> Name.toCamelCase
-                                                    , defaultValue = Nothing
-                                                    }
+                                                    [ { modifiers = []
+                                                      , tpe = mapType argType
+                                                      , name = argName |> Name.toCamelCase
+                                                      , defaultValue = Nothing
+                                                      }
+                                                    ]
                                                 )
-                                        ]
                                     , returnType =
                                         Just (mapType def.outputType)
                                     , body =

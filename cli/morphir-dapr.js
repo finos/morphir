@@ -27,8 +27,8 @@ program
     .option('-d, --delete', 'Delete build directory')
     .parse(process.argv)
 
-
-gen(program.projectDir, program.output, program.debug, program.delete)
+const dirAndOutput = program.opts()
+gen(dirAndOutput.projectDir, dirAndOutput.output, dirAndOutput.debug, dirAndOutput.delete)
     .then(result => {
         console.log('Done!')
     })

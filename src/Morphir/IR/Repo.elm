@@ -2,9 +2,7 @@ module Morphir.IR.Repo exposing (..)
 
 import Dict exposing (Dict)
 import Morphir.Dependency.DAG as DAG exposing (DAG)
-import Morphir.Elm.ModuleName exposing (toIRModuleName)
-import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
-import Morphir.File.FileChanges exposing (FileChanges)
+import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
@@ -35,6 +33,7 @@ type alias Errors =
 type Error
     = ModuleNotFound ModuleName
     | ModuleHasDependents ModuleName (Set ModuleName)
+    | ModuleAlreadyExist ModuleName
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -69,6 +68,20 @@ fromDistribution distro =
                     (Ok (empty packageName))
 
 
+{-| Creates a distribution from an existing repo
+-}
+toDistribution : Repo -> Distribution
+toDistribution repo =
+    Library repo.packageName
+        (repo.dependencies
+            |> Dict.map (always Package.definitionToSpecification)
+        )
+        { modules =
+            repo.modules
+                |> Dict.map (always public)
+        }
+
+
 {-| Adds native functions to the repo. For now this will be mainly used to add `SDK.nativeFunctions`.
 -}
 mergeNativeFunctions : Dict FQName Native.Function -> Repo -> Result Errors Repo
@@ -81,92 +94,30 @@ mergeNativeFunctions newNativeFunction repo =
         }
 
 
-{-| Apply all file changes to the repo in one step.
--}
-applyFileChanges : FileChanges -> Repo -> Result Errors Repo
-applyFileChanges fileChanges repo =
-    parseNewElmModules fileChanges
-        |> Result.andThen orderElmModulesByDependency
-        |> Result.andThen
-            (\parsedModules ->
-                parsedModules
-                    |> List.foldl
-                        (\parsedModule repoResultForModule ->
-                            let
-                                moduleName : ModuleName
-                                moduleName =
-                                    ParsedModule.moduleName parsedModule
-                                        |> toIRModuleName repo.packageName
-
-                                typeNames : List Name
-                                typeNames =
-                                    extractTypeNames parsedModule
-                            in
-                            extractTypes parsedModule typeNames
-                                |> Result.map orderTypesByDependency
-                                |> Result.andThen
-                                    (\types ->
-                                        types
-                                            |> List.foldl
-                                                (\( typeName, typeDef ) repoResultForType ->
-                                                    repoResultForType
-                                                        |> Result.andThen (insertType moduleName typeName typeDef)
-                                                )
-                                                repoResultForModule
-                                    )
-                        )
-                        (Ok repo)
-            )
-
-
-parseNewElmModules : FileChanges -> Result Errors (List ParsedModule)
-parseNewElmModules fileChanges =
-    Debug.todo "implement"
-
-
-orderElmModulesByDependency : List ParsedModule -> Result Errors (List ParsedModule)
-orderElmModulesByDependency parsedModules =
-    Debug.todo "implement"
-
-
-extractTypeNames : ParsedModule -> List Name
-extractTypeNames parsedModule =
-    Debug.todo "implement"
-
-
-extractTypes : ParsedModule -> List Name -> Result Errors (List ( Name, Type.Definition () ))
-extractTypes parsedModule typeNames =
-    Debug.todo "implement"
-
-
-orderTypesByDependency : List ( Name, Type.Definition () ) -> List ( Name, Type.Definition () )
-orderTypesByDependency =
-    Debug.todo "implement"
-
-
-extractValueSignatures : ParsedModule -> List ( Name, Type () )
-extractValueSignatures parsedModule =
-    Debug.todo "implement"
-
-
-{-| Insert or update a single module in the repo passing the source code in.
--}
-mergeModuleSource : ModuleName -> SourceCode -> Repo -> Result Errors Repo
-mergeModuleSource moduleName sourceCode repo =
-    Debug.todo "implement"
-
-
 {-| Insert a module if it's not in the repo yet.
 -}
 insertModule : ModuleName -> Module.Definition () (Type ()) -> Repo -> Result Errors Repo
 insertModule moduleName moduleDef repo =
-    -- TODO: add validation
-    Ok
-        { repo
-            | modules =
-                repo.modules
-                    |> Dict.insert moduleName moduleDef
-        }
+    let
+        validationErrors : Maybe Errors
+        validationErrors =
+            case repo.modules |> Dict.get moduleName of
+                Just _ ->
+                    Just [ ModuleAlreadyExist moduleName ]
+
+                Nothing ->
+                    Nothing
+    in
+    validationErrors
+        |> Maybe.map Err
+        |> Maybe.withDefault
+            (Ok
+                { repo
+                    | modules =
+                        repo.modules
+                            |> Dict.insert moduleName moduleDef
+                }
+            )
 
 
 deleteModule : ModuleName -> Repo -> Result Errors Repo
@@ -207,3 +158,12 @@ deleteModule moduleName repo =
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef repo =
     Debug.todo "implement"
+
+
+withAccessControl : Bool -> a -> AccessControlled a
+withAccessControl isExposed value =
+    if isExposed then
+        AccessControlled.public value
+
+    else
+        AccessControlled.private value
