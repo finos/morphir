@@ -23,6 +23,7 @@ type alias Colors =
     , negative : Color
     , backgroundColor : Color
     , selectionColor : Color
+    , secondaryInformation : Color
     }
 
 
@@ -42,6 +43,7 @@ defaultColors =
     , negative = rgb 0.7 0 0
     , backgroundColor = rgb 0.9529 0.9176 0.8078
     , selectionColor = rgb 0.8 0.9 0.9
+    , secondaryInformation = rgb 0.5 0.5 0.5
     }
 
 labelStyles : Theme -> List (Attribute msg)
