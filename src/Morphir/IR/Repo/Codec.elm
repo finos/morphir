@@ -1,6 +1,7 @@
 module Morphir.IR.Repo.Codec exposing (..)
 
 import Json.Encode as Encode
+import Morphir.Elm.ModuleName as Module
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Repo exposing (Error(..), Errors)
@@ -108,8 +109,10 @@ encodeError error =
                     dependentModuleNames
                 ]
 
-        ParseError filepath deadEnds ->
-            Encode.list identity
-                [ Encode.string (String.concat [ "Error in ", filepath ])
-                , encodeParserDeadEnd deadEnds
+        ModuleAlreadyExist moduleName ->
+            String.concat
+                [ moduleName
+                    |> moduleNameToString
+                , " Already exists"
                 ]
+                |> Encode.string
