@@ -5,6 +5,7 @@ import Morphir.Elm.ModuleName as Module
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Repo exposing (Error(..), Errors)
+import Morphir.IR.Type exposing (Type)
 import Parser
 
 
@@ -114,5 +115,13 @@ encodeError error =
                 [ moduleName
                     |> moduleNameToString
                 , " Already exists"
+                ]
+                |> Encode.string
+
+        TypeAlreadyExist typeName ->
+            String.concat
+                [ typeName
+                    |> Name.toTitleCase
+                , " Already Exists"
                 ]
                 |> Encode.string
