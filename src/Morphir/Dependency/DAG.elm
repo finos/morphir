@@ -243,7 +243,7 @@ on the same level.
             |> insertEdge 2 4
             |> insertEdge 4 5
 
-    forwardTopologicalOrdering graph ==
+    backwardTopologicalOrdering graph ==
         [ [ 5 ]
         , [ 3, 4 ]
         , [ 2 ]

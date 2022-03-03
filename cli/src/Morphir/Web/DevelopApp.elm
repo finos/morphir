@@ -20,7 +20,6 @@ import Element
         , image
         , layout
         , link
-        , maximum
         , none
         , padding
         , paddingXY
@@ -28,10 +27,10 @@ import Element
         , pointer
         , px
         , rgb
+        , rgba
         , row
         , scrollbars
         , spacing
-        , spacingXY
         , text
         , width
         )
@@ -1095,14 +1094,11 @@ viewHome model packageName packageDef =
         gray =
             rgb 0.9 0.9 0.9
 
-        white =
-            rgb 1 1 1
-
         scrollableListStyles : List (Element.Attribute msg)
         scrollableListStyles =
             [ width fill
             , height fill
-            , Background.color white
+            , Background.color model.theme.colors.lightest
             , Border.rounded 3
             , scrollbars
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
@@ -1153,13 +1149,24 @@ viewHome model packageName packageDef =
         moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List ( Definition, Element Msg )
         moduleDefinitionsAsUiElements moduleName moduleDef =
             let
+                createUiElement : Element Msg -> Definition -> Name -> Element Msg
+                createUiElement icon definition name =
+                    viewAsLabel
+                        (SelectDefinition definition)
+                        model.theme
+                        icon
+                        (text (nameToText name))
+                        (moduleNameToPathString moduleName)
+
                 types : List ( Definition, Element Msg )
                 types =
                     moduleDef.types
                         |> Dict.toList
                         |> List.map
-                            (\( typeName, typeDef ) ->
-                                ( Type ( moduleName, typeName ), viewTypeLabel model.theme moduleName typeName typeDef.value.value typeDef.value.doc )
+                            (\( typeName, _ ) ->
+                                ( Type ( moduleName, typeName )
+                                , createUiElement (el [ Font.color (rgba 0 0.639 0.882 0.6) ] (text "ⓣ ")) (Type ( moduleName, typeName )) typeName
+                                )
                             )
 
                 values : List ( Definition, Element Msg )
@@ -1167,8 +1174,10 @@ viewHome model packageName packageDef =
                     moduleDef.values
                         |> Dict.toList
                         |> List.map
-                            (\( valueName, valueDef ) ->
-                                ( Value ( moduleName, valueName ), viewValueLabel model.theme (Value ( moduleName, valueName )) valueName valueDef.value )
+                            (\( valueName, _ ) ->
+                                ( Value ( moduleName, valueName )
+                                , createUiElement (el [ Font.color (rgba 1 0.411 0 0.6) ] (text "ⓥ ")) (Value ( moduleName, valueName )) valueName
+                                )
                             )
             in
             ifThenElse model.showValues values [] ++ ifThenElse model.showTypes types []
@@ -1345,10 +1354,11 @@ viewHome model packageName packageDef =
         , column
             [ height fill
             , width (fillPortion 6)
-            , padding (model.theme |> Theme.scaled 1)
-            , Background.color white
+            , Background.color model.theme.colors.lightest
             ]
-            [ viewDefinition model.selectedDefinition ]
+            [ column [ width fill, height (fillPortion 2), scrollbars, padding (model.theme |> Theme.scaled 1) ] [ viewDefinition model.selectedDefinition ]
+            , column [ width fill, height (fillPortion 3), padding (model.theme |> Theme.scaled 3), Border.widthXY 0 1 ] [ text "" ]
+            ]
         ]
 
 
@@ -1471,128 +1481,6 @@ viewType theme typeName typeDef docs =
                 viewConstructors
 
 
-viewTypeLabel : Theme -> ModuleName -> Name -> Type.Definition () -> String -> Element Msg
-viewTypeLabel theme moduleName typeName typeDef docs =
-    case typeDef of
-        Type.TypeAliasDefinition params (Type.Record _ fields) ->
-            let
-                fieldNames =
-                    \field ->
-                        el
-                            (Theme.boldLabelStyles theme)
-                            (text (nameToText field.name))
-
-                fieldTypes =
-                    \field ->
-                        el
-                            (Theme.labelStyles theme)
-                            (XRayView.viewType field.tpe)
-
-                viewFields =
-                    Theme.twoColumnTableView
-                        fields
-                        fieldNames
-                        fieldTypes
-            in
-            viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
-                theme
-                (typeName |> nameToTitleText |> text)
-                "record"
-                Theme.defaultColors.backgroundColor
-                docs
-                viewFields
-
-        Type.TypeAliasDefinition params body ->
-            viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
-                theme
-                (typeName |> nameToTitleText |> text)
-                "alias"
-                Theme.defaultColors.backgroundColor
-                docs
-                (el
-                    [ paddingXY 10 5
-                    ]
-                    (XRayView.viewType body)
-                )
-
-        Type.CustomTypeDefinition params accessControlledConstructors ->
-            let
-                isNewType : Maybe (Type ())
-                isNewType =
-                    case accessControlledConstructors.value |> Dict.toList of
-                        [ ( ctorName, [ ( _, baseType ) ] ) ] ->
-                            if ctorName == typeName then
-                                Just baseType
-
-                            else
-                                Nothing
-
-                        _ ->
-                            Nothing
-
-                isEnum =
-                    accessControlledConstructors.value
-                        |> Dict.values
-                        |> List.all List.isEmpty
-
-                viewConstructors =
-                    if isEnum then
-                        accessControlledConstructors.value
-                            |> Dict.toList
-                            |> List.map
-                                (\( ctorName, _ ) ->
-                                    el
-                                        (Theme.boldLabelStyles theme)
-                                        (text (nameToTitleText ctorName))
-                                )
-                            |> column [ width fill ]
-
-                    else
-                        case isNewType of
-                            Just baseType ->
-                                el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType baseType)
-
-                            Nothing ->
-                                let
-                                    constructorNames =
-                                        \( ctorName, _ ) ->
-                                            el
-                                                (Theme.boldLabelStyles theme)
-                                                (text (nameToTitleText ctorName))
-
-                                    constructorArgs =
-                                        \( _, ctorArgs ) ->
-                                            el
-                                                (Theme.labelStyles theme)
-                                                (ctorArgs
-                                                    |> List.map (Tuple.second >> XRayView.viewType)
-                                                    |> row [ spacing 5 ]
-                                                )
-                                in
-                                Theme.twoColumnTableView
-                                    (Dict.toList accessControlledConstructors.value)
-                                    constructorNames
-                                    constructorArgs
-            in
-            viewAsLabel (SelectDefinition (Type ( moduleName, typeName )))
-                theme
-                (typeName |> nameToTitleText |> text)
-                (case isNewType of
-                    Just _ ->
-                        "wrapper"
-
-                    Nothing ->
-                        if isEnum then
-                            "enum"
-
-                        else
-                            "one of"
-                )
-                Theme.defaultColors.backgroundColor
-                docs
-                viewConstructors
-
-
 viewValue : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> Element msg
 viewValue theme moduleName valueName valueDef =
     let
@@ -1621,36 +1509,6 @@ viewValue theme moduleName valueName valueDef =
 
          else
             "calculation"
-        )
-        backgroundColor
-        ""
-        none
-
-
-viewValueLabel : Theme -> Definition -> Name -> Value.Definition () (Type ()) -> Element Msg
-viewValueLabel theme definiton valueName valueDef =
-    let
-        cardTitle =
-            text (nameToText valueName)
-
-        isData =
-            List.isEmpty valueDef.inputTypes
-
-        backgroundColor =
-            if isData then
-                rgb 0.8 0.9 0.9
-
-            else
-                rgb 0.8 0.8 0.9
-    in
-    viewAsLabel (SelectDefinition definiton)
-        theme
-        cardTitle
-        (if isData then
-            "data"
-
-         else
-            "logic"
         )
         backgroundColor
         ""
@@ -1726,21 +1584,23 @@ viewAsCard theme header class backgroundColor docs content =
         ]
 
 
-viewAsLabel : msg -> Theme -> Element msg -> String -> Element.Color -> String -> Element msg -> Element msg
-viewAsLabel clickMessage theme header class backgroundColor docs content =
+viewAsLabel : msg -> Theme -> Element msg -> Element msg -> String -> Element msg
+viewAsLabel clickMessage theme icon header class =
     row
         [ width fill
         , Font.size (theme |> Theme.scaled 2)
         , onClick clickMessage
         , pointer
         ]
-        [ el
+        [ icon
+        , el
             [ Font.bold
             , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
             ]
             header
         , el
             [ alignRight
+            , Font.color theme.colors.secondaryInformation
             , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
             ]
             (el [] (text class))
@@ -1870,3 +1730,8 @@ definitionName definition =
 
         Type ( _, typeName ) ->
             typeName
+
+
+moduleNameToPathString : ModuleName -> String
+moduleNameToPathString moduleName =
+    Path.toString (Name.toHumanWords >> String.join " ") " / " moduleName

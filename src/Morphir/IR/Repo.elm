@@ -4,6 +4,7 @@ import Dict exposing (Dict)
 import Morphir.Dependency.DAG as DAG exposing (DAG)
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Documented as Documented
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
@@ -17,8 +18,8 @@ type alias Repo =
     { packageName : PackageName
     , dependencies : Dict PackageName (Package.Definition () (Type ()))
     , modules : Dict ModuleName (Module.Definition () (Type ()))
-    , nativeFunctions : Dict FQName Native.Function
     , moduleDependencies : DAG ModuleName
+    , nativeFunctions : Dict FQName Native.Function
     }
 
 
@@ -34,6 +35,7 @@ type Error
     = ModuleNotFound ModuleName
     | ModuleHasDependents ModuleName (Set ModuleName)
     | ModuleAlreadyExist ModuleName
+    | TypeAlreadyExist Name
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -157,7 +159,35 @@ deleteModule moduleName repo =
 
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef repo =
-    Debug.todo "implement"
+    case repo.modules |> Dict.get moduleName of
+        Just modDefinition ->
+            case modDefinition.types |> Dict.get typeName of
+                Just _ ->
+                    Err [ TypeAlreadyExist typeName ]
+
+                Nothing ->
+                    let
+                        alteredModule : Maybe (Module.Definition () (Type ())) -> Maybe (Module.Definition () (Type ()))
+                        alteredModule maybeModuleDefinition =
+                            maybeModuleDefinition
+                                |> Maybe.map
+                                    (\modDef ->
+                                        { modDef
+                                            | types =
+                                                modDefinition.types
+                                                    |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
+                                        }
+                                    )
+                    in
+                    Ok
+                        { repo
+                            | modules =
+                                repo.modules
+                                    |> Dict.update moduleName alteredModule
+                        }
+
+        Nothing ->
+            Err [ ModuleNotFound moduleName ]
 
 
 withAccessControl : Bool -> a -> AccessControlled a
