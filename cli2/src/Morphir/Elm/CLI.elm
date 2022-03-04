@@ -19,6 +19,7 @@ import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
+import Morphir.Elm.IncrementalFrontend.Codec as IncrementalFrontend
 import Morphir.File.FileChanges exposing (FileChanges)
 import Morphir.File.FileChanges.Codec as FileChangesCodec
 import Morphir.IR.Distribution exposing (Distribution(..))
@@ -40,7 +41,7 @@ port incrementalBuild :
     ({ optionsJson : Decode.Value
      , packageInfoJson : Decode.Value
      , fileChangesJson : Decode.Value
-     , distribution : Distribution
+     , distribution : Decode.Value
      }
      -> msg
     )
@@ -54,7 +55,7 @@ type alias PassedValues =
     { optionsJson : Decode.Value
     , packageInfoJson : Decode.Value
     , fileChangesJson : Decode.Value
-    , distribution : Distribution
+    , distribution : Decode.Value
     }
 
 
@@ -107,25 +108,30 @@ update msg model =
 
         IncrementalBuild { optionsJson, packageInfoJson, fileChangesJson, distribution } ->
             let
-                decodeInputs : Result Decode.Error ( Frontend.Options, PackageInfo, FileChanges )
+                decodeInputs :
+                    Result
+                        Decode.Error
+                        { options : Frontend.Options
+                        , packageInfo : PackageInfo
+                        , fileChanges : FileChanges
+                        , distro : Distribution
+                        }
                 decodeInputs =
-                    Result.map3
-                        (\options packageInfo fileChanges -> ( options, packageInfo, fileChanges ))
+                    Result.map4
+                        (\options packageInfo fileChanges distro -> { options = options, packageInfo = packageInfo, fileChanges = fileChanges, distro = distro })
                         (Decode.decodeValue FrontendCodec.decodeOptions optionsJson)
                         (Decode.decodeValue FrontendCodec.decodePackageInfo packageInfoJson)
                         (Decode.decodeValue FileChangesCodec.decodeFileChanges fileChangesJson)
-
-                repoFromDistribution : Result Repo.Errors Repo
-                repoFromDistribution =
-                    Repo.fromDistribution distribution
+                        (Decode.decodeValue DistroCodec.decodeDistribution distribution)
             in
             case decodeInputs of
-                Ok ( _, _, fileChanges ) ->
-                    repoFromDistribution
+                Ok { options, packageInfo, fileChanges, distro } ->
+                    distro
+                        |> Repo.fromDistribution
                         |> Result.mapError (IncrementalFrontend.RepoError >> List.singleton)
                         |> Result.andThen (IncrementalFrontend.applyFileChanges fileChanges)
                         |> Result.map Repo.toDistribution
-                        |> encodeResult (Encode.list RepoCodec.encodeError) DistroCodec.encodeVersionedDistribution
+                        |> encodeResult (Encode.list IncrementalFrontend.encodeError) DistroCodec.encodeVersionedDistribution
                         |> (\value -> ( model, incrementalBuildResult value ))
 
                 Err errorMessage ->
