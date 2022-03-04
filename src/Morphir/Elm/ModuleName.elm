@@ -24,3 +24,15 @@ toIRModuleName packageName elmModuleName =
 
     else
         Nothing
+
+
+fromIRModuleName : Module.ModuleName -> ModuleName
+fromIRModuleName irModuleName =
+    irModuleName
+        |> List.map Name.toTitleCase
+
+
+toString : ModuleName -> String
+toString moduleName =
+    moduleName
+        |> String.join "."
