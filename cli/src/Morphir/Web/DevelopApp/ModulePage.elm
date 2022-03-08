@@ -32,6 +32,7 @@ type alias Model =
     , argState : Dict FQName (Dict Name ValueEditor.EditorState)
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     , popupVariables : PopupScreenRecord
+    , showSearchBar : Bool
     }
 
 
@@ -64,6 +65,7 @@ routeParser =
             , argState = Dict.empty
             , expandedValues = Dict.empty
             , popupVariables = PopupScreenRecord 0 Nothing
+            , showSearchBar = True
             }
         )
         (UrlParser.s "module"
@@ -110,7 +112,7 @@ viewPage theme handlers valueFilterChanged ((Library packageName _ packageDef) a
                 , height fill
                 , spacing (theme |> Theme.scaled 4)
                 ]
-                [ viewModuleControls theme valueFilterChanged model
+                [ Morphir.Web.DevelopApp.Common.ifThenElse model.showSearchBar (viewModuleControls theme valueFilterChanged model) Element.none
                 , wrappedRow
                     [ padding (theme |> Theme.scaled 4)
                     , spacing (theme |> Theme.scaled 4)
