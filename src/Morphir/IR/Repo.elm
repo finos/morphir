@@ -197,3 +197,15 @@ withAccessControl isExposed value =
 
     else
         AccessControlled.private value
+
+
+getPackageName : Repo -> PackageName
+getPackageName repo =
+    repo.packageName
+
+
+dependsOnPackages : Repo -> Set PackageName
+dependsOnPackages repo =
+    repo.dependencies
+        |> Dict.keys
+        |> Set.fromList
