@@ -39,11 +39,12 @@ import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
+import Html.Attributes exposing (name)
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Markdown.Parser as Markdown
 import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
-import Morphir.Correctness.Test exposing (TestCase, TestCases, TestSuite)
+import Morphir.Correctness.Test exposing (TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -51,18 +52,18 @@ import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
-import Morphir.IR.Path as Path
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText)
 import Morphir.Visual.Components.TreeLayout as TreeLayout
-import Morphir.Visual.Config exposing (Config, PopupScreenRecord)
+import Morphir.Visual.Config exposing (PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.DevelopApp.Common exposing (ifThenElse, insertInList, viewAsCard)
-import Morphir.Web.DevelopApp.FunctionPage as FunctionPage exposing (TestCaseState)
+import Morphir.Web.DevelopApp.FunctionPage as FunctionPage
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (ViewType(..), makeURL)
 import Ordering
 import Parser exposing (deadEndsToString)
@@ -106,6 +107,7 @@ type alias Model =
     , searchText : String
     , showValues : Bool
     , showTypes : Bool
+    , simpleDefinitionDetailsModel : ModulePage.Model
     }
 
 
@@ -146,6 +148,15 @@ init _ url key =
       , searchText = ""
       , showValues = True
       , showTypes = True
+      , simpleDefinitionDetailsModel =
+            { filter = Just ""
+            , moduleName = []
+            , viewType = ModulePage.InsightView
+            , argState = Dict.empty
+            , expandedValues = Dict.empty
+            , popupVariables = PopupScreenRecord 0 Nothing
+            , showSearchBar = False
+            }
       }
     , Cmd.batch [ httpMakeModel ]
     )
@@ -203,6 +214,10 @@ update msg model =
         getIR : IR
         getIR =
             IR.fromDistribution getDistribution
+
+        updateSimpleDefinitionView : (ModulePage.Model -> ModulePage.Model) -> ( Model, Cmd msg )
+        updateSimpleDefinitionView updateModuleModel =
+            ( { model | simpleDefinitionDetailsModel = updateModuleModel model.simpleDefinitionDetailsModel }, Cmd.none )
     in
     case msg |> Debug.log "msg" of
         LinkClicked urlRequest ->
@@ -281,61 +296,58 @@ update msg model =
                     ( model, Cmd.none )
 
         ArgValueUpdated fQName argName rawValue ->
+            let
+                updateModuleModel : ModulePage.Model -> ModulePage.Model
+                updateModuleModel moduleModel =
+                    { moduleModel
+                        | argState =
+                            moduleModel.argState
+                                |> Dict.update fQName
+                                    (\maybeArgs ->
+                                        case maybeArgs of
+                                            Just args ->
+                                                args |> Dict.insert argName rawValue |> Just
+
+                                            Nothing ->
+                                                Dict.singleton argName rawValue |> Just
+                                    )
+                    }
+            in
             case model.currentPage of
                 Module moduleModel ->
-                    ( { model
-                        | currentPage =
-                            Module
-                                { moduleModel
-                                    | argState =
-                                        moduleModel.argState
-                                            |> Dict.update fQName
-                                                (\maybeArgs ->
-                                                    case maybeArgs of
-                                                        Just args ->
-                                                            args |> Dict.insert argName rawValue |> Just
-
-                                                        Nothing ->
-                                                            Dict.singleton argName rawValue |> Just
-                                                )
-                                }
-                      }
-                    , Cmd.none
-                    )
+                    ( { model | currentPage = Module (updateModuleModel moduleModel) }, Cmd.none )
 
                 _ ->
-                    ( model, Cmd.none )
+                    updateSimpleDefinitionView updateModuleModel
 
         InvalidArgValue _ _ _ ->
             ( model, Cmd.none )
 
         ExpandVariable varIndex maybeRawValue ->
+            let
+                updateModuleModel : ModulePage.Model -> ModulePage.Model
+                updateModuleModel moduleModel =
+                    { moduleModel | popupVariables = PopupScreenRecord varIndex maybeRawValue }
+            in
             case model.currentPage of
                 Module moduleModel ->
-                    ( { model
-                        | currentPage =
-                            Module
-                                { moduleModel | popupVariables = PopupScreenRecord varIndex maybeRawValue }
-                      }
-                    , Cmd.none
-                    )
+                    ( { model | currentPage = Module (updateModuleModel moduleModel) }, Cmd.none )
 
                 _ ->
-                    ( model, Cmd.none )
+                    updateSimpleDefinitionView updateModuleModel
 
         ShrinkVariable varIndex ->
+            let
+                updateModuleModel : ModulePage.Model -> ModulePage.Model
+                updateModuleModel moduleModel =
+                    { moduleModel | popupVariables = PopupScreenRecord varIndex Nothing }
+            in
             case model.currentPage of
                 Module moduleModel ->
-                    ( { model
-                        | currentPage =
-                            Module
-                                { moduleModel | popupVariables = PopupScreenRecord varIndex Nothing }
-                      }
-                    , Cmd.none
-                    )
+                    ( { model | currentPage = Module (updateModuleModel moduleModel) }, Cmd.none )
 
                 _ ->
-                    ( model, Cmd.none )
+                    updateSimpleDefinitionView updateModuleModel
 
         ServerGetTestsResponse testSuite ->
             let
@@ -1041,18 +1053,7 @@ viewBody model =
                     viewHome model packageName packageDef
 
                 Module moduleModel ->
-                    ModulePage.viewPage
-                        model.theme
-                        { expandReference = ExpandReference
-                        , expandVariable = ExpandVariable
-                        , shrinkVariable = ShrinkVariable
-                        , argValueUpdated = ArgValueUpdated
-                        , invalidArgValue = InvalidArgValue
-                        , jumpToTestCases = \fQName -> LinkClicked (Browser.External (Url.Builder.absolute [ "function", FQName.toString fQName ] []))
-                        }
-                        ValueFilterChanged
-                        distribution
-                        moduleModel
+                    viewModuleModel model.theme moduleModel distribution
 
                 NotFound ->
                     text "Route not found"
@@ -1086,6 +1087,22 @@ viewBody model =
                         }
                         distribution
                         functionPageModel
+
+
+viewModuleModel : Theme -> ModulePage.Model -> Distribution -> Element Msg
+viewModuleModel theme moduleModel distribution =
+    ModulePage.viewPage
+        theme
+        { expandReference = ExpandReference
+        , expandVariable = ExpandVariable
+        , shrinkVariable = ShrinkVariable
+        , argValueUpdated = ArgValueUpdated
+        , invalidArgValue = InvalidArgValue
+        , jumpToTestCases = \fQName -> LinkClicked (Browser.External (Url.Builder.absolute [ "function", FQName.toString fQName ] []))
+        }
+        ValueFilterChanged
+        distribution
+        moduleModel
 
 
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
@@ -1357,7 +1374,10 @@ viewHome model packageName packageDef =
             , Background.color model.theme.colors.lightest
             ]
             [ column [ width fill, height (fillPortion 2), scrollbars, padding (model.theme |> Theme.scaled 1) ] [ viewDefinition model.selectedDefinition ]
-            , column [ width fill, height (fillPortion 3), padding (model.theme |> Theme.scaled 3), Border.widthXY 0 1 ] [ text "" ]
+            , column [ width fill, height (fillPortion 3), Border.widthXY 0 1 ]
+                [ el [ height fill, width fill ]
+                    (viewDefinitionDetails model.theme model.irState model.simpleDefinitionDetailsModel model.selectedDefinition)
+                ]
             ]
         ]
 
@@ -1365,7 +1385,7 @@ viewHome model packageName packageDef =
 viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
 viewType theme typeName typeDef docs =
     case typeDef of
-        Type.TypeAliasDefinition params (Type.Record _ fields) ->
+        Type.TypeAliasDefinition _ (Type.Record _ fields) ->
             let
                 fieldNames =
                     \field ->
@@ -1392,7 +1412,7 @@ viewType theme typeName typeDef docs =
                 docs
                 viewFields
 
-        Type.TypeAliasDefinition params body ->
+        Type.TypeAliasDefinition _ body ->
             viewAsCard theme
                 (typeName |> nameToTitleText |> text)
                 "is a"
@@ -1404,7 +1424,7 @@ viewType theme typeName typeDef docs =
                     (XRayView.viewType body)
                 )
 
-        Type.CustomTypeDefinition params accessControlledConstructors ->
+        Type.CustomTypeDefinition _ accessControlledConstructors ->
             let
                 isNewType : Maybe (Type ())
                 isNewType =
@@ -1655,7 +1675,7 @@ httpSaveTestSuite ir testSuite =
                 Ok encodedValue ->
                     jsonBody encodedValue
 
-                Err error ->
+                Err _ ->
                     emptyBody
     in
     Http.post
@@ -1735,3 +1755,42 @@ definitionName definition =
 moduleNameToPathString : ModuleName -> String
 moduleNameToPathString moduleName =
     Path.toString (Name.toHumanWords >> String.join " ") " / " moduleName
+
+
+viewDefinitionDetails : Theme -> IRState -> ModulePage.Model -> Maybe Definition -> Element Msg
+viewDefinitionDetails theme irState moduleModel maybeSelectedDefinition =
+    let
+        updatedModel : Path -> Name -> ModulePage.Model
+        updatedModel moduleName filterValue =
+            { moduleModel
+                | filter = Just (nameToText filterValue)
+                , moduleName = Path.toList moduleName |> List.map nameToText
+            }
+    in
+    case irState of
+        IRLoading ->
+            none
+
+        IRLoaded ((Library _ _ packageDef) as distribution) ->
+            case maybeSelectedDefinition of
+                Just selectedDefinition ->
+                    case selectedDefinition of
+                        Value ( moduleName, valueName ) ->
+                            packageDef.modules
+                                |> Dict.get moduleName
+                                |> Maybe.andThen
+                                    (\accessControlledModuleDef ->
+                                        accessControlledModuleDef.value.values
+                                            |> Dict.get valueName
+                                            |> Maybe.map
+                                                (\_ ->
+                                                    viewModuleModel theme (updatedModel moduleName valueName) distribution
+                                                )
+                                    )
+                                |> Maybe.withDefault none
+
+                        Type _ ->
+                            none
+
+                Nothing ->
+                    none
