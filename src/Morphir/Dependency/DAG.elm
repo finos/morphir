@@ -164,6 +164,32 @@ insertEdge from to graph =
                         }
 
 
+{-| Insert Node
+-}
+insertNode : comparableNode -> Set comparableNode -> DAG comparableNode -> Result CycleDetected (DAG comparableNode)
+insertNode fromNode toNodes dag =
+    let
+        insertEdges : DAG comparableNode -> Result CycleDetected (DAG comparableNode)
+        insertEdges d =
+            Set.toList toNodes
+                |> List.foldl
+                    (\toNode dagResultSoFar ->
+                        Result.andThen (insertEdge fromNode toNode) dagResultSoFar
+                    )
+                    (Ok d)
+
+        insertIntoOrphanNodes : DAG comparableNode -> DAG comparableNode
+        insertIntoOrphanNodes d =
+            { d | orphanNodes = Set.insert fromNode dag.orphanNodes }
+    in
+    case dag.edges |> Dict.get fromNode of
+        Just ( _, _ ) ->
+            dag |> insertEdges
+
+        Nothing ->
+            dag |> insertIntoOrphanNodes |> insertEdges
+
+
 {-| Get the outgoing edges of a given node in the graph in the form of a set of nodes that the edges point to.
 
     graph =
