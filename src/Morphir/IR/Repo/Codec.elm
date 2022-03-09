@@ -1,7 +1,6 @@
 module Morphir.IR.Repo.Codec exposing (..)
 
 import Json.Encode as Encode
-import Morphir.Elm.ModuleName as ModuleName
 import Morphir.IR.Repo exposing (Error(..), Errors)
 
 
@@ -29,5 +28,8 @@ encodeError error =
                 , Encode.list (Encode.list Encode.string) moduleName
                 ]
 
-        TypeAlreadyExist name ->
-            Debug.todo ""
+        TypeAlreadyExist typeName ->
+            [ Encode.string "TypeAlreadyExist"
+            , Encode.list Encode.string typeName
+            ]
+                |> Encode.list identity
