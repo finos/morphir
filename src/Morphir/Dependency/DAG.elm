@@ -36,13 +36,6 @@ import Set exposing (Set)
 {-| Type to store the DAG. Internally it keeps track of each node in a dictionary together with the outgoing edges and
 the level they are at in the partial ordering.
 -}
-
-
-
---type alias DAG comparableNode =
---    Dict comparableNode ( Set comparableNode, Int )
-
-
 type alias DAG comparableNode =
     { edges : Dict comparableNode ( Set comparableNode, Int )
     , orphanNodes : Set comparableNode
@@ -84,6 +77,14 @@ insertEdge from to graph =
         shiftAll : Int -> DAG comparableNode -> DAG comparableNode
         shiftAll by g =
             { g | edges = g.edges |> Dict.map (\_ ( toNodes, level ) -> ( toNodes, level + by )) }
+
+        removeFromOrphan : comparableNode -> Set comparableNode -> Set comparableNode
+        removeFromOrphan node orphanNodes =
+            if orphanNodes |> Set.member node then
+                orphanNodes |> Set.remove node
+
+            else
+                orphanNodes
     in
     case graph.edges |> Dict.get to of
         Just ( toEdges, toLevel ) ->
@@ -103,6 +104,7 @@ insertEdge from to graph =
                                     | edges =
                                         graph.edges
                                             |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
+                                    , orphanNodes = removeFromOrphan from graph.orphanNodes
                                 }
 
                         else if fromLevel == toLevel then
@@ -110,6 +112,7 @@ insertEdge from to graph =
                                 | edges =
                                     graph.edges
                                         |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
+                                , orphanNodes = removeFromOrphan from graph.orphanNodes
                             }
                                 |> shiftTransitively 1 to
                                 |> Ok
@@ -122,13 +125,19 @@ insertEdge from to graph =
                             (if toLevel == 0 then
                                 graph
                                     |> shiftAll 1
-                                    |> (\g -> { g | edges = Dict.insert from ( Set.singleton to, 0 ) g.edges })
+                                    |> (\g ->
+                                            { g
+                                                | edges = Dict.insert from ( Set.singleton to, 0 ) g.edges
+                                                , orphanNodes = removeFromOrphan from graph.orphanNodes
+                                            }
+                                       )
 
                              else
                                 { graph
                                     | edges =
                                         graph.edges
                                             |> Dict.insert from ( Set.singleton to, toLevel - 1 )
+                                    , orphanNodes = removeFromOrphan from graph.orphanNodes
                                 }
                             )
 
@@ -141,6 +150,7 @@ insertEdge from to graph =
                                 graph.edges
                                     |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
                                     |> Dict.insert to ( Set.empty, fromLevel + 1 )
+                            , orphanNodes = removeFromOrphan from graph.orphanNodes
                         }
 
                 Nothing ->
@@ -150,6 +160,7 @@ insertEdge from to graph =
                                 graph.edges
                                     |> Dict.insert from ( Set.singleton to, 0 )
                                     |> Dict.insert to ( Set.empty, 1 )
+                            , orphanNodes = removeFromOrphan from graph.orphanNodes
                         }
 
 
