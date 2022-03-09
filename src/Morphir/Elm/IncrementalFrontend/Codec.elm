@@ -2,57 +2,8 @@ module Morphir.Elm.IncrementalFrontend.Codec exposing (..)
 
 import Json.Encode as Encode
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
-import Morphir.Elm.ModuleName as ModuleName exposing (ModuleName)
 import Morphir.IR.Repo.Codec as RepoCodec
 import Parser
-
-
-{-| convert a Problem into a string in an attempt to produce a meaningful error
--}
-mapParserProblem : Parser.Problem -> String
-mapParserProblem problem =
-    case problem of
-        Parser.Expecting token ->
-            String.concat [ "Expecting: ", token ]
-
-        Parser.ExpectingInt ->
-            "Expecting integer"
-
-        Parser.ExpectingHex ->
-            "Expecting hexadecimal"
-
-        Parser.ExpectingOctal ->
-            "Expecting octal"
-
-        Parser.ExpectingBinary ->
-            "Expecting binary"
-
-        Parser.ExpectingFloat ->
-            "Expecting float"
-
-        Parser.ExpectingNumber ->
-            "Expecting number"
-
-        Parser.ExpectingVariable ->
-            "Expecting variable"
-
-        Parser.ExpectingSymbol symbol ->
-            String.concat [ "Expecting symbol: ", symbol ]
-
-        Parser.ExpectingKeyword keyword ->
-            String.concat [ "Expecting keyword: ", keyword ]
-
-        Parser.ExpectingEnd ->
-            "Expecting end"
-
-        Parser.UnexpectedChar ->
-            "Unexpected character"
-
-        Parser.Problem message ->
-            String.concat [ "Problem: ", message ]
-
-        Parser.BadRepeat ->
-            "Bad repeat"
 
 
 encodeError : IncrementalFrontend.Error -> Encode.Value
