@@ -19,7 +19,7 @@ import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
-import Morphir.Elm.IncrementalFrontend.Codec as IncrementalFrontend
+import Morphir.Elm.IncrementalFrontend.Codec as IncrementalFrontendCodec
 import Morphir.File.FileChanges exposing (FileChanges)
 import Morphir.File.FileChanges.Codec as FileChangesCodec
 import Morphir.IR.Distribution exposing (Distribution(..))
@@ -131,7 +131,7 @@ update msg model =
                         |> Result.mapError (IncrementalFrontend.RepoError >> List.singleton)
                         |> Result.andThen (IncrementalFrontend.applyFileChanges fileChanges)
                         |> Result.map Repo.toDistribution
-                        |> encodeResult (Encode.list IncrementalFrontend.encodeError) DistroCodec.encodeVersionedDistribution
+                        |> encodeResult (Encode.list IncrementalFrontendCodec.encodeError) DistroCodec.encodeVersionedDistribution
                         |> (\value -> ( model, incrementalBuildResult value ))
 
                 Err errorMessage ->

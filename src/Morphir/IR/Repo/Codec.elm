@@ -11,40 +11,23 @@ encodeError : Error -> Encode.Value
 encodeError error =
     case error of
         ModuleNotFound moduleName ->
-            moduleName
-                |> ModuleName.fromIRModuleName
-                |> ModuleName.toString
-                |> (\moduleNameAsString ->
-                        String.concat [ "Module not found: ", moduleNameAsString ]
-                   )
-                |> Encode.string
+            Encode.list identity
+                [ Encode.string "ModuleNotFound"
+                , Encode.list (Encode.list Encode.string) moduleName
+                ]
 
         ModuleHasDependents moduleName dependentModuleNames ->
             Encode.list identity
-                [ Encode.string
-                    (String.concat
-                        [ "The following modules depend on "
-                        , moduleName
-                            |> ModuleName.fromIRModuleName
-                            |> ModuleName.toString
-                        ]
-                    )
-                , Encode.set
-                    (ModuleName.fromIRModuleName
-                        >> ModuleName.toString
-                        >> Encode.string
-                    )
-                    dependentModuleNames
+                [ Encode.string "ModuleHasDependents"
+                , Encode.list (Encode.list Encode.string) moduleName
+                , Encode.set (Encode.list (Encode.list Encode.string)) dependentModuleNames
                 ]
 
         ModuleAlreadyExist moduleName ->
-            String.concat
-                [ moduleName
-                    |> ModuleName.fromIRModuleName
-                    |> ModuleName.toString
-                , " Already exists"
+            Encode.list identity
+                [ Encode.string "ModuleAlreadyExist"
+                , Encode.list (Encode.list Encode.string) moduleName
                 ]
-                |> Encode.string
 
         TypeAlreadyExist name ->
             Debug.todo ""
