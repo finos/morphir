@@ -6,14 +6,14 @@
     "clean": "gulp clean",
     "test": "gulp test",
     "test-morphir-ir-typescript": "gulp testMorphirIRTypeScript",
-    "jest-test": "npx jest",
+    "jest-test": "cd cli2 && elm make src/Morphir/Elm/CLI.elm --output=Morphir.Elm.CLI.js && cd .. && npx jest",
     "insight-server-live": "cd cli && elm-live src/Morphir/Web/Insight.elm --start-page=./web/insight.html --dir=./web --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/insight.js",
     "dev-server-live": "cd cli && elm-live src/Morphir/Web/DevelopApp.elm --dir=web --pushstate --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/index.html",
     "try-morphir-live": "cd cli && elm-live src/Morphir/Web/TryMorphir.elm",
     "multiary-decision-tree-live": "cd cli && elm-live src/Morphir/Web/MultiaryDecisionTreeTest.elm --start-page=./web/treeIndex.html -- --output=treeStuff.js",
     "ncc-morphir": "ncc build cli/morphir.js -o dist/morphir",
     "ncc-morphir-server": "ncc build cli/morphir-elm-develop.js -o dist/morphir-server",
-    "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server",
+    "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server && npx jest -- cli.test.ts",
     "build-cli": "cd cli2 && tsc"
   },
   "repository": {
