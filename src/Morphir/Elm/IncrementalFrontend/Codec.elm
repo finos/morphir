@@ -55,25 +55,6 @@ mapParserProblem problem =
             "Bad repeat"
 
 
-{-| convert a Parser.DeadEnd into a List of String
--}
-errorStringFromParserDeadEnds : List Parser.DeadEnd -> String
-errorStringFromParserDeadEnds deadEnds =
-    deadEnds
-        |> List.map
-            (\{ row, col, problem } ->
-                String.concat
-                    [ "\t"
-                    , mapParserProblem problem
-                    , " at line "
-                    , String.fromInt row
-                    , ":"
-                    , String.fromInt col
-                    ]
-            )
-        |> String.join "\n"
-
-
 encodeError : IncrementalFrontend.Error -> Encode.Value
 encodeError error =
     let
