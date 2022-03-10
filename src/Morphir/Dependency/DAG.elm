@@ -164,7 +164,7 @@ insertEdge from to graph =
                         }
 
 
-{-| Insert Node
+{-| Insert node without edges. Inserts node into orphan nodes set if the from node is already not in the edges
 -}
 insertNode : comparableNode -> Set comparableNode -> DAG comparableNode -> Result CycleDetected (DAG comparableNode)
 insertNode fromNode toNodes dag =
