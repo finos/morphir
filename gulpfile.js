@@ -250,7 +250,6 @@ exports.clean = clean;
 exports.makeCLI = makeCLI;
 exports.makeDevCLI = makeDevCLI;
 exports.makeCLI2 = makeCLI2;
-exports.makeDevCLI2 = makeDevCLI2;
 exports.build = build;
 exports.test = test;
 exports.testIntegration = testIntegration;
