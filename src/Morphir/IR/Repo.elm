@@ -17,7 +17,7 @@ import Set exposing (Set)
 type alias Repo =
     { packageName : PackageName
     , dependencies : Dict PackageName (Package.Definition () (Type ()))
-    , modules : Dict ModuleName (Module.Definition () (Type ()))
+    , modules : Dict ModuleName (AccessControlled (Module.Definition () (Type ())))
     , moduleDependencies : DAG ModuleName
     , nativeFunctions : Dict FQName Native.Function
     }
@@ -80,7 +80,6 @@ toDistribution repo =
         )
         { modules =
             repo.modules
-                |> Dict.map (always public)
         }
 
 
@@ -117,7 +116,7 @@ insertModule moduleName moduleDef repo =
                 { repo
                     | modules =
                         repo.modules
-                            |> Dict.insert moduleName moduleDef
+                            |> Dict.insert moduleName (AccessControlled.private moduleDef)
                 }
             )
 
@@ -161,29 +160,33 @@ insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors R
 insertType moduleName typeName typeDef repo =
     case repo.modules |> Dict.get moduleName of
         Just modDefinition ->
-            case modDefinition.types |> Dict.get typeName of
+            case modDefinition.value.types |> Dict.get typeName of
                 Just _ ->
                     Err [ TypeAlreadyExist typeName ]
 
                 Nothing ->
                     let
-                        alteredModule : Maybe (Module.Definition () (Type ())) -> Maybe (Module.Definition () (Type ()))
-                        alteredModule maybeModuleDefinition =
+                        updateModule : Maybe (AccessControlled (Module.Definition () (Type ()))) -> Maybe (AccessControlled (Module.Definition () (Type ())))
+                        updateModule maybeModuleDefinition =
                             maybeModuleDefinition
                                 |> Maybe.map
-                                    (\modDef ->
-                                        { modDef
-                                            | types =
-                                                modDefinition.types
-                                                    |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
-                                        }
+                                    (\accessControlledModuleDef ->
+                                        accessControlledModuleDef
+                                            |> AccessControlled.map
+                                                (\moduleDef ->
+                                                    { moduleDef
+                                                        | types =
+                                                            modDefinition.value.types
+                                                                |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
+                                                    }
+                                                )
                                     )
                     in
                     Ok
                         { repo
                             | modules =
                                 repo.modules
-                                    |> Dict.update moduleName alteredModule
+                                    |> Dict.update moduleName updateModule
                         }
 
         Nothing ->
@@ -209,3 +212,21 @@ dependsOnPackages repo =
     repo.dependencies
         |> Dict.keys
         |> Set.fromList
+
+
+lookupModuleSpecification : PackageName -> ModuleName -> Repo -> Maybe (Module.Specification ())
+lookupModuleSpecification packageName moduleName repo =
+    if packageName == repo.packageName then
+        repo.modules
+            |> Dict.get moduleName
+            -- Private modules are visible within the same package
+            |> Maybe.map AccessControlled.withPrivateAccess
+            |> Maybe.map Module.definitionToSpecification
+
+    else
+        repo.dependencies
+            |> Dict.get packageName
+            |> Maybe.andThen (.modules >> Dict.get moduleName)
+            -- Private modules are not visible from another package
+            |> Maybe.andThen AccessControlled.withPublicAccess
+            |> Maybe.map Module.definitionToSpecification

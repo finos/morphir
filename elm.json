@@ -34,6 +34,7 @@
         "Morphir.IR.Distribution.Codec",
         "Morphir.Elm.Frontend",
         "Morphir.Elm.Frontend.Codec",
+        "Morphir.Elm.IncrementalResolve",
         "Morphir.Scala.Backend",
         "Morphir.Scala.Backend.Codec",
         "Morphir.File.FileMap",

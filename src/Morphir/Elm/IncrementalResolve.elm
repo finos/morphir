@@ -1,17 +1,71 @@
-module Morphir.Elm.IncrementalResolve exposing (..)
+module Morphir.Elm.IncrementalResolve exposing
+    ( resolveModuleName, resolveImports, resolveLocalName
+    , Error, KindOfName(..)
+    )
+
+{-| This module contains functionality to resolve names in the Elm code into Morphir fully-qualified names. The process
+is relatively complex due to the many ways names can be imported in an Elm module. Here, we split up the overall process
+into three main steps following the structure of an Elm module:
+
+@docs resolveModuleName, resolveImports, resolveLocalName
+
+
+# Errors
+
+@docs Error, KindOfName
+
+-}
 
 import Dict exposing (Dict)
+import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Module exposing (ModuleName)
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Repo)
+import Morphir.IR.Type as Type
 import Set exposing (Set)
 
 
+{-| Type that represents all the possible errors during the name resolution process. Here are the possible errors:
+
+  - **NoMorphirPackageFoundForElmModule**
+      - Reported during the process of mapping the Elm module name into a pair of Morphir package and module name.
+      - Arguments: Elm module name
+  - **ModuleNotImported**
+      - Reported when the module that a name refers to is not mentioned in the imports
+      - Arguments: Elm module name
+  - **ModuleOrAliasNotImported**
+      - Reported when a single name module prefix is not found in the imports. This could either refer to an alias or a
+        top-level module but we don't know which one since it's not imported.
+      - Arguments: Elm module name or alias
+  - **ModuleDoesNotExposeLocalName**
+      - Reported when we know which module a name is supposed to be in but that module does not expose or doesn't contain
+        that name.
+      - Arguments: package name, module name, local name, kind of name (type, constructor or value)
+  - **ModulesDoNotExposeLocalName**
+      - Reported when it's not clear which module should contain the local name but neither contains or exposes it.
+      - Arguments: the alias that was used in the Elm code, matching module names, local name, kind of name (type, constructor or value)
+  - **MultipleModulesExposeLocalName**
+      - Reported when multiple modules expose the local name and it's unclear which one the user meant.
+      - Arguments: matching module names, local name, kind of name (type, constructor or value)
+  - **LocalNameNotImported**
+      - Reported when a local name is not found in the imports.
+      - Arguments: local name, kind of name (type, constructor or value)
+  - **ImportedModuleNotFound**
+      - Reported when a module is imported but not available in the Repo.
+      - Arguments: package and module name
+  - **ImportedLocalNameNotFound**
+      - Reported when a local name is imported but not found in the Repo.
+      - Arguments: package and module name, local name, kind of name (type, constructor or value)
+  - **ImportingConstructorsOfNonCustomType**
+      - Reported when an import is trying to expose constructors of a type but the type name does not refer to a custom type
+      - Arguments: package and module name, local name
+
+-}
 type Error
     = NoMorphirPackageFoundForElmModule (List String)
     | ModuleNotImported (List String)
@@ -20,11 +74,16 @@ type Error
     | ModulesDoNotExposeLocalName String (List QualifiedModuleName) Name KindOfName
     | MultipleModulesExposeLocalName (List QualifiedModuleName) Name KindOfName
     | LocalNameNotImported Name KindOfName
+    | ImportedModuleNotFound QualifiedModuleName
+    | ImportedLocalNameNotFound QualifiedModuleName Name KindOfName
+    | ImportingConstructorsOfNonCustomType QualifiedModuleName Name
 
 
+{-| Type that represents what kind of thing a local name refers to. Is it a type, constructor or value?
+-}
 type KindOfName
     = Type
-    | Ctor
+    | Constructor
     | Value
 
 
@@ -36,6 +95,8 @@ type alias QualifiedModuleName =
     ( PackageName, ModuleName )
 
 
+{-| Internal data structure for efficient lookup of names based on imports.
+-}
 type alias ResolvedImports =
     { visibleNamesByModuleName : Dict QualifiedModuleName VisibleNames
     , moduleNamesByAliasOrSingleModuleName : Dict String (Set QualifiedModuleName)
@@ -43,29 +104,24 @@ type alias ResolvedImports =
     }
 
 
+{-| Represents the names that a module exposes or makes internally available.
+-}
 type alias VisibleNames =
     { types : Set Name
-    , ctors : Set Name
+    , constructors : Set Name
     , values : Set Name
     }
 
 
+{-| Resolve the imports into an internal data structure that makes it easier to resolve names within the module. This is
+done once per module.
+-}
 resolveImports : Repo -> List Import -> Result Error ResolvedImports
 resolveImports repo imports =
     let
-        -- Utility to update a Set value in a Dict
-        insertOrCreate : comparable -> Maybe (Set comparable) -> Maybe (Set comparable)
-        insertOrCreate item maybeSet =
-            case maybeSet of
-                Just set ->
-                    set |> Set.insert item |> Just
-
-                Nothing ->
-                    Set.singleton item |> Just
-
         -- Add the alias if the import has one
         maybeAddAlias : Import -> QualifiedModuleName -> ResolvedImports -> ResolvedImports
-        maybeAddAlias imp moduleName resolvedImports =
+        maybeAddAlias imp resolvedModuleName resolvedImports =
             case imp.moduleAlias of
                 -- We are only matching on single word aliases because even though the Elm-syntax library
                 -- returns a list here, Elm does not allow aliases with dots in it
@@ -73,7 +129,7 @@ resolveImports repo imports =
                     { resolvedImports
                         | moduleNamesByAliasOrSingleModuleName =
                             resolvedImports.moduleNamesByAliasOrSingleModuleName
-                                |> Dict.update alias (insertOrCreate moduleName)
+                                |> Dict.update alias (insertOrCreateSet resolvedModuleName)
                     }
 
                 _ ->
@@ -81,21 +137,138 @@ resolveImports repo imports =
 
         -- Add module name from import if it's a single name module (like Dict or String)
         maybeAddModuleName : Import -> QualifiedModuleName -> ResolvedImports -> ResolvedImports
-        maybeAddModuleName imp moduleName resolvedImports =
+        maybeAddModuleName imp resolvedModuleName resolvedImports =
             case imp.moduleName of
                 Node _ [ singleModuleName ] ->
                     { resolvedImports
                         | moduleNamesByAliasOrSingleModuleName =
                             resolvedImports.moduleNamesByAliasOrSingleModuleName
-                                |> Dict.update singleModuleName (insertOrCreate moduleName)
+                                |> Dict.update singleModuleName (insertOrCreateSet resolvedModuleName)
                     }
 
                 _ ->
                     resolvedImports
 
-        addLocalNames : Import -> QualifiedModuleName -> ResolvedImports -> ResolvedImports
-        addLocalNames imp moduleName resolvedImports =
-            resolvedImports
+        addLocalName : KindOfName -> QualifiedModuleName -> Name -> ResolvedImports -> ResolvedImports
+        addLocalName kindOfName qualifiedModuleName name resolvedImports =
+            { resolvedImports
+                | visibleNamesByModuleName =
+                    resolvedImports.visibleNamesByModuleName
+                        |> Dict.update qualifiedModuleName (insertOrCreateVisibleNames kindOfName name)
+                , moduleNamesByLocalName =
+                    resolvedImports.moduleNamesByLocalName
+                        |> Dict.update name (insertOrCreateSet qualifiedModuleName)
+            }
+
+        addLocalNames : Import -> QualifiedModuleName -> Module.Specification () -> ResolvedImports -> Result Error ResolvedImports
+        addLocalNames imp qualifiedModuleName moduleSpec resolvedImports =
+            case imp.exposingList of
+                Just (Node _ exposingList) ->
+                    case exposingList of
+                        Exposing.All _ ->
+                            let
+                                addTypes : ResolvedImports -> ResolvedImports
+                                addTypes resolved =
+                                    moduleSpec.types
+                                        |> Dict.keys
+                                        |> List.foldl (addLocalName Type qualifiedModuleName) resolved
+
+                                addCtors : ResolvedImports -> ResolvedImports
+                                addCtors resolved =
+                                    moduleSpec.types
+                                        |> Dict.values
+                                        |> List.concatMap
+                                            (\documentedTypeSpec ->
+                                                case documentedTypeSpec.value of
+                                                    Type.CustomTypeSpecification _ ctors ->
+                                                        ctors |> Dict.keys
+
+                                                    _ ->
+                                                        []
+                                            )
+                                        |> List.foldl (addLocalName Constructor qualifiedModuleName) resolved
+
+                                addValues : ResolvedImports -> ResolvedImports
+                                addValues resolved =
+                                    moduleSpec.values
+                                        |> Dict.keys
+                                        |> List.foldl (addLocalName Value qualifiedModuleName) resolved
+                            in
+                            resolvedImports
+                                |> addTypes
+                                |> addCtors
+                                |> addValues
+                                |> Ok
+
+                        Exposing.Explicit explicitExposeNodes ->
+                            explicitExposeNodes
+                                |> List.foldl
+                                    (\(Node _ explicitExpose) resolvedImportsSoFar ->
+                                        case explicitExpose of
+                                            Exposing.InfixExpose _ ->
+                                                -- We ignore infix declarations
+                                                resolvedImportsSoFar
+
+                                            Exposing.FunctionExpose localName ->
+                                                let
+                                                    valueName : Name
+                                                    valueName =
+                                                        Name.fromString localName
+                                                in
+                                                if moduleSpec.values |> Dict.member valueName then
+                                                    resolvedImportsSoFar |> Result.map (addLocalName Value qualifiedModuleName valueName)
+
+                                                else
+                                                    Err (ImportedLocalNameNotFound qualifiedModuleName valueName Value)
+
+                                            Exposing.TypeOrAliasExpose localName ->
+                                                let
+                                                    typeName : Name
+                                                    typeName =
+                                                        Name.fromString localName
+                                                in
+                                                if moduleSpec.values |> Dict.member typeName then
+                                                    resolvedImportsSoFar |> Result.map (addLocalName Type qualifiedModuleName typeName)
+
+                                                else
+                                                    Err (ImportedLocalNameNotFound qualifiedModuleName typeName Type)
+
+                                            Exposing.TypeExpose ctorExpose ->
+                                                let
+                                                    typeName : Name
+                                                    typeName =
+                                                        Name.fromString ctorExpose.name
+                                                in
+                                                case ctorExpose.open of
+                                                    Just _ ->
+                                                        moduleSpec.types
+                                                            |> Dict.get typeName
+                                                            |> Result.fromMaybe (ImportedLocalNameNotFound qualifiedModuleName typeName Type)
+                                                            |> Result.andThen
+                                                                (\documentedTypeSpec ->
+                                                                    case documentedTypeSpec.value of
+                                                                        Type.CustomTypeSpecification _ ctors ->
+                                                                            resolvedImportsSoFar
+                                                                                |> Result.map
+                                                                                    (\soFar ->
+                                                                                        ctors
+                                                                                            |> Dict.keys
+                                                                                            |> List.foldl (addLocalName Constructor qualifiedModuleName)
+                                                                                                (soFar |> addLocalName Type qualifiedModuleName typeName)
+                                                                                    )
+
+                                                                        _ ->
+                                                                            Err (ImportingConstructorsOfNonCustomType qualifiedModuleName typeName)
+                                                                )
+
+                                                    Nothing ->
+                                                        resolvedImportsSoFar
+                                                            |> Result.map (addLocalName Type qualifiedModuleName typeName)
+                                    )
+                                    (Ok resolvedImports)
+
+                Nothing ->
+                    Ok resolvedImports
     in
     imports
         |> List.foldl
@@ -104,16 +277,24 @@ resolveImports repo imports =
                     |> Node.value
                     |> resolveModuleName repo
                     |> Result.andThen
-                        (\moduleName ->
-                            resolvedImportsSoFar
-                                |> Result.map (maybeAddAlias nextImport moduleName)
-                                |> Result.map (maybeAddModuleName nextImport moduleName)
-                         --|> Result.map add
+                        (\(( packageName, moduleName ) as resolvedModuleName) ->
+                            repo
+                                |> Repo.lookupModuleSpecification packageName moduleName
+                                |> Result.fromMaybe (ImportedModuleNotFound resolvedModuleName)
+                                |> Result.andThen
+                                    (\moduleSpec ->
+                                        resolvedImportsSoFar
+                                            |> Result.map (maybeAddAlias nextImport resolvedModuleName)
+                                            |> Result.map (maybeAddModuleName nextImport resolvedModuleName)
+                                            |> Result.andThen (addLocalNames nextImport resolvedModuleName moduleSpec)
+                                    )
                         )
             )
             (Ok (ResolvedImports Dict.empty Dict.empty Dict.empty))
 
 
+{-| Finds out the Morphir package and module name from an Elm module name and a Repo.
+-}
 resolveModuleName : Repo -> List String -> Result Error QualifiedModuleName
 resolveModuleName repo elmModuleName =
     let
@@ -143,6 +324,9 @@ resolveModuleName repo elmModuleName =
     findMatchingPackage (Set.toList visiblePackageNames)
 
 
+{-| Resolve each individual name using the data structure mentioned above. This is done for each type, constructor and
+value name in the module.
+-}
 resolveLocalName : Repo -> ModuleName -> VisibleNames -> ResolvedImports -> List String -> String -> KindOfName -> Result Error FQName
 resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName elmLocalName kindOfName =
     let
@@ -252,18 +436,53 @@ resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName
 
 
 isNameVisible : Name -> KindOfName -> VisibleNames -> Bool
-isNameVisible name kindOfName moduleImports =
+isNameVisible name kindOfName visibleNames =
     let
         setOfNames : Set Name
         setOfNames =
             case kindOfName of
                 Type ->
-                    moduleImports.types
+                    visibleNames.types
 
-                Ctor ->
-                    moduleImports.ctors
+                Constructor ->
+                    visibleNames.constructors
 
                 Value ->
-                    moduleImports.values
+                    visibleNames.values
     in
     setOfNames |> Set.member name
+
+
+insertVisibleName : Name -> KindOfName -> VisibleNames -> VisibleNames
+insertVisibleName name kindOfName visibleNames =
+    case kindOfName of
+        Type ->
+            { visibleNames | types = visibleNames.types |> Set.insert name }
+
+        Constructor ->
+            { visibleNames | constructors = visibleNames.constructors |> Set.insert name }
+
+        Value ->
+            { visibleNames | values = visibleNames.values |> Set.insert name }
+
+
+insertOrCreateVisibleNames : KindOfName -> Name -> Maybe VisibleNames -> Maybe VisibleNames
+insertOrCreateVisibleNames kindOfName name maybeVisibleNames =
+    case maybeVisibleNames of
+        Just visibleNames ->
+            insertVisibleName name kindOfName visibleNames |> Just
+
+        Nothing ->
+            { types = Set.empty, constructors = Set.empty, values = Set.empty } |> Just
+
+
+{-| Utility to update a Set value in a dictionary.
+-}
+insertOrCreateSet : comparable -> Maybe (Set comparable) -> Maybe (Set comparable)
+insertOrCreateSet item maybeSet =
+    case maybeSet of
+        Just set ->
+            set |> Set.insert item |> Just
+
+        Nothing ->
+            Set.singleton item |> Just
