@@ -32,7 +32,7 @@ module Morphir.SDK.LocalTime exposing
 
 # Types
 
-@docs Localtime
+@docs LocalTime
 
 
 # Time Math
@@ -49,7 +49,6 @@ module Morphir.SDK.LocalTime exposing
 
 @docs fromISO
 @docs fromMilliseconds
-@docs fromParts
 -}
 
 import Iso8601 exposing (toTime)
