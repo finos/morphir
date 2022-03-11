@@ -1,0 +1,20 @@
+.features {
+	display: flex;
+	align-items: center;
+	padding: 2rem 0;
+	width: 100%;
+}
+
+.featureSvg {
+	height: 200px;
+	width: 200px;
+}
+
+.divider {
+	border: 100000px solid #000 !important;
+}
+
+.furtherReading {
+	display: flex;
+	flex-direction: column;
+}
