@@ -3,7 +3,7 @@ module Morphir.Dependency.DAG exposing
     , empty, insertEdge
     , incomingEdges, outgoingEdges
     , forwardTopologicalOrdering, backwardTopologicalOrdering
-    , insertNode
+    , insertNode, removeNode
     )
 
 {-| This module implements a DAG (Directed Acyclic Graph) data structure with efficient topological ordering and cycle
@@ -190,6 +190,11 @@ insertNode fromNode toNodes dag =
 
         Nothing ->
             dag |> insertIntoOrphanNodes |> insertEdges
+
+
+removeNode : comparableNode -> DAG comparableNode -> DAG comparableNode
+removeNode f d =
+    Debug.todo "Implement"
 
 
 {-| Get the outgoing edges of a given node in the graph in the form of a set of nodes that the edges point to.
