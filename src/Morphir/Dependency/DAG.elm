@@ -3,6 +3,7 @@ module Morphir.Dependency.DAG exposing
     , empty, insertEdge
     , incomingEdges, outgoingEdges
     , forwardTopologicalOrdering, backwardTopologicalOrdering
+    , insertNode
     )
 
 {-| This module implements a DAG (Directed Acyclic Graph) data structure with efficient topological ordering and cycle
@@ -164,7 +165,8 @@ insertEdge from to graph =
                         }
 
 
-{-| Insert node without edges. Inserts node into orphan nodes set if the from node is already not in the edges
+{-| Insert node without edges. Inserts node into orphan nodes set if the from node is does not exist in the edges.
+This design makes room for nodes that are stand alone and do not have any connection to other nodes.
 -}
 insertNode : comparableNode -> Set comparableNode -> DAG comparableNode -> Result CycleDetected (DAG comparableNode)
 insertNode fromNode toNodes dag =
