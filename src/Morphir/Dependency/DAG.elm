@@ -37,10 +37,8 @@ import Set exposing (Set)
 {-| Type to store the DAG. Internally it keeps track of each node in a dictionary together with the outgoing edges and
 the level they are at in the partial ordering.
 -}
-type alias DAG comparableNode =
-    { edges : Dict comparableNode ( Set comparableNode, Int )
-    , orphanNodes : Set comparableNode
-    }
+type DAG comparableNode
+    = DAG (Dict comparableNode ( Set comparableNode, Int )) (Set comparableNode)
 
 
 {-| The error that's reported when a cycle is detected in the graph.
@@ -53,68 +51,64 @@ type CycleDetected
 -}
 empty : DAG comparableNode
 empty =
-    { edges = Dict.empty
-    , orphanNodes = Set.empty
-    }
+    DAG Dict.empty Set.empty
 
 
 {-| Inserts an edge defined by the from and to nodes. Returns an error if a cycle would be formed by the edge.
 This design makes sure that a DAG cannot possibly have cycles in it since there is no way to create such a DAG.
 -}
 insertEdge : comparableNode -> comparableNode -> DAG comparableNode -> Result CycleDetected (DAG comparableNode)
-insertEdge from to graph =
+insertEdge from to (DAG edges orphanNodes) =
     let
         shiftTransitively : Int -> comparableNode -> DAG comparableNode -> DAG comparableNode
-        shiftTransitively by n g =
-            case g.edges |> Dict.get n of
+        shiftTransitively by n (DAG e on) =
+            case e |> Dict.get n of
                 Just ( toNodes, level ) ->
                     toNodes
                         |> Set.foldl (shiftTransitively by)
-                            { g | edges = g.edges |> Dict.insert n ( toNodes, level + by ) }
+                            (DAG (e |> Dict.insert n ( toNodes, level + by )) on)
 
                 Nothing ->
-                    g
+                    DAG e on
 
         shiftAll : Int -> DAG comparableNode -> DAG comparableNode
-        shiftAll by g =
-            { g | edges = g.edges |> Dict.map (\_ ( toNodes, level ) -> ( toNodes, level + by )) }
+        shiftAll by (DAG e ons) =
+            DAG
+                (e
+                    |> Dict.map (\_ ( toNodes, level ) -> ( toNodes, level + by ))
+                )
+                ons
 
         removeFromOrphan : comparableNode -> Set comparableNode -> Set comparableNode
-        removeFromOrphan node orphanNodes =
-            if orphanNodes |> Set.member node then
-                orphanNodes |> Set.remove node
+        removeFromOrphan node ons =
+            if ons |> Set.member node then
+                ons |> Set.remove node
 
             else
-                orphanNodes
+                ons
     in
-    case graph.edges |> Dict.get to of
+    case edges |> Dict.get to of
         Just ( toEdges, toLevel ) ->
             if toEdges |> Set.member from then
                 Err CycleDetected
 
             else
-                case graph.edges |> Dict.get from of
+                case edges |> Dict.get from of
                     Just ( fromEdges, fromLevel ) ->
                         if fromEdges |> Set.member to then
                             -- duplicate edge, ignore
-                            Ok graph
+                            Ok (DAG edges orphanNodes)
 
                         else if fromLevel < toLevel then
-                            Ok
-                                { graph
-                                    | edges =
-                                        graph.edges
-                                            |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
-                                    , orphanNodes = removeFromOrphan from graph.orphanNodes
-                                }
+                            DAG
+                                (edges |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel ))
+                                (removeFromOrphan from orphanNodes)
+                                |> Ok
 
                         else if fromLevel == toLevel then
-                            { graph
-                                | edges =
-                                    graph.edges
-                                        |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
-                                , orphanNodes = removeFromOrphan from graph.orphanNodes
-                            }
+                            DAG
+                                (edges |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel ))
+                                (removeFromOrphan from orphanNodes)
                                 |> shiftTransitively 1 to
                                 |> Ok
 
@@ -124,52 +118,48 @@ insertEdge from to graph =
                     Nothing ->
                         Ok
                             (if toLevel == 0 then
-                                graph
+                                DAG edges orphanNodes
                                     |> shiftAll 1
-                                    |> (\g ->
-                                            { g
-                                                | edges = Dict.insert from ( Set.singleton to, 0 ) g.edges
-                                                , orphanNodes = removeFromOrphan from graph.orphanNodes
-                                            }
+                                    |> (\DAG e on ->
+                                            DAG
+                                                (Dict.insert from ( Set.singleton to, 0 ) e)
+                                                (removeFromOrphan from on)
                                        )
 
                              else
-                                { graph
-                                    | edges =
-                                        graph.edges
-                                            |> Dict.insert from ( Set.singleton to, toLevel - 1 )
-                                    , orphanNodes = removeFromOrphan from graph.orphanNodes
-                                }
+                                DAG
+                                    (edges
+                                        |> Dict.insert from ( Set.singleton to, toLevel - 1 )
+                                    )
+                                    (removeFromOrphan from orphanNodes)
                             )
 
         Nothing ->
-            case graph.edges |> Dict.get from of
+            case edges |> Dict.get from of
                 Just ( fromEdges, fromLevel ) ->
-                    Ok
-                        { graph
-                            | edges =
-                                graph.edges
-                                    |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
-                                    |> Dict.insert to ( Set.empty, fromLevel + 1 )
-                            , orphanNodes = removeFromOrphan from graph.orphanNodes
-                        }
+                    DAG
+                        (edges
+                            |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
+                            |> Dict.insert to ( Set.empty, fromLevel + 1 )
+                        )
+                        (removeFromOrphan from orphanNodes)
+                        |> Ok
 
                 Nothing ->
-                    Ok
-                        { graph
-                            | edges =
-                                graph.edges
-                                    |> Dict.insert from ( Set.singleton to, 0 )
-                                    |> Dict.insert to ( Set.empty, 1 )
-                            , orphanNodes = removeFromOrphan from graph.orphanNodes
-                        }
+                    DAG
+                        (edges
+                            |> Dict.insert from ( Set.singleton to, 0 )
+                            |> Dict.insert to ( Set.empty, 1 )
+                        )
+                        (removeFromOrphan from orphanNodes)
+                        |> Ok
 
 
 {-| Insert node without edges. Inserts node into orphan nodes set if the from node is does not exist in the edges.
 This design makes room for nodes that are stand alone and do not have any connection to other nodes.
 -}
 insertNode : comparableNode -> Set comparableNode -> DAG comparableNode -> Result CycleDetected (DAG comparableNode)
-insertNode fromNode toNodes dag =
+insertNode fromNode toNodes (DAG edges orphanNodes) =
     let
         insertEdges : DAG comparableNode -> Result CycleDetected (DAG comparableNode)
         insertEdges d =
@@ -181,15 +171,18 @@ insertNode fromNode toNodes dag =
                     (Ok d)
 
         insertIntoOrphanNodes : DAG comparableNode -> DAG comparableNode
-        insertIntoOrphanNodes d =
-            { d | orphanNodes = Set.insert fromNode dag.orphanNodes }
+        insertIntoOrphanNodes (DAG e on) =
+            DAG e (Set.insert fromNode on)
     in
-    case dag.edges |> Dict.get fromNode of
-        Just ( _, _ ) ->
-            dag |> insertEdges
+    case edges |> Dict.get fromNode of
+        Just _ ->
+            DAG edges orphanNodes
+                |> insertEdges
 
         Nothing ->
-            dag |> insertIntoOrphanNodes |> insertEdges
+            DAG edges orphanNodes
+                |> insertIntoOrphanNodes
+                |> insertEdges
 
 
 removeNode : comparableNode -> DAG comparableNode -> DAG comparableNode
@@ -211,8 +204,8 @@ removeNode f d =
 
 -}
 outgoingEdges : comparableNode -> DAG comparableNode -> Set comparableNode
-outgoingEdges fromNode dag =
-    dag.edges
+outgoingEdges fromNode (DAG edges _) =
+    edges
         |> Dict.get fromNode
         |> Maybe.map (\( toNodes, _ ) -> toNodes)
         |> Maybe.withDefault Set.empty
@@ -233,8 +226,8 @@ outgoingEdges fromNode dag =
 
 -}
 incomingEdges : comparableNode -> DAG comparableNode -> Set comparableNode
-incomingEdges toNode dag =
-    dag.edges
+incomingEdges toNode (DAG edges _) =
+    edges
         |> Dict.toList
         |> List.filterMap
             (\( fromNode, ( toNodes, _ ) ) ->
@@ -268,12 +261,13 @@ level.
 
 -}
 forwardTopologicalOrdering : DAG comparableNode -> List (List comparableNode)
-forwardTopologicalOrdering dag =
+forwardTopologicalOrdering (DAG edges _) =
     let
         dagList : List ( comparableNode, ( Set comparableNode, Int ) )
         dagList =
-            dag.edges
+            edges
                 |> Dict.toList
+                |> Debug.todo "Also include orphan nodes in the topological ordering"
 
         maxLevel : Int
         maxLevel =
