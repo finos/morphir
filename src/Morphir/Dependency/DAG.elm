@@ -120,7 +120,7 @@ insertEdge from to (DAG edges orphanNodes) =
                             (if toLevel == 0 then
                                 DAG edges orphanNodes
                                     |> shiftAll 1
-                                    |> (\DAG e on ->
+                                    |> (\(DAG e on) ->
                                             DAG
                                                 (Dict.insert from ( Set.singleton to, 0 ) e)
                                                 (removeFromOrphan from on)
@@ -267,7 +267,6 @@ forwardTopologicalOrdering (DAG edges _) =
         dagList =
             edges
                 |> Dict.toList
-                |> Debug.todo "Also include orphan nodes in the topological ordering"
 
         maxLevel : Int
         maxLevel =
