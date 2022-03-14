@@ -185,9 +185,59 @@ insertNode fromNode toNodes (DAG edges orphanNodes) =
                 |> insertEdges
 
 
+{-| Removes a node from the DAG. The node may be an orphanNode or may have edges.
+If a node with edges is removed, then all outgoing edge nodes are also removed if they have no other incoming edge.
+if the node does not exist within the DAG, then no changes to the DAG is made.
+-}
 removeNode : comparableNode -> DAG comparableNode -> DAG comparableNode
-removeNode f d =
-    Debug.todo "Implement"
+removeNode node (DAG edges orphanNodes) =
+    case orphanNodes |> Set.member node of
+        True ->
+            orphanNodes
+                |> Set.remove node
+                |> DAG edges
+
+        False ->
+            case edges |> Dict.get node of
+                Nothing ->
+                    -- TODO: node might be a leaf, so we search for it
+                    DAG edges orphanNodes
+
+                Just _ ->
+                    let
+                        --find nodes having incoming edges from only this node
+                        removeOutgoingEdges dag =
+                            outgoingEdges node dag
+                                |> Set.toList
+                                |> List.filter
+                                    (\outgoingNode ->
+                                        dag
+                                            |> incomingEdges outgoingNode
+                                            |> (\incomingNodes -> incomingNodes == Set.fromList [ node ])
+                                    )
+                                --recursively remove outgoing edges
+                                |> List.foldl removeNode dag
+
+                        removeIncomingEdges dag =
+                            incomingEdges node dag
+                                |> Set.toList
+                                |> List.foldl
+                                    (\n (DAG e ons) ->
+                                        e
+                                            |> Dict.update n (Maybe.map (\( s, l ) -> ( Set.remove node s, l )))
+                                            |> (\modifiedEdges -> DAG modifiedEdges ons)
+                                    )
+                                    dag
+
+                        deleteNode (DAG e ons) =
+                            e
+                                |> Dict.remove node
+                                |> (\modifiedEdges -> DAG modifiedEdges ons)
+                    in
+                    DAG edges orphanNodes
+                        |> removeOutgoingEdges
+                        |> removeIncomingEdges
+                        |> deleteNode
 
 
 {-| Get the outgoing edges of a given node in the graph in the form of a set of nodes that the edges point to.
