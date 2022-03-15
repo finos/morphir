@@ -151,7 +151,7 @@ deleteModule moduleName repo =
                             |> Dict.remove moduleName
                     , moduleDependencies =
                         repo.moduleDependencies
-                            |> DAG.removeNode moduleName
+                            |> DAG.removeNodeAndSubtrees moduleName
                 }
             )
 

@@ -1,6 +1,5 @@
 module Morphir.Dependency.DAGTests exposing (..)
 
-import Dict
 import Expect
 import Morphir.Dependency.DAG as DAG exposing (DAG)
 import Set
@@ -101,12 +100,12 @@ removeNodeTests : Test
 removeNodeTests =
     let
         depList =
-            [ ( "a", [ "b", "c", "e" ] )
-            , ( "k", [ "e", "j" ] )
+            [ ( "a", [ "b", "c", "e", "k" ] )
+            , ( "k", [ "j" ] )
             , ( "u", [] )
             , ( "b", [] )
             , ( "c", [ "f" ] )
-            , ( "e", [ "f", "g" ] )
+            , ( "e", [ "k", "f", "g" ] )
             , ( "j", [] )
             , ( "x", [] )
             , ( "f", [] )

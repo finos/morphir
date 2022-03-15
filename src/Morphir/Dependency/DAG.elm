@@ -3,7 +3,7 @@ module Morphir.Dependency.DAG exposing
     , empty, insertEdge
     , incomingEdges, outgoingEdges
     , forwardTopologicalOrdering, backwardTopologicalOrdering
-    , insertNode, removeNode
+    , insertNode, removeEdge, removeNode, removeNodeAndSubtrees
     )
 
 {-| This module implements a DAG (Directed Acyclic Graph) data structure with efficient topological ordering and cycle
@@ -39,6 +39,32 @@ the level they are at in the partial ordering.
 -}
 type DAG comparableNode
     = DAG (Dict comparableNode ( Set comparableNode, Int )) (Set comparableNode)
+
+
+
+-- MAYBE NEW STRUCTURE
+
+
+type DAG2 comparableNode
+    = DAG2 (Set ( Node comparableNode, Level ))
+
+
+type Node comparableNode
+    = InnerNode (Set comparableNode)
+    | LeafNode
+
+
+type alias Level =
+    Int
+
+
+type DAG3 comparableNode
+    = DAG3 (Set ( Node comparableNode, Level ))
+
+
+
+--
+--
 
 
 {-| The error that's reported when a cycle is detected in the graph.
@@ -185,12 +211,56 @@ insertNode fromNode toNodes (DAG edges orphanNodes) =
                 |> insertEdges
 
 
-{-| Removes a node from the DAG. The node may be an orphanNode or may have edges.
-If a node with edges is removed, then all outgoing edge nodes are also removed if they have no other incoming edge.
-if the node does not exist within the DAG, then no changes to the DAG is made.
+{-| Removes and edge from one node to another
+If either nodes aren't found, then no change is made to the dag
+-}
+removeEdge : comparableNode -> comparableNode -> DAG comparableNode -> DAG comparableNode
+removeEdge from to graph =
+    graph
+        |> (\(DAG edges orphanNodes) ->
+                DAG
+                    (edges
+                        |> Dict.update from
+                            (Maybe.map
+                                (\( set, level ) ->
+                                    ( set |> Set.remove to, level )
+                                )
+                            )
+                    )
+                    orphanNodes
+           )
+
+
+{-| Remove a node and all incoming and outgoing edges to that node.
+The node may be an orphanNode or may have edges.
+If the node doesn't exist within the DAG, then no changes to the DAG is made.
 -}
 removeNode : comparableNode -> DAG comparableNode -> DAG comparableNode
 removeNode node (DAG edges orphanNodes) =
+    case orphanNodes |> Set.member node of
+        True ->
+            orphanNodes
+                |> Set.remove node
+                |> DAG edges
+
+        False ->
+            case edges |> Dict.get node of
+                Nothing ->
+                    -- TODO: node might be a leaf, so we search for it
+                    DAG edges orphanNodes
+
+                Just _ ->
+                    DAG edges orphanNodes
+                        |> removeIncomingEdges node
+                        |> deleteNode node
+
+
+{-| Removes a node from the DAG. The node may be an orphanNode or may have edges.
+If a node with edges is removed, then all subtrees are also removed if they have no other incoming edge.
+if the node does not exist within the DAG, then no changes to the DAG is made.
+-}
+removeNodeAndSubtrees : comparableNode -> DAG comparableNode -> DAG comparableNode
+removeNodeAndSubtrees node (DAG edges orphanNodes) =
     case orphanNodes |> Set.member node of
         True ->
             orphanNodes
@@ -216,28 +286,34 @@ removeNode node (DAG edges orphanNodes) =
                                             |> (\incomingNodes -> incomingNodes == Set.fromList [ node ])
                                     )
                                 --recursively remove outgoing edges
-                                |> List.foldl removeNode dag
-
-                        removeIncomingEdges dag =
-                            incomingEdges node dag
-                                |> Set.toList
-                                |> List.foldl
-                                    (\n (DAG e ons) ->
-                                        e
-                                            |> Dict.update n (Maybe.map (\( s, l ) -> ( Set.remove node s, l )))
-                                            |> (\modifiedEdges -> DAG modifiedEdges ons)
-                                    )
-                                    dag
-
-                        deleteNode (DAG e ons) =
-                            e
-                                |> Dict.remove node
-                                |> (\modifiedEdges -> DAG modifiedEdges ons)
+                                |> List.foldl removeNodeAndSubtrees dag
                     in
                     DAG edges orphanNodes
                         |> removeOutgoingEdges
-                        |> removeIncomingEdges
-                        |> deleteNode
+                        |> removeIncomingEdges node
+
+
+{-| Remove all outgoing edges for this node
+-}
+removeIncomingEdges : comparableNode -> DAG comparableNode -> DAG comparableNode
+removeIncomingEdges node dag =
+    incomingEdges node dag
+        |> Set.toList
+        |> List.foldl
+            (\from g ->
+                removeEdge from node g
+            )
+            dag
+
+
+{-| delete a node from the dag
+If the node is not in the dag, then no changes are made
+-}
+deleteNode : comparableNode -> DAG comparableNode -> DAG comparableNode
+deleteNode node (DAG e ons) =
+    e
+        |> Dict.remove node
+        |> (\modifiedEdges -> DAG modifiedEdges ons)
 
 
 {-| Get the outgoing edges of a given node in the graph in the form of a set of nodes that the edges point to.
