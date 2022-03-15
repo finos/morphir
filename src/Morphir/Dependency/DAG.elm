@@ -311,17 +311,31 @@ level.
 
 -}
 forwardTopologicalOrdering : DAG comparableNode -> List (List comparableNode)
-forwardTopologicalOrdering (DAG edges _) =
+forwardTopologicalOrdering (DAG edges orphanNodes) =
     let
-        dagList : List ( comparableNode, ( Set comparableNode, Int ) )
-        dagList =
+        edgeList : List ( comparableNode, Int )
+        edgeList =
             edges
                 |> Dict.toList
+                |> List.map
+                    (\( fromNode, ( _, fromNodeLevel ) ) ->
+                        ( fromNode, fromNodeLevel )
+                    )
+
+        orphanNodeList : List ( comparableNode, Int )
+        orphanNodeList =
+            orphanNodes
+                |> Set.toList
+                |> List.map (\n -> ( n, 0 ))
+
+        dagList : List ( comparableNode, Int )
+        dagList =
+            List.concat [ edgeList, orphanNodeList ]
 
         maxLevel : Int
         maxLevel =
             dagList
-                |> List.map (\( _, ( _, level ) ) -> level)
+                |> List.map (\( _, level ) -> level)
                 |> List.maximum
                 |> Maybe.withDefault 0
     in
@@ -330,7 +344,7 @@ forwardTopologicalOrdering (DAG edges _) =
             (\level ->
                 dagList
                     |> List.filterMap
-                        (\( fromNode, ( _, fromNodeLevel ) ) ->
+                        (\( fromNode, fromNodeLevel ) ->
                             if fromNodeLevel == level then
                                 Just fromNode
 
