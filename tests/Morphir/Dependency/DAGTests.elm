@@ -3,6 +3,7 @@ module Morphir.Dependency.DAGTests exposing (..)
 import Dict
 import Expect
 import Morphir.Dependency.DAG as DAG exposing (DAG)
+import Set
 import Test exposing (Test, describe, test)
 
 
@@ -92,5 +93,62 @@ insertEdgeTests =
             [ ( "A", "B" )
             , ( "B", "C" )
             , ( "C", "A" )
+            ]
+        ]
+
+
+removeNodeTests : Test
+removeNodeTests =
+    let
+        depList =
+            [ ( "a", [ "b", "c", "e" ] )
+            , ( "k", [ "e", "j" ] )
+            , ( "u", [] )
+            , ( "b", [] )
+            , ( "c", [ "f" ] )
+            , ( "e", [ "f", "g" ] )
+            , ( "j", [] )
+            , ( "x", [] )
+            , ( "f", [] )
+            , ( "g", [ "h", "i" ] )
+            , ( "h", [] )
+            , ( "i", [] )
+            ]
+
+        buildGraph : Result DAG.CycleDetected (DAG String)
+        buildGraph =
+            depList
+                |> List.foldl
+                    (\( from, toList ) dagSoFar ->
+                        dagSoFar
+                            |> Result.andThen
+                                (toList
+                                    |> Set.fromList
+                                    |> DAG.insertNode from
+                                )
+                    )
+                    (Ok DAG.empty)
+
+        runTestWithRemoveNode : String -> String -> List (List String) -> Test
+        runTestWithRemoveNode title nodeToRemove expected =
+            test title
+                (\_ ->
+                    case buildGraph of
+                        Ok g ->
+                            g
+                                |> DAG.removeNode nodeToRemove
+                                |> DAG.forwardTopologicalOrdering
+                                |> Expect.equal expected
+
+                        Err _ ->
+                            Expect.fail "CycleDetected Error"
+                )
+    in
+    describe "should remove nodes"
+        [ runTestWithRemoveNode "remove e node"
+            "e"
+            [ [ "a", "k", "u" ]
+            , [ "b", "c", "j", "x" ]
+            , [ "f" ]
             ]
         ]
