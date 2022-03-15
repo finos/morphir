@@ -144,10 +144,25 @@ removeNodeTests =
                 )
     in
     describe "should remove nodes"
-        [ runTestWithRemoveNode "remove e node"
+        [ runTestWithRemoveNode "remove e node from edges"
             "e"
-            [ [ "a", "k", "u" ]
-            , [ "b", "c", "j", "x" ]
-            , [ "f" ]
+            [ [ "a", "u", "x" ]
+            , [ "b", "c" ]
+            , [ "f", "g", "k" ]
+            , [ "h", "i", "j" ]
+            ]
+        , runTestWithRemoveNode "removes x node from orphanNodes"
+            "x"
+            [ [ "a", "u" ]
+            , [ "b", "c", "e" ]
+            , [ "f", "g", "k" ]
+            , [ "h", "i", "j" ]
+            ]
+        , runTestWithRemoveNode "remove j node from edges"
+            "j"
+            [ [ "a", "u", "x" ]
+            , [ "b", "c", "e" ]
+            , [ "f", "g", "k" ]
+            , [ "h", "i" ]
             ]
         ]
