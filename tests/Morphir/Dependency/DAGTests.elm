@@ -173,3 +173,63 @@ removeNodeTests =
             , [ "h", "i", "j" ]
             ]
         ]
+
+
+incomingEdgesTests : Test
+incomingEdgesTests =
+    let
+        depList =
+            [ ( "a", [ "b", "c", "e" ] )
+            , ( "u", [] )
+            , ( "x", [ "y" ] )
+            , ( "b", [] )
+            , ( "c", [ "f" ] )
+            , ( "e", [ "k", "f", "g" ] )
+            , ( "f", [] )
+            , ( "g", [ "h", "i", "j" ] )
+            , ( "k", [ "j" ] )
+            , ( "j", [] )
+            , ( "h", [] )
+            , ( "i", [] )
+            ]
+
+        buildGraph : Result DAG.CycleDetected (DAG String)
+        buildGraph =
+            depList
+                |> List.foldl
+                    (\( from, toList ) dagSoFar ->
+                        dagSoFar
+                            |> Result.andThen
+                                (toList
+                                    |> Set.fromList
+                                    |> DAG.insertNode from
+                                )
+                    )
+                    (Ok DAG.empty)
+
+        runTestWithIncomingEdges : String -> String -> List String -> Test
+        runTestWithIncomingEdges title node expected =
+            test title
+                (\_ ->
+                    case buildGraph of
+                        Ok g ->
+                            g
+                                |> DAG.incomingEdges node
+                                |> Set.toList
+                                |> Expect.equal expected
+
+                        Err _ ->
+                            Expect.fail "CycleDetected Error"
+                )
+    in
+    describe "Incoming Edges"
+        [ runTestWithIncomingEdges "should return incoming edges for leaf node 'i'"
+            "j"
+            [ "g", "k" ]
+        , runTestWithIncomingEdges "should return incoming edges for leaf node 'h'"
+            "h"
+            [ "g" ]
+        , runTestWithIncomingEdges "should return no incoming edges for root node 'a'"
+            "a"
+            []
+        ]
