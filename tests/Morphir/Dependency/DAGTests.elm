@@ -6,6 +6,37 @@ import Set
 import Test exposing (Test, describe, test)
 
 
+depList =
+    [ ( "a", [ "b", "c", "e", "k" ] )
+    , ( "k", [ "j" ] )
+    , ( "u", [] )
+    , ( "b", [] )
+    , ( "c", [ "f" ] )
+    , ( "e", [ "k", "f", "g" ] )
+    , ( "j", [] )
+    , ( "x", [] )
+    , ( "f", [] )
+    , ( "g", [ "h", "i" ] )
+    , ( "h", [] )
+    , ( "i", [] )
+    ]
+
+
+buildDAGOfDepList : Result DAG.CycleDetected (DAG String)
+buildDAGOfDepList =
+    depList
+        |> List.foldl
+            (\( from, toList ) dagSoFar ->
+                dagSoFar
+                    |> Result.andThen
+                        (toList
+                            |> Set.fromList
+                            |> DAG.insertNode from
+                        )
+            )
+            (Ok DAG.empty)
+
+
 insertEdgeTests : Test
 insertEdgeTests =
     let
@@ -99,40 +130,11 @@ insertEdgeTests =
 removeNodeTests : Test
 removeNodeTests =
     let
-        depList =
-            [ ( "a", [ "b", "c", "e", "k" ] )
-            , ( "k", [ "j" ] )
-            , ( "u", [] )
-            , ( "b", [] )
-            , ( "c", [ "f" ] )
-            , ( "e", [ "k", "f", "g" ] )
-            , ( "j", [] )
-            , ( "x", [] )
-            , ( "f", [] )
-            , ( "g", [ "h", "i" ] )
-            , ( "h", [] )
-            , ( "i", [] )
-            ]
-
-        buildGraph : Result DAG.CycleDetected (DAG String)
-        buildGraph =
-            depList
-                |> List.foldl
-                    (\( from, toList ) dagSoFar ->
-                        dagSoFar
-                            |> Result.andThen
-                                (toList
-                                    |> Set.fromList
-                                    |> DAG.insertNode from
-                                )
-                    )
-                    (Ok DAG.empty)
-
         runTestWithRemoveNode : String -> String -> List (List String) -> Test
         runTestWithRemoveNode title nodeToRemove expected =
             test title
                 (\_ ->
-                    case buildGraph of
+                    case buildDAGOfDepList of
                         Ok g ->
                             g
                                 |> DAG.removeNode nodeToRemove
@@ -178,40 +180,11 @@ removeNodeTests =
 incomingEdgesTests : Test
 incomingEdgesTests =
     let
-        depList =
-            [ ( "a", [ "b", "c", "e" ] )
-            , ( "u", [] )
-            , ( "x", [ "y" ] )
-            , ( "b", [] )
-            , ( "c", [ "f" ] )
-            , ( "e", [ "k", "f", "g" ] )
-            , ( "f", [] )
-            , ( "g", [ "h", "i", "j" ] )
-            , ( "k", [ "j" ] )
-            , ( "j", [] )
-            , ( "h", [] )
-            , ( "i", [] )
-            ]
-
-        buildGraph : Result DAG.CycleDetected (DAG String)
-        buildGraph =
-            depList
-                |> List.foldl
-                    (\( from, toList ) dagSoFar ->
-                        dagSoFar
-                            |> Result.andThen
-                                (toList
-                                    |> Set.fromList
-                                    |> DAG.insertNode from
-                                )
-                    )
-                    (Ok DAG.empty)
-
         runTestWithIncomingEdges : String -> String -> List String -> Test
         runTestWithIncomingEdges title node expected =
             test title
                 (\_ ->
-                    case buildGraph of
+                    case buildDAGOfDepList of
                         Ok g ->
                             g
                                 |> DAG.incomingEdges node
@@ -238,40 +211,11 @@ incomingEdgesTests =
 outgoingEdgeTests : Test
 outgoingEdgeTests =
     let
-        depList =
-            [ ( "a", [ "b", "c", "e" ] )
-            , ( "u", [] )
-            , ( "x", [ "y" ] )
-            , ( "b", [] )
-            , ( "c", [ "f" ] )
-            , ( "e", [ "k", "f", "g" ] )
-            , ( "f", [] )
-            , ( "g", [ "h", "i", "j" ] )
-            , ( "k", [ "j" ] )
-            , ( "j", [] )
-            , ( "h", [] )
-            , ( "i", [] )
-            ]
-
-        buildGraph : Result DAG.CycleDetected (DAG String)
-        buildGraph =
-            depList
-                |> List.foldl
-                    (\( from, toList ) dagSoFar ->
-                        dagSoFar
-                            |> Result.andThen
-                                (toList
-                                    |> Set.fromList
-                                    |> DAG.insertNode from
-                                )
-                    )
-                    (Ok DAG.empty)
-
         runTestWithOutgoingEdges : String -> String -> List String -> Test
         runTestWithOutgoingEdges title node expected =
             test title
                 (\_ ->
-                    case buildGraph of
+                    case buildDAGOfDepList of
                         Ok g ->
                             g
                                 |> DAG.outgoingEdges node
