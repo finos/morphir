@@ -233,3 +233,69 @@ incomingEdgesTests =
             "a"
             []
         ]
+
+
+outgoingEdgeTests : Test
+outgoingEdgeTests =
+    let
+        depList =
+            [ ( "a", [ "b", "c", "e" ] )
+            , ( "u", [] )
+            , ( "x", [ "y" ] )
+            , ( "b", [] )
+            , ( "c", [ "f" ] )
+            , ( "e", [ "k", "f", "g" ] )
+            , ( "f", [] )
+            , ( "g", [ "h", "i", "j" ] )
+            , ( "k", [ "j" ] )
+            , ( "j", [] )
+            , ( "h", [] )
+            , ( "i", [] )
+            ]
+
+        buildGraph : Result DAG.CycleDetected (DAG String)
+        buildGraph =
+            depList
+                |> List.foldl
+                    (\( from, toList ) dagSoFar ->
+                        dagSoFar
+                            |> Result.andThen
+                                (toList
+                                    |> Set.fromList
+                                    |> DAG.insertNode from
+                                )
+                    )
+                    (Ok DAG.empty)
+
+        runTestWithOutgoingEdges : String -> String -> List String -> Test
+        runTestWithOutgoingEdges title node expected =
+            test title
+                (\_ ->
+                    case buildGraph of
+                        Ok g ->
+                            g
+                                |> DAG.outgoingEdges node
+                                |> Set.toList
+                                |> Expect.equal expected
+
+                        Err _ ->
+                            Expect.fail "CycleDetected Error"
+                )
+    in
+    describe "Outgoing Edges"
+        [ runTestWithOutgoingEdges "should return no outgoing edges for leaf node 'i'"
+            "j"
+            []
+        , runTestWithOutgoingEdges "should return no outgoing edges for leaf node 'b'"
+            "b"
+            []
+        , runTestWithOutgoingEdges "should return outgoing edges for root node 'a'"
+            "a"
+            [ "b", "c", "e" ]
+        , runTestWithOutgoingEdges "should return outgoing edges for root node 'x'"
+            "x"
+            [ "y" ]
+        , runTestWithOutgoingEdges "should return no outgoing edges for isolated node 'u'"
+            "u"
+            []
+        ]
