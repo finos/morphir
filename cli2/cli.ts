@@ -11,7 +11,7 @@ const makeDir = util.promisify(fs.mkdir)
 const readFile = util.promisify(fs.readFile)
 const accessFile = util.promisify(fs.access)
 
-const worker = require('../Morphir.Elm.CLI').Elm.Morphir.Elm.Cli.init()
+const worker = require('./../Morphir.Elm.CLI').Elm.Morphir.Elm.Cli.init()
 
 async function make(projectDir: string, options: any) {
     const morphirJsonPath: string = path.join(projectDir, 'morphir.json')
