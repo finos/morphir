@@ -14,7 +14,8 @@
     "ncc-morphir": "ncc build cli/morphir.js -o dist/morphir",
     "ncc-morphir-server": "ncc build cli/morphir-elm-develop.js -o dist/morphir-server",
     "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server && npx jest -- cli.test.ts",
-    "build-cli": "cd cli2 && tsc"
+    "build-cli": "cd cli2 && tsc",
+    "test-coverage": "elm-coverage src/ --open"
   },
   "repository": {
     "type": "git",
@@ -60,8 +61,9 @@
     "@vercel/ncc": "^0.24.1",
     "del-cli": "3.0.1",
     "elm": "^0.19.1-5",
+    "elm-coverage": "^0.4.1",
     "elm-doc-preview": "^3.0.4",
-    "elm-test": "^0.19.1-revision6",
+    "elm-test": "^0.19.1-revision7",
     "execa": "^5.1.1",
     "gulp": "^4.0.2",
     "gulp-mocha": "^8.0.0",

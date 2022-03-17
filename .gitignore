@@ -13,3 +13,4 @@ cli/treeStuff.js
 cli/index.html
 lib
 
+/.coverage/
