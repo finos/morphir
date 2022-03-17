@@ -12,5 +12,6 @@ cli/web/insightapp.js
 cli/treeStuff.js
 cli/index.html
 lib
+Morphir.Elm.CLI.js
 
 /.coverage/

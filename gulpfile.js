@@ -56,6 +56,10 @@ function makeCLI() {
     return make('cli', 'src/Morphir/Elm/CLI.elm', 'Morphir.Elm.CLI.js')
 }
 
+ function makeCLI2() {
+     return make('cli2', 'src/Morphir/Elm/CLI.elm', 'Morphir.Elm.CLI.js')
+ }
+
 function makeDevCLI() {
     return make('cli', 'src/Morphir/Elm/DevCLI.elm', 'Morphir.Elm.DevCLI.js')
 }
@@ -82,6 +86,7 @@ const build =
         checkElmDocs,
         makeCLI,
         makeDevCLI,
+         makeCLI2,
         makeDevServer,
         makeDevServerAPI,
         makeInsightAPI,
@@ -97,6 +102,15 @@ function morphirElmMake(projectDir, outputPath, options = {}) {
     console.log("Running: " + args.join(' '));
     return execa('node', args, { stdio })
 }
+
+ function morphirElmMake2(projectDir, outputPath, options = {}) {
+     args = ['./cli2/lib/morphir.js', 'make', '-p', projectDir, '-o', outputPath]
+     if (options.typesOnly) {
+         args.push('--types-only')
+     }
+     console.log("Running: " + args.join(' '));
+     return execa('node', args, { stdio })
+ }
 
 function morphirElmGen(inputPath, outputDir, target) {
     args = ['./cli/morphir-elm.js', 'gen', '-i', inputPath, '-o', outputDir, '-t', target]
@@ -222,6 +236,7 @@ const test =
 exports.clean = clean;
 exports.makeCLI = makeCLI;
 exports.makeDevCLI = makeDevCLI;
+ exports.makeCLI2 = makeCLI2;
 exports.build = build;
 exports.test = test;
 exports.testIntegration = testIntegration;
