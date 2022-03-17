@@ -14,3 +14,4 @@ cli/index.html
 lib
 Morphir.Elm.CLI.js
 
+/.coverage/
