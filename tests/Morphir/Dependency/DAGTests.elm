@@ -14,7 +14,7 @@ depList =
     , ( "c", [ "f" ] )
     , ( "e", [ "k", "f", "g" ] )
     , ( "j", [] )
-    , ( "x", [] )
+    , ( "x", [ "y" ] )
     , ( "f", [] )
     , ( "g", [ "h", "i" ] )
     , ( "h", [] )
@@ -149,28 +149,28 @@ removeNodeTests =
         [ runTestWithRemoveNode "remove 'e' node"
             "e"
             [ [ "a", "u", "x" ]
-            , [ "b", "c" ]
+            , [ "b", "c", "y" ]
             , [ "f", "g", "k" ]
             , [ "h", "i", "j" ]
             ]
         , runTestWithRemoveNode "removes 'x' node"
             "x"
             [ [ "a", "u" ]
-            , [ "b", "c", "e" ]
+            , [ "b", "c", "e", "y" ]
             , [ "f", "g", "k" ]
             , [ "h", "i", "j" ]
             ]
         , runTestWithRemoveNode "remove 'j' node"
             "j"
             [ [ "a", "u", "x" ]
-            , [ "b", "c", "e" ]
+            , [ "b", "c", "e", "y" ]
             , [ "f", "g", "k" ]
             , [ "h", "i" ]
             ]
         , runTestWithRemoveNode "remove 'a' node"
             "a"
             [ [ "u", "x" ]
-            , [ "b", "c", "e" ]
+            , [ "b", "c", "e", "y" ]
             , [ "f", "g", "k" ]
             , [ "h", "i", "j" ]
             ]
@@ -197,8 +197,8 @@ incomingEdgesTests =
     in
     describe "Incoming Edges"
         [ runTestWithIncomingEdges "should return incoming edges for leaf node 'i'"
-            "j"
-            [ "g", "k" ]
+            "i"
+            [ "g" ]
         , runTestWithIncomingEdges "should return incoming edges for leaf node 'h'"
             "h"
             [ "g" ]
@@ -235,7 +235,7 @@ outgoingEdgeTests =
             []
         , runTestWithOutgoingEdges "should return outgoing edges for root node 'a'"
             "a"
-            [ "b", "c", "e" ]
+            [ "b", "c", "e", "k" ]
         , runTestWithOutgoingEdges "should return outgoing edges for root node 'x'"
             "x"
             [ "y" ]
