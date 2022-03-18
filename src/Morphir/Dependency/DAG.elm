@@ -184,6 +184,7 @@ removeEdge from to (DAG edgesByNode) =
                 )
             )
         |> DAG
+        |> rebuild
 
 
 {-| Remove a node and all incoming and outgoing edges to that node.
@@ -200,6 +201,7 @@ removeNode node (DAG edges) =
             DAG edges
                 |> removeIncomingEdges node
                 |> deleteNode node
+                |> rebuild
 
 
 {-| Remove all incoming edges for this node
@@ -213,6 +215,21 @@ removeIncomingEdges node dag =
                 removeEdge from node g
             )
             dag
+
+
+{-| builds a new dag from an existing one.
+useful for re-leveling a dag.
+The assumption is that the DAG is in a valid state and has no cycles.
+-}
+rebuild : DAG comparableNode -> DAG comparableNode
+rebuild (DAG d) =
+    Dict.toList d
+        |> List.foldl
+            (\( fromNode, ( toNodes, l ) ) newDagSoFar ->
+                insertNode fromNode toNodes newDagSoFar
+                    |> Result.withDefault newDagSoFar
+            )
+            empty
 
 
 {-| delete a node and it's outgoingEdges from the dag.
