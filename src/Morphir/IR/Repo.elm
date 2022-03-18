@@ -1,15 +1,18 @@
 module Morphir.IR.Repo exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.Dependency.DAG as DAG exposing (DAG)
+import Elm.Syntax.Module exposing (Module)
+import Morphir.Dependency.DAG as DAG exposing (CycleDetected, DAG)
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented as Documented
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Value as Value
 import Morphir.Value.Native as Native
 import Set exposing (Set)
 
@@ -20,6 +23,8 @@ type alias Repo =
     , modules : Dict ModuleName (AccessControlled (Module.Definition () (Type ())))
     , moduleDependencies : DAG ModuleName
     , nativeFunctions : Dict FQName Native.Function
+    , typeDependencies : DAG FQName
+    , valueDependencies : DAG FQName
     }
 
 
@@ -36,6 +41,8 @@ type Error
     | ModuleHasDependents ModuleName (Set ModuleName)
     | ModuleAlreadyExist ModuleName
     | TypeAlreadyExist Name
+    | TypeCycleDetected String
+    | ValueCycleDetected String
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -47,6 +54,8 @@ empty packageName =
     , modules = Dict.empty
     , nativeFunctions = Dict.empty
     , moduleDependencies = DAG.empty
+    , typeDependencies = DAG.empty
+    , valueDependencies = DAG.empty
     }
 
 
@@ -156,6 +165,11 @@ deleteModule moduleName repo =
             )
 
 
+{-|
+
+    This inserts a new type signature into the model
+
+-}
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef repo =
     case repo.modules |> Dict.get moduleName of
@@ -166,6 +180,15 @@ insertType moduleName typeName typeDef repo =
 
                 Nothing ->
                     let
+                        typeNameAsString =
+                            typeName |> Name.toTitleCase
+
+                        moduleNameAsString =
+                            moduleName |> Path.toString Name.toTitleCase "."
+
+                        packageNameAsString =
+                            repo.packageName |> Path.toString Name.toTitleCase "."
+
                         updateModule : Maybe (AccessControlled (Module.Definition () (Type ()))) -> Maybe (AccessControlled (Module.Definition () (Type ())))
                         updateModule maybeModuleDefinition =
                             maybeModuleDefinition
@@ -182,12 +205,72 @@ insertType moduleName typeName typeDef repo =
                                                 )
                                     )
                     in
-                    Ok
-                        { repo
-                            | modules =
-                                repo.modules
-                                    |> Dict.update moduleName updateModule
-                        }
+                    repo.typeDependencies
+                        |> DAG.insertNode (FQName.fqn packageNameAsString moduleNameAsString typeNameAsString) Set.empty
+                        |> Result.map
+                            (\updatedTypeDependency ->
+                                { repo
+                                    | modules =
+                                        repo.modules
+                                            |> Dict.update moduleName updateModule
+                                    , typeDependencies =
+                                        updatedTypeDependency
+                                }
+                            )
+                        |> Result.mapError (always [ TypeCycleDetected typeNameAsString ])
+
+        Nothing ->
+            Err [ ModuleNotFound moduleName ]
+
+
+insertValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
+insertValue moduleName valueName valueDef repo =
+    case repo.modules |> Dict.get moduleName of
+        Just modDefinition ->
+            case modDefinition.value.values |> Dict.get valueName of
+                Just _ ->
+                    Err [ TypeAlreadyExist valueName ]
+
+                Nothing ->
+                    let
+                        valueNameAsString =
+                            valueName |> Name.toTitleCase
+
+                        moduleNameAsString =
+                            moduleName |> Path.toString Name.toTitleCase "."
+
+                        packageNameAsString =
+                            repo.packageName |> Path.toString Name.toTitleCase "."
+
+                        updateModule : Maybe (AccessControlled (Module.Definition () (Type ()))) -> Maybe (AccessControlled (Module.Definition () (Type ())))
+                        updateModule maybeModuleDefinition =
+                            maybeModuleDefinition
+                                |> Maybe.map
+                                    (\accessControlledModuleDef ->
+                                        accessControlledModuleDef
+                                            |> AccessControlled.map
+                                                (\moduleDef ->
+                                                    { moduleDef
+                                                        | values =
+                                                            modDefinition.value.values
+                                                                |> Dict.insert valueName (public valueDef)
+                                                    }
+                                                )
+                                    )
+                    in
+                    repo.typeDependencies
+                        |> DAG.insertNode (FQName.fqn packageNameAsString moduleNameAsString valueNameAsString) Set.empty
+                        |> Result.map
+                            (\updatedValueDependency ->
+                                { repo
+                                    | modules =
+                                        repo.modules
+                                            |> Dict.update moduleName updateModule
+                                    , valueDependencies =
+                                        updatedValueDependency
+                                }
+                            )
+                        |> Result.mapError (always [ ValueCycleDetected valueNameAsString ])
 
         Nothing ->
             Err [ ModuleNotFound moduleName ]
