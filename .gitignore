@@ -13,5 +13,5 @@ cli/treeStuff.js
 cli/index.html
 lib
 Morphir.Elm.CLI.js
-
+docs.json
 /.coverage/
