@@ -165,10 +165,7 @@ deleteModule moduleName repo =
             )
 
 
-{-|
-
-    This inserts a new type signature into the model
-
+{-| Insert types into repo modules and update the type dependency graph of the repo |
 -}
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef repo =
@@ -223,6 +220,8 @@ insertType moduleName typeName typeDef repo =
             Err [ ModuleNotFound moduleName ]
 
 
+{-| Insert values into repo modules and update the value dependency graph of the repo |
+-}
 insertValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
 insertValue moduleName valueName valueDef repo =
     case repo.modules |> Dict.get moduleName of
