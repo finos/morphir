@@ -11,7 +11,7 @@ const elmMake = require('node-elm-compiler').compile
 const execa = require('execa');
 const mocha = require('gulp-mocha');
 const ts = require('gulp-typescript');
-const tsProject = ts.createProject('./tsconfig.json')
+const tsProject = ts.createProject('./cli2/tsconfig.json')
 
 const config = {
     morphirJvmVersion: '0.7.1',
@@ -86,7 +86,7 @@ const build =
         checkElmDocs,
         makeCLI,
         makeDevCLI,
-         makeCLI2,
+        makeCLI2,
         makeDevServer,
         makeDevServerAPI,
         makeInsightAPI,
@@ -121,6 +121,10 @@ function morphirElmGen(inputPath, outputDir, target) {
 
 async function testUnit(cb) {
     await execa('elm-test');
+}
+
+async function compileCli2Ts(cb) {
+     src('./cli2/*.ts').pipe(tsProject()).pipe(dest('./cli2/lib/'))
 }
 
 function testIntegrationClean() {
@@ -229,6 +233,7 @@ testMorphirIR = series(
 const test =
     parallel(
         testUnit,
+        compileCli2Ts,
         testIntegration,
         testMorphirIR,
     )
