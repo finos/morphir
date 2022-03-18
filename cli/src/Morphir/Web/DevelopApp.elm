@@ -1145,7 +1145,7 @@ viewHome model packageName packageDef =
                                     (\accessControlledModuleDef ->
                                         accessControlledModuleDef.value.values
                                             |> Dict.get valueName
-                                            |> Maybe.map (.value >> viewValue model.theme moduleName valueName)
+                                            |> Maybe.map (.value >> .value >> viewValue model.theme moduleName valueName)
                                     )
                                 |> Maybe.withDefault none
 

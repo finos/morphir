@@ -93,7 +93,7 @@ A module contains types and values which is represented by two field in this typ
 -}
 type alias Specification ta =
     { types : Dict Name (Documented (Type.Specification ta))
-    , values : Dict Name (Value.Specification ta)
+    , values : Dict Name (Documented (Value.Specification ta))
     }
 
 
@@ -114,10 +114,11 @@ A module contains types and values which is represented by two field in this typ
   - types: a dictionary of local name to access controlled, documented type specification.
   - values: a dictionary of local name to access controlled value specification.
 
+Type variables ta and va refer to type annotation and value annotation
 -}
 type alias Definition ta va =
     { types : Dict Name (AccessControlled (Documented (Type.Definition ta)))
-    , values : Dict Name (AccessControlled (Value.Definition ta va))
+    , values : Dict Name (AccessControlled (Documented  (Value.Definition ta va)))
     }
 
 
@@ -145,6 +146,7 @@ lookupValueSpecification : Name -> Specification ta -> Maybe (Value.Specificatio
 lookupValueSpecification localName moduleSpec =
     moduleSpec.values
         |> Dict.get localName
+        |> Maybe.map .value
 
 
 {-| Look up a value definition by its name in a module specification.
@@ -153,7 +155,7 @@ lookupValueDefinition : Name -> Definition ta va -> Maybe (Value.Definition ta v
 lookupValueDefinition localName moduleDef =
     moduleDef.values
         |> Dict.get localName
-        |> Maybe.map withPrivateAccess
+        |> Maybe.map (withPrivateAccess >> .value)
 
 
 {-| Turn a module definition into a module specification. Only publicly exposed types and values will be included in the
@@ -183,7 +185,7 @@ definitionToSpecification def =
                         |> withPublicAccess
                         |> Maybe.map
                             (\valueDef ->
-                                ( path, Value.definitionToSpecification valueDef )
+                                ( path, valueDef |> Documented.map Value.definitionToSpecification )
                             )
                 )
             |> Dict.fromList
@@ -215,7 +217,7 @@ definitionToSpecificationWithPrivate def =
                     ( path
                     , accessControlledValue
                         |> withPrivateAccess
-                        |> Value.definitionToSpecification
+                        |> Documented.map Value.definitionToSpecification
                     )
                 )
             |> Dict.fromList
@@ -251,7 +253,7 @@ mapSpecificationAttributes tf spec =
         (spec.values
             |> Dict.map
                 (\_ valueSpec ->
-                    Value.mapSpecificationAttributes tf valueSpec
+                    valueSpec |> Documented.map (Value.mapSpecificationAttributes tf)
                 )
         )
 
@@ -271,7 +273,7 @@ mapDefinitionAttributes tf vf def =
             |> Dict.map
                 (\_ valueDef ->
                     AccessControlled valueDef.access
-                        (Value.mapDefinitionAttributes tf vf valueDef.value)
+                        ( valueDef.value |> Documented.map (Value.mapDefinitionAttributes tf vf))
                 )
         )
 
@@ -309,8 +311,8 @@ collectTypeReferences moduleDef =
                 |> Dict.values
                 |> List.concatMap
                     (\valueDef ->
-                        valueDef.value.outputType
-                            :: (valueDef.value.inputTypes |> List.map (\( _, _, tpe ) -> tpe))
+                        valueDef.value.value.outputType
+                            :: (valueDef.value.value.inputTypes |> List.map (\( _, _, tpe ) -> tpe))
                             |> List.map Type.collectReferences
                     )
                 |> List.foldl Set.union Set.empty
@@ -326,7 +328,7 @@ collectValueReferences moduleDef =
         |> Dict.values
         |> List.map
             (\valueDef ->
-                Value.collectReferences valueDef.value.body
+                Value.collectReferences valueDef.value.value.body
             )
         |> List.foldl Set.union Set.empty
 

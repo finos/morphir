@@ -1,16 +1,14 @@
 module Morphir.Web.DevelopApp.ModulePage exposing (..)
 
 import Dict exposing (Dict)
-import Element exposing (Element, alignRight, alignTop, column, el, explain, fill, height, link, padding, paddingXY, rgb, row, scrollbars, shrink, spacing, text, width, wrappedRow)
+import Element exposing (Element, alignTop, column, el, fill, height, link, padding, paddingXY, rgb, row, scrollbars, shrink, spacing, text, width, wrappedRow)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font
 import Element.Input as Input exposing (labelHidden)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue)
 import Morphir.Visual.Common exposing (nameToText)
@@ -152,15 +150,15 @@ viewPage theme handlers valueFilterChanged ((Library packageName _ packageDef) a
                                                         , middle = []
                                                         , right = [ theme |> Theme.button (handlers.jumpToTestCases valueFQName) "Scenarios" theme.colors.primaryHighlight ]
                                                         }
-                                                    , viewArgumentEditors ir handlers model valueFQName accessControlledValueDef.value
+                                                    , viewArgumentEditors ir handlers model valueFQName accessControlledValueDef.value.value
                                                     ]
                                                 )
                                                 (case model.viewType of
                                                     InsightView ->
-                                                        viewValue handlers model distribution valueFQName accessControlledValueDef.value
+                                                        viewValue handlers model distribution valueFQName accessControlledValueDef.value.value
 
                                                     XRayView ->
-                                                        XRayView.viewValueDefinition XRayView.viewType accessControlledValueDef
+                                                        XRayView.viewValueDefinition XRayView.viewType accessControlledValueDef.value.value
                                                 )
                                             )
                                         )

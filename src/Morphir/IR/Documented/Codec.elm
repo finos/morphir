@@ -32,6 +32,10 @@ encodeDocumented encodeValue d =
 
 decodeDocumented : Decode.Decoder a -> Decode.Decoder (Documented a)
 decodeDocumented decodeValue =
-    Decode.map2 Documented
+   Decode.oneOf
+    [( Decode.map2 Documented
         (Decode.field "doc" Decode.string)
-        (Decode.field "value" decodeValue)
+        (Decode.field "value" decodeValue))
+    , ( Decode.map (Documented "")
+        (decodeValue))
+    ]

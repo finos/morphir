@@ -230,16 +230,16 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                             , name =
                                 mapValueName valueName
                             , typeArgs =
-                                accessControlledValueDef.value.inputTypes
+                                accessControlledValueDef.value.value.inputTypes
                                     |> List.map (\( _, _, tpe ) -> tpe)
-                                    |> (::) accessControlledValueDef.value.outputType
+                                    |> (::) accessControlledValueDef.value.value.outputType
                                     |> gatherAllTypeNames
                             , args =
-                                if List.isEmpty accessControlledValueDef.value.inputTypes then
+                                if List.isEmpty accessControlledValueDef.value.value.inputTypes then
                                     []
 
                                 else
-                                    accessControlledValueDef.value.inputTypes
+                                    accessControlledValueDef.value.value.inputTypes
                                         |> List.map
                                             (\( argName, a, argType ) ->
                                                 [ { modifiers = []
@@ -250,9 +250,9 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                                                 ]
                                             )
                             , returnType =
-                                Just (mapType accessControlledValueDef.value.outputType)
+                                Just (mapType accessControlledValueDef.value.value.outputType)
                             , body =
-                                Just (mapFunctionBody distribution accessControlledValueDef.value)
+                                Just (mapFunctionBody distribution accessControlledValueDef.value.value)
                             }
                         ]
                     )

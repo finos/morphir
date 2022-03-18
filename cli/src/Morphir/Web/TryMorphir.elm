@@ -287,11 +287,11 @@ viewModuleDefinition viewAttribute moduleDef irView =
                                     , Background.color (rgb 1 0.9 0.8)
                                     ]
                                     [ text ":"
-                                    , XRayView.viewType valueDef.value.outputType
+                                    , XRayView.viewType valueDef.value.value.outputType
                                     ]
                                 ]
                             )
-                        , if List.isEmpty valueDef.value.inputTypes then
+                        , if List.isEmpty valueDef.value.value.inputTypes then
                             none
 
                           else
@@ -301,7 +301,7 @@ viewModuleDefinition viewAttribute moduleDef irView =
                                 , Background.color (rgb 0.95 0.95 0.95)
                                 , width fill
                                 ]
-                                (valueDef.value.inputTypes
+                                (valueDef.value.value.inputTypes
                                     |> List.map
                                         (\( argName, _, argType ) ->
                                             row []
@@ -324,14 +324,14 @@ viewModuleDefinition viewAttribute moduleDef irView =
                             , Background.color (rgb 1 1 1)
                             , width fill
                             ]
-                            (viewValue irView valueDef)
+                            (viewValue irView valueDef.value.value)
                         ]
                 )
             |> column [ spacing 20 ]
         ]
 
 
-viewValue : IRView -> AccessControlled (Value.Definition () (Type ())) -> Element Msg
+viewValue : IRView -> Value.Definition () (Type ()) -> Element Msg
 viewValue irView valueDef =
     case irView of
         VisualView ->
@@ -348,7 +348,7 @@ viewValue irView valueDef =
                 valueDef
 
         JsonView ->
-            ValueCodec.encodeValue (always Encode.null) (TypeCodec.encodeType (always Encode.null)) valueDef.value.body
+            ValueCodec.encodeValue (always Encode.null) (TypeCodec.encodeType (always Encode.null)) valueDef.body
                 |> Encode.encode 2
                 |> text
 
