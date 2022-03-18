@@ -14,7 +14,6 @@
     "ncc-morphir": "ncc build cli/morphir.js -o dist/morphir",
     "ncc-morphir-server": "ncc build cli/morphir-elm-develop.js -o dist/morphir-server",
     "build": "gulp && npm run ncc-morphir && npm run ncc-morphir-server && npx jest -- cli.test.ts",
-    "build-cli": "cd cli2 && tsc && elm make src/Morphir/Elm/CLI.elm --output=Morphir.Elm.CLI.js && cd ..",
     "test-coverage": "elm-coverage src/ --open"
   },
   "repository": {
