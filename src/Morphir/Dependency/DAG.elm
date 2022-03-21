@@ -47,8 +47,8 @@ type alias Level =
 
 {-| The error that's reported when a cycle is detected in the graph.
 -}
-type CycleDetected
-    = CycleDetected
+type CycleDetected comparableNode
+    = CycleDetected comparableNode comparableNode
 
 
 {-| Creates an empty DAG with no nodes or edges.
@@ -61,7 +61,7 @@ empty =
 {-| Inserts an edge defined by the from and to nodes. Returns an error if a cycle would be formed by the edge.
 This design makes sure that a DAG cannot possibly have cycles in it since there is no way to create such a DAG.
 -}
-insertEdge : comparableNode -> comparableNode -> DAG comparableNode -> Result CycleDetected (DAG comparableNode)
+insertEdge : comparableNode -> comparableNode -> DAG comparableNode -> Result (CycleDetected comparableNode) (DAG comparableNode)
 insertEdge from to (DAG edgesByNodes) =
     let
         shiftTransitively : Int -> comparableNode -> DAG comparableNode -> DAG comparableNode
@@ -87,7 +87,7 @@ insertEdge from to (DAG edgesByNodes) =
     case edgesByNodes |> Dict.get to of
         Just ( toEdges, toLevel ) ->
             if toEdges |> Set.member from then
-                Err CycleDetected
+                Err (CycleDetected from to)
 
             else
                 case edgesByNodes |> Dict.get from of
@@ -110,7 +110,7 @@ insertEdge from to (DAG edgesByNodes) =
                                 |> Ok
 
                         else
-                            Err CycleDetected
+                            Err (CycleDetected from to)
 
                     Nothing ->
                         Ok
@@ -148,10 +148,10 @@ insertEdge from to (DAG edgesByNodes) =
 {-| Inserts a Node into the dag and inserts outward edges from this
 Node to a the Set of Nodes provided
 -}
-insertNode : comparableNode -> Set comparableNode -> DAG comparableNode -> Result CycleDetected (DAG comparableNode)
+insertNode : comparableNode -> Set comparableNode -> DAG comparableNode -> Result (CycleDetected comparableNode) (DAG comparableNode)
 insertNode fromNode toNodes (DAG edgesByNode) =
     let
-        insertEdges : Set comparableNode -> DAG comparableNode -> Result CycleDetected (DAG comparableNode)
+        insertEdges : Set comparableNode -> DAG comparableNode -> Result (CycleDetected comparableNode) (DAG comparableNode)
         insertEdges nodes d =
             Set.toList nodes
                 |> List.foldl
