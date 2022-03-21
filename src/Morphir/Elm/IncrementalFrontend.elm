@@ -10,19 +10,21 @@ import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
-import Morphir.Dependency.DAG as DAG exposing (DAG)
+import Morphir.Dependency.DAG as DAG exposing (CycleDetected, DAG)
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
-import Morphir.IR.FQName exposing (fQName)
+import Morphir.IR.FQName exposing (FQName, fQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Repo as Repo exposing (Repo, SourceCode, withAccessControl)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.SDK.ResultList as ResultList
 import Parser
+import Set exposing (Set)
 
 
 type alias Errors =
@@ -30,7 +32,8 @@ type alias Errors =
 
 
 type Error
-    = CycleDetected ModuleName ModuleName
+    = ModuleCycleDetected ModuleName ModuleName
+    | TypeCycleDetected Name Name
     | InvalidModuleName ElmModuleName.ModuleName
     | ParseError FileChanges.Path (List Parser.DeadEnd)
     | RepoError Repo.Errors
@@ -51,7 +54,7 @@ applyFileChanges fileChanges repo =
                                     extractTypeNames parsedModule
                             in
                             extractTypes parsedModule typeNames
-                                |> Result.map orderTypesByDependency
+                                |> Result.andThen (orderTypesByDependency repo.packageName moduleName)
                                 |> Result.andThen
                                     (\types ->
                                         types
@@ -151,7 +154,7 @@ orderElmModulesByDependency repo parsedModules =
                                         (\err ->
                                             case err of
                                                 _ ->
-                                                    [ CycleDetected fromModuleName toModule ]
+                                                    [ ModuleCycleDetected fromModuleName toModule ]
                                         )
                             )
 
@@ -376,9 +379,75 @@ mapAnnotationToMorphirType (Node range typeAnnotation) =
                 (mapAnnotationToMorphirType returnTypeNode)
 
 
-orderTypesByDependency : List ( Name, Type.Definition () ) -> List ( Name, Type.Definition () )
-orderTypesByDependency =
-    Debug.todo "implement"
+{-| Order types topologically by their dependencies. The purpose of this function is to allow us to insert the types
+into the repo in the right order without causing dependency errors.
+-}
+orderTypesByDependency : PackageName -> ModuleName -> List ( Name, Type.Definition () ) -> Result Errors (List ( Name, Type.Definition () ))
+orderTypesByDependency thisPackageName thisModuleName unorderedTypeDefinitions =
+    let
+        -- This dictionary will allow us to correlate back each type definition to their names after we ordered the names
+        typeDefinitionsByName : Dict Name (Type.Definition ())
+        typeDefinitionsByName =
+            unorderedTypeDefinitions
+                |> Dict.fromList
+
+        -- Helper function to collect all references of a type definition
+        collectReferences : Type.Definition () -> Set FQName
+        collectReferences typeDef =
+            case typeDef of
+                Type.TypeAliasDefinition _ typeExp ->
+                    Type.collectReferences typeExp
+
+                Type.CustomTypeDefinition _ accessControlledConstructors ->
+                    accessControlledConstructors.value
+                        |> Dict.values
+                        |> List.concat
+                        |> List.map (Tuple.second >> Type.collectReferences)
+                        |> List.foldl Set.union Set.empty
+
+        -- We only need to take into account local type references when ordering them
+        keepLocalTypesOnly : Set FQName -> Set Name
+        keepLocalTypesOnly allTypeNames =
+            allTypeNames
+                |> Set.filter
+                    (\( packageName, moduleName, _ ) ->
+                        packageName == thisPackageName && moduleName == thisModuleName
+                    )
+                |> Set.map (\( _, _, typeName ) -> typeName)
+
+        -- Build the dependency graph of type names
+        buildDependencyGraph : Result (CycleDetected Name) (DAG Name)
+        buildDependencyGraph =
+            unorderedTypeDefinitions
+                |> List.foldl
+                    (\( nextTypeName, typeDef ) dagResultSoFar ->
+                        dagResultSoFar
+                            |> Result.andThen
+                                (\dagSoFar ->
+                                    dagSoFar
+                                        |> DAG.insertNode nextTypeName
+                                            (typeDef
+                                                |> collectReferences
+                                                |> keepLocalTypesOnly
+                                            )
+                                )
+                    )
+                    (Ok DAG.empty)
+    in
+    buildDependencyGraph
+        |> Result.mapError (\(CycleDetected from to) -> [ TypeCycleDetected from to ])
+        |> Result.map
+            (\typeDependencies ->
+                typeDependencies
+                    |> DAG.backwardTopologicalOrdering
+                    |> List.concat
+                    |> List.filterMap
+                        (\typeName ->
+                            typeDefinitionsByName
+                                |> Dict.get typeName
+                                |> Maybe.map (Tuple.pair typeName)
+                        )
+            )
 
 
 extractValueSignatures : ParsedModule -> List ( Name, Type () )
