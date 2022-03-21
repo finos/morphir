@@ -41,8 +41,9 @@ type Error
     | ModuleHasDependents ModuleName (Set ModuleName)
     | ModuleAlreadyExist ModuleName
     | TypeAlreadyExist Name
-    | TypeCycleDetected String
-    | ValueCycleDetected String
+    | ValueAlreadyExist Name
+    | TypeCycleDetected Name
+    | ValueCycleDetected Name
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -177,15 +178,6 @@ insertType moduleName typeName typeDef repo =
 
                 Nothing ->
                     let
-                        typeNameAsString =
-                            typeName |> Name.toTitleCase
-
-                        moduleNameAsString =
-                            moduleName |> Path.toString Name.toTitleCase "."
-
-                        packageNameAsString =
-                            repo.packageName |> Path.toString Name.toTitleCase "."
-
                         updateModule : Maybe (AccessControlled (Module.Definition () (Type ()))) -> Maybe (AccessControlled (Module.Definition () (Type ())))
                         updateModule maybeModuleDefinition =
                             maybeModuleDefinition
@@ -203,7 +195,8 @@ insertType moduleName typeName typeDef repo =
                                     )
                     in
                     repo.typeDependencies
-                        |> DAG.insertNode (FQName.fqn packageNameAsString moduleNameAsString typeNameAsString) Set.empty
+                        |> DAG.insertNode (FQName.fQName repo.packageName moduleName typeName) Set.empty
+                        |> Result.mapError (always [ TypeCycleDetected typeName ])
                         |> Result.map
                             (\updatedTypeDependency ->
                                 { repo
@@ -214,7 +207,6 @@ insertType moduleName typeName typeDef repo =
                                         updatedTypeDependency
                                 }
                             )
-                        |> Result.mapError (always [ TypeCycleDetected typeNameAsString ])
 
         Nothing ->
             Err [ ModuleNotFound moduleName ]
@@ -228,19 +220,10 @@ insertValue moduleName valueName valueDef repo =
         Just modDefinition ->
             case modDefinition.value.values |> Dict.get valueName of
                 Just _ ->
-                    Err [ TypeAlreadyExist valueName ]
+                    Err [ ValueAlreadyExist valueName ]
 
                 Nothing ->
                     let
-                        valueNameAsString =
-                            valueName |> Name.toTitleCase
-
-                        moduleNameAsString =
-                            moduleName |> Path.toString Name.toTitleCase "."
-
-                        packageNameAsString =
-                            repo.packageName |> Path.toString Name.toTitleCase "."
-
                         updateModule : Maybe (AccessControlled (Module.Definition () (Type ()))) -> Maybe (AccessControlled (Module.Definition () (Type ())))
                         updateModule maybeModuleDefinition =
                             maybeModuleDefinition
@@ -258,7 +241,8 @@ insertValue moduleName valueName valueDef repo =
                                     )
                     in
                     repo.typeDependencies
-                        |> DAG.insertNode (FQName.fqn packageNameAsString moduleNameAsString valueNameAsString) Set.empty
+                        |> DAG.insertNode (FQName.fQName repo.packageName moduleName valueName) Set.empty
+                        |> Result.mapError (always [ ValueCycleDetected valueName ])
                         |> Result.map
                             (\updatedValueDependency ->
                                 { repo
@@ -269,7 +253,6 @@ insertValue moduleName valueName valueDef repo =
                                         updatedValueDependency
                                 }
                             )
-                        |> Result.mapError (always [ ValueCycleDetected valueNameAsString ])
 
         Nothing ->
             Err [ ModuleNotFound moduleName ]
