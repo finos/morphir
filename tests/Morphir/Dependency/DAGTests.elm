@@ -16,7 +16,7 @@ depList =
     , ( "j", [] )
     , ( "x", [ "y" ] )
     , ( "f", [] )
-    , ( "g", [ "h", "i" ] )
+    , ( "g", [ "h", "i", "j" ] )
     , ( "h", [] )
     , ( "i", [] )
     ]
@@ -148,15 +148,14 @@ removeNodeTests =
     describe "should remove nodes"
         [ runTestWithRemoveNode "remove 'e' node"
             "e"
-            [ [ "a", "u", "x" ]
-            , [ "b", "c", "y" ]
-            , [ "f", "g", "k" ]
-            , [ "h", "i", "j" ]
+            [ [ "a", "g", "u", "x" ]
+            , [ "b", "c", "h", "i", "k", "y" ]
+            , [ "f", "j" ]
             ]
         , runTestWithRemoveNode "removes 'x' node"
             "x"
-            [ [ "a", "u" ]
-            , [ "b", "c", "e", "y" ]
+            [ [ "a", "u", "y" ]
+            , [ "b", "c", "e" ]
             , [ "f", "g", "k" ]
             , [ "h", "i", "j" ]
             ]
@@ -169,7 +168,74 @@ removeNodeTests =
             ]
         , runTestWithRemoveNode "remove 'a' node"
             "a"
-            [ [ "u", "x" ]
+            [ [ "b", "c", "e", "u", "x" ]
+            , [ "f", "g", "k", "y" ]
+            , [ "h", "i", "j" ]
+            ]
+        , runTestWithRemoveNode "no-op: remove 'w' node"
+            "w"
+            [ [ "a", "u", "x" ]
+            , [ "b", "c", "e", "y" ]
+            , [ "f", "g", "k" ]
+            , [ "h", "i", "j" ]
+            ]
+        ]
+
+
+removeEdgeTests : Test
+removeEdgeTests =
+    let
+        runTestWithRemoveEdge : String -> String -> String -> List (List String) -> Test
+        runTestWithRemoveEdge title from to expectedResult =
+            test title
+                (\_ ->
+                    case buildDAGOfDepList of
+                        Ok dag ->
+                            dag
+                                |> DAG.removeEdge from to
+                                |> DAG.forwardTopologicalOrdering
+                                |> Expect.equal expectedResult
+
+                        Err _ ->
+                            Expect.fail "CycleDetected Error"
+                )
+    in
+    describe "Remove edge"
+        [ runTestWithRemoveEdge "should remove edge from 'x' to 'y'"
+            "x"
+            "y"
+            [ [ "a", "u", "x", "y" ]
+            , [ "b", "c", "e" ]
+            , [ "f", "g", "k" ]
+            , [ "h", "i", "j" ]
+            ]
+        , runTestWithRemoveEdge "should remove edge from 'a' to 'e'"
+            "a"
+            "e"
+            [ [ "a", "e", "u", "x" ]
+            , [ "b", "c", "g", "k", "y" ]
+            , [ "f", "h", "i", "j" ]
+            ]
+        , runTestWithRemoveEdge "should remove edge from 'c' to 'f'"
+            "c"
+            "f"
+            [ [ "a", "u", "x" ]
+            , [ "b", "c", "e", "y" ]
+            , [ "f", "g", "k" ]
+            , [ "h", "i", "j" ]
+            ]
+        , runTestWithRemoveEdge "no-op: no edge from 'c' to 'e'"
+            "c"
+            "e"
+            [ [ "a", "u", "x" ]
+            , [ "b", "c", "e", "y" ]
+            , [ "f", "g", "k" ]
+            , [ "h", "i", "j" ]
+            ]
+        , runTestWithRemoveEdge "no-op: no edge from 'a' to 'x'"
+            "a"
+            "x"
+            [ [ "a", "u", "x" ]
             , [ "b", "c", "e", "y" ]
             , [ "f", "g", "k" ]
             , [ "h", "i", "j" ]
