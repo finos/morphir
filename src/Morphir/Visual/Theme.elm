@@ -181,14 +181,14 @@ twoColumnTableView tableData leftView rightView =
 defaultClickableListElem : Theme -> Element msg -> Element msg
 defaultClickableListElem theme elem =
     el
-        [ Border.color <| theme.colors.lightest
+        [ Border.color theme.colors.lightest
         , Border.widthEach
             { bottom = 1
             , left = 0
             , top = 0
             , right = 0
             }
-        , mouseOver [ Border.color <| theme.colors.darkest ]
+        , mouseOver [ Border.color theme.colors.darkest ]
         , width fill
         ]
         elem

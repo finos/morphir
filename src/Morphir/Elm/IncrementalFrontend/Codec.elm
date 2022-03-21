@@ -2,6 +2,7 @@ module Morphir.Elm.IncrementalFrontend.Codec exposing (..)
 
 import Json.Encode as Encode
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
+import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Repo.Codec as RepoCodec
 import Parser
 
@@ -70,8 +71,8 @@ encodeError error =
                    )
     in
     case error of
-        IncrementalFrontend.CycleDetected fromModuleName toModuleName ->
-            [ Encode.string "CycleDetected"
+        IncrementalFrontend.ModuleCycleDetected fromModuleName toModuleName ->
+            [ Encode.string "ModuleCycleDetected"
             , encodeIRModuleName fromModuleName
             , encodeIRModuleName toModuleName
             ]
@@ -92,3 +93,10 @@ encodeError error =
 
         IncrementalFrontend.RepoError errors ->
             Encode.list RepoCodec.encodeError errors
+
+        IncrementalFrontend.TypeCycleDetected from to ->
+            Encode.list identity
+                [ Encode.string "TypeCycleDetected"
+                , encodeName from
+                , encodeName to
+                ]
