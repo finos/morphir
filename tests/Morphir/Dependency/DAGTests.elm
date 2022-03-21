@@ -22,7 +22,7 @@ depList =
     ]
 
 
-buildDAGOfDepList : Result DAG.CycleDetected (DAG String)
+buildDAGOfDepList : Result (DAG.CycleDetected String) (DAG String)
 buildDAGOfDepList =
     depList
         |> List.foldl
@@ -40,7 +40,7 @@ buildDAGOfDepList =
 insertEdgeTests : Test
 insertEdgeTests =
     let
-        buildGraph : List ( String, String ) -> Result DAG.CycleDetected (DAG String)
+        buildGraph : List ( String, String ) -> Result (DAG.CycleDetected String) (DAG String)
         buildGraph edges =
             edges
                 |> List.foldl
