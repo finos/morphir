@@ -10,9 +10,9 @@ import Element
         ( Element
         , alignRight
         , alignTop
+        , centerX
         , column
         , el
-        , explain
         , fill
         , fillPortion
         , height
@@ -20,6 +20,7 @@ import Element
         , image
         , layout
         , link
+        , mouseOver
         , none
         , padding
         , paddingXY
@@ -108,6 +109,7 @@ type alias Model =
     , showValues : Bool
     , showTypes : Bool
     , simpleDefinitionDetailsModel : ModulePage.Model
+    , showModules : Bool
     }
 
 
@@ -157,6 +159,7 @@ init _ url key =
             , popupVariables = PopupScreenRecord 0 Nothing
             , showSearchBar = False
             }
+      , showModules = True
       }
     , Cmd.batch [ httpMakeModel ]
     )
@@ -197,6 +200,7 @@ type Msg
     | SearchDefinition String
     | ToggleValues Bool
     | ToggleTypes Bool
+    | ToggleModulesMenu
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -877,6 +881,7 @@ update msg model =
             ( { model
                 | selectedModule = Just ( nodePath, moduleName )
                 , selectedDefinition = Nothing
+                , showModules = False
               }
             , Cmd.none
             )
@@ -892,6 +897,13 @@ update msg model =
 
         ToggleTypes isToggled ->
             ( { model | showTypes = isToggled }, Cmd.none )
+
+        ToggleModulesMenu ->
+            ( { model
+                | showModules = not model.showModules
+              }
+            , Cmd.none
+            )
 
 
 
@@ -1121,15 +1133,6 @@ viewHome model packageName packageDef =
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
             ]
 
-        columnHeading : String -> Element Msg
-        columnHeading headingText =
-            el
-                [ width fill
-                , padding (model.theme |> Theme.scaled -3)
-                , Font.size (model.theme |> Theme.scaled 3)
-                ]
-                (text headingText)
-
         viewDefinition : Maybe Definition -> Element msg
         viewDefinition maybeSelectedDefinition =
             case maybeSelectedDefinition of
@@ -1296,7 +1299,7 @@ viewHome model packageName packageDef =
                 { onChange = SearchDefinition
                 , text = model.searchText
                 , placeholder = Just (Element.Input.placeholder [] (text "Search for a definition"))
-                , label = Element.Input.labelLeft [ padding (model.theme |> Theme.scaled -10) ] (columnHeading "Search:")
+                , label = Element.Input.labelHidden "Search"
                 }
 
         valueCheckbox : Element Msg
@@ -1318,25 +1321,24 @@ viewHome model packageName packageDef =
                 , icon = Element.Input.defaultCheckbox
                 , label = Element.Input.labelLeft [] (text "types:")
                 }
-    in
-    row
-        [ height fill
-        , width fill
-        , spacing 10
-        , Background.color gray
-        ]
-        [ column
-            [ Background.color gray
-            , height fill
-            , width (fillPortion 2)
-            ]
-            [ row
-                [ width fill
-                , spacing (model.theme |> Theme.scaled 1)
-                , padding (model.theme |> Theme.scaled -6)
+
+        toggleModulesMenu : Element Msg
+        toggleModulesMenu =
+            Element.Input.button
+                [ padding 7
+                , Background.color (rgba 0 0.639 0.882 0.6)
+                , Border.rounded 3
+                , Font.color model.theme.colors.lightest
+                , Font.bold
+                , Font.size (model.theme |> Theme.scaled 2)
+                , mouseOver [ Background.color (rgb 0 0.639 0.882) ]
                 ]
-                [ columnHeading "Modules" ]
-            , el
+                { onPress = Just ToggleModulesMenu
+                , label = text (ifThenElse model.showModules " hide Modules ↑ " " show Modules ↓ ")
+                }
+
+        moduleTree =
+            el
                 scrollableListStyles
                 (TreeLayout.view TreeLayout.defaultTheme
                     { onCollapse = CollapseModule
@@ -1352,29 +1354,74 @@ viewHome model packageName packageDef =
                         (packageDef.modules |> Dict.keys)
                     )
                 )
-            ]
-        , column
-            [ Background.color gray
+
+        pathToSelectedModule : String
+        pathToSelectedModule =
+            case model.selectedModule |> Maybe.map Tuple.second of
+                Just moduleName ->
+                    moduleNameToPathString moduleName
+
+                _ ->
+                    ""
+    in
+    row [ width fill, height fill, Background.color gray, spacing 10 ]
+        [ column
+            [ width (ifThenElse model.showModules (fillPortion 4) (fillPortion 2))
             , height fill
-            , width (fillPortion 3)
             ]
-            [ row
-                [ width fill
-                , spacing (model.theme |> Theme.scaled 1)
-                , padding (model.theme |> Theme.scaled -6)
+            [ ifThenElse model.showModules
+                none
+                (row
+                    [ width fill
+                    , padding (model.theme |> Theme.scaled -3)
+                    , spacing (model.theme |> Theme.scaled 1)
+                    ]
+                    [ el [ centerX, Font.bold ]
+                        (text pathToSelectedModule)
+                    , el [ alignRight ] toggleModulesMenu
+                    ]
+                )
+            , row
+                [ height fill
+                , width fill
+                , spacing 10
                 ]
-                [ definitionFilter, valueCheckbox, typeCheckbox ]
-            , el
-                scrollableListStyles
-                (viewDefinitionLabels (model.selectedModule |> Maybe.map Tuple.second))
+                [ column
+                    [ Background.color gray
+                    , height fill
+                    , width (ifThenElse model.showModules (fillPortion 2) (fillPortion 0))
+                    ]
+                    [ row
+                        [ width fill
+                        , paddingXY 0 (model.theme |> Theme.scaled -3)
+                        ]
+                        [ ifThenElse model.showModules (el [ alignRight ] toggleModulesMenu) none ]
+                    , ifThenElse model.showModules moduleTree none
+                    ]
+                , column
+                    [ Background.color gray
+                    , height fill
+                    , width (ifThenElse model.showModules (fillPortion 3) fill)
+                    ]
+                    [ row
+                        [ width fill
+                        , spacing (model.theme |> Theme.scaled 1)
+                        , paddingXY 0 (model.theme |> Theme.scaled -5)
+                        ]
+                        [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
+                    , el
+                        scrollableListStyles
+                        (viewDefinitionLabels (model.selectedModule |> Maybe.map Tuple.second))
+                    ]
+                ]
             ]
         , column
             [ height fill
-            , width (fillPortion 6)
+            , width (ifThenElse model.showModules (fillPortion 6) (fillPortion 7))
             , Background.color model.theme.colors.lightest
             ]
             [ column [ width fill, height (fillPortion 2), scrollbars, padding (model.theme |> Theme.scaled 1) ] [ viewDefinition model.selectedDefinition ]
-            , column [ width fill, height (fillPortion 3), Border.widthXY 0 1 ]
+            , column [ width fill, height (fillPortion 3), Border.widthXY 0 8, Border.color gray ]
                 [ el [ height fill, width fill ]
                     (viewDefinitionDetails model.theme model.irState model.simpleDefinitionDetailsModel model.selectedDefinition)
                 ]
@@ -1560,7 +1607,7 @@ viewAsCard theme header class backgroundColor docs content =
             , Font.size (theme |> Theme.scaled 3)
             ]
             [ el [ Font.bold ] header
-            , el [ alignRight ] (text class)
+            , el [ alignRight, Font.color theme.colors.secondaryInformation ] (text class)
             ]
         , el
             [ Background.color white

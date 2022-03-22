@@ -1,5 +1,5 @@
 module Morphir.Dependency.DAG exposing
-    ( DAG, CycleDetected
+    ( DAG, CycleDetected(..)
     , empty, insertEdge
     , incomingEdges, outgoingEdges
     , forwardTopologicalOrdering, backwardTopologicalOrdering
