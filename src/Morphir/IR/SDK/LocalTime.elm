@@ -18,15 +18,15 @@
 module Morphir.IR.SDK.LocalTime exposing (..)
 
 import Dict
-import Morphir.IR.Common exposing (toFQName, vSpec)
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics exposing (intType)
+import Morphir.IR.SDK.Common exposing (toFQName, vSpec)
+import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.SDK.String exposing (stringType)
-import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
+import Morphir.IR.Type exposing (Specification(..), Type(..))
 
 
 moduleName : ModuleName
