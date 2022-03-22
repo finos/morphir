@@ -17,6 +17,7 @@
 
 module Morphir.IR.SDK.Common exposing (..)
 
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -64,7 +65,7 @@ tFun argTypes returnType =
     curry argTypes
 
 
-vSpec : String -> List ( String, Type () ) -> Type () -> ( Name, Value.Specification () )
+vSpec : String -> List ( String, Type () ) -> Type () -> ( Name, Documented (Value.Specification ()) )
 vSpec name args returnType =
     ( Name.fromString name
     , Value.Specification
@@ -73,4 +74,5 @@ vSpec name args returnType =
                 (\( argName, argType ) -> ( Name.fromString argName, argType ))
         )
         returnType
+        |> Documented "documentation"
     )

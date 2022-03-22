@@ -47,7 +47,7 @@ import Elm.Processing as Processing exposing (ProcessContext)
 import Elm.RawFile as RawFile exposing (RawFile)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
-import Elm.Syntax.Expression as Expression exposing (Expression, Function, FunctionImplementation)
+import Elm.Syntax.Expression as Expression exposing (Expression, Function)
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
@@ -56,9 +56,7 @@ import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
 import Elm.Syntax.Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
-import Json.Encode as Encode
 import Morphir.Compiler as Compiler
-import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
@@ -66,7 +64,7 @@ import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName as FQName exposing (FQName, fQName, fqn)
+import Morphir.IR.FQName as FQName exposing (fQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
@@ -237,7 +235,7 @@ parseRawValue ir valueSourceCode =
                         (\moduleDef ->
                             moduleDef.value.values
                                 |> Dict.get dummyValueName
-                                |> Maybe.map (.value >> .body)
+                                |> Maybe.map (.value >> .value >> .body)
                         )
                     |> Result.fromMaybe "Cannot find parsed value"
             )
@@ -699,7 +697,7 @@ mapProcessedFile opts dependencies currentPackagePath processedFile modulesSoFar
             mapDeclarationsToType processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
                 |> Result.map Dict.fromList
 
-        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation SourceLocation)))
+        valuesResult : Result Errors (Dict Name (AccessControlled (Documented (Value.Definition SourceLocation SourceLocation))))
         valuesResult =
             if opts.typesOnly then
                 Ok Dict.empty
@@ -877,6 +875,7 @@ mapDeclarationsToType sourceFile expose decls =
                                     |> Result.map Dict.fromList
                                     |> Result.mapError List.concat
 
+                            doc : String
                             doc =
                                 customType.documentation
                                     |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
@@ -896,7 +895,7 @@ mapDeclarationsToType sourceFile expose decls =
         |> Result.mapError List.concat
 
 
-mapDeclarationsToValue : SourceFile -> Exposing -> List (Node Declaration) -> Result Errors (List ( Name, AccessControlled (Value.Definition SourceLocation SourceLocation) ))
+mapDeclarationsToValue : SourceFile -> Exposing -> List (Node Declaration) -> Result Errors (List ( Name, AccessControlled (Documented (Value.Definition SourceLocation SourceLocation)) ))
 mapDeclarationsToValue sourceFile expose decls =
     decls
         |> List.filterMap
@@ -912,10 +911,17 @@ mapDeclarationsToValue sourceFile expose decls =
                                     |> Node.value
                                     |> Name.fromString
 
-                            valueDef : Result Errors (AccessControlled (Value.Definition SourceLocation SourceLocation))
+                            doc : String
+                            doc =
+                                function.documentation
+                                    |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
+                                    |> Maybe.withDefault ""
+
+                            valueDef : Result Errors (AccessControlled (Documented (Value.Definition SourceLocation SourceLocation)))
                             valueDef =
                                 Node range function
                                     |> mapFunction sourceFile
+                                    |> Result.map (Documented doc)
                                     |> Result.map public
                         in
                         valueDef
@@ -1698,7 +1704,7 @@ resolveLocalNames moduleResolver moduleDef =
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
-        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation SourceLocation)))
+        valuesResult : Result Errors (Dict Name (AccessControlled (Documented (Value.Definition SourceLocation SourceLocation))))
         valuesResult =
             moduleDef.values
                 |> Dict.toList
@@ -1707,12 +1713,13 @@ resolveLocalNames moduleResolver moduleDef =
                         let
                             variables : Dict Name SourceLocation
                             variables =
-                                valueDef.value.inputTypes
+                                valueDef.value.value.inputTypes
                                     |> List.map (\( name, loc, _ ) -> ( name, loc ))
                                     |> Dict.fromList
                         in
-                        valueDef.value
+                        valueDef.value.value
                             |> Value.mapDefinition (rewriteTypes moduleResolver) (rewriteValues variables)
+                            |> Result.map (Documented valueDef.value.doc)
                             |> Result.map (AccessControlled valueDef.access)
                             |> Result.map (Tuple.pair valueName)
                             |> Result.mapError List.concat
