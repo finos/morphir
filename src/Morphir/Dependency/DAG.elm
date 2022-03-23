@@ -84,65 +84,85 @@ insertEdge from to (DAG edgesByNodes) =
                     )
                 |> DAG
     in
-    case edgesByNodes |> Dict.get to of
-        Just ( toEdges, toLevel ) ->
-            if toEdges |> Set.member from then
-                Err (CycleDetected from to)
+    if from == to then
+        case edgesByNodes |> Dict.get from of
+            Just ( fromEdges, fromLevel ) ->
+                edgesByNodes
+                    |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
+                    |> DAG
+                    |> Ok
 
-            else
+            Nothing ->
+                edgesByNodes
+                    |> Dict.insert from ( Set.singleton to, 0 )
+                    |> DAG
+                    |> Ok
+
+    else
+        case edgesByNodes |> Dict.get to of
+            Just ( toEdges, toLevel ) ->
+                if toEdges |> Set.member from then
+                    Err (CycleDetected from to)
+
+                else
+                    case edgesByNodes |> Dict.get from of
+                        Just ( fromEdges, fromLevel ) ->
+                            if fromEdges |> Set.member to then
+                                -- duplicate edge, ignore
+                                DAG edgesByNodes |> Ok
+
+                            else if fromLevel < toLevel then
+                                edgesByNodes
+                                    |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
+                                    |> DAG
+                                    |> Ok
+
+                            else if fromLevel == toLevel then
+                                edgesByNodes
+                                    |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
+                                    |> DAG
+                                    |> shiftTransitively 1 to
+                                    |> Ok
+
+                            else
+                                Err (CycleDetected from to)
+
+                        Nothing ->
+                            Ok
+                                (if toLevel == 0 then
+                                    DAG edgesByNodes
+                                        |> shiftAll 1
+                                        |> (\(DAG e) ->
+                                                DAG
+                                                    (Dict.insert from ( Set.singleton to, 0 ) e)
+                                           )
+
+                                 else
+                                    edgesByNodes
+                                        |> Dict.insert from ( Set.singleton to, toLevel - 1 )
+                                        |> DAG
+                                )
+
+            Nothing ->
                 case edgesByNodes |> Dict.get from of
                     Just ( fromEdges, fromLevel ) ->
-                        if fromEdges |> Set.member to then
-                            -- duplicate edge, ignore
-                            DAG edgesByNodes |> Ok
-
-                        else if fromLevel < toLevel then
-                            edgesByNodes
-                                |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
-                                |> DAG
-                                |> Ok
-
-                        else if fromLevel == toLevel then
-                            edgesByNodes
-                                |> Dict.insert from ( fromEdges |> Set.insert to, fromLevel )
-                                |> DAG
-                                |> shiftTransitively 1 to
+                        if from == to then
+                            DAG edgesByNodes
                                 |> Ok
 
                         else
-                            Err (CycleDetected from to)
+                            edgesByNodes
+                                |> Dict.insert from ( Set.insert to fromEdges, fromLevel )
+                                |> Dict.insert to ( Set.empty, fromLevel + 1 )
+                                |> DAG
+                                |> Ok
 
                     Nothing ->
-                        Ok
-                            (if toLevel == 0 then
-                                DAG edgesByNodes
-                                    |> shiftAll 1
-                                    |> (\(DAG e) ->
-                                            DAG
-                                                (Dict.insert from ( Set.singleton to, 0 ) e)
-                                       )
-
-                             else
-                                edgesByNodes
-                                    |> Dict.insert from ( Set.singleton to, toLevel - 1 )
-                                    |> DAG
-                            )
-
-        Nothing ->
-            case edgesByNodes |> Dict.get from of
-                Just ( fromEdges, fromLevel ) ->
-                    edgesByNodes
-                        |> Dict.insert from ( Set.insert to fromEdges, fromLevel )
-                        |> Dict.insert to ( Set.empty, fromLevel + 1 )
-                        |> DAG
-                        |> Ok
-
-                Nothing ->
-                    edgesByNodes
-                        |> Dict.insert from ( Set.singleton to, 0 )
-                        |> Dict.insert to ( Set.empty, 1 )
-                        |> DAG
-                        |> Ok
+                        edgesByNodes
+                            |> Dict.insert from ( Set.singleton to, 0 )
+                            |> Dict.insert to ( Set.empty, 1 )
+                            |> DAG
+                            |> Ok
 
 
 {-| Inserts a Node into the dag and inserts outward edges from this
@@ -225,7 +245,7 @@ rebuild : DAG comparableNode -> DAG comparableNode
 rebuild (DAG d) =
     Dict.toList d
         |> List.foldl
-            (\( fromNode, ( toNodes, l ) ) newDagSoFar ->
+            (\( fromNode, ( toNodes, _ ) ) newDagSoFar ->
                 insertNode fromNode toNodes newDagSoFar
                     |> Result.withDefault newDagSoFar
             )
