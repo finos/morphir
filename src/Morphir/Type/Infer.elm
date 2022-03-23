@@ -20,6 +20,7 @@ import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaTuple, metaUnit, metaVar, variableByName)
 import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.Solve as Solve exposing (SolutionMap(..), UnificationError(..), UnificationErrorType(..))
+import Morphir.IR.Documented as Documented exposing (Documented)
 import Set exposing (Set)
 
 
@@ -68,9 +69,10 @@ inferModuleDefinition refs moduleName moduleDef =
                     _ =
                         Debug.log
                             (String.concat [ "Inferring types for ", moduleName |> Path.toString Name.toTitleCase ".", ".", valueName |> Name.toCamelCase, " of size" ])
-                            (valueDef.value.body |> Value.countValueNodes)
+                            (valueDef.value.value.body |> Value.countValueNodes)
                 in
-                inferValueDefinition refs valueDef.value
+                inferValueDefinition refs valueDef.value.value
+                    |> Result.map (Documented valueDef.value.doc)
                     |> Result.map (AccessControlled valueDef.access)
                     |> Result.map (Tuple.pair valueName)
                     |> Result.mapError

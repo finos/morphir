@@ -53,7 +53,7 @@ moduleResolverTests =
                                 ]
                         , values =
                             Dict.fromList
-                                [ ( [ "one" ], Value.Specification [] (Basics.intType ()) )
+                                [ ( [ "one" ], Documented "" (Value.Specification [] (Basics.intType ())) )
                                 ]
                         }
                       )
@@ -65,7 +65,7 @@ moduleResolverTests =
                                 ]
                         , values =
                             Dict.fromList
-                                [ ( [ "two" ], Value.Specification [] (Basics.intType ()) )
+                                [ ( [ "two" ], Documented "" (Value.Specification [] (Basics.intType ())) )
                                 ]
                         }
                       )
@@ -77,7 +77,7 @@ moduleResolverTests =
                                 ]
                         , values =
                             Dict.fromList
-                                [ ( [ "three" ], Value.Specification [] (Basics.intType ()) )
+                                [ ( [ "three" ], Documented ""( Value.Specification [] (Basics.intType ())) )
                                 ]
                         }
                       )
@@ -126,7 +126,7 @@ moduleResolverTests =
                             ]
                         )
                         (Dict.fromList
-                            [ ( [ "zero" ], AccessControlled Private (Value.Definition [] (Basics.intType ()) (Value.Literal () (WholeNumberLiteral 42))) )
+                            [ ( [ "zero" ], AccessControlled Private ( Documented "" (Value.Definition [] (Basics.intType ()) (Value.Literal () (WholeNumberLiteral 42)))) )
                             ]
                         )
                 }

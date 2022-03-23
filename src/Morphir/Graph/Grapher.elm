@@ -169,7 +169,7 @@ mapModuleValues packageName moduleName moduleDef typeRegistry =
         |> Dict.toList
         |> List.concatMap
             (\( valueName, accessControlledDocumentedValueDef ) ->
-                mapValueDefinition packageName moduleName valueName accessControlledDocumentedValueDef.value typeRegistry
+                mapValueDefinition packageName moduleName valueName accessControlledDocumentedValueDef.value.value typeRegistry
             )
 
 
@@ -303,7 +303,7 @@ isEnum constructors =
     constructors
         |> Dict.toList
         |> List.all
-            (\( name, args ) ->
+            (\( _, args ) ->
                 List.isEmpty args
             )
 
@@ -363,7 +363,7 @@ asUnitOfMeasure typeDef =
                         |> Maybe.withDefault []
             in
             case values of
-                [ [ ( name, Type.Reference _ fqn _ ) ] ] ->
+                [ [ ( _, Type.Reference _ fqn _ ) ] ] ->
                     Just fqn
 
                 _ ->
