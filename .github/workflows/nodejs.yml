@@ -61,13 +61,15 @@ jobs:
 
   publish-npm:
     needs: build
+    env:
+      - NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'finos'
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
         with:
           node-version: 10
       - uses: JS-DevTools/npm-publish@v1
+        if: env.NPM_TOKEN != 0
         with:
-          token: ${{ secrets.NPM_TOKEN }}
+          token: ${{ env.NPM_TOKEN }}
