@@ -1,7 +1,6 @@
 module Morphir.IR.Repo exposing (..)
 
 import Dict exposing (Dict)
-import Elm.Syntax.Module exposing (Module)
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected, DAG)
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
@@ -10,7 +9,6 @@ import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
-import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
 import Morphir.Value.Native as Native

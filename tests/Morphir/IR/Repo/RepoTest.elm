@@ -2,68 +2,83 @@ module Morphir.IR.Repo.RepoTest exposing (..)
 
 import Dict
 import Expect
-import Morphir.IR.AccessControlled exposing (public)
-import Morphir.IR.FQName exposing (fqn)
+import Morphir.Dependency.DAG as DAG
+import Morphir.IR.AccessControlled exposing (AccessControlled, public)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Repo as Repo exposing (Repo)
+import Morphir.IR.Repo as Repo exposing (Error(..), Errors, Repo)
 import Morphir.IR.Type as Type exposing (Definition(..), Type(..))
 import Test exposing (Test, describe, test)
+
+
+toModuleName : String -> ModuleName
+toModuleName string =
+    [ Name.fromString string ]
+
+
+packageName =
+    [ Name.fromString "Morphir.IR" ]
 
 
 insertModuleTest : Test
 insertModuleTest =
     let
-        toModuleName : String -> ModuleName
-        toModuleName string =
-            [ Name.fromString string ]
-
-        packageName =
-            [ Name.fromString "Morphir.IR" ]
-
         repo =
             Repo.empty packageName
 
         modules =
             [ ( toModuleName "Morphir.IR.Repo", Module.emptyDefinition )
             , ( toModuleName "Morphir.IR.Elm", Module.emptyDefinition )
-            , ( toModuleName "Morphir.IR.Distribution", Module.emptyDefinition )
-            , ( toModuleName "Morphir.IR.Dependency", Module.emptyDefinition )
             ]
 
-        runTestWithInsertModule : String -> List ( ModuleName, Module.Definition () (Type ()) ) -> Int -> Test
-        runTestWithInsertModule name moduleList expectedSize =
-            test name
-                (\_ ->
-                    moduleList
-                        |> List.foldl
-                            (\( modName, modDef ) repoResultSoFar ->
-                                repoResultSoFar
-                                    |> Result.andThen
-                                        (\r ->
-                                            Repo.insertModule modName modDef r
-                                        )
-                            )
-                            (Ok repo)
-                        |> Result.withDefault repo
-                        |> .modules
-                        >> Dict.size
-                        |> Expect.equal expectedSize
-                )
+        duplicateModules =
+            [ ( toModuleName "Morphir.IR.Distribution", Module.emptyDefinition )
+            , ( toModuleName "Morphir.IR.Distribution", Module.emptyDefinition )
+            ]
+
+        insertModuleIntoRepo : List ( ModuleName, Module.Definition () (Type ()) ) -> Repo -> Result Errors Repo
+        insertModuleIntoRepo moduleList localRepo =
+            moduleList
+                |> List.foldl
+                    (\( modName, modDef ) repoResultSoFar ->
+                        repoResultSoFar
+                            |> Result.andThen
+                                (\r ->
+                                    Repo.insertModule modName modDef r
+                                )
+                    )
+                    (Ok localRepo)
     in
-    describe "Test Module insertion into Repo Api"
-        [ runTestWithInsertModule "Inserting Modules into repo" modules 4
+    describe "Test Module insertion into Repo"
+        [ test "Inserting Unique Modules into repo"
+            (\_ ->
+                case repo |> insertModuleIntoRepo modules of
+                    Ok validRepo ->
+                        validRepo
+                            |> .modules
+                            >> Dict.size
+                            |> Expect.equal 2
+
+                    Err _ ->
+                        Expect.fail "Should Have Inserted Successfully"
+            )
+        , test "Inserting Duplicate Modules into repo"
+            (\_ ->
+                case repo |> insertModuleIntoRepo duplicateModules of
+                    Ok _ ->
+                        Expect.fail "Insertion Into Repo Should Have Failed"
+
+                    Err _ ->
+                        Expect.pass
+            )
         ]
 
 
 insertTypeTest : Test
 insertTypeTest =
     let
-        packageName =
-            [ Name.fromString "Morphir.IR" ]
-
         moduleName =
-            [ Name.fromString "Morphir.IR.Distribution" ]
+            toModuleName "Morphir.IR.Distribution"
 
         repo : Repo
         repo =
@@ -83,33 +98,89 @@ insertTypeTest =
             , ( [ "my", "errors" ], TypeAliasDefinition [ [ "my", "errors" ] ] (Variable () [ "TypeCycleDetected", "ValueCycleDetected" ]) )
             ]
 
-        runTest : String -> List ( Name, Definition () ) -> Int -> Test
-        runTest description types expectedValue =
-            test description
-                (\_ ->
-                    types
-                        |> List.foldl
-                            (\( typeName, typeDef ) repoResultSoFar ->
-                                repoResultSoFar
-                                    |> Result.andThen (Repo.insertType moduleName typeName typeDef)
-                            )
-                            (Ok repo)
-                        |> Result.withDefault repo
-                        |> .modules
-                        |> Dict.get moduleName
-                        |> Maybe.withDefault (public Module.emptyDefinition)
-                        |> .value
-                        |> .types
-                        |> Dict.size
-                        |> Expect.equal expectedValue
-                )
+        duplicateTypeList : List ( Name, Definition () )
+        duplicateTypeList =
+            [ ( [ "my", "pi" ], TypeAliasDefinition [ [ "my", "pi" ] ] (Variable () [ "3.142" ]) )
+            , ( [ "my", "pi" ], TypeAliasDefinition [ [ "my", "pi" ] ] (Variable () [ "3.142" ]) )
+            ]
+
+        repoInsertTypeMethod : List ( Name, Definition () ) -> Result Errors Repo
+        repoInsertTypeMethod internalTypeList =
+            internalTypeList
+                |> List.foldl
+                    (\( typeName, typeDef ) repoResultSoFar ->
+                        repoResultSoFar
+                            |> Result.andThen (Repo.insertType moduleName typeName typeDef)
+                    )
+                    (Ok repo)
+
+        runSuccessfulInsertTest : List ( Name, Definition () ) -> Int
+        runSuccessfulInsertTest parsedTypeList =
+            parsedTypeList
+                |> repoInsertTypeMethod
+                |> Result.withDefault repo
+                |> .modules
+                |> Dict.get moduleName
+                |> Maybe.withDefault (public Module.emptyDefinition)
+                |> .value
+                |> .types
+                |> Dict.size
     in
-    describe "Testing Insert Type into Repo Module Def"
-        [ runTest "insert type into module def of repo api" typeList 2
-        , runTest "insert type into module def of repo api" typeList 2
+    describe "Testing Insert Type into Repo Module"
+        [ test "Successful Type Insert into Module"
+            (\_ ->
+                typeList
+                    |> runSuccessfulInsertTest
+                    |> Expect.equal 2
+            )
+        , test "Insertion of Types Fails Test"
+            (\_ ->
+                case repoInsertTypeMethod duplicateTypeList of
+                    Ok _ ->
+                        Expect.fail "Duplicate Type Should Have Failed"
+
+                    Err err ->
+                        Expect.pass
+            )
+        , test "Checking For Valid Type Dependency DAG"
+            (\_ ->
+                typeList
+                    |> repoInsertTypeMethod
+                    |> (\validRepo ->
+                            case validRepo of
+                                Ok r ->
+                                    r.typeDependencies
+                                        |> Expect.notEqual DAG.empty
+
+                                Err _ ->
+                                    Expect.fail "Type Dependency DAG Empty"
+                       )
+            )
         ]
 
 
-insertValuesTest : Test
-insertValuesTest =
-    Debug.todo "to be implemented"
+insertValueTest : Test
+insertValueTest =
+    let
+        moduleName =
+            toModuleName "Morphir.IR.Distribution"
+
+        repo : Repo
+        repo =
+            Repo.empty packageName
+                |> (\r ->
+                        { r
+                            | modules =
+                                Dict.fromList
+                                    [ ( moduleName, public Module.emptyDefinition )
+                                    ]
+                        }
+                   )
+
+        --valueList : List ( Name, Value.Definition () () )
+        --valueList =
+        --    []
+    in
+    describe "Testing Value Insertion into Repo Module"
+        [ test "Insertion Successful" (\_ -> Expect.pass)
+        ]
