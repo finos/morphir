@@ -1,6 +1,6 @@
 {
   "name": "morphir-elm",
-  "version": "2.46.0",
+  "version": "2.46.1",
   "description": "Elm bindings for Morphir",
   "scripts": {
     "clean": "gulp clean",
