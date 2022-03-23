@@ -1,6 +1,6 @@
 module Morphir.Elm.IncrementalResolve exposing
     ( resolveModuleName, resolveImports, resolveLocalName, ResolvedImports
-    , Error, KindOfName(..)
+    , Error(..), KindOfName(..)
     )
 
 {-| This module contains functionality to resolve names in the Elm code into Morphir fully-qualified names. The process
