@@ -1,13 +1,13 @@
 module Morphir.Elm.IncrementalResolve exposing
-    ( resolveModuleName, resolveImports, resolveLocalName
-    , Error, KindOfName(..)
+    ( resolveModuleName, resolveImports, resolveLocalName, ResolvedImports
+    , Error(..), KindOfName(..)
     )
 
 {-| This module contains functionality to resolve names in the Elm code into Morphir fully-qualified names. The process
 is relatively complex due to the many ways names can be imported in an Elm module. Here, we split up the overall process
 into three main steps following the structure of an Elm module:
 
-@docs resolveModuleName, resolveImports, resolveLocalName
+@docs resolveModuleName, resolveImports, resolveLocalName, ResolvedImports
 
 
 # Errors
@@ -327,8 +327,8 @@ resolveModuleName repo elmModuleName =
 {-| Resolve each individual name using the data structure mentioned above. This is done for each type, constructor and
 value name in the module.
 -}
-resolveLocalName : Repo -> ModuleName -> VisibleNames -> ResolvedImports -> List String -> String -> KindOfName -> Result Error FQName
-resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName elmLocalName kindOfName =
+resolveLocalName : Repo -> ModuleName -> VisibleNames -> ResolvedImports -> List String -> KindOfName -> String -> Result Error FQName
+resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName kindOfName elmLocalName =
     let
         localName : Name
         localName =

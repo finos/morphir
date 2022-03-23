@@ -2,6 +2,7 @@ module Morphir.Elm.IncrementalFrontend.Codec exposing (..)
 
 import Json.Encode as Encode
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
+import Morphir.Elm.IncrementalResolve.Codec as IncrementalResolveCodec
 import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Repo.Codec as RepoCodec
 import Parser
@@ -100,3 +101,6 @@ encodeError error =
                 , encodeName from
                 , encodeName to
                 ]
+
+        IncrementalFrontend.ResolveError e ->
+            IncrementalResolveCodec.encodeError e
