@@ -4,10 +4,13 @@ import Dict
 import Expect
 import Morphir.Dependency.DAG as DAG
 import Morphir.IR.AccessControlled exposing (AccessControlled, public)
+import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Repo as Repo exposing (Error(..), Errors, Repo)
 import Morphir.IR.Type as Type exposing (Definition(..), Type(..))
+import Morphir.IR.Value as Value
 import Test exposing (Test, describe, test)
 
 
@@ -177,10 +180,135 @@ insertValueTest =
                         }
                    )
 
-        --valueList : List ( Name, Value.Definition () () )
-        --valueList =
-        --    []
+        uniqueValueList : List ( Name, Value.Definition () (Type ()) )
+        uniqueValueList =
+            [ ( [ "empty", "function" ]
+              , { inputTypes = []
+                , outputType = Unit ()
+                , body = Value.Literal (Unit ()) (WholeNumberLiteral 0)
+                }
+              )
+            , ( [ "param", "function" ]
+              , { inputTypes = []
+                , outputType = Unit ()
+                , body = Value.Literal (Unit ()) (WholeNumberLiteral 44)
+                }
+              )
+            ]
+
+        duplicateValueList : List ( Name, Value.Definition () (Type ()) )
+        duplicateValueList =
+            [ ( [ "empty", "Function" ]
+              , { inputTypes = []
+                , outputType = Unit ()
+                , body = Value.Literal (Unit ()) (WholeNumberLiteral 25)
+                }
+              )
+            , ( [ "empty", "Function" ]
+              , { inputTypes = []
+                , outputType = Unit ()
+                , body = Value.Literal (Unit ()) (WholeNumberLiteral 25)
+                }
+              )
+            ]
+
+        repoInsertValueMethod : List ( Name, Value.Definition () (Type ()) ) -> Repo -> Result Errors Repo
+        repoInsertValueMethod valueList currentRepo =
+            valueList
+                |> List.foldl
+                    (\( valueName, valueDef ) repoResultSoFar ->
+                        repoResultSoFar
+                            |> Result.andThen (Repo.insertValue moduleName valueName valueDef)
+                    )
+                    (Ok currentRepo)
     in
     describe "Testing Value Insertion into Repo Module"
-        [ test "Insertion Successful" (\_ -> Expect.pass)
+        [ test "Successful Unique Values Insertion into repo module"
+            (\_ ->
+                repo
+                    |> repoInsertValueMethod uniqueValueList
+                    |> (\insertResult ->
+                            case insertResult of
+                                Ok currentRepo ->
+                                    currentRepo.modules
+                                        |> Dict.get moduleName
+                                        |> Maybe.withDefault (public Module.emptyDefinition)
+                                        |> .value
+                                        |> .values
+                                        |> Dict.size
+                                        |> Expect.equal 2
+
+                                Err _ ->
+                                    Expect.fail "Unique Values Insertion Failed"
+                       )
+            )
+        , test "Insertion of Duplicate Values Fails Test"
+            (\_ ->
+                case repo |> repoInsertValueMethod duplicateValueList of
+                    Ok _ ->
+                        Expect.fail "Duplicate Values Should Have Failed"
+
+                    Err _ ->
+                        Expect.pass
+            )
+        , test "Checking For Valid Values Dependency DAG"
+            (\_ ->
+                repo
+                    |> repoInsertValueMethod uniqueValueList
+                    |> (\validRepo ->
+                            case validRepo of
+                                Ok r ->
+                                    r.valueDependencies
+                                        |> Expect.notEqual DAG.empty
+
+                                Err _ ->
+                                    Expect.fail "Type Dependency DAG Empty"
+                       )
+            )
         ]
+
+
+toDistributionTest : Test
+toDistributionTest =
+    let
+        moduleName =
+            toModuleName "Morphir.IR.Distribution"
+
+        typeName =
+            [ "my", "pi" ]
+
+        typeDef =
+            TypeAliasDefinition [ [ "my", "pi" ] ] (Variable () [ "3.142" ])
+
+        valueName =
+            [ "empty", "function" ]
+
+        valueDef =
+            { inputTypes = []
+            , outputType = Unit ()
+            , body = Value.Literal (Unit ()) (WholeNumberLiteral 0)
+            }
+    in
+    packageName
+        |> Repo.empty
+        |> Repo.insertModule moduleName Module.emptyDefinition
+        |> Result.andThen
+            (Repo.insertType moduleName typeName typeDef)
+        |> Result.andThen
+            (Repo.insertValue moduleName valueName valueDef)
+        |> (\validRepo ->
+                case validRepo of
+                    Ok r ->
+                        case r |> Repo.toDistribution of
+                            Library _ _ _ ->
+                                test "repo converted to distribution successfully"
+                                    (\_ ->
+                                        Expect.pass
+                                    )
+
+                    Err _ ->
+                        test "repo to distribution failed"
+                            (\_ ->
+                                Expect.fail "repo to distribution failed"
+                            )
+           )
