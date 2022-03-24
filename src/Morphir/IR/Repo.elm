@@ -1,15 +1,16 @@
 module Morphir.IR.Repo exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.Dependency.DAG as DAG exposing (DAG)
+import Morphir.Dependency.DAG as DAG exposing (CycleDetected, DAG)
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented as Documented
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Value as Value
 import Morphir.Value.Native as Native
 import Set exposing (Set)
 
@@ -20,6 +21,8 @@ type alias Repo =
     , modules : Dict ModuleName (AccessControlled (Module.Definition () (Type ())))
     , moduleDependencies : DAG ModuleName
     , nativeFunctions : Dict FQName Native.Function
+    , typeDependencies : DAG FQName
+    , valueDependencies : DAG FQName
     }
 
 
@@ -36,6 +39,9 @@ type Error
     | ModuleHasDependents ModuleName (Set ModuleName)
     | ModuleAlreadyExist ModuleName
     | TypeAlreadyExist Name
+    | ValueAlreadyExist Name
+    | TypeCycleDetected Name
+    | ValueCycleDetected Name
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -47,6 +53,8 @@ empty packageName =
     , modules = Dict.empty
     , nativeFunctions = Dict.empty
     , moduleDependencies = DAG.empty
+    , typeDependencies = DAG.empty
+    , valueDependencies = DAG.empty
     }
 
 
@@ -156,6 +164,8 @@ deleteModule moduleName repo =
             )
 
 
+{-| Insert types into repo modules and update the type dependency graph of the repo |
+-}
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef repo =
     case repo.modules |> Dict.get moduleName of
@@ -182,12 +192,65 @@ insertType moduleName typeName typeDef repo =
                                                 )
                                     )
                     in
-                    Ok
-                        { repo
-                            | modules =
-                                repo.modules
-                                    |> Dict.update moduleName updateModule
-                        }
+                    repo.typeDependencies
+                        |> DAG.insertNode (FQName.fQName repo.packageName moduleName typeName) Set.empty
+                        |> Result.mapError (always [ TypeCycleDetected typeName ])
+                        |> Result.map
+                            (\updatedTypeDependency ->
+                                { repo
+                                    | modules =
+                                        repo.modules
+                                            |> Dict.update moduleName updateModule
+                                    , typeDependencies =
+                                        updatedTypeDependency
+                                }
+                            )
+
+        Nothing ->
+            Err [ ModuleNotFound moduleName ]
+
+
+{-| Insert values into repo modules and update the value dependency graph of the repo |
+-}
+insertValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
+insertValue moduleName valueName valueDef repo =
+    case repo.modules |> Dict.get moduleName of
+        Just modDefinition ->
+            case modDefinition.value.values |> Dict.get valueName of
+                Just _ ->
+                    Err [ ValueAlreadyExist valueName ]
+
+                Nothing ->
+                    let
+                        updateModule : Maybe (AccessControlled (Module.Definition () (Type ()))) -> Maybe (AccessControlled (Module.Definition () (Type ())))
+                        updateModule maybeModuleDefinition =
+                            maybeModuleDefinition
+                                |> Maybe.map
+                                    (\accessControlledModuleDef ->
+                                        accessControlledModuleDef
+                                            |> AccessControlled.map
+                                                (\moduleDef ->
+                                                    { moduleDef
+                                                        | values =
+                                                            modDefinition.value.values
+                                                                |> Dict.insert valueName (public (valueDef |> Documented.Documented ""))
+                                                    }
+                                                )
+                                    )
+                    in
+                    repo.typeDependencies
+                        |> DAG.insertNode (FQName.fQName repo.packageName moduleName valueName) Set.empty
+                        |> Result.mapError (always [ ValueCycleDetected valueName ])
+                        |> Result.map
+                            (\updatedValueDependency ->
+                                { repo
+                                    | modules =
+                                        repo.modules
+                                            |> Dict.update moduleName updateModule
+                                    , valueDependencies =
+                                        updatedValueDependency
+                                }
+                            )
 
         Nothing ->
             Err [ ModuleNotFound moduleName ]
