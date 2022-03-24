@@ -115,6 +115,21 @@ insertEdgeTests =
             , [ "A" ]
             , [ "B" ]
             ]
+        , validDAG "insert 6"
+            [ ( "A", "B" )
+            , ( "B", "B" )
+            ]
+            [ [ "A" ]
+            , [ "B" ]
+            ]
+        , validDAG "insert 7"
+            [ ( "B", "B" )
+            , ( "A", "B" )
+            , ( "B", "B" )
+            ]
+            [ [ "A" ]
+            , [ "B" ]
+            ]
         , cycle "cycle 1"
             [ ( "A", "B" )
             , ( "B", "A" )

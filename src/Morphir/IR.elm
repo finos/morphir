@@ -100,7 +100,7 @@ fromDistribution (Distribution.Library libraryName dependencies packageDef) =
                             |> Dict.toList
                             |> List.map
                                 (\( valueName, valueDef ) ->
-                                    ( ( libraryName, moduleName, valueName ), valueDef.value )
+                                    ( ( libraryName, moduleName, valueName ), valueDef.value.value )
                                 )
                     )
                 |> Dict.fromList
@@ -125,7 +125,7 @@ fromPackageSpecifications packageSpecs =
                             |> Dict.toList
                             |> List.map
                                 (\( valueName, valueSpec ) ->
-                                    ( ( packageName, moduleName, valueName ), valueSpec )
+                                    ( ( packageName, moduleName, valueName ), valueSpec.value )
                                 )
                     )
 

@@ -8,11 +8,13 @@ import Dict exposing (Dict)
 import Element
     exposing
         ( Element
+        , alignLeft
         , alignRight
         , alignTop
         , centerX
         , column
         , el
+        , explain
         , fill
         , fillPortion
         , height
@@ -1145,7 +1147,10 @@ viewHome model packageName packageDef =
                                     (\accessControlledModuleDef ->
                                         accessControlledModuleDef.value.values
                                             |> Dict.get valueName
-                                            |> Maybe.map (.value >> viewValue model.theme moduleName valueName)
+                                            |> Maybe.map
+                                                (\valueDef ->
+                                                    viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
+                                                )
                                     )
                                 |> Maybe.withDefault none
 
@@ -1548,8 +1553,8 @@ viewType theme typeName typeDef docs =
                 viewConstructors
 
 
-viewValue : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> Element msg
-viewValue theme moduleName valueName valueDef =
+viewValue : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> String -> Element msg
+viewValue theme moduleName valueName valueDef docs =
     let
         cardTitle =
             link []
@@ -1578,7 +1583,7 @@ viewValue theme moduleName valueName valueDef =
             "calculation"
         )
         backgroundColor
-        ""
+        (ifThenElse (docs == "") "Placeholder Documentation. Docs would go here, if whe had them. This would be the place for documentation. This documentation might be long. It might also include **markdown**. `monospaced code`" docs)
         none
 
 
@@ -1607,7 +1612,7 @@ viewAsCard theme header class backgroundColor docs content =
             , Font.size (theme |> Theme.scaled 3)
             ]
             [ el [ Font.bold ] header
-            , el [ alignRight, Font.color theme.colors.secondaryInformation ] (text class)
+            , el [ alignLeft, Font.color theme.colors.secondaryInformation ] (text class)
             ]
         , el
             [ Background.color white

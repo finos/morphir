@@ -375,7 +375,7 @@ valueTests =
                                             moduleDef.value.values
                                                 |> Dict.get [ "test", "value" ]
                                                 |> Result.fromMaybe "Could not find test value"
-                                                |> Result.map (.value >> .body)
+                                                |> Result.map (.value >> .value >> .body)
                                         )
                             )
                         |> resultToExpectation expectedValueIR

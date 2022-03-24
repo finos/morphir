@@ -1,22 +1,21 @@
 module Morphir.Visual.XRayView exposing (NodeType(..), TreeNode(..), childNodes, noPadding, patternToNode, valueToNode, viewConstructorName, viewLiteral, viewPatternAsHeader, viewReferenceName, viewTreeNode, viewType, viewValue, viewValueAsHeader, viewValueDefinition)
 
 import Dict
-import Element exposing (Element, alignRight, column, el, fill, padding, paddingEach, paddingXY, rgb, row, spacing, text, width)
+import Element exposing (Element, column, el, fill, paddingEach, paddingXY, rgb, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, Value)
 import Morphir.Visual.Common exposing (grayScale)
 
 
-viewValueDefinition : (va -> Element msg) -> AccessControlled (Value.Definition ta va) -> Element msg
-viewValueDefinition viewValueAttr accessControlledValueDef =
-    viewValue viewValueAttr accessControlledValueDef.value.body
+
+viewValueDefinition : (va -> Element msg) -> Value.Definition ta va -> Element msg
+viewValueDefinition viewValueAttr valueDef =
+    viewValue viewValueAttr valueDef.body
 
 
 viewValue : (va -> Element msg) -> Value ta va -> Element msg
