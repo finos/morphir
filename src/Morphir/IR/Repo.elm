@@ -233,7 +233,7 @@ insertValue moduleName valueName valueDef repo =
                                                     { moduleDef
                                                         | values =
                                                             modDefinition.value.values
-                                                                |> Dict.insert valueName (public valueDef)
+                                                                |> Dict.insert valueName (public (valueDef |> Documented.Documented ""))
                                                     }
                                                 )
                                     )
