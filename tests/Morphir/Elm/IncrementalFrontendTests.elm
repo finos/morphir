@@ -1,9 +1,13 @@
 module Morphir.Elm.IncrementalFrontendTests exposing (..)
 
 import Dict
+import Elm.Parser
 import Expect
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.File.FileChanges exposing (Change(..), FileChanges)
+import Morphir.IR.FQName as FQName
+import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Type as Type
 import Test exposing (Test, describe, test)
 
 
@@ -89,4 +93,59 @@ parseElmModulesTest =
                     |> IncrementalFrontend.parseElmModules
                     |> Result.map List.length
                     |> Expect.equal (Ok 0)
+        ]
+
+
+extractTypesTest : Test
+extractTypesTest =
+    let
+        nameResolver _ localName =
+            Ok (FQName.fqn "Morphir.Elm" "Morphir.Elm.Examlple" localName)
+
+        exampleModuleResult =
+            String.join "\n"
+                [ "module Morphir.Elm.Example exposing (..)"
+                , ""
+                , "type KindOfName = Type | Constructor | Value"
+                , ""
+                , "type alias Name = List String"
+                , ""
+                , "type alias Path = List Name"
+                ]
+                |> Elm.Parser.parse
+
+        listOfNames =
+            List.map Name.fromString
+                [ "KindOfName"
+                , "Name"
+                , "Path"
+                ]
+
+        runTestWithExtractTypes : String -> (List ( Name, Type.Definition () ) -> Expect.Expectation) -> Test
+        runTestWithExtractTypes title cb =
+            test title
+                (\_ ->
+                    exampleModuleResult
+                        |> Result.mapError (IncrementalFrontend.ParseError "" >> List.singleton)
+                        |> Result.andThen
+                            (\parsedModule ->
+                                IncrementalFrontend.extractTypes nameResolver parsedModule listOfNames
+                            )
+                        |> (\extractedTypesResult ->
+                                case extractedTypesResult of
+                                    Ok listOfNameAndDefs ->
+                                        cb listOfNameAndDefs
+
+                                    Err _ ->
+                                        Expect.fail "Failed to parse module"
+                           )
+                )
+    in
+    describe "extract types"
+        [ runTestWithExtractTypes "should return 3 types"
+            (List.length >> Expect.equal 3)
+        , runTestWithExtractTypes "should contain KindOfName, Name, Path as a names in list"
+            (List.filterMap (Tuple.first >> Name.toTitleCase >> Just)
+                >> Expect.equal [ "KindOfName", "Name", "Path" ]
+            )
         ]
