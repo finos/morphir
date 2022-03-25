@@ -31,6 +31,7 @@ jobs:
         CI: true
 
   publish-elm-package:
+  
     needs: [build]
     runs-on: ubuntu-latest
     if: github.repository_owner == 'finos'
@@ -60,12 +61,13 @@ jobs:
           path-to-elm: ./node_modules/.bin/elm
 
   publish-npm:
-    needs: build
+    needs: [build]
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
   	  - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
