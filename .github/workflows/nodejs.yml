@@ -28,18 +28,20 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
     - name: Cache NPM
-      uses: actions/cache@v1
+      uses: actions/cache@v3
       with:
         path: ~/.npm
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
     - name: Cache Elm
-      uses: actions/cache@v1
+      uses: actions/cache@v3
       id: elm-cache
       with:
         path: ~/.elm
-        key: ${{ runner.os }}-elm--home-${{ hashFiles('**/elm.json') }}
+        key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
+        restore-keys: |
+          ${{ runner.os }}-elm-
     - name: Download dependencies
       run: npm ci
     - name: Build
