@@ -16,7 +16,7 @@ import Set exposing (Set)
 
 type alias Repo =
     { packageName : PackageName
-    , dependencies : Dict PackageName (Package.Definition () (Type ()))
+    , dependencies : Dict PackageName (Package.Specification ())
     , modules : Dict ModuleName (AccessControlled (Module.Definition () (Type ())))
     , moduleDependencies : DAG ModuleName
     , nativeFunctions : Dict FQName Native.Function
@@ -35,7 +35,8 @@ type Error
     = ModuleNotFound ModuleName
     | ModuleHasDependents ModuleName (Set ModuleName)
     | ModuleAlreadyExist ModuleName
-    | TypeAlreadyExist Name
+    | TypeAlreadyExist FQName
+    | DependencyAlreadyExists PackageName
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -75,12 +76,25 @@ fromDistribution distro =
 toDistribution : Repo -> Distribution
 toDistribution repo =
     Library repo.packageName
-        (repo.dependencies
-            |> Dict.map (always Package.definitionToSpecification)
-        )
+        repo.dependencies
         { modules =
             repo.modules
         }
+
+
+insertDependencySpecification : PackageName -> Package.Specification () -> Repo -> Result Errors Repo
+insertDependencySpecification packageName packageSpec repo =
+    case repo.dependencies |> Dict.get packageName of
+        Just _ ->
+            Err [ DependencyAlreadyExists packageName ]
+
+        Nothing ->
+            Ok
+                { repo
+                    | dependencies =
+                        repo.dependencies
+                            |> Dict.insert packageName packageSpec
+                }
 
 
 {-| Adds native functions to the repo. For now this will be mainly used to add `SDK.nativeFunctions`.
@@ -158,39 +172,37 @@ deleteModule moduleName repo =
 
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef repo =
-    case repo.modules |> Dict.get moduleName of
-        Just modDefinition ->
-            case modDefinition.value.types |> Dict.get typeName of
-                Just _ ->
-                    Err [ TypeAlreadyExist typeName ]
+    let
+        accessControlledModuleDef : AccessControlled (Module.Definition () (Type ()))
+        accessControlledModuleDef =
+            case repo.modules |> Dict.get moduleName of
+                Just modDefinition ->
+                    modDefinition
 
                 Nothing ->
-                    let
-                        updateModule : Maybe (AccessControlled (Module.Definition () (Type ()))) -> Maybe (AccessControlled (Module.Definition () (Type ())))
-                        updateModule maybeModuleDefinition =
-                            maybeModuleDefinition
-                                |> Maybe.map
-                                    (\accessControlledModuleDef ->
-                                        accessControlledModuleDef
-                                            |> AccessControlled.map
-                                                (\moduleDef ->
-                                                    { moduleDef
-                                                        | types =
-                                                            modDefinition.value.types
-                                                                |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
-                                                    }
-                                                )
-                                    )
-                    in
-                    Ok
-                        { repo
-                            | modules =
-                                repo.modules
-                                    |> Dict.update moduleName updateModule
-                        }
+                    public Module.emptyDefinition
+    in
+    case accessControlledModuleDef.value.types |> Dict.get typeName of
+        Just _ ->
+            Err [ TypeAlreadyExist ( repo.packageName, moduleName, typeName ) ]
 
         Nothing ->
-            Err [ ModuleNotFound moduleName ]
+            Ok
+                { repo
+                    | modules =
+                        repo.modules
+                            |> Dict.insert moduleName
+                                (accessControlledModuleDef
+                                    |> AccessControlled.map
+                                        (\moduleDef ->
+                                            { moduleDef
+                                                | types =
+                                                    moduleDef.types
+                                                        |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
+                                            }
+                                        )
+                                )
+                }
 
 
 withAccessControl : Bool -> a -> AccessControlled a
@@ -227,6 +239,3 @@ lookupModuleSpecification packageName moduleName repo =
         repo.dependencies
             |> Dict.get packageName
             |> Maybe.andThen (.modules >> Dict.get moduleName)
-            -- Private modules are not visible from another package
-            |> Maybe.andThen AccessControlled.withPublicAccess
-            |> Maybe.map Module.definitionToSpecification

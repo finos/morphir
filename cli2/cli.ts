@@ -4,33 +4,39 @@ import * as fs from 'fs';
 import * as util from 'util';
 import * as path from 'path';
 import crypto from 'crypto'
+import * as FileChanges from './FileChanges'
 
+const fsExists = util.promisify(fs.exists)
 const fsWriteFile = util.promisify(fs.writeFile)
 const readDir = util.promisify(fs.readdir)
 const makeDir = util.promisify(fs.mkdir)
-const readFile = util.promisify(fs.readFile)
+const fsReadFile = util.promisify(fs.readFile)
 const accessFile = util.promisify(fs.access)
 
-const worker = require('./../Morphir.Elm.CLI').Elm.Morphir.Elm.Cli.init()
+const worker = require('./../Morphir.Elm.CLI').Elm.Morphir.Elm.CLI.init()
 
 async function make(projectDir: string, options: any) {
     const morphirJsonPath: string = path.join(projectDir, 'morphir.json')
-    const morphirJsonContent = await readFile(morphirJsonPath)
-    const parsedMorphirJson = JSON.parse(morphirJsonContent.toString())
+    const morphirJson = JSON.parse((await fsReadFile(morphirJsonPath)).toString())
 
-    // All the files in the src directory are read
-    const sourcedFiles = await readElmSourceFiles(path.join(projectDir, parsedMorphirJson.sourceDirectory))
+    const hashFilePath = path.join(projectDir, 'morphir-hashes.json')
+    const oldContentHashes = await readContentHashes(hashFilePath)
+    const fileChanges = await FileChanges.detectChanges(oldContentHashes, path.join(projectDir, morphirJson.sourceDirectory))
+
+    reportFileChangeStats(fileChanges)
 
     //To check if the morphir-ir.json already exists
     let morphirIR: any = null
     const morphirIrPath: string = path.join(projectDir, 'morphir-ir.json')
     try {
-        const morphirIRFile = await readFile(morphirIrPath)
+        const morphirIRFile = await fsReadFile(morphirIrPath)
         morphirIR = JSON.parse(morphirIRFile.toString())
     } catch (err) {
         console.log(`${err}, not found`)
     }
-    return packageDefinitionFromSource(parsedMorphirJson, sourcedFiles, options, morphirIR)
+    const updatedIR = await packageDefinitionFromSource(morphirJson, fileChanges, options, morphirIR)
+    await writeContentHashes(hashFilePath, FileChanges.toContentHashes(fileChanges))
+    return updatedIR
 }
 
 //generating a hash with md5 algorithm for the content of the read file
@@ -41,21 +47,13 @@ const hashedContent = (contentOfFile: any) => {
     return gen_hash;
 }
 
-async function packageDefinitionFromSource(parsedMorphirJson: any, sourcedFiles: any, options: any, morphirIR: any) {
+async function packageDefinitionFromSource(morphirJson: any, fileChanges: FileChanges.FileChanges, options: any, morphirIR: any) {
     return new Promise((resolve, reject) => {
         worker.ports.jsonDecodeError.subscribe((err: any) => {
             reject(err)
         })
-        
-        worker.ports.incrementalBuildResult.subscribe(([err, ok]: any) => {
-            if (err) {
-                reject(err)
-            } else {
-                resolve(ok)
-            }
-        })
 
-        worker.ports.packageDefinitionFromSourceResult.subscribe(([err, ok]: any) => {
+        worker.ports.buildIncrementallyCompleted.subscribe(([err, ok]: any) => {
             if (err) {
                 reject(err)
             } else {
@@ -66,12 +64,13 @@ async function packageDefinitionFromSource(parsedMorphirJson: any, sourcedFiles:
         const opts = {
             typesOnly: options.typesOnly
         }
-        
-        if(morphirIR == null){
-            worker.ports.packageDefinitionFromSource.send([opts, parsedMorphirJson, sourcedFiles])
-        }else{
-            worker.ports.incrementalBuild.send([opts, parsedMorphirJson,sourcedFiles, morphirIR])
-        }
+
+        worker.ports.buildIncrementally.send({
+            options: opts,
+            packageInfo: morphirJson,
+            fileChanges: FileChanges.toElmJson(fileChanges),
+            distribution: morphirIR
+        })
     })
 }
 
@@ -82,7 +81,7 @@ function pathDifference(keys1: Array<string>, keys2: Array<string>) {
 async function differenceInHash(hashFilePath: string, filePath: string,
     fileHash: Map<string, string>, fileChangesMap: Map<string, Array<string>>, hashJson: any) {
 
-    const readContent = await readFile(filePath)
+    const readContent = await fsReadFile(filePath)
     const hash = hashedContent(readContent)
     for (let key in hashJson) {
         fileHash.set(key, hashJson[key])
@@ -103,60 +102,51 @@ async function differenceInHash(hashFilePath: string, filePath: string,
     return fileChangeObject
 }
 
-async function readElmSourceFiles(dir: string) {
-    let fileHash = new Map<string, string>();
-    let fileChangesMap = new Map<string, Array<string>>()
-    let newPathList: Array<string> = []
-    const readSourceFile = async function (filePath: string) {
-        const hashFilePath: string = path.join(dir, '../morphir-hash.json')
-        newPathList.push(filePath)
-        try {
-            await accessFile(hashFilePath)
-            const readHashFile = await readFile(hashFilePath)
-            let hashJson = JSON.parse(readHashFile.toString())
-            let oldPathList = Object.keys(hashJson)
-            await differenceInHash(hashFilePath, filePath, fileHash, fileChangesMap, hashJson)
-            let difference = pathDifference(oldPathList, newPathList)
-            difference.map(file => {
-                fileHash.delete(file)
-                fileChangesMap.set(file, ['Deleted'])
-            })
-            let jsonObject = Object.fromEntries(fileHash)
-            await fsWriteFile(hashFilePath, JSON.stringify(jsonObject, null, 2))
-        } catch (err) {
-            const readContent = await readFile(filePath)
-            const hash = hashedContent(readContent)
-            fileHash.set(filePath, hash)
-            let jsonObject = Object.fromEntries(fileHash)
-            await fsWriteFile(hashFilePath, JSON.stringify(jsonObject, null, 2))
-            return {
-                path: filePath,
-                content: readContent.toString()
-            }
+
+/**
+ * Read content hashes from a file.
+ * 
+ * @param filePath file path to read hashes from
+ * @returns map of hashes
+ */
+async function readContentHashes(filePath: string): Promise<Map<FileChanges.Path, FileChanges.Hash>> {
+    // Check if the file exists
+    if (await fsExists(filePath)) {
+        const contentHashesJson = JSON.parse((await fsReadFile(filePath)).toString())
+        const contentHashesMap: Map<FileChanges.Path, FileChanges.Hash> = new Map<FileChanges.Path, FileChanges.Hash>()
+        for (let path in contentHashesJson) {
+            contentHashesMap.set(path, contentHashesJson[path])
         }
+        return contentHashesMap
+    } else {
+        return new Map<FileChanges.Path, FileChanges.Hash>()
     }
-    const readDirectory = async function (currentDir: string) {
-        const entries = await readDir(currentDir, {
-            withFileTypes: true
-        })
-        const elmSources =
-            entries
-                .filter(entry => entry.isFile() && entry.name.endsWith('.elm'))
-                .map(async entry => {
-                    readSourceFile(path.join(currentDir, entry.name))
-                })
-        const subDirectories: any =
-            entries
-                .filter(entry => entry.isDirectory())
-                .map(entry => readDirectory(path.join(currentDir, entry.name)))
-                .reduce(async (currentResult, nextResult) => {
-                    const current = await currentResult
-                    const next = await nextResult
-                    return current.concat(next)
-                }, Promise.resolve([]))
-        return elmSources.concat(await subDirectories)
+}
+
+/**
+ * Write content hashes into a file.
+ * 
+ * @param filePath file path to read hashes from
+ * @returns map of hashes
+ */
+async function writeContentHashes(filePath: string, hashes: Map<FileChanges.Path, FileChanges.Hash>): Promise<void> {
+    const jsonObject: { [index: string]: string } = {}
+    for (let [path, hash] of hashes) {
+        jsonObject[path] = hash
     }
-    return Promise.all(await readDirectory(dir))
+    await writeFile(filePath, JSON.stringify(jsonObject, null, 4))
+}
+
+
+function reportFileChangeStats(fileChanges: FileChanges.FileChanges): void {
+    const stats: FileChanges.Stats = FileChanges.toStats(fileChanges)
+    const message = [
+        `- inserted:  ${stats.inserted}`,
+        `- updated:   ${stats.updated}`,
+        `- deleted:   ${stats.deleted}`,
+        `- unchanged: ${stats.unchanged}`
+    ].join('\n  ')
+    console.log(`The following file changes were detected:\n  ${message}`)
 }
 
 async function writeFile(filePath: string, content: string) {

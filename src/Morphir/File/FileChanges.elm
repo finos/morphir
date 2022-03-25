@@ -24,3 +24,9 @@ type Change
     = Insert String
     | Update String
     | Delete
+
+
+filter : (Path -> Change -> Bool) -> FileChanges -> FileChanges
+filter f fileChanges =
+    fileChanges
+        |> Dict.filter f
