@@ -67,11 +67,11 @@ jobs:
     steps:
       - uses: actions/checkout@v1
   	  - name: Use Node.js ${{ matrix.node-version }}
-	    uses: actions/setup-node@v1
-	    with:
-		  node-version: ${{ matrix.node-version }}
-	  - run: npm ci
-	  - run: npm run build --if-present
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: npm run build --if-present
       - uses: JS-DevTools/npm-publish@v1
         if: env.NPM_TOKEN != 0
         with:
