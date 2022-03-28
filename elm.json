@@ -17,7 +17,6 @@
         "Morphir.SDK.Aggregate",
         "Morphir.SDK.Dict",
         "Morphir.SDK.ResultList",
-        "Morphir.SDK.Validate",
         "Morphir.SDK.LocalTime",
         "Morphir.IR",
         "Morphir.IR.Name",

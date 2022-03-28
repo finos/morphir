@@ -56,6 +56,7 @@ import Elm.Syntax.Pattern as Pattern exposing (Pattern(..))
 import Elm.Syntax.Range exposing (Range)
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
+import Json.Encode as Encode
 import Morphir.Compiler as Compiler
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
@@ -80,6 +81,7 @@ import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Rewrite as Rewrite
 import Morphir.Type.Infer as Infer
+import Morphir.Type.Infer.Codec exposing (encodeTypeError)
 import Parser exposing (DeadEnd)
 import Set exposing (Set)
 
@@ -224,7 +226,7 @@ parseRawValue ir valueSourceCode =
             }
     in
     mapSource (Options False) packageInfo defaultDependencies [ dummyModule ]
-        |> Result.mapError (\errorList -> errorList |> Debug.toString)
+        |> Result.mapError (always "Unknown error")
         |> Result.andThen
             (\packageDef ->
                 packageDef
@@ -283,7 +285,7 @@ mapValueToFile ir outputType content =
                     |> Library packageName Dict.empty
                     |> IR.fromDistribution
             )
-        |> Result.mapError (\errorList -> errorList |> Debug.toString)
+        |> Result.mapError (always "Unknown error")
 
 
 
@@ -431,7 +433,7 @@ mapSource opts packageInfo dependencies sourceFiles =
 
                                         TypeInferenceError sourceLocation typeError ->
                                             mapSourceLocations
-                                                ("Type inference error: " ++ Debug.toString typeError)
+                                                ("Type inference error: " ++ Encode.encode 0 (encodeTypeError typeError))
                                                 sourceLocation
                                                 []
                                 )
@@ -491,10 +493,10 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
             sources
                 |> List.map
                     (\sourceFile ->
-                        let
-                            _ =
-                                Debug.log "Parsing source" sourceFile.path
-                        in
+                        --let
+                        --    _ =
+                        --        Debug.log "Parsing source" sourceFile.path
+                        --in
                         Elm.Parser.parse sourceFile.content
                             |> Result.map
                                 (\rawFile ->
@@ -570,9 +572,9 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
                 |> Result.andThen
                     (\parsedFiles ->
                         let
-                            _ =
-                                Debug.log "Parsed sources" (parsedFiles |> List.length)
-
+                            --_ =
+                            --    Debug.log "Parsed sources" (parsedFiles |> List.length)
+                            --
                             parsedFilesByModuleName =
                                 parsedFiles
                                     |> Dict.fromList
@@ -604,9 +606,9 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
                 |> Result.andThen
                     (\parsedFiles ->
                         let
-                            _ =
-                                Debug.log "Parsed sources" (parsedFiles |> List.length)
-
+                            --_ =
+                            --    Debug.log "Parsed sources" (parsedFiles |> List.length)
+                            --
                             parsedFilesByModuleName =
                                 parsedFiles
                                     |> Dict.fromList
