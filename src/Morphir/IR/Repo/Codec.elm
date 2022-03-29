@@ -41,3 +41,21 @@ encodeError error =
                 [ Encode.string "DependencyAlreadyExists"
                 , encodePath packageName
                 ]
+
+        ValueAlreadyExist valueName ->
+            [ Encode.string "ValueAlreadyExist"
+            , Encode.list Encode.string valueName
+            ]
+                |> Encode.list identity
+
+        TypeCycleDetected typeName ->
+            [ Encode.string "TypeCycleDetected"
+            , Encode.list Encode.string typeName
+            ]
+                |> Encode.list identity
+
+        ValueCycleDetected valueName ->
+            [ Encode.string "ValueCycleDetected"
+            , Encode.list Encode.string valueName
+            ]
+                |> Encode.list identity

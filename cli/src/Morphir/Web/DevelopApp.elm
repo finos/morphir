@@ -11,10 +11,8 @@ import Element
         , alignLeft
         , alignRight
         , alignTop
-        , centerX
         , column
         , el
-        , explain
         , fill
         , fillPortion
         , height
@@ -23,14 +21,17 @@ import Element
         , layout
         , link
         , mouseOver
+        , moveDown
         , none
         , padding
+        , paddingEach
         , paddingXY
         , paragraph
         , pointer
         , px
         , rgb
         , rgba
+        , rotate
         , row
         , scrollbars
         , spacing
@@ -883,7 +884,6 @@ update msg model =
             ( { model
                 | selectedModule = Just ( nodePath, moduleName )
                 , selectedDefinition = Nothing
-                , showModules = False
               }
             , Cmd.none
             )
@@ -1339,7 +1339,7 @@ viewHome model packageName packageDef =
                 , mouseOver [ Background.color (rgb 0 0.639 0.882) ]
                 ]
                 { onPress = Just ToggleModulesMenu
-                , label = text (ifThenElse model.showModules " hide Modules ↑ " " show Modules ↓ ")
+                , label = row [spacing (model.theme |> Theme.scaled -6) ] [el [ width (px 20)] <| text <| ifThenElse model.showModules "🗁" "🗀", text "Modules"]
                 }
 
         moduleTree =
@@ -1364,49 +1364,36 @@ viewHome model packageName packageDef =
         pathToSelectedModule =
             case model.selectedModule |> Maybe.map Tuple.second of
                 Just moduleName ->
-                    moduleNameToPathString moduleName
+                    "> " ++ (moduleNameToPathString moduleName)
 
                 _ ->
-                    ""
+                   ">"
     in
     row [ width fill, height fill, Background.color gray, spacing 10 ]
         [ column
-            [ width (ifThenElse model.showModules (fillPortion 4) (fillPortion 2))
+            [ width (ifThenElse model.showModules (fillPortion 5) (fillPortion 3))
             , height fill
             ]
-            [ ifThenElse model.showModules
-                none
-                (row
-                    [ width fill
-                    , padding (model.theme |> Theme.scaled -3)
-                    , spacing (model.theme |> Theme.scaled 1)
-                    ]
-                    [ el [ centerX, Font.bold ]
-                        (text pathToSelectedModule)
-                    , el [ alignRight ] toggleModulesMenu
-                    ]
-                )
-            , row
+            [ row
                 [ height fill
                 , width fill
-                , spacing 10
+                , spacing <| ifThenElse model.showModules 10 0
                 ]
-                [ column
+                [ row
                     [ Background.color gray
                     , height fill
                     , width (ifThenElse model.showModules (fillPortion 2) (fillPortion 0))
+                    , paddingXY 0 (model.theme |> Theme.scaled -3)
                     ]
-                    [ row
-                        [ width fill
-                        , paddingXY 0 (model.theme |> Theme.scaled -3)
-                        ]
-                        [ ifThenElse model.showModules (el [ alignRight ] toggleModulesMenu) none ]
-                    , ifThenElse model.showModules moduleTree none
+                    [ el [alignTop, rotate (degrees -90), width (px 40), moveDown (65), padding (model.theme |> Theme.scaled -6) ] 
+                        <| toggleModulesMenu
+                    , ifThenElse model.showModules (el [ width fill, height fill ] moduleTree) none
                     ]
                 , column
                     [ Background.color gray
                     , height fill
                     , width (ifThenElse model.showModules (fillPortion 3) fill)
+                    , spacing (model.theme |> Theme.scaled -4)
                     ]
                     [ row
                         [ width fill
@@ -1414,6 +1401,7 @@ viewHome model packageName packageDef =
                         , paddingXY 0 (model.theme |> Theme.scaled -5)
                         ]
                         [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
+                    , el [Font.bold, paddingEach { bottom = 3, top = 0, left = 5, right = 0 } ] <| text pathToSelectedModule
                     , el
                         scrollableListStyles
                         (viewDefinitionLabels (model.selectedModule |> Maybe.map Tuple.second))
@@ -1806,7 +1794,7 @@ definitionName definition =
 
 moduleNameToPathString : ModuleName -> String
 moduleNameToPathString moduleName =
-    Path.toString (Name.toHumanWords >> String.join " ") " / " moduleName
+    Path.toString (Name.toHumanWords >> String.join " ") " > " moduleName
 
 
 viewDefinitionDetails : Theme -> IRState -> ModulePage.Model -> Maybe Definition -> Element Msg

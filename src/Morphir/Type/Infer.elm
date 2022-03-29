@@ -4,6 +4,7 @@ import Dict exposing (Dict)
 import Morphir.Compiler as Compiler
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
+import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
@@ -20,7 +21,6 @@ import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaTuple, metaUnit, metaVar, variableByName)
 import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.Solve as Solve exposing (SolutionMap(..), UnificationError(..), UnificationErrorType(..))
-import Morphir.IR.Documented as Documented exposing (Documented)
 import Set exposing (Set)
 
 
@@ -65,12 +65,12 @@ inferModuleDefinition refs moduleName moduleDef =
         |> Dict.toList
         |> List.map
             (\( valueName, valueDef ) ->
-                let
-                    _ =
-                        Debug.log
-                            (String.concat [ "Inferring types for ", moduleName |> Path.toString Name.toTitleCase ".", ".", valueName |> Name.toCamelCase, " of size" ])
-                            (valueDef.value.value.body |> Value.countValueNodes)
-                in
+                --let
+                --    _ =
+                --        Debug.log
+                --            (String.concat [ "Inferring types for ", moduleName |> Path.toString Name.toTitleCase ".", ".", valueName |> Name.toCamelCase, " of size" ])
+                --            (valueDef.value.value.body |> Value.countValueNodes)
+                --in
                 inferValueDefinition refs valueDef.value.value
                     |> Result.map (Documented valueDef.value.doc)
                     |> Result.map (AccessControlled valueDef.access)
@@ -172,8 +172,8 @@ inferValueDefinition ir def =
                         Dict.empty
                         annotatedDef
 
-                _ =
-                    Debug.log "Generated constraints" (cs |> ConstraintSet.toList |> List.length)
+                --_ =
+                --    Debug.log "Generated constraints" (cs |> ConstraintSet.toList |> List.length)
             in
             cs
 
@@ -181,8 +181,8 @@ inferValueDefinition ir def =
         solution =
             solve ir constraints
 
-        _ =
-            Debug.log "Generated solutions" (solution |> Result.map (Tuple.second >> Solve.toList) |> Result.withDefault [] |> List.length)
+        --_ =
+        --    Debug.log "Generated solutions" (solution |> Result.map (Tuple.second >> Solve.toList) |> Result.withDefault [] |> List.length)
     in
     solution
         |> Result.map (applySolutionToAnnotatedDefinition ir annotatedDef)
