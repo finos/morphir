@@ -197,22 +197,29 @@ insertType moduleName typeName typeDef repo =
             Err [ TypeAlreadyExist ( repo.packageName, moduleName, typeName ) ]
 
         Nothing ->
-            Ok
-                { repo
-                    | modules =
-                        repo.modules
-                            |> Dict.insert moduleName
-                                (accessControlledModuleDef
-                                    |> AccessControlled.map
-                                        (\moduleDef ->
-                                            { moduleDef
-                                                | types =
-                                                    moduleDef.types
-                                                        |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
-                                            }
+            repo.typeDependencies
+                |> DAG.insertNode (FQName.fQName repo.packageName moduleName typeName) Set.empty
+                |> Result.mapError (always [ TypeCycleDetected typeName ])
+                |> Result.map
+                    (\updatedTypeDependency ->
+                        { repo
+                            | modules =
+                                repo.modules
+                                    |> Dict.insert moduleName
+                                        (accessControlledModuleDef
+                                            |> AccessControlled.map
+                                                (\moduleDef ->
+                                                    { moduleDef
+                                                        | types =
+                                                            moduleDef.types
+                                                                |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
+                                                    }
+                                                )
                                         )
-                                )
-                }
+                            , typeDependencies =
+                                updatedTypeDependency
+                        }
+                    )
 
 
 {-| Insert values into repo modules and update the value dependency graph of the repo |
