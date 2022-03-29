@@ -16,8 +16,9 @@ import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
-import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
-import Morphir.IR.FQName exposing (FQName, fQName)
+import Morphir.File.FileChanges exposing (Change(..), FileChanges)
+import Morphir.File.Path exposing (Path)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
@@ -37,9 +38,9 @@ type Error
     = ModuleCycleDetected ModuleName ModuleName
     | TypeCycleDetected Name Name
     | InvalidModuleName ElmModuleName.ModuleName
-    | ParseError FileChanges.Path (List Parser.DeadEnd)
+    | ParseError Path (List Parser.DeadEnd)
     | RepoError Repo.Errors
-    | ResolveError IncrementalResolve.Error
+    | ResolveError ModuleName IncrementalResolve.Error
 
 
 applyFileChanges : FileChanges -> Repo -> Result Errors Repo
@@ -51,53 +52,62 @@ applyFileChanges fileChanges repo =
                 parsedModules
                     |> List.foldl
                         (\( moduleName, parsedModule ) repoResultForModule ->
-                            let
-                                typeNames : List Name
-                                typeNames =
-                                    extractTypeNames parsedModule
-
-                                localNames =
-                                    { types = Set.fromList typeNames
-                                    , constructors = Set.empty
-                                    , values = Set.empty
-                                    }
-
-                                resolveTypeName : List String -> String -> Result Errors FQName
-                                resolveTypeName modName localName =
-                                    parsedModule
-                                        |> RawFile.imports
-                                        |> IncrementalResolve.resolveImports repo
-                                        |> Result.andThen
-                                            (\resolvedImports ->
-                                                IncrementalResolve.resolveLocalName
-                                                    repo
-                                                    moduleName
-                                                    localNames
-                                                    resolvedImports
-                                                    modName
-                                                    IncrementalResolve.Type
-                                                    localName
-                                            )
-                                        |> Result.mapError (ResolveError >> List.singleton)
-                            in
-                            extractTypes resolveTypeName parsedModule typeNames
-                                |> Result.andThen (orderTypesByDependency repo.packageName moduleName)
-                                |> Result.andThen
-                                    (List.foldl
-                                        (\( typeName, typeDef ) repoResultForType ->
-                                            repoResultForType
-                                                |> Result.andThen
-                                                    (\repoForType ->
-                                                        repoForType
-                                                            |> Repo.insertType moduleName typeName typeDef
-                                                            |> Result.mapError (RepoError >> List.singleton)
-                                                    )
-                                        )
-                                        repoResultForModule
-                                    )
+                            repoResultForModule
+                                |> Result.andThen (processModule moduleName parsedModule)
                         )
                         (Ok repo)
             )
+
+
+processModule : ModuleName -> ParsedModule -> Repo -> Result (List Error) Repo
+processModule moduleName parsedModule repo =
+    let
+        typeNames : List Name
+        typeNames =
+            extractTypeNames parsedModule
+
+        localNames : IncrementalResolve.VisibleNames
+        localNames =
+            { types = Set.fromList typeNames
+            , constructors = Set.empty
+            , values = Set.empty
+            }
+
+        resolveTypeName : List String -> String -> Result Errors FQName
+        resolveTypeName modName localName =
+            parsedModule
+                |> RawFile.imports
+                |> IncrementalResolve.resolveImports repo
+                |> Result.andThen
+                    (\resolvedImports ->
+                        IncrementalResolve.resolveLocalName
+                            repo
+                            moduleName
+                            localNames
+                            resolvedImports
+                            modName
+                            IncrementalResolve.Type
+                            localName
+                    )
+                |> Result.mapError (ResolveError moduleName >> List.singleton)
+    in
+    extractTypes resolveTypeName parsedModule typeNames
+        |> Result.andThen (orderTypesByDependency repo.packageName moduleName)
+        |> Result.andThen
+            (List.foldl
+                (\( typeName, typeDef ) repoResultForType ->
+                    repoResultForType
+                        |> Result.andThen (processType moduleName typeName typeDef)
+                )
+                (Ok repo)
+            )
+
+
+processType : ModuleName -> Name -> Type.Definition () -> Repo -> Result (List Error) Repo
+processType moduleName typeName typeDef repo =
+    repo
+        |> Repo.insertType moduleName typeName typeDef
+        |> Result.mapError (RepoError >> List.singleton)
 
 
 {-| convert New or Updated Elm modules into ParsedModules for further processing
@@ -124,7 +134,7 @@ parseElmModules fileChanges =
 
 {-| Converts an elm source into a ParsedModule.
 -}
-parseSource : ( FileChanges.Path, String ) -> Result Error ParsedModule
+parseSource : ( Path, String ) -> Result Error ParsedModule
 parseSource ( path, content ) =
     Elm.Parser.parse content
         |> Result.mapError (ParseError path)
@@ -149,10 +159,6 @@ orderElmModulesByDependency repo parsedModules =
                     )
                 |> Dict.fromList
 
-        moduleGraph : DAG ModuleName
-        moduleGraph =
-            DAG.empty
-
         foldFunction : ParsedModule -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
         foldFunction parsedModule graph =
             let
@@ -160,13 +166,14 @@ orderElmModulesByDependency repo parsedModules =
                 validateIfModuleExistInPackage modName =
                     Path.isPrefixOf repo.packageName modName
 
-                moduleDependencies : List ModuleName
+                moduleDependencies : Set ModuleName
                 moduleDependencies =
                     ParsedModule.importedModules parsedModule
                         |> List.filterMap
                             (\modName ->
                                 ElmModuleName.toIRModuleName repo.packageName modName
                             )
+                        |> Set.fromList
 
                 insertEdge : ModuleName -> ModuleName -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
                 insertEdge fromModuleName toModule dag =
@@ -191,12 +198,15 @@ orderElmModulesByDependency repo parsedModules =
                 |> Result.fromMaybe [ InvalidModuleName elmModuleName ]
                 |> Result.andThen
                     (\fromModuleName ->
-                        moduleDependencies
-                            |> List.foldl (insertEdge fromModuleName) graph
+                        graph
+                            |> Result.andThen
+                                (DAG.insertNode fromModuleName moduleDependencies
+                                    >> Result.mapError (\(DAG.CycleDetected from to) -> [ ModuleCycleDetected from to ])
+                                )
                     )
     in
     parsedModules
-        |> List.foldl foldFunction (Ok moduleGraph)
+        |> List.foldl foldFunction (Ok DAG.empty)
         |> Result.map
             (\graph ->
                 graph

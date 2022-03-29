@@ -4,6 +4,7 @@ import Json.Encode as Encode
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.Elm.IncrementalResolve.Codec as IncrementalResolveCodec
 import Morphir.IR.Name.Codec exposing (encodeName)
+import Morphir.IR.Path.Codec exposing (encodePath)
 import Morphir.IR.Repo.Codec as RepoCodec
 import Parser
 
@@ -102,5 +103,9 @@ encodeError error =
                 , encodeName to
                 ]
 
-        IncrementalFrontend.ResolveError e ->
-            IncrementalResolveCodec.encodeError e
+        IncrementalFrontend.ResolveError moduleName e ->
+            Encode.list identity
+                [ Encode.string "ResolveError"
+                , encodePath moduleName
+                , IncrementalResolveCodec.encodeError e
+                ]

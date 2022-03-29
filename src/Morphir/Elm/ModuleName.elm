@@ -17,7 +17,7 @@ toIRModuleName packageName elmModuleName =
             elmModuleName
                 |> List.map Name.fromString
     in
-    if Path.isPrefixOf packageName moduleName then
+    if packageName |> Path.isPrefixOf moduleName then
         moduleName
             |> List.drop (packageName |> List.length)
             |> Just

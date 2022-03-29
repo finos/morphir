@@ -1,10 +1,7 @@
 module Morphir.File.FileChanges exposing (..)
 
 import Dict exposing (Dict)
-
-
-type alias Path =
-    String
+import Morphir.File.Path exposing (Path)
 
 
 {-| Data structure to capture file changes.
@@ -24,3 +21,9 @@ type Change
     = Insert String
     | Update String
     | Delete
+
+
+filter : (Path -> Change -> Bool) -> FileChanges -> FileChanges
+filter f fileChanges =
+    fileChanges
+        |> Dict.filter f

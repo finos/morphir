@@ -3,164 +3,170 @@
 import * as fs from 'fs';
 import * as util from 'util';
 import * as path from 'path';
-import crypto from 'crypto'
+import * as FileChanges from './FileChanges'
 
+const fsExists = util.promisify(fs.exists)
 const fsWriteFile = util.promisify(fs.writeFile)
-const readDir = util.promisify(fs.readdir)
-const makeDir = util.promisify(fs.mkdir)
-const readFile = util.promisify(fs.readFile)
-const accessFile = util.promisify(fs.access)
+const fsMakeDir = util.promisify(fs.mkdir)
+const fsReadFile = util.promisify(fs.readFile)
 
-const worker = require('./../Morphir.Elm.CLI').Elm.Morphir.Elm.Cli.init()
+const worker = require('./../Morphir.Elm.CLI').Elm.Morphir.Elm.CLI.init()
 
-async function make(projectDir: string, options: any) {
+
+interface MorphirJson {
+    name: string
+    sourceDirectory: string
+    exposedModules: string[]
+}
+
+
+async function make(projectDir: string, options: any): Promise<string | undefined> {
+    // Morphir specific files expected to be in the project directory
     const morphirJsonPath: string = path.join(projectDir, 'morphir.json')
-    const morphirJsonContent = await readFile(morphirJsonPath)
-    const parsedMorphirJson = JSON.parse(morphirJsonContent.toString())
-
-    // All the files in the src directory are read
-    const sourcedFiles = await readElmSourceFiles(path.join(projectDir, parsedMorphirJson.sourceDirectory))
-
-    //To check if the morphir-ir.json already exists
-    let morphirIR: any = null
+    const hashFilePath: string = path.join(projectDir, 'morphir-hashes.json')
     const morphirIrPath: string = path.join(projectDir, 'morphir-ir.json')
-    try {
-        const morphirIRFile = await readFile(morphirIrPath)
-        morphirIR = JSON.parse(morphirIRFile.toString())
-    } catch (err) {
-        console.log(`${err}, not found`)
+
+    // Load the `morphir.json` file that describes the project
+    const morphirJson: MorphirJson = JSON.parse((await fsReadFile(morphirJsonPath)).toString())
+
+    // Check if there is an existing IR
+    if (await fsExists(morphirIrPath)) {
+        const oldContentHashes = await readContentHashes(hashFilePath)
+        const fileChanges = await FileChanges.detectChanges(oldContentHashes, path.join(projectDir, morphirJson.sourceDirectory))
+        if (reportFileChangeStats(fileChanges)) {
+            console.log('There were file changes and there is an existing IR. Building incrementally.')
+            const previousIR: string = (await fsReadFile(morphirIrPath)).toString()
+            const updatedIR: string = await buildIncrementally(morphirJson, fileChanges, options, previousIR)
+            await writeContentHashes(hashFilePath, FileChanges.toContentHashes(fileChanges))
+            return updatedIR
+        } else {
+            console.log('There were no file changes and there is an existing IR. No actions needed.')
+        }
+    } else {
+        console.log('There is no existing IR. Building from scratch.')
+        // We invoke file change detection but pass in no hashes which will generate inserts only
+        const fileChanges = await FileChanges.detectChanges(new Map(), path.join(projectDir, morphirJson.sourceDirectory))
+        const fileSnapshot = FileChanges.toFileSnapshotJson(fileChanges)
+        const newIR: string = await buildFromScratch(morphirJson, fileSnapshot, options)
+        await writeContentHashes(hashFilePath, FileChanges.toContentHashes(fileChanges))
+        return newIR
     }
-    return packageDefinitionFromSource(parsedMorphirJson, sourcedFiles, options, morphirIR)
 }
 
-//generating a hash with md5 algorithm for the content of the read file
-const hashedContent = (contentOfFile: any) => {
-    let hash = crypto.createHash('md5');
-    let data = hash.update(contentOfFile, 'utf8')
-    let gen_hash = data.digest('hex')
-    return gen_hash;
-}
 
-async function packageDefinitionFromSource(parsedMorphirJson: any, sourcedFiles: any, options: any, morphirIR: any) {
+
+async function buildFromScratch(morphirJson: any, fileSnapshot: { [index: string]: string }, options: any): Promise<string> {
     return new Promise((resolve, reject) => {
         worker.ports.jsonDecodeError.subscribe((err: any) => {
             reject(err)
         })
-        
-        worker.ports.incrementalBuildResult.subscribe(([err, ok]: any) => {
-            if (err) {
-                reject(err)
-            } else {
-                resolve(ok)
-            }
-        })
 
-        worker.ports.packageDefinitionFromSourceResult.subscribe(([err, ok]: any) => {
+        worker.ports.buildCompleted.subscribe(([err, ok]: any) => {
             if (err) {
                 reject(err)
             } else {
-                resolve(ok)
+                resolve(JSON.stringify(ok, null, 4))
             }
         })
 
         const opts = {
             typesOnly: options.typesOnly
         }
-        
-        if(morphirIR == null){
-            worker.ports.packageDefinitionFromSource.send([opts, parsedMorphirJson, sourcedFiles])
-        }else{
-            worker.ports.incrementalBuild.send([opts, parsedMorphirJson,sourcedFiles, morphirIR])
-        }
+
+        worker.ports.buildFromScratch.send({
+            options: opts,
+            packageInfo: morphirJson,
+            fileSnapshot: fileSnapshot
+        })
     })
 }
 
-function pathDifference(keys1: Array<string>, keys2: Array<string>) {
-    return keys1.filter(item => keys2.indexOf(item) < 0)
-}
-
-async function differenceInHash(hashFilePath: string, filePath: string,
-    fileHash: Map<string, string>, fileChangesMap: Map<string, Array<string>>, hashJson: any) {
-
-    const readContent = await readFile(filePath)
-    const hash = hashedContent(readContent)
-    for (let key in hashJson) {
-        fileHash.set(key, hashJson[key])
-    }
-    if (fileHash.has(filePath)) {
-        if (fileHash.get(filePath) && (fileHash.get(filePath) !== hash)) {
-            fileHash.set(filePath, hash)
-            fileChangesMap.set(filePath, ['Updated', readContent.toString()])
-        }
-    }
-    else {
-        fileHash.set(filePath, hash)
-        fileChangesMap.set(filePath, ['Insert', readContent.toString()])
-    }
-    let jsonObject = Object.fromEntries(fileHash)
-    await fsWriteFile(hashFilePath, JSON.stringify(jsonObject, null, 2))
-    let fileChangeObject = Object.fromEntries(fileChangesMap)
-    return fileChangeObject
-}
-
-async function readElmSourceFiles(dir: string) {
-    let fileHash = new Map<string, string>();
-    let fileChangesMap = new Map<string, Array<string>>()
-    let newPathList: Array<string> = []
-    const readSourceFile = async function (filePath: string) {
-        const hashFilePath: string = path.join(dir, '../morphir-hash.json')
-        newPathList.push(filePath)
-        try {
-            await accessFile(hashFilePath)
-            const readHashFile = await readFile(hashFilePath)
-            let hashJson = JSON.parse(readHashFile.toString())
-            let oldPathList = Object.keys(hashJson)
-            await differenceInHash(hashFilePath, filePath, fileHash, fileChangesMap, hashJson)
-            let difference = pathDifference(oldPathList, newPathList)
-            difference.map(file => {
-                fileHash.delete(file)
-                fileChangesMap.set(file, ['Deleted'])
-            })
-            let jsonObject = Object.fromEntries(fileHash)
-            await fsWriteFile(hashFilePath, JSON.stringify(jsonObject, null, 2))
-        } catch (err) {
-            const readContent = await readFile(filePath)
-            const hash = hashedContent(readContent)
-            fileHash.set(filePath, hash)
-            let jsonObject = Object.fromEntries(fileHash)
-            await fsWriteFile(hashFilePath, JSON.stringify(jsonObject, null, 2))
-            return {
-                path: filePath,
-                content: readContent.toString()
-            }
-        }
-    }
-    const readDirectory = async function (currentDir: string) {
-        const entries = await readDir(currentDir, {
-            withFileTypes: true
+async function buildIncrementally(morphirJson: any, fileChanges: FileChanges.FileChanges, options: any, previousIR: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        worker.ports.jsonDecodeError.subscribe((err: any) => {
+            reject(err)
         })
-        const elmSources =
-            entries
-                .filter(entry => entry.isFile() && entry.name.endsWith('.elm'))
-                .map(async entry => {
-                    readSourceFile(path.join(currentDir, entry.name))
-                })
-        const subDirectories: any =
-            entries
-                .filter(entry => entry.isDirectory())
-                .map(entry => readDirectory(path.join(currentDir, entry.name)))
-                .reduce(async (currentResult, nextResult) => {
-                    const current = await currentResult
-                    const next = await nextResult
-                    return current.concat(next)
-                }, Promise.resolve([]))
-        return elmSources.concat(await subDirectories)
+
+        worker.ports.buildCompleted.subscribe(([err, ok]: any) => {
+            if (err) {
+                reject(err)
+            } else {
+                resolve(JSON.stringify(ok, null, 4))
+            }
+        })
+
+        const opts = {
+            typesOnly: options.typesOnly
+        }
+
+        let maybeDistribution = null
+        if (previousIR) {
+            maybeDistribution = JSON.parse(previousIR)
+        }
+
+        worker.ports.buildIncrementally.send({
+            options: opts,
+            packageInfo: morphirJson,
+            fileChanges: FileChanges.toFileChangesJson(fileChanges),
+            distribution: maybeDistribution
+        })
+    })
+}
+
+/**
+ * Read content hashes from a file.
+ * 
+ * @param filePath file path to read hashes from
+ * @returns map of hashes
+ */
+async function readContentHashes(filePath: string): Promise<Map<FileChanges.Path, FileChanges.Hash>> {
+    // Check if the file exists
+    if (await fsExists(filePath)) {
+        const contentHashesJson = JSON.parse((await fsReadFile(filePath)).toString())
+        const contentHashesMap: Map<FileChanges.Path, FileChanges.Hash> = new Map<FileChanges.Path, FileChanges.Hash>()
+        for (let path in contentHashesJson) {
+            contentHashesMap.set(path, contentHashesJson[path])
+        }
+        return contentHashesMap
+    } else {
+        return new Map<FileChanges.Path, FileChanges.Hash>()
     }
-    return Promise.all(await readDirectory(dir))
+}
+
+/**
+ * Write content hashes into a file.
+ * 
+ * @param filePath file path to read hashes from
+ * @returns map of hashes
+ */
+async function writeContentHashes(filePath: string, hashes: Map<FileChanges.Path, FileChanges.Hash>): Promise<void> {
+    const jsonObject: { [index: string]: string } = {}
+    for (let [path, hash] of hashes) {
+        jsonObject[path] = hash
+    }
+    await writeFile(filePath, JSON.stringify(jsonObject, null, 4))
+}
+
+
+function reportFileChangeStats(fileChanges: FileChanges.FileChanges): boolean {
+    const stats: FileChanges.Stats = FileChanges.toStats(fileChanges)
+    if (FileChanges.hasChanges(stats)) {
+        const message = [
+            `- inserted:  ${stats.inserted}`,
+            `- updated:   ${stats.updated}`,
+            `- deleted:   ${stats.deleted}`,
+            `- unchanged: ${stats.unchanged}`
+        ].join('\n  ')
+        console.log(`The following file changes were detected:\n  ${message}`)
+        return true
+    } else {
+        console.log(`No file changes were detected.`)
+        return false
+    }
 }
 
 async function writeFile(filePath: string, content: string) {
-    await makeDir(path.dirname(filePath), {
+    await fsMakeDir(path.dirname(filePath), {
         recursive: true
     })
     return await fsWriteFile(filePath, content)

@@ -1,18 +1,18 @@
 module Morphir.Elm.IncrementalResolve exposing
-    ( resolveModuleName, resolveImports, resolveLocalName, ResolvedImports
-    , Error(..), KindOfName(..)
+    ( resolveModuleName, resolveImports, resolveLocalName, ResolvedImports, KindOfName(..), VisibleNames
+    , Error(..)
     )
 
 {-| This module contains functionality to resolve names in the Elm code into Morphir fully-qualified names. The process
 is relatively complex due to the many ways names can be imported in an Elm module. Here, we split up the overall process
 into three main steps following the structure of an Elm module:
 
-@docs resolveModuleName, resolveImports, resolveLocalName, ResolvedImports
+@docs resolveModuleName, resolveImports, resolveLocalName, ResolvedImports, KindOfName, VisibleNames
 
 
 # Errors
 
-@docs Error, KindOfName
+@docs Error
 
 -}
 
@@ -20,6 +20,7 @@ import Dict exposing (Dict)
 import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Node as Node exposing (Node(..))
+import Elm.Syntax.Range exposing (Range, emptyRange)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -111,6 +112,53 @@ type alias VisibleNames =
     , constructors : Set Name
     , values : Set Name
     }
+
+
+{-| Default imports implicitly included while processing Elm modules.
+-}
+defaultImports : List Import
+defaultImports =
+    let
+        er : Range
+        er =
+            emptyRange
+
+        -- empty node
+        en : a -> Node a
+        en a =
+            Node emptyRange a
+    in
+    [ Import (en [ "Basics" ]) Nothing (Just (en (Exposing.All emptyRange)))
+    , Import (en [ "List" ]) Nothing (Just (en (Exposing.Explicit [ en (Exposing.TypeOrAliasExpose "List") ])))
+    , Import (en [ "Maybe" ]) Nothing (Just (en (Exposing.Explicit [ en (Exposing.TypeExpose (Exposing.ExposedType "Maybe" (Just er))) ])))
+    , Import (en [ "Result" ]) Nothing (Just (en (Exposing.Explicit [ en (Exposing.TypeExpose (Exposing.ExposedType "Result" (Just er))) ])))
+    , Import (en [ "String" ]) Nothing (Just (en (Exposing.Explicit [ en (Exposing.TypeOrAliasExpose "String") ])))
+    , Import (en [ "Char" ]) Nothing (Just (en (Exposing.Explicit [ en (Exposing.TypeOrAliasExpose "Char") ])))
+    , Import (en [ "Tuple" ]) Nothing Nothing
+    ]
+
+
+{-| Map elm/core modules to Morphir SDK modules.
+-}
+sdkModuleMapping : Dict (List String) (List String)
+sdkModuleMapping =
+    let
+        morphirSdkPrefix : String -> ( List String, List String )
+        morphirSdkPrefix elmModuleName =
+            ( [ elmModuleName ], [ "Morphir", "SDK", elmModuleName ] )
+    in
+    Dict.fromList
+        [ morphirSdkPrefix "Basics"
+        , morphirSdkPrefix "List"
+        , morphirSdkPrefix "Dict"
+        , morphirSdkPrefix "Set"
+        , morphirSdkPrefix "Maybe"
+        , morphirSdkPrefix "Result"
+        , morphirSdkPrefix "String"
+        , morphirSdkPrefix "Char"
+        , morphirSdkPrefix "Tuple"
+        , morphirSdkPrefix "Regex"
+        ]
 
 
 {-| Resolve the imports into an internal data structure that makes it easier to resolve names within the module. This is
@@ -227,7 +275,7 @@ resolveImports repo imports =
                                                     typeName =
                                                         Name.fromString localName
                                                 in
-                                                if moduleSpec.values |> Dict.member typeName then
+                                                if moduleSpec.types |> Dict.member typeName then
                                                     resolvedImportsSoFar |> Result.map (addLocalName Type qualifiedModuleName typeName)
 
                                                 else
@@ -270,11 +318,13 @@ resolveImports repo imports =
                 Nothing ->
                     Ok resolvedImports
     in
-    imports
+    (defaultImports ++ imports)
         |> List.foldl
             (\nextImport resolvedImportsSoFar ->
                 nextImport.moduleName
                     |> Node.value
+                    -- Map some elm/core modules to Morphir SDK ones
+                    |> (\elmModuleName -> sdkModuleMapping |> Dict.get elmModuleName |> Maybe.withDefault elmModuleName)
                     |> resolveModuleName repo
                     |> Result.andThen
                         (\(( packageName, moduleName ) as resolvedModuleName) ->

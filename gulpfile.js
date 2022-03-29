@@ -56,9 +56,9 @@ function makeCLI() {
     return make('cli', 'src/Morphir/Elm/CLI.elm', 'Morphir.Elm.CLI.js')
 }
 
- function makeCLI2() {
-     return make('cli2', 'src/Morphir/Elm/CLI.elm', 'Morphir.Elm.CLI.js')
- }
+function makeCLI2() {
+    return make('cli2', 'src/Morphir/Elm/CLI.elm', 'Morphir.Elm.CLI.js')
+}
 
 function makeDevCLI() {
     return make('cli', 'src/Morphir/Elm/DevCLI.elm', 'Morphir.Elm.DevCLI.js')
@@ -80,13 +80,18 @@ function makeTryMorphir() {
     return make('cli', 'src/Morphir/Web/TryMorphir.elm', 'web/try-morphir.html')
 }
 
+const buildCLI2 =
+    parallel(
+        compileCli2Ts,
+        makeCLI2
+    )
 
 const build =
     series(
         checkElmDocs,
         makeCLI,
         makeDevCLI,
-        makeCLI2,
+        buildCLI2,
         makeDevServer,
         makeDevServerAPI,
         makeInsightAPI,
@@ -103,14 +108,14 @@ function morphirElmMake(projectDir, outputPath, options = {}) {
     return execa('node', args, { stdio })
 }
 
- function morphirElmMake2(projectDir, outputPath, options = {}) {
-     args = ['./cli2/lib/morphir.js', 'make', '-p', projectDir, '-o', outputPath]
-     if (options.typesOnly) {
-         args.push('--types-only')
-     }
-     console.log("Running: " + args.join(' '));
-     return execa('node', args, { stdio })
- }
+function morphirElmMake2(projectDir, outputPath, options = {}) {
+    args = ['./cli2/lib/morphir.js', 'make', '-p', projectDir, '-o', outputPath]
+    if (options.typesOnly) {
+        args.push('--types-only')
+    }
+    console.log("Running: " + args.join(' '));
+    return execa('node', args, { stdio })
+}
 
 function morphirElmGen(inputPath, outputDir, target) {
     args = ['./cli/morphir-elm.js', 'gen', '-i', inputPath, '-o', outputDir, '-t', target]
@@ -119,12 +124,14 @@ function morphirElmGen(inputPath, outputDir, target) {
 }
 
 
+
+
 async function testUnit(cb) {
     await execa('elm-test');
 }
 
-async function compileCli2Ts(cb) {
-     src('./cli2/*.ts').pipe(tsProject()).pipe(dest('./cli2/lib/'))
+async function compileCli2Ts() {
+    src('./cli2/*.ts').pipe(tsProject()).pipe(dest('./cli2/lib/'))
 }
 
 function testIntegrationClean() {
@@ -233,7 +240,6 @@ testMorphirIR = series(
 const test =
     parallel(
         testUnit,
-        compileCli2Ts,
         testIntegration,
         testMorphirIR,
     )
@@ -241,7 +247,7 @@ const test =
 exports.clean = clean;
 exports.makeCLI = makeCLI;
 exports.makeDevCLI = makeDevCLI;
- exports.makeCLI2 = makeCLI2;
+exports.buildCLI2 = buildCLI2;
 exports.build = build;
 exports.test = test;
 exports.testIntegration = testIntegration;
