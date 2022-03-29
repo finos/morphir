@@ -16,8 +16,9 @@ import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
-import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
-import Morphir.IR.FQName exposing (FQName, fQName)
+import Morphir.File.FileChanges exposing (Change(..), FileChanges)
+import Morphir.File.Path exposing (Path)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
@@ -37,7 +38,7 @@ type Error
     = ModuleCycleDetected ModuleName ModuleName
     | TypeCycleDetected Name Name
     | InvalidModuleName ElmModuleName.ModuleName
-    | ParseError FileChanges.Path (List Parser.DeadEnd)
+    | ParseError Path (List Parser.DeadEnd)
     | RepoError Repo.Errors
     | ResolveError ModuleName IncrementalResolve.Error
 
@@ -133,7 +134,7 @@ parseElmModules fileChanges =
 
 {-| Converts an elm source into a ParsedModule.
 -}
-parseSource : ( FileChanges.Path, String ) -> Result Error ParsedModule
+parseSource : ( Path, String ) -> Result Error ParsedModule
 parseSource ( path, content ) =
     Elm.Parser.parse content
         |> Result.mapError (ParseError path)

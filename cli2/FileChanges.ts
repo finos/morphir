@@ -46,11 +46,13 @@ function Delete(): Delete {
 }
 interface NoChange {
     kind: 'NoChange'
+    content: string
     hash: Hash
 }
-function NoChange(hash: Hash): NoChange {
+function NoChange(content: string, hash: Hash): NoChange {
     return {
         kind: 'NoChange',
+        content: content,
         hash: hash
     }
 }
@@ -134,7 +136,7 @@ async function detectChangeOfSingleFile(oldContentHash: Hash | undefined, filePa
             // Check if it's the same as the previous hash
             if (oldContentHash === newContentHash) {
                 // If it's the same there was no change
-                return NoChange(oldContentHash)
+                return NoChange(content, oldContentHash)
             } else {
                 // If the hashes are different then it's an update
                 // We are also returning the new hash so that we can save it
@@ -169,7 +171,7 @@ export function toContentHashes(fileChanges: Map<Path, FileChange>): Map<Path, H
  * @param fileChanges file changes map
  * @returns JSON representation thet's expected by Elm
  */
-export function toElmJson(fileChanges: Map<Path, FileChange>): { [index: string]: any } {
+export function toFileChangesJson(fileChanges: Map<Path, FileChange>): { [index: string]: any } {
     const fileChangeToJson = (fileChange: Insert | Update | Delete): any => {
         if (fileChange.kind == 'Insert') {
             return ['Insert', fileChange.content]
@@ -187,6 +189,22 @@ export function toElmJson(fileChanges: Map<Path, FileChange>): { [index: string]
         }
     }
     return fileChangesJson
+}
+
+export function toFileSnapshotJson(fileChanges: Map<Path, FileChange>): { [index: string]: string } {
+    const inserts: { [index: string]: string } = {}
+    for (let [path, fileChange] of fileChanges) {
+        if (fileChange.kind == 'Insert') {
+            inserts[path] = fileChange.content
+        } else if (fileChange.kind == 'Update') {
+            inserts[path] = fileChange.content
+        } else if (fileChange.kind == 'Delete') {
+            // deleted fiels are simply not inserted
+        } else {
+            inserts[path] = fileChange.content
+        }
+    }
+    return inserts
 }
 
 export interface Stats {
@@ -220,6 +238,16 @@ export function toStats(fileChanges: Map<Path, FileChange>): Stats {
         }
     }
     return stats
+}
+
+/**
+ * Checks if there were any file changes or every file is unchanged.
+ * 
+ * @param stats file change stats obtained using `toStats`
+ * @returns true if there was at least one insert, update or delete
+ */
+export function hasChanges(stats: Stats): boolean {
+    return stats.inserted > 0 || stats.updated > 0 || stats.deleted > 0
 }
 
 /**
