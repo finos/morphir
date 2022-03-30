@@ -13,7 +13,6 @@ import Elm.Syntax.File exposing (File)
 import Elm.Syntax.ModuleName as Elm
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern as Pattern exposing (Pattern)
-import Elm.Syntax.Range as Range
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
 import Morphir.Elm.Frontend.Mapper as Mapper
@@ -22,6 +21,7 @@ import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
+import Morphir.File.Path exposing (Path)
 import Morphir.IR as IR
 import Morphir.IR.FQName as FQName exposing (FQName, fQName)
 import Morphir.IR.Literal as Literal
@@ -50,18 +50,14 @@ type Error
     | TypeCycleDetected Name Name
     | ValueCycleDetected FQName FQName
     | InvalidModuleName ElmModuleName.ModuleName
-    | ParseError FileChanges.Path (List Parser.DeadEnd)
+    | ParseError Path (List Parser.DeadEnd)
     | RepoError Repo.Errors
-    | ResolveError IncrementalResolve.Error
     | MappingError Mapper.Errors
       -- need to track where the problem occurred
       -- add source location information
     | TypeInferenceError Infer.TypeError
     | ValueTypeInferenceError Infer.ValueTypeError
-
-
-type alias Range =
-    Range.Range
+    | ResolveError ModuleName IncrementalResolve.Error
 
 
 applyFileChanges : FileChanges -> Repo -> Result Errors Repo
@@ -73,61 +69,62 @@ applyFileChanges fileChanges repo =
                 parsedModules
                     |> List.foldl
                         (\( moduleName, parsedModule ) repoResultForModule ->
-                            let
-                                typeNames : List Name
-                                typeNames =
-                                    extractTypeNames parsedModule
-
-                                valueNames : List Name
-                                valueNames =
-                                    extractValueNames parsedModule
-
-                                localNames =
-                                    { types = Set.fromList typeNames
-                                    , constructors = Set.empty
-                                    , values = Set.fromList valueNames
-                                    }
-
-                                resolveLocalName : IncrementalResolve.KindOfName -> List String -> String -> Result Errors FQName
-                                resolveLocalName kindOfName modName localName =
-                                    parsedModule
-                                        |> RawFile.imports
-                                        |> IncrementalResolve.resolveImports repo
-                                        |> Result.andThen
-                                            (\resolvedImports ->
-                                                IncrementalResolve.resolveLocalName
-                                                    repo
-                                                    moduleName
-                                                    localNames
-                                                    resolvedImports
-                                                    modName
-                                                    kindOfName
-                                                    localName
-                                            )
-                                        |> Result.mapError (ResolveError >> List.singleton)
-                            in
-                            extractTypes (resolveLocalName IncrementalResolve.Type) parsedModule
-                                |> Result.andThen (orderTypesByDependency repo.packageName moduleName)
-                                |> Result.andThen
-                                    (List.foldl
-                                        (\( typeName, typeDef ) repoResultForType ->
-                                            repoResultForType
-                                                |> Result.andThen
-                                                    (\repoForType ->
-                                                        repoForType
-                                                            |> Repo.insertType moduleName typeName typeDef
-                                                            |> Result.mapError (RepoError >> List.singleton)
-                                                    )
-                                        )
-                                        repoResultForModule
-                                    )
-                                |> Result.andThen
-                                    (\repoWithTypesInserted ->
-                                        Debug.todo "extract values"
-                                    )
+                            repoResultForModule
+                                |> Result.andThen (processModule moduleName parsedModule)
                         )
                         (Ok repo)
             )
+
+
+processModule : ModuleName -> ParsedModule -> Repo -> Result (List Error) Repo
+processModule moduleName parsedModule repo =
+    let
+        typeNames : List Name
+        typeNames =
+            extractTypeNames parsedModule
+
+        localNames : IncrementalResolve.VisibleNames
+        localNames =
+            { types = Set.fromList typeNames
+            , constructors = Set.empty
+            , values = Set.empty
+            }
+
+        resolveTypeName : IncrementalResolve.KindOfName -> List String -> String -> Result Errors FQName
+        resolveTypeName kindOfName modName localName =
+            parsedModule
+                |> RawFile.imports
+                |> IncrementalResolve.resolveImports repo
+                |> Result.andThen
+                    (\resolvedImports ->
+                        IncrementalResolve.resolveLocalName
+                            repo
+                            moduleName
+                            localNames
+                            resolvedImports
+                            modName
+                            kindOfName
+                            localName
+                    )
+                |> Result.mapError (ResolveError moduleName >> List.singleton)
+    in
+    extractTypes (resolveTypeName IncrementalResolve.Type) parsedModule
+        |> Result.andThen (orderTypesByDependency repo.packageName moduleName)
+        |> Result.andThen
+            (List.foldl
+                (\( typeName, typeDef ) repoResultForType ->
+                    repoResultForType
+                        |> Result.andThen (processType moduleName typeName typeDef)
+                )
+                (Ok repo)
+            )
+
+
+processType : ModuleName -> Name -> Type.Definition () -> Repo -> Result (List Error) Repo
+processType moduleName typeName typeDef repo =
+    repo
+        |> Repo.insertType moduleName typeName typeDef
+        |> Result.mapError (RepoError >> List.singleton)
 
 
 {-| convert New or Updated Elm modules into ParsedModules for further processing
@@ -154,7 +151,7 @@ parseElmModules fileChanges =
 
 {-| Converts an elm source into a ParsedModule.
 -}
-parseSource : ( FileChanges.Path, String ) -> Result Error ParsedModule
+parseSource : ( Path, String ) -> Result Error ParsedModule
 parseSource ( path, content ) =
     Elm.Parser.parse content
         |> Result.mapError (ParseError path)
@@ -179,10 +176,6 @@ orderElmModulesByDependency repo parsedModules =
                     )
                 |> Dict.fromList
 
-        moduleGraph : DAG ModuleName
-        moduleGraph =
-            DAG.empty
-
         foldFunction : ParsedModule -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
         foldFunction parsedModule graph =
             let
@@ -190,13 +183,14 @@ orderElmModulesByDependency repo parsedModules =
                 validateIfModuleExistInPackage modName =
                     Path.isPrefixOf repo.packageName modName
 
-                moduleDependencies : List ModuleName
+                moduleDependencies : Set ModuleName
                 moduleDependencies =
                     ParsedModule.importedModules parsedModule
                         |> List.filterMap
                             (\modName ->
                                 ElmModuleName.toIRModuleName repo.packageName modName
                             )
+                        |> Set.fromList
 
                 insertEdge : ModuleName -> ModuleName -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
                 insertEdge fromModuleName toModule dag =
@@ -221,12 +215,15 @@ orderElmModulesByDependency repo parsedModules =
                 |> Result.fromMaybe [ InvalidModuleName elmModuleName ]
                 |> Result.andThen
                     (\fromModuleName ->
-                        moduleDependencies
-                            |> List.foldl (insertEdge fromModuleName) graph
+                        graph
+                            |> Result.andThen
+                                (DAG.insertNode fromModuleName moduleDependencies
+                                    >> Result.mapError (\(DAG.CycleDetected from to) -> [ ModuleCycleDetected from to ])
+                                )
                     )
     in
     parsedModules
-        |> List.foldl foldFunction (Ok moduleGraph)
+        |> List.foldl foldFunction (Ok DAG.empty)
         |> Result.map
             (\graph ->
                 graph
@@ -456,38 +453,6 @@ extractValueNames parsedModule =
 -- infer and verify type signatures
 
 
-{-| Extract value (function) signatures.
-The signature is required for validating the inputs and out of the value
--}
-
-
-
---extractValueSignatures : (List String -> String -> Result Errors FQName) -> ParsedModule -> Result Errors (List ( Name, Type () ))
---extractValueSignatures nameResolver parsedModule =
---    parsedModule
---        |> ParsedModule.declarations
---        |> List.filterMap
---            (\(Node _ declaration) ->
---                case declaration of
---                    FunctionDeclaration func ->
---                        case func.signature of
---                            Just (Node _ { name, typeAnnotation }) ->
---                                typeAnnotation
---                                    |> Mapper.mapTypeAnnotation (nameResolver)
---                                    |> Result.map (name |> Node.value |> Name.fromString |> Tuple.pair)
---                                    |> Just
---
---                            Nothing ->
---                                -- may need a type inference
---                                Nothing
---
---                    _ ->
---                        Nothing
---            )
---        |> ResultList.keepAllErrors
---        |> Result.mapError List.concat
-
-
 {-| Extract value definitions
 -}
 extractValues : (List String -> String -> Result (List IncrementalResolve.Error) FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () () ))
@@ -527,63 +492,34 @@ extractValues resolveValueName parsedModule =
                         >> Result.map List.concat
                     )
 
-        valuesWithInferredType : Result Errors (Dict FQName (Value.Definition () (Type ())))
-        valuesWithInferredType =
-            declarationsAsDefintionsResult
+        orderedDeclarationAsDefinitions : Result Errors (List ( Name, Value.Definition () () ))
+        orderedDeclarationAsDefinitions =
+            orderedValueNameResult
                 |> Result.andThen
-                    (\defs ->
-                        orderedValueNameResult
-                            |> Result.map (Tuple.pair defs)
+                    (\fqNames ->
+                        declarationsAsDefintionsResult
+                            |> Result.map (Tuple.pair fqNames)
                     )
-                |> Result.andThen
-                    (\defDict orderedFQNames ->
+                |> Result.map
+                    (\( fqNames, defs ) ->
                         List.foldl
-                            (\fqName newDefDictResultSoFar ->
-                                -- convert the repo to the IR to avoid altering the
-                                -- type inferencer
-                                case Dict.get fqName defDict of
+                            (\fqName listSoFar ->
+                                case Dict.get fqName defs of
                                     Just def ->
                                         let
-                                            inferredType : Result (List Error) (Type ())
-                                            inferredType =
-                                                Infer.inferValue IR.empty
-                                                    (def.body
-                                                        |> Value.mapValueAttributes (always ()) identity
-                                                    )
-                                                    |> Result.mapError (\err -> [ TypeInferenceError err ])
-                                                    |> Result.map
-                                                        (Value.valueAttribute
-                                                            >> Tuple.second
-                                                            >> Type.mapTypeAttributes (always ())
-                                                        )
-
-                                            updateDict =
-                                                Result.map2
-                                                    (\d iT -> Dict.insert fqName { def | outputType = iT } d)
-                                                    newDefDictResultSoFar
-                                                    inferredType
+                                            ( _, _, name ) =
+                                                fqName
                                         in
-                                        --QUESTION why always passing in an empty ir
-                                        -- QUESTION how to set the input types
-                                        updateDict
+                                        List.append listSoFar [ ( name, def ) ]
 
                                     Nothing ->
-                                        newDefDictResultSoFar
+                                        listSoFar
                             )
-                            (Ok Dict.empty)
-                            orderedFQNames
+                            []
+                            fqNames
                     )
-
-        --create a dict of values to values dependency
     in
-    declarationsAsDefintionsResult
-        |> Result.map
-            (Dict.toList
-                >> List.map
-                    (\( ( _, _, name ), def ) ->
-                        ( name, def )
-                    )
-            )
+    orderedDeclarationAsDefinitions
 
 
 

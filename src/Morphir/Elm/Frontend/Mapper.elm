@@ -1,40 +1,26 @@
-module Morphir.Elm.Frontend.Mapper exposing (..)
+module Morphir.Elm.Frontend.Mapper exposing (Errors, mapDeclarationsToValue, mapFunction, mapTypeAnnotation)
 
 import Dict exposing (Dict)
-import Elm.Parser
-import Elm.Processing as Processing exposing (ProcessContext)
-import Elm.RawFile as RawFile
 import Elm.Syntax.Declaration exposing (Declaration(..))
-import Elm.Syntax.Exposing exposing (Exposing)
 import Elm.Syntax.Expression as Expression exposing (Expression(..))
-import Elm.Syntax.File exposing (File)
 import Elm.Syntax.ModuleName as Elm
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern as Pattern exposing (Pattern)
 import Elm.Syntax.Range as Range
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
-import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
-import Morphir.Elm.Frontend.Mapper as Mapper
+import Morphir.Elm.Frontend.Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
-import Morphir.Elm.WellKnownOperators as WellKnownOperators
-import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
-import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal as Literal
-import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Package exposing (PackageName)
-import Morphir.IR.Path as Path
-import Morphir.IR.QName as QName
-import Morphir.IR.Repo as Repo exposing (Repo, SourceCode, withAccessControl)
 import Morphir.IR.SDK.Basics as SDKBasics
 import Morphir.IR.SDK.List as List
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
 import Morphir.SDK.ResultList as ResultList
-import Parser
 import Set exposing (Set)
 
 
@@ -69,7 +55,7 @@ type alias ElmModuleName =
 
 
 mapTypeAnnotation : (List String -> String -> Result (List IncrementalResolve.Error) FQName) -> Node TypeAnnotation -> Result Errors (Type ())
-mapTypeAnnotation resolveTypeName (Node range typeAnnotation) =
+mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
     case typeAnnotation of
         GenericType varName ->
             Ok (Type.Variable () (varName |> Name.fromString))
@@ -238,7 +224,6 @@ mapExpression resolveReferenceName moduleName (Node range expr) =
                                     Ok (Value.Literal () (Literal.BoolLiteral False))
 
                                 _ ->
-                                    -- TODO resolve fqname
                                     resolveReferenceName modName localName
                                         |> Result.map (Value.Constructor ())
 
@@ -293,7 +278,6 @@ mapExpression resolveReferenceName moduleName (Node range expr) =
             mapLetExpression
                 resolveReferenceName
                 moduleName
-                (SourceLocation moduleName range)
                 letBlock
 
         Expression.CaseExpression caseBlock ->
@@ -466,7 +450,7 @@ mapPattern nameResolver moduleName (Node range pattern) =
                 |> Result.mapError List.concat
                 |> Result.map (Value.TuplePattern ())
 
-        Pattern.RecordPattern fieldNameNodes ->
+        Pattern.RecordPattern _ ->
             Err
                 [ SourceLocation moduleName range
                     |> RecordPatternNotSupported
@@ -495,7 +479,6 @@ mapPattern nameResolver moduleName (Node range pattern) =
         Pattern.VarPattern name ->
             Ok (Value.AsPattern () (Value.WildcardPattern ()) (Name.fromString name))
 
-        -- TODO name resolution
         Pattern.NamedPattern qualifiedNameRef argNodes ->
             let
                 fullyQualifiedName : Result Errors FQName
@@ -560,7 +543,6 @@ mapOperator moduleName range op =
             Ok <| SDKBasics.greaterThanOrEqual ()
 
         "++" ->
-            -- TODO return at what module the action wasn't supported
             Err
                 [ NotSupported
                     (SourceLocation moduleName range)
@@ -595,7 +577,6 @@ mapOperator moduleName range op =
             Ok <| List.construct ()
 
         _ ->
-            -- TODO return at what module the action wasn't supported
             Err
                 [ NotSupported
                     (SourceLocation moduleName range)
@@ -603,8 +584,8 @@ mapOperator moduleName range op =
                 ]
 
 
-mapLetExpression : (List String -> String -> Result (List IncrementalResolve.Error) FQName) -> Elm.ModuleName -> SourceLocation -> Expression.LetBlock -> Result Errors (Value.Value () ())
-mapLetExpression nameResolver moduleName sourceLocation letBlock =
+mapLetExpression : (List String -> String -> Result (List IncrementalResolve.Error) FQName) -> Elm.ModuleName -> Expression.LetBlock -> Result Errors (Value.Value () ())
+mapLetExpression nameResolver moduleName letBlock =
     let
         namesReferredByExpression : Expression -> List String
         namesReferredByExpression expression =
@@ -744,7 +725,7 @@ mapLetExpression nameResolver moduleName sourceLocation letBlock =
                                 (mapFunction nameResolver moduleName (Node range function))
                                 valueResult
 
-                        Node range (Expression.LetDestructuring patternNode letExpressionNode) ->
+                        Node _ (Expression.LetDestructuring patternNode letExpressionNode) ->
                             Result.map3 (Value.Destructure ())
                                 (mapPattern nameResolver moduleName patternNode)
                                 (mapExpression nameResolver moduleName letExpressionNode)
@@ -774,7 +755,11 @@ mapLetExpression nameResolver moduleName sourceLocation letBlock =
                                                         |> Result.map (Tuple.pair (function.declaration |> Node.value |> .name |> Node.value |> Name.fromString))
 
                                                 Node range (Expression.LetDestructuring _ _) ->
-                                                    Err [ NotSupported sourceLocation "Recursive destructuring" ]
+                                                    Err
+                                                        [ NotSupported
+                                                            (SourceLocation moduleName range)
+                                                            "Recursive destructuring"
+                                                        ]
                                         )
                                     |> ResultList.keepAllErrors
                                     |> Result.mapError List.concat

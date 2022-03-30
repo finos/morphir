@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // NPM imports
-import {Command} from 'commander'
+import { Command } from 'commander'
 import cli = require('./cli')
 
 // logging
@@ -19,15 +19,17 @@ program
 
 const dirAndOutput = program.opts()
 cli.make(dirAndOutput.projectDir, program.opts())
-    .then((packageDef) => {
-        console.log(`Writing file ${dirAndOutput.output}.`)
-        cli.writeFile(dirAndOutput.output, JSON.stringify(packageDef, null, 4))
-            .then(() => {
-                console.log('Done.')
-            })
-            .catch((err: any) => {
-                console.error(`Could not write file: ${err}`)
-            })
+    .then((ir: string | undefined) => {
+        if (ir) {
+            console.log(`Writing file ${dirAndOutput.output}.`)
+            cli.writeFile(dirAndOutput.output, ir)
+                .then(() => {
+                    console.log('Done.')
+                })
+                .catch((err: any) => {
+                    console.error(`Could not write file: ${err}`)
+                })
+        }
     })
     .catch((err: { code: string; path: any }) => {
         if (err.code == 'ENOENT') {

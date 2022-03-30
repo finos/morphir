@@ -1,25 +1,28 @@
 module Morphir.IR.Repo exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.Dependency.DAG as DAG exposing (DAG)
+import Morphir.Dependency.DAG as DAG exposing (CycleDetected, DAG)
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented as Documented
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Value as Value
 import Morphir.Value.Native as Native
 import Set exposing (Set)
 
 
 type alias Repo =
     { packageName : PackageName
-    , dependencies : Dict PackageName (Package.Definition () (Type ()))
+    , dependencies : Dict PackageName (Package.Specification ())
     , modules : Dict ModuleName (AccessControlled (Module.Definition () (Type ())))
     , moduleDependencies : DAG ModuleName
     , nativeFunctions : Dict FQName Native.Function
+    , typeDependencies : DAG FQName
+    , valueDependencies : DAG FQName
     }
 
 
@@ -35,7 +38,11 @@ type Error
     = ModuleNotFound ModuleName
     | ModuleHasDependents ModuleName (Set ModuleName)
     | ModuleAlreadyExist ModuleName
-    | TypeAlreadyExist Name
+    | TypeAlreadyExist FQName
+    | DependencyAlreadyExists PackageName
+    | ValueAlreadyExist Name
+    | TypeCycleDetected Name
+    | ValueCycleDetected Name
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -47,6 +54,8 @@ empty packageName =
     , modules = Dict.empty
     , nativeFunctions = Dict.empty
     , moduleDependencies = DAG.empty
+    , typeDependencies = DAG.empty
+    , valueDependencies = DAG.empty
     }
 
 
@@ -75,12 +84,25 @@ fromDistribution distro =
 toDistribution : Repo -> Distribution
 toDistribution repo =
     Library repo.packageName
-        (repo.dependencies
-            |> Dict.map (always Package.definitionToSpecification)
-        )
+        repo.dependencies
         { modules =
             repo.modules
         }
+
+
+insertDependencySpecification : PackageName -> Package.Specification () -> Repo -> Result Errors Repo
+insertDependencySpecification packageName packageSpec repo =
+    case repo.dependencies |> Dict.get packageName of
+        Just _ ->
+            Err [ DependencyAlreadyExists packageName ]
+
+        Nothing ->
+            Ok
+                { repo
+                    | dependencies =
+                        repo.dependencies
+                            |> Dict.insert packageName packageSpec
+                }
 
 
 {-| Adds native functions to the repo. For now this will be mainly used to add `SDK.nativeFunctions`.
@@ -156,13 +178,59 @@ deleteModule moduleName repo =
             )
 
 
+{-| Insert types into repo modules and update the type dependency graph of the repo |
+-}
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef repo =
+    let
+        accessControlledModuleDef : AccessControlled (Module.Definition () (Type ()))
+        accessControlledModuleDef =
+            case repo.modules |> Dict.get moduleName of
+                Just modDefinition ->
+                    modDefinition
+
+                Nothing ->
+                    public Module.emptyDefinition
+    in
+    case accessControlledModuleDef.value.types |> Dict.get typeName of
+        Just _ ->
+            Err [ TypeAlreadyExist ( repo.packageName, moduleName, typeName ) ]
+
+        Nothing ->
+            repo.typeDependencies
+                |> DAG.insertNode (FQName.fQName repo.packageName moduleName typeName) Set.empty
+                |> Result.mapError (always [ TypeCycleDetected typeName ])
+                |> Result.map
+                    (\updatedTypeDependency ->
+                        { repo
+                            | modules =
+                                repo.modules
+                                    |> Dict.insert moduleName
+                                        (accessControlledModuleDef
+                                            |> AccessControlled.map
+                                                (\moduleDef ->
+                                                    { moduleDef
+                                                        | types =
+                                                            moduleDef.types
+                                                                |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
+                                                    }
+                                                )
+                                        )
+                            , typeDependencies =
+                                updatedTypeDependency
+                        }
+                    )
+
+
+{-| Insert values into repo modules and update the value dependency graph of the repo |
+-}
+insertValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
+insertValue moduleName valueName valueDef repo =
     case repo.modules |> Dict.get moduleName of
         Just modDefinition ->
-            case modDefinition.value.types |> Dict.get typeName of
+            case modDefinition.value.values |> Dict.get valueName of
                 Just _ ->
-                    Err [ TypeAlreadyExist typeName ]
+                    Err [ ValueAlreadyExist valueName ]
 
                 Nothing ->
                     let
@@ -175,19 +243,26 @@ insertType moduleName typeName typeDef repo =
                                             |> AccessControlled.map
                                                 (\moduleDef ->
                                                     { moduleDef
-                                                        | types =
-                                                            modDefinition.value.types
-                                                                |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
+                                                        | values =
+                                                            modDefinition.value.values
+                                                                |> Dict.insert valueName (public (valueDef |> Documented.Documented ""))
                                                     }
                                                 )
                                     )
                     in
-                    Ok
-                        { repo
-                            | modules =
-                                repo.modules
-                                    |> Dict.update moduleName updateModule
-                        }
+                    repo.typeDependencies
+                        |> DAG.insertNode (FQName.fQName repo.packageName moduleName valueName) Set.empty
+                        |> Result.mapError (always [ ValueCycleDetected valueName ])
+                        |> Result.map
+                            (\updatedValueDependency ->
+                                { repo
+                                    | modules =
+                                        repo.modules
+                                            |> Dict.update moduleName updateModule
+                                    , valueDependencies =
+                                        updatedValueDependency
+                                }
+                            )
 
         Nothing ->
             Err [ ModuleNotFound moduleName ]
@@ -227,6 +302,3 @@ lookupModuleSpecification packageName moduleName repo =
         repo.dependencies
             |> Dict.get packageName
             |> Maybe.andThen (.modules >> Dict.get moduleName)
-            -- Private modules are not visible from another package
-            |> Maybe.andThen AccessControlled.withPublicAccess
-            |> Maybe.map Module.definitionToSpecification
