@@ -10,26 +10,33 @@ import Elm.RawFile as RawFile
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Expression as Expression exposing (Expression(..))
 import Elm.Syntax.File exposing (File)
+import Elm.Syntax.ModuleName as Elm
 import Elm.Syntax.Node as Node exposing (Node(..))
+import Elm.Syntax.Pattern as Pattern exposing (Pattern)
 import Elm.Syntax.Range as Range
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
+import Morphir.Elm.Frontend.Mapper as Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
-import Morphir.IR.FQName exposing (FQName, fQName)
+import Morphir.IR as IR
+import Morphir.IR.FQName as FQName exposing (FQName, fQName)
 import Morphir.IR.Literal as Literal
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
+import Morphir.IR.QName as QName
 import Morphir.IR.Repo as Repo exposing (Repo, SourceCode, withAccessControl)
 import Morphir.IR.SDK.Basics as SDKBasics
+import Morphir.IR.SDK.List as List
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
 import Morphir.SDK.ResultList as ResultList
+import Morphir.Type.Infer as Infer
 import Parser
 import Set exposing (Set)
 
@@ -41,11 +48,16 @@ type alias Errors =
 type Error
     = ModuleCycleDetected ModuleName ModuleName
     | TypeCycleDetected Name Name
+    | ValueCycleDetected FQName FQName
     | InvalidModuleName ElmModuleName.ModuleName
     | ParseError FileChanges.Path (List Parser.DeadEnd)
     | RepoError Repo.Errors
     | ResolveError IncrementalResolve.Error
-    | EmptyApply String Range
+    | MappingError Mapper.Errors
+      -- need to track where the problem occurred
+      -- add source location information
+    | TypeInferenceError Infer.TypeError
+    | ValueTypeInferenceError Infer.ValueTypeError
 
 
 type alias Range =
@@ -305,7 +317,7 @@ extractTypes resolveTypeName parsedModule =
                                                 constructor.arguments
                                                     |> List.indexedMap
                                                         (\index arg ->
-                                                            mapAnnotationToMorphirType resolveTypeName arg
+                                                            Mapper.mapTypeAnnotation resolveTypeName arg
                                                                 |> Result.map
                                                                     (\argType ->
                                                                         ( [ "arg", String.fromInt (index + 1) ]
@@ -343,7 +355,7 @@ extractTypes resolveTypeName parsedModule =
                                 |> List.map (Node.value >> Name.fromString)
                     in
                     typeAlias.typeAnnotation
-                        |> mapAnnotationToMorphirType resolveTypeName
+                        |> Mapper.mapTypeAnnotation resolveTypeName
                         |> Result.map
                             (\tpe ->
                                 ( typeAlias.name
@@ -358,63 +370,6 @@ extractTypes resolveTypeName parsedModule =
                     Nothing
     in
     typeNameToDefinition
-
-
-mapAnnotationToMorphirType : (List String -> String -> Result Errors FQName) -> Node TypeAnnotation -> Result Errors (Type ())
-mapAnnotationToMorphirType resolveTypeName (Node range typeAnnotation) =
-    case typeAnnotation of
-        GenericType varName ->
-            Ok (Type.Variable () (varName |> Name.fromString))
-
-        Typed (Node _ ( moduleName, localName )) argNodes ->
-            Result.map2
-                (Type.Reference ())
-                (resolveTypeName moduleName localName)
-                (argNodes
-                    |> List.map (mapAnnotationToMorphirType resolveTypeName)
-                    |> ResultList.keepAllErrors
-                    |> Result.mapError List.concat
-                )
-
-        Unit ->
-            Ok (Type.Unit ())
-
-        Tupled typeAnnotationNodes ->
-            typeAnnotationNodes
-                |> List.map (mapAnnotationToMorphirType resolveTypeName)
-                |> ResultList.keepAllErrors
-                |> Result.mapError List.concat
-                |> Result.map (Type.Tuple ())
-
-        Record fieldNodes ->
-            fieldNodes
-                |> List.map Node.value
-                |> List.map
-                    (\( Node _ argName, fieldTypeNode ) ->
-                        mapAnnotationToMorphirType resolveTypeName fieldTypeNode
-                            |> Result.map (Type.Field (Name.fromString argName))
-                    )
-                |> ResultList.keepAllErrors
-                |> Result.map (Type.Record ())
-                |> Result.mapError List.concat
-
-        GenericRecord (Node _ argName) (Node _ fieldNodes) ->
-            fieldNodes
-                |> List.map Node.value
-                |> List.map
-                    (\( Node _ ags, fieldTypeNode ) ->
-                        mapAnnotationToMorphirType resolveTypeName fieldTypeNode
-                            |> Result.map (Type.Field (Name.fromString ags))
-                    )
-                |> ResultList.keepAllErrors
-                |> Result.map (Type.ExtensibleRecord () (Name.fromString argName))
-                |> Result.mapError List.concat
-
-        FunctionTypeAnnotation argTypeNode returnTypeNode ->
-            Result.map2
-                (Type.Function ())
-                (mapAnnotationToMorphirType resolveTypeName argTypeNode)
-                (mapAnnotationToMorphirType resolveTypeName returnTypeNode)
 
 
 {-| Order types topologically by their dependencies. The purpose of this function is to allow us to insert the types
@@ -488,289 +443,151 @@ orderTypesByDependency thisPackageName thisModuleName unorderedTypeDefinitions =
             )
 
 
-
--- collectValueNames
--- extractValues and resolve names --without types
--- topologicalOrdering
--- infer and verify type signatures
-
-
-{-| extract value names from a parsedModule
--}
 extractValueNames : ParsedModule -> List Name
 extractValueNames parsedModule =
-    Debug.todo ""
+    Debug.todo "implement this"
+
+
+
+-- collectValueNames *
+-- extractValues
+-- resolve names --without types
+-- topologicalOrdering
+-- infer and verify type signatures
 
 
 {-| Extract value (function) signatures.
 The signature is required for validating the inputs and out of the value
 -}
-extractValueSignatures : (List String -> String -> Result Errors FQName) -> ParsedModule -> Result Errors (List ( Name, Type () ))
-extractValueSignatures nameResolver parsedModule =
-    parsedModule
-        |> ParsedModule.declarations
-        |> List.filterMap
-            (\(Node _ declaration) ->
-                case declaration of
-                    FunctionDeclaration func ->
-                        case func.signature of
-                            Just (Node _ { name, typeAnnotation }) ->
-                                typeAnnotation
-                                    |> mapAnnotationToMorphirType nameResolver
-                                    |> Result.map (name |> Node.value |> Name.fromString |> Tuple.pair)
-                                    |> Just
 
-                            Nothing ->
-                                -- may need a type inference
-                                Nothing
 
-                    _ ->
-                        Nothing
-            )
-        |> ResultList.keepAllErrors
-        |> Result.mapError List.concat
+
+--extractValueSignatures : (List String -> String -> Result Errors FQName) -> ParsedModule -> Result Errors (List ( Name, Type () ))
+--extractValueSignatures nameResolver parsedModule =
+--    parsedModule
+--        |> ParsedModule.declarations
+--        |> List.filterMap
+--            (\(Node _ declaration) ->
+--                case declaration of
+--                    FunctionDeclaration func ->
+--                        case func.signature of
+--                            Just (Node _ { name, typeAnnotation }) ->
+--                                typeAnnotation
+--                                    |> Mapper.mapTypeAnnotation (nameResolver)
+--                                    |> Result.map (name |> Node.value |> Name.fromString |> Tuple.pair)
+--                                    |> Just
+--
+--                            Nothing ->
+--                                -- may need a type inference
+--                                Nothing
+--
+--                    _ ->
+--                        Nothing
+--            )
+--        |> ResultList.keepAllErrors
+--        |> Result.mapError List.concat
 
 
 {-| Extract value definitions
 -}
-extractValues : (List String -> String -> Result Errors FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () () ))
+extractValues : (List String -> String -> Result (List IncrementalResolve.Error) FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () () ))
 extractValues resolveValueName parsedModule =
-    parsedModule
-        |> ParsedModule.declarations
-        |> List.filterMap
-            (\(Node _ declaration) ->
-                case declaration of
-                    FunctionDeclaration func ->
-                        -- get function name
-                        -- get function implementation
-                        -- get function expression
-                        let
-                            decl =
-                                func
-                                    |> .declaration
-                                    >> Node.value
+    let
+        -- get function name
+        -- get function implementation
+        -- get function expression
+        declarationsAsDefintionsResult : Result Errors (Dict FQName (Value.Definition () ()))
+        declarationsAsDefintionsResult =
+            ParsedModule.declarations parsedModule
+                |> Mapper.mapDeclarationsToValue resolveValueName parsedModule
+                |> Result.mapError (MappingError >> List.singleton)
+                |> Result.map Dict.fromList
 
-                            valueName : Name
-                            valueName =
-                                decl
-                                    |> .name
-                                    >> Node.value
-                                    >> Name.fromString
+        -- create ordered value names
+        orderedValueNameResult : Result Errors (List FQName)
+        orderedValueNameResult =
+            declarationsAsDefintionsResult
+                |> Result.andThen
+                    (Dict.toList
+                        >> List.foldl
+                            (\( fQName, def ) dagResultSoFar ->
+                                let
+                                    refs =
+                                        Value.collectReferences def.body
+                                in
+                                dagResultSoFar
+                                    |> Result.andThen (DAG.insertNode fQName refs)
+                            )
+                            (Ok DAG.empty)
+                        >> Result.mapError
+                            (\(DAG.CycleDetected fNode tNode) ->
+                                [ ValueCycleDetected fNode tNode ]
+                            )
+                        >> Result.map DAG.backwardTopologicalOrdering
+                        >> Result.map List.concat
+                    )
 
-                            valueDefinition : Value.Definition () ()
-                            valueDefinintion =
-                                Debug.todo ""
-
-                            expression =
-                                Expression.LambdaExpression
-                                    { args = decl.arguments
-                                    , expression = decl.expression
-                                    }
-
-                            mapExpressionToValue : Node Expression -> Result Errors (Value.Value () ())
-                            mapExpressionToValue (Node range expr) =
-                                case expr of
-                                    Expression.UnitExpr ->
-                                        Value.Unit () |> Ok
-
-                                    Expression.Application expNodes ->
+        valuesWithInferredType : Result Errors (Dict FQName (Value.Definition () (Type ())))
+        valuesWithInferredType =
+            declarationsAsDefintionsResult
+                |> Result.andThen
+                    (\defs ->
+                        orderedValueNameResult
+                            |> Result.map (Tuple.pair defs)
+                    )
+                |> Result.andThen
+                    (\defDict orderedFQNames ->
+                        List.foldl
+                            (\fqName newDefDictResultSoFar ->
+                                -- convert the repo to the IR to avoid altering the
+                                -- type inferencer
+                                case Dict.get fqName defDict of
+                                    Just def ->
                                         let
-                                            toApply : List (Value.Value () ()) -> Result Errors (Value.Value () ())
-                                            toApply valuesReversed =
-                                                case valuesReversed of
-                                                    [] ->
-                                                        Err
-                                                            [ EmptyApply
-                                                                (parsedModule |> ParsedModule.moduleName |> String.join ".")
-                                                                range
-                                                            ]
-
-                                                    [ singleValue ] ->
-                                                        Ok singleValue
-
-                                                    lastValue :: restOfValuesReversed ->
-                                                        toApply restOfValuesReversed
-                                                            |> Result.map
-                                                                (\funValue ->
-                                                                    Value.Apply () funValue lastValue
-                                                                )
-                                        in
-                                        expNodes
-                                            |> List.map mapExpressionToValue
-                                            |> ResultList.keepAllErrors
-                                            |> Result.mapError List.concat
-                                            |> Result.andThen (List.reverse >> toApply)
-
-                                    Expression.OperatorApplication op _ leftNode rightNode ->
-                                        case op of
-                                            "<|" ->
-                                                -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
-                                                Result.map2 (Value.Apply sourceLocation)
-                                                    (mapExpressionToValue leftNode)
-                                                    (mapExpressionToValue rightNode)
-
-                                            "|>" ->
-                                                -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
-                                                Result.map2 (Value.Apply sourceLocation)
-                                                    (mapExpressionToValue rightNode)
-                                                    (mapExpressionToValue leftNode)
-
-                                            _ ->
-                                                Result.map3 (\fun arg1 arg2 -> Value.Apply sourceLocation (Value.Apply sourceLocation fun arg1) arg2)
-                                                    (mapOperator sourceLocation op)
-                                                    (mapExpressionToValue leftNode)
-                                                    (mapExpressionToValue rightNode)
-
-                                    Expression.FunctionOrValue moduleName localName ->
-                                        localName
-                                            |> String.uncons
-                                            |> Result.fromMaybe [ NotSupported sourceLocation "Empty value name" ]
-                                            |> Result.andThen
-                                                (\( firstChar, _ ) ->
-                                                    if Char.isUpper firstChar then
-                                                        case ( moduleName, localName ) of
-                                                            ( [], "True" ) ->
-                                                                Ok (Value.Literal sourceLocation (BoolLiteral True))
-
-                                                            ( [], "False" ) ->
-                                                                Ok (Value.Literal sourceLocation (BoolLiteral False))
-
-                                                            _ ->
-                                                                Ok (Value.Constructor sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (localName |> Name.fromString)))
-
-                                                    else
-                                                        Ok (Value.Reference sourceLocation (fQName [] (moduleName |> List.map Name.fromString) (localName |> Name.fromString)))
-                                                )
-
-                                    Expression.IfBlock condNode thenNode elseNode ->
-                                        Result.map3 (Value.IfThenElse ())
-                                            (mapExpressionToValue condNode)
-                                            (mapExpressionToValue thenNode)
-                                            (mapExpressionToValue elseNode)
-
-                                    Expression.PrefixOperator op ->
-                                        mapOperator sourceLocation op
-
-                                    Expression.Operator op ->
-                                        mapOperator sourceLocation op
-
-                                    Expression.Integer value ->
-                                        Ok (Value.Literal () (Literal.WholeNumberLiteral value))
-
-                                    Expression.Hex value ->
-                                        Ok (Value.Literal () (Literal.WholeNumberLiteral value))
-
-                                    Expression.Floatable value ->
-                                        Ok (Value.Literal () (FloatLiteral value))
-
-                                    Expression.Negation arg ->
-                                        mapExpressionToValue arg
-                                            |> Result.map (SDKBasics.negate () ())
-
-                                    Expression.Literal value ->
-                                        Ok (Value.Literal sourceLocation (StringLiteral value))
-
-                                    Expression.CharLiteral value ->
-                                        Ok (Value.Literal sourceLocation (CharLiteral value))
-
-                                    Expression.TupledExpression expNodes ->
-                                        expNodes
-                                            |> List.map mapExpressionToValue
-                                            |> ListOfResults.liftAllErrors
-                                            |> Result.mapError List.concat
-                                            |> Result.map (Value.Tuple sourceLocation)
-
-                                    Expression.ParenthesizedExpression expNode ->
-                                        mapExpressionToValue expNode
-
-                                    Expression.LetExpression letBlock ->
-                                        mapLetExpression sourceFile sourceLocation letBlock
-
-                                    Expression.CaseExpression caseBlock ->
-                                        Result.map2 (Value.PatternMatch sourceLocation)
-                                            (mapExpressionToValue caseBlock.expression)
-                                            (caseBlock.cases
-                                                |> List.map
-                                                    (\( patternNode, bodyNode ) ->
-                                                        Result.map2 Tuple.pair
-                                                            (mapPattern sourceFile patternNode)
-                                                            (mapExpressionToValue bodyNode)
+                                            inferredType : Result (List Error) (Type ())
+                                            inferredType =
+                                                Infer.inferValue IR.empty
+                                                    (def.body
+                                                        |> Value.mapValueAttributes (always ()) identity
                                                     )
-                                                |> ListOfResults.liftAllErrors
-                                                |> Result.mapError List.concat
-                                            )
+                                                    |> Result.mapError (\err -> [ TypeInferenceError err ])
+                                                    |> Result.map
+                                                        (Value.valueAttribute
+                                                            >> Tuple.second
+                                                            >> Type.mapTypeAttributes (always ())
+                                                        )
 
-                                    Expression.LambdaExpression lambda ->
-                                        let
-                                            curriedLambda : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
-                                            curriedLambda argNodes bodyNode =
-                                                case argNodes of
-                                                    [] ->
-                                                        mapExpressionToValue bodyNode
-
-                                                    firstArgNode :: restOfArgNodes ->
-                                                        Result.map2 (Value.Lambda sourceLocation)
-                                                            (mapPattern sourceFile firstArgNode)
-                                                            (curriedLambda restOfArgNodes bodyNode)
+                                            updateDict =
+                                                Result.map2
+                                                    (\d iT -> Dict.insert fqName { def | outputType = iT } d)
+                                                    newDefDictResultSoFar
+                                                    inferredType
                                         in
-                                        curriedLambda lambda.args lambda.expression
+                                        --QUESTION why always passing in an empty ir
+                                        -- QUESTION how to set the input types
+                                        updateDict
 
-                                    Expression.RecordExpr fieldNodes ->
-                                        fieldNodes
-                                            |> List.map Node.value
-                                            |> List.map
-                                                (\( Node _ fieldName, fieldValue ) ->
-                                                    mapExpressionToValue fieldValue
-                                                        |> Result.map (Tuple.pair (fieldName |> Name.fromString))
-                                                )
-                                            |> ListOfResults.liftAllErrors
-                                            |> Result.mapError List.concat
-                                            |> Result.map (Value.Record sourceLocation)
+                                    Nothing ->
+                                        newDefDictResultSoFar
+                            )
+                            (Ok Dict.empty)
+                            orderedFQNames
+                    )
 
-                                    Expression.ListExpr itemNodes ->
-                                        itemNodes
-                                            |> List.map mapExpressionToValue
-                                            |> ListOfResults.liftAllErrors
-                                            |> Result.mapError List.concat
-                                            |> Result.map (Value.List sourceLocation)
-
-                                    Expression.RecordAccess targetNode fieldNameNode ->
-                                        mapExpressionToValue targetNode
-                                            |> Result.map
-                                                (\subjectValue ->
-                                                    Value.Field sourceLocation subjectValue (fieldNameNode |> Node.value |> Name.fromString)
-                                                )
-
-                                    Expression.RecordAccessFunction fieldName ->
-                                        Ok (Value.FieldFunction sourceLocation (fieldName |> Name.fromString))
-
-                                    Expression.RecordUpdateExpression targetVarNameNode fieldNodes ->
-                                        fieldNodes
-                                            |> List.map Node.value
-                                            |> List.map
-                                                (\( Node _ fieldName, fieldValue ) ->
-                                                    mapExpressionToValue fieldValue
-                                                        |> Result.map (Tuple.pair (fieldName |> Name.fromString))
-                                                )
-                                            |> ListOfResults.liftAllErrors
-                                            |> Result.mapError List.concat
-                                            |> Result.map
-                                                (Value.UpdateRecord sourceLocation (targetVarNameNode |> Node.value |> Name.fromString |> Value.Variable sourceLocation))
-
-                                    Expression.GLSLExpression _ ->
-                                        Err [ NotSupported sourceLocation "GLSLExpression" ]
-                        in
-                        Debug.todo ""
-
-                    _ ->
-                        Nothing
+        --create a dict of values to values dependency
+    in
+    declarationsAsDefintionsResult
+        |> Result.map
+            (Dict.toList
+                >> List.map
+                    (\( ( _, _, name ), def ) ->
+                        ( name, def )
+                    )
             )
-        |> ResultList.keepAllErrors
-        |> Result.mapError List.concat
 
 
 
---mapElmExpressinoToMorphirValue
+--mapElmExpressionToMorphirValue
 
 
 {-| Insert or update a single module in the repo passing the source code in.
