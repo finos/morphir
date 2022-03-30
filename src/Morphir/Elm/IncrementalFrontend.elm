@@ -83,11 +83,15 @@ processModule moduleName parsedModule repo =
         typeNames =
             extractTypeNames parsedModule
 
+        valueNames : List Name
+        valueNames =
+            extractValueNames parsedModule
+
         localNames : IncrementalResolve.VisibleNames
         localNames =
             { types = Set.fromList typeNames
             , constructors = Set.empty
-            , values = Set.empty
+            , values = Set.fromList valueNames
             }
 
         resolveTypeName : IncrementalResolve.KindOfName -> List String -> String -> Result Errors FQName
@@ -442,7 +446,32 @@ orderTypesByDependency thisPackageName thisModuleName unorderedTypeDefinitions =
 
 extractValueNames : ParsedModule -> List Name
 extractValueNames parsedModule =
-    Debug.todo "implement this"
+    let
+        withWellKnownOperators : ProcessContext -> ProcessContext
+        withWellKnownOperators context =
+            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
+
+        initialContext : ProcessContext
+        initialContext =
+            Processing.init |> withWellKnownOperators
+
+        extractValueNamesFromFile : File -> List Name
+        extractValueNamesFromFile file =
+            file.declarations
+                |> List.filterMap
+                    (\node ->
+                        case Node.value node of
+                            FunctionDeclaration func ->
+                                func.declaration |> Node.value |> .name |> Node.value |> Just
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.map Name.fromString
+    in
+    parsedModule
+        |> Processing.process initialContext
+        |> extractValueNamesFromFile
 
 
 
