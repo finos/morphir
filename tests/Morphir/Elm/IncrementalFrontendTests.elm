@@ -114,13 +114,6 @@ extractTypesTest =
                 ]
                 |> Elm.Parser.parse
 
-        listOfNames =
-            List.map Name.fromString
-                [ "KindOfName"
-                , "Name"
-                , "Path"
-                ]
-
         runTestWithExtractTypes : String -> (List ( Name, Type.Definition () ) -> Expect.Expectation) -> Test
         runTestWithExtractTypes title cb =
             test title
@@ -129,7 +122,7 @@ extractTypesTest =
                         |> Result.mapError (IncrementalFrontend.ParseError "" >> List.singleton)
                         |> Result.andThen
                             (\parsedModule ->
-                                IncrementalFrontend.extractTypes nameResolver parsedModule listOfNames
+                                IncrementalFrontend.extractTypes nameResolver parsedModule
                             )
                         |> (\extractedTypesResult ->
                                 case extractedTypesResult of
