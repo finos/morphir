@@ -405,7 +405,7 @@ toDict (DAG dict) =
         |> Dict.map (\_ ( a, _ ) -> a)
 
 
-{-| returns the DAG as a List
+{-| returns the DAG as a List of (comparableNode, Set comparableNode)
 -}
 toList : DAG comparableNode -> List ( comparableNode, Set comparableNode )
 toList (DAG dict) =
