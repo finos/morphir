@@ -3,6 +3,7 @@ module Morphir.Dependency.DAG exposing
     , empty, insertEdge
     , incomingEdges, outgoingEdges
     , forwardTopologicalOrdering, backwardTopologicalOrdering
+    , toDict, toList
     , insertNode, removeEdge, removeNode
     )
 
@@ -27,6 +28,11 @@ This level can be used either to derive a topological ordering or to process in 
 # Ordering
 
 @docs forwardTopologicalOrdering, backwardTopologicalOrdering
+
+
+# Transforming
+
+@docs toDict, toList
 
 -}
 
@@ -389,3 +395,20 @@ on the same level.
 backwardTopologicalOrdering : DAG comparableNode -> List (List comparableNode)
 backwardTopologicalOrdering dag =
     forwardTopologicalOrdering dag |> List.reverse
+
+
+{-| returns the DAG as a Dictionary
+-}
+toDict : DAG comparableNode -> Dict comparableNode (Set comparableNode)
+toDict (DAG dict) =
+    dict
+        |> Dict.map (\_ ( a, _ ) -> a)
+
+
+{-| returns the DAG as a List
+-}
+toList : DAG comparableNode -> List ( comparableNode, Set comparableNode )
+toList (DAG dict) =
+    dict
+        |> Dict.map (\_ ( a, _ ) -> a)
+        |> Dict.toList
