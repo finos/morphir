@@ -1,8 +1,11 @@
 module Morphir.Elm.IncrementalFrontend.Codec exposing (..)
 
+import Elm.Syntax.Range as Range
 import Json.Encode as Encode
+import Morphir.Elm.Frontend.Mapper as Mapper
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.Elm.IncrementalResolve.Codec as IncrementalResolveCodec
+import Morphir.IR.FQName.Codec exposing (encodeFQName)
 import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Path.Codec exposing (encodePath)
 import Morphir.IR.Repo.Codec as RepoCodec
@@ -109,3 +112,46 @@ encodeError error =
                 , encodePath moduleName
                 , IncrementalResolveCodec.encodeError e
                 ]
+
+        IncrementalFrontend.ValueCycleDetected fromFQName toFQName ->
+            Encode.list identity
+                [ Encode.string "ValueCycleDetected"
+                , encodeFQName fromFQName
+                , encodeFQName toFQName
+                ]
+
+        IncrementalFrontend.MappingError errors ->
+            Encode.list encodeMappingError errors
+
+
+encodeMappingError : Mapper.Error -> Encode.Value
+encodeMappingError error =
+    case error of
+        Mapper.EmptyApply sourceLocation ->
+            Encode.list identity
+                [ Encode.string "EmptyApply"
+                , encodeSourceLocation sourceLocation
+                ]
+
+        Mapper.NotSupported sourceLocation string ->
+            Encode.list identity
+                [ Encode.string "EmptyApply"
+                , encodeSourceLocation sourceLocation
+                ]
+
+        Mapper.RecordPatternNotSupported sourceLocation ->
+            Encode.list identity
+                [ Encode.string "EmptyApply"
+                , encodeSourceLocation sourceLocation
+                ]
+
+        Mapper.ResolveError err ->
+            IncrementalResolveCodec.encodeError err
+
+
+encodeSourceLocation : Mapper.SourceLocation -> Encode.Value
+encodeSourceLocation sourceLocation =
+    Encode.object
+        [ ( "location", Range.encode sourceLocation.location )
+        , ( "moduleName", Encode.list Encode.string sourceLocation.moduleName )
+        ]
