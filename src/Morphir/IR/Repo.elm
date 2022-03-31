@@ -65,8 +65,7 @@ fromDistribution : Distribution -> Result Errors Repo
 fromDistribution distro =
     case distro of
         Library packageName _ packageDef ->
-            packageDef.modules
-                |> Dict.toList
+            Package.modulesOrderedByDependency packageName packageDef
                 |> List.foldl
                     (\( moduleName, accessControlledModuleDef ) repoResultSoFar ->
                         repoResultSoFar
