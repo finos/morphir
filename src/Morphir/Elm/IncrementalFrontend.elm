@@ -17,7 +17,7 @@ import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
-import Morphir.File.FileChanges exposing (Change(..), FileChanges)
+import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
 import Morphir.File.Path exposing (Path)
 import Morphir.IR.FQName exposing (FQName, fQName)
 import Morphir.IR.Module exposing (ModuleName)
@@ -47,10 +47,44 @@ type Error
     | ResolveError ModuleName IncrementalResolve.Error
 
 
+type alias OrderedFileChanges =
+    { inserts : List ( ModuleName, ParsedModule )
+    , updates : List ( ModuleName, ParsedModule )
+    , deletes : Set Path
+    }
+
+
+orderFileChanges : PackageName -> FileChanges -> Result Errors OrderedFileChanges
+orderFileChanges packageName fileChanges =
+    let
+        fileChangesByType : FileChanges.FileChangesByType
+        fileChangesByType =
+            fileChanges
+                |> FileChanges.partitionByType
+
+        parseSources : Dict Path String -> Result Errors (List ParsedModule)
+        parseSources sources =
+            sources
+                |> Dict.toList
+                |> List.map (\( path, source ) -> parseSource ( path, source ))
+                |> ResultList.keepAllErrors
+    in
+    Result.map2
+        (\parsedInserts parsedUpdates ->
+            { inserts = parsedInserts
+            , updates = parsedUpdates
+            , deletes =
+                fileChangesByType.deletes
+            }
+        )
+        (parseSources fileChangesByType.inserts |> Result.andThen (orderElmModulesByDependency packageName))
+        (parseSources fileChangesByType.updates |> Result.andThen (orderElmModulesByDependency packageName))
+
+
 applyFileChanges : FileChanges -> Repo -> Result Errors Repo
 applyFileChanges fileChanges repo =
     parseElmModules fileChanges
-        |> Result.andThen (orderElmModulesByDependency repo)
+        |> Result.andThen (orderElmModulesByDependency repo.packageName)
         |> Result.andThen
             (\parsedModules ->
                 parsedModules
@@ -166,8 +200,8 @@ parseSource ( path, content ) =
         |> Result.mapError (ParseError path)
 
 
-orderElmModulesByDependency : Repo -> List ParsedModule -> Result Errors (List ( ModuleName, ParsedModule ))
-orderElmModulesByDependency repo parsedModules =
+orderElmModulesByDependency : PackageName -> List ParsedModule -> Result Errors (List ( ModuleName, ParsedModule ))
+orderElmModulesByDependency packageName parsedModules =
     let
         parsedModuleByName : Dict ModuleName ParsedModule
         parsedModuleByName =
@@ -175,7 +209,7 @@ orderElmModulesByDependency repo parsedModules =
                 |> List.filterMap
                     (\parsedModule ->
                         ParsedModule.moduleName parsedModule
-                            |> ElmModuleName.toIRModuleName repo.packageName
+                            |> ElmModuleName.toIRModuleName packageName
                             |> Maybe.map
                                 (\moduleName ->
                                     ( moduleName
@@ -193,15 +227,16 @@ orderElmModulesByDependency repo parsedModules =
                     ParsedModule.importedModules parsedModule
                         |> List.filterMap
                             (\modName ->
-                                ElmModuleName.toIRModuleName repo.packageName modName
+                                ElmModuleName.toIRModuleName packageName modName
                             )
                         |> Set.fromList
 
+                elmModuleName : ElmModuleName.ModuleName
                 elmModuleName =
                     ParsedModule.moduleName parsedModule
             in
             elmModuleName
-                |> ElmModuleName.toIRModuleName repo.packageName
+                |> ElmModuleName.toIRModuleName packageName
                 |> Result.fromMaybe [ InvalidModuleName elmModuleName ]
                 |> Result.andThen
                     (\fromModuleName ->
