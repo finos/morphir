@@ -75,6 +75,7 @@ insertEdge from to (DAG edgesByNodes) =
             case e |> Dict.get n of
                 Just ( toNodes, level ) ->
                     toNodes
+                        |> Set.remove n
                         |> Set.foldl (shiftTransitively by)
                             (DAG (e |> Dict.insert n ( toNodes, level + by )))
 
