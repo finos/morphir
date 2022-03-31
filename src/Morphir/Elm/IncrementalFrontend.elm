@@ -8,35 +8,26 @@ import Elm.Parser
 import Elm.Processing as Processing exposing (ProcessContext)
 import Elm.RawFile as RawFile
 import Elm.Syntax.Declaration exposing (Declaration(..))
-import Elm.Syntax.Expression as Expression exposing (Expression(..))
+import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.File exposing (File)
-import Elm.Syntax.ModuleName as Elm
 import Elm.Syntax.Node as Node exposing (Node(..))
-import Elm.Syntax.Pattern as Pattern exposing (Pattern)
-import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
 import Morphir.Elm.Frontend.Mapper as Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
-import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
+import Morphir.File.FileChanges exposing (Change(..), FileChanges)
 import Morphir.File.Path exposing (Path)
-import Morphir.IR as IR
-import Morphir.IR.FQName as FQName exposing (FQName, fQName)
-import Morphir.IR.Literal as Literal
+import Morphir.IR.FQName exposing (FQName, fQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
-import Morphir.IR.QName as QName
 import Morphir.IR.Repo as Repo exposing (Repo, SourceCode, withAccessControl)
-import Morphir.IR.SDK.Basics as SDKBasics
-import Morphir.IR.SDK.List as List
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
 import Morphir.SDK.ResultList as ResultList
-import Morphir.Type.Infer as Infer
 import Parser
 import Set exposing (Set)
 
@@ -53,10 +44,6 @@ type Error
     | ParseError Path (List Parser.DeadEnd)
     | RepoError Repo.Errors
     | MappingError Mapper.Errors
-      -- need to track where the problem occurred
-      -- add source location information
-    | TypeInferenceError Infer.TypeError
-    | ValueTypeInferenceError Infer.ValueTypeError
     | ResolveError ModuleName IncrementalResolve.Error
 
 
@@ -94,8 +81,8 @@ processModule moduleName parsedModule repo =
             , values = Set.fromList valueNames
             }
 
-        resolveTypeName : IncrementalResolve.KindOfName -> List String -> String -> Result Errors FQName
-        resolveTypeName kindOfName modName localName =
+        resolveName : IncrementalResolve.KindOfName -> List String -> String -> Result IncrementalResolve.Error FQName
+        resolveName kindOfName modName localName =
             parsedModule
                 |> RawFile.imports
                 |> IncrementalResolve.resolveImports repo
@@ -110,9 +97,8 @@ processModule moduleName parsedModule repo =
                             kindOfName
                             localName
                     )
-                |> Result.mapError (ResolveError moduleName >> List.singleton)
     in
-    extractTypes (resolveTypeName IncrementalResolve.Type) parsedModule
+    extractTypes (resolveName IncrementalResolve.Type) parsedModule
         |> Result.andThen (orderTypesByDependency repo.packageName moduleName)
         |> Result.andThen
             (List.foldl
@@ -122,12 +108,31 @@ processModule moduleName parsedModule repo =
                 )
                 (Ok repo)
             )
+        |> Result.andThen
+            (\repoWithTypesInserted ->
+                extractValues (resolveName IncrementalResolve.Value) parsedModule
+                    |> Result.andThen
+                        (List.foldl
+                            (\( name, definition ) repoResultSoFar ->
+                                repoResultSoFar
+                                    |> Result.andThen (processValue moduleName name definition)
+                            )
+                            (Ok repoWithTypesInserted)
+                        )
+            )
 
 
 processType : ModuleName -> Name -> Type.Definition () -> Repo -> Result (List Error) Repo
 processType moduleName typeName typeDef repo =
     repo
         |> Repo.insertType moduleName typeName typeDef
+        |> Result.mapError (RepoError >> List.singleton)
+
+
+processValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result (List Error) Repo
+processValue moduleName valueName valueDefinition repo =
+    repo
+        |> Repo.insertValue moduleName valueName valueDefinition
         |> Result.mapError (RepoError >> List.singleton)
 
 
@@ -183,10 +188,6 @@ orderElmModulesByDependency repo parsedModules =
         foldFunction : ParsedModule -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
         foldFunction parsedModule graph =
             let
-                validateIfModuleExistInPackage : ModuleName -> Bool
-                validateIfModuleExistInPackage modName =
-                    Path.isPrefixOf repo.packageName modName
-
                 moduleDependencies : Set ModuleName
                 moduleDependencies =
                     ParsedModule.importedModules parsedModule
@@ -195,21 +196,6 @@ orderElmModulesByDependency repo parsedModules =
                                 ElmModuleName.toIRModuleName repo.packageName modName
                             )
                         |> Set.fromList
-
-                insertEdge : ModuleName -> ModuleName -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
-                insertEdge fromModuleName toModule dag =
-                    dag
-                        |> Result.andThen
-                            (\graphValue ->
-                                graphValue
-                                    |> DAG.insertEdge fromModuleName toModule
-                                    |> Result.mapError
-                                        (\err ->
-                                            case err of
-                                                _ ->
-                                                    [ ModuleCycleDetected fromModuleName toModule ]
-                                        )
-                            )
 
                 elmModuleName =
                     ParsedModule.moduleName parsedModule
@@ -275,7 +261,7 @@ extractTypeNames parsedModule =
         |> extractTypeNamesFromFile
 
 
-extractTypes : (List String -> String -> Result Errors FQName) -> ParsedModule -> Result Errors (List ( Name, Type.Definition () ))
+extractTypes : (List String -> String -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Type.Definition () ))
 extractTypes resolveTypeName parsedModule =
     let
         declarationsInParsedModule : List Declaration
@@ -319,6 +305,7 @@ extractTypes resolveTypeName parsedModule =
                                                     |> List.indexedMap
                                                         (\index arg ->
                                                             Mapper.mapTypeAnnotation resolveTypeName arg
+                                                                |> Result.mapError MappingError
                                                                 |> Result.map
                                                                     (\argType ->
                                                                         ( [ "arg", String.fromInt (index + 1) ]
@@ -327,17 +314,12 @@ extractTypes resolveTypeName parsedModule =
                                                                     )
                                                         )
                                                     |> ResultList.keepAllErrors
-                                                    |> Result.mapError List.concat
                                         in
-                                        constructorArgsResult
-                                            |> Result.map
-                                                (\constructorArgs ->
-                                                    ( constructorName, constructorArgs )
-                                                )
+                                        Result.map (Tuple.pair constructorName) constructorArgsResult
                                     )
                                 |> ResultList.keepAllErrors
-                                |> Result.map Dict.fromList
                                 |> Result.mapError List.concat
+                                |> Result.map Dict.fromList
                     in
                     constructorsResult
                         |> Result.map
@@ -357,6 +339,7 @@ extractTypes resolveTypeName parsedModule =
                     in
                     typeAlias.typeAnnotation
                         |> Mapper.mapTypeAnnotation resolveTypeName
+                        |> Result.mapError (MappingError >> List.singleton)
                         |> Result.map
                             (\tpe ->
                                 ( typeAlias.name
@@ -474,23 +457,15 @@ extractValueNames parsedModule =
         |> extractValueNamesFromFile
 
 
-
--- collectValueNames *
--- extractValues
--- resolve names --without types
--- topologicalOrdering
--- infer and verify type signatures
-
-
 {-| Extract value definitions
 -}
-extractValues : (List String -> String -> Result (List IncrementalResolve.Error) FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () () ))
+extractValues : (List String -> String -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () (Type ()) ))
 extractValues resolveValueName parsedModule =
     let
         -- get function name
         -- get function implementation
         -- get function expression
-        declarationsAsDefintionsResult : Result Errors (Dict FQName (Value.Definition () ()))
+        declarationsAsDefintionsResult : Result Errors (Dict FQName (Value.Definition () (Type ())))
         declarationsAsDefintionsResult =
             ParsedModule.declarations parsedModule
                 |> Mapper.mapDeclarationsToValue resolveValueName parsedModule
@@ -521,7 +496,7 @@ extractValues resolveValueName parsedModule =
                         >> Result.map List.concat
                     )
 
-        orderedDeclarationAsDefinitions : Result Errors (List ( Name, Value.Definition () () ))
+        orderedDeclarationAsDefinitions : Result Errors (List ( Name, Value.Definition () (Type ()) ))
         orderedDeclarationAsDefinitions =
             orderedValueNameResult
                 |> Result.andThen
