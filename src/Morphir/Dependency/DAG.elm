@@ -186,6 +186,24 @@ insertNode fromNode toNodes (DAG edgesByNode) =
                         Result.andThen (insertEdge fromNode toNode) dagResultSoFar
                     )
                     (Ok d)
+
+        -- get the highest level of incoming edge node
+        -- used to assign a level to this node
+        level : Level
+        level =
+            incomingEdges fromNode (DAG edgesByNode)
+                |> Set.toList
+                |> List.filterMap
+                    (\incomingEdgeNode ->
+                        case Dict.get incomingEdgeNode edgesByNode of
+                            Just ( _, l ) ->
+                                Just l
+
+                            Nothing ->
+                                Nothing
+                    )
+                |> List.maximum
+                |> Maybe.withDefault -1
     in
     if Dict.member fromNode edgesByNode then
         DAG edgesByNode
@@ -193,7 +211,7 @@ insertNode fromNode toNodes (DAG edgesByNode) =
 
     else
         edgesByNode
-            |> Dict.insert fromNode ( Set.empty, 0 )
+            |> Dict.insert fromNode ( Set.empty, level + 1 )
             |> DAG
             |> insertEdges toNodes
 
