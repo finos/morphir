@@ -46,7 +46,7 @@ insertEdgeTests =
                 |> List.foldl
                     (\( from, to ) soFar ->
                         soFar
-                            |> Result.andThen (DAG.insertEdge from to)
+                            |> Result.andThen (DAG.insertNode from (Set.singleton to))
                     )
                     (Ok DAG.empty)
 
@@ -125,6 +125,13 @@ insertEdgeTests =
         , validDAG "insert 7"
             [ ( "B", "B" )
             , ( "A", "B" )
+            , ( "B", "B" )
+            ]
+            [ [ "A" ]
+            , [ "B" ]
+            ]
+        , validDAG "insert 8"
+            [ ( "A", "B" )
             , ( "B", "B" )
             ]
             [ [ "A" ]
