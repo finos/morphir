@@ -1,6 +1,7 @@
 module Morphir.Visual.Components.TreeLayout exposing (..)
 
 import Array exposing (Array)
+import Dict exposing (Dict)
 import Element exposing (Color, Element, column, el, fill, height, none, padding, paddingEach, pointer, px, rgb, row, text, width)
 import Element.Background as Background
 import Element.Events exposing (onClick)
@@ -8,12 +9,12 @@ import Element.Font as Font exposing (center)
 import Set exposing (Set)
 
 
-type alias NodePath =
-    List Int
+type alias NodePath comparable =
+    List comparable
 
 
-type Node msg
-    = Node (NodePath -> Element msg) (Array (Element msg)) (List (Node msg))
+type Node comparable msg
+    = Node (NodePath comparable -> Element msg) (Array (Element msg)) (Dict comparable (Node comparable msg))
 
 
 type alias Theme =
@@ -39,20 +40,20 @@ defaultTheme =
     }
 
 
-type alias Config msg =
-    { onCollapse : NodePath -> msg
-    , onExpand : NodePath -> msg
-    , collapsedPaths : Set NodePath
-    , selectedPaths : Set NodePath
+type alias Config comparable msg =
+    { onCollapse : NodePath comparable -> msg
+    , onExpand : NodePath comparable -> msg
+    , collapsedPaths : Set (NodePath comparable)
+    , selectedPaths : Set (NodePath comparable)
     }
 
 
-view : Theme -> Config msg -> Node msg -> Element msg
+view : Theme -> Config comparable msg -> Node comparable msg -> Element msg
 view theme config node =
     column [ width fill, height fill ] (viewSubTree theme config [] node)
 
 
-viewSubTree : Theme -> Config msg -> NodePath -> Node msg -> List (Element msg)
+viewSubTree : Theme -> Config comparable msg -> NodePath comparable -> Node comparable msg -> List (Element msg)
 viewSubTree theme config nodePath (Node label attributes children) =
     let
         depth : Int
@@ -68,7 +69,7 @@ viewSubTree theme config nodePath (Node label attributes children) =
                 , bottom = 0
                 }
 
-        handle : Element msg -> Maybe (NodePath -> msg) -> Element msg
+        handle : Element msg -> Maybe (NodePath comparable -> msg) -> Element msg
         handle icon maybeOnClick =
             let
                 style =
@@ -119,7 +120,7 @@ viewSubTree theme config nodePath (Node label attributes children) =
                     ]
                 )
     in
-    if List.isEmpty children then
+    if Dict.isEmpty children then
         [ viewNode (handle none Nothing)
         ]
 
@@ -132,9 +133,10 @@ viewSubTree theme config nodePath (Node label attributes children) =
             [ [ viewNode (handle (Element.map never theme.icons.collapsibleBranch) (Just config.onCollapse))
               ]
             , children
-                |> List.indexedMap
-                    (\index childNode ->
-                        viewSubTree theme config (index :: nodePath) childNode
+                |> Dict.toList
+                |> List.map
+                    (\( key, childNode ) ->
+                        viewSubTree theme config (key :: nodePath) childNode
                     )
                 |> List.concat
             ]

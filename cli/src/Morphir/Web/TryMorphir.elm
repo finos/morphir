@@ -24,6 +24,8 @@ import Morphir.Type.Infer as Infer
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.SourceEditor as SourceEditor
+import Morphir.Web.DevelopApp.Common exposing (pathToUrl)
+
 import Set
 
 
@@ -287,7 +289,7 @@ viewModuleDefinition viewAttribute moduleDef irView =
                                     , Background.color (rgb 1 0.9 0.8)
                                     ]
                                     [ text ":"
-                                    , XRayView.viewType valueDef.value.value.outputType
+                                    , XRayView.viewType pathToUrl valueDef.value.value.outputType
                                     ]
                                 ]
                             )
@@ -312,7 +314,7 @@ viewModuleDefinition viewAttribute moduleDef irView =
                                                     , Background.color (rgb 1 0.9 0.8)
                                                     ]
                                                     [ text ":"
-                                                    , XRayView.viewType argType
+                                                    , XRayView.viewType pathToUrl argType
                                                     ]
                                                 ]
                                         )
@@ -342,7 +344,7 @@ viewValue irView valueDef =
                         , Background.color (rgb 1 0.9 0.8)
                         ]
                         [ text ":"
-                        , XRayView.viewType tpe
+                        , XRayView.viewType pathToUrl tpe
                         ]
                 )
                 valueDef

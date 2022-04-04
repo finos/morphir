@@ -18,10 +18,9 @@ import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common exposing (viewAsCard)
+import Morphir.Web.DevelopApp.Common exposing (viewAsCard, pathToUrl)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
-
 
 type alias Model =
     { moduleName : List String
@@ -158,7 +157,7 @@ viewPage theme handlers valueFilterChanged ((Library packageName _ packageDef) a
                                                         viewValue handlers model distribution valueFQName accessControlledValueDef.value.value
 
                                                     XRayView ->
-                                                        XRayView.viewValueDefinition XRayView.viewType accessControlledValueDef.value.value
+                                                        XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) accessControlledValueDef.value.value
                                                 )
                                             )
                                         )
