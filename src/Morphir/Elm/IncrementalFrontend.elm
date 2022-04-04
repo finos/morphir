@@ -562,10 +562,6 @@ extractValues resolveValueName parsedModule =
     orderedDeclarationAsDefinitions
 
 
-
---mapElmExpressionToMorphirValue
-
-
 {-| Insert or update a single module in the repo passing the source code in.
 -}
 mergeModuleSource : ModuleName -> SourceCode -> Repo -> Result Errors Repo

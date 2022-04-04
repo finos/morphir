@@ -58,7 +58,7 @@ insertModuleTest =
                 case repo |> insertModuleIntoRepo modules of
                     Ok validRepo ->
                         validRepo
-                            |> .modules
+                            |> Repo.modules
                             >> Dict.size
                             |> Expect.equal 2
 
@@ -83,18 +83,25 @@ insertTypeTest =
         moduleName =
             toModuleName "Morphir.IR.Distribution"
 
+        testFile =
+            String.join ""
+                [ "module Morphir.IR.Distribution exposing (..)"
+                , ""
+                , "a = 1"
+                ]
+
         repo : Repo
         repo =
             Repo.empty packageName
-                |> (\r ->
-                        { r
-                            | modules =
-                                Dict.fromList
-                                    [ ( moduleName, public Module.emptyDefinition )
-                                    ]
-                        }
-                   )
 
+        --|> (\r ->
+        --        { r
+        --            | modules =
+        --                Dict.fromList
+        --                    [ ( moduleName, public Module.emptyDefinition )
+        --                    ]
+        --        }
+        --   )
         typeList : List ( Name, Definition () )
         typeList =
             [ ( [ "my", "pi" ], TypeAliasDefinition [ [ "my", "pi" ] ] (Variable () [ "3.142" ]) )
@@ -122,7 +129,7 @@ insertTypeTest =
             parsedTypeList
                 |> repoInsertTypeMethod
                 |> Result.withDefault repo
-                |> .modules
+                |> Repo.modules
                 |> Dict.get moduleName
                 |> Maybe.withDefault (public Module.emptyDefinition)
                 |> .value
@@ -152,7 +159,7 @@ insertTypeTest =
                     |> (\validRepo ->
                             case validRepo of
                                 Ok r ->
-                                    r.typeDependencies
+                                    Repo.typeDependencies r
                                         |> Expect.notEqual DAG.empty
 
                                 Err _ ->
@@ -171,15 +178,17 @@ insertValueTest =
         repo : Repo
         repo =
             Repo.empty packageName
-                |> (\r ->
-                        { r
-                            | modules =
-                                Dict.fromList
-                                    [ ( moduleName, public Module.emptyDefinition )
-                                    ]
-                        }
-                   )
+                |> Repo.insertModule moduleName Module.emptyDefinition
+                |> Result.withDefault (Repo.empty packageName)
 
+        --|> (\r ->
+        --        { r
+        --            | modules =
+        --                Dict.fromList
+        --                    [ ( moduleName, public Module.emptyDefinition )
+        --                    ]
+        --        }
+        --   )
         uniqueValueList : List ( Name, Value.Definition () (Type ()) )
         uniqueValueList =
             [ ( [ "empty", "function" ]
@@ -230,7 +239,7 @@ insertValueTest =
                     |> (\insertResult ->
                             case insertResult of
                                 Ok currentRepo ->
-                                    currentRepo.modules
+                                    Repo.modules currentRepo
                                         |> Dict.get moduleName
                                         |> Maybe.withDefault (public Module.emptyDefinition)
                                         |> .value
@@ -258,7 +267,7 @@ insertValueTest =
                     |> (\validRepo ->
                             case validRepo of
                                 Ok r ->
-                                    r.valueDependencies
+                                    Repo.valueDependencies r
                                         |> Expect.notEqual DAG.empty
 
                                 Err _ ->

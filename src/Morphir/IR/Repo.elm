@@ -1,8 +1,36 @@
-module Morphir.IR.Repo exposing (Error(..), Errors, Repo, SourceCode, deleteModule, dependsOnPackages, empty, fromDistribution, getPackageName, insertDependencySpecification, insertModule, insertType, insertValue, lookupModuleSpecification, mergeNativeFunctions, toDistribution)
+module Morphir.IR.Repo exposing
+    ( Repo, Error(..)
+    , empty, fromDistribution, insertDependencySpecification
+    , mergeNativeFunctions, insertModule, deleteModule
+    , insertType, insertValue
+    , getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies
+    , toDistribution
+    , Errors, SourceCode
+    )
 
 {-| This module contains a data structure that represents a Repo with useful API that allows querying and modification.
 The Repo is intended to maintain validity at all times, and as a result, it provides a safe way to build, modify, and
 query a Repo without breaking the validity of the Repo.
+
+@docs Repo, Error
+
+
+# Build
+
+@docs empty, fromDistribution, insertDependencySpecification
+@docs mergeNativeFunctions, insertModule, deleteModule
+@docs insertType, insertValue
+
+
+# Query
+
+@docs getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies
+
+
+# Transform
+
+@docs toDistribution
+
 -}
 
 import Dict exposing (Dict)
@@ -36,7 +64,9 @@ The following parts of the Repo is
   - **moduleDependencies**
     A dependency graph showing dependencies between modules defined within this package
   - **nativeFunctions**
-    ???
+    A collection of native functions used within a Repo. Native functions are not implemented within Morphir and as a
+    result they need to map to native functions in a Morphir backend. example of a native function withing elm is
+    `String.length`
   - **typeDependencies**
     A dependency graph showing Types defined within this package and the dependencies between them
   - **valueDependencies**
@@ -63,6 +93,26 @@ type alias Errors =
     List Error
 
 
+{-| Error state of a repo.
+
+    - **ModuleNotFound ModuleName**
+        A module was not found within the Repo
+    - **ModuleHasDependents ModuleName (Set ModuleName)**
+        A module has other module that depends on it
+    - **ModuleAlreadyExist ModuleName**
+        A module already exists within a Repo
+    - **TypeAlreadyExist FQName**
+        A type already exists within a Repo
+    - **DependencyAlreadyExists PackageName**
+        A dependency to a package already exists
+    - **ValueAlreadyExist Name**
+        A value already exists within a Repo
+    - **TypeCycleDetected Name**
+        Circular dependency detected within types
+    - **ValueCycleDetected Name**
+        Circular dependency detected within values
+
+-}
 type Error
     = ModuleNotFound ModuleName
     | ModuleHasDependents ModuleName (Set ModuleName)
@@ -195,6 +245,8 @@ toDistribution (Repo repo) =
         }
 
 
+{-| Adds an external package as a dependency to the current Repo
+-}
 insertDependencySpecification : PackageName -> Package.Specification () -> Repo -> Result Errors Repo
 insertDependencySpecification packageName packageSpec (Repo repo) =
     case repo.dependencies |> Dict.get packageName of
@@ -251,6 +303,10 @@ insertModule moduleName moduleDef (Repo repo) =
             )
 
 
+{-| delete a module from the Repo if the module can be safely removed.
+If the module does not exist within the Repo or if the module has other modules that are dependent on it, the operation
+fails with an Error.
+-}
 deleteModule : ModuleName -> Repo -> Result Errors Repo
 deleteModule moduleName (Repo repo) =
     let
@@ -287,7 +343,7 @@ deleteModule moduleName (Repo repo) =
             )
 
 
-{-| Insert types into repo modules and update the type dependency graph of the repo |
+{-| Insert types into repo modules and update the type dependency graph of the repo
 -}
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef (Repo repo) =
@@ -333,7 +389,7 @@ insertType moduleName typeName typeDef (Repo repo) =
                     )
 
 
-{-| Insert values into repo modules and update the value dependency graph of the repo |
+{-| Insert values into repo modules and update the value dependency graph of the repo
 -}
 insertValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
 insertValue moduleName valueName valueDef (Repo repo) =
@@ -380,11 +436,22 @@ insertValue moduleName valueName valueDef (Repo repo) =
             Err [ ModuleNotFound moduleName ]
 
 
+{-| get the packageName for a Repo
+-}
 getPackageName : Repo -> PackageName
 getPackageName (Repo repo) =
     repo.packageName
 
 
+{-| return the modules in a Repo as a dictionary
+-}
+modules : Repo -> Dict ModuleName (AccessControlled (Module.Definition () (Type ())))
+modules (Repo repo) =
+    repo.modules
+
+
+{-| get the external dependencies for this Repo, i.e other packages that a Repo depends on.
+-}
 dependsOnPackages : Repo -> Set PackageName
 dependsOnPackages (Repo repo) =
     repo.dependencies
@@ -392,6 +459,8 @@ dependsOnPackages (Repo repo) =
         |> Set.fromList
 
 
+{-| get the specification for a module within a Repo if it exists.
+-}
 lookupModuleSpecification : PackageName -> ModuleName -> Repo -> Maybe (Module.Specification ())
 lookupModuleSpecification packageName moduleName (Repo repo) =
     if packageName == repo.packageName then
@@ -407,11 +476,15 @@ lookupModuleSpecification packageName moduleName (Repo repo) =
             |> Maybe.andThen (.modules >> Dict.get moduleName)
 
 
+{-| return a type dependency graph for all the types within a Repo
+-}
 typeDependencies : Repo -> DAG FQName
 typeDependencies (Repo repo) =
     repo.typeDependencies
 
 
+{-| return the modules in a repo as a dictionary
+-}
 valueDependencies : Repo -> DAG FQName
 valueDependencies (Repo repo) =
     repo.valueDependencies
