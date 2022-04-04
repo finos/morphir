@@ -1,4 +1,4 @@
-module Morphir.IR.Repo exposing (Error, Errors, Repo, SourceCode, deleteModule, dependsOnPackages, empty, fromDistribution, getPackageName, insertDependencySpecification, insertModule, insertType, insertValue, lookupModuleSpecification, mergeNativeFunctions, toDistribution)
+module Morphir.IR.Repo exposing (Error(..), Errors, Repo, SourceCode, deleteModule, dependsOnPackages, empty, fromDistribution, getPackageName, insertDependencySpecification, insertModule, insertType, insertValue, lookupModuleSpecification, mergeNativeFunctions, toDistribution)
 
 {-| This module contains a data structure that represents a Repo with useful API that allows querying and modification.
 The Repo is intended to maintain validity at all times, and as a result, it provides a safe way to build, modify, and
@@ -378,15 +378,6 @@ insertValue moduleName valueName valueDef (Repo repo) =
 
         Nothing ->
             Err [ ModuleNotFound moduleName ]
-
-
-withAccessControl : Bool -> a -> AccessControlled a
-withAccessControl isExposed value =
-    if isExposed then
-        AccessControlled.public value
-
-    else
-        AccessControlled.private value
 
 
 getPackageName : Repo -> PackageName
