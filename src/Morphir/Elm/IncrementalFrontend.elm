@@ -19,12 +19,13 @@ import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
 import Morphir.File.Path as FilePath
+import Morphir.IR.AccessControlled as AccessControlled
 import Morphir.IR.FQName exposing (FQName, fQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
-import Morphir.IR.Repo as Repo exposing (Repo, SourceCode, withAccessControl)
+import Morphir.IR.Repo as Repo exposing (Repo, SourceCode)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
 import Morphir.SDK.ResultList as ResultList
@@ -205,7 +206,7 @@ processModule moduleName parsedModule repo =
                     )
     in
     extractTypes (resolveName IncrementalResolve.Type) parsedModule
-        |> Result.andThen (orderTypesByDependency repo.packageName moduleName)
+        |> Result.andThen (orderTypesByDependency (Repo.getPackageName repo) moduleName)
         |> Result.andThen
             (List.foldl
                 (\( typeName, typeDef ) repoResultForType ->
@@ -432,7 +433,7 @@ extractTypes resolveTypeName parsedModule =
                         |> Result.map
                             (\constructors ->
                                 ( customType.name |> Node.value |> Name.fromString
-                                , Type.customTypeDefinition typeParams (withAccessControl True constructors)
+                                , Type.customTypeDefinition typeParams (AccessControlled.public constructors)
                                 )
                             )
                         |> Just
@@ -631,10 +632,6 @@ extractValues resolveValueName parsedModule =
                     )
     in
     orderedDeclarationAsDefinitions
-
-
-
---mapElmExpressionToMorphirValue
 
 
 {-| Insert or update a single module in the repo passing the source code in.

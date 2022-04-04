@@ -1,7 +1,7 @@
 module Morphir.Visual.XRayView exposing (NodeType(..), TreeNode(..), childNodes, noPadding, patternToNode, valueToNode, viewConstructorName, viewLiteral, viewPatternAsHeader, viewReferenceName, viewTreeNode, viewType, viewValue, viewValueAsHeader, viewValueDefinition)
 
 import Dict
-import Element exposing (Element, column, el, fill, paddingEach, paddingXY, rgb, row, spacing, text, width)
+import Element exposing (Element, column, el, fill, paddingEach, paddingXY, rgb, row, spacing, text, width, link)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -10,6 +10,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, Value)
 import Morphir.Visual.Common exposing (grayScale)
+import Morphir.IR.Path exposing (Path)
 
 
 
@@ -213,31 +214,31 @@ viewPatternAsHeader pattern =
             row [ spacing 5 ] elems
     in
     case pattern of
-        Value.WildcardPattern a ->
+        Value.WildcardPattern _ ->
             header [ nodeLabel "WildcardPattern" ]
 
-        Value.AsPattern a _ name ->
+        Value.AsPattern _ _ name ->
             header [ nodeLabel "AsPattern", text (name |> Name.toCamelCase) ]
 
-        Value.TuplePattern a _ ->
+        Value.TuplePattern _ _ ->
             header [ nodeLabel "TuplePattern" ]
 
-        Value.ConstructorPattern a fQName _ ->
+        Value.ConstructorPattern _ fQName _ ->
             header
                 [ nodeLabel "ConstructorPattern"
                 , viewConstructorName fQName
                 ]
 
-        Value.EmptyListPattern a ->
+        Value.EmptyListPattern _ ->
             header [ nodeLabel "EmptyListPattern" ]
 
-        Value.HeadTailPattern a _ _ ->
+        Value.HeadTailPattern _ _ _ ->
             header [ nodeLabel "HeadTailPattern" ]
 
-        Value.LiteralPattern a literal ->
+        Value.LiteralPattern _ literal ->
             header [ nodeLabel "LiteralPattern", viewLiteral literal ]
 
-        Value.UnitPattern a ->
+        Value.UnitPattern _ ->
             header [ nodeLabel "UnitPattern" ]
 
 
@@ -418,11 +419,13 @@ patternToNode maybeTag pattern =
                 []
 
 
+viewReferenceName : (a, b, Name) -> Element msg
 viewReferenceName ( _, _, localName ) =
     text
         (localName |> Name.toCamelCase)
 
 
+viewConstructorName : (a, b, Name) -> Element msg
 viewConstructorName ( _, _, localName ) =
     text
         (localName |> Name.toTitleCase)
@@ -451,58 +454,58 @@ viewLiteral lit =
             text (String.fromFloat float)
 
 
+noPadding : { left : number, right : number, top : number, bottom : number }
 noPadding =
     { left = 0, right = 0, top = 0, bottom = 0 }
 
 
-viewType : Type () -> Element msg
-viewType tpe =
+viewType : (Path -> String) -> Type () ->  Element msg
+viewType urlBuilder tpe =
     case tpe of
         Type.Variable _ varName ->
             text (Name.toCamelCase varName)
 
-        Type.Reference _ ( _, _, localName ) argTypes ->
+        Type.Reference _ ( b, c, localName ) argTypes ->
             if List.isEmpty argTypes then
-                text (localName |> Name.toTitleCase)
-
+                link [] {url = "/home" ++ urlBuilder b ++ urlBuilder c ++ "/" ++ Name.toTitleCase localName, label = text <| Name.toTitleCase localName}
             else
                 row [ spacing 6 ]
                     (List.concat
                         [ [ text (localName |> Name.toTitleCase) ]
-                        , argTypes |> List.map viewType
+                        , argTypes |> List.map (viewType urlBuilder)
                         ]
                     )
 
-        Type.Tuple a elems ->
+        Type.Tuple _ elems ->
             let
                 elemsView =
                     elems
-                        |> List.map viewType
+                        |> List.map (viewType urlBuilder)
                         |> List.intersperse (text ", ")
                         |> row []
             in
             row [] [ text "( ", elemsView, text " )" ]
 
-        Type.Record a fields ->
+        Type.Record _ fields ->
             let
                 fieldsView =
                     fields
                         |> List.map
                             (\field ->
-                                row [] [ text (Name.toCamelCase field.name), text " : ", viewType field.tpe ]
+                                row [] [ text (Name.toCamelCase field.name), text " : ", viewType urlBuilder field.tpe ]
                             )
                         |> List.intersperse (text ", ")
                         |> row []
             in
             row [] [ text "{ ", fieldsView, text " }" ]
 
-        Type.ExtensibleRecord a varName fields ->
+        Type.ExtensibleRecord _ varName fields ->
             let
                 fieldsView =
                     fields
                         |> List.map
                             (\field ->
-                                row [] [ text (Name.toCamelCase field.name), text " : ", viewType field.tpe ]
+                                row [] [ text (Name.toCamelCase field.name), text " : ", viewType urlBuilder field.tpe ]
                             )
                         |> List.intersperse (text ", ")
                         |> row []
@@ -510,7 +513,7 @@ viewType tpe =
             row [] [ text "{ ", text (Name.toCamelCase varName), text " | ", fieldsView, text " }" ]
 
         Type.Function _ argType returnType ->
-            row [] [ viewType argType, text " -> ", viewType returnType ]
+            row [] [ viewType urlBuilder argType, text " -> ", viewType urlBuilder returnType ]
 
         Type.Unit _ ->
             text "()"
