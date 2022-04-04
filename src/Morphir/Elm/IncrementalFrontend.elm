@@ -139,20 +139,34 @@ filePathToModuleName packageName filePath =
             Err (InvalidSourceFilePath filePath "A valid file path must have at least one directory and one file.")
 
 
-applyFileChanges : FileChanges -> Repo -> Result Errors Repo
+applyFileChanges : OrderedFileChanges -> Repo -> Result Errors Repo
 applyFileChanges fileChanges repo =
-    parseElmModules fileChanges
-        |> Result.andThen (orderElmModulesByDependency repo.packageName)
-        |> Result.andThen
-            (\parsedModules ->
-                parsedModules
-                    |> List.foldl
-                        (\( moduleName, parsedModule ) repoResultForModule ->
-                            repoResultForModule
-                                |> Result.andThen (processModule moduleName parsedModule)
-                        )
-                        (Ok repo)
+    repo
+        |> applyInsertsAndUpdates fileChanges.insertsAndUpdates
+        |> Result.andThen (applyDeletes fileChanges.deletes)
+
+
+applyInsertsAndUpdates : List ( ModuleName, ParsedModule ) -> Repo -> Result Errors Repo
+applyInsertsAndUpdates insertsAndUpdates repo =
+    insertsAndUpdates
+        |> List.foldl
+            (\( moduleName, parsedModule ) repoResultForModule ->
+                repoResultForModule
+                    |> Result.andThen (processModule moduleName parsedModule)
             )
+            (Ok repo)
+
+
+applyDeletes : Set ModuleName -> Repo -> Result Errors Repo
+applyDeletes deletes repo =
+    deletes
+        |> Set.foldl
+            (\moduleName repoResultForModule ->
+                repoResultForModule
+                    |> Result.andThen (Repo.deleteModule moduleName)
+            )
+            (Ok repo)
+        |> Result.mapError (RepoError >> List.singleton)
 
 
 processModule : ModuleName -> ParsedModule -> Repo -> Result (List Error) Repo

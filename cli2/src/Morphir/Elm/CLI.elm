@@ -18,7 +18,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
-import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
+import Morphir.Elm.IncrementalFrontend as IncrementalFrontend exposing (Errors, OrderedFileChanges)
 import Morphir.Elm.IncrementalFrontend.Codec as IncrementalFrontendCodec
 import Morphir.File.FileChanges as FileChanges exposing (FileChanges)
 import Morphir.File.FileChanges.Codec as FileChangesCodec
@@ -26,6 +26,7 @@ import Morphir.File.FileSnapshot as FileSnapshot exposing (FileSnapshot)
 import Morphir.File.FileSnapshot.Codec as FileSnapshotCodec
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistroCodec
+import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 import Morphir.IR.SDK as SDK
 
@@ -40,6 +41,14 @@ port buildIncrementally : (Encode.Value -> msg) -> Sub msg
 
 
 port buildCompleted : Encode.Value -> Cmd msg
+
+
+subscriptions : () -> Sub Msg
+subscriptions _ =
+    Sub.batch
+        [ buildFromScratch BuildFromScratch
+        , buildIncrementally BuildIncrementally
+        ]
 
 
 type alias BuildFromScratchInput =
@@ -73,6 +82,11 @@ main =
 
 update : Msg -> () -> ( (), Cmd Msg )
 update msg model =
+    ( model, process msg )
+
+
+process : Msg -> Cmd Msg
+process msg =
     case msg of
         BuildFromScratch jsonInput ->
             let
@@ -82,32 +96,17 @@ update msg model =
                         (Decode.field "options" FrontendCodec.decodeOptions)
                         (Decode.field "packageInfo" FrontendCodec.decodePackageInfo)
                         (Decode.field "fileSnapshot" FileSnapshotCodec.decodeFileSnapshot)
-
-                keepElmFilesOnly : FileSnapshot -> FileSnapshot
-                keepElmFilesOnly fileSnapshot =
-                    fileSnapshot
-                        |> FileSnapshot.filter
-                            (\path _ ->
-                                path |> String.endsWith ".elm"
-                            )
             in
             case jsonInput |> Decode.decodeValue decodeInput of
                 Ok input ->
-                    Repo.empty input.packageInfo.name
-                        -- Insert the SDK as a dependency
-                        |> Repo.insertDependencySpecification SDK.packageName SDK.packageSpec
-                        |> Result.mapError (IncrementalFrontend.RepoError >> List.singleton)
-                        |> Result.andThen (IncrementalFrontend.applyFileChanges (keepElmFilesOnly input.fileSnapshot |> FileSnapshot.toInserts))
-                        |> Result.map Repo.toDistribution
-                        |> encodeResult (Encode.list IncrementalFrontendCodec.encodeError) DistroCodec.encodeVersionedDistribution
-                        |> (\value -> ( model, buildCompleted value ))
+                    applyFileChanges input.packageInfo.name
+                        (input.fileSnapshot |> FileSnapshot.toInserts |> keepElmFilesOnly)
+                        (Repo.empty input.packageInfo.name |> Ok)
 
                 Err errorMessage ->
-                    ( model
-                    , errorMessage
+                    errorMessage
                         |> Decode.errorToString
                         |> jsonDecodeError
-                    )
 
         BuildIncrementally jsonInput ->
             let
@@ -118,44 +117,46 @@ update msg model =
                         (Decode.field "packageInfo" FrontendCodec.decodePackageInfo)
                         (Decode.field "fileChanges" FileChangesCodec.decodeFileChanges)
                         (Decode.field "distribution" DistroCodec.decodeVersionedDistribution)
-
-                keepElmFilesOnly : FileChanges -> FileChanges
-                keepElmFilesOnly fileChanges =
-                    fileChanges
-                        |> FileChanges.filter
-                            (\path _ ->
-                                path |> String.endsWith ".elm"
-                            )
             in
             case jsonInput |> Decode.decodeValue decodeInput of
                 Ok input ->
-                    input.distribution
-                        |> Repo.fromDistribution
-                        |> Result.mapError (IncrementalFrontend.RepoError >> List.singleton)
-                        -- Insert the SDK as a dependency
-                        |> Result.andThen
-                            (Repo.insertDependencySpecification SDK.packageName SDK.packageSpec
-                                >> Result.mapError (IncrementalFrontend.RepoError >> List.singleton)
-                            )
-                        |> Result.andThen (IncrementalFrontend.applyFileChanges (keepElmFilesOnly input.fileChanges))
-                        |> Result.map Repo.toDistribution
-                        |> encodeResult (Encode.list IncrementalFrontendCodec.encodeError) DistroCodec.encodeVersionedDistribution
-                        |> (\value -> ( model, buildCompleted value ))
+                    applyFileChanges input.packageInfo.name
+                        (input.fileChanges |> keepElmFilesOnly)
+                        (input.distribution |> Repo.fromDistribution)
 
                 Err errorMessage ->
-                    ( model
-                    , errorMessage
+                    errorMessage
                         |> Decode.errorToString
                         |> jsonDecodeError
-                    )
 
 
-subscriptions : () -> Sub Msg
-subscriptions _ =
-    Sub.batch
-        [ buildFromScratch BuildFromScratch
-        , buildIncrementally BuildIncrementally
-        ]
+keepElmFilesOnly : FileChanges -> FileChanges
+keepElmFilesOnly fileChanges =
+    fileChanges
+        |> FileChanges.filter
+            (\path _ ->
+                path |> String.endsWith ".elm"
+            )
+
+
+applyFileChanges : PackageName -> FileChanges -> Result Repo.Errors Repo -> Cmd Msg
+applyFileChanges packageName fileChanges repoResult =
+    Result.map2 IncrementalFrontend.applyFileChanges
+        (IncrementalFrontend.orderFileChanges packageName fileChanges)
+        (repoResult
+            |> Result.andThen (Repo.insertDependencySpecification SDK.packageName SDK.packageSpec)
+            |> Result.mapError (IncrementalFrontend.RepoError >> List.singleton)
+        )
+        |> Result.andThen identity
+        |> returnDistribution
+
+
+returnDistribution : Result Errors Repo -> Cmd Msg
+returnDistribution repoResult =
+    repoResult
+        |> Result.map Repo.toDistribution
+        |> encodeResult (Encode.list IncrementalFrontendCodec.encodeError) DistroCodec.encodeVersionedDistribution
+        |> buildCompleted
 
 
 encodeResult : (e -> Encode.Value) -> (a -> Encode.Value) -> Result e a -> Encode.Value
