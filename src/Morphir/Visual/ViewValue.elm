@@ -7,7 +7,6 @@ import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
-import Morphir.IR as IR
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.Basics as Basics
@@ -29,6 +28,7 @@ import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewRecord as ViewRecord
 import Morphir.Visual.XRayView as XRayView
+import Morphir.IR.Path as Path exposing (Path)
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
@@ -313,10 +313,19 @@ viewValueByLanguageFeature config value =
                             , Border.rounded 6
                             , width fill
                             ]
-                            (XRayView.viewValue XRayView.viewType (other |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
+                            (XRayView.viewValue (XRayView.viewType moduleNameToPathString) (other |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
                         ]
     in
     valueElem
+
+
+moduleNameToPathString : Path -> String
+moduleNameToPathString moduleName =
+    pathToStringWithSeparator "/" moduleName
+
+pathToStringWithSeparator : String -> Path -> String
+pathToStringWithSeparator =
+    Path.toString (Morphir.IR.Name.toHumanWords >> String.join " ")
 
 
 viewPopup : Config msg -> Element msg
