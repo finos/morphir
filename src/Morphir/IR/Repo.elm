@@ -43,6 +43,7 @@ type Error
     | ValueAlreadyExist Name
     | TypeCycleDetected Name
     | ValueCycleDetected Name
+    | ModuleCycleDetected (DAG.CycleDetected ModuleName)
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -66,16 +67,21 @@ fromDistribution distro =
     case distro of
         Library packageName _ packageDef ->
             Package.modulesOrderedByDependency packageName packageDef
-                |> List.foldl
-                    (\( moduleName, accessControlledModuleDef ) repoResultSoFar ->
-                        repoResultSoFar
-                            |> Result.andThen
-                                (\repoSoFar ->
-                                    repoSoFar
-                                        |> insertModule moduleName accessControlledModuleDef.value
+                |> Result.mapError (ModuleCycleDetected >> List.singleton)
+                |> Result.andThen
+                    (\orderedModules ->
+                        orderedModules
+                            |> List.foldl
+                                (\( moduleName, accessControlledModuleDef ) repoResultSoFar ->
+                                    repoResultSoFar
+                                        |> Result.andThen
+                                            (\repoSoFar ->
+                                                repoSoFar
+                                                    |> insertModule moduleName accessControlledModuleDef.value
+                                            )
                                 )
+                                (Ok (empty packageName))
                     )
-                    (Ok (empty packageName))
 
 
 {-| Creates a distribution from an existing repo

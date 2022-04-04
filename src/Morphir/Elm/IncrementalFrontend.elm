@@ -18,7 +18,7 @@ import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
-import Morphir.File.Path exposing (Path)
+import Morphir.File.Path as FilePath
 import Morphir.IR.FQName exposing (FQName, fQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -41,16 +41,16 @@ type Error
     | TypeCycleDetected Name Name
     | ValueCycleDetected FQName FQName
     | InvalidModuleName ElmModuleName.ModuleName
-    | ParseError Path (List Parser.DeadEnd)
+    | ParseError FilePath.Path (List Parser.DeadEnd)
     | RepoError Repo.Errors
     | MappingError Mapper.Errors
     | ResolveError ModuleName IncrementalResolve.Error
+    | InvalidSourceFilePath FilePath.Path String
 
 
 type alias OrderedFileChanges =
-    { inserts : List ( ModuleName, ParsedModule )
-    , updates : List ( ModuleName, ParsedModule )
-    , deletes : Set Path
+    { insertsAndUpdates : List ( ModuleName, ParsedModule )
+    , deletes : Set ModuleName
     }
 
 
@@ -62,23 +62,81 @@ orderFileChanges packageName fileChanges =
             fileChanges
                 |> FileChanges.partitionByType
 
-        parseSources : Dict Path String -> Result Errors (List ParsedModule)
+        parseSources : Dict FilePath.Path String -> Result Errors (List ParsedModule)
         parseSources sources =
             sources
                 |> Dict.toList
                 |> List.map (\( path, source ) -> parseSource ( path, source ))
                 |> ResultList.keepAllErrors
+
+        parsedInsertsAndUpdates : Result Errors (List ParsedModule)
+        parsedInsertsAndUpdates =
+            Result.map2 (++)
+                (parseSources fileChangesByType.inserts)
+                (parseSources fileChangesByType.updates)
+
+        filePathsToModuleNames : Set FilePath.Path -> Result Errors (Set ModuleName)
+        filePathsToModuleNames paths =
+            paths
+                |> Set.toList
+                |> List.map (filePathToModuleName packageName)
+                |> ResultList.keepAllErrors
+                |> Result.map Set.fromList
     in
-    Result.map2
-        (\parsedInserts parsedUpdates ->
-            { inserts = parsedInserts
-            , updates = parsedUpdates
-            , deletes =
-                fileChangesByType.deletes
-            }
+    Result.map2 OrderedFileChanges
+        (parsedInsertsAndUpdates
+            |> Result.andThen (orderElmModulesByDependency packageName)
         )
-        (parseSources fileChangesByType.inserts |> Result.andThen (orderElmModulesByDependency packageName))
-        (parseSources fileChangesByType.updates |> Result.andThen (orderElmModulesByDependency packageName))
+        (fileChangesByType.deletes
+            |> filePathsToModuleNames
+        )
+
+
+filePathToModuleName : PackageName -> FilePath.Path -> Result Error ModuleName
+filePathToModuleName packageName filePath =
+    let
+        filePathParts : List String
+        filePathParts =
+            filePath
+                -- Split by Linux path separator
+                |> String.split "/"
+                -- Split by Windows path separator
+                |> List.concatMap (String.split "\\")
+
+        packageNameReversed : List Name
+        packageNameReversed =
+            packageName |> List.reverse
+
+        -- Try to find the package name going recursively backwards in the path, if it's found return the path that we
+        -- skipped through as the module name
+        findModuleName : Name -> List Name -> List Name -> Result String (List Name)
+        findModuleName lastPartOfModuleName modulePathReversed remainingDirectoryPathReversed =
+            if List.length remainingDirectoryPathReversed < List.length packageNameReversed then
+                Err "Could not find package name in path."
+
+            else if packageNameReversed |> Path.isPrefixOf remainingDirectoryPathReversed then
+                Ok (lastPartOfModuleName :: modulePathReversed |> List.reverse)
+
+            else
+                case remainingDirectoryPathReversed of
+                    lastDirectoryName :: nextRemainingDirectoryPathReversed ->
+                        findModuleName lastPartOfModuleName (lastDirectoryName :: modulePathReversed) nextRemainingDirectoryPathReversed
+
+                    _ ->
+                        Err "Could not find package name in path."
+    in
+    case filePathParts |> List.reverse of
+        filePart :: directoryPartReversed ->
+            case filePart |> String.split "." of
+                [ fileName, "elm" ] ->
+                    findModuleName (Name.fromString fileName) [] (directoryPartReversed |> List.map Name.fromString)
+                        |> Result.mapError (InvalidSourceFilePath filePath)
+
+                _ ->
+                    Err (InvalidSourceFilePath filePath "A valid file path must end with a file name with '.elm' extension.")
+
+        _ ->
+            Err (InvalidSourceFilePath filePath "A valid file path must have at least one directory and one file.")
 
 
 applyFileChanges : FileChanges -> Repo -> Result Errors Repo
@@ -194,7 +252,7 @@ parseElmModules fileChanges =
 
 {-| Converts an elm source into a ParsedModule.
 -}
-parseSource : ( Path, String ) -> Result Error ParsedModule
+parseSource : ( FilePath.Path, String ) -> Result Error ParsedModule
 parseSource ( path, content ) =
     Elm.Parser.parse content
         |> Result.mapError (ParseError path)
