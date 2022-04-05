@@ -344,45 +344,64 @@ deleteModule moduleName (Repo repo) =
 insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
 insertType moduleName typeName typeDef (Repo repo) =
     let
-        accessControlledModuleDef : AccessControlled (Module.Definition () (Type ()))
-        accessControlledModuleDef =
-            case repo.modules |> Dict.get moduleName of
-                Just modDefinition ->
-                    modDefinition
+        accessControlledModuleDefResult : Result Errors (AccessControlled (Module.Definition () (Type ())))
+        accessControlledModuleDefResult =
+            Result.fromMaybe
+                [ ModuleNotFound moduleName ]
+                (repo |> Repo |> modules |> Dict.get moduleName)
 
-                Nothing ->
-                    public Module.emptyDefinition
+        -- extract references from type definition
+        collectRefsFromDef : Type.Definition () -> Set FQName
+        collectRefsFromDef definition =
+            case definition of
+                Type.TypeAliasDefinition _ tpe ->
+                    Type.collectReferences tpe
+
+                Type.CustomTypeDefinition _ accessControlledType ->
+                    accessControlledType.value
+                        |> Dict.toList
+                        |> List.map Tuple.second
+                        |> List.concat
+                        |> List.map Tuple.second
+                        |> List.map Type.collectReferences
+                        |> List.foldl Set.union Set.empty
     in
-    case accessControlledModuleDef.value.types |> Dict.get typeName of
-        Just _ ->
-            Err [ TypeAlreadyExist ( repo.packageName, moduleName, typeName ) ]
+    accessControlledModuleDefResult
+        |> Result.andThen
+            (\modDef ->
+                case modDef.value.types |> Dict.get typeName of
+                    Just _ ->
+                        Err [ TypeAlreadyExist ( repo.packageName, moduleName, typeName ) ]
 
-        Nothing ->
-            repo.typeDependencies
-                -- TODO extract references for type and use as toNodes
-                |> DAG.insertNode (FQName.fQName repo.packageName moduleName typeName) Set.empty
-                |> Result.mapError (always [ TypeCycleDetected typeName ])
-                |> Result.map
-                    (\updatedTypeDependency ->
-                        Repo
-                            { repo
-                                | modules =
-                                    repo.modules
-                                        |> Dict.insert moduleName
-                                            (accessControlledModuleDef
-                                                |> AccessControlled.map
-                                                    (\moduleDef ->
-                                                        { moduleDef
-                                                            | types =
-                                                                moduleDef.types
-                                                                    |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
-                                                        }
-                                                    )
-                                            )
-                                , typeDependencies =
-                                    updatedTypeDependency
-                            }
-                    )
+                    Nothing ->
+                        repo.typeDependencies
+                            -- TODO
+                            |> DAG.insertNode
+                                (FQName.fQName repo.packageName moduleName typeName)
+                                (collectRefsFromDef typeDef)
+                            |> Result.mapError (always [ TypeCycleDetected typeName ])
+                            |> Result.map
+                                (\updatedTypeDependency ->
+                                    Repo
+                                        { repo
+                                            | modules =
+                                                repo.modules
+                                                    |> Dict.insert moduleName
+                                                        (modDef
+                                                            |> AccessControlled.map
+                                                                (\moduleDef ->
+                                                                    { moduleDef
+                                                                        | types =
+                                                                            moduleDef.types
+                                                                                |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
+                                                                    }
+                                                                )
+                                                        )
+                                            , typeDependencies =
+                                                updatedTypeDependency
+                                        }
+                                )
+            )
 
 
 {-| Insert values into repo modules and update the value dependency graph of the repo
