@@ -397,47 +397,45 @@ insertType moduleName typeName typeDef (Repo repo) =
 -}
 insertValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
 insertValue moduleName valueName valueDef (Repo repo) =
-    case repo.modules |> Dict.get moduleName of
-        Just modDefinition ->
-            case modDefinition.value.values |> Dict.get valueName of
-                Just _ ->
-                    Err [ ValueAlreadyExist valueName ]
+    let
+        accessControlledModuleDef : AccessControlled (Module.Definition () (Type ()))
+        accessControlledModuleDef =
+            case repo.modules |> Dict.get moduleName of
+                Just modDefinition ->
+                    modDefinition
 
                 Nothing ->
-                    let
-                        updateModule : Maybe (AccessControlled (Module.Definition () (Type ()))) -> Maybe (AccessControlled (Module.Definition () (Type ())))
-                        updateModule maybeModuleDefinition =
-                            maybeModuleDefinition
-                                |> Maybe.map
-                                    (\accessControlledModuleDef ->
-                                        accessControlledModuleDef
-                                            |> AccessControlled.map
-                                                (\moduleDef ->
-                                                    { moduleDef
-                                                        | values =
-                                                            modDefinition.value.values
-                                                                |> Dict.insert valueName (public (valueDef |> Documented.Documented ""))
-                                                    }
-                                                )
-                                    )
-                    in
-                    repo.typeDependencies
-                        |> DAG.insertNode (FQName.fQName repo.packageName moduleName valueName) Set.empty
-                        |> Result.mapError (always [ ValueCycleDetected valueName ])
-                        |> Result.map
-                            (\updatedValueDependency ->
-                                Repo
-                                    { repo
-                                        | modules =
-                                            repo.modules
-                                                |> Dict.update moduleName updateModule
-                                        , valueDependencies =
-                                            updatedValueDependency
-                                    }
-                            )
+                    public Module.emptyDefinition
+    in
+    case accessControlledModuleDef.value.values |> Dict.get valueName of
+        Just _ ->
+            Err [ ValueAlreadyExist valueName ]
 
         Nothing ->
-            Err [ ModuleNotFound moduleName ]
+            repo.valueDependencies
+                |> DAG.insertNode (FQName.fQName repo.packageName moduleName valueName) Set.empty
+                |> Result.mapError (always [ ValueCycleDetected valueName ])
+                |> Result.map
+                    (\updatedValueDependency ->
+                        Repo
+                            { repo
+                                | modules =
+                                    repo.modules
+                                        |> Dict.insert moduleName
+                                            (accessControlledModuleDef
+                                                |> AccessControlled.map
+                                                    (\moduleDef ->
+                                                        { moduleDef
+                                                            | values =
+                                                                accessControlledModuleDef.value.values
+                                                                    |> Dict.insert valueName (public (valueDef |> Documented.Documented ""))
+                                                        }
+                                                    )
+                                            )
+                                , valueDependencies =
+                                    updatedValueDependency
+                            }
+                    )
 
 
 {-| get the packageName for a Repo

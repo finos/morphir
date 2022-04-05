@@ -11,9 +11,10 @@ import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Node as Node exposing (Node(..))
+import Elm.Syntax.TypeAnnotation as TypeAnnotation
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
 import Morphir.Elm.Frontend.Mapper as Mapper
-import Morphir.Elm.IncrementalResolve as IncrementalResolve
+import Morphir.Elm.IncrementalResolve as IncrementalResolve exposing (KindOfName)
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
@@ -43,7 +44,7 @@ type Error
     | ValueCycleDetected FQName FQName
     | InvalidModuleName ElmModuleName.ModuleName
     | ParseError FilePath.Path (List Parser.DeadEnd)
-    | RepoError Repo.Errors
+    | RepoError String Repo.Errors
     | MappingError Mapper.Errors
     | ResolveError ModuleName IncrementalResolve.Error
     | InvalidSourceFilePath FilePath.Path String
@@ -167,7 +168,7 @@ applyDeletes deletes repo =
                     |> Result.andThen (Repo.deleteModule moduleName)
             )
             (Ok repo)
-        |> Result.mapError (RepoError >> List.singleton)
+        |> Result.mapError (RepoError "Cannot delete module" >> List.singleton)
 
 
 processModule : ModuleName -> ParsedModule -> Repo -> Result (List Error) Repo
@@ -177,6 +178,10 @@ processModule moduleName parsedModule repo =
         typeNames =
             extractTypeNames parsedModule
 
+        constructorNames : List Name
+        constructorNames =
+            extractConstructorNames parsedModule
+
         valueNames : List Name
         valueNames =
             extractValueNames parsedModule
@@ -184,12 +189,12 @@ processModule moduleName parsedModule repo =
         localNames : IncrementalResolve.VisibleNames
         localNames =
             { types = Set.fromList typeNames
-            , constructors = Set.empty
+            , constructors = Set.fromList constructorNames
             , values = Set.fromList valueNames
             }
 
-        resolveName : IncrementalResolve.KindOfName -> List String -> String -> Result IncrementalResolve.Error FQName
-        resolveName kindOfName modName localName =
+        resolveName : List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName
+        resolveName modName localName kindOfName =
             parsedModule
                 |> RawFile.imports
                 |> IncrementalResolve.resolveImports repo
@@ -205,7 +210,7 @@ processModule moduleName parsedModule repo =
                             localName
                     )
     in
-    extractTypes (resolveName IncrementalResolve.Type) parsedModule
+    extractTypes resolveName parsedModule
         |> Result.andThen (orderTypesByDependency (Repo.getPackageName repo) moduleName)
         |> Result.andThen
             (List.foldl
@@ -217,7 +222,7 @@ processModule moduleName parsedModule repo =
             )
         |> Result.andThen
             (\repoWithTypesInserted ->
-                extractValues (resolveName IncrementalResolve.Value) parsedModule
+                extractValues resolveName parsedModule
                     |> Result.andThen
                         (List.foldl
                             (\( name, definition ) repoResultSoFar ->
@@ -233,14 +238,14 @@ processType : ModuleName -> Name -> Type.Definition () -> Repo -> Result (List E
 processType moduleName typeName typeDef repo =
     repo
         |> Repo.insertType moduleName typeName typeDef
-        |> Result.mapError (RepoError >> List.singleton)
+        |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
 
 processValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result (List Error) Repo
 processValue moduleName valueName valueDefinition repo =
     repo
         |> Repo.insertValue moduleName valueName valueDefinition
-        |> Result.mapError (RepoError >> List.singleton)
+        |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
 
 {-| convert New or Updated Elm modules into ParsedModules for further processing
@@ -369,7 +374,46 @@ extractTypeNames parsedModule =
         |> extractTypeNamesFromFile
 
 
-extractTypes : (List String -> String -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Type.Definition () ))
+extractConstructorNames : ParsedModule -> List Name
+extractConstructorNames parsedModule =
+    let
+        withWellKnownOperators : ProcessContext -> ProcessContext
+        withWellKnownOperators context =
+            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
+
+        initialContext : ProcessContext
+        initialContext =
+            Processing.init |> withWellKnownOperators
+
+        extractConstructorNamesFromFile : File -> List Name
+        extractConstructorNamesFromFile file =
+            file.declarations
+                |> List.concatMap
+                    (\node ->
+                        case Node.value node of
+                            CustomTypeDeclaration typ ->
+                                typ.constructors |> List.map (Node.value >> .name >> Node.value)
+
+                            AliasDeclaration typeAlias ->
+                                case typeAlias.typeAnnotation |> Node.value of
+                                    TypeAnnotation.Record _ ->
+                                        -- Record type aliases have an implicit type constructor
+                                        [ typeAlias.name |> Node.value ]
+
+                                    _ ->
+                                        []
+
+                            _ ->
+                                []
+                    )
+                |> List.map Name.fromString
+    in
+    parsedModule
+        |> Processing.process initialContext
+        |> extractConstructorNamesFromFile
+
+
+extractTypes : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Type.Definition () ))
 extractTypes resolveTypeName parsedModule =
     let
         declarationsInParsedModule : List Declaration
@@ -567,7 +611,7 @@ extractValueNames parsedModule =
 
 {-| Extract value definitions
 -}
-extractValues : (List String -> String -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () (Type ()) ))
+extractValues : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () (Type ()) ))
 extractValues resolveValueName parsedModule =
     let
         -- get function name
@@ -632,10 +676,3 @@ extractValues resolveValueName parsedModule =
                     )
     in
     orderedDeclarationAsDefinitions
-
-
-{-| Insert or update a single module in the repo passing the source code in.
--}
-mergeModuleSource : ModuleName -> SourceCode -> Repo -> Result Errors Repo
-mergeModuleSource moduleName sourceCode repo =
-    Debug.todo "implement"
