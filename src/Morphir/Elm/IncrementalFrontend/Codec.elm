@@ -123,6 +123,13 @@ encodeError error =
         IncrementalFrontend.MappingError errors ->
             Encode.list encodeMappingError errors
 
+        IncrementalFrontend.InvalidSourceFilePath path message ->
+            Encode.list identity
+                [ Encode.string "InvalidSourceFilePath"
+                , Encode.string path
+                , Encode.string message
+                ]
+
 
 encodeMappingError : Mapper.Error -> Encode.Value
 encodeMappingError error =
