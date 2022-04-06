@@ -99,7 +99,7 @@ parseElmModulesTest =
 extractTypesTest : Test
 extractTypesTest =
     let
-        nameResolver _ localName =
+        nameResolver _ localName kindOfName =
             Ok (FQName.fqn "Morphir.Elm" "Morphir.Elm.Examlple" localName)
 
         exampleModuleResult =
