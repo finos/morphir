@@ -3,8 +3,7 @@ module Morphir.Dependency.DAG exposing
     , empty, insertEdge
     , incomingEdges, outgoingEdges
     , forwardTopologicalOrdering, backwardTopologicalOrdering
-    , toDict, toList, map
-    , merge
+    , map, toList, toListWithLevel
     , insertNode, removeEdge, removeNode
     )
 
@@ -33,12 +32,7 @@ This level can be used either to derive a topological ordering or to process in 
 
 # Transforming
 
-@docs toDict, toList, map
-
-
-# Combining
-
-@docs merge
+@docs map, toList, toListWithLevel
 
 -}
 
@@ -283,21 +277,6 @@ rebuild (DAG d) =
             empty
 
 
-{-| combine two Dag of the same type into one.
-The levels of the resulting DAG remain correct
--}
-merge : DAG comparableNode -> DAG comparableNode -> Result (CycleDetected comparableNode) (DAG comparableNode)
-merge dag1 dag2 =
-    -- TODO merge edges for same nodes
-    dag2
-        |> toList
-        |> List.foldl
-            (\( fromNode, edges ) ->
-                Result.andThen (insertNode fromNode edges)
-            )
-            (Ok dag1)
-
-
 {-| Apply a function that transforms all the nodes in the DAG
 -}
 map : (comparableNodeA -> comparableNodeB) -> DAG comparableNodeA -> DAG comparableNodeB
@@ -453,18 +432,18 @@ backwardTopologicalOrdering dag =
     forwardTopologicalOrdering dag |> List.reverse
 
 
-{-| returns the DAG as a Dictionary
--}
-toDict : DAG comparableNode -> Dict comparableNode (Set comparableNode)
-toDict (DAG dict) =
-    dict
-        |> Dict.map (\_ ( a, _ ) -> a)
-
-
-{-| returns the DAG as a List of (comparableNode, Set comparableNode)
+{-| returns the DAG as a List.
 -}
 toList : DAG comparableNode -> List ( comparableNode, Set comparableNode )
 toList (DAG dict) =
     dict
         |> Dict.map (\_ ( a, _ ) -> a)
+        |> Dict.toList
+
+
+{-| returns the DAG as a List with the level information
+-}
+toListWithLevel : DAG comparableNode -> List ( comparableNode, ( Set comparableNode, Int ) )
+toListWithLevel (DAG dict) =
+    dict
         |> Dict.toList

@@ -348,27 +348,30 @@ outgoingEdgeTests =
         ]
 
 
-mergeTests : Test
-mergeTests =
+mapTest : Test
+mapTest =
     let
-        runTestWithMerge : String -> List ( comparableNode, List comparableNode ) -> List ( comparableNode, List comparableNode ) -> Test
-        runTestWithMerge title dagList expected =
+        runTestWithMap : String -> (comparableNodeA -> comparableNode) -> List ( comparableNodeA, List comparableNodeA ) -> List ( comparableNode, List comparableNode ) -> Test
+        runTestWithMap title fn dagList expected =
             test title
                 (\_ ->
                     buildDagFromList dagList
-                        |> Result.andThen
-                            (\dagListDag ->
-                                buildDagFromList depList
-                                    |> Result.map (Tuple.pair dagListDag)
-                            )
                         |> Result.withDefault DAG.empty
+                        |> DAG.map fn
                         |> DAG.toList
                         |> List.map (Tuple.mapSecond Set.toList)
-                        |> Expect.equal (expected |> Dict.fromList |> Dict.toList)
+                        |> Expect.equalLists (expected |> Dict.fromList |> Dict.toList)
                 )
     in
-    describe "should merge Dags"
-        [ runTestWithMerge "should test out"
-            []
-            depList
+    describe "Should map DAG values"
+        [ runTestWithMap "should convert Int to String"
+            String.fromInt
+            [ ( 1, [ 2, 3, 4 ] )
+            , ( 2, [ 3, 4 ] )
+            ]
+            [ ( "2", [ "3", "4" ] )
+            , ( "1", [ "2", "3", "4" ] )
+            , ( "3", [] )
+            , ( "4", [] )
+            ]
         ]
