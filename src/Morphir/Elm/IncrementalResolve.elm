@@ -161,6 +161,19 @@ sdkModuleMapping =
         ]
 
 
+mapImport : Import -> Import
+mapImport imp =
+    case sdkModuleMapping |> Dict.get (imp.moduleName |> Node.value) of
+        Just sdkModuleName ->
+            { imp
+                | moduleName = imp.moduleName |> Node.map (always sdkModuleName)
+                , moduleAlias = Just imp.moduleName
+            }
+
+        Nothing ->
+            imp
+
+
 {-| Resolve the imports into an internal data structure that makes it easier to resolve names within the module. This is
 done once per module.
 -}
@@ -224,10 +237,14 @@ resolveImports repo imports =
                                 addCtors : ResolvedImports -> ResolvedImports
                                 addCtors resolved =
                                     moduleSpec.types
-                                        |> Dict.values
+                                        |> Dict.toList
                                         |> List.concatMap
-                                            (\documentedTypeSpec ->
+                                            (\( typeName, documentedTypeSpec ) ->
                                                 case documentedTypeSpec.value of
+                                                    Type.TypeAliasSpecification _ (Type.Record _ _) ->
+                                                        -- Record aliases define an implicit type constructor
+                                                        [ typeName ]
+
                                                     Type.CustomTypeSpecification _ ctors ->
                                                         ctors |> Dict.keys
 
@@ -319,12 +336,11 @@ resolveImports repo imports =
                     Ok resolvedImports
     in
     (defaultImports ++ imports)
+        |> List.map mapImport
         |> List.foldl
             (\nextImport resolvedImportsSoFar ->
                 nextImport.moduleName
                     |> Node.value
-                    -- Map some elm/core modules to Morphir SDK ones
-                    |> (\elmModuleName -> sdkModuleMapping |> Dict.get elmModuleName |> Maybe.withDefault elmModuleName)
                     |> resolveModuleName repo
                     |> Result.andThen
                         (\(( packageName, moduleName ) as resolvedModuleName) ->
@@ -431,10 +447,34 @@ resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName
                             modulesThatContainLocalName =
                                 matchingPackageAndModuleNames
                                     |> Set.filter
-                                        (\packageAndModuleName ->
-                                            resolvedImports.visibleNamesByModuleName
-                                                |> Dict.get packageAndModuleName
-                                                |> Maybe.map (isNameVisible localName kindOfName)
+                                        (\( matchingPackageName, matchingModuleName ) ->
+                                            repo
+                                                |> Repo.lookupModuleSpecification matchingPackageName matchingModuleName
+                                                |> Maybe.map
+                                                    (\moduleSpec ->
+                                                        case kindOfName of
+                                                            Type ->
+                                                                moduleSpec.types |> Dict.member localName
+
+                                                            Constructor ->
+                                                                moduleSpec.types
+                                                                    |> Dict.toList
+                                                                    |> List.any
+                                                                        (\( typeName, documentedTypeSpec ) ->
+                                                                            case documentedTypeSpec.value of
+                                                                                Type.TypeAliasSpecification _ (Type.Record _ _) ->
+                                                                                    typeName == localName
+
+                                                                                Type.CustomTypeSpecification _ ctors ->
+                                                                                    ctors |> Dict.member localName
+
+                                                                                _ ->
+                                                                                    False
+                                                                        )
+
+                                                            Value ->
+                                                                moduleSpec.values |> Dict.member localName
+                                                    )
                                                 |> Maybe.withDefault False
                                         )
                                     |> Set.toList

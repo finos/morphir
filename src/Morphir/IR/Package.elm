@@ -287,43 +287,38 @@ selectModules modulesToInclude packageName packageDef =
 {-| Get the list of modules within this package ordered by dependency. If module B depends on A than module B is
 guaranteed to be after A in the list.
 -}
-modulesOrderedByDependency : PackageName -> Definition () (Type ()) -> List ( ModuleName, AccessControlled (Module.Definition () (Type ())) )
+modulesOrderedByDependency : PackageName -> Definition () (Type ()) -> Result (DAG.CycleDetected ModuleName) (List ( ModuleName, AccessControlled (Module.Definition () (Type ())) ))
 modulesOrderedByDependency packageName packageDef =
-    let
-        -- Build a dependency graph of modules
-        moduleDependencies : DAG ModuleName
-        moduleDependencies =
-            packageDef.modules
-                |> Dict.toList
-                |> List.foldl
-                    (\( moduleName, accessControlledModuleDef ) dagSoFar ->
-                        let
-                            dependsOnModules : Set ModuleName
-                            dependsOnModules =
-                                accessControlledModuleDef.value
-                                    |> Module.dependsOnModules
-                                    -- Keep only dependencies within the package
-                                    |> Set.filter (\( dependsOnPackage, _ ) -> dependsOnPackage == packageName)
-                                    -- Remove the package name
-                                    |> Set.map Tuple.second
-                        in
-                        dagSoFar
-                            |> DAG.insertNode moduleName dependsOnModules
-                            -- We assume that there are no cycles in an existing distribution
-                            -- If there are cycles (which should never happen) we skip the node causing the cycle
-                            |> Result.withDefault dagSoFar
-                    )
-                    DAG.empty
-    in
-    moduleDependencies
-        -- Use the dependency graph to order the modules topologically
-        |> DAG.backwardTopologicalOrdering
-        -- Turn the partial ordering represented as a list of lists into a simple list
-        |> List.concat
-        -- Look up the module definition for each module name
-        |> List.filterMap
-            (\moduleName ->
-                packageDef.modules
-                    |> Dict.get moduleName
-                    |> Maybe.map (Tuple.pair moduleName)
+    packageDef.modules
+        |> Dict.toList
+        |> List.foldl
+            (\( moduleName, accessControlledModuleDef ) dagResultSoFar ->
+                let
+                    dependsOnModules : Set ModuleName
+                    dependsOnModules =
+                        accessControlledModuleDef.value
+                            |> Module.dependsOnModules
+                            -- Keep only dependencies within the package
+                            |> Set.filter (\( dependsOnPackage, _ ) -> dependsOnPackage == packageName)
+                            -- Remove the package name
+                            |> Set.map Tuple.second
+                in
+                dagResultSoFar
+                    |> Result.andThen (DAG.insertNode moduleName dependsOnModules)
+            )
+            (Ok DAG.empty)
+        |> Result.map
+            (\moduleDependencies ->
+                moduleDependencies
+                    -- Use the dependency graph to order the modules topologically
+                    |> DAG.backwardTopologicalOrdering
+                    -- Turn the partial ordering represented as a list of lists into a simple list
+                    |> List.concat
+                    -- Look up the module definition for each module name
+                    |> List.filterMap
+                        (\moduleName ->
+                            packageDef.modules
+                                |> Dict.get moduleName
+                                |> Maybe.map (Tuple.pair moduleName)
+                        )
             )
