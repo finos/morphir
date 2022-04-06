@@ -91,8 +91,16 @@ async function buildFromScratch(morphirJson: any, fileSnapshot: { [index: string
 
 async function buildIncrementally(morphirJson: any, fileChanges: FileChanges.FileChanges, options: any, previousIR: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        worker.ports.jsonDecodeError.subscribe((err: any) => {
+        worker.ports.decodeFailed.subscribe((err: any) => {
             reject(err)
+        })
+
+        worker.ports.buildFailed.subscribe((err: any) => {
+            reject(err)
+        })
+
+        worker.ports.reportProgress.subscribe((message: any) => {
+            console.log(message)
         })
 
         worker.ports.buildCompleted.subscribe(([err, ok]: any) => {

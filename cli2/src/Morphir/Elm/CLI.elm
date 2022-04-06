@@ -24,7 +24,7 @@ import Morphir.File.FileChanges as FileChanges exposing (FileChanges)
 import Morphir.File.FileChanges.Codec as FileChangesCodec
 import Morphir.File.FileSnapshot as FileSnapshot exposing (FileSnapshot)
 import Morphir.File.FileSnapshot.Codec as FileSnapshotCodec
-import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.Name as Name
 import Morphir.IR.Package exposing (PackageName)
@@ -138,8 +138,8 @@ process msg =
             case jsonInput |> Decode.decodeValue decodeInput of
                 Ok input ->
                     input.distribution
+                        |> Distribution.insertDependency SDK.packageName SDK.packageSpec
                         |> Repo.fromDistribution
-                        |> Result.andThen (Repo.insertDependencySpecification SDK.packageName SDK.packageSpec)
                         |> Result.mapError (IncrementalFrontend.RepoError "Error while building repo." >> List.singleton)
                         |> Result.map
                             (OrderFileChanges input.packageInfo.name

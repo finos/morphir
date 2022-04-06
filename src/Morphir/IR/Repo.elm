@@ -120,8 +120,8 @@ type Error
     | TypeAlreadyExist FQName
     | DependencyAlreadyExists PackageName
     | ValueAlreadyExist Name
-    | TypeCycleDetected Name
-    | ValueCycleDetected Name
+    | TypeCycleDetected (DAG.CycleDetected FQName)
+    | ValueCycleDetected (DAG.CycleDetected FQName)
     | ModuleCycleDetected (DAG.CycleDetected ModuleName)
 
 
@@ -145,7 +145,20 @@ empty packageName =
 fromDistribution : Distribution -> Result Errors Repo
 fromDistribution distro =
     case distro of
-        Library packageName _ packageDef ->
+        Library packageName dependencies packageDef ->
+            let
+                repoWithDependencies : Result Errors Repo
+                repoWithDependencies =
+                    -- TODO: sort dependencies topologically
+                    dependencies
+                        |> Dict.toList
+                        |> List.foldl
+                            (\( dependencyPackageName, dependencyPackageSpec ) repoResultSoFar ->
+                                repoResultSoFar
+                                    |> Result.andThen (insertDependencySpecification dependencyPackageName dependencyPackageSpec)
+                            )
+                            (Ok (empty packageName))
+            in
             packageDef
                 |> Package.modulesOrderedByDependency packageName
                 |> Result.mapError (ModuleCycleDetected >> List.singleton)
@@ -162,8 +175,7 @@ fromDistribution distro =
 
                                         Type.CustomTypeDefinition _ accessControlledType ->
                                             accessControlledType.value
-                                                |> Dict.toList
-                                                |> List.map Tuple.second
+                                                |> Dict.values
                                                 |> List.concat
                                                 |> List.map Tuple.second
 
@@ -192,7 +204,7 @@ fromDistribution distro =
                                                 dagResultSoFar
                                                     |> Result.andThen
                                                         (DAG.insertNode typeFQName (collectRefsForTypes typeList)
-                                                            >> Result.mapError (\(DAG.CycleDetected ( _, _, n ) _) -> [ TypeCycleDetected n ])
+                                                            >> Result.mapError (TypeCycleDetected >> List.singleton)
                                                         )
                                             )
                                             (Ok repo.typeDependencies)
@@ -218,7 +230,7 @@ fromDistribution distro =
                                                 dagResultSoFar
                                                     |> Result.andThen
                                                         (DAG.insertNode valueFQN valueDeps
-                                                            >> Result.mapError (\(DAG.CycleDetected ( _, _, n ) _) -> [ ValueCycleDetected n ])
+                                                            >> Result.mapError (ValueCycleDetected >> List.singleton)
                                                         )
                                             )
                                             (Ok repo.valueDependencies)
@@ -234,7 +246,7 @@ fromDistribution distro =
                                             |> Result.andThen updateRepoValueDependencies
                                     )
                         )
-                        (Ok (empty packageName))
+                        repoWithDependencies
                     )
 
 
@@ -369,7 +381,7 @@ insertType moduleName typeName typeDef (Repo repo) =
             repo.typeDependencies
                 -- TODO extract references for type and use as toNodes
                 |> DAG.insertNode (FQName.fQName repo.packageName moduleName typeName) Set.empty
-                |> Result.mapError (always [ TypeCycleDetected typeName ])
+                |> Result.mapError (TypeCycleDetected >> List.singleton)
                 |> Result.map
                     (\updatedTypeDependency ->
                         Repo
@@ -414,7 +426,7 @@ insertValue moduleName valueName valueDef (Repo repo) =
         Nothing ->
             repo.valueDependencies
                 |> DAG.insertNode (FQName.fQName repo.packageName moduleName valueName) Set.empty
-                |> Result.mapError (always [ ValueCycleDetected valueName ])
+                |> Result.mapError (ValueCycleDetected >> List.singleton)
                 |> Result.map
                     (\updatedValueDependency ->
                         Repo
