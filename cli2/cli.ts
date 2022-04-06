@@ -57,8 +57,16 @@ async function make(projectDir: string, options: any): Promise<string | undefine
 
 async function buildFromScratch(morphirJson: any, fileSnapshot: { [index: string]: string }, options: any): Promise<string> {
     return new Promise((resolve, reject) => {
-        worker.ports.jsonDecodeError.subscribe((err: any) => {
+        worker.ports.decodeFailed.subscribe((err: any) => {
             reject(err)
+        })
+
+        worker.ports.buildFailed.subscribe((err: any) => {
+            reject(err)
+        })
+
+        worker.ports.reportProgress.subscribe((message: any) => {
+            console.log(message)
         })
 
         worker.ports.buildCompleted.subscribe(([err, ok]: any) => {

@@ -1,6 +1,7 @@
 module Morphir.IR.Repo.Codec exposing (..)
 
 import Json.Encode as Encode
+import Morphir.Dependency.DAG as DAG
 import Morphir.IR.FQName.Codec exposing (encodeFQName)
 import Morphir.IR.Path.Codec exposing (encodePath)
 import Morphir.IR.Repo exposing (Error(..), Errors)
@@ -59,3 +60,10 @@ encodeError error =
             , Encode.list Encode.string valueName
             ]
                 |> Encode.list identity
+
+        ModuleCycleDetected (DAG.CycleDetected from to) ->
+            Encode.list identity
+                [ Encode.string "ModuleCycleDetected"
+                , encodePath from
+                , encodePath to
+                ]
