@@ -1,5 +1,6 @@
 module Morphir.Dependency.DAGTests exposing (..)
 
+import Dict
 import Expect
 import Morphir.Dependency.DAG as DAG exposing (DAG)
 import Set
@@ -22,9 +23,9 @@ depList =
     ]
 
 
-buildDAGOfDepList : Result (DAG.CycleDetected String) (DAG String)
-buildDAGOfDepList =
-    depList
+buildDagFromList : List ( comparableNode, List comparableNode ) -> Result (DAG.CycleDetected comparableNode) (DAG comparableNode)
+buildDagFromList lst =
+    lst
         |> List.foldl
             (\( from, toList ) dagSoFar ->
                 dagSoFar
@@ -149,6 +150,20 @@ insertEdgeTests =
         ]
 
 
+insertNodeTest : Test
+insertNodeTest =
+    describe "should insert node"
+        [ test "DAG should contain 3 fromNodes"
+            (\_ ->
+                DAG.insertNode "a" (Set.fromList [ "b", "c" ]) DAG.empty
+                    |> Result.withDefault DAG.empty
+                    |> DAG.toList
+                    |> List.length
+                    |> Expect.equal 3
+            )
+        ]
+
+
 removeNodeTests : Test
 removeNodeTests =
     let
@@ -156,7 +171,7 @@ removeNodeTests =
         runTestWithRemoveNode title nodeToRemove expected =
             test title
                 (\_ ->
-                    case buildDAGOfDepList of
+                    case buildDagFromList depList of
                         Ok g ->
                             g
                                 |> DAG.removeNode nodeToRemove
@@ -211,7 +226,7 @@ removeEdgeTests =
         runTestWithRemoveEdge title from to expectedResult =
             test title
                 (\_ ->
-                    case buildDAGOfDepList of
+                    case buildDagFromList depList of
                         Ok dag ->
                             dag
                                 |> DAG.removeEdge from to
@@ -272,7 +287,7 @@ incomingEdgesTests =
         runTestWithIncomingEdges title node expected =
             test title
                 (\_ ->
-                    case buildDAGOfDepList of
+                    case buildDagFromList depList of
                         Ok g ->
                             g
                                 |> DAG.incomingEdges node
@@ -303,7 +318,7 @@ outgoingEdgeTests =
         runTestWithOutgoingEdges title node expected =
             test title
                 (\_ ->
-                    case buildDAGOfDepList of
+                    case buildDagFromList depList of
                         Ok g ->
                             g
                                 |> DAG.outgoingEdges node
@@ -330,4 +345,30 @@ outgoingEdgeTests =
         , runTestWithOutgoingEdges "should return no outgoing edges for isolated node 'u'"
             "u"
             []
+        ]
+
+
+mergeTests : Test
+mergeTests =
+    let
+        runTestWithMerge : String -> List ( comparableNode, List comparableNode ) -> List ( comparableNode, List comparableNode ) -> Test
+        runTestWithMerge title dagList expected =
+            test title
+                (\_ ->
+                    buildDagFromList dagList
+                        |> Result.andThen
+                            (\dagListDag ->
+                                buildDagFromList depList
+                                    |> Result.map (Tuple.pair dagListDag)
+                            )
+                        |> Result.withDefault DAG.empty
+                        |> DAG.toList
+                        |> List.map (Tuple.mapSecond Set.toList)
+                        |> Expect.equal (expected |> Dict.fromList |> Dict.toList)
+                )
+    in
+    describe "should merge Dags"
+        [ runTestWithMerge "should test out"
+            []
+            depList
         ]

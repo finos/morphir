@@ -3,7 +3,8 @@ module Morphir.Dependency.DAG exposing
     , empty, insertEdge
     , incomingEdges, outgoingEdges
     , forwardTopologicalOrdering, backwardTopologicalOrdering
-    , toDict, toList
+    , toDict, toList, map
+    , merge
     , insertNode, removeEdge, removeNode
     )
 
@@ -32,7 +33,12 @@ This level can be used either to derive a topological ordering or to process in 
 
 # Transforming
 
-@docs toDict, toList
+@docs toDict, toList, map
+
+
+# Combining
+
+@docs merge
 
 -}
 
@@ -275,6 +281,37 @@ rebuild (DAG d) =
                     |> Result.withDefault newDagSoFar
             )
             empty
+
+
+{-| combine two Dag of the same type into one.
+The levels of the resulting DAG remain correct
+-}
+merge : DAG comparableNode -> DAG comparableNode -> Result (CycleDetected comparableNode) (DAG comparableNode)
+merge dag1 dag2 =
+    -- TODO merge edges for same nodes
+    dag2
+        |> toList
+        |> List.foldl
+            (\( fromNode, edges ) ->
+                Result.andThen (insertNode fromNode edges)
+            )
+            (Ok dag1)
+
+
+{-| Apply a function that transforms all the nodes in the DAG
+-}
+map : (comparableNodeA -> comparableNodeB) -> DAG comparableNodeA -> DAG comparableNodeB
+map fn (DAG dag) =
+    dag
+        |> Dict.toList
+        |> List.map
+            (\( fromNode, ( edges, level ) ) ->
+                ( fn fromNode
+                , ( edges |> Set.map fn, level )
+                )
+            )
+        |> Dict.fromList
+        |> DAG
 
 
 {-| delete a node and it's outgoingEdges from the dag.
