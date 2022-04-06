@@ -11,14 +11,15 @@ import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Node as Node exposing (Node(..))
+import Elm.Syntax.TypeAnnotation as TypeAnnotation
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
 import Morphir.Elm.Frontend.Mapper as Mapper
-import Morphir.Elm.IncrementalResolve as IncrementalResolve
+import Morphir.Elm.IncrementalResolve as IncrementalResolve exposing (KindOfName)
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
-import Morphir.File.Path exposing (Path)
+import Morphir.File.Path as FilePath
 import Morphir.IR.AccessControlled as AccessControlled
 import Morphir.IR.FQName exposing (FQName, fQName)
 import Morphir.IR.Module exposing (ModuleName)
@@ -42,16 +43,16 @@ type Error
     | TypeCycleDetected Name Name
     | ValueCycleDetected FQName FQName
     | InvalidModuleName ElmModuleName.ModuleName
-    | ParseError Path (List Parser.DeadEnd)
-    | RepoError Repo.Errors
+    | ParseError FilePath.Path (List Parser.DeadEnd)
+    | RepoError String Repo.Errors
     | MappingError Mapper.Errors
     | ResolveError ModuleName IncrementalResolve.Error
+    | InvalidSourceFilePath FilePath.Path String
 
 
 type alias OrderedFileChanges =
-    { inserts : List ( ModuleName, ParsedModule )
-    , updates : List ( ModuleName, ParsedModule )
-    , deletes : Set Path
+    { insertsAndUpdates : List ( ModuleName, ParsedModule )
+    , deletes : Set ModuleName
     }
 
 
@@ -63,39 +64,111 @@ orderFileChanges packageName fileChanges =
             fileChanges
                 |> FileChanges.partitionByType
 
-        parseSources : Dict Path String -> Result Errors (List ParsedModule)
+        parseSources : Dict FilePath.Path String -> Result Errors (List ParsedModule)
         parseSources sources =
             sources
                 |> Dict.toList
                 |> List.map (\( path, source ) -> parseSource ( path, source ))
                 |> ResultList.keepAllErrors
+
+        parsedInsertsAndUpdates : Result Errors (List ParsedModule)
+        parsedInsertsAndUpdates =
+            Result.map2 (++)
+                (parseSources fileChangesByType.inserts)
+                (parseSources fileChangesByType.updates)
+
+        filePathsToModuleNames : Set FilePath.Path -> Result Errors (Set ModuleName)
+        filePathsToModuleNames paths =
+            paths
+                |> Set.toList
+                |> List.map (filePathToModuleName packageName)
+                |> ResultList.keepAllErrors
+                |> Result.map Set.fromList
     in
-    Result.map2
-        (\parsedInserts parsedUpdates ->
-            { inserts = parsedInserts
-            , updates = parsedUpdates
-            , deletes =
-                fileChangesByType.deletes
-            }
+    Result.map2 OrderedFileChanges
+        (parsedInsertsAndUpdates
+            |> Result.andThen (orderElmModulesByDependency packageName)
         )
-        (parseSources fileChangesByType.inserts |> Result.andThen (orderElmModulesByDependency packageName))
-        (parseSources fileChangesByType.updates |> Result.andThen (orderElmModulesByDependency packageName))
+        (fileChangesByType.deletes
+            |> filePathsToModuleNames
+        )
 
 
-applyFileChanges : FileChanges -> Repo -> Result Errors Repo
+filePathToModuleName : PackageName -> FilePath.Path -> Result Error ModuleName
+filePathToModuleName packageName filePath =
+    let
+        filePathParts : List String
+        filePathParts =
+            filePath
+                -- Split by Linux path separator
+                |> String.split "/"
+                -- Split by Windows path separator
+                |> List.concatMap (String.split "\\")
+
+        packageNameReversed : List Name
+        packageNameReversed =
+            packageName |> List.reverse
+
+        -- Try to find the package name going recursively backwards in the path, if it's found return the path that we
+        -- skipped through as the module name
+        findModuleName : Name -> List Name -> List Name -> Result String (List Name)
+        findModuleName lastPartOfModuleName modulePathReversed remainingDirectoryPathReversed =
+            if List.length remainingDirectoryPathReversed < List.length packageNameReversed then
+                Err "Could not find package name in path."
+
+            else if packageNameReversed |> Path.isPrefixOf remainingDirectoryPathReversed then
+                Ok (lastPartOfModuleName :: modulePathReversed |> List.reverse)
+
+            else
+                case remainingDirectoryPathReversed of
+                    lastDirectoryName :: nextRemainingDirectoryPathReversed ->
+                        findModuleName lastPartOfModuleName (lastDirectoryName :: modulePathReversed) nextRemainingDirectoryPathReversed
+
+                    _ ->
+                        Err "Could not find package name in path."
+    in
+    case filePathParts |> List.reverse of
+        filePart :: directoryPartReversed ->
+            case filePart |> String.split "." of
+                [ fileName, "elm" ] ->
+                    findModuleName (Name.fromString fileName) [] (directoryPartReversed |> List.map Name.fromString)
+                        |> Result.mapError (InvalidSourceFilePath filePath)
+
+                _ ->
+                    Err (InvalidSourceFilePath filePath "A valid file path must end with a file name with '.elm' extension.")
+
+        _ ->
+            Err (InvalidSourceFilePath filePath "A valid file path must have at least one directory and one file.")
+
+
+applyFileChanges : OrderedFileChanges -> Repo -> Result Errors Repo
 applyFileChanges fileChanges repo =
-    parseElmModules fileChanges
-        |> Result.andThen (orderElmModulesByDependency (Repo.getPackageName repo))
-        |> Result.andThen
-            (\parsedModules ->
-                parsedModules
-                    |> List.foldl
-                        (\( moduleName, parsedModule ) repoResultForModule ->
-                            repoResultForModule
-                                |> Result.andThen (processModule moduleName parsedModule)
-                        )
-                        (Ok repo)
+    repo
+        |> applyInsertsAndUpdates fileChanges.insertsAndUpdates
+        |> Result.andThen (applyDeletes fileChanges.deletes)
+
+
+applyInsertsAndUpdates : List ( ModuleName, ParsedModule ) -> Repo -> Result Errors Repo
+applyInsertsAndUpdates insertsAndUpdates repo =
+    insertsAndUpdates
+        |> List.foldl
+            (\( moduleName, parsedModule ) repoResultForModule ->
+                repoResultForModule
+                    |> Result.andThen (processModule moduleName parsedModule)
             )
+            (Ok repo)
+
+
+applyDeletes : Set ModuleName -> Repo -> Result Errors Repo
+applyDeletes deletes repo =
+    deletes
+        |> Set.foldl
+            (\moduleName repoResultForModule ->
+                repoResultForModule
+                    |> Result.andThen (Repo.deleteModule moduleName)
+            )
+            (Ok repo)
+        |> Result.mapError (RepoError "Cannot delete module" >> List.singleton)
 
 
 processModule : ModuleName -> ParsedModule -> Repo -> Result (List Error) Repo
@@ -105,6 +178,10 @@ processModule moduleName parsedModule repo =
         typeNames =
             extractTypeNames parsedModule
 
+        constructorNames : List Name
+        constructorNames =
+            extractConstructorNames parsedModule
+
         valueNames : List Name
         valueNames =
             extractValueNames parsedModule
@@ -112,12 +189,12 @@ processModule moduleName parsedModule repo =
         localNames : IncrementalResolve.VisibleNames
         localNames =
             { types = Set.fromList typeNames
-            , constructors = Set.empty
+            , constructors = Set.fromList constructorNames
             , values = Set.fromList valueNames
             }
 
-        resolveName : IncrementalResolve.KindOfName -> List String -> String -> Result IncrementalResolve.Error FQName
-        resolveName kindOfName modName localName =
+        resolveName : List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName
+        resolveName modName localName kindOfName =
             parsedModule
                 |> RawFile.imports
                 |> IncrementalResolve.resolveImports repo
@@ -133,7 +210,7 @@ processModule moduleName parsedModule repo =
                             localName
                     )
     in
-    extractTypes (resolveName IncrementalResolve.Type) parsedModule
+    extractTypes resolveName parsedModule
         |> Result.andThen (orderTypesByDependency (Repo.getPackageName repo) moduleName)
         |> Result.andThen
             (List.foldl
@@ -145,7 +222,7 @@ processModule moduleName parsedModule repo =
             )
         |> Result.andThen
             (\repoWithTypesInserted ->
-                extractValues (resolveName IncrementalResolve.Value) parsedModule
+                extractValues resolveName parsedModule
                     |> Result.andThen
                         (List.foldl
                             (\( name, definition ) repoResultSoFar ->
@@ -161,14 +238,14 @@ processType : ModuleName -> Name -> Type.Definition () -> Repo -> Result (List E
 processType moduleName typeName typeDef repo =
     repo
         |> Repo.insertType moduleName typeName typeDef
-        |> Result.mapError (RepoError >> List.singleton)
+        |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
 
 processValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result (List Error) Repo
 processValue moduleName valueName valueDefinition repo =
     repo
         |> Repo.insertValue moduleName valueName valueDefinition
-        |> Result.mapError (RepoError >> List.singleton)
+        |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
 
 {-| convert New or Updated Elm modules into ParsedModules for further processing
@@ -195,7 +272,7 @@ parseElmModules fileChanges =
 
 {-| Converts an elm source into a ParsedModule.
 -}
-parseSource : ( Path, String ) -> Result Error ParsedModule
+parseSource : ( FilePath.Path, String ) -> Result Error ParsedModule
 parseSource ( path, content ) =
     Elm.Parser.parse content
         |> Result.mapError (ParseError path)
@@ -297,7 +374,46 @@ extractTypeNames parsedModule =
         |> extractTypeNamesFromFile
 
 
-extractTypes : (List String -> String -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Type.Definition () ))
+extractConstructorNames : ParsedModule -> List Name
+extractConstructorNames parsedModule =
+    let
+        withWellKnownOperators : ProcessContext -> ProcessContext
+        withWellKnownOperators context =
+            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
+
+        initialContext : ProcessContext
+        initialContext =
+            Processing.init |> withWellKnownOperators
+
+        extractConstructorNamesFromFile : File -> List Name
+        extractConstructorNamesFromFile file =
+            file.declarations
+                |> List.concatMap
+                    (\node ->
+                        case Node.value node of
+                            CustomTypeDeclaration typ ->
+                                typ.constructors |> List.map (Node.value >> .name >> Node.value)
+
+                            AliasDeclaration typeAlias ->
+                                case typeAlias.typeAnnotation |> Node.value of
+                                    TypeAnnotation.Record _ ->
+                                        -- Record type aliases have an implicit type constructor
+                                        [ typeAlias.name |> Node.value ]
+
+                                    _ ->
+                                        []
+
+                            _ ->
+                                []
+                    )
+                |> List.map Name.fromString
+    in
+    parsedModule
+        |> Processing.process initialContext
+        |> extractConstructorNamesFromFile
+
+
+extractTypes : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Type.Definition () ))
 extractTypes resolveTypeName parsedModule =
     let
         declarationsInParsedModule : List Declaration
@@ -495,7 +611,7 @@ extractValueNames parsedModule =
 
 {-| Extract value definitions
 -}
-extractValues : (List String -> String -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () (Type ()) ))
+extractValues : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () (Type ()) ))
 extractValues resolveValueName parsedModule =
     let
         -- get function name
@@ -560,10 +676,3 @@ extractValues resolveValueName parsedModule =
                     )
     in
     orderedDeclarationAsDefinitions
-
-
-{-| Insert or update a single module in the repo passing the source code in.
--}
-mergeModuleSource : ModuleName -> SourceCode -> Repo -> Result Errors Repo
-mergeModuleSource moduleName sourceCode repo =
-    Debug.todo "implement"

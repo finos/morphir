@@ -10,6 +10,7 @@ import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Path.Codec exposing (encodePath)
 import Morphir.IR.Repo.Codec as RepoCodec
 import Parser
+import Set
 
 
 encodeError : IncrementalFrontend.Error -> Encode.Value
@@ -96,8 +97,12 @@ encodeError error =
             ]
                 |> Encode.list identity
 
-        IncrementalFrontend.RepoError errors ->
-            Encode.list RepoCodec.encodeError errors
+        IncrementalFrontend.RepoError message errors ->
+            Encode.list identity
+                [ Encode.string "RepoError"
+                , Encode.string message
+                , Encode.list RepoCodec.encodeError errors
+                ]
 
         IncrementalFrontend.TypeCycleDetected from to ->
             Encode.list identity
@@ -123,6 +128,13 @@ encodeError error =
         IncrementalFrontend.MappingError errors ->
             Encode.list encodeMappingError errors
 
+        IncrementalFrontend.InvalidSourceFilePath path message ->
+            Encode.list identity
+                [ Encode.string "InvalidSourceFilePath"
+                , Encode.string path
+                , Encode.string message
+                ]
+
 
 encodeMappingError : Mapper.Error -> Encode.Value
 encodeMappingError error =
@@ -145,8 +157,33 @@ encodeMappingError error =
                 , encodeSourceLocation sourceLocation
                 ]
 
-        Mapper.ResolveError err ->
-            IncrementalResolveCodec.encodeError err
+        Mapper.ResolveError sourceLocation err ->
+            Encode.list identity
+                [ Encode.string "ResolveError"
+                , encodeSourceLocation sourceLocation
+                , IncrementalResolveCodec.encodeError err
+                ]
+
+        Mapper.SameNameAppearsMultipleTimesInPattern sourceLocation names ->
+            Encode.list identity
+                [ Encode.string "SameNameAppearsMultipleTimesInPattern"
+                , encodeSourceLocation sourceLocation
+                , names |> Set.toList |> Encode.list Encode.string
+                ]
+
+        Mapper.VariableNameCollision sourceLocation varName ->
+            Encode.list identity
+                [ Encode.string "VariableNameCollision"
+                , encodeSourceLocation sourceLocation
+                , Encode.string varName
+                ]
+
+        Mapper.UnresolvedVariable sourceLocation varName ->
+            Encode.list identity
+                [ Encode.string "UnresolvedVariable"
+                , encodeSourceLocation sourceLocation
+                , Encode.string varName
+                ]
 
 
 encodeSourceLocation : Mapper.SourceLocation -> Encode.Value
