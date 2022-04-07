@@ -510,4 +510,4 @@ valueDependencies (Repo repo) =
 -}
 moduleDependencies : Repo -> DAG ModuleName
 moduleDependencies (Repo repo) =
-    Debug.todo ""
+    repo.moduleDependencies
