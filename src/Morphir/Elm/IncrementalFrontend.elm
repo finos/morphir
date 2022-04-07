@@ -244,7 +244,7 @@ processType moduleName typeName typeDef repo =
 processValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result (List Error) Repo
 processValue moduleName valueName valueDefinition repo =
     repo
-        |> Repo.insertValue moduleName valueName valueDefinition
+        |> Repo.insertTypedValue moduleName valueName valueDefinition
         |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
 

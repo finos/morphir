@@ -2,10 +2,10 @@ module Morphir.IR.Repo exposing
     ( Repo, Error(..)
     , empty, fromDistribution, insertDependencySpecification
     , mergeNativeFunctions, insertModule, deleteModule
-    , insertType, insertValue
+    , insertType
     , getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies
     , toDistribution
-    , Errors, SourceCode
+    , Errors, SourceCode, insertTypedValue
     )
 
 {-| This module contains a data structure that represents a Repo with useful API that allows querying and modification.
@@ -35,6 +35,7 @@ query a Repo without breaking the validity of the Repo.
 
 import Dict exposing (Dict)
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected, DAG)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented as Documented
@@ -44,6 +45,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
+import Morphir.Type.Infer as Infer
 import Morphir.Value.Native as Native
 import Set exposing (Set)
 
@@ -123,6 +125,7 @@ type Error
     | TypeCycleDetected (DAG.CycleDetected FQName)
     | ValueCycleDetected (DAG.CycleDetected FQName)
     | ModuleCycleDetected (DAG.CycleDetected ModuleName)
+    | TypeCheckError ModuleName Name Infer.TypeError
 
 
 {-| Creates a repo from scratch when there is no existing IR.
@@ -405,10 +408,25 @@ insertType moduleName typeName typeDef (Repo repo) =
                     )
 
 
+insertValue : ModuleName -> Name -> Value.Definition () () -> Repo -> Result Errors Repo
+insertValue moduleName valueName valueDef repo =
+    let
+        ir : IR
+        ir =
+            repo
+                |> toDistribution
+                |> IR.fromDistribution
+    in
+    Infer.inferValueDefinition ir valueDef
+        |> Result.map (Value.mapDefinitionAttributes identity Tuple.second)
+        |> Result.mapError (TypeCheckError moduleName valueName >> List.singleton)
+        |> Result.andThen (\typedValueDef -> insertTypedValue moduleName valueName typedValueDef repo)
+
+
 {-| Insert values into repo modules and update the value dependency graph of the repo
 -}
-insertValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
-insertValue moduleName valueName valueDef (Repo repo) =
+insertTypedValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
+insertTypedValue moduleName valueName valueDef (Repo repo) =
     let
         accessControlledModuleDef : AccessControlled (Module.Definition () (Type ()))
         accessControlledModuleDef =

@@ -227,7 +227,7 @@ insertValueTest =
                 |> List.foldl
                     (\( valueName, valueDef ) repoResultSoFar ->
                         repoResultSoFar
-                            |> Result.andThen (Repo.insertValue moduleName valueName valueDef)
+                            |> Result.andThen (Repo.insertTypedValue moduleName valueName valueDef)
                     )
                     (Ok currentRepo)
     in
@@ -304,7 +304,7 @@ toDistributionTest =
         |> Result.andThen
             (Repo.insertType moduleName typeName typeDef)
         |> Result.andThen
-            (Repo.insertValue moduleName valueName valueDef)
+            (Repo.insertTypedValue moduleName valueName valueDef)
         |> (\validRepo ->
                 case validRepo of
                     Ok r ->
