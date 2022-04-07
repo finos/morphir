@@ -1,6 +1,5 @@
 module Morphir.Dependency.DAGTests exposing (..)
 
-import Dict
 import Expect
 import Morphir.Dependency.DAG as DAG exposing (DAG)
 import Set
@@ -27,10 +26,10 @@ buildDagFromList : List ( comparableNode, List comparableNode ) -> Result (DAG.C
 buildDagFromList lst =
     lst
         |> List.foldl
-            (\( from, toList ) dagSoFar ->
+            (\( from, edges ) dagSoFar ->
                 dagSoFar
                     |> Result.andThen
-                        (toList
+                        (edges
                             |> Set.fromList
                             |> DAG.insertNode from
                         )
@@ -345,33 +344,4 @@ outgoingEdgeTests =
         , runTestWithOutgoingEdges "should return no outgoing edges for isolated node 'u'"
             "u"
             []
-        ]
-
-
-mapTest : Test
-mapTest =
-    let
-        runTestWithMap : String -> (comparableNodeA -> comparableNode) -> List ( comparableNodeA, List comparableNodeA ) -> List ( comparableNode, List comparableNode ) -> Test
-        runTestWithMap title fn dagList expected =
-            test title
-                (\_ ->
-                    buildDagFromList dagList
-                        |> Result.withDefault DAG.empty
-                        |> DAG.map fn
-                        |> DAG.toList
-                        |> List.map (Tuple.mapSecond Set.toList)
-                        |> Expect.equalLists (expected |> Dict.fromList |> Dict.toList)
-                )
-    in
-    describe "Should map DAG values"
-        [ runTestWithMap "should convert Int to String"
-            String.fromInt
-            [ ( 1, [ 2, 3, 4 ] )
-            , ( 2, [ 3, 4 ] )
-            ]
-            [ ( "2", [ "3", "4" ] )
-            , ( "1", [ "2", "3", "4" ] )
-            , ( "3", [] )
-            , ( "4", [] )
-            ]
         ]
