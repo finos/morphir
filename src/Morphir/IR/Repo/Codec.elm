@@ -7,6 +7,7 @@ import Morphir.IR.FQName.Codec exposing (encodeFQName)
 import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Path.Codec exposing (encodePath)
 import Morphir.IR.Repo exposing (Error(..), Errors)
+import Morphir.Type.Infer.Codec exposing (encodeTypeError)
 
 
 {-| encode a Repo Error
@@ -67,4 +68,12 @@ encodeError error =
             Encode.list identity
                 [ Encode.string "ModuleCycleDetected"
                 , encodeCycleDetected encodePath cycleDetected
+                ]
+
+        TypeCheckError moduleName localName typeError ->
+            Encode.list identity
+                [ Encode.string "TypeCheckError"
+                , encodePath moduleName
+                , encodeName localName
+                , encodeTypeError typeError
                 ]

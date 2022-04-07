@@ -2,10 +2,10 @@ module Morphir.IR.Repo exposing
     ( Repo, Error(..)
     , empty, fromDistribution, insertDependencySpecification
     , mergeNativeFunctions, insertModule, deleteModule
-    , insertType
-    , getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies
+    , insertType, insertValue, insertTypedValue
+    , getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies, lookupValue
     , toDistribution
-    , Errors, SourceCode, insertTypedValue
+    , Errors, SourceCode
     )
 
 {-| This module contains a data structure that represents a Repo with useful API that allows querying and modification.
@@ -19,12 +19,12 @@ query a Repo without breaking the validity of the Repo.
 
 @docs empty, fromDistribution, insertDependencySpecification
 @docs mergeNativeFunctions, insertModule, deleteModule
-@docs insertType, insertValue
+@docs insertType, insertValue, insertTypedValue
 
 
 # Query
 
-@docs getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies
+@docs getPackageName, modules, dependsOnPackages, lookupModuleSpecification, typeDependencies, valueDependencies, lookupValue
 
 
 # Transform
@@ -36,9 +36,9 @@ query a Repo without breaking the validity of the Repo.
 import Dict exposing (Dict)
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected, DAG)
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, public)
+import Morphir.IR.AccessControlled as AccessControlled exposing (Access, AccessControlled, public, withAccess)
 import Morphir.IR.Distribution exposing (Distribution(..))
-import Morphir.IR.Documented as Documented
+import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -408,8 +408,11 @@ insertType moduleName typeName typeDef (Repo repo) =
                     )
 
 
-insertValue : ModuleName -> Name -> Value.Definition () () -> Repo -> Result Errors Repo
-insertValue moduleName valueName valueDef repo =
+{-| Insert a new value into the repo without type information on each node. The repo will infer the types of each node
+and store it. This function might fail if the inferred type is not compatible with the declared type that's passed in.
+-}
+insertValue : Access -> ModuleName -> Name -> Value.Definition () () -> Repo -> Result Errors Repo
+insertValue access moduleName valueName valueDef repo =
     let
         ir : IR
         ir =
@@ -420,13 +423,13 @@ insertValue moduleName valueName valueDef repo =
     Infer.inferValueDefinition ir valueDef
         |> Result.map (Value.mapDefinitionAttributes identity Tuple.second)
         |> Result.mapError (TypeCheckError moduleName valueName >> List.singleton)
-        |> Result.andThen (\typedValueDef -> insertTypedValue moduleName valueName typedValueDef repo)
+        |> Result.andThen (\typedValueDef -> insertTypedValue access moduleName valueName typedValueDef repo)
 
 
 {-| Insert values into repo modules and update the value dependency graph of the repo
 -}
-insertTypedValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
-insertTypedValue moduleName valueName valueDef (Repo repo) =
+insertTypedValue : Access -> ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
+insertTypedValue access moduleName valueName valueDef (Repo repo) =
     let
         accessControlledModuleDef : AccessControlled (Module.Definition () (Type ()))
         accessControlledModuleDef =
@@ -458,7 +461,7 @@ insertTypedValue moduleName valueName valueDef (Repo repo) =
                                                         { moduleDef
                                                             | values =
                                                                 accessControlledModuleDef.value.values
-                                                                    |> Dict.insert valueName (public (valueDef |> Documented.Documented ""))
+                                                                    |> Dict.insert valueName (AccessControlled access (valueDef |> Documented.Documented ""))
                                                         }
                                                     )
                                             )
@@ -520,3 +523,24 @@ typeDependencies (Repo repo) =
 valueDependencies : Repo -> DAG FQName
 valueDependencies (Repo repo) =
     repo.valueDependencies
+
+
+{-| Look up a value from the repo using the access level passed in.
+-}
+lookupValue : Access -> FQName -> Repo -> Maybe (Value.Definition () (Type ()))
+lookupValue access ( packageName, moduleName, localName ) (Repo repo) =
+    if packageName == repo.packageName then
+        repo.modules
+            |> Dict.get moduleName
+            |> Maybe.andThen
+                (\accessControlledModuleDef ->
+                    accessControlledModuleDef
+                        |> withAccess access
+                        |> Maybe.andThen (.values >> Dict.get localName)
+                        |> Maybe.andThen (withAccess access)
+                        |> Maybe.map .value
+                )
+
+    else
+        -- TODO: lookup in dependencies
+        Nothing

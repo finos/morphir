@@ -165,11 +165,11 @@ process msg =
 report : Msg -> Cmd Msg
 report msg =
     case msg of
-        BuildFromScratch value ->
-            reportProgress "Building from scratch"
+        BuildFromScratch _ ->
+            reportProgress "Building from scratch ..."
 
-        BuildIncrementally value ->
-            reportProgress "Building incrementally"
+        BuildIncrementally _ ->
+            reportProgress "Building incrementally ..."
 
         OrderFileChanges packageName fileChanges repo ->
             reportProgress "Parsing files and ordering file changes"

@@ -3,12 +3,13 @@ module Morphir.IR.Repo.RepoTest exposing (..)
 import Dict
 import Expect
 import Morphir.Dependency.DAG as DAG
-import Morphir.IR.AccessControlled exposing (AccessControlled, public)
+import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Repo as Repo exposing (Error(..), Errors, Repo)
+import Morphir.IR.SDK.Basics exposing (intType)
 import Morphir.IR.Type as Type exposing (Definition(..), Type(..))
 import Morphir.IR.Value as Value
 import Test exposing (Test, describe, test)
@@ -321,3 +322,39 @@ toDistributionTest =
                                 Expect.fail "repo to distribution failed"
                             )
            )
+
+
+incrementalOperationTests : Test
+incrementalOperationTests =
+    describe "Incremental operations"
+        [ test "Insert a new value without types"
+            (\_ ->
+                let
+                    newRepoState : Result Errors Repo
+                    newRepoState =
+                        Repo.empty [ [ "my" ], [ "package" ] ]
+                            |> Repo.insertValue Public
+                                [ [ "my" ], [ "module" ] ]
+                                [ "foo" ]
+                                { inputTypes = []
+                                , outputType = intType ()
+                                , body = Value.Literal () (WholeNumberLiteral 1)
+                                }
+                in
+                case newRepoState of
+                    Ok newRepo ->
+                        let
+                            expectedValue =
+                                { inputTypes = []
+                                , outputType = intType ()
+                                , body = Value.Literal (intType ()) (WholeNumberLiteral 1)
+                                }
+                        in
+                        newRepo
+                            |> Repo.lookupValue Public ( [ [ "my" ], [ "package" ] ], [ [ "my" ], [ "module" ] ], [ "foo" ] )
+                            |> Expect.equal (Just expectedValue)
+
+                    Err error ->
+                        Expect.fail (Debug.toString error)
+            )
+        ]
