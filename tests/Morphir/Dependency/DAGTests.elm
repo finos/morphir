@@ -392,7 +392,7 @@ collectReachableNodesTest =
             ]
             "a"
             [ "b", "c", "d", "e", "i", "f" ]
-        , runTestWithCollectReachableNodesFrom "should collect nodes d,e,f"
+        , runTestWithCollectReachableNodesFrom "should collect forward reachable nodes from b as d,e,f"
             [ ( "a", [ "b", "c" ] )
             , ( "b", [ "d", "e" ] )
             , ( "c", [ "i" ] )
@@ -400,7 +400,7 @@ collectReachableNodesTest =
             ]
             "b"
             [ "d", "e", "f" ]
-        , runTestWithCollectReachableNodesFrom "should collect nodes b,d,e,f"
+        , runTestWithCollectReachableNodesFrom "should collect forward reachable nodes from b as b,d,e,f"
             [ ( "a", [ "b", "c" ] )
             , ( "b", [ "b", "d", "e" ] )
             , ( "c", [ "i" ] )

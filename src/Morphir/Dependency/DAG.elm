@@ -1,10 +1,10 @@
 module Morphir.Dependency.DAG exposing
     ( DAG, CycleDetected(..)
     , empty, insertEdge
-    , incomingEdges, outgoingEdges
+    , incomingEdges, outgoingEdges, collectForwardReachableNodes
     , forwardTopologicalOrdering, backwardTopologicalOrdering
     , toList
-    , collectForwardReachableNodes, insertNode, removeEdge, removeNode
+    , insertNode, removeEdge, removeNode
     )
 
 {-| This module implements a DAG (Directed Acyclic Graph) data structure with efficient topological ordering and cycle
@@ -22,7 +22,7 @@ This level can be used either to derive a topological ordering or to process in 
 
 # Querying
 
-@docs incomingEdges, outgoingEdges, collectReachableNodes
+@docs incomingEdges, outgoingEdges, collectForwardReachableNodes
 
 
 # Ordering
@@ -36,8 +36,8 @@ This level can be used either to derive a topological ordering or to process in 
 
 -}
 
-import Dict as Dict exposing (Dict)
-import Set as Set exposing (Set)
+import Dict exposing (Dict)
+import Set exposing (Set)
 
 
 {-| Type to store the DAG. Internally it keeps track of each comparableNode
