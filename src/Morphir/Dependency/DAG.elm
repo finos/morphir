@@ -124,21 +124,37 @@ If a node is recursive (i.e self referencing), it is also included in the result
 
 -}
 collectForwardReachableNodes : comparableNode -> DAG comparableNode -> Set comparableNode
-collectForwardReachableNodes node (DAG edgesByNode) =
-    Dict.get node edgesByNode
-        |> Maybe.withDefault Set.empty
-        |> (\firstReachableSet ->
-                Set.foldl
-                    (\n reachableSoFar ->
-                        collectForwardReachableNodes n (DAG edgesByNode)
-                            |> Set.union reachableSoFar
-                    )
-                    firstReachableSet
-                    (firstReachableSet
-                        -- remove recursive nodes if present
-                        |> Set.remove node
-                    )
-           )
+collectForwardReachableNodes firstNode (DAG initialEdgesByNode) =
+    let
+        firstReachableNodes : Set comparableNode
+        firstReachableNodes =
+            initialEdgesByNode
+                |> Dict.get firstNode
+                |> Maybe.withDefault Set.empty
+
+        collect : Set comparableNode -> Dict comparableNode (Set comparableNode) -> Set comparableNode
+        collect reachableSoFar currentEdgesByNode =
+            let
+                ( reachableEdges, unreachableEdges ) =
+                    currentEdgesByNode
+                        |> Dict.partition (\fromNode _ -> Set.member fromNode reachableSoFar)
+
+                nextReachableNodes : Set comparableNode
+                nextReachableNodes =
+                    Set.diff
+                        (reachableEdges
+                            |> Dict.values
+                            |> List.foldl Set.union Set.empty
+                        )
+                        reachableSoFar
+            in
+            if Set.isEmpty nextReachableNodes then
+                reachableSoFar
+
+            else
+                collect (Set.union reachableSoFar nextReachableNodes) unreachableEdges
+    in
+    collect firstReachableNodes initialEdgesByNode
 
 
 {-| Inserts a Node into the dag and inserts outward edges from this
