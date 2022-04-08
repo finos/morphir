@@ -379,7 +379,7 @@ collectReachableNodesTest =
                 (\_ ->
                     buildDagFromList dagList
                         |> Result.withDefault DAG.empty
-                        |> DAG.collectReachableNodes node
+                        |> DAG.collectForwardReachableNodes node
                         |> Expect.equalSets (Set.fromList expected)
                 )
     in

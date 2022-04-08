@@ -4,7 +4,7 @@ module Morphir.Dependency.DAG exposing
     , incomingEdges, outgoingEdges
     , forwardTopologicalOrdering, backwardTopologicalOrdering
     , toList
-    , collectReachableNodes, insertNode, removeEdge, removeNode
+    , collectForwardReachableNodes, insertNode, removeEdge, removeNode
     )
 
 {-| This module implements a DAG (Directed Acyclic Graph) data structure with efficient topological ordering and cycle
@@ -22,7 +22,7 @@ This level can be used either to derive a topological ordering or to process in 
 
 # Querying
 
-@docs incomingEdges, outgoingEdges
+@docs incomingEdges, outgoingEdges, collectReachableNodes
 
 
 # Ordering
@@ -76,7 +76,7 @@ insertEdge from to (DAG edgesByNodes) =
             |> DAG
             |> Ok
 
-    else if DAG edgesByNodes |> collectReachableNodes to |> Set.member from then
+    else if DAG edgesByNodes |> collectForwardReachableNodes to |> Set.member from then
         -- fromNode shouldn't be reachable from toNode
         Err (CycleDetected from to)
 
@@ -104,15 +104,33 @@ insertEdge from to (DAG edgesByNodes) =
             |> Ok
 
 
-{-| -}
-collectReachableNodes : comparableNode -> DAG comparableNode -> Set comparableNode
-collectReachableNodes node (DAG edgesByNode) =
+{-| Collect all the nodes that are reachable from a specific node.
+If there is a _forward_ path from a to f through b, c, d and e, then they are all collected.
+If a node is recursive (i.e self referencing), it is also included in the result as a reachableNode.
+
+    example:
+        dag = DAG
+            (Dict.fromList
+                [ ( "a", Set.fromList [ "b", "c", ] )
+                , ( "c", Set.fromList [ "i" ] )
+                , ( "b", Set.fromList [ "b", "d", "e" ] )
+                , ( "e", Set.fromList [ "f" ] )
+                , ( "f", Set.fromList [ "g", "c" ] )
+                ]
+            )
+
+        collectForwardReachableNodes "a" dag == Set.fromList [ "b", "c", "d", "e", "i", "f", "g", "c" ]
+        collectForwardReachableNodes "b" dag == Set.fromList [ "b", "d", "e", "f", "g", "c" ]
+
+-}
+collectForwardReachableNodes : comparableNode -> DAG comparableNode -> Set comparableNode
+collectForwardReachableNodes node (DAG edgesByNode) =
     Dict.get node edgesByNode
         |> Maybe.withDefault Set.empty
         |> (\firstReachableSet ->
                 Set.foldl
                     (\n reachableSoFar ->
-                        collectReachableNodes n (DAG edgesByNode)
+                        collectForwardReachableNodes n (DAG edgesByNode)
                             |> Set.union reachableSoFar
                     )
                     firstReachableSet
