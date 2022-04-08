@@ -4,10 +4,12 @@ import Dict
 import Elm.Parser
 import Expect
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
+import Morphir.Elm.ParsedModule exposing (parsedModule)
 import Morphir.File.FileChanges exposing (Change(..), FileChanges)
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
+import Parser exposing (DeadEnd)
 import Test exposing (Test, describe, test)
 
 
@@ -102,6 +104,7 @@ extractTypesTest =
         nameResolver _ localName kindOfName =
             Ok (FQName.fqn "Morphir.Elm" "Morphir.Elm.Examlple" localName)
 
+        exampleModuleResult : Result (List DeadEnd) Morphir.Elm.ParsedModule.ParsedModule
         exampleModuleResult =
             String.join "\n"
                 [ "module Morphir.Elm.Example exposing (..)"
@@ -113,6 +116,7 @@ extractTypesTest =
                 , "type alias Path = List Name"
                 ]
                 |> Elm.Parser.parse
+                |> Result.map parsedModule
 
         runTestWithExtractTypes : String -> (List ( Name, Type.Definition () ) -> Expect.Expectation) -> Test
         runTestWithExtractTypes title cb =
