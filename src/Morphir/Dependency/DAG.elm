@@ -104,6 +104,7 @@ insertEdge from to (DAG edgesByNodes) =
             |> Ok
 
 
+{-| -}
 collectReachableNodes : comparableNode -> DAG comparableNode -> Set comparableNode
 collectReachableNodes node (DAG edgesByNode) =
     Dict.get node edgesByNode
