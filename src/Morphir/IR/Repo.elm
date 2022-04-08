@@ -286,11 +286,27 @@ insertModule moduleName moduleDef (Repo repo) =
                     )
                     (Ok r.valueDependencies)
                 |> Result.map (\valueDag -> Repo { r | valueDependencies = valueDag })
+
+        updateRepoModulesDependencies : Repo -> Result Errors Repo
+        updateRepoModulesDependencies (Repo r) =
+            List.map2
+                (\( _, modName, _ ) ( _, modName2, _ ) ->
+                    [ modName, modName2 ]
+                )
+                (DAG.forwardTopologicalOrdering r.typeDependencies |> List.concat)
+                (DAG.forwardTopologicalOrdering r.valueDependencies |> List.concat)
+                |> List.concat
+                |> Set.fromList
+                |> Set.filter (\modName -> modName == moduleName |> not)
+                |> (\dependencies -> DAG.insertNode moduleName dependencies r.moduleDependencies)
+                |> Result.mapError (ModuleCycleDetected >> List.singleton)
+                |> Result.map (\updatedModuleDependencies -> Repo { r | moduleDependencies = updatedModuleDependencies })
     in
     validationErrors
         |> Result.fromMaybe [ ModuleAlreadyExist moduleName ]
         |> Result.andThen (\_ -> updateRepoTypeDependencies (Repo repo))
         |> Result.andThen updateRepoValueDependencies
+        |> Result.andThen updateRepoModulesDependencies
         |> Result.map
             (\(Repo r) ->
                 Repo
