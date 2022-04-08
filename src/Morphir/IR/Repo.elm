@@ -230,7 +230,7 @@ insertModule moduleName moduleDef (Repo repo) =
                         |> List.concat
                         |> List.map Tuple.second
 
-        allTypesInModule : List ( FQName, List (Type ()) )
+        allTypesInModule : List ( FQName, Set FQName )
         allTypesInModule =
             moduleDef.types
                 |> Dict.toList
@@ -238,14 +238,10 @@ insertModule moduleName moduleDef (Repo repo) =
                     (\( name, accessControlledTypeDef ) ->
                         ( FQName.fQName (getPackageName (Repo repo)) moduleName name
                         , typeDefToType accessControlledTypeDef.value.value
+                            |> List.map Type.collectReferences
+                            |> List.foldl Set.union Set.empty
                         )
                     )
-
-        collectRefsForTypes : List (Type ()) -> Set FQName
-        collectRefsForTypes tpe =
-            tpe
-                |> List.map Type.collectReferences
-                |> List.foldl Set.union Set.empty
 
         updateRepoTypeDependencies : Repo -> Result Errors Repo
         updateRepoTypeDependencies (Repo r) =
@@ -254,7 +250,7 @@ insertModule moduleName moduleDef (Repo repo) =
                     (\( typeFQName, typeList ) dagResultSoFar ->
                         dagResultSoFar
                             |> Result.andThen
-                                (DAG.insertNode typeFQName (collectRefsForTypes typeList)
+                                (DAG.insertNode typeFQName typeList
                                     >> Result.mapError (\(DAG.CycleDetected ( _, _, n ) _) -> [ TypeCycleDetected n ])
                                 )
                     )
@@ -293,8 +289,8 @@ insertModule moduleName moduleDef (Repo repo) =
                 (\( _, modName, _ ) ( _, modName2, _ ) ->
                     [ modName, modName2 ]
                 )
-                (DAG.forwardTopologicalOrdering r.typeDependencies |> List.concat)
-                (DAG.forwardTopologicalOrdering r.valueDependencies |> List.concat)
+                (allTypesInModule |> List.map (Tuple.second >> Set.toList) |> List.concat)
+                (allValuesInModule |> List.map (Tuple.second >> Set.toList) |> List.concat)
                 |> List.concat
                 |> Set.fromList
                 |> Set.filter (\modName -> modName == moduleName |> not)
