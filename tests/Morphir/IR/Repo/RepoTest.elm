@@ -81,7 +81,10 @@ insertTypeTest : Test
 insertTypeTest =
     let
         moduleName =
-            toModuleName "Morphir.IR.Something"
+            toModuleName "Morphir.IR.IncrementalFrontend"
+
+        moduleName2 =
+            toModuleName "Morphir.IR.DAG"
 
         repo : Repo
         repo =
@@ -93,6 +96,18 @@ insertTypeTest =
         typeList =
             [ ( [ "my", "pi" ], TypeAliasDefinition [ [ "my", "pi" ] ] (Variable () [ "3.142" ]) )
             , ( [ "my", "errors" ], TypeAliasDefinition [ [ "my", "errors" ] ] (Variable () [ "TypeCycleDetected", "ValueCycleDetected" ]) )
+            ]
+
+        cyclicTypeList : List ( Name, Definition () )
+        cyclicTypeList =
+            [ ( [ "my", "pi" ], TypeAliasDefinition [] (Reference () ( packageName, moduleName, [ "my", "error" ] ) []) )
+            , ( [ "my", "error" ], TypeAliasDefinition [] (Reference () ( packageName, moduleName, [ "my", "pi" ] ) []) )
+            ]
+
+        cyclicModuleTypeList : List ( Name, Definition (), ModuleName )
+        cyclicModuleTypeList =
+            [ ( [ "my", "pi" ], TypeAliasDefinition [] (Reference () ( packageName, moduleName2, [ "a", "variable" ] ) []), moduleName )
+            , ( [ "my", "error" ], TypeAliasDefinition [] (Reference () ( packageName, moduleName, [ "another", "variable" ] ) []), moduleName2 )
             ]
 
         duplicateTypeList : List ( Name, Definition () )
@@ -152,6 +167,41 @@ insertTypeTest =
                                 Err _ ->
                                     Expect.fail "Type Dependency DAG Empty"
                        )
+            )
+        , test "Should fail to insert Cyclic Type"
+            (\_ ->
+                cyclicTypeList
+                    |> repoInsertTypeMethod
+                    |> (\invalidRepo ->
+                            case invalidRepo of
+                                Ok _ ->
+                                    Expect.fail "should fail with a CycleDetected Error"
+
+                                Err _ ->
+                                    Expect.pass
+                       )
+            )
+        , test "should fail to insert type if type causes Cyclic module dependency"
+            (\_ ->
+                let
+                    updatedRepo =
+                        Repo.insertModule (toModuleName "Morphir.IR.DAG") Module.emptyDefinition repo
+
+                    insertTypes =
+                        cyclicModuleTypeList
+                            |> List.foldl
+                                (\( name, def, modname ) repoSoFar ->
+                                    repoSoFar
+                                        |> Result.andThen (Repo.insertType modname name def)
+                                )
+                                updatedRepo
+                in
+                case insertTypes of
+                    Ok _ ->
+                        Expect.fail "should fail with Cyclic Module Dependency"
+
+                    Err _ ->
+                        Expect.pass
             )
         ]
 
