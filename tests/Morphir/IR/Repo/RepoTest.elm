@@ -9,7 +9,7 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Repo as Repo exposing (Error(..), Errors, Repo)
-import Morphir.IR.Type as Type exposing (Definition(..), Type(..))
+import Morphir.IR.Type exposing (Definition(..), Type(..))
 import Morphir.IR.Value as Value
 import Test exposing (Test, describe, test)
 
@@ -81,27 +81,14 @@ insertTypeTest : Test
 insertTypeTest =
     let
         moduleName =
-            toModuleName "Morphir.IR.Distribution"
-
-        testFile =
-            String.join ""
-                [ "module Morphir.IR.Distribution exposing (..)"
-                , ""
-                , "a = 1"
-                ]
+            toModuleName "Morphir.IR.Something"
 
         repo : Repo
         repo =
             Repo.empty packageName
+                |> Repo.insertModule moduleName Module.emptyDefinition
+                |> Result.withDefault (Repo.empty packageName)
 
-        --|> (\r ->
-        --        { r
-        --            | modules =
-        --                Dict.fromList
-        --                    [ ( moduleName, public Module.emptyDefinition )
-        --                    ]
-        --        }
-        --   )
         typeList : List ( Name, Definition () )
         typeList =
             [ ( [ "my", "pi" ], TypeAliasDefinition [ [ "my", "pi" ] ] (Variable () [ "3.142" ]) )
@@ -149,7 +136,7 @@ insertTypeTest =
                     Ok _ ->
                         Expect.fail "Duplicate Type Should Have Failed"
 
-                    Err err ->
+                    Err _ ->
                         Expect.pass
             )
         , test "Checking For Valid Type Dependency DAG"

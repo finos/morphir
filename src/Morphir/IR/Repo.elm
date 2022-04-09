@@ -40,7 +40,7 @@ import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented as Documented
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
-import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
@@ -212,9 +212,14 @@ insertModule : ModuleName -> Module.Definition () (Type ()) -> Repo -> Result Er
 insertModule moduleName moduleDef (Repo repo) =
     let
         -- check if the module already exists
-        validationErrors : Maybe (AccessControlled (Module.Definition () (Type ())))
+        validationErrors : Maybe Errors
         validationErrors =
-            repo.modules |> Dict.get moduleName
+            case repo.modules |> Dict.get moduleName of
+                Just _ ->
+                    Just [ ModuleAlreadyExist moduleName ]
+
+                Nothing ->
+                    Nothing
 
         -- extracting types from module and updating typeDependencies in repo
         typeDefToType : Type.Definition () -> List (Type.Type ())
@@ -299,8 +304,9 @@ insertModule moduleName moduleDef (Repo repo) =
                 |> Result.map (\updatedModuleDependencies -> Repo { r | moduleDependencies = updatedModuleDependencies })
     in
     validationErrors
-        |> Result.fromMaybe [ ModuleAlreadyExist moduleName ]
-        |> Result.andThen (\_ -> updateRepoTypeDependencies (Repo repo))
+        |> Maybe.map Err
+        |> Maybe.withDefault (Ok (Repo repo))
+        |> Result.andThen updateRepoTypeDependencies
         |> Result.andThen updateRepoValueDependencies
         |> Result.andThen updateRepoModulesDependencies
         |> Result.map
@@ -365,7 +371,19 @@ insertType moduleName typeName typeDef (Repo repo) =
                 [ ModuleNotFound moduleName ]
                 (repo |> Repo |> modules |> Dict.get moduleName)
 
-        -- extract references from type definition
+        validateTypeExistsResult : AccessControlled (Module.Definition () (Type ())) -> Result Errors (AccessControlled (Module.Definition () (Type ())))
+        validateTypeExistsResult accessControlledModuleDef =
+            accessControlledModuleDef
+                |> (\modDef ->
+                        case modDef.value.types |> Dict.get typeName of
+                            Just _ ->
+                                Err [ TypeAlreadyExist ( repo.packageName, moduleName, typeName ) ]
+
+                            Nothing ->
+                                Ok modDef
+                   )
+
+        --extract references from type definition
         collectRefsFromDef : Type.Definition () -> Set FQName
         collectRefsFromDef definition =
             case definition of
@@ -382,40 +400,35 @@ insertType moduleName typeName typeDef (Repo repo) =
                         |> List.foldl Set.union Set.empty
     in
     accessControlledModuleDefResult
+        |> Result.andThen validateTypeExistsResult
         |> Result.andThen
             (\modDef ->
-                case modDef.value.types |> Dict.get typeName of
-                    Just _ ->
-                        Err [ TypeAlreadyExist ( repo.packageName, moduleName, typeName ) ]
-
-                    Nothing ->
-                        repo.typeDependencies
-                            -- TODO
-                            |> DAG.insertNode
-                                (FQName.fQName repo.packageName moduleName typeName)
-                                (collectRefsFromDef typeDef)
-                            |> Result.mapError (always [ TypeCycleDetected typeName ])
-                            |> Result.map
-                                (\updatedTypeDependency ->
-                                    Repo
-                                        { repo
-                                            | modules =
-                                                repo.modules
-                                                    |> Dict.insert moduleName
-                                                        (modDef
-                                                            |> AccessControlled.map
-                                                                (\moduleDef ->
-                                                                    { moduleDef
-                                                                        | types =
-                                                                            moduleDef.types
-                                                                                |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
-                                                                    }
-                                                                )
+                repo.typeDependencies
+                    |> DAG.insertNode
+                        (FQName.fQName repo.packageName moduleName typeName)
+                        (collectRefsFromDef typeDef)
+                    |> Result.mapError (always [ TypeCycleDetected typeName ])
+                    |> Result.map
+                        (\updatedTypeDependency ->
+                            Repo
+                                { repo
+                                    | modules =
+                                        repo.modules
+                                            |> Dict.insert moduleName
+                                                (modDef
+                                                    |> AccessControlled.map
+                                                        (\moduleDef ->
+                                                            { moduleDef
+                                                                | types =
+                                                                    moduleDef.types
+                                                                        |> Dict.insert typeName (public (typeDef |> Documented.Documented ""))
+                                                            }
                                                         )
-                                            , typeDependencies =
-                                                updatedTypeDependency
-                                        }
-                                )
+                                                )
+                                    , typeDependencies =
+                                        updatedTypeDependency
+                                }
+                        )
             )
 
 
