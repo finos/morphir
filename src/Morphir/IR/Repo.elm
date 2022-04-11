@@ -222,19 +222,6 @@ insertModule moduleName moduleDef (Repo repo) =
                     Nothing
 
         -- extracting types from module and updating typeDependencies in repo
-        typeDefToType : Type.Definition () -> List (Type.Type ())
-        typeDefToType definition =
-            case definition of
-                Type.TypeAliasDefinition _ tpe ->
-                    [ tpe ]
-
-                Type.CustomTypeDefinition _ accessControlledType ->
-                    accessControlledType.value
-                        |> Dict.toList
-                        |> List.map Tuple.second
-                        |> List.concat
-                        |> List.map Tuple.second
-
         allTypesInModule : List ( FQName, Set FQName )
         allTypesInModule =
             moduleDef.types
@@ -242,9 +229,7 @@ insertModule moduleName moduleDef (Repo repo) =
                 |> List.map
                     (\( name, accessControlledTypeDef ) ->
                         ( FQName.fQName (getPackageName (Repo repo)) moduleName name
-                        , typeDefToType accessControlledTypeDef.value.value
-                            |> List.map Type.collectReferences
-                            |> List.foldl Set.union Set.empty
+                        , Type.collectReferencesFromDefintion accessControlledTypeDef.value.value
                         )
                     )
 
@@ -428,46 +413,66 @@ insertType moduleName typeName typeDef (Repo repo) =
 {-| Insert values into repo modules and update the value dependency graph of the repo
 -}
 insertValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
-insertValue moduleName valueName valueDef (Repo repo) =
+insertValue moduleName valueName valueDef repo =
     let
-        accessControlledModuleDef : AccessControlled (Module.Definition () (Type ()))
-        accessControlledModuleDef =
-            case repo.modules |> Dict.get moduleName of
-                Just modDefinition ->
-                    modDefinition
+        accessControlledModuleDefinitionResult : Result Errors (AccessControlled (Module.Definition () (Type ())))
+        accessControlledModuleDefinitionResult =
+            Result.fromMaybe
+                [ ModuleNotFound moduleName ]
+                (repo |> modules |> Dict.get moduleName)
+
+        validateValueExistsResult : AccessControlled (Module.Definition () (Type ())) -> Result Errors (AccessControlled (Module.Definition () (Type ())))
+        validateValueExistsResult accessControlledModuleDef =
+            case accessControlledModuleDef.value.values |> Dict.get valueName of
+                Just _ ->
+                    Err [ ValueAlreadyExist valueName ]
 
                 Nothing ->
-                    public Module.emptyDefinition
-    in
-    case accessControlledModuleDef.value.values |> Dict.get valueName of
-        Just _ ->
-            Err [ ValueAlreadyExist valueName ]
+                    Ok accessControlledModuleDef
 
-        Nothing ->
-            repo.valueDependencies
-                |> DAG.insertNode (FQName.fQName repo.packageName moduleName valueName) Set.empty
-                |> Result.mapError (always [ ValueCycleDetected valueName ])
-                |> Result.map
-                    (\updatedValueDependency ->
-                        Repo
-                            { repo
-                                | modules =
-                                    repo.modules
-                                        |> Dict.insert moduleName
-                                            (accessControlledModuleDef
-                                                |> AccessControlled.map
-                                                    (\moduleDef ->
-                                                        { moduleDef
-                                                            | values =
-                                                                accessControlledModuleDef.value.values
-                                                                    |> Dict.insert valueName (public (valueDef |> Documented.Documented ""))
-                                                        }
-                                                    )
-                                            )
-                                , valueDependencies =
-                                    updatedValueDependency
-                            }
+        -- extract new moduleDependencies from value definition and updateModuleDependency
+        moduleDepsFromValueDef : Set ModuleName
+        moduleDepsFromValueDef =
+            Value.collectReferences valueDef.body
+                |> Set.toList
+                |> List.filterMap
+                    (\( _, modName, _ ) ->
+                        if modName == moduleName then
+                            Nothing
+
+                        else
+                            Just modName
                     )
+                |> Set.fromList
+
+        updateValueDependency : Repo -> Result Errors Repo
+        updateValueDependency (Repo r) =
+            r.valueDependencies
+                |> DAG.insertNode
+                    (FQName.fQName r.packageName moduleName valueName)
+                    (Value.collectReferences valueDef.body)
+                |> Result.mapError (always [ ValueCycleDetected valueName ])
+                |> Result.map (\updatedValueDep -> Repo { r | valueDependencies = updatedValueDep })
+
+        updateModuleDefWithValue : Repo -> AccessControlled (Module.Definition () (Type ())) -> Repo
+        updateModuleDefWithValue (Repo r) accessControlledModDef =
+            accessControlledModDef
+                |> AccessControlled.map
+                    (\modDef ->
+                        Dict.insert valueName (public (valueDef |> Documented.Documented "")) modDef.values
+                            |> (\updatedValues -> { modDef | values = updatedValues })
+                    )
+                |> (\updatedAccessControlledModDef ->
+                        modules (Repo r)
+                            |> Dict.insert moduleName updatedAccessControlledModDef
+                   )
+                |> (\updatedModules -> Repo { r | modules = updatedModules })
+    in
+    accessControlledModuleDefinitionResult
+        |> Result.andThen validateValueExistsResult
+        |> Result.map (updateModuleDefWithValue repo)
+        |> Result.andThen updateValueDependency
+        |> Result.andThen (updateModuleDependencies moduleName moduleDepsFromValueDef)
 
 
 {-| get the packageName for a Repo

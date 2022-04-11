@@ -645,11 +645,9 @@ collectReferencesFromDefintion typeDef =
 
         CustomTypeDefinition _ accessControlledType ->
             accessControlledType.value
-                |> Dict.toList
-                |> List.map Tuple.second
+                |> Dict.values
                 |> List.concat
-                |> List.map Tuple.second
-                |> List.map collectReferences
+                |> List.map (Tuple.second >> collectReferences)
                 |> List.foldl Set.union Set.empty
 
 
