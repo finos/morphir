@@ -67,6 +67,10 @@ pathToUrl : Path -> String
 pathToUrl path =
     "/" ++ Path.toString Name.toTitleCase "." path
 
+pathToFullUrl : List Path -> String
+pathToFullUrl path =
+    "/home" ++ String.concat(List.map pathToUrl path)
+
 
 pathToDisplayString : Path -> String
 pathToDisplayString =
