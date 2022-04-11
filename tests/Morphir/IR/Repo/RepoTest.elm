@@ -330,8 +330,8 @@ insertValueTest =
                             case validRepo of
                                 Ok r ->
                                     Repo.valueDependencies r
-                                        |> DAG.toDict
-                                        |> Expect.notEqual Dict.empty
+                                        |> DAG.toList
+                                        |> Expect.notEqual []
 
                                 Err _ ->
                                     Expect.fail "Type Dependency DAG Empty"
