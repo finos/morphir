@@ -77,3 +77,11 @@ encodeError error =
                 , encodeName localName
                 , encodeTypeError typeError
                 ]
+
+        CannotInsertType moduleName typeName cause ->
+            Encode.list identity
+                [ Encode.string "CannotInsertType"
+                , encodePath moduleName
+                , encodeName typeName
+                , encodeError cause
+                ]
