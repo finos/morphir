@@ -4,10 +4,6 @@ import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (attribute)
 import Json.Encode as Encode exposing (..)
-import Morphir.Dependency.DAG as DAG exposing (DAG)
-import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Name as Name
-import Set exposing (Set)
 
 
 type alias Node =
@@ -27,27 +23,6 @@ type alias Graph =
 empty : Graph
 empty =
     { nodes = [], edges = [] }
-
-
-exampleGraph : Graph
-exampleGraph =
-    Graph [ { id = 1, label = "F" }, { id = 3, label = "G" } ] [ { from = 1, to = 3 } ]
-
-
-depList =
-    [ ( "a", [ "b", "c", "e", "k" ] )
-    , ( "k", [ "j" ] )
-    , ( "u", [] )
-    , ( "b", [] )
-    , ( "c", [ "f" ] )
-    , ( "e", [ "k", "f", "g" ] )
-    , ( "j", [] )
-    , ( "x", [ "y" ] )
-    , ( "f", [] )
-    , ( "g", [ "h", "i", "j" ] )
-    , ( "h", [] )
-    , ( "i", [] )
-    ]
 
 
 dagListAsGraph : List ( String, List String ) -> Graph
@@ -70,36 +45,6 @@ dagListAsGraph dagAsList =
             |> List.map (\( item, index ) -> { label = item, id = index })
         )
         (dagAsList
-            |> List.foldl
-                (\( fromNode, edges ) edgeListSoFar ->
-                    edges
-                        |> List.map
-                            (\toNode ->
-                                { from = Dict.get fromNode indexByNode |> Maybe.withDefault -1
-                                , to = Dict.get toNode indexByNode |> Maybe.withDefault -1
-                                }
-                            )
-                        |> List.append edgeListSoFar
-                )
-                []
-        )
-
-
-depListAsGraph : Graph
-depListAsGraph =
-    let
-        indexByNode : Dict String Int
-        indexByNode =
-            depList
-                |> List.indexedMap (\index item -> ( Tuple.first item, index ))
-                |> Dict.fromList
-    in
-    Graph
-        (indexByNode
-            |> Dict.toList
-            |> List.map (\( item, index ) -> { label = item, id = index })
-        )
-        (depList
             |> List.foldl
                 (\( fromNode, edges ) edgeListSoFar ->
                     edges
