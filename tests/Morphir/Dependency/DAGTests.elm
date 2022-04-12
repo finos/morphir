@@ -22,14 +22,14 @@ depList =
     ]
 
 
-buildDAGOfDepList : Result (DAG.CycleDetected String) (DAG String)
-buildDAGOfDepList =
-    depList
+buildDagFromList : List ( comparableNode, List comparableNode ) -> Result (DAG.CycleDetected comparableNode) (DAG comparableNode)
+buildDagFromList lst =
+    lst
         |> List.foldl
-            (\( from, toList ) dagSoFar ->
+            (\( from, edges ) dagSoFar ->
                 dagSoFar
                     |> Result.andThen
-                        (toList
+                        (edges
                             |> Set.fromList
                             |> DAG.insertNode from
                         )
@@ -137,6 +137,29 @@ insertEdgeTests =
             [ [ "A" ]
             , [ "B" ]
             ]
+        , validDAG "insert 9"
+            [ ( "A", "B" )
+            , ( "D", "E" )
+            , ( "C", "D" )
+            , ( "B", "C" )
+            ]
+            [ [ "A" ]
+            , [ "B" ]
+            , [ "C" ]
+            , [ "D" ]
+            , [ "E" ]
+            ]
+        , validDAG "insert 10"
+            [ ( "B", "K" )
+            , ( "A", "C" )
+            , ( "J", "B" )
+            , ( "C", "B" )
+            ]
+            [ [ "A", "J" ]
+            , [ "C" ]
+            , [ "B" ]
+            , [ "K" ]
+            ]
         , cycle "cycle 1"
             [ ( "A", "B" )
             , ( "B", "A" )
@@ -149,6 +172,20 @@ insertEdgeTests =
         ]
 
 
+insertNodeTest : Test
+insertNodeTest =
+    describe "should insert node"
+        [ test "DAG should contain 3 fromNodes"
+            (\_ ->
+                DAG.insertNode "a" (Set.fromList [ "b", "c" ]) DAG.empty
+                    |> Result.withDefault DAG.empty
+                    |> DAG.toList
+                    |> List.length
+                    |> Expect.equal 3
+            )
+        ]
+
+
 removeNodeTests : Test
 removeNodeTests =
     let
@@ -156,7 +193,7 @@ removeNodeTests =
         runTestWithRemoveNode title nodeToRemove expected =
             test title
                 (\_ ->
-                    case buildDAGOfDepList of
+                    case buildDagFromList depList of
                         Ok g ->
                             g
                                 |> DAG.removeNode nodeToRemove
@@ -211,7 +248,7 @@ removeEdgeTests =
         runTestWithRemoveEdge title from to expectedResult =
             test title
                 (\_ ->
-                    case buildDAGOfDepList of
+                    case buildDagFromList depList of
                         Ok dag ->
                             dag
                                 |> DAG.removeEdge from to
@@ -272,7 +309,7 @@ incomingEdgesTests =
         runTestWithIncomingEdges title node expected =
             test title
                 (\_ ->
-                    case buildDAGOfDepList of
+                    case buildDagFromList depList of
                         Ok g ->
                             g
                                 |> DAG.incomingEdges node
@@ -303,7 +340,7 @@ outgoingEdgeTests =
         runTestWithOutgoingEdges title node expected =
             test title
                 (\_ ->
-                    case buildDAGOfDepList of
+                    case buildDagFromList depList of
                         Ok g ->
                             g
                                 |> DAG.outgoingEdges node
@@ -330,4 +367,45 @@ outgoingEdgeTests =
         , runTestWithOutgoingEdges "should return no outgoing edges for isolated node 'u'"
             "u"
             []
+        ]
+
+
+collectReachableNodesTest : Test
+collectReachableNodesTest =
+    let
+        runTestWithCollectReachableNodesFrom : String -> List ( comparable, List comparable ) -> comparable -> List comparable -> Test
+        runTestWithCollectReachableNodesFrom title dagList node expected =
+            test title
+                (\_ ->
+                    buildDagFromList dagList
+                        |> Result.withDefault DAG.empty
+                        |> DAG.collectForwardReachableNodes node
+                        |> Expect.equalSets (Set.fromList expected)
+                )
+    in
+    describe "collectReachableNodesTest"
+        [ runTestWithCollectReachableNodesFrom "should collect nodes b,c,d,e,f,i"
+            [ ( "a", [ "b", "c" ] )
+            , ( "b", [ "d", "e" ] )
+            , ( "c", [ "i" ] )
+            , ( "d", [ "f" ] )
+            ]
+            "a"
+            [ "b", "c", "d", "e", "i", "f" ]
+        , runTestWithCollectReachableNodesFrom "should collect forward reachable nodes from b as d,e,f"
+            [ ( "a", [ "b", "c" ] )
+            , ( "b", [ "d", "e" ] )
+            , ( "c", [ "i" ] )
+            , ( "d", [ "f" ] )
+            ]
+            "b"
+            [ "d", "e", "f" ]
+        , runTestWithCollectReachableNodesFrom "should collect forward reachable nodes from b as b,d,e,f"
+            [ ( "a", [ "b", "c" ] )
+            , ( "b", [ "b", "d", "e" ] )
+            , ( "c", [ "i" ] )
+            , ( "d", [ "f" ] )
+            ]
+            "b"
+            [ "b", "d", "e", "f" ]
         ]
