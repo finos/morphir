@@ -1,10 +1,12 @@
 module Morphir.Visual.Theme exposing (..)
 
-import Element exposing (Color, Element, Attribute, column, el, fill, padding, paddingXY, rgb, rgb255, row, spacing, toRgb, width, height, table, none, mouseOver)
+import Element exposing (Color, Element, Attribute, el, fill, paddingXY, rgb, rgb255, row, spacing, toRgb, width, height, table, none, mouseOver)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (center)
 import Element.Input as Input
+import Html exposing (div, text)
+import Html.Attributes exposing (style)
 
 
 type alias Theme =
@@ -178,17 +180,15 @@ twoColumnTableView tableData leftView rightView =
         , data = tableData
         }
 
-defaultClickableListElem : Theme -> Element msg -> Element msg
-defaultClickableListElem theme elem =
-    el
-        [ Border.color theme.colors.lightest
-        , Border.widthEach
-            { bottom = 1
-            , left = 0
-            , top = 0
-            , right = 0
-            }
-        , mouseOver [ Border.color theme.colors.darkest ]
-        , width fill
-        ]
-        elem
+
+ellipseText : String -> Element msg
+ellipseText str =
+    Element.html <|
+        div
+            [ style "text-overflow" "ellipsis"
+            , style "white-space" "nowrap"
+            , style "overflow" "hidden"
+            , style "width" "100%"
+            , style "flex-basis" "auto"
+            ]
+            [ text str ]

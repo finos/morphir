@@ -1,4 +1,4 @@
-module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Page(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, topUrlWithoutHome, update, view, viewBody, viewHeader, viewTitle)
+module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Page(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, topUrlWithoutHome, update, view, viewBody, viewHeader)
 
 import Array
 import Browser
@@ -10,6 +10,7 @@ import Element
         , alignLeft
         , alignRight
         , alignTop
+        , clipX
         , column
         , el
         , fill
@@ -32,6 +33,8 @@ import Element
         , rgba
         , rotate
         , row
+        , scrollbarX
+        , scrollbarY
         , scrollbars
         , spacing
         , text
@@ -279,6 +282,7 @@ update msg model =
 
         ToggleValues v ->
             let
+                filterState : FilterState
                 filterState =
                     model.homeState.filterState
             in
@@ -433,6 +437,7 @@ definitionUrl =
 queryParams : Query.Parser FilterState
 queryParams =
     let
+        trueOrFalse : Dict String Bool
         trueOrFalse =
             Dict.fromList [ ( "true", True ), ( "false", False ) ]
 
@@ -475,7 +480,7 @@ filterStateToQueryParams filterState =
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = viewTitle
+    { title = "Morphir - Home"
     , body =
         [ layout
             [ Font.family
@@ -488,10 +493,12 @@ view model =
             , Font.size (model.theme |> Theme.scaled 2)
             , width fill
             , height fill
+            , scrollbars
             ]
             (column
                 [ width fill
                 , height fill
+                , scrollbars
                 ]
                 [ viewHeader model
                 , case model.serverState of
@@ -503,17 +510,13 @@ view model =
                 , el
                     [ width fill
                     , height fill
+                    , scrollbars
                     ]
                     (viewBody model)
                 ]
             )
         ]
     }
-
-
-viewTitle : String
-viewTitle =
-    "Morphir - Home"
 
 
 viewHeader : Model -> Element Msg
@@ -582,25 +585,8 @@ viewBody model =
         IRLoading ->
             text "Loading the IR ..."
 
-        IRLoaded ((Library packageName _ packageDef) as distribution) ->
+        IRLoaded (Library packageName _ packageDef) ->
             viewHome model packageName packageDef
-
-
-
---viewModuleModel : Theme -> ModulePage.Model -> Distribution -> Element Msg
---viewModuleModel theme moduleModel distribution =
---    ModulePage.viewPage
---        theme
---        { expandReference = ExpandReference
---        , expandVariable = ExpandVariable
---        , shrinkVariable = ShrinkVariable
---        , argValueUpdated = ArgValueUpdated
---        , invalidArgValue = InvalidArgValue
---        , jumpToTestCases = \fQName -> LinkClicked (Browser.External (Url.Builder.absolute [ "function", FQName.toString fQName ] []))
---        }
---        ValueFilterChanged
---        distribution
---        moduleModel
 
 
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
@@ -615,7 +601,7 @@ viewHome model packageName packageDef =
             , height fill
             , Background.color model.theme.colors.lightest
             , Border.rounded 3
-            , scrollbars
+            , scrollbarY
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
             ]
 
@@ -664,8 +650,18 @@ viewHome model packageName packageDef =
 
                 createUiElement : Element Msg -> Definition -> Name -> (Name -> String) -> Element Msg
                 createUiElement icon definition name nameTransformation =
+                    let
+                        shouldColorBg =
+                            case model.homeState.selectedDefinition of
+                                Just defi ->
+                                    definition == defi
+
+                                Nothing ->
+                                    False
+                    in
                     viewAsLabel
                         model.theme
+                        shouldColorBg
                         icon
                         (text (nameToText name))
                         (pathToDisplayString moduleName)
@@ -727,30 +723,18 @@ viewHome model packageName packageDef =
                         )
                         definitions
 
-                paintSelectedElement : List ( Definition, Element Msg ) -> List (Element Msg)
-                paintSelectedElement =
+                getElements : List ( Definition, Element Msg ) -> List (Element Msg)
+                getElements definitionsAndElements =
                     let
-                        paintIfSelected : Element Msg -> Element Msg
-                        paintIfSelected elem =
-                            el [ Background.color model.theme.colors.selectionColor, width fill ] elem
+                        displayList : List (Element Msg)
+                        displayList =
+                            List.map
+                                (\( _, elem ) ->
+                                    elem
+                                )
+                                definitionsAndElements
                     in
-                    List.map
-                        (\( def, elem ) ->
-                            case model.homeState.selectedDefinition of
-                                Just selected ->
-                                    if selected == def then
-                                        paintIfSelected elem
-
-                                    else
-                                        Theme.defaultClickableListElem model.theme elem
-
-                                Nothing ->
-                                    Theme.defaultClickableListElem model.theme elem
-                        )
-
-                defaultIfUnselected : List (Element Msg) -> List (Element Msg)
-                defaultIfUnselected definitionElementList =
-                    if List.isEmpty definitionElementList then
+                    if List.isEmpty displayList then
                         if model.homeState.filterState.searchText == "" then
                             [ text "Please select a module on the left!" ]
 
@@ -758,7 +742,7 @@ viewHome model packageName packageDef =
                             [ text "No matching definition in this module." ]
 
                     else
-                        definitionElementList
+                        displayList
             in
             packageDef.modules
                 |> Dict.toList
@@ -777,8 +761,7 @@ viewHome model packageName packageDef =
                     )
                 |> searchFilter
                 |> alphabeticalOrdering
-                |> paintSelectedElement
-                |> defaultIfUnselected
+                |> getElements
                 |> column [ height fill, width fill ]
 
         definitionFilter : Element Msg
@@ -830,6 +813,7 @@ viewHome model packageName packageDef =
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showModules "🗁" "🗀", text "Modules" ]
                 }
 
+        moduleTree : Element Msg
         moduleTree =
             el
                 scrollableListStyles
@@ -862,38 +846,45 @@ viewHome model packageName packageDef =
         [ column
             [ width (ifThenElse model.showModules (fillPortion 5) (fillPortion 3))
             , height fill
+            , scrollbarX
             ]
             [ row
                 [ height fill
                 , width fill
                 , spacing <| ifThenElse model.showModules 10 0
+                , scrollbarX
                 ]
                 [ row
                     [ Background.color gray
                     , height fill
-                    , width (ifThenElse model.showModules (fillPortion 2) (fillPortion 0))
+                    , width (ifThenElse model.showModules (fillPortion 2) (px 40))
                     , paddingXY 0 (model.theme |> Theme.scaled -3)
+                    , scrollbarX
                     ]
                     [ el [ alignTop, rotate (degrees -90), width (px 40), moveDown 65, padding (model.theme |> Theme.scaled -6) ] <|
                         toggleModulesMenu
-                    , ifThenElse model.showModules (el [ width fill, height fill ] moduleTree) none
+                    , ifThenElse model.showModules (el [ width fill, height fill, scrollbarX ] moduleTree) none
                     ]
                 , column
                     [ Background.color gray
                     , height fill
                     , width (ifThenElse model.showModules (fillPortion 3) fill)
                     , spacing (model.theme |> Theme.scaled -4)
+                    , clipX
                     ]
                     [ row
                         [ width fill
                         , spacing (model.theme |> Theme.scaled 1)
                         , paddingXY 0 (model.theme |> Theme.scaled -5)
+                        , height <| fillPortion 1
                         ]
                         [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
-                    , el [ Font.bold, paddingEach { bottom = 3, top = 0, left = 5, right = 0 } ] <| text pathToSelectedModule
-                    , el
-                        scrollableListStyles
-                        (viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second))
+                    , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ] [ Theme.ellipseText pathToSelectedModule ]
+                    , row [ width fill, height <| fillPortion 28 ]
+                        [ el
+                            scrollableListStyles
+                            (viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second))
+                        ]
                     ]
                 ]
             ]
@@ -901,10 +892,11 @@ viewHome model packageName packageDef =
             [ height fill
             , width (ifThenElse model.showModules (fillPortion 6) (fillPortion 7))
             , Background.color model.theme.colors.lightest
+            , scrollbars
             ]
-            [ column [ width fill, height (fillPortion 2), scrollbars, padding (model.theme |> Theme.scaled 1) ]
+            [ column [ height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, scrollbarX, width fill ]
                 [ viewDefinition model.homeState.selectedDefinition
-                , el [ height fill, width fill ]
+                , el [ height fill, width fill, scrollbars ]
                     (viewDefinitionDetails model.irState model.homeState.selectedDefinition)
                 ]
             ]
@@ -916,18 +908,21 @@ viewType theme typeName typeDef docs =
     case typeDef of
         Type.TypeAliasDefinition _ (Type.Record _ fields) ->
             let
+                fieldNames : { a | name : Name } -> Element msg
                 fieldNames =
                     \field ->
                         el
                             (Theme.boldLabelStyles theme)
                             (text (nameToText field.name))
 
+                fieldTypes : { a | tpe : Type () } -> Element msg
                 fieldTypes =
                     \field ->
                         el
                             (Theme.labelStyles theme)
                             (XRayView.viewType pathToUrl field.tpe)
 
+                viewFields : Element msg
                 viewFields =
                     Theme.twoColumnTableView
                         fields
@@ -968,11 +963,13 @@ viewType theme typeName typeDef docs =
                         _ ->
                             Nothing
 
+                isEnum : Bool
                 isEnum =
                     accessControlledConstructors.value
                         |> Dict.values
                         |> List.all List.isEmpty
 
+                viewConstructors : Element msg
                 viewConstructors =
                     if isEnum then
                         accessControlledConstructors.value
@@ -1033,6 +1030,7 @@ viewType theme typeName typeDef docs =
 viewValue : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> String -> Element msg
 viewValue theme moduleName valueName valueDef docs =
     let
+        cardTitle : Element msg
         cardTitle =
             link [ pointer ]
                 { url =
@@ -1041,9 +1039,11 @@ viewValue theme moduleName valueName valueDef docs =
                     text (nameToText valueName)
                 }
 
+        isData : Bool
         isData =
             List.isEmpty valueDef.inputTypes
 
+        backgroundColor : Element.Color
         backgroundColor =
             if isData then
                 rgb 0.8 0.9 0.9
@@ -1133,15 +1133,16 @@ viewAsCard theme header class backgroundColor docs content =
         ]
 
 
-viewAsLabel : Theme -> Element msg -> Element msg -> String -> String -> Element msg
-viewAsLabel theme icon header class url =
+viewAsLabel : Theme -> Bool -> Element msg -> Element msg -> String -> String -> Element msg
+viewAsLabel theme shouldColorBg icon header class url =
     let
         elem =
             row
-                [ width fill
-                , Font.size (theme |> Theme.scaled 2)
-                , pointer
-                ]
+                ([ width fill
+                 , Font.size (theme |> Theme.scaled 2)
+                 ]
+                    ++ ifThenElse shouldColorBg [ Background.color theme.colors.selectionColor ] []
+                )
                 [ icon
                 , el
                     [ Font.bold
@@ -1149,14 +1150,29 @@ viewAsLabel theme icon header class url =
                     ]
                     header
                 , el
-                    [ alignRight
-                    , Font.color theme.colors.secondaryInformation
-                    , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
-                    ]
-                    (el [] (text class))
+                    ([ alignRight
+                     , Font.color theme.colors.secondaryInformation
+                     , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
+                     ]
+                        ++ ifThenElse shouldColorBg [ Background.color theme.colors.selectionColor ] []
+                    )
+                  <|
+                    text class
                 ]
     in
-    link [ width fill, pointer ] { label = elem, url = url }
+    link
+        [ Border.color theme.colors.lightest
+        , Border.widthEach
+            { bottom = 1
+            , left = 0
+            , top = 0
+            , right = 0
+            }
+        , mouseOver [ Border.color theme.colors.darkest ]
+        , pointer
+        , width fill
+        ]
+        { label = elem, url = url }
 
 
 
