@@ -9,10 +9,11 @@ import Elm.Syntax.Pattern as Pattern exposing (Pattern)
 import Elm.Syntax.Range as Range
 import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
-import Morphir.Elm.IncrementalResolve as IncrementalResolve exposing (KindOfName(..))
+import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.KindOfName exposing (KindOfName(..))
 import Morphir.IR.Literal as Literal
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK.Basics as SDKBasics
