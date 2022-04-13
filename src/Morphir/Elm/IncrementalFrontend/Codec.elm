@@ -1,8 +1,6 @@
 module Morphir.Elm.IncrementalFrontend.Codec exposing (..)
 
-import Elm.Syntax.Range as Range
 import Json.Encode as Encode
-import Morphir.Elm.Frontend.Mapper as Mapper
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.Elm.IncrementalResolve.Codec as IncrementalResolveCodec
 import Morphir.IR.FQName.Codec exposing (encodeFQName)
@@ -10,7 +8,6 @@ import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Path.Codec exposing (encodePath)
 import Morphir.IR.Repo.Codec as RepoCodec
 import Parser
-import Set
 
 
 encodeError : IncrementalFrontend.Error -> Encode.Value
@@ -126,7 +123,7 @@ encodeError error =
                 ]
 
         IncrementalFrontend.MappingError errors ->
-            Encode.list encodeMappingError errors
+            Encode.list encodeError errors
 
         IncrementalFrontend.InvalidSourceFilePath path message ->
             Encode.list identity
@@ -134,61 +131,3 @@ encodeError error =
                 , Encode.string path
                 , Encode.string message
                 ]
-
-
-encodeMappingError : Mapper.Error -> Encode.Value
-encodeMappingError error =
-    case error of
-        Mapper.EmptyApply sourceLocation ->
-            Encode.list identity
-                [ Encode.string "EmptyApply"
-                , encodeSourceLocation sourceLocation
-                ]
-
-        Mapper.NotSupported sourceLocation string ->
-            Encode.list identity
-                [ Encode.string "EmptyApply"
-                , encodeSourceLocation sourceLocation
-                ]
-
-        Mapper.RecordPatternNotSupported sourceLocation ->
-            Encode.list identity
-                [ Encode.string "EmptyApply"
-                , encodeSourceLocation sourceLocation
-                ]
-
-        Mapper.ResolveError sourceLocation err ->
-            Encode.list identity
-                [ Encode.string "ResolveError"
-                , encodeSourceLocation sourceLocation
-                , IncrementalResolveCodec.encodeError err
-                ]
-
-        Mapper.SameNameAppearsMultipleTimesInPattern sourceLocation names ->
-            Encode.list identity
-                [ Encode.string "SameNameAppearsMultipleTimesInPattern"
-                , encodeSourceLocation sourceLocation
-                , names |> Set.toList |> Encode.list Encode.string
-                ]
-
-        Mapper.VariableNameCollision sourceLocation varName ->
-            Encode.list identity
-                [ Encode.string "VariableNameCollision"
-                , encodeSourceLocation sourceLocation
-                , Encode.string varName
-                ]
-
-        Mapper.UnresolvedVariable sourceLocation varName ->
-            Encode.list identity
-                [ Encode.string "UnresolvedVariable"
-                , encodeSourceLocation sourceLocation
-                , Encode.string varName
-                ]
-
-
-encodeSourceLocation : Mapper.SourceLocation -> Encode.Value
-encodeSourceLocation sourceLocation =
-    Encode.object
-        [ ( "location", Range.encode sourceLocation.location )
-        , ( "moduleName", Encode.list Encode.string sourceLocation.moduleName )
-        ]

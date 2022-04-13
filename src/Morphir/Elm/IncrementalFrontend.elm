@@ -13,7 +13,7 @@ import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation as TypeAnnotation
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
-import Morphir.Elm.Frontend.Mapper as Mapper
+import Morphir.Elm.IncrementalFrontend.Mapper as Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve exposing (KindOfName)
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)

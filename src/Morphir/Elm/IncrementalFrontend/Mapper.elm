@@ -1,4 +1,4 @@
-module Morphir.Elm.Frontend.Mapper exposing (Error(..), Errors, SourceLocation, mapDeclarationsToValue, mapFunction, mapTypeAnnotation)
+module Morphir.Elm.IncrementalFrontend.Mapper exposing (Error(..), Errors, SourceLocation, mapDeclarationsToValue, mapFunction, mapTypeAnnotation)
 
 import Dict exposing (Dict)
 import Elm.Syntax.Declaration exposing (Declaration(..))
