@@ -65,7 +65,7 @@ function makeDevCLI() {
 }
 
 function makeDevServer() {
-    return make('cli', 'src/Morphir/Web/DevelopApp.elm', 'web/index.html')
+    return make('cli', 'src/Morphir/Web/DevelopApp.elm', 'web/index.js')
 }
 
 function makeDevServerAPI() {

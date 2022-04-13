@@ -18,7 +18,7 @@
 module Morphir.IR.AccessControlled exposing
     ( AccessControlled, Access(..)
     , public, private
-    , withPublicAccess, withPrivateAccess
+    , withPublicAccess, withPrivateAccess, withAccess
     , map
     )
 
@@ -37,7 +37,7 @@ up to the consumer of the API to call the right function.
 
 # Query
 
-@docs withPublicAccess, withPrivateAccess
+@docs withPublicAccess, withPrivateAccess, withAccess
 
 
 # Transform
@@ -108,6 +108,28 @@ withPrivateAccess ac =
 
         Private ->
             ac.value
+
+
+{-| Get the value with public or private access level. Will return `Nothing` if the value is private and accessed using
+public access.
+
+    withAccess Public (public 13) -- Just 13
+
+    withAccess Public (private 13) -- Nothing
+
+    withAccess Private (public 13) -- 13
+
+    withAccess Private (private 13) -- 13
+
+-}
+withAccess : Access -> AccessControlled a -> Maybe a
+withAccess access ac =
+    case access of
+        Public ->
+            withPublicAccess ac
+
+        Private ->
+            Just (withPrivateAccess ac)
 
 
 {-| Apply a function to the access controlled value but keep the access unchanged.

@@ -1,21 +1,9 @@
 module Morphir.Elm.IncrementalResolve.Codec exposing (..)
 
 import Json.Encode as Encode exposing (list, string)
-import Morphir.Elm.IncrementalResolve exposing (Error(..), KindOfName(..))
+import Morphir.Elm.IncrementalResolve exposing (Error(..))
+import Morphir.IR.KindOfName.Codec exposing (encodeKindOfName)
 import Morphir.IR.Module exposing (QualifiedModuleName)
-
-
-encodeKindOfName : KindOfName -> Encode.Value
-encodeKindOfName kindOfName =
-    case kindOfName of
-        Type ->
-            string "Type"
-
-        Constructor ->
-            string "Constructor"
-
-        Value ->
-            string "Value"
 
 
 encodeQualifiedModuleName : QualifiedModuleName -> Encode.Value

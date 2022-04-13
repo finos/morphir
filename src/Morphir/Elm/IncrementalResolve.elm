@@ -1,5 +1,5 @@
 module Morphir.Elm.IncrementalResolve exposing
-    ( resolveModuleName, resolveImports, resolveLocalName, ResolvedImports, KindOfName(..), VisibleNames
+    ( resolveModuleName, resolveImports, resolveLocalName, ResolvedImports, VisibleNames
     , Error(..)
     )
 
@@ -7,7 +7,7 @@ module Morphir.Elm.IncrementalResolve exposing
 is relatively complex due to the many ways names can be imported in an Elm module. Here, we split up the overall process
 into three main steps following the structure of an Elm module:
 
-@docs resolveModuleName, resolveImports, resolveLocalName, ResolvedImports, KindOfName, VisibleNames
+@docs resolveModuleName, resolveImports, resolveLocalName, ResolvedImports, VisibleNames
 
 
 # Errors
@@ -22,6 +22,7 @@ import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Range exposing (Range, emptyRange)
 import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.KindOfName exposing (KindOfName(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
@@ -78,14 +79,6 @@ type Error
     | ImportedModuleNotFound QualifiedModuleName
     | ImportedLocalNameNotFound QualifiedModuleName Name KindOfName
     | ImportingConstructorsOfNonCustomType QualifiedModuleName Name
-
-
-{-| Type that represents what kind of thing a local name refers to. Is it a type, constructor or value?
--}
-type KindOfName
-    = Type
-    | Constructor
-    | Value
 
 
 {-| Type that represents the combination of a package and a module name. It's called qualified module name because

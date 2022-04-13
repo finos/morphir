@@ -8,20 +8,22 @@ import Elm.Parser
 import Elm.Processing as Processing exposing (ProcessContext)
 import Elm.RawFile as RawFile
 import Elm.Syntax.Declaration exposing (Declaration(..))
+import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation as TypeAnnotation
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
 import Morphir.Elm.Frontend.Mapper as Mapper
-import Morphir.Elm.IncrementalResolve as IncrementalResolve exposing (KindOfName)
+import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
 import Morphir.File.Path as FilePath
-import Morphir.IR.AccessControlled as AccessControlled
+import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..))
 import Morphir.IR.FQName exposing (FQName, fQName)
+import Morphir.IR.KindOfName exposing (KindOfName(..))
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
@@ -174,6 +176,40 @@ applyDeletes deletes repo =
 processModule : ModuleName -> ParsedModule -> Repo -> Result (List Error) Repo
 processModule moduleName parsedModule repo =
     let
+        accessOf : KindOfName -> Name -> Access
+        accessOf kindOfName localName =
+            case parsedModule |> ParsedModule.exposingList of
+                Exposing.All _ ->
+                    Public
+
+                Exposing.Explicit topLevelExposesNodes ->
+                    let
+                        isExposed : Bool
+                        isExposed =
+                            topLevelExposesNodes
+                                |> List.map Node.value
+                                |> List.any
+                                    (\topLevelExpose ->
+                                        case ( kindOfName, topLevelExpose ) of
+                                            ( Value, Exposing.FunctionExpose functionName ) ->
+                                                Name.fromString functionName == localName
+
+                                            ( Type, Exposing.TypeOrAliasExpose typeName ) ->
+                                                Name.fromString typeName == localName
+
+                                            ( Type, Exposing.TypeExpose te ) ->
+                                                Name.fromString te.name == localName
+
+                                            _ ->
+                                                False
+                                    )
+                    in
+                    if isExposed then
+                        Public
+
+                    else
+                        Private
+
         typeNames : List Name
         typeNames =
             extractTypeNames parsedModule
@@ -196,7 +232,7 @@ processModule moduleName parsedModule repo =
         resolveName : List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName
         resolveName modName localName kindOfName =
             parsedModule
-                |> RawFile.imports
+                |> ParsedModule.imports
                 |> IncrementalResolve.resolveImports repo
                 |> Result.andThen
                     (\resolvedImports ->
@@ -227,7 +263,7 @@ processModule moduleName parsedModule repo =
                         (List.foldl
                             (\( name, definition ) repoResultSoFar ->
                                 repoResultSoFar
-                                    |> Result.andThen (processValue moduleName name definition)
+                                    |> Result.andThen (processValue (accessOf Value name) moduleName name definition)
                             )
                             (Ok repoWithTypesInserted)
                         )
@@ -241,10 +277,10 @@ processType moduleName typeName typeDef repo =
         |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
 
-processValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result (List Error) Repo
-processValue moduleName valueName valueDefinition repo =
+processValue : Access -> ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result (List Error) Repo
+processValue access moduleName valueName valueDefinition repo =
     repo
-        |> Repo.insertValue moduleName valueName valueDefinition
+        |> Repo.insertTypedValue moduleName valueName valueDefinition
         |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
 
@@ -276,6 +312,7 @@ parseSource : ( FilePath.Path, String ) -> Result Error ParsedModule
 parseSource ( path, content ) =
     Elm.Parser.parse content
         |> Result.mapError (ParseError path)
+        |> Result.map ParsedModule.parsedModule
 
 
 orderElmModulesByDependency : PackageName -> List ParsedModule -> Result Errors (List ( ModuleName, ParsedModule ))
@@ -352,9 +389,9 @@ extractTypeNames parsedModule =
         initialContext =
             Processing.init |> withWellKnownOperators
 
-        extractTypeNamesFromFile : File -> List Name
-        extractTypeNamesFromFile file =
-            file.declarations
+        extractTypeNamesFromFile : List (Node Declaration) -> List Name
+        extractTypeNamesFromFile declarations =
+            declarations
                 |> List.filterMap
                     (\node ->
                         case Node.value node of
@@ -370,7 +407,7 @@ extractTypeNames parsedModule =
                 |> List.map Name.fromString
     in
     parsedModule
-        |> Processing.process initialContext
+        |> ParsedModule.declarations
         |> extractTypeNamesFromFile
 
 
@@ -385,9 +422,9 @@ extractConstructorNames parsedModule =
         initialContext =
             Processing.init |> withWellKnownOperators
 
-        extractConstructorNamesFromFile : File -> List Name
-        extractConstructorNamesFromFile file =
-            file.declarations
+        extractConstructorNamesFromFile : List (Node Declaration) -> List Name
+        extractConstructorNamesFromFile declarations =
+            declarations
                 |> List.concatMap
                     (\node ->
                         case Node.value node of
@@ -409,7 +446,7 @@ extractConstructorNames parsedModule =
                 |> List.map Name.fromString
     in
     parsedModule
-        |> Processing.process initialContext
+        |> ParsedModule.declarations
         |> extractConstructorNamesFromFile
 
 
@@ -590,9 +627,9 @@ extractValueNames parsedModule =
         initialContext =
             Processing.init |> withWellKnownOperators
 
-        extractValueNamesFromFile : File -> List Name
-        extractValueNamesFromFile file =
-            file.declarations
+        extractValueNamesFromFile : List (Node Declaration) -> List Name
+        extractValueNamesFromFile declarations =
+            declarations
                 |> List.filterMap
                     (\node ->
                         case Node.value node of
@@ -605,7 +642,7 @@ extractValueNames parsedModule =
                 |> List.map Name.fromString
     in
     parsedModule
-        |> Processing.process initialContext
+        |> ParsedModule.declarations
         |> extractValueNamesFromFile
 
 

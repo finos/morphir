@@ -50,6 +50,7 @@ import Markdown.Parser as Markdown
 import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestSuite)
+import Morphir.Dependency.DAG as DAG
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -59,6 +60,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.QName exposing (QName(..))
+import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText)
@@ -69,6 +71,7 @@ import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.DevelopApp.Common exposing (ifThenElse, pathToDisplayString, pathToFullUrl, pathToUrl, urlFragmentToNodePath, viewAsCard)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (ViewType(..))
+import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Morphir.Web.TryMorphir exposing (Model)
 import Ordering
 import Parser exposing (deadEndsToString)
@@ -109,6 +112,7 @@ type alias Model =
     , simpleDefinitionDetailsModel : ModulePage.Model
     , showModules : Bool
     , homeState : HomeState
+    , repo : Repo
     }
 
 
@@ -184,6 +188,7 @@ init _ url key =
                     , showTypes = True
                     }
                 }
+            , repo = Repo.empty []
             }
     in
     ( toRoute url initModel
@@ -249,9 +254,20 @@ update msg model =
                     )
 
         ServerGetIRResponse distribution ->
-            ( { model | irState = IRLoaded distribution }
-            , httpTestModel (IR.fromDistribution distribution)
-            )
+            case Repo.fromDistribution distribution of
+                Ok r ->
+                    ( { model | irState = IRLoaded distribution, repo = r }
+                    , httpTestModel (IR.fromDistribution distribution)
+                    )
+
+                Err _ ->
+                    ( { model
+                        | irState = IRLoaded distribution
+                        , serverState =
+                            ServerHttpError (Http.BadBody "Could not transform Distribution to Repo")
+                      }
+                    , httpTestModel (IR.fromDistribution distribution)
+                    )
 
         ExpandModule nodePath ->
             ( { model | collapsedModules = model.collapsedModules |> Set.remove nodePath }, Cmd.none )
@@ -894,11 +910,15 @@ viewHome model packageName packageDef =
             , Background.color model.theme.colors.lightest
             , scrollbars
             ]
-            [ column [ height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, scrollbarX, width fill ]
-                [ viewDefinition model.homeState.selectedDefinition
-                , el [ height fill, width fill, scrollbars ]
-                    (viewDefinitionDetails model.irState model.homeState.selectedDefinition)
-                ]
+            [ ifThenElse (model.homeState.selectedDefinition == Nothing)
+                (dependencyGraph model.homeState.selectedModule model.repo)
+                (column
+                    [ height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, scrollbarX, width fill ]
+                    [ viewDefinition model.homeState.selectedDefinition
+                    , el [ height fill, width fill, scrollbars ]
+                        (viewDefinitionDetails model.irState model.homeState.selectedDefinition)
+                    ]
+                )
             ]
         ]
 

@@ -2,6 +2,7 @@ module Morphir.IR.Distribution exposing
     ( Distribution(..)
     , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
     , lookupPackageSpecification, lookupPackageName
+    , insertDependency
     )
 
 {-| A distribution is a complete package of Morphir types and functions with all their dependencies.
@@ -23,6 +24,11 @@ information:
 
 @docs lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
 @docs lookupPackageSpecification, lookupPackageName
+
+
+# Updates
+
+@docs insertDependency
 
 -}
 
@@ -125,3 +131,12 @@ lookupPackageName distribution =
     case distribution of
         Library packageName _ _ ->
             packageName
+
+
+{-| Add a package specification as a dependency of this library.
+-}
+insertDependency : PackageName -> Package.Specification () -> Distribution -> Distribution
+insertDependency dependencyPackageName dependencyPackageSpec distribution =
+    case distribution of
+        Library packageName dependencies packageDef ->
+            Library packageName (dependencies |> Dict.insert dependencyPackageName dependencyPackageSpec) packageDef
