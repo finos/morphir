@@ -70,7 +70,7 @@ defaultValueAnnotation =
 -- Type Mappings
 
 
-mapTypeAnnotation : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Node TypeAnnotation -> Result Errors ValueAnnotation
+mapTypeAnnotation : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Node TypeAnnotation -> Result Errors (Type ())
 mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
     case typeAnnotation of
         GenericType varName ->
