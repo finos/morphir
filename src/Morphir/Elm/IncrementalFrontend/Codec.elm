@@ -2,6 +2,7 @@ module Morphir.Elm.IncrementalFrontend.Codec exposing (..)
 
 import Json.Encode as Encode
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
+import Morphir.Elm.IncrementalFrontend.Mapper.Codec as MapperCodec
 import Morphir.Elm.IncrementalResolve.Codec as IncrementalResolveCodec
 import Morphir.IR.FQName.Codec exposing (encodeFQName)
 import Morphir.IR.Name.Codec exposing (encodeName)
@@ -123,7 +124,7 @@ encodeError error =
                 ]
 
         IncrementalFrontend.MappingError errors ->
-            Encode.list encodeError errors
+            Encode.list MapperCodec.encodeError errors
 
         IncrementalFrontend.InvalidSourceFilePath path message ->
             Encode.list identity
