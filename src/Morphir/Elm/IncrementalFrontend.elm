@@ -275,10 +275,11 @@ processType moduleName typeName typeDef repo =
         |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
 
-processValue : Access -> ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result (List Error) Repo
+processValue : Access -> ModuleName -> Name -> Value.Definition Bool () -> Repo -> Result (List Error) Repo
 processValue access moduleName valueName valueDefinition repo =
     repo
-        |> Repo.insertTypedValue moduleName valueName valueDefinition
+        -- TODO: implement type inference
+        |> Repo.insertTypedValue moduleName valueName (valueDefinition |> Value.mapDefinitionAttributes (always ()) (always (Type.Unit ())))
         |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
 
@@ -646,13 +647,13 @@ extractValueNames parsedModule =
 
 {-| Extract value definitions
 -}
-extractValues : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () (Type ()) ))
+extractValues : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition Bool () ))
 extractValues resolveValueName parsedModule =
     let
         -- get function name
         -- get function implementation
         -- get function expression
-        declarationsAsDefintionsResult : Result Errors (Dict FQName (Value.Definition () (Type ())))
+        declarationsAsDefintionsResult : Result Errors (Dict FQName (Value.Definition Bool ()))
         declarationsAsDefintionsResult =
             ParsedModule.declarations parsedModule
                 |> Mapper.mapDeclarationsToValue resolveValueName parsedModule
@@ -683,7 +684,7 @@ extractValues resolveValueName parsedModule =
                         >> Result.map List.concat
                     )
 
-        orderedDeclarationAsDefinitions : Result Errors (List ( Name, Value.Definition () (Type ()) ))
+        orderedDeclarationAsDefinitions : Result Errors (List ( Name, Value.Definition Bool () ))
         orderedDeclarationAsDefinitions =
             orderedValueNameResult
                 |> Result.andThen
