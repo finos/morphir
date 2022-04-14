@@ -497,7 +497,7 @@ extractTypes resolveTypeName parsedModule =
                                                                 |> Result.map
                                                                     (\argType ->
                                                                         ( [ "arg", String.fromInt (index + 1) ]
-                                                                        , argType
+                                                                        , argType |> Type.mapTypeAttributes (always ())
                                                                         )
                                                                     )
                                                         )
@@ -533,7 +533,7 @@ extractTypes resolveTypeName parsedModule =
                                 ( typeAlias.name
                                     |> Node.value
                                     |> Name.fromString
-                                , Type.TypeAliasDefinition typeParams tpe
+                                , Type.TypeAliasDefinition typeParams (tpe |> Type.mapTypeAttributes (always ()))
                                 )
                             )
                         |> Just
