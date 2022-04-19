@@ -1,4 +1,4 @@
-module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Page(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, topUrlWithoutHome, update, view, viewBody, viewHeader, viewTitle)
+module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Page(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, topUrlWithoutHome, update, view, viewBody, viewHeader, topUrlWithHome)
 
 import Array
 import Browser
@@ -10,6 +10,7 @@ import Element
         , alignLeft
         , alignRight
         , alignTop
+        , clipX
         , column
         , el
         , fill
@@ -32,6 +33,8 @@ import Element
         , rgba
         , rotate
         , row
+        , scrollbarX
+        , scrollbarY
         , scrollbars
         , spacing
         , text
@@ -295,6 +298,7 @@ update msg model =
 
         ToggleValues v ->
             let
+                filterState : FilterState
                 filterState =
                     model.homeState.filterState
             in
@@ -332,12 +336,24 @@ subscriptions _ =
 
 -- ROUTE
 
+{-| Parses the ulr if it's in one of the following formats
 
+    topUrlWithoutHome --"/"
+
+    topUrlWithHome --"/home"
+
+    packageUrl --"/home/<Package.Name>"
+
+    moduleUrl --"/home/<Package.Name>/<Module.Name>"
+
+    definitionUrl --"/home/<Package.Name>/<Module.Name>/<Definition>"
+-}
 routeParser : Parser (ModelUpdate -> a) a
 routeParser =
     UrlParser.oneOf [ topUrlWithoutHome, topUrlWithHome, packageUrl, moduleUrl, definitionUrl ]
 
-
+{-| Creates a modelUpdate function based on the data parsed from the url, which tells the model how to change
+-}
 updateHomeState : String -> String -> String -> FilterState -> ModelUpdate
 updateHomeState pack mod def filterState =
     let
@@ -381,8 +397,9 @@ updateHomeState pack mod def filterState =
             , filterState = filterState
             }
 
-
-toRoute : Url -> Model -> Model
+{-| Applies the routeParser to the url, resulting in a ModelUpdate function, which tells the model how to change
+-}
+toRoute : Url -> ModelUpdate
 toRoute url =
     UrlParser.parse routeParser url
         |> Maybe.withDefault identity
@@ -395,21 +412,30 @@ topUrl =
             updateHomeState "" "" "" filter
         )
 
+{-| Parse urls that look like this:
 
+"/home"
+-}
 topUrlWithHome : Parser (ModelUpdate -> a) a
 topUrlWithHome =
     topUrl <|
         UrlParser.s "home"
             <?> queryParams
 
+{-| Parse urls that look like this:
 
+"/"
+-}
 topUrlWithoutHome : Parser (ModelUpdate -> a) a
 topUrlWithoutHome =
     topUrl <|
         UrlParser.top
             <?> queryParams
 
+{-| Parse urls that look like this:
 
+"/home/<Package.Name>"
+-}
 packageUrl : Parser (ModelUpdate -> a) a
 packageUrl =
     UrlParser.map
@@ -421,7 +447,10 @@ packageUrl =
             </> UrlParser.string
             <?> queryParams
 
+{-| Parse urls that look like this:
 
+"home/<Package.Name>/<Module.Name>"
+-}
 moduleUrl : Parser (ModelUpdate -> a) a
 moduleUrl =
     UrlParser.map
@@ -434,7 +463,10 @@ moduleUrl =
             </> UrlParser.string
             <?> queryParams
 
+{-| Parse urls that look like this:
 
+--"/home/<Package.Name>/<Module.Name>/Definition>"
+-}
 definitionUrl : Parser (ModelUpdate -> a) a
 definitionUrl =
     UrlParser.map updateHomeState
@@ -445,10 +477,16 @@ definitionUrl =
             <?> queryParams
         )
 
-
+{-| Parses the following query parameters
+ 
+ "search"
+ "showValues"
+ "showTypes"
+-}
 queryParams : Query.Parser FilterState
 queryParams =
     let
+        trueOrFalse : Dict String Bool
         trueOrFalse =
             Dict.fromList [ ( "true", True ), ( "false", False ) ]
 
@@ -466,7 +504,8 @@ queryParams =
     in
     Query.map3 FilterState search showValues showTypes
 
-
+{-| Turns the model's current filter state into a query parameter string to be used in building the url
+-}
 filterStateToQueryParams : FilterState -> String
 filterStateToQueryParams filterState =
     let
@@ -488,10 +527,11 @@ filterStateToQueryParams filterState =
 
 -- VIEW
 
-
+{-| Top level function to render the current ui state
+-}
 view : Model -> Browser.Document Msg
 view model =
-    { title = viewTitle
+    { title = "Morphir - Home"
     , body =
         [ layout
             [ Font.family
@@ -504,10 +544,12 @@ view model =
             , Font.size (model.theme |> Theme.scaled 2)
             , width fill
             , height fill
+            , scrollbars
             ]
             (column
                 [ width fill
                 , height fill
+                , scrollbars
                 ]
                 [ viewHeader model
                 , case model.serverState of
@@ -519,6 +561,7 @@ view model =
                 , el
                     [ width fill
                     , height fill
+                    , scrollbars
                     ]
                     (viewBody model)
                 ]
@@ -526,12 +569,8 @@ view model =
         ]
     }
 
-
-viewTitle : String
-viewTitle =
-    "Morphir - Home"
-
-
+{-| Returns the site header element
+-}
 viewHeader : Model -> Element Msg
 viewHeader model =
     column
@@ -561,7 +600,8 @@ viewHeader model =
             ]
         ]
 
-
+{-| Display server errors on the UI
+-}
 viewServerError : Http.Error -> Element msg
 viewServerError error =
     let
@@ -591,50 +631,37 @@ viewServerError error =
         ]
         (text message)
 
-
+{-| Display the main part of home UI if the IR has loaded
+-}
 viewBody : Model -> Element Msg
 viewBody model =
     case model.irState of
         IRLoading ->
             text "Loading the IR ..."
 
-        IRLoaded ((Library packageName _ packageDef) as distribution) ->
+        IRLoaded (Library packageName _ packageDef) ->
             viewHome model packageName packageDef
 
-
-
---viewModuleModel : Theme -> ModulePage.Model -> Distribution -> Element Msg
---viewModuleModel theme moduleModel distribution =
---    ModulePage.viewPage
---        theme
---        { expandReference = ExpandReference
---        , expandVariable = ExpandVariable
---        , shrinkVariable = ShrinkVariable
---        , argValueUpdated = ArgValueUpdated
---        , invalidArgValue = InvalidArgValue
---        , jumpToTestCases = \fQName -> LinkClicked (Browser.External (Url.Builder.absolute [ "function", FQName.toString fQName ] []))
---        }
---        ValueFilterChanged
---        distribution
---        moduleModel
-
-
+{-| Display the home UI
+-}
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
 viewHome model packageName packageDef =
     let
         gray =
             rgb 0.9 0.9 0.9
 
+        -- Styles to make the module tree and the definition list scrollable
         scrollableListStyles : List (Element.Attribute msg)
         scrollableListStyles =
             [ width fill
             , height fill
             , Background.color model.theme.colors.lightest
             , Border.rounded 3
-            , scrollbars
+            , scrollbarY
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
             ]
 
+        -- Display a single selected definition on the ui
         viewDefinition : Maybe Definition -> Element msg
         viewDefinition maybeSelectedDefinition =
             case maybeSelectedDefinition of
@@ -671,6 +698,7 @@ viewHome model packageName packageDef =
                 Nothing ->
                     text "Please select a definition on the left!"
 
+        -- Given a module name and a module definition, returns a list of tuples with the module's definitions, and their human readable form
         moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List ( Definition, Element Msg )
         moduleDefinitionsAsUiElements moduleName moduleDef =
             let
@@ -680,8 +708,18 @@ viewHome model packageName packageDef =
 
                 createUiElement : Element Msg -> Definition -> Name -> (Name -> String) -> Element Msg
                 createUiElement icon definition name nameTransformation =
+                    let
+                        shouldColorBg =
+                            case model.homeState.selectedDefinition of
+                                Just defi ->
+                                    definition == defi
+
+                                Nothing ->
+                                    False
+                    in
                     viewAsLabel
                         model.theme
+                        shouldColorBg
                         icon
                         (text (nameToText name))
                         (pathToDisplayString moduleName)
@@ -711,6 +749,7 @@ viewHome model packageName packageDef =
             in
             ifThenElse model.homeState.filterState.showValues values [] ++ ifThenElse model.homeState.filterState.showTypes types []
 
+        -- Returns the alphabetically ordered, optionally filtered list of definitions in the currently selected module
         viewDefinitionLabels : Maybe ModuleName -> Element Msg
         viewDefinitionLabels maybeSelectedModuleName =
             let
@@ -743,30 +782,18 @@ viewHome model packageName packageDef =
                         )
                         definitions
 
-                paintSelectedElement : List ( Definition, Element Msg ) -> List (Element Msg)
-                paintSelectedElement =
+                getElements : List ( Definition, Element Msg ) -> List (Element Msg)
+                getElements definitionsAndElements =
                     let
-                        paintIfSelected : Element Msg -> Element Msg
-                        paintIfSelected elem =
-                            el [ Background.color model.theme.colors.selectionColor, width fill ] elem
+                        displayList : List (Element Msg)
+                        displayList =
+                            List.map
+                                (\( _, elem ) ->
+                                    elem
+                                )
+                                definitionsAndElements
                     in
-                    List.map
-                        (\( def, elem ) ->
-                            case model.homeState.selectedDefinition of
-                                Just selected ->
-                                    if selected == def then
-                                        paintIfSelected elem
-
-                                    else
-                                        Theme.defaultClickableListElem model.theme elem
-
-                                Nothing ->
-                                    Theme.defaultClickableListElem model.theme elem
-                        )
-
-                defaultIfUnselected : List (Element Msg) -> List (Element Msg)
-                defaultIfUnselected definitionElementList =
-                    if List.isEmpty definitionElementList then
+                    if List.isEmpty displayList then
                         if model.homeState.filterState.searchText == "" then
                             [ text "Please select a module on the left!" ]
 
@@ -774,7 +801,7 @@ viewHome model packageName packageDef =
                             [ text "No matching definition in this module." ]
 
                     else
-                        definitionElementList
+                        displayList
             in
             packageDef.modules
                 |> Dict.toList
@@ -793,10 +820,10 @@ viewHome model packageName packageDef =
                     )
                 |> searchFilter
                 |> alphabeticalOrdering
-                |> paintSelectedElement
-                |> defaultIfUnselected
+                |> getElements
                 |> column [ height fill, width fill ]
 
+        -- Creates a text input to search defintions by name
         definitionFilter : Element Msg
         definitionFilter =
             Element.Input.search
@@ -811,6 +838,7 @@ viewHome model packageName packageDef =
                 , label = Element.Input.labelHidden "Search"
                 }
 
+        -- Creates a checkbox to filter out values from the definition list
         valueCheckbox : Element Msg
         valueCheckbox =
             Element.Input.checkbox
@@ -821,6 +849,7 @@ viewHome model packageName packageDef =
                 , label = Element.Input.labelLeft [] (text "values:")
                 }
 
+        -- Creates a checkbox to filter out types from the definition list
         typeCheckbox : Element Msg
         typeCheckbox =
             Element.Input.checkbox
@@ -831,6 +860,7 @@ viewHome model packageName packageDef =
                 , label = Element.Input.labelLeft [] (text "types:")
                 }
 
+        -- Creates a checkbox to open and close the module tree
         toggleModulesMenu : Element Msg
         toggleModulesMenu =
             Element.Input.button
@@ -846,6 +876,8 @@ viewHome model packageName packageDef =
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showModules "🗁" "🗀", text "Modules" ]
                 }
 
+        -- A document tree like view of the modules in the current package
+        moduleTree : Element Msg
         moduleTree =
             el
                 scrollableListStyles
@@ -865,6 +897,7 @@ viewHome model packageName packageDef =
                     )
                 )
 
+        -- A path to the currently selected module in an easily readable format
         pathToSelectedModule : String
         pathToSelectedModule =
             case model.homeState.selectedModule |> Maybe.map Tuple.second of
@@ -878,38 +911,45 @@ viewHome model packageName packageDef =
         [ column
             [ width (ifThenElse model.showModules (fillPortion 5) (fillPortion 3))
             , height fill
+            , scrollbarX
             ]
             [ row
                 [ height fill
                 , width fill
                 , spacing <| ifThenElse model.showModules 10 0
+                , scrollbarX
                 ]
                 [ row
                     [ Background.color gray
                     , height fill
-                    , width (ifThenElse model.showModules (fillPortion 2) (fillPortion 0))
+                    , width (ifThenElse model.showModules (fillPortion 2) (px 40))
                     , paddingXY 0 (model.theme |> Theme.scaled -3)
+                    , scrollbarX
                     ]
                     [ el [ alignTop, rotate (degrees -90), width (px 40), moveDown 65, padding (model.theme |> Theme.scaled -6) ] <|
                         toggleModulesMenu
-                    , ifThenElse model.showModules (el [ width fill, height fill ] moduleTree) none
+                    , ifThenElse model.showModules (el [ width fill, height fill, scrollbarX ] moduleTree) none
                     ]
                 , column
                     [ Background.color gray
                     , height fill
                     , width (ifThenElse model.showModules (fillPortion 3) fill)
                     , spacing (model.theme |> Theme.scaled -4)
+                    , clipX
                     ]
                     [ row
                         [ width fill
                         , spacing (model.theme |> Theme.scaled 1)
                         , paddingXY 0 (model.theme |> Theme.scaled -5)
+                        , height <| fillPortion 1
                         ]
                         [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
-                    , el [ Font.bold, paddingEach { bottom = 3, top = 0, left = 5, right = 0 } ] <| text pathToSelectedModule
-                    , el
-                        scrollableListStyles
-                        (viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second))
+                    , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ] [ Theme.ellipseText pathToSelectedModule ]
+                    , row [ width fill, height <| fillPortion 28 ]
+                        [ el
+                            scrollableListStyles
+                            (viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second))
+                        ]
                     ]
                 ]
             ]
@@ -917,38 +957,41 @@ viewHome model packageName packageDef =
             [ height fill
             , width (ifThenElse model.showModules (fillPortion 6) (fillPortion 7))
             , Background.color model.theme.colors.lightest
+            , scrollbars
             ]
-            [ ifThenElse
-                (model.homeState.selectedDefinition == Nothing)
+            [ ifThenElse (model.homeState.selectedDefinition == Nothing)
                 (dependencyGraph model.homeState.selectedModule model.repo)
                 (column
-                    [ width fill, height (fillPortion 2), scrollbars, padding (model.theme |> Theme.scaled 1) ]
+                    [ height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, scrollbarX, width fill ]
                     [ viewDefinition model.homeState.selectedDefinition
-                    , el [ height fill, width fill ]
+                    , el [ height fill, width fill, scrollbars ]
                         (viewDefinitionDetails model.irState model.homeState.selectedDefinition)
                     ]
                 )
             ]
         ]
 
-
+{-| Display detailed information of a Type on the UI -}
 viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
 viewType theme typeName typeDef docs =
     case typeDef of
         Type.TypeAliasDefinition _ (Type.Record _ fields) ->
             let
+                fieldNames : { a | name : Name } -> Element msg
                 fieldNames =
                     \field ->
                         el
                             (Theme.boldLabelStyles theme)
                             (text (nameToText field.name))
 
+                fieldTypes : { a | tpe : Type () } -> Element msg
                 fieldTypes =
                     \field ->
                         el
                             (Theme.labelStyles theme)
                             (XRayView.viewType pathToUrl field.tpe)
 
+                viewFields : Element msg
                 viewFields =
                     Theme.twoColumnTableView
                         fields
@@ -989,11 +1032,13 @@ viewType theme typeName typeDef docs =
                         _ ->
                             Nothing
 
+                isEnum : Bool
                 isEnum =
                     accessControlledConstructors.value
                         |> Dict.values
                         |> List.all List.isEmpty
 
+                viewConstructors : Element msg
                 viewConstructors =
                     if isEnum then
                         accessControlledConstructors.value
@@ -1050,10 +1095,11 @@ viewType theme typeName typeDef docs =
                 docs
                 viewConstructors
 
-
+{-| Display detailed information of a Value on the UI -}
 viewValue : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> String -> Element msg
 viewValue theme moduleName valueName valueDef docs =
     let
+        cardTitle : Element msg
         cardTitle =
             link [ pointer ]
                 { url =
@@ -1062,9 +1108,11 @@ viewValue theme moduleName valueName valueDef docs =
                     text (nameToText valueName)
                 }
 
+        isData : Bool
         isData =
             List.isEmpty valueDef.inputTypes
 
+        backgroundColor : Element.Color
         backgroundColor =
             if isData then
                 rgb 0.8 0.9 0.9
@@ -1153,16 +1201,17 @@ viewAsCard theme header class backgroundColor docs content =
             )
         ]
 
-
-viewAsLabel : Theme -> Element msg -> Element msg -> String -> String -> Element msg
-viewAsLabel theme icon header class url =
+{-| Display a Definition with it's name and path as a clickable UI element with a url pointing to the Definition -}
+viewAsLabel : Theme -> Bool -> Element msg -> Element msg -> String -> String -> Element msg
+viewAsLabel theme shouldColorBg icon header class url =
     let
         elem =
             row
-                [ width fill
-                , Font.size (theme |> Theme.scaled 2)
-                , pointer
-                ]
+                ([ width fill
+                 , Font.size (theme |> Theme.scaled 2)
+                 ]
+                    ++ ifThenElse shouldColorBg [ Background.color theme.colors.selectionColor ] []
+                )
                 [ icon
                 , el
                     [ Font.bold
@@ -1170,14 +1219,29 @@ viewAsLabel theme icon header class url =
                     ]
                     header
                 , el
-                    [ alignRight
-                    , Font.color theme.colors.secondaryInformation
-                    , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
-                    ]
-                    (el [] (text class))
+                    ([ alignRight
+                     , Font.color theme.colors.secondaryInformation
+                     , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
+                     ]
+                        ++ ifThenElse shouldColorBg [ Background.color theme.colors.selectionColor ] []
+                    )
+                  <|
+                    text class
                 ]
     in
-    link [ width fill, pointer ] { label = elem, url = url }
+    link
+        [ Border.color theme.colors.lightest
+        , Border.widthEach
+            { bottom = 1
+            , left = 0
+            , top = 0
+            , right = 0
+            }
+        , mouseOver [ Border.color theme.colors.darkest ]
+        , pointer
+        , width fill
+        ]
+        { label = elem, url = url }
 
 
 
@@ -1247,7 +1311,7 @@ httpSaveTestSuite ir testSuite =
                 (decodeTestSuite ir)
         }
 
-
+{-| Display a TreeLayout of clickable module names in the given package, with urls pointing to the give module -}
 viewModuleNames : Model -> PackageName -> ModuleName -> List ModuleName -> TreeLayout.Node ModuleName Msg
 viewModuleNames model packageName parentModule allModuleNames =
     let
@@ -1293,7 +1357,7 @@ viewModuleNames model packageName parentModule allModuleNames =
             |> Dict.fromList
         )
 
-
+{-| Given a definition, return it's name -}
 definitionName : Definition -> Name
 definitionName definition =
     case definition of
@@ -1303,7 +1367,7 @@ definitionName definition =
         Type ( _, typeName ) ->
             typeName
 
-
+{-| Displays the inner workings of the selected Definition -}
 viewDefinitionDetails : IRState -> Maybe Definition -> Element Msg
 viewDefinitionDetails irState maybeSelectedDefinition =
     case irState of
