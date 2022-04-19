@@ -5,20 +5,16 @@ module Morphir.Elm.IncrementalFrontend exposing (..)
 
 import Dict exposing (Dict)
 import Elm.Parser
-import Elm.Processing as Processing exposing (ProcessContext)
-import Elm.RawFile as RawFile
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Expression exposing (Expression(..))
-import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation as TypeAnnotation
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
-import Morphir.Elm.Frontend.Mapper as Mapper
+import Morphir.Elm.IncrementalFrontend.Mapper as Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
-import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
 import Morphir.File.Path as FilePath
 import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..))
@@ -30,7 +26,7 @@ import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Repo as Repo exposing (Repo, SourceCode)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value)
 import Morphir.SDK.ResultList as ResultList
 import Parser
 import Set exposing (Set)
@@ -56,6 +52,10 @@ type alias OrderedFileChanges =
     { insertsAndUpdates : List ( ModuleName, ParsedModule )
     , deletes : Set ModuleName
     }
+
+
+type alias SignatureAndValue =
+    ( Maybe (Type ()), Value () () )
 
 
 orderFileChanges : PackageName -> FileChanges -> Result Errors OrderedFileChanges
@@ -277,10 +277,14 @@ processType moduleName typeName typeDef repo =
         |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
 
-processValue : Access -> ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result (List Error) Repo
-processValue access moduleName valueName valueDefinition repo =
+processValue : Access -> ModuleName -> Name -> SignatureAndValue -> Repo -> Result (List Error) Repo
+processValue access moduleName valueName ( maybeValueType, body ) repo =
+    let
+        _ =
+            Debug.log "processing value" (String.concat [ Path.toString Name.toTitleCase "." moduleName, ".", Name.toCamelCase valueName ])
+    in
     repo
-        |> Repo.insertTypedValue moduleName valueName valueDefinition
+        |> Repo.insertValue access moduleName valueName maybeValueType body
         |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
 
@@ -381,14 +385,6 @@ orderElmModulesByDependency packageName parsedModules =
 extractTypeNames : ParsedModule -> List Name
 extractTypeNames parsedModule =
     let
-        withWellKnownOperators : ProcessContext -> ProcessContext
-        withWellKnownOperators context =
-            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
-
-        initialContext : ProcessContext
-        initialContext =
-            Processing.init |> withWellKnownOperators
-
         extractTypeNamesFromFile : List (Node Declaration) -> List Name
         extractTypeNamesFromFile declarations =
             declarations
@@ -414,14 +410,6 @@ extractTypeNames parsedModule =
 extractConstructorNames : ParsedModule -> List Name
 extractConstructorNames parsedModule =
     let
-        withWellKnownOperators : ProcessContext -> ProcessContext
-        withWellKnownOperators context =
-            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
-
-        initialContext : ProcessContext
-        initialContext =
-            Processing.init |> withWellKnownOperators
-
         extractConstructorNamesFromFile : List (Node Declaration) -> List Name
         extractConstructorNamesFromFile declarations =
             declarations
@@ -498,7 +486,7 @@ extractTypes resolveTypeName parsedModule =
                                                                 |> Result.map
                                                                     (\argType ->
                                                                         ( [ "arg", String.fromInt (index + 1) ]
-                                                                        , argType
+                                                                        , argType |> Type.mapTypeAttributes (always ())
                                                                         )
                                                                     )
                                                         )
@@ -534,7 +522,7 @@ extractTypes resolveTypeName parsedModule =
                                 ( typeAlias.name
                                     |> Node.value
                                     |> Name.fromString
-                                , Type.TypeAliasDefinition typeParams tpe
+                                , Type.TypeAliasDefinition typeParams (tpe |> Type.mapTypeAttributes (always ()))
                                 )
                             )
                         |> Just
@@ -619,14 +607,6 @@ orderTypesByDependency thisPackageName thisModuleName unorderedTypeDefinitions =
 extractValueNames : ParsedModule -> List Name
 extractValueNames parsedModule =
     let
-        withWellKnownOperators : ProcessContext -> ProcessContext
-        withWellKnownOperators context =
-            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
-
-        initialContext : ProcessContext
-        initialContext =
-            Processing.init |> withWellKnownOperators
-
         extractValueNamesFromFile : List (Node Declaration) -> List Name
         extractValueNamesFromFile declarations =
             declarations
@@ -648,13 +628,13 @@ extractValueNames parsedModule =
 
 {-| Extract value definitions
 -}
-extractValues : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition () (Type ()) ))
+extractValues : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, SignatureAndValue ))
 extractValues resolveValueName parsedModule =
     let
         -- get function name
         -- get function implementation
         -- get function expression
-        declarationsAsDefintionsResult : Result Errors (Dict FQName (Value.Definition () (Type ())))
+        declarationsAsDefintionsResult : Result Errors (Dict FQName SignatureAndValue)
         declarationsAsDefintionsResult =
             ParsedModule.declarations parsedModule
                 |> Mapper.mapDeclarationsToValue resolveValueName parsedModule
@@ -668,10 +648,10 @@ extractValues resolveValueName parsedModule =
                 |> Result.andThen
                     (Dict.toList
                         >> List.foldl
-                            (\( fQName, def ) dagResultSoFar ->
+                            (\( fQName, ( _, body ) ) dagResultSoFar ->
                                 let
                                     refs =
-                                        Value.collectReferences def.body
+                                        Value.collectReferences body
                                 in
                                 dagResultSoFar
                                     |> Result.andThen (DAG.insertNode fQName refs)
@@ -685,7 +665,7 @@ extractValues resolveValueName parsedModule =
                         >> Result.map List.concat
                     )
 
-        orderedDeclarationAsDefinitions : Result Errors (List ( Name, Value.Definition () (Type ()) ))
+        orderedDeclarationAsDefinitions : Result Errors (List ( Name, SignatureAndValue ))
         orderedDeclarationAsDefinitions =
             orderedValueNameResult
                 |> Result.andThen

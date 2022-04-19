@@ -1,4 +1,4 @@
-module Morphir.Elm.Frontend.Mapper exposing (Error(..), Errors, SourceLocation, mapDeclarationsToValue, mapFunction, mapTypeAnnotation)
+module Morphir.Elm.IncrementalFrontend.Mapper exposing (Error(..), Errors, SourceLocation, mapDeclarationsToValue, mapFunction, mapTypeAnnotation)
 
 import Dict exposing (Dict)
 import Elm.Syntax.Declaration exposing (Declaration(..))
@@ -19,7 +19,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK.Basics as SDKBasics
 import Morphir.IR.SDK.List as List
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value)
 import Morphir.SDK.ResultList as ResultList
 import Set exposing (Set)
 
@@ -53,19 +53,41 @@ type alias ElmModuleName =
     ElmModuleName.ModuleName
 
 
+type alias TypeAttribute =
+    Bool
+
+
+defaultTypeAttribute : TypeAttribute
+defaultTypeAttribute =
+    False
+
+
+{-| Type alias to make it easier to change the specific value annotation used on each value node.
+-}
+type alias ValueAttribute =
+    ()
+
+
+{-| Value annotation used when a new value node is created.
+-}
+defaultValueAttribute : ValueAttribute
+defaultValueAttribute =
+    ()
+
+
 
 -- Type Mappings
 
 
-mapTypeAnnotation : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Node TypeAnnotation -> Result Errors (Type ())
+mapTypeAnnotation : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Node TypeAnnotation -> Result Errors (Type TypeAttribute)
 mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
     case typeAnnotation of
         GenericType varName ->
-            Ok (Type.Variable () (varName |> Name.fromString))
+            Ok (Type.Variable defaultTypeAttribute (varName |> Name.fromString))
 
         Typed (Node range ( moduleName, localName )) argNodes ->
             Result.map2
-                (Type.Reference ())
+                (Type.Reference defaultTypeAttribute)
                 (resolveTypeName moduleName localName Type |> Result.mapError (ResolveError (SourceLocation moduleName range) >> List.singleton))
                 (argNodes
                     |> List.map (mapTypeAnnotation resolveTypeName)
@@ -74,14 +96,14 @@ mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
                 )
 
         Unit ->
-            Ok (Type.Unit ())
+            Ok (Type.Unit defaultTypeAttribute)
 
         Tupled typeAnnotationNodes ->
             typeAnnotationNodes
                 |> List.map (mapTypeAnnotation resolveTypeName)
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
-                |> Result.map (Type.Tuple ())
+                |> Result.map (Type.Tuple defaultTypeAttribute)
 
         Record fieldNodes ->
             fieldNodes
@@ -92,7 +114,7 @@ mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
                             |> Result.map (Type.Field (Name.fromString argName))
                     )
                 |> ResultList.keepAllErrors
-                |> Result.map (Type.Record ())
+                |> Result.map (Type.Record defaultTypeAttribute)
                 |> Result.mapError List.concat
 
         GenericRecord (Node _ argName) (Node _ fieldNodes) ->
@@ -104,12 +126,12 @@ mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
                             |> Result.map (Type.Field (Name.fromString ags))
                     )
                 |> ResultList.keepAllErrors
-                |> Result.map (Type.ExtensibleRecord () (Name.fromString argName))
+                |> Result.map (Type.ExtensibleRecord defaultTypeAttribute (Name.fromString argName))
                 |> Result.mapError List.concat
 
         FunctionTypeAnnotation argTypeNode returnTypeNode ->
             Result.map2
-                (Type.Function ())
+                (Type.Function defaultTypeAttribute)
                 (mapTypeAnnotation resolveTypeName argTypeNode)
                 (mapTypeAnnotation resolveTypeName returnTypeNode)
 
@@ -118,7 +140,7 @@ mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
 -- Value Mappings
 
 
-mapDeclarationsToValue : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> List (Node Declaration) -> Result Errors (List ( FQName, Value.Definition () (Type ()) ))
+mapDeclarationsToValue : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> List (Node Declaration) -> Result Errors (List ( FQName, ( Maybe (Type ()), Value () () ) ))
 mapDeclarationsToValue resolveName parsedModule decls =
     let
         moduleName : Elm.ModuleName
@@ -143,10 +165,24 @@ mapDeclarationsToValue resolveName parsedModule decls =
                                                 |> Result.mapError (ResolveError (SourceLocation moduleName range) >> List.singleton)
                                        )
 
-                            valueDef : Result Errors (Value.Definition () (Type ()))
+                            valueDef : Result Errors ( Maybe (Type ()), Value () () )
                             valueDef =
                                 Node range function
                                     |> mapFunction resolveName moduleName Set.empty
+                                    |> Result.map
+                                        (\maybeTypedValueDef ->
+                                            let
+                                                -- modelers may or may not specify type information in the Elm code but it is mandatory
+                                                maybeValueType : Maybe (Type ())
+                                                maybeValueType =
+                                                    if maybeTypedValueDef.outputType |> Type.typeAttributes then
+                                                        Just (maybeTypedValueDef.outputType |> Type.mapTypeAttributes (always ()))
+
+                                                    else
+                                                        Nothing
+                                            in
+                                            ( maybeValueType, maybeTypedValueDef.body |> Value.mapValueAttributes (always ()) identity )
+                                        )
                         in
                         valueDef
                             |> Result.map2 Tuple.pair valueName
@@ -159,15 +195,15 @@ mapDeclarationsToValue resolveName parsedModule decls =
         |> Result.mapError List.concat
 
 
-mapExpression : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Node Expression -> Result Errors (Value.Value () (Type ()))
+mapExpression : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Node Expression -> Result Errors (Value.Value TypeAttribute ValueAttribute)
 mapExpression resolveReferenceName moduleName variables (Node range expr) =
     case expr of
         Expression.UnitExpr ->
-            Value.Unit (Type.Unit ()) |> Ok
+            Value.Unit defaultValueAttribute |> Ok
 
         Expression.Application expNodes ->
             let
-                toApply : List (Value.Value () (Type ())) -> Result Errors (Value.Value () (Type ()))
+                toApply : List (Value.Value TypeAttribute ValueAttribute) -> Result Errors (Value.Value TypeAttribute ValueAttribute)
                 toApply valuesReversed =
                     case valuesReversed of
                         [] ->
@@ -183,7 +219,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                             toApply restOfValuesReversed
                                 |> Result.map
                                     (\funValue ->
-                                        Value.Apply (Type.Unit ()) funValue lastValue
+                                        Value.Apply defaultValueAttribute funValue lastValue
                                     )
             in
             expNodes
@@ -196,26 +232,26 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
             case op of
                 "<|" ->
                     -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
-                    Result.map2 (Value.Apply (Type.Unit ()))
+                    Result.map2 (Value.Apply defaultValueAttribute)
                         (mapExpression resolveReferenceName moduleName variables leftNode)
                         (mapExpression resolveReferenceName moduleName variables rightNode)
 
                 "|>" ->
                     -- the purpose of this operator is cleaner syntax so it's not mapped to the IR
                     Result.map2
-                        (Value.Apply (Type.Unit ()))
+                        (Value.Apply defaultValueAttribute)
                         (mapExpression resolveReferenceName moduleName variables rightNode)
                         (mapExpression resolveReferenceName moduleName variables leftNode)
 
                 _ ->
-                    Result.map3 (\fun arg1 arg2 -> Value.Apply (Type.Unit ()) (Value.Apply (Type.Unit ()) fun arg1) arg2)
+                    Result.map3 (\fun arg1 arg2 -> Value.Apply defaultValueAttribute (Value.Apply defaultValueAttribute fun arg1) arg2)
                         (mapOperator moduleName range op)
                         (mapExpression resolveReferenceName moduleName variables leftNode)
                         (mapExpression resolveReferenceName moduleName variables rightNode)
 
         Expression.FunctionOrValue modName localName ->
-            if variables |> Set.member localName then
-                Ok (Value.Variable (Type.Unit ()) (Name.fromString localName))
+            if List.isEmpty modName && Set.member localName variables then
+                Ok (Value.Variable defaultValueAttribute (Name.fromString localName))
 
             else
                 localName
@@ -226,24 +262,24 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                             if Char.isUpper firstChar then
                                 case ( modName, localName ) of
                                     ( [], "True" ) ->
-                                        Ok (Value.Literal (Type.Unit ()) (Literal.BoolLiteral True))
+                                        Ok (Value.Literal defaultValueAttribute (Literal.BoolLiteral True))
 
                                     ( [], "False" ) ->
-                                        Ok (Value.Literal (Type.Unit ()) (Literal.BoolLiteral False))
+                                        Ok (Value.Literal defaultValueAttribute (Literal.BoolLiteral False))
 
                                     _ ->
                                         resolveReferenceName modName localName Constructor
                                             |> Result.mapError (ResolveError (SourceLocation moduleName range) >> List.singleton)
-                                            |> Result.map (Value.Constructor (Type.Unit ()))
+                                            |> Result.map (Value.Constructor defaultValueAttribute)
 
                             else
                                 resolveReferenceName modName localName Value
                                     |> Result.mapError (ResolveError (SourceLocation moduleName range) >> List.singleton)
-                                    |> Result.map (Value.Reference (Type.Unit ()))
+                                    |> Result.map (Value.Reference defaultValueAttribute)
                         )
 
         Expression.IfBlock condNode thenNode elseNode ->
-            Result.map3 (Value.IfThenElse (Type.Unit ()))
+            Result.map3 (Value.IfThenElse defaultValueAttribute)
                 (mapExpression resolveReferenceName moduleName variables condNode)
                 (mapExpression resolveReferenceName moduleName variables thenNode)
                 (mapExpression resolveReferenceName moduleName variables elseNode)
@@ -255,30 +291,30 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
             mapOperator moduleName range op
 
         Expression.Integer value ->
-            Ok (Value.Literal (Type.Unit ()) (Literal.WholeNumberLiteral value))
+            Ok (Value.Literal defaultValueAttribute (Literal.WholeNumberLiteral value))
 
         Expression.Hex value ->
-            Ok (Value.Literal (Type.Unit ()) (Literal.WholeNumberLiteral value))
+            Ok (Value.Literal defaultValueAttribute (Literal.WholeNumberLiteral value))
 
         Expression.Floatable value ->
-            Ok (Value.Literal (Type.Unit ()) (Literal.FloatLiteral value))
+            Ok (Value.Literal defaultValueAttribute (Literal.FloatLiteral value))
 
         Expression.Negation arg ->
             mapExpression resolveReferenceName moduleName variables arg
-                |> Result.map (SDKBasics.negate (Type.Unit ()) (Type.Unit ()))
+                |> Result.map (SDKBasics.negate defaultValueAttribute defaultValueAttribute)
 
         Expression.Literal value ->
-            Ok (Value.Literal (Type.Unit ()) (Literal.StringLiteral value))
+            Ok (Value.Literal defaultValueAttribute (Literal.StringLiteral value))
 
         Expression.CharLiteral value ->
-            Ok (Value.Literal (Type.Unit ()) (Literal.CharLiteral value))
+            Ok (Value.Literal defaultValueAttribute (Literal.CharLiteral value))
 
         Expression.TupledExpression expNodes ->
             expNodes
                 |> List.map (mapExpression resolveReferenceName moduleName variables)
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
-                |> Result.map (Value.Tuple (Type.Unit ()))
+                |> Result.map (Value.Tuple defaultValueAttribute)
 
         Expression.ParenthesizedExpression expNode ->
             mapExpression resolveReferenceName moduleName variables expNode
@@ -291,7 +327,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                 letBlock
 
         Expression.CaseExpression caseBlock ->
-            Result.map2 (Value.PatternMatch (Type.Unit ()))
+            Result.map2 (Value.PatternMatch defaultValueAttribute)
                 (mapExpression resolveReferenceName moduleName variables caseBlock.expression)
                 (caseBlock.cases
                     |> List.map
@@ -309,7 +345,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
 
         Expression.LambdaExpression lambda ->
             let
-                curriedLambda : Set String -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Value () (Type ()))
+                curriedLambda : Set String -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Value TypeAttribute ValueAttribute)
                 curriedLambda lambdaVariables argNodes bodyNode =
                     case argNodes of
                         [] ->
@@ -320,7 +356,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                                 |> Result.andThen
                                     (\( argVariables, argPattern ) ->
                                         curriedLambda (lambdaVariables |> Set.union argVariables) restOfArgNodes bodyNode
-                                            |> Result.map (Value.Lambda (Type.Unit ()) argPattern)
+                                            |> Result.map (Value.Lambda defaultValueAttribute argPattern)
                                     )
             in
             curriedLambda variables lambda.args lambda.expression
@@ -335,26 +371,26 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                     )
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
-                |> Result.map (Value.Record (Type.Unit ()))
+                |> Result.map (Value.Record defaultValueAttribute)
 
         Expression.ListExpr itemNodes ->
             itemNodes
                 |> List.map (mapExpression resolveReferenceName moduleName variables)
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
-                |> Result.map (Value.List (Type.Unit ()))
+                |> Result.map (Value.List defaultValueAttribute)
 
         Expression.RecordAccess targetNode fieldNameNode ->
             mapExpression resolveReferenceName moduleName variables targetNode
                 |> Result.map
                     (\subjectValue ->
-                        Value.Field (Type.Unit ())
+                        Value.Field defaultValueAttribute
                             subjectValue
                             (fieldNameNode |> Node.value |> Name.fromString)
                     )
 
         Expression.RecordAccessFunction fieldName ->
-            Ok (Value.FieldFunction (Type.Unit ()) (fieldName |> Name.fromString))
+            Ok (Value.FieldFunction defaultValueAttribute (fieldName |> Name.fromString))
 
         Expression.RecordUpdateExpression (Node targetVarRange targetVarName) fieldNodes ->
             if variables |> Set.member targetVarName then
@@ -369,8 +405,8 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                     |> Result.mapError List.concat
                     |> Result.map
                         (Value.UpdateRecord
-                            (Type.Unit ())
-                            (targetVarName |> Name.fromString |> Value.Variable (Type.Unit ()))
+                            defaultValueAttribute
+                            (targetVarName |> Name.fromString |> Value.Variable defaultValueAttribute)
                         )
 
             else
@@ -384,7 +420,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                 ]
 
 
-mapFunction : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Node Expression.Function -> Result Errors (Value.Definition () (Type ()))
+mapFunction : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Node Expression.Function -> Result Errors (Value.Definition Bool ValueAttribute)
 mapFunction resolveName moduleName variables (Node functionRange function) =
     let
         expression : Node Expression
@@ -402,70 +438,56 @@ mapFunction resolveName moduleName variables (Node functionRange function) =
                             |> .expression
                     }
                 )
+
+        declaredValueTypeResult : Result Errors (Type TypeAttribute)
+        declaredValueTypeResult =
+            case function.signature of
+                Just (Node _ signature) ->
+                    signature.typeAnnotation
+                        |> mapTypeAnnotation resolveName
+                        |> Result.map (Type.mapTypeAttributes (always True))
+
+                Nothing ->
+                    Ok (Type.Unit False)
     in
-    mapExpression resolveName moduleName variables expression
-        |> Result.map (Value.Definition [] (Type.Unit ()))
-        |> Result.map liftLambdaArguments
+    Result.map2
+        (\value declaredValueType ->
+            { inputTypes = []
+            , outputType = declaredValueType
+            , body = value |> Value.mapValueAttributes (always False) identity
+            }
+        )
+        (mapExpression resolveName moduleName variables expression)
+        declaredValueTypeResult
 
 
-{-| Moves lambda arguments into function arguments as much as possible. For example given this function definition:
-
-    foo : Int -> Bool -> ( Int, Int ) -> String
-    foo =
-        \a ->
-            \b ->
-                ( c, d ) ->
-                    doSomething a b c d
-
-It turns it into the following:
-
-    foo : Int -> Bool -> ( Int, Int ) -> String
-    foo a b =
-        ( c, d ) ->
-            doSomething a b c d
-
--}
-liftLambdaArguments : Value.Definition ta va -> Value.Definition ta va
-liftLambdaArguments valueDef =
-    case ( valueDef.body, valueDef.outputType ) of
-        ( Value.Lambda va (Value.AsPattern _ (Value.WildcardPattern _) argName) lambdaBody, Type.Function _ argType returnType ) ->
-            liftLambdaArguments
-                { inputTypes = valueDef.inputTypes ++ [ ( argName, va, argType ) ]
-                , outputType = returnType
-                , body = lambdaBody
-                }
-
-        _ ->
-            valueDef
-
-
-mapPattern : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Node Pattern -> Result Errors ( Set String, Value.Pattern (Type ()) )
+mapPattern : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Node Pattern -> Result Errors ( Set String, Value.Pattern ValueAttribute )
 mapPattern nameResolver moduleName variables (Node range pattern) =
     case pattern of
         Pattern.AllPattern ->
-            Ok ( Set.empty, Value.WildcardPattern (Type.Unit ()) )
+            Ok ( Set.empty, Value.WildcardPattern defaultValueAttribute )
 
         Pattern.UnitPattern ->
-            Ok ( Set.empty, Value.UnitPattern (Type.Unit ()) )
+            Ok ( Set.empty, Value.UnitPattern defaultValueAttribute )
 
         Pattern.CharPattern char ->
-            Ok ( Set.empty, Value.LiteralPattern (Type.Unit ()) (Literal.CharLiteral char) )
+            Ok ( Set.empty, Value.LiteralPattern defaultValueAttribute (Literal.CharLiteral char) )
 
         Pattern.StringPattern string ->
-            Ok ( Set.empty, Value.LiteralPattern (Type.Unit ()) (Literal.StringLiteral string) )
+            Ok ( Set.empty, Value.LiteralPattern defaultValueAttribute (Literal.StringLiteral string) )
 
         Pattern.IntPattern int ->
-            Ok ( Set.empty, Value.LiteralPattern (Type.Unit ()) (Literal.WholeNumberLiteral int) )
+            Ok ( Set.empty, Value.LiteralPattern defaultValueAttribute (Literal.WholeNumberLiteral int) )
 
         Pattern.HexPattern int ->
-            Ok ( Set.empty, Value.LiteralPattern (Type.Unit ()) (Literal.WholeNumberLiteral int) )
+            Ok ( Set.empty, Value.LiteralPattern defaultValueAttribute (Literal.WholeNumberLiteral int) )
 
         Pattern.FloatPattern float ->
-            Ok ( Set.empty, Value.LiteralPattern (Type.Unit ()) (Literal.FloatLiteral float) )
+            Ok ( Set.empty, Value.LiteralPattern defaultValueAttribute (Literal.FloatLiteral float) )
 
         Pattern.TuplePattern elemNodes ->
             mapListOfPatterns nameResolver moduleName variables elemNodes
-                |> Result.map (Tuple.mapSecond (Value.TuplePattern (Type.Unit ())))
+                |> Result.map (Tuple.mapSecond (Value.TuplePattern defaultValueAttribute))
 
         Pattern.RecordPattern _ ->
             Err
@@ -486,7 +508,7 @@ mapPattern nameResolver moduleName variables (Node range pattern) =
                                             Set.intersect pattern1Variables pattern2Variables
                                     in
                                     if Set.isEmpty overlappingVariableNames then
-                                        Ok ( Set.union pattern1Variables pattern2Variables, Value.HeadTailPattern (Type.Unit ()) headPattern tailPattern )
+                                        Ok ( Set.union pattern1Variables pattern2Variables, Value.HeadTailPattern defaultValueAttribute headPattern tailPattern )
 
                                     else
                                         Err [ SameNameAppearsMultipleTimesInPattern (SourceLocation moduleName range) overlappingVariableNames ]
@@ -495,14 +517,14 @@ mapPattern nameResolver moduleName variables (Node range pattern) =
 
         Pattern.ListPattern itemNodes ->
             let
-                listToHeadTail : List (Value.Pattern (Type ())) -> Value.Pattern (Type ())
+                listToHeadTail : List (Value.Pattern ValueAttribute) -> Value.Pattern ValueAttribute
                 listToHeadTail patternNodes =
                     case patternNodes of
                         [] ->
-                            Value.EmptyListPattern (Type.Unit ())
+                            Value.EmptyListPattern defaultValueAttribute
 
                         headNode :: tailNodes ->
-                            Value.HeadTailPattern (Type.Unit ()) headNode (listToHeadTail tailNodes)
+                            Value.HeadTailPattern defaultValueAttribute headNode (listToHeadTail tailNodes)
             in
             mapListOfPatterns nameResolver moduleName variables itemNodes
                 |> Result.map (Tuple.mapSecond listToHeadTail)
@@ -512,7 +534,7 @@ mapPattern nameResolver moduleName variables (Node range pattern) =
                 Err [ VariableNameCollision (SourceLocation moduleName range) name ]
 
             else
-                Ok ( Set.singleton name, Value.AsPattern (Type.Unit ()) (Value.WildcardPattern (Type.Unit ())) (Name.fromString name) )
+                Ok ( Set.singleton name, Value.AsPattern defaultValueAttribute (Value.WildcardPattern defaultValueAttribute) (Name.fromString name) )
 
         Pattern.NamedPattern qualifiedNameRef argNodes ->
             let
@@ -523,14 +545,14 @@ mapPattern nameResolver moduleName variables (Node range pattern) =
             in
             case ( qualifiedNameRef.moduleName, qualifiedNameRef.name ) of
                 ( [], "True" ) ->
-                    Ok ( Set.empty, Value.LiteralPattern (Type.Unit ()) (Literal.BoolLiteral True) )
+                    Ok ( Set.empty, Value.LiteralPattern defaultValueAttribute (Literal.BoolLiteral True) )
 
                 ( [], "False" ) ->
-                    Ok ( Set.empty, Value.LiteralPattern (Type.Unit ()) (Literal.BoolLiteral False) )
+                    Ok ( Set.empty, Value.LiteralPattern defaultValueAttribute (Literal.BoolLiteral False) )
 
                 _ ->
                     Result.map2
-                        (\fqn ( vars, argPatterns ) -> ( vars, Value.ConstructorPattern (Type.Unit ()) fqn argPatterns ))
+                        (\fqn ( vars, argPatterns ) -> ( vars, Value.ConstructorPattern defaultValueAttribute fqn argPatterns ))
                         fullyQualifiedName
                         (mapListOfPatterns nameResolver moduleName variables argNodes)
 
@@ -547,7 +569,7 @@ mapPattern nameResolver moduleName variables (Node range pattern) =
                         else
                             Ok
                                 ( subjectVariables |> Set.insert alias
-                                , Value.AsPattern (Type.Unit ())
+                                , Value.AsPattern defaultValueAttribute
                                     subjectPattern
                                     (Name.fromString alias)
                                 )
@@ -557,7 +579,7 @@ mapPattern nameResolver moduleName variables (Node range pattern) =
             mapPattern nameResolver moduleName variables childNode
 
 
-mapListOfPatterns : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> List (Node Pattern) -> Result Errors ( Set String, List (Value.Pattern (Type ())) )
+mapListOfPatterns : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> List (Node Pattern) -> Result Errors ( Set String, List (Value.Pattern ValueAttribute) )
 mapListOfPatterns nameResolver moduleName variables patternNodes =
     patternNodes
         |> List.foldr
@@ -584,32 +606,32 @@ mapListOfPatterns nameResolver moduleName variables patternNodes =
             (Ok ( Set.empty, [] ))
 
 
-mapOperator : Elm.ModuleName -> Range -> String -> Result Errors (Value.Value () (Type ()))
+mapOperator : Elm.ModuleName -> Range -> String -> Result Errors (Value.Value TypeAttribute ValueAttribute)
 mapOperator moduleName range op =
     case op of
         "||" ->
-            Ok <| SDKBasics.or (Type.Unit ())
+            Ok <| SDKBasics.or defaultValueAttribute
 
         "&&" ->
-            Ok <| SDKBasics.and (Type.Unit ())
+            Ok <| SDKBasics.and defaultValueAttribute
 
         "==" ->
-            Ok <| SDKBasics.equal (Type.Unit ())
+            Ok <| SDKBasics.equal defaultValueAttribute
 
         "/=" ->
-            Ok <| SDKBasics.notEqual (Type.Unit ())
+            Ok <| SDKBasics.notEqual defaultValueAttribute
 
         "<" ->
-            Ok <| SDKBasics.lessThan (Type.Unit ())
+            Ok <| SDKBasics.lessThan defaultValueAttribute
 
         ">" ->
-            Ok <| SDKBasics.greaterThan (Type.Unit ())
+            Ok <| SDKBasics.greaterThan defaultValueAttribute
 
         "<=" ->
-            Ok <| SDKBasics.lessThanOrEqual (Type.Unit ())
+            Ok <| SDKBasics.lessThanOrEqual defaultValueAttribute
 
         ">=" ->
-            Ok <| SDKBasics.greaterThanOrEqual (Type.Unit ())
+            Ok <| SDKBasics.greaterThanOrEqual defaultValueAttribute
 
         "++" ->
             Err
@@ -619,31 +641,31 @@ mapOperator moduleName range op =
                 ]
 
         "+" ->
-            Ok <| SDKBasics.add (Type.Unit ())
+            Ok <| SDKBasics.add defaultValueAttribute
 
         "-" ->
-            Ok <| SDKBasics.subtract (Type.Unit ())
+            Ok <| SDKBasics.subtract defaultValueAttribute
 
         "*" ->
-            Ok <| SDKBasics.multiply (Type.Unit ())
+            Ok <| SDKBasics.multiply defaultValueAttribute
 
         "/" ->
-            Ok <| SDKBasics.divide (Type.Unit ())
+            Ok <| SDKBasics.divide defaultValueAttribute
 
         "//" ->
-            Ok <| SDKBasics.integerDivide (Type.Unit ())
+            Ok <| SDKBasics.integerDivide defaultValueAttribute
 
         "^" ->
-            Ok <| SDKBasics.power (Type.Unit ())
+            Ok <| SDKBasics.power defaultValueAttribute
 
         "<<" ->
-            Ok <| SDKBasics.composeLeft (Type.Unit ())
+            Ok <| SDKBasics.composeLeft defaultValueAttribute
 
         ">>" ->
-            Ok <| SDKBasics.composeRight (Type.Unit ())
+            Ok <| SDKBasics.composeRight defaultValueAttribute
 
         "::" ->
-            Ok <| List.construct (Type.Unit ())
+            Ok <| List.construct defaultValueAttribute
 
         _ ->
             Err
@@ -653,7 +675,7 @@ mapOperator moduleName range op =
                 ]
 
 
-mapLetExpression : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Expression.LetBlock -> Result Errors (Value.Value () (Type ()))
+mapLetExpression : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Expression.LetBlock -> Result Errors (Value.Value TypeAttribute ValueAttribute)
 mapLetExpression nameResolver moduleName variables letBlock =
     let
         namesReferredByExpression : Expression -> List String
@@ -719,7 +741,7 @@ mapLetExpression nameResolver moduleName variables letBlock =
                 _ ->
                     []
 
-        letBlockToValue : List (Node Expression.LetDeclaration) -> Node Expression -> Result Errors (Value.Value () (Type ()))
+        letBlockToValue : List (Node Expression.LetDeclaration) -> Node Expression -> Result Errors (Value.Value TypeAttribute ValueAttribute)
         letBlockToValue declarationNodes inNode =
             let
                 -- build a dictionary from variable name to declaration index
@@ -790,21 +812,33 @@ mapLetExpression nameResolver moduleName variables letBlock =
                     in
                     Graph.fromNodesAndEdges nodes edges
 
-                letDeclarationToValue : Node Expression.LetDeclaration -> Result Errors (Value.Value () (Type ())) -> Result Errors (Value.Value () (Type ()))
+                letDeclarationToValue : Node Expression.LetDeclaration -> Result Errors (Value.Value TypeAttribute ValueAttribute) -> Result Errors (Value.Value TypeAttribute ValueAttribute)
                 letDeclarationToValue letDeclarationNode valueResult =
                     case letDeclarationNode of
                         Node range (Expression.LetFunction function) ->
-                            Result.map2 (Value.LetDefinition (Type.Unit ()) (function.declaration |> Node.value |> .name |> Node.value |> Name.fromString))
+                            Result.map2
+                                (\bindingDef inValue ->
+                                    Value.LetDefinition defaultValueAttribute
+                                        (function.declaration |> Node.value |> .name |> Node.value |> Name.fromString)
+                                        bindingDef
+                                        (inValue |> valueWithDefaultTypeAttribute)
+                                )
                                 (mapFunction nameResolver moduleName allVariables (Node range function))
                                 valueResult
 
                         Node _ (Expression.LetDestructuring ((Node _ expPattern) as patternNode) letExpressionNode) ->
-                            Result.map3 (\( patternVariables, pattern ) -> Value.Destructure (Type.Unit ()) pattern)
+                            Result.map3
+                                (\( patternVariables, bindPattern ) bindValue inValue ->
+                                    Value.Destructure defaultValueAttribute
+                                        bindPattern
+                                        (bindValue |> valueWithDefaultTypeAttribute)
+                                        (inValue |> valueWithDefaultTypeAttribute)
+                                )
                                 (mapPattern nameResolver moduleName (allVariables |> Set.diff (namesBoundByPattern expPattern)) patternNode)
                                 (mapExpression nameResolver moduleName allVariables letExpressionNode)
                                 valueResult
 
-                componentGraphToValue : Graph (Node Expression.LetDeclaration) String -> Result Errors (Value.Value () (Type ())) -> Result Errors (Value.Value () (Type ()))
+                componentGraphToValue : Graph (Node Expression.LetDeclaration) String -> Result Errors (Value.Value TypeAttribute ValueAttribute) -> Result Errors (Value.Value TypeAttribute ValueAttribute)
                 componentGraphToValue componentGraph inValueResult =
                     case componentGraph |> Graph.checkAcyclic of
                         Ok acyclic ->
@@ -814,10 +848,10 @@ mapLetExpression nameResolver moduleName variables letBlock =
                                     (\nodeContext innerSoFar ->
                                         letDeclarationToValue nodeContext.node.label innerSoFar
                                     )
-                                    inValueResult
+                                    (inValueResult |> Result.map valueWithDefaultTypeAttribute)
 
                         Err _ ->
-                            Result.map2 (Value.LetRecursion (Type.Unit ()))
+                            Result.map2 (Value.LetRecursion defaultValueAttribute)
                                 (componentGraph
                                     |> Graph.nodes
                                     |> List.map
@@ -838,7 +872,7 @@ mapLetExpression nameResolver moduleName variables letBlock =
                                     |> Result.mapError List.concat
                                     |> Result.map Dict.fromList
                                 )
-                                inValueResult
+                                (inValueResult |> Result.map valueWithDefaultTypeAttribute)
             in
             case declarationDependencyGraph |> Graph.stronglyConnectedComponents of
                 Ok acyclic ->
@@ -848,13 +882,13 @@ mapLetExpression nameResolver moduleName variables letBlock =
                             (\nodeContext soFar ->
                                 letDeclarationToValue nodeContext.node.label soFar
                             )
-                            (mapExpression nameResolver moduleName allVariables inNode)
+                            (mapExpression nameResolver moduleName allVariables inNode |> Result.map valueWithDefaultTypeAttribute)
 
                 Err components ->
                     components
                         |> List.foldl
                             componentGraphToValue
-                            (mapExpression nameResolver moduleName allVariables inNode)
+                            (mapExpression nameResolver moduleName allVariables inNode |> Result.map valueWithDefaultTypeAttribute)
     in
     letBlockToValue letBlock.declarations letBlock.expression
 
@@ -894,3 +928,8 @@ namesBoundByPattern p =
     in
     namesBound p
         |> Set.fromList
+
+
+valueWithDefaultTypeAttribute : Value ta va -> Value TypeAttribute va
+valueWithDefaultTypeAttribute value =
+    value |> Value.mapValueAttributes (always False) identity
