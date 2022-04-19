@@ -5,7 +5,6 @@ module Morphir.Elm.IncrementalFrontend exposing (..)
 
 import Dict exposing (Dict)
 import Elm.Parser
-import Elm.Processing as Processing exposing (ProcessContext)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Expression exposing (Expression(..))
@@ -16,7 +15,6 @@ import Morphir.Elm.IncrementalFrontend.Mapper as Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
-import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
 import Morphir.File.Path as FilePath
 import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..))
@@ -380,14 +378,6 @@ orderElmModulesByDependency packageName parsedModules =
 extractTypeNames : ParsedModule -> List Name
 extractTypeNames parsedModule =
     let
-        withWellKnownOperators : ProcessContext -> ProcessContext
-        withWellKnownOperators context =
-            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
-
-        initialContext : ProcessContext
-        initialContext =
-            Processing.init |> withWellKnownOperators
-
         extractTypeNamesFromFile : List (Node Declaration) -> List Name
         extractTypeNamesFromFile declarations =
             declarations
@@ -413,14 +403,6 @@ extractTypeNames parsedModule =
 extractConstructorNames : ParsedModule -> List Name
 extractConstructorNames parsedModule =
     let
-        withWellKnownOperators : ProcessContext -> ProcessContext
-        withWellKnownOperators context =
-            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
-
-        initialContext : ProcessContext
-        initialContext =
-            Processing.init |> withWellKnownOperators
-
         extractConstructorNamesFromFile : List (Node Declaration) -> List Name
         extractConstructorNamesFromFile declarations =
             declarations
@@ -618,14 +600,6 @@ orderTypesByDependency thisPackageName thisModuleName unorderedTypeDefinitions =
 extractValueNames : ParsedModule -> List Name
 extractValueNames parsedModule =
     let
-        withWellKnownOperators : ProcessContext -> ProcessContext
-        withWellKnownOperators context =
-            List.foldl Processing.addDependency context WellKnownOperators.wellKnownOperators
-
-        initialContext : ProcessContext
-        initialContext =
-            Processing.init |> withWellKnownOperators
-
         extractValueNamesFromFile : List (Node Declaration) -> List Name
         extractValueNamesFromFile declarations =
             declarations
