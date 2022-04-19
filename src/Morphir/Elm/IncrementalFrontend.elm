@@ -26,7 +26,7 @@ import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Repo as Repo exposing (Repo, SourceCode)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value)
 import Morphir.SDK.ResultList as ResultList
 import Parser
 import Set exposing (Set)
@@ -52,6 +52,10 @@ type alias OrderedFileChanges =
     { insertsAndUpdates : List ( ModuleName, ParsedModule )
     , deletes : Set ModuleName
     }
+
+
+type alias SignatureAndValue =
+    ( Maybe (Type ()), Value () () )
 
 
 orderFileChanges : PackageName -> FileChanges -> Result Errors OrderedFileChanges
@@ -273,11 +277,14 @@ processType moduleName typeName typeDef repo =
         |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
 
-processValue : Access -> ModuleName -> Name -> Value.Definition Bool () -> Repo -> Result (List Error) Repo
-processValue access moduleName valueName valueDefinition repo =
+processValue : Access -> ModuleName -> Name -> SignatureAndValue -> Repo -> Result (List Error) Repo
+processValue access moduleName valueName ( maybeValueType, body ) repo =
+    let
+        _ =
+            Debug.log "processing value" (String.concat [ Path.toString Name.toTitleCase "." moduleName, ".", Name.toCamelCase valueName ])
+    in
     repo
-        -- TODO: implement type inference
-        |> Repo.insertTypedValue moduleName valueName (valueDefinition |> Value.mapDefinitionAttributes (always ()) (always (Type.Unit ())))
+        |> Repo.insertValue access moduleName valueName maybeValueType body
         |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
 
@@ -621,13 +628,13 @@ extractValueNames parsedModule =
 
 {-| Extract value definitions
 -}
-extractValues : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Value.Definition Bool () ))
+extractValues : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, SignatureAndValue ))
 extractValues resolveValueName parsedModule =
     let
         -- get function name
         -- get function implementation
         -- get function expression
-        declarationsAsDefintionsResult : Result Errors (Dict FQName (Value.Definition Bool ()))
+        declarationsAsDefintionsResult : Result Errors (Dict FQName SignatureAndValue)
         declarationsAsDefintionsResult =
             ParsedModule.declarations parsedModule
                 |> Mapper.mapDeclarationsToValue resolveValueName parsedModule
@@ -641,10 +648,10 @@ extractValues resolveValueName parsedModule =
                 |> Result.andThen
                     (Dict.toList
                         >> List.foldl
-                            (\( fQName, def ) dagResultSoFar ->
+                            (\( fQName, ( _, body ) ) dagResultSoFar ->
                                 let
                                     refs =
-                                        Value.collectReferences def.body
+                                        Value.collectReferences body
                                 in
                                 dagResultSoFar
                                     |> Result.andThen (DAG.insertNode fQName refs)
@@ -658,7 +665,7 @@ extractValues resolveValueName parsedModule =
                         >> Result.map List.concat
                     )
 
-        orderedDeclarationAsDefinitions : Result Errors (List ( Name, Value.Definition Bool () ))
+        orderedDeclarationAsDefinitions : Result Errors (List ( Name, SignatureAndValue ))
         orderedDeclarationAsDefinitions =
             orderedValueNameResult
                 |> Result.andThen

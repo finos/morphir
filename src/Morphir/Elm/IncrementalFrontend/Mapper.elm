@@ -140,7 +140,7 @@ mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
 -- Value Mappings
 
 
-mapDeclarationsToValue : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> List (Node Declaration) -> Result Errors (List ( FQName, Value.Definition TypeAttribute ValueAttribute ))
+mapDeclarationsToValue : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> List (Node Declaration) -> Result Errors (List ( FQName, ( Maybe (Type ()), Value () () ) ))
 mapDeclarationsToValue resolveName parsedModule decls =
     let
         moduleName : Elm.ModuleName
@@ -165,10 +165,24 @@ mapDeclarationsToValue resolveName parsedModule decls =
                                                 |> Result.mapError (ResolveError (SourceLocation moduleName range) >> List.singleton)
                                        )
 
-                            valueDef : Result Errors (Value.Definition Bool ValueAttribute)
+                            valueDef : Result Errors ( Maybe (Type ()), Value () () )
                             valueDef =
                                 Node range function
                                     |> mapFunction resolveName moduleName Set.empty
+                                    |> Result.map
+                                        (\maybeTypedValueDef ->
+                                            let
+                                                -- modelers may or may not specify type information in the Elm code but it is mandatory
+                                                maybeValueType : Maybe (Type ())
+                                                maybeValueType =
+                                                    if maybeTypedValueDef.outputType |> Type.typeAttributes then
+                                                        Just (maybeTypedValueDef.outputType |> Type.mapTypeAttributes (always ()))
+
+                                                    else
+                                                        Nothing
+                                            in
+                                            ( maybeValueType, maybeTypedValueDef.body |> Value.mapValueAttributes (always ()) identity )
+                                        )
                         in
                         valueDef
                             |> Result.map2 Tuple.pair valueName
@@ -236,7 +250,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                         (mapExpression resolveReferenceName moduleName variables rightNode)
 
         Expression.FunctionOrValue modName localName ->
-            if variables |> Set.member localName then
+            if List.isEmpty modName && Set.member localName variables then
                 Ok (Value.Variable defaultValueAttribute (Name.fromString localName))
 
             else
@@ -445,37 +459,6 @@ mapFunction resolveName moduleName variables (Node functionRange function) =
         )
         (mapExpression resolveName moduleName variables expression)
         declaredValueTypeResult
-
-
-{-| Moves lambda arguments into function arguments as much as possible. For example given this function definition:
-
-    foo : Int -> Bool -> ( Int, Int ) -> String
-    foo =
-        \a ->
-            \b ->
-                ( c, d ) ->
-                    doSomething a b c d
-
-It turns it into the following:
-
-    foo : Int -> Bool -> ( Int, Int ) -> String
-    foo a b =
-        ( c, d ) ->
-            doSomething a b c d
-
--}
-liftLambdaArguments : Value.Definition ta va -> Value.Definition ta va
-liftLambdaArguments valueDef =
-    case ( valueDef.body, valueDef.outputType ) of
-        ( Value.Lambda va (Value.AsPattern _ (Value.WildcardPattern _) argName) lambdaBody, Type.Function _ argType returnType ) ->
-            liftLambdaArguments
-                { inputTypes = valueDef.inputTypes ++ [ ( argName, va, argType ) ]
-                , outputType = returnType
-                , body = lambdaBody
-                }
-
-        _ ->
-            valueDef
 
 
 mapPattern : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Node Pattern -> Result Errors ( Set String, Value.Pattern ValueAttribute )

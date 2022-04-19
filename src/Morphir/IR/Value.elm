@@ -22,7 +22,7 @@ module Morphir.IR.Value exposing
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
-    , definitionToSpecification, uncurryApply, collectVariables, collectReferences, collectDefinitionAttributes, collectPatternAttributes
+    , definitionToSpecification, typeAndValueToDefinition, uncurryApply, collectVariables, collectReferences, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
     , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
     )
@@ -111,7 +111,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 # Utilities
 
-@docs definitionToSpecification, uncurryApply, collectVariables, collectReferences, collectDefinitionAttributes, collectPatternAttributes
+@docs definitionToSpecification, typeAndValueToDefinition, uncurryApply, collectVariables, collectReferences, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
 @docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
 
@@ -342,6 +342,44 @@ definitionToValue def =
                         | inputTypes = restOfArgs
                     }
                 )
+
+
+{-| Moves lambda arguments into function arguments as much as possible. For example given this function definition:
+
+    foo : Int -> Bool -> ( Int, Int ) -> String
+    foo =
+        \a ->
+            \b ->
+                ( c, d ) ->
+                    doSomething a b c d
+
+It turns it into the following:
+
+    foo : Int -> Bool -> ( Int, Int ) -> String
+    foo a b =
+        ( c, d ) ->
+            doSomething a b c d
+
+-}
+typeAndValueToDefinition : Type ta -> Value ta va -> Definition ta va
+typeAndValueToDefinition valueType value =
+    let
+        liftLambdaArguments : List ( Name, va, Type ta ) -> Type ta -> Value ta va -> Definition ta va
+        liftLambdaArguments args bodyType body =
+            case ( body, bodyType ) of
+                ( Lambda va (AsPattern _ (WildcardPattern _) argName) lambdaBody, Type.Function _ argType returnType ) ->
+                    liftLambdaArguments
+                        (args ++ [ ( argName, va, argType ) ])
+                        returnType
+                        lambdaBody
+
+                _ ->
+                    { inputTypes = args
+                    , outputType = bodyType
+                    , body = body
+                    }
+    in
+    liftLambdaArguments [] valueType value
 
 
 {-| -}

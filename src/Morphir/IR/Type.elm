@@ -22,7 +22,7 @@ module Morphir.IR.Type exposing
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
     , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification
     , Constructors
-    , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition
+    , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, typeAttributes
     , eraseAttributes, collectVariables, collectReferences, collectReferencesFromDefintion, substituteTypeVariables, toString
     )
 
@@ -122,11 +122,9 @@ Here is the full definition for reference:
 @docs Constructors
 
 
-# Mapping
+# Utilities
 
-@docs mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition
-
-#Utilities
+@docs mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, typeAttributes
 
 @docs eraseAttributes, collectVariables, collectReferences, collectReferencesFromDefintion, substituteTypeVariables, toString
 
