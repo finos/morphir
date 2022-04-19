@@ -451,12 +451,6 @@ insertValue access moduleName valueName valueDef repo =
 insertTypedValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
 insertTypedValue moduleName valueName valueDef repo =
     let
-        accessControlledModuleDefinitionResult : Result Errors (AccessControlled (Module.Definition () (Type ())))
-        accessControlledModuleDefinitionResult =
-            Result.fromMaybe
-                [ ModuleNotFound moduleName ]
-                (repo |> modules |> Dict.get moduleName)
-
         validateValueExistsResult : AccessControlled (Module.Definition () (Type ())) -> Result Errors (AccessControlled (Module.Definition () (Type ())))
         validateValueExistsResult accessControlledModuleDef =
             case accessControlledModuleDef.value.values |> Dict.get valueName of
