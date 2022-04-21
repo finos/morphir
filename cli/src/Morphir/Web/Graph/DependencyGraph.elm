@@ -19,6 +19,7 @@ import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Web.Graph.Graph as Graph exposing (Edge, Graph, Node)
 import Set exposing (Set)
+import Element exposing (scrollbars)
 
 
 type alias SelectedModule =
@@ -82,7 +83,7 @@ dependencyGraph selectedModule repo =
         filterValueDeps =
             filterDepsBySelectedModule (Repo.valueDependencies repo)
     in
-    column [ width fill, height (fillPortion 3), Border.widthXY 0 8, Border.color gray ]
+    column [ width fill, height (fillPortion 3), Border.widthXY 0 8, Border.color gray, scrollbars]
         [ viewGraph (Graph.dagListAsGraph filterTypeDeps)
         , viewGraph (Graph.dagListAsGraph filterValueDeps)
         ]
