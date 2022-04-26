@@ -79,8 +79,8 @@ type alias BuildIncrementallyInput =
 type Msg
     = BuildFromScratch Decode.Value
     | BuildIncrementally Decode.Value
-    | OrderFileChanges PackageName FileChanges Repo
-    | ApplyFileChanges OrderedFileChanges Repo
+    | OrderFileChanges PackageName FileChanges Frontend.Options Repo
+    | ApplyFileChanges OrderedFileChanges Frontend.Options Repo
 
 
 main : Platform.Program () () Msg
@@ -117,6 +117,7 @@ process msg =
                         |> Result.map
                             (OrderFileChanges input.packageInfo.name
                                 (input.fileSnapshot |> FileSnapshot.toInserts |> keepElmFilesOnly)
+                                input.options
                             )
                         |> failOrProceed
 
@@ -144,6 +145,7 @@ process msg =
                         |> Result.map
                             (OrderFileChanges input.packageInfo.name
                                 (input.fileChanges |> keepElmFilesOnly)
+                                input.options
                             )
                         |> failOrProceed
 
@@ -152,13 +154,13 @@ process msg =
                         |> Decode.errorToString
                         |> decodeFailed
 
-        OrderFileChanges packageName fileChanges repo ->
+        OrderFileChanges packageName fileChanges opts repo ->
             IncrementalFrontend.orderFileChanges packageName fileChanges
-                |> Result.map (\orderedFileChanges -> ApplyFileChanges orderedFileChanges repo)
+                |> Result.map (\orderedFileChanges -> ApplyFileChanges orderedFileChanges opts repo)
                 |> failOrProceed
 
-        ApplyFileChanges orderedFileChanges repo ->
-            IncrementalFrontend.applyFileChanges orderedFileChanges repo
+        ApplyFileChanges orderedFileChanges opts repo ->
+            IncrementalFrontend.applyFileChanges orderedFileChanges opts repo
                 |> returnDistribution
 
 
@@ -171,10 +173,10 @@ report msg =
         BuildIncrementally _ ->
             reportProgress "Building incrementally ..."
 
-        OrderFileChanges packageName fileChanges repo ->
+        OrderFileChanges _ _ _ _ ->
             reportProgress "Parsing files and ordering file changes"
 
-        ApplyFileChanges orderedFileChanges repo ->
+        ApplyFileChanges orderedFileChanges _ _ ->
             reportProgress
                 (String.concat
                     [ "Applying file changes in the following order:\n"

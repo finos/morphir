@@ -12,6 +12,7 @@ import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation as TypeAnnotation
 import List.Extra as List
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
+import Morphir.Elm.Frontend as Frontend
 import Morphir.Elm.IncrementalFrontend.Mapper as Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
@@ -150,14 +151,14 @@ filePathToModuleName packageName filePath =
             Err (InvalidSourceFilePath filePath "A valid file path must have at least one directory and one file.")
 
 
-applyFileChanges : OrderedFileChanges -> Repo -> Result Errors Repo
-applyFileChanges fileChanges repo =
+applyFileChanges : OrderedFileChanges -> Frontend.Options -> Repo -> Result Errors Repo
+applyFileChanges fileChanges opts repo =
     repo
-        |> applyChangesByOrder fileChanges
+        |> applyChangesByOrder fileChanges opts
 
 
-applyChangesByOrder : OrderedFileChanges -> Repo -> Result Errors Repo
-applyChangesByOrder orderedFileChanges repo =
+applyChangesByOrder : OrderedFileChanges -> Frontend.Options -> Repo -> Result Errors Repo
+applyChangesByOrder orderedFileChanges opts repo =
     let
         updateAndInsertsAsDict : Dict ModuleName ParsedModule
         updateAndInsertsAsDict =
@@ -267,11 +268,11 @@ applyChangesByOrder orderedFileChanges repo =
                 case modChange of
                     ModuleInsert modName parsedModule ->
                         repoResultSoFar
-                            |> Result.andThen (applyInsert modName parsedModule)
+                            |> Result.andThen (applyInsert modName parsedModule opts)
 
                     ModuleUpdate modName parsedModule ->
                         repoResultSoFar
-                            |> Result.andThen (applyUpdate modName parsedModule)
+                            |> Result.andThen (applyUpdate modName parsedModule opts)
 
                     ModuleDelete _ ->
                         repoResultSoFar
@@ -297,14 +298,14 @@ applyChangesByOrder orderedFileChanges repo =
             )
 
 
-applyInsert : ModuleName -> ParsedModule -> Repo -> Result Errors Repo
-applyInsert moduleName parsedModule repo =
-    processModule moduleName parsedModule repo
+applyInsert : ModuleName -> ParsedModule -> Frontend.Options -> Repo -> Result Errors Repo
+applyInsert moduleName parsedModule opts repo =
+    processModule moduleName parsedModule opts repo
 
 
-applyUpdate : ModuleName -> ParsedModule -> Repo -> Result Errors Repo
-applyUpdate moduleName parsedModule repo =
-    processModule moduleName parsedModule repo
+applyUpdate : ModuleName -> ParsedModule -> Frontend.Options -> Repo -> Result Errors Repo
+applyUpdate moduleName parsedModule opts repo =
+    processModule moduleName parsedModule opts repo
 
 
 applyUpdateCleanup : ModuleName -> ParsedModule -> Repo -> Repo -> Result Errors Repo
@@ -398,13 +399,13 @@ applyDelete moduleName repo =
         |> Result.mapError (RepoError "Cannot delete module" >> List.singleton)
 
 
-applyInsertsAndUpdates : List ( ModuleName, ParsedModule ) -> Repo -> Result Errors Repo
-applyInsertsAndUpdates insertsAndUpdates repo =
+applyInsertsAndUpdates : List ( ModuleName, ParsedModule ) -> Frontend.Options -> Repo -> Result Errors Repo
+applyInsertsAndUpdates insertsAndUpdates opts repo =
     insertsAndUpdates
         |> List.foldl
             (\( moduleName, parsedModule ) repoResultForModule ->
                 repoResultForModule
-                    |> Result.andThen (processModule moduleName parsedModule)
+                    |> Result.andThen (processModule moduleName parsedModule opts)
             )
             (Ok repo)
 
@@ -421,8 +422,8 @@ applyDeletes deletes repo =
         |> Result.mapError (RepoError "Cannot delete module" >> List.singleton)
 
 
-processModule : ModuleName -> ParsedModule -> Repo -> Result (List Error) Repo
-processModule moduleName parsedModule repo =
+processModule : ModuleName -> ParsedModule -> Frontend.Options -> Repo -> Result (List Error) Repo
+processModule moduleName parsedModule opts repo =
     let
         accessOf : KindOfName -> Name -> Access
         accessOf kindOfName localName =
@@ -513,15 +514,19 @@ processModule moduleName parsedModule repo =
             )
         |> Result.andThen
             (\repoWithTypesInserted ->
-                extractValues resolveName parsedModule
-                    |> Result.andThen
-                        (List.foldl
-                            (\( name, definition ) repoResultSoFar ->
-                                repoResultSoFar
-                                    |> Result.andThen (processValue (accessOf Value name) moduleName name definition)
+                if opts.typesOnly then
+                    Ok repoWithTypesInserted
+
+                else
+                    extractValues resolveName parsedModule
+                        |> Result.andThen
+                            (List.foldl
+                                (\( name, definition ) repoResultSoFar ->
+                                    repoResultSoFar
+                                        |> Result.andThen (processValue (accessOf Value name) moduleName name definition)
+                                )
+                                (Ok repoWithTypesInserted)
                             )
-                            (Ok repoWithTypesInserted)
-                        )
             )
 
 
