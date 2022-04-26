@@ -11,6 +11,7 @@ import Element
         , alignRight
         , alignTop
         , clipX
+        , clipY
         , column
         , el
         , fill
@@ -991,6 +992,7 @@ viewHome model packageName packageDef =
                 [ height fill
                 , width fill
                 , spacing <| ifThenElse model.showModules 10 0
+                , clipY
                 ]
                 [ row
                     [ Background.color gray
