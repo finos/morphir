@@ -43,6 +43,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input
+import Element.Keyed
 import Html.Attributes exposing (name)
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Markdown.Parser as Markdown
@@ -50,9 +51,9 @@ import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestSuite)
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
-import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
@@ -60,13 +61,16 @@ import Morphir.IR.Path as Path
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText)
+import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme)
+import Morphir.Visual.ValueEditor as ValueEditor
+import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common exposing (ifThenElse, pathToDisplayString, pathToFullUrl, pathToUrl, urlFragmentToNodePath, viewAsCard)
+import Morphir.Web.DevelopApp.Common as Common exposing (ifThenElse, pathToDisplayString, pathToFullUrl, pathToUrl, urlFragmentToNodePath, viewAsCard)
 import Morphir.Web.DevelopApp.FunctionPage as FunctionPage
 import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (ViewType(..))
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
@@ -111,7 +115,15 @@ type alias Model =
     , showDefinitions : Bool
     , homeState : HomeState
     , repo : Repo
+    , insightViewState : Morphir.Visual.Config.VisualState
+    , definitionDisplayType : DisplayType
+    , argState : InsightArgumentState
+    , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     }
+
+
+type alias InsightArgumentState =
+    Dict FQName (Dict Name ValueEditor.EditorState)
 
 
 type alias HomeState =
@@ -127,6 +139,11 @@ type alias FilterState =
     , showValues : Bool
     , showTypes : Bool
     }
+
+
+type DisplayType
+    = XRayView
+    | InsightView
 
 
 type alias ModelUpdate =
@@ -179,11 +196,28 @@ init _ url key =
                     }
                 }
             , repo = Repo.empty []
+            , insightViewState = emptyVisualState
+            , definitionDisplayType = XRayView
+            , argState = Dict.empty
+            , expandedValues = Dict.empty
             }
     in
     ( toRoute url initModel
     , Cmd.batch [ httpMakeModel ]
     )
+
+
+emptyVisualState : Morphir.Visual.Config.VisualState
+emptyVisualState =
+    { theme = Theme.fromConfig Nothing
+    , expandedFunctions = Dict.empty
+    , variables = Dict.empty
+    , highlightState = Nothing
+    , popupVariables =
+        { variableIndex = 0
+        , variableValue = Nothing
+        }
+    }
 
 
 
@@ -204,6 +238,11 @@ type Msg
     | ToggleTypes Bool
     | ToggleModulesMenu
     | ToggleDefinitionsMenu
+    | ExpandReference FQName Bool
+    | ExpandVariable Int (Maybe RawValue)
+    | ShrinkVariable Int
+    | SwitchDisplayType
+    | ArgValueUpdated FQName Name ValueEditor.EditorState
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -217,10 +256,6 @@ update msg model =
 
                 _ ->
                     Library [] Dict.empty Package.emptyDefinition
-
-        getIR : IR
-        getIR =
-            IR.fromDistribution getDistribution
     in
     case msg |> Debug.log "msg" of
         LinkClicked urlRequest ->
@@ -323,6 +358,83 @@ update msg model =
             -- TODO: todo implement
             ( model, Cmd.none )
 
+        ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
+            if model.expandedValues |> Dict.member ( fQName, localName ) then
+                if isFunctionPresent then
+                    ( { model | expandedValues = model.expandedValues |> Dict.remove ( fQName, localName ) }, Cmd.none )
+
+                else
+                    ( model, Cmd.none )
+
+            else
+                ( { model
+                    | expandedValues =
+                        Distribution.lookupValueDefinition (QName moduleName localName)
+                            getDistribution
+                            |> Maybe.map (\valueDef -> model.expandedValues |> Dict.insert ( fQName, localName ) valueDef)
+                            |> Maybe.withDefault model.expandedValues
+                  }
+                , Cmd.none
+                )
+
+        ExpandVariable varIndex maybeRawValue ->
+            let
+                insightViewState : Morphir.Visual.Config.VisualState
+                insightViewState =
+                    model.insightViewState
+            in
+            ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue } }, Cmd.none )
+
+        ShrinkVariable varIndex ->
+            let
+                insightViewState : Morphir.Visual.Config.VisualState
+                insightViewState =
+                    model.insightViewState
+            in
+            ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing } }, Cmd.none )
+
+        SwitchDisplayType ->
+            ( case model.definitionDisplayType of
+                XRayView ->
+                    { model | definitionDisplayType = InsightView }
+
+                InsightView ->
+                    { model | definitionDisplayType = XRayView }
+            , Cmd.none
+            )
+
+        ArgValueUpdated fQName argName rawValue ->
+            let
+                variables : InsightArgumentState -> Dict (Name) (Value () ())
+                variables argState =
+                    argState
+                    |> Dict.get fQName
+                    |> Maybe.map (\args -> args |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ())))
+                    |> Maybe.withDefault Dict.empty
+
+                insightViewState : Morphir.Visual.Config.VisualState
+                insightViewState =
+                    model.insightViewState
+
+                newArgState : InsightArgumentState
+                newArgState = 
+                    model.argState
+                        |> Dict.update fQName
+                            (\maybeArgs ->
+                                case maybeArgs of
+                                    Just args ->
+                                        args |> Dict.insert argName rawValue |> Just
+
+                                    Nothing ->
+                                        Dict.singleton argName rawValue |> Just
+                            )
+            in
+            ( { model
+                | argState = newArgState, insightViewState = { insightViewState | variables = variables newArgState}
+              }
+            , Cmd.none
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -374,7 +486,7 @@ updateHomeState pack mod def filterState =
 
         updateModel : HomeState -> ModelUpdate
         updateModel newState model =
-            { model | homeState = newState }
+            { model | homeState = newState, insightViewState = emptyVisualState, argState = Dict.empty }
     in
     if pack == "" then
         updateModel
@@ -759,6 +871,14 @@ viewHome model packageName packageDef =
                         (pathToDisplayString moduleName)
                         (linkToDefinition name nameTransformation)
 
+                createElementKey definition =
+                    case definition of
+                        Type ( mname, tname ) ->
+                            (mname |> List.map Name.toTitleCase |> String.join ".") ++ Name.toTitleCase tname
+
+                        Value ( mname, vname ) ->
+                            (mname |> List.map Name.toTitleCase |> String.join ".") ++ Name.toTitleCase vname
+
                 types : List ( Definition, Element Msg )
                 types =
                     moduleDef.types
@@ -766,7 +886,7 @@ viewHome model packageName packageDef =
                         |> List.map
                             (\( typeName, _ ) ->
                                 ( Type ( moduleName, typeName )
-                                , createUiElement (el [ Font.color lightMorphIrBlue ] (text "ⓣ ")) (Type ( moduleName, typeName )) typeName Name.toTitleCase
+                                , createUiElement (Element.Keyed.el [ Font.color lightMorphIrBlue ] ( createElementKey <| Type ( moduleName, typeName ), text "ⓣ " )) (Type ( moduleName, typeName )) typeName Name.toTitleCase
                                 )
                             )
 
@@ -777,7 +897,7 @@ viewHome model packageName packageDef =
                         |> List.map
                             (\( valueName, _ ) ->
                                 ( Value ( moduleName, valueName )
-                                , createUiElement (el [ Font.color lightMorphIrOrange ] (text "ⓥ ")) (Value ( moduleName, valueName )) valueName Name.toCamelCase
+                                , createUiElement (Element.Keyed.el [ Font.color lightMorphIrOrange ] ( createElementKey <| Value ( moduleName, valueName ), text "ⓥ " )) (Value ( moduleName, valueName )) valueName Name.toCamelCase
                                 )
                             )
             in
@@ -974,8 +1094,32 @@ viewHome model packageName packageDef =
                     ]
                     [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
                 , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ] [ Theme.ellipseText pathToSelectedModule ]
-                , row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ]
+                , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
                 ]
+
+        toggleDisplayType : Element Msg
+        toggleDisplayType =
+            let
+                xrayOrInsight a b =
+                    case model.definitionDisplayType of
+                        XRayView ->
+                            a
+
+                        InsightView ->
+                            b
+            in
+            Element.Input.button
+                [ padding 7
+                , Background.color <| xrayOrInsight lightMorphIrBlue lightMorphIrOrange
+                , Border.rounded 3
+                , Font.color model.theme.colors.lightest
+                , Font.bold
+                , Font.size (model.theme |> Theme.scaled 2)
+                , mouseOver [ Background.color <| xrayOrInsight morphIrBlue morphIrOrange ]
+                ]
+                { onPress = Just SwitchDisplayType
+                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text <| "Switch to " ++ xrayOrInsight "InsightView" "XRayView" ]
+                }
     in
     row [ width fill, height fill, Background.color gray, spacing 10 ]
         [ column
@@ -1019,10 +1163,11 @@ viewHome model packageName packageDef =
             [ ifThenElse (model.homeState.selectedDefinition == Nothing)
                 (dependencyGraph model.homeState.selectedModule model.repo)
                 (column
-                    [ height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, width fill ]
+                    [ height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, width fill, spacing (model.theme |> Theme.scaled 1) ]
                     [ viewDefinition model.homeState.selectedDefinition
+                    , toggleDisplayType
                     , el [ height fill, width fill, scrollbars ]
-                        (viewDefinitionDetails model.irState model.homeState.selectedDefinition)
+                        (viewDefinitionDetails model.theme model.irState model.homeState.selectedDefinition model.insightViewState model.argState model.definitionDisplayType)
                     ]
                 )
             ]
@@ -1437,13 +1582,47 @@ definitionName definition =
 
 {-| Displays the inner workings of the selected Definition
 -}
-viewDefinitionDetails : IRState -> Maybe Definition -> Element Msg
-viewDefinitionDetails irState maybeSelectedDefinition =
+viewDefinitionDetails : Theme -> IRState -> Maybe Definition -> Morphir.Visual.Config.VisualState -> InsightArgumentState -> DisplayType -> Element Msg
+viewDefinitionDetails theme irState maybeSelectedDefinition visualState argstate displayType =
+    let
+        insightViewConfig : Distribution -> Morphir.Visual.Config.Config Msg
+        insightViewConfig distribution =
+            Morphir.Visual.Config.fromIR
+                (IR.fromDistribution distribution)
+                visualState
+                { onReferenceClicked = ExpandReference
+                , onHoverOver = ExpandVariable
+                , onHoverLeave = ShrinkVariable
+                }
+
+        insightViewCard : Distribution -> FQName -> Value.Definition () (Type ()) -> Element Msg
+        insightViewCard distribution fQName valueDef =
+            Common.viewAsCard theme
+                (column [ width fill, spacing 5 ]
+                    [ viewArgumentEditors (IR.fromDistribution distribution) argstate fQName valueDef
+                    ]
+                )
+                (ViewValue.viewDefinition (insightViewConfig distribution) fQName valueDef)
+
+        viewArgumentEditors : IR -> InsightArgumentState -> FQName -> Value.Definition () (Type ()) -> Element Msg
+        viewArgumentEditors ir argState fQName valueDef =
+            valueDef.inputTypes
+                |> List.map
+                    (\( argName, _, argType ) ->
+                        ( argName
+                        , ValueEditor.view ir
+                            argType
+                            (ArgValueUpdated fQName argName)
+                            (argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
+                        )
+                    )
+                |> FieldList.view
+    in
     case irState of
         IRLoading ->
             none
 
-        IRLoaded (Library _ _ packageDef) ->
+        IRLoaded ((Library packageName _ packageDef) as distribution) ->
             case maybeSelectedDefinition of
                 Just selectedDefinition ->
                     case selectedDefinition of
@@ -1462,7 +1641,12 @@ viewDefinitionDetails irState maybeSelectedDefinition =
                                                                 |> Dict.get valueName
                                                                 |> Maybe.andThen
                                                                     (\accessControlledValueDef ->
-                                                                        Just <| XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) accessControlledValueDef.value.value
+                                                                        case displayType of
+                                                                            XRayView ->
+                                                                                Just <| XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) accessControlledValueDef.value.value
+
+                                                                            InsightView ->
+                                                                                Just <| insightViewCard distribution ( packageName, moduleName, valueName ) accessControlledValueDef.value.value
                                                                     )
                                                                 |> Maybe.withDefault none
 
