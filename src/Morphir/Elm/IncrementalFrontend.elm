@@ -508,7 +508,7 @@ processModule moduleName parsedModule opts repo =
             (List.foldl
                 (\( typeName, typeDef ) repoResultForType ->
                     repoResultForType
-                        |> Result.andThen (processType moduleName typeName typeDef)
+                        |> Result.andThen (processType moduleName typeName typeDef (accessOf Type typeName))
                 )
                 (Ok repoWithModuleInserted)
             )
@@ -530,8 +530,8 @@ processModule moduleName parsedModule opts repo =
             )
 
 
-processType : ModuleName -> Name -> Type.Definition () -> Repo -> Result (List Error) Repo
-processType moduleName typeName typeDef repo =
+processType : ModuleName -> Name -> Type.Definition () -> Access -> Repo -> Result (List Error) Repo
+processType moduleName typeName typeDef access repo =
     case repo |> Repo.modules |> Dict.get moduleName of
         Just existingModDef ->
             case Dict.member typeName existingModDef.value.types of
@@ -542,7 +542,7 @@ processType moduleName typeName typeDef repo =
 
                 False ->
                     repo
-                        |> Repo.insertType moduleName typeName typeDef
+                        |> Repo.insertType moduleName typeName typeDef access
                         |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
         Nothing ->

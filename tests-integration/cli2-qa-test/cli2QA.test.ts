@@ -39,7 +39,7 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		const IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 	})
 
 	test('should create an IR with no types when no types are found in elm file', async () => {
@@ -53,11 +53,10 @@ describe('Testing morphir-elm make and morphir make command', () => {
 				`   String.append "Player level: " level`
 			)
 		)
-
 		const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		const IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 	})
 
 	test('should create an IR with no values when no values are found in elm file', async () => {
@@ -66,10 +65,10 @@ describe('Testing morphir-elm make and morphir make command', () => {
 			join('module Package.Rentals exposing (Action)', '', 'type Action', `   = Rent`, `   | Return`)
 		)
 
-        const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		const IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 	})
 
 	test('should create an IR with correct types and values', async () => {
@@ -89,8 +88,8 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		)
 		const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		const IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 	})
 
 	test('should create an IR with only types when typesOnly is set to true', async () => {
@@ -107,12 +106,12 @@ describe('Testing morphir-elm make and morphir make command', () => {
 				'logic level =',
 				`   String.append "Player level: " level`
 			)
-		);
-		const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
-		const IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
-	});
+		)
+		const IR = await cli.make(PATH_TO_PROJECT, { typesOnly: true })
+		const IR2 = await cli2.make(PATH_TO_PROJECT, { typesOnly: true })
+		const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
+	})
 
 	test('should contain all two non-dependent but exposed modules', async () => {
 		await writeFile(
@@ -135,8 +134,8 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		)
 		const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		const IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 	})
 
 	test('should contain only required modules', async () => {
@@ -156,8 +155,8 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		)
 		const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		const IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 	})
 
 	test('should have private scope if module not exposed', async () => {
@@ -178,8 +177,8 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		)
 		const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		const IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		const IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 	})
 
 	test('should update rentals with new type', async () => {
@@ -189,8 +188,8 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		)
 		let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		let IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        let IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		let IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 
 		//update the module with a new type
 		await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR)))
@@ -200,8 +199,8 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		)
 		IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 
 		//update the module with a new type and delete an existing type
 		await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR)))
@@ -211,8 +210,8 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		)
 		IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 	})
 
 	test('should update rentals with new value', async () => {
@@ -222,8 +221,8 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		)
 		let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		let IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        let IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		let IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 
 		//update the module with a new value
 		await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR)))
@@ -240,8 +239,8 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		)
 		IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 
 		//update the module with a new value and delete an existing value
 		await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR)))
@@ -258,7 +257,7 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		)
 		IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-        IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
-		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR)) 
+		IR2WithoutDeps = irUtils.removePackageDependencies(JSON.parse(IR2))
+		expect(JSON.stringify(IR2WithoutDeps)).toBe(JSON.stringify(IR))
 	})
 })

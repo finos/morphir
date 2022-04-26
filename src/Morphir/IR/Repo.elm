@@ -366,8 +366,8 @@ deleteModule moduleName (Repo repo) =
 
 {-| Insert types into repo modules and update the type dependency graph of the repo
 -}
-insertType : ModuleName -> Name -> Type.Definition () -> Repo -> Result Errors Repo
-insertType moduleName typeName typeDef (Repo repo) =
+insertType : ModuleName -> Name -> Type.Definition () -> Access -> Repo -> Result Errors Repo
+insertType moduleName typeName typeDef access (Repo repo) =
     let
         validateTypeExistsResult : AccessControlled (Module.Definition () (Type ())) -> Result Errors (AccessControlled (Module.Definition () (Type ())))
         validateTypeExistsResult accessControlledModuleDef =
@@ -407,7 +407,7 @@ insertType moduleName typeName typeDef (Repo repo) =
             accessControlledModDef
                 |> AccessControlled.map
                     (\modDef ->
-                        Dict.insert typeName (public (typeDef |> Documented.Documented "")) modDef.types
+                        Dict.insert typeName (AccessControlled access (typeDef |> Documented.Documented "")) modDef.types
                             |> (\updatedTypes -> { modDef | types = updatedTypes })
                     )
                 |> (\updatedAccessControlledModDef ->
