@@ -41,6 +41,7 @@ import Element
         )
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
@@ -57,7 +58,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
-import Morphir.IR.Path as Path
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.Type as Type exposing (Type)
@@ -138,6 +139,7 @@ type alias FilterState =
     { searchText : String
     , showValues : Bool
     , showTypes : Bool
+    , moduleClicked : String
     }
 
 
@@ -193,6 +195,7 @@ init _ url key =
                     { searchText = ""
                     , showValues = True
                     , showTypes = True
+                    , moduleClicked = ""
                     }
                 }
             , repo = Repo.empty []
@@ -243,6 +246,7 @@ type Msg
     | ShrinkVariable Int
     | SwitchDisplayType
     | ArgValueUpdated FQName Name ValueEditor.EditorState
+    | ModuleClicked String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -405,19 +409,19 @@ update msg model =
 
         ArgValueUpdated fQName argName rawValue ->
             let
-                variables : InsightArgumentState -> Dict (Name) (Value () ())
+                variables : InsightArgumentState -> Dict Name (Value () ())
                 variables argState =
                     argState
-                    |> Dict.get fQName
-                    |> Maybe.map (\args -> args |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ())))
-                    |> Maybe.withDefault Dict.empty
+                        |> Dict.get fQName
+                        |> Maybe.map (\args -> args |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ())))
+                        |> Maybe.withDefault Dict.empty
 
                 insightViewState : Morphir.Visual.Config.VisualState
                 insightViewState =
                     model.insightViewState
 
                 newArgState : InsightArgumentState
-                newArgState = 
+                newArgState =
                     model.argState
                         |> Dict.update fQName
                             (\maybeArgs ->
@@ -430,9 +434,19 @@ update msg model =
                             )
             in
             ( { model
-                | argState = newArgState, insightViewState = { insightViewState | variables = variables newArgState}
+                | argState = newArgState
+                , insightViewState = { insightViewState | variables = variables newArgState }
               }
             , Cmd.none
+            )
+
+        ModuleClicked path ->
+            let
+                filterState =
+                    model.homeState.filterState
+            in
+            ( model
+            , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | moduleClicked = path })
             )
 
 
@@ -472,6 +486,7 @@ routeParser =
 updateHomeState : String -> String -> String -> FilterState -> ModelUpdate
 updateHomeState pack mod def filterState =
     let
+        toTypeOrValue : String -> String -> Maybe Definition
         toTypeOrValue m d =
             case String.uncons d of
                 Just ( first, _ ) ->
@@ -487,7 +502,19 @@ updateHomeState pack mod def filterState =
         updateModel : HomeState -> ModelUpdate
         updateModel newState model =
             { model | homeState = newState, insightViewState = emptyVisualState, argState = Dict.empty }
+
+        -- When selecting a definition, we should not change the selected module, once the user explicitly selected one
+        keepOrChangeSelectedModule : ( List Path, List Name )
+        keepOrChangeSelectedModule =
+            if filterState.moduleClicked == pack then
+                ( urlFragmentToNodePath "", [] )
+
+            else
+                ifThenElse (filterState.moduleClicked == "")
+                    ( urlFragmentToNodePath mod, Path.fromString mod )
+                    ( urlFragmentToNodePath filterState.moduleClicked, Path.fromString filterState.moduleClicked )
     in
+    -- initial state, nothing is selected
     if pack == "" then
         updateModel
             { selectedPackage = Nothing
@@ -495,7 +522,7 @@ updateHomeState pack mod def filterState =
             , selectedDefinition = Nothing
             , filterState = filterState
             }
-
+    -- a top level package is selected
     else if mod == "" then
         updateModel
             { selectedPackage = Just (Path.fromString pack)
@@ -503,12 +530,20 @@ updateHomeState pack mod def filterState =
             , selectedDefinition = Nothing
             , filterState = filterState
             }
-
-    else
+    -- a module is selected
+    else if def == "" then
         updateModel
             { selectedPackage = Just (Path.fromString pack)
             , selectedModule = Just ( urlFragmentToNodePath mod, Path.fromString mod )
-            , selectedDefinition = ifThenElse (def == "") Nothing (toTypeOrValue mod def)
+            , selectedDefinition = Nothing
+            , filterState = filterState
+            }
+    -- a definition is selected
+    else
+        updateModel
+            { selectedPackage = Just (Path.fromString pack)
+            , selectedModule = Just keepOrChangeSelectedModule
+            , selectedDefinition = toTypeOrValue mod def
             , filterState = filterState
             }
 
@@ -629,8 +664,12 @@ queryParams =
         showTypes : Query.Parser Bool
         showTypes =
             Query.enum "showTypes" trueOrFalse |> Query.map (Maybe.withDefault True)
+
+        moduleClicked : Query.Parser String
+        moduleClicked =
+            Query.string "moduleClicked" |> Query.map (Maybe.withDefault "")
     in
-    Query.map3 FilterState search showValues showTypes
+    Query.map4 FilterState search showValues showTypes moduleClicked
 
 
 {-| Turns the model's current filter state into a query parameter string to be used in building the url
@@ -649,8 +688,11 @@ filterStateToQueryParams filterState =
         filterTypes : String
         filterTypes =
             ifThenElse filterState.showTypes "" "&showTypes=false"
+
+        moduleClicked =
+            ifThenElse (filterState.moduleClicked == "") "" ("&moduleClicked=" ++ filterState.moduleClicked)
     in
-    "?" ++ search ++ filterValues ++ filterTypes
+    "?" ++ search ++ filterValues ++ filterTypes ++ moduleClicked
 
 
 
@@ -1544,15 +1586,22 @@ viewModuleNames model packageName parentModule allModuleNames =
                     )
                 |> Set.fromList
                 |> Set.toList
+
+        handleClick : Path -> Msg
+        handleClick path =
+            ModuleClicked <| Path.toString Name.toTitleCase "." path
     in
     TreeLayout.Node
         (\_ ->
             case currentModuleName of
                 Just name ->
-                    link [ pointer ] { label = text (name |> nameToTitleText), url = pathToFullUrl [ packageName, parentModule ] ++ filterStateToQueryParams model.homeState.filterState }
+                    link [ pointer, onClick (handleClick parentModule) ]
+                        { label = text (name |> nameToTitleText)
+                        , url = pathToFullUrl [ packageName, parentModule ] ++ filterStateToQueryParams model.homeState.filterState
+                        }
 
                 Nothing ->
-                    link [ pointer ] { label = text (pathToUrl packageName), url = pathToFullUrl [ packageName ] ++ filterStateToQueryParams model.homeState.filterState }
+                    link [ pointer, onClick (handleClick packageName) ] { label = text (pathToUrl packageName), url = pathToFullUrl [ packageName ] ++ filterStateToQueryParams model.homeState.filterState }
         )
         Array.empty
         (childModuleNames
