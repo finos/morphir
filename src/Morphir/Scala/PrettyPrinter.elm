@@ -15,14 +15,11 @@
 -}
 
 
-module Morphir.Scala.PrettyPrinter exposing
-    ( Options, mapCompilationUnit
-    , mapMemberDecl
-    )
+module Morphir.Scala.PrettyPrinter exposing (Options, mapCompilationUnit, mapMemberDecl)
 
 {-| Pretty-printer for the Scala AST.
 
-@docs Options, mapCompilationUnit
+@docs Options, mapCompilationUnit, mapMemberDecl
 
 -}
 
@@ -164,6 +161,8 @@ mapTypeDecl opt typeDecl =
             mapModifiers decl.modifiers ++ "object " ++ decl.name ++ mapExtends opt decl.extends ++ "{" ++ memberDoc ++ bodyDoc ++ "}"
 
 
+{-| Map a member declaration to Doc.
+-}
 mapMemberDecl : Options -> MemberDecl -> Doc
 mapMemberDecl opt memberDecl =
     case memberDecl of
