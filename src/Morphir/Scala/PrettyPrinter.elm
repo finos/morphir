@@ -15,7 +15,10 @@
 -}
 
 
-module Morphir.Scala.PrettyPrinter exposing (Options, mapCompilationUnit)
+module Morphir.Scala.PrettyPrinter exposing
+    ( Options, mapCompilationUnit
+    , mapMemberDecl
+    )
 
 {-| Pretty-printer for the Scala AST.
 
