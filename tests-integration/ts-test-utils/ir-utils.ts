@@ -60,15 +60,6 @@ export function moduleHasValue(mod: any[], valueName: string): boolean {
 }
 
 export function getModuleAccess(mod: any[]): string {
-	console.log(mod)
-
 	if (!mod || mod.length < 2) return undefined
 	return mod[1].access
-}
-
-export function removePackageDependencies(irJson: any): any {
-	let distribution = irJson.distribution 
-	distribution.splice(2, 1, [])
-	irJson.distribution = distribution
-	return irJson
 }
