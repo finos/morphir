@@ -122,7 +122,9 @@ mapFQNameToPathAndName ( packagePath, modulePath, localName ) =
     , localName
     )
 
-
+{-|
+ Map Fully Qualified name Type Ref
+-}
 mapFQNameToTypeRef : FQName -> Scala.Type
 mapFQNameToTypeRef fQName =
     let
