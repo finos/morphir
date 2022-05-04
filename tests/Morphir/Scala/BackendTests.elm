@@ -63,24 +63,82 @@ mapFQNameToTypeRefTests =
             (Scala.TypeRef ["morphir", "reference", "model", "Insight"] "UseCase1")
         ]
 
-
-mapTypeTests : Test
-mapTypeTests =
+mapTypeTests_Variable : Test
+mapTypeTests_Variable =
     let
-        scalaType = (Backend.mapType (IRType.Variable () ["foo"]))
+        scalaVariableType = (Backend.mapType (IRType.Variable () ["foo"]))
     in
     describe "Map Morphir IR Variable to Scala Type Variable"
         [ test "Map IR String to Scala String" <|
             \_  ->
-            scalaType |> Expect.equal (Scala.TypeVar "Foo")
+            scalaVariableType |> Expect.equal (Scala.TypeVar "Foo")
         ]
 
 
+mapTypeTests_Reference : Test
+mapTypeTests_Reference =
+    describe "Map IR Reference to Scala Reference"
+        [ test "Map IR String to Scala String" <|
+            \_ ->
+                   Backend.mapType (IRType.Reference () (FQName.fqn "Morphir.sdk" "string" "string" ) [])
+                |> Expect.equal (Scala.TypeRef ["morphir", "sdk", "String"] "String")
+
+        , test "Map IR List String to Scala List String" <|
+            \_ ->
+                let
+                    type1 =
+                        IRType.Reference () (FQName.fqn "Morphir.sdk" "string" "string")
+                in
+                   Backend.mapType (IRType.Reference () (FQName.fqn "Morphir.sdk" "string" "string" ) [])
+                |> Expect.equal (Scala.TypeRef ["morphir", "sdk", "String"] "String")
+        ]
 
 
---mapTypeTest_Tuple : Test
---mapTypeTest_Tuple =
---    let
---        irTuple = IRType.Tuple [IRType.Variable "String", IRType.Variable "String"]
---    in
+mapTypeTest_Tuple : Test
+mapTypeTest_Tuple =
+    let
+       assert inIRTuple outScalaTuple =
+           test ("Generated Tuple Variable") <|
+            \_ ->
+                inIRTuple
+                    |> Backend.mapType
+                    |> Expect.equal outScalaTuple
+    in
+    describe "Map Morphir IR Tuple type to Scala Tuple"
+    [
+        assert (IRType.Tuple () [(IRType.Variable () ["foo"])])
+        (Scala.TupleType [Scala.TypeVar "Foo"])
+    ]
 
+
+mapTypeTests_Record : Test
+mapTypeTests_Record =
+    let
+
+        field1 : IRType.Field ()
+        field1 =
+            IRType.Field ["foo"] (IRType.Reference () (FQName.fromString "Morphir.SDK.Basics.String" ".") [])
+
+        field2 : IRType.Field ()
+        field2 =
+            IRType.Field ["bar"] (IRType.Reference () (FQName.fromString "Morphir.SDK.Basics.String" ".") [])
+
+        iRRecord : IRType.Type ()
+        iRRecord =
+            IRType.Record () [field1]
+
+        scalafield1 =
+            Scala.FunctionDecl
+                        { modifiers = []
+                        , name = Backend.mapValueName ["foo"]
+                        , typeArgs = []
+                        , args = []
+                        , returnType = Just (Backend.mapType (IRType.Reference () (FQName.fromString "Morphir.SDK.Basics.String" ".") []))
+                        , body = Nothing
+                        }
+    in
+    describe "Record Mapping Test"
+    [
+        test "Test for empty record" <|
+            \_ -> Backend.mapType iRRecord |> (Expect.equal (Scala.StructuralType [scalafield1]))
+    ]
