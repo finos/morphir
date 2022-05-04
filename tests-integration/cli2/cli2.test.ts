@@ -1,4 +1,4 @@
-import * as irUtils from './ir-utils'
+import * as irUtils from '../ts-test-utils/ir-utils'
 
 const path = require('path')
 const util = require('util')
