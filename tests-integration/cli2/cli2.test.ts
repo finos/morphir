@@ -33,6 +33,11 @@ describe('Testing Morphir-elm make command', () => {
 		await writeFile(path.join(PATH_TO_PROJECT, 'morphir.json'), JSON.stringify(morphirJSON))
 	})
 
+	afterEach(async () => {
+		const irExists = await util.promisify(fs.exists)(path.join(PATH_TO_PROJECT, 'morphir-ir.json'))
+		if (irExists) await util.promisify(fs.rm)(path.join(PATH_TO_PROJECT, 'morphir-ir.json'))
+	})
+
 	test('should create an IR with no modules when no elm files are found', async () => {
 		const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		expect(irUtils.getModules(JSON.parse(IR))).toMatchObject([])
@@ -103,13 +108,13 @@ describe('Testing Morphir-elm make command', () => {
 				'logic level =',
 				`   String.append "Player level: " level`
 			)
-		);
-		const IR = await cli.make(PATH_TO_PROJECT, { typesOnly: true });
-		const rentalsModule = irUtils.findModuleByName('Rentals', JSON.parse(IR));
-		expect(irUtils.getTypesFromModule(rentalsModule)).not.toMatchObject([]);
-		expect(irUtils.getValuesFromModule(rentalsModule)).toMatchObject([]);
-	    expect(irUtils.moduleHasType(rentalsModule, 'Action')).toBe(true);
-	});
+		)
+		const IR = await cli.make(PATH_TO_PROJECT, { typesOnly: true })
+		const rentalsModule = irUtils.findModuleByName('Rentals', JSON.parse(IR))
+		expect(irUtils.getTypesFromModule(rentalsModule)).not.toMatchObject([])
+		expect(irUtils.getValuesFromModule(rentalsModule)).toMatchObject([])
+		expect(irUtils.moduleHasType(rentalsModule, 'Action')).toBe(true)
+	})
 
 	test('should contain all two non-dependent but exposed modules', async () => {
 		await writeFile(
@@ -258,7 +263,6 @@ describe('Testing Morphir-elm make command', () => {
 		expect(irUtils.moduleHasValue(rentalsModule, 'level')).toBe(false)
 	})
 
-	
 	test('should fail to update type', async () => {
 		await writeFile(
 			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
