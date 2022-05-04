@@ -3,7 +3,6 @@ import * as irUtils from './ir-utils'
 const path = require('path')
 const util = require('util')
 const fs = require('fs')
-const readFile = fs.readFileSync
 const mkdir = fs.mkdirSync
 const rmdir = util.promisify(fs.rm)
 const cli = require('../../cli2/lib/cli')
