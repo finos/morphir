@@ -842,6 +842,9 @@ mapPattern pattern =
             Scala.WildcardMatch
 
 
+{-|
+ Map IR value to Scala Value
+-}
 mapValueName : Name -> String
 mapValueName name =
     let
