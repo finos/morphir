@@ -24,7 +24,7 @@ module Morphir.Scala.Backend exposing
 representation of files generated. The consumer is responsible for getting the input IR and saving the output
 to the file-system.
 
-@docs mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue, mapFQNameToPathAndName, mapValueName
+@docs mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue, mapFQNameToTypeRef, mapFQNameToPathAndName, mapValueName
 
 
 # Options
