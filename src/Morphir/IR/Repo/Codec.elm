@@ -86,14 +86,14 @@ encodeError error =
                 , encodeError cause
                 ]
 
-        TypeNotFound fQName ->
-            Encode.list identity
-                [ Encode.string "TypeNotFound"
-                , encodeFQName fQName
-                ]
-
         ValueNotFound fQName ->
             Encode.list identity
                 [ Encode.string "ValueNotFound"
                 , encodeFQName fQName
+                ]
+
+        IllegalTypeUpdate description ->
+            Encode.list identity
+                [ Encode.string "IllegalTypeUpdate"
+                , Encode.string description
                 ]
