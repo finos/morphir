@@ -25,7 +25,7 @@ import Morphir.IR.KindOfName exposing (KindOfName(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
-import Morphir.IR.Path as Path
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Repo, SourceCode)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
@@ -41,6 +41,7 @@ type alias Errors =
 type Error
     = ModuleCycleDetected ModuleName ModuleName
     | TypeCycleDetected Name Name
+    | TypeNotFound FQName
     | ValueCycleDetected FQName FQName
     | InvalidModuleName ElmModuleName.ModuleName
     | ParseError FilePath.Path (List Parser.DeadEnd)
@@ -48,6 +49,7 @@ type Error
     | MappingError Mapper.Errors
     | ResolveError ModuleName IncrementalResolve.Error
     | InvalidSourceFilePath FilePath.Path String
+    | NoExposedModulesFound
 
 
 type alias OrderedFileChanges =
@@ -151,14 +153,26 @@ filePathToModuleName packageName filePath =
             Err (InvalidSourceFilePath filePath "A valid file path must have at least one directory and one file.")
 
 
-applyFileChanges : OrderedFileChanges -> Frontend.Options -> Repo -> Result Errors Repo
-applyFileChanges fileChanges opts repo =
-    repo
-        |> applyChangesByOrder fileChanges opts
+applyFileChanges : OrderedFileChanges -> Frontend.Options -> Maybe (Set Path) -> Repo -> Result Errors Repo
+applyFileChanges fileChanges opts maybeExposedModules repo =
+    case maybeExposedModules of
+        Just exposedModules ->
+            if Set.isEmpty exposedModules then
+                -- an effect of an empty exposedModules set
+                -- is that all the modules would private and removed during tree shaking
+                -- so we just return the repo here
+                Ok repo
+
+            else
+                applyChangesByOrder fileChanges opts exposedModules repo
+
+        Nothing ->
+            -- make everything public when exposedModules not defined
+            applyChangesByOrder fileChanges opts (List.map Tuple.first fileChanges.insertsAndUpdates |> Set.fromList) repo
 
 
-applyChangesByOrder : OrderedFileChanges -> Frontend.Options -> Repo -> Result Errors Repo
-applyChangesByOrder orderedFileChanges opts repo =
+applyChangesByOrder : OrderedFileChanges -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
+applyChangesByOrder orderedFileChanges opts exposedModules repo =
     let
         updateAndInsertsAsDict : Dict ModuleName ParsedModule
         updateAndInsertsAsDict =
@@ -268,11 +282,11 @@ applyChangesByOrder orderedFileChanges opts repo =
                 case modChange of
                     ModuleInsert modName parsedModule ->
                         repoResultSoFar
-                            |> Result.andThen (applyInsert modName parsedModule opts)
+                            |> Result.andThen (applyInsert modName parsedModule opts exposedModules)
 
                     ModuleUpdate modName parsedModule ->
                         repoResultSoFar
-                            |> Result.andThen (applyUpdate modName parsedModule opts)
+                            |> Result.andThen (applyUpdate modName parsedModule opts exposedModules)
 
                     ModuleDelete _ ->
                         repoResultSoFar
@@ -296,16 +310,20 @@ applyChangesByOrder orderedFileChanges opts repo =
                         )
                         (Ok updatedRepo)
             )
+        |> Result.andThen
+            (Repo.removeUnusedModules exposedModules
+                >> Result.mapError (RepoError "" >> List.singleton)
+            )
 
 
-applyInsert : ModuleName -> ParsedModule -> Frontend.Options -> Repo -> Result Errors Repo
-applyInsert moduleName parsedModule opts repo =
-    processModule moduleName parsedModule opts repo
+applyInsert : ModuleName -> ParsedModule -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
+applyInsert moduleName parsedModule opts exposedModules repo =
+    processModule moduleName parsedModule opts exposedModules repo
 
 
-applyUpdate : ModuleName -> ParsedModule -> Frontend.Options -> Repo -> Result Errors Repo
-applyUpdate moduleName parsedModule opts repo =
-    processModule moduleName parsedModule opts repo
+applyUpdate : ModuleName -> ParsedModule -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
+applyUpdate moduleName parsedModule opts exposedModules repo =
+    processModule moduleName parsedModule opts exposedModules repo
 
 
 applyUpdateCleanup : ModuleName -> ParsedModule -> Repo -> Repo -> Result Errors Repo
@@ -399,31 +417,8 @@ applyDelete moduleName repo =
         |> Result.mapError (RepoError "Cannot delete module" >> List.singleton)
 
 
-applyInsertsAndUpdates : List ( ModuleName, ParsedModule ) -> Frontend.Options -> Repo -> Result Errors Repo
-applyInsertsAndUpdates insertsAndUpdates opts repo =
-    insertsAndUpdates
-        |> List.foldl
-            (\( moduleName, parsedModule ) repoResultForModule ->
-                repoResultForModule
-                    |> Result.andThen (processModule moduleName parsedModule opts)
-            )
-            (Ok repo)
-
-
-applyDeletes : Set ModuleName -> Repo -> Result Errors Repo
-applyDeletes deletes repo =
-    deletes
-        |> Set.foldl
-            (\moduleName repoResultForModule ->
-                repoResultForModule
-                    |> Result.andThen (Repo.deleteModule moduleName)
-            )
-            (Ok repo)
-        |> Result.mapError (RepoError "Cannot delete module" >> List.singleton)
-
-
-processModule : ModuleName -> ParsedModule -> Frontend.Options -> Repo -> Result (List Error) Repo
-processModule moduleName parsedModule opts repo =
+processModule : ModuleName -> ParsedModule -> Frontend.Options -> Set Path -> Repo -> Result (List Error) Repo
+processModule moduleName parsedModule opts exposedModules repo =
     let
         accessOf : KindOfName -> Name -> Access
         accessOf kindOfName localName =
@@ -446,8 +441,16 @@ processModule moduleName parsedModule opts repo =
                                             ( Type, Exposing.TypeOrAliasExpose typeName ) ->
                                                 Name.fromString typeName == localName
 
-                                            ( Type, Exposing.TypeExpose te ) ->
-                                                Name.fromString te.name == localName
+                                            ( Type, Exposing.TypeExpose typeExpose ) ->
+                                                Name.fromString typeExpose.name == localName
+
+                                            ( Constructor, Exposing.TypeExpose te ) ->
+                                                case te.open of
+                                                    Just _ ->
+                                                        Name.fromString te.name == localName
+
+                                                    Nothing ->
+                                                        False
 
                                             _ ->
                                                 False
@@ -462,8 +465,16 @@ processModule moduleName parsedModule opts repo =
         -- if a moduleName is not in repo insert it because it's probably a module insert
         repoWithModuleInserted : Repo
         repoWithModuleInserted =
+            let
+                moduleAccess =
+                    if Set.member moduleName exposedModules then
+                        Public
+
+                    else
+                        Private
+            in
             repo
-                |> Repo.insertModule moduleName Module.emptyDefinition
+                |> Repo.insertModule moduleName Module.emptyDefinition moduleAccess
                 |> Result.withDefault repo
 
         typeNames : List Name
@@ -502,7 +513,7 @@ processModule moduleName parsedModule opts repo =
                             localName
                     )
     in
-    extractTypes resolveName parsedModule
+    extractTypes resolveName accessOf parsedModule
         |> Result.andThen (orderTypesByDependency (Repo.getPackageName repoWithModuleInserted) moduleName)
         |> Result.andThen
             (List.foldl
@@ -521,23 +532,37 @@ processModule moduleName parsedModule opts repo =
                     extractValues resolveName parsedModule
                         |> Result.andThen
                             (List.foldl
-                                (\( name, definition ) repoResultSoFar ->
+                                (\( valueName, valueDef ) repoResultSoFar ->
                                     repoResultSoFar
-                                        |> Result.andThen (processValue (accessOf Value name) moduleName name definition)
+                                        |> Result.andThen (processValue (accessOf Value valueName) moduleName valueName valueDef)
                                 )
                                 (Ok repoWithTypesInserted)
                             )
             )
 
 
+
+-- TODO track noChanges. not tracking no changes
+
+
 processType : ModuleName -> Name -> Type.Definition () -> Access -> Repo -> Result (List Error) Repo
 processType moduleName typeName typeDef access repo =
+    let
+        updateType r =
+            r
+                |> Repo.updateType moduleName
+                    typeName
+                    (Maybe.map
+                        (\( _, existingDoc, _ ) ->
+                            ( access, existingDoc, typeDef )
+                        )
+                    )
+    in
     case repo |> Repo.modules |> Dict.get moduleName of
         Just existingModDef ->
             case Dict.member typeName existingModDef.value.types of
                 True ->
-                    repo
-                        |> Repo.updateType moduleName typeName typeDef
+                    updateType repo
                         |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
                 False ->
@@ -562,12 +587,12 @@ processValue access moduleName valueName ( maybeValueType, body ) repo =
             case Dict.member valueName existingModDef.value.values of
                 True ->
                     repo
-                        |> Repo.updateValue access moduleName valueName maybeValueType body
+                        |> Repo.updateValue moduleName valueName maybeValueType body access
                         |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
                 False ->
                     repo
-                        |> Repo.insertValue access moduleName valueName maybeValueType body
+                        |> Repo.insertValue moduleName valueName maybeValueType body access
                         |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
         Nothing ->
@@ -726,8 +751,8 @@ extractConstructorNames parsedModule =
         |> extractConstructorNamesFromFile
 
 
-extractTypes : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, Type.Definition () ))
-extractTypes resolveTypeName parsedModule =
+extractTypes : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> (KindOfName -> Name -> Access) -> ParsedModule -> Result Errors (List ( Name, Type.Definition () ))
+extractTypes resolveTypeName accessOf parsedModule =
     let
         declarationsInParsedModule : List Declaration
         declarationsInParsedModule =
@@ -735,8 +760,8 @@ extractTypes resolveTypeName parsedModule =
                 |> ParsedModule.declarations
                 |> List.map Node.value
 
-        typeNameToDefinition : Result Errors (List ( Name, Type.Definition () ))
-        typeNameToDefinition =
+        typeNameWithDefinition : Result Errors (List ( Name, Type.Definition () ))
+        typeNameWithDefinition =
             declarationsInParsedModule
                 |> List.filterMap typeDeclarationToDefinition
                 |> ResultList.keepAllErrors
@@ -785,12 +810,17 @@ extractTypes resolveTypeName parsedModule =
                                 |> ResultList.keepAllErrors
                                 |> Result.mapError List.concat
                                 |> Result.map Dict.fromList
+
+                        typeName : Name
+                        typeName =
+                            customType.name |> Node.value |> Name.fromString
                     in
                     constructorsResult
                         |> Result.map
                             (\constructors ->
-                                ( customType.name |> Node.value |> Name.fromString
-                                , Type.customTypeDefinition typeParams (AccessControlled.public constructors)
+                                ( typeName
+                                , Type.customTypeDefinition typeParams
+                                    (AccessControlled.AccessControlled (accessOf Constructor typeName) constructors)
                                 )
                             )
                         |> Just
@@ -818,7 +848,7 @@ extractTypes resolveTypeName parsedModule =
                 _ ->
                     Nothing
     in
-    typeNameToDefinition
+    typeNameWithDefinition
 
 
 {-| Order types topologically by their dependencies. The purpose of this function is to allow us to insert the types
