@@ -1,0 +1,679 @@
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@100&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;900&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/8bbb998f52.js" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc=" crossorigin="anonymous"></script>
+    <style>
+    body {
+  font-family: "Exo 2";
+  width: 98vw;
+  font-weight: 100;
+  letter-spacing: 1.2;
+}
+.heading-description {
+  font-weight: 100;
+  margin-left:20px;
+}
+.sandbox {
+  font-size: 18px;
+  font-family: "Exo 2";
+  padding: 10px 20px;
+  margin: 10px 20px;
+  border-radius: 10px;
+  font-weight: 100;
+}
+.fa-angle-right {
+  font-size:25px;
+  color: #666;
+  margin-right: 14px;
+}
+.keyword {
+  font-size: 25px;
+  font-weight: 100;
+}
+.sandbox:focus {
+  outline: none;
+  border: 1px solid orange;
+}
+.fa-info-circle {
+   font-size:25px;
+  color: #999;
+  margin-right: 12px;
+}
+.explanation {
+    height: 345px;
+    overflow: scroll;
+    box-shadow: 3px 4px 5px #bbb;
+    border-radius: 10px;
+    border: 1px solid #bbb;
+  width:97%;
+  margin: 4px auto;
+}
+.highlighted {
+  background-color: yellow;
+    color: #666;
+  padding: 10px 20px;
+      border: 1px solid #aaa;
+}
+.matching {
+  padding: 10px 20px;
+  font-weight: 100;
+}
+.matching:last-child {
+  margin-bottom: 300px;
+}
+    </style>
+    <script>
+    let definitionArray =
+    [
+      {
+      "name": "packageName",
+      "text": "Package Name. Example: 'Morphir.SDK'"
+    },
+      {
+      "name": "ModuleName",
+      "text": "Path"
+    },
+      {
+      "name": "moduleName",
+      "text": "Path from the string of the current file name. Example 'Basics'"
+    },
+      {
+      "name": "append",
+      "text": "Native append function is a function that appends two lists: append [1,2,3] [4,5,6] => [1,2,3,4,5,6]. Evaluates each arg if successful then checks if they are both Value.List then appends them and returns Ok and the List."
+    },
+      {
+      "name": "Native.Function",
+      "text": "Type that represents a native function. It's a function that takes two arguments:<br>- A function to evaluate values. See the section on [Lazy evaluation](#Lazy_evaluation) for details.<br>- The list of arguments."
+    },
+{
+      "name": "Native",
+      "text": "Native functions are functions that are not expressed in terms Morphir expressions either because they cannot be or they are more efficient natively. Native in this context means evaluating within Elm which in turn translates to JavaScript which either executes in the browser or on the backend using Node. Native functions are mainly used in the interpreter for evaluating SDK functions. Think of simple things like adding two numbers: the IR captures the fact that you want to add them in a reference `Morphir.SDK.Basics.add` and the interpreter finds the native function that actually adds the two numbers (which would be impossible to express in Morphir since it's a primitive operation)."
+    },
+      {
+      "name": "ListOfResults.liftFirstError",
+      "text": "If there is even one error in the List(Result e a) then it returns that error otherwise it returns the (List a). It uses a helper method liftAllErrors which takes a list of Results Ok with data and Error with error msg. It has a list which it fills with only the error messages and if that list has a size > 0 then returns that list. Otherwise returns original list containing only Ok"
+    },
+      {
+      "name": "^Name$",
+      "text": "Type that represents a name that is made up of words and is a List of Strings"
+    },
+      {
+      "name": "^Path$",
+      "text": "`Path` is a list of names that represents a path in the tree. It's used at various places in the IR to identify types and values. Type that represents a path as a list of names."
+    },
+      {
+      "name": "^case$",
+      "text": "Case that an argument can take over the various values listed and the branch to execute when there is a match. Default when nothing matched is _ branch"
+    },
+      {
+      "name": "Native.mapLiteral",
+      "text": "Create a native function that maps one literal value to another literal value."
+    },
+    {
+      "name": "Native.unaryLazy",
+      "text": "Create a native function that takes exactly one argument. Let the implementor decide when to evaluate the argument."
+    },
+    {
+      "name": "Native.unaryStrict",
+      "text": "Create a native function that takes exactly one argument. Evaluate the argument before passing it to the supplied function."
+    },
+      {
+      "name": "Native.binaryLazy",
+      "text": "Create a native function that takes exactly two arguments. Let the implementor decide when to evaluate the arguments."
+    },
+      {
+      "name": "Native.binaryStrict",
+      "text": "Create a native function that takes exactly two arguments. Evaluate both arguments before passing then to the supplied function."
+    },
+      {
+      "name": "StringLiteral",
+      "text": "Type that represents String in other languages."
+    },
+    {
+      "name": "BoolLiteral",
+      "text": "Type that represents bool or Boolean in other languages."
+    },
+      {
+      "name": "FloatLiteral",
+      "text": "Type that represents float or floating point numbers in other languages."
+    },
+      {
+      "name": "WholeNumberLiteral",
+      "text": "Type that represents Integer numbers in other languages."
+    },
+      {
+        "name": "Value.Literal",
+        "text": "- Represents a literal value like 13, True or 'foo'.<br>Literals represent fixed values in the IR. We support the same set of basic types as Elm which almost matches JSON's supported values:<br>- Bool<br>- Char<br>- String<br>- Int<br>- Float<br>va -> Literal -> Value ta va"
+      },
+      {
+        "name": "Constructor",
+        "text": "**Constructor**<br>- Reference to a custom type constructor name.<br>- If the type constructor has arguments this node will be wrapped into some `Apply` nodes depending on the number of arguments.<br>va FQName"
+      },
+      {
+        "name": "Tuple",
+        "text": "**Tuple**<br>- Represents a tuple value.<br>- Each element of the tuple is in turn a `Value`.<br>va (List (Value ta va))"
+      },
+      {
+        "name": "Value.List",
+        "text": "**List**<br>- A [list] represents an ordered list of values where every value has to be of the same type.<ul><li>[ 1, 3, 5 ] -- List [ Literal (WholeNumberLiteral 1), Literal (WholeNumberLiteral 3), Literal (WholeNumberLiteral 5) ]</li><li>[] -- List []</li></ul>va -> List (Value ta va) -> Value ta va"
+      },
+      {
+        "name": "Record",
+        "text": "**Record**<br>- Represents a record value.<br>- Each field value of the record is in turn a `Value`.<br>va (List ( Name, Value ta va ))"
+      },
+      {
+        "name": "Variable",
+        "text": "**Variable**<br>- Reference to a variable.<br>va Name"
+      },
+      {
+        "name": "Value.Reference",
+        "text": "**Reference**<br>- Reference to another value within or outside the module.<br>- References are always full-qualified to make resolution easier.<br>va FQName"
+      },
+      {
+        "name": "Value",
+        "text": "Type that represents a value expression. This is a recursive data structure with various node types representing each possible language construct.<ul><li>Literal va Literal</li><li>Constructor va FQName</li><li>Tuple va (List (Value ta va))</li><li>List va (List (Value ta va))</li><li>Record va (List ( Name, Value ta va ))</li><li>Variable va Name</li><li>Reference va FQName</li><li>Field va (Value ta va) Name</li><li>FieldFunction va Name</li><li>Apply va (Value ta va) (Value ta va)</li><li>Lambda va (Pattern va) (Value ta va)</li><li>LetDefinition va Name (Definition ta va) (Value ta va)</li><li>LetRecursion va (Dict Name (Definition ta va)) (Value ta va)</li><li>Destructure va (Pattern va) (Value ta va) (Value ta va)</li><li>IfThenElse va (Value ta va) (Value ta va) (Value ta va)</li><li>PatternMatch va (Value ta va) (List ( Pattern va, Value ta va ))</li><li>UpdateRecord va (Value ta va) (List ( Name, Value ta va ))</li><li>Unit va</li></ul>"
+      },
+      {
+        "name": "Reference",
+        "text": "**Reference**<br>- Reference to another value/type within or outside the module.<br>- References are always full-qualified to make resolution easier."
+      },
+      {
+        "name": "Type.Reference",
+        "text": "**Reference**<br>- Reference to another type within or outside the module.<br>- References are always full-qualified to make resolution easier."
+      },
+      {
+        "name": "Field",
+        "text": "**Field**<br>- Represents accessing a field on a record together with the target expression.<br>- This is done using the dot notation in Elm: `foo.bar`"
+      },
+      {
+        "name": "FieldFunction",
+        "text": "- Represents accessing a field on a record without the target expression.<br>- This is a shortcut to refer to the function that extracts the field from the input.<br>- This is done using the dot notation in Elm without a target expression: `.bar`"
+      },
+      {
+        "name": "Value.Apply",
+        "text": "**Apply**<br>- Represents a function application.<br>- The two arguments are the target function and the argument.<br>- Multi-argument invocations are expressed by wrapping multiple `Apply` nodes in each other (currying)."
+      },
+      {
+        "name": "Apply",
+        "text": "**Apply**<br>-  Represents a function application.<br>- The two arguments are the target function and the argument.<br>- Multi-argument invocations are expressed by wrapping multiple Apply nodes in each other (currying)."
+      },
+      {
+        "name": "^\(\\[a-z,A-Z,0-9, ]+->[a-z,A-Z,0-9, ]+\)$",
+        "text": "**Lambda**<br>- Represents a lambda abstraction.<br>- The first argument is a pattern to match on the input, the second is the lambda expression's body.<br>va (Pattern va) (Value ta va)"
+      },
+      {
+        "name": "LetDefinition",
+        "text": "**LetDefinition**<br>- Represents a single let binding.<br>- Multiple let bindings are achieved through wrapping multiple let expressions into each other.<br>va Name (Definition ta va) (Value ta va)"
+      },
+      {
+        "name": "LetRecursion",
+        "text": "**LetRecursion**- Special let binding that allows mutual recursion between the bindings.<br>- This is necessary because `LetDefinition` will not make recursion possible due to its scoping rules.<br>va (Dict Name (Definition ta va)) (Value ta va)"
+      },
+      {
+        "name": "Destructure",
+        "text": "**Destructure**<br>- Applies a pattern match to the first expression and passes any extracted variables to the second expression.<br>- This can be represented as a let expression with a pattern binding or a single-case pattern-match in Elm."
+      },
+      {
+        "name": "IfThenElse",
+        "text": "**IfThenElse**<br>- Represents a simple if/then/else expression.<br>- The 3 arguments are: the condition, the then branch and the else branch."
+      },
+      {
+        "name": "IfThenElse",
+        "text": "**IfThenElse**<br>- Represents a simple if/then/else expression.<br>- The 3 arguments are: the condition, the then branch and the else branch."
+      },
+      {
+        "name": "PatternMatch",
+        "text": "**PatternMatch**<br>- Represents a pattern-match.<br>va (Value ta va) (List ( Pattern va, Value ta va ))"
+      },
+      {
+        "name": "Update Record",
+        "text": "**UpdateRecord**- Expression to update one or more fields of a record.<br>- As usual in FP this is a copy-on-update so no mutation is happening.<br>va (Value ta va) (List ( Name, Value ta va ))"
+      },
+      {
+        "name": "^Unit$",
+        "text": "**Unit**<br>- Represents the single value in the Unit type.<br>- When you find Unit in the IR it usually means: 'There's nothing useful here'."
+      },
+      {
+        "name": "WildcardPattern",
+        "text": "**WildcardPattern**<br>- Matches any value and does not extract any variables.<br>- `_` in Elm"
+      },
+      {
+        "name": "AsPattern",
+        "text": "**AsPattern**- Assigns a variable name to the value matched by a nested pattern.<br>- `(...) as foo` in Elm<br>- Special case: when there is just a variable name in a pattern in Elm it will be represented as a `WildcardPattern` wrapped in an `AsPattern`"
+      },
+      {
+        "name": "TuplePattern",
+        "text": "**TuplePattern**<br>- Matches on a tuple where each element matches the nested patterns."
+      },
+      {
+        "name": "ConstructorPattern",
+        "text": "**ConstructorPattern**<br>- Matches on a type constructor and its arguments."
+      },
+      {
+        "name": "EmptyListPattern",
+        "text": "**EmptyListPattern**<br>- Matches on an empty list."
+      },
+      {
+        "name": "HeadTailPattern",
+        "text": "**HeadTailPattern**<br>- Matches on the head and the tail of a list.<br>- Combined with `EmptyListPattern` it can match on lists of any specific sizes."
+      },
+      {
+        "name": "LiteralPattern",
+        "text": "**LiteralPattern**<br>- Matches an an exact literal value."
+      },
+      {
+        "name": "UnitPattern",
+        "text": "**UnitPattern**<br>- Matches the `Unit` value only."
+      },
+      {
+        "name": "^FQName$",
+        "text": "Type that represents a fully-qualified name. FQName includes Path, Path and Name"
+      },
+      {
+        "name": "^fQName$",
+        "text": "Function: Create a fully-qualified name. Path -> Path -> Name -> FQName"
+      },
+      {
+        "name": "fromQName",
+        "text": "Create a fully-qualified from a qualified name. Package Path -> QName -> FQName"
+      },
+      {
+        "name": "getPackagePath",
+        "text": "Get the package path part of a fully-qualified name. FQName -> Path"
+      },
+      {
+        "name": "getModulePath",
+        "text": "Get the module path part of a fully-qualified name. FQName -> Path"
+      },
+      {
+        "name": "getLocalName",
+        "text": "Get the local name part of a fully-qualified name."
+      },
+      {
+        "name": "fqn",
+        "text": "Convenience function to create a fully-qualified name from 3 strings."
+      },
+      {
+        "name": "toFQName",
+        "text": "Applies Name.fromString to the second String argument (localName) -> Applies the QName.fromName to module path and Name -> Applies FQName.fromQName to packageName QName :<br> ModuleName -> String -> FQName"
+      },
+      {
+        "name": "getLocalName",
+        "text": "Get the local name part of a fully-qualified name."
+      },
+      {
+        "name": "getLocalName",
+        "text": "Get the local name part of a fully-qualified name."
+      },
+      {
+        "name": "getLocalName",
+        "text": "Get the local name part of a fully-qualified name."
+      },
+      {
+        "name": "^ta$",
+        "text": "The extra type parameters `ta` and `va` allow you to add type and value attributes. Type attributes allow you to add extra information to each type node. Value attributes do the same for value nodes. In many cases you might not need this in which case you can just put a unit (`()`) type or a type variable as a placeholder."
+      },
+      {
+        "name": "^va$",
+        "text": "The extra type parameters `ta` and `va` allow you to add type and value attributes. Type attributes allow you to add extra information to each type node. Value attributes do the same for value nodes. In many cases you might not need this in which case you can just put a unit (`()`) type or a type variable as a placeholder."
+      },
+      {
+        "name": "^eval$",
+        "text": "The eval() function evaluates or executes an argument.If the argument is an expression, eval() evaluates the expression. If the argument is one or more JavaScript statements, eval() executes the statements."
+      },
+      {
+        "name": "^Result.andThen$",
+        "text": "Chain together a sequence of computations that may fail.This means we only continue with the callback if things are going well.This allows us to come out of a chain of operations with quite a specific error message. It is often best to create a custom type that explicitly represents the exact ways your computation may fail. This way it is easy to handle in your code."
+      },
+      {
+        "name": "Unit",
+        "text": "Unit Expression is the expression that nothing is needed here and can be ignored"
+      },
+      {
+        "name": "ExpectedBoolLiteral",
+        "text": "The compiler expected a Bool Literal but got something else."
+      },
+      {
+        "name": "ExpectedLiteral",
+        "text": "The compiler expected a Literal but got something else."
+      },
+      {
+        "name": "UnexpectedArguments",
+        "text": "The compiler received unexpected arguments which cannot / should not be processed in the current context."
+      },
+      {
+        "name": "Context",
+        "text": "It is a type alias of Distribution, references and variables<br>{ distribution : Distribution<br>, references : Dict Interpreter.FQN Interpreter.Reference<br>, variables : Dict Name RawValue<br>}"
+      },
+      {
+        "name": "Context.fromDistributionAndVariables",
+        "text": "Translate a distribution into references that can be fed into the interpreter to be used during evaluation."
+      },
+      {
+        "name": "TypedValue",
+        "text": "A value with type information.<br>Value () (Type ())"
+      },
+      {
+        "name": "RawValue",
+        "text": "A value without any additional information.<br>Value () ()"
+      },
+      {
+        "name": "Specification",
+        "text": "Type that represents a value or function specification. The specification of what the value or function is without the actual data or logic behind it.<br>{ inputs : List ( Name, Type ta )<br>, output : Type ta<br>}"
+      },
+      {
+        "name": "Definition",
+        "text": "Type that represents a value or function definition. A definition is the actual data or logic as opposed to a specification which is just the specification of those. Value definitions can be typed or untyped. Exposed values have to be typed.<br>{ inputTypes : List ( Name, va, Type ta )<br>, outputType : Type ta<br>, body : Value ta va<br>}"
+      },
+      {
+        "name": "definitionToSpecification",
+        "text" : "Turns a definition into a specification by removing implementation details."
+      },
+      {
+        "name": "definitionToValue",
+        "text": "Turn a value definition into a value by wrapping the body value as needed based on the number of arguments the definition has. For example, if the definition specifies 2 inputs it will wrap the body into 2 lambdas each taking one argument"
+      },
+      {
+        "name" : "Type",
+        "text" : "Represents a type expression that can appear in various places within the IR. It can be the right-hand-side of a type alias declaration, input and output types of a function or as an annotation on values after type inference is done.<br>Type are modeled as expression trees: a recursive data structure with various node types. The type argument `a` allows us to assign some additional attributes to each node in the tree. Here are some details on each node type in the tree:<ul><li>Variable</li><li>Reference</li><li>Tuple</li><li>Record</li><li>ExtensibleRecord</li><li>Function</li><li>Unit</li></ul>"
+      },
+      {
+        "name": "Value.toRawValue",
+        "text": "Clear all type and value annotations to get a raw value."
+      },
+      {
+        "name" : "Interpreter.evaluateValue",
+        "text" : "Evaluates a value expression recursively in a single pass while keeping track of variables and arguments along the evaluation."
+      },
+      {
+        "name" : "Context.evaluate",
+        "text" : "Using Interpreter.evaluateValue: Evaluates a value expression recursively in a single pass while keeping track of variables and arguments along the evaluation. If any errors occur they are shown.<ul><li>Value.Literal -> Ok value</li><li>Value.Constructor -> Ok value</li><li>Value.Tuple -> Recursively and wrapped back in tuple</li><li>Value.List -> Recursively and wrapped back in list</li><li>Value.Record -> Recursively and wrapped back in record</li><li>Value.Record -> Recursively and wrapped back in record</li><li>Value.Variable -> look up the value of the variable in the state. -> Do another round of evaluation in case there are unevaluated values in the variable</li><li>Value.Reference -> For references we first need to find what they point to. -> If it's a native function we invoke it directly. -> If this is a reference to another Morphir value we need to recursively evaluate those.</li><li>Value.Apply -> When we run into an Apply we simply add the argument to the state and recursively evaluate the function. When there are multiple arguments there will be another Apply within the function so arguments will be repeatedly collected until we hit another node (lambda, reference or variable) where the arguments will be used to execute the calculation.</li><li>Value.Lambda -> By the time we run into a lambda we expect arguments to be available in the state. So we start by taking the last argument in the state (We use head because the arguments are reversed).If the argument is available we first need to match it against the argument pattern. In Morhpir (just like in Elm) you can pattern-match on the argument of a lambda.To match the pattern we call a helper function that both matches and extracts variables out of the pattern. Finally we evaluate the body of the lambda using the variables extracted by the pattern.</li><li>Value.LetDefinition -> We evaluate a let definition by first evaluating the definition, then assigning it to the variable name iven in `defName`. Finally we evaluate the `inValue` passing in the new variable in the state.</li><li>Value.LetRecursion -> ecursive let bindings will be evaluated simply by assigning them to variable names and evaluating the in value using them. The in value evaluation will evaluate the recursive definitions.</li><li>Value.IfThenElse -> If then else evaluation is trivial: you evaluate the condition and depending on the result you evaluate one of the branches</li><li>Value.PatternMatch -> For a pattern match we first need to evaluate the subject value then step through the cases, match each pattern until we find a matching case and when we do evaluate the body</li><li>Value.Unit -> Ok value</li></ul>"
+      },
+      {
+        "name": "DecisionTree.Node",
+        "text": "Branch BranchNode -- connectors<br>| Leaf TypedValue"
+      },
+      {
+        "name": "DecisionTree.Branch",
+        "text": "BranchNode =<br>{ condition : TypedValue --piece of IR<br>, conditionValue : Maybe Bool --result of eval the condition (no args or args  =>  Maybe)<br>, thenBranch : Node -- recursive<br>, elseBranch : Node -- recursive<br>}"
+      },
+      {
+        "name": "Value.uncurryApply",
+        "text": "Extract the argument list from a curried apply tree. It takes the two arguments of an apply and returns a tuple of the function and a list of arguments.<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;uncurryApply (Apply () f a) b == ( f, [ a, b] )"
+      },
+      {
+        "name": "Value.Constructor",
+        "text": "A reference to a constructor of a custom type.<ul><li>Nothing -- Constructor ( ..., [ [ 'maybe' ] ], [ 'nothing' ] )</li><li>Foo.Bar -- Constructor ( ..., [ [ 'foo' ] ], [ 'bar' ] )</li></ul>constructor : va -> FQName -> Value ta va"
+      },
+      {
+        "name": "Value.Tuple",
+        "text": "A [tuple] represents an ordered list of values where each value can be of a different type.<br>**Note**: Tuples with zero values are considered to be the special value [`Unit`](#unit)<ul><li>( 1, True ) -- Tuple [ Literal (WholeNumberLiteral 1), Literal (BoolLiteral True) ]</li><li>( 'foo', True, 3 ) -- Tuple [ Literal (StringLiteral 'foo'), Literal (BoolLiteral True), Literal (WholeNumberLiteral 3) ]</li><li>() -- Unit</li></ul>"
+      },
+      {
+        "name": "Value.Variable",
+        "text": "A [variable] represents a reference to a named value in the scope.<ul><li>a -- Variable [ 'a' ]</li><li>fooBar15 -- Variable [ 'foo', 'bar', '15' ]</li></ul>va -> Name -> Value ta va"
+      },
+      {
+        "name": "Value.Field",
+        "text": "Extracts the value of a record's field.<br>- a.foo -- Field (Variable [ 'a' ]) [ 'foo' ]<br>va -> Value ta va -> Name -> Value ta va"
+      },
+      {
+        "name": "Value.LetDefinition",
+        "text": "**LetDefinition**<ul><li>Represents a single let binding.</li><li>Multiple let bindings are achieved through wrapping multiple let expressions into each other.</li></ul>"
+      },
+      {
+        "name": "Name",
+        "text": "Type that represents a name that is made up of words.<br>List String"
+      },
+      {
+        "name": "Value.IfThenElse",
+        "text": "Represents and if/then/else expression.<br>&nbsp;&nbsp;&nbsp;&nbsp;if a then<br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b<br>&nbsp;&nbsp;&nbsp;&nbsp;else<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c<ul><li>IfThenElse (Variable ['a'])</li><li>(Variable ['b'])</li><li>(Variable ['c'])</li></ul>"
+      },
+      {
+        "file": "DecisionTree",
+        "name": "downArrowHead",
+        "text": "Represents a svg of a down arrow tip/head &darr;"
+      },
+      {
+        "name": "Distribution",
+        "text": "A distribution is a complete package of Morphir types and functions with all their dependencies.'morphir-elm make'produces a JSON that represents a 'Distribution'. We are planning to define different types of distributions in the future but currently the only one is 'Library'. A library contains the following pieces of information:<ul><li>The name of the library. This is the globally unique identifier of the package like the package name in NPM or the Group and Artifact ID in Maven.</li><li>All the library dependencies as a dictionary of package name and package specification. The package specification only contains type signatures, no implementations.</li><li>The package definition which contains all the module definitions included in the library. The package definition contains implementations as well, even ones that are not exposed.</li><li>Type that represents a package distribution. Currently the only distribution type we provide is a `Library`.</li></ul><br>Library PackageName (Dict PackageName (Package.Specification ())) (Package.Definition () (Type ()))"
+      },
+      {
+        "file": "DecisionTree",
+        "name": "Node",
+        "text": "Type for a Branch or Leaf<ul><li>Branch: BranchNode (Connectors)</li><li>Leaf: TypedValue ()</li></ul>"
+      },
+      {
+        "file": "DecisionTree",
+        "name": "BranchNode",
+        "text": "Type alias BranchNode:<br>{ condition : TypedValue --piece of IR<br>, conditionValue : Maybe Bool --result of eval the condition ( no args or args  =>  Maybe)<br>, thenBranch : Node -- recursive<br>, elseBranch : Node -- recursive<br>}"
+      },
+      {
+        "file": "DecisionTree",
+        "name": "LeftOrRight",
+        "text": "Type of either Left or Right"
+      },
+      {
+        "file": "DecisionTree",
+        "name": "highlightColor",
+        "text": "<br>{ true = Color green<br>, false = Color red<br>, default = Color grey<br>}"
+      },
+      {
+        "file": "DecisionTree",
+        "name": "Color",
+        "text": "Color of three Int, which represents Red, Blue, Green."
+      },
+      {
+        "file": "DecisionTree",
+        "name": "toElementColor",
+        "text": "Converts the Color value to Element.Color (HTML Color) using rgb function and the Color r, g, b (3 Int)."
+      },
+      {
+        "file": "DecisionTree",
+        "name": "toCssColor",
+        "text": "Converts the Color value to String: rgb(r,g,b) where r,g,b are the three String.fromInt values in color. This can be used in css style directly."
+      },
+      {
+        "file": "DecisionTree",
+        "name": "numberOfNodes",
+        "text": "Recursively walks through the BranchNode's then branch and else branch and upon encountering leaf returns 1."
+      },
+      {
+        "file": "DecisionTree",
+        "name": "layout",
+        "text": "view value function is to visualize each value in node, root node is root of tree. It returns HTML. It uses layoutHelp function.<br>layoutHelp ( TypedValue -> Element msg) -> Node -> Element msg"
+      },
+      {
+        "file": "ViewValue",
+        "name": "viewDefinition",
+        "text": "Generates a context from distribution and variables and stores it in ctx, and calls viewValue with context (ctx), variables and valueDef.body.<br>Distribution -> Value.Definition ( ) ( Type ( )) -> Dict Name RawValue -> Element msg"
+      },
+      {
+        "file": "ViewValue",
+        "name": "viewValue",
+        "text": "Just calls viewValueByValueType with ctx (context), argumentValues, value<br>Context -> Dict Name RawValue -> TypedValue -> Element msg"
+      },
+      {
+        "file": "ViewValue",
+        "name": "viewValueByValueType",
+        "text": "Extracts the value's type from typedValue and stores it in valueType. Checks if it is BoolType or NumberType and sends to their respective view (to avoid infinite recursion). Otherwise it calls viewValueByLanguageFeature with context (ctx), argumentValues and typedValue"
+      },
+      {
+        "name": "Value.Record",
+        "text": "A [record] represents a list of fields where each field has a name and a value.<br>{ foo = 'bar' } -- Record [ ( [ 'foo' ], Literal (StringLiteral 'bar') ) ]<br>{ foo = 'bar', baz = 1 } -- Record [ ( [ 'foo' ], Literal (StringLiteral 'bar') ), ( [ 'baz' ], Literal (WholeNumberLiteral 1) ) ]<br>{} -- Record []<br>[record]: https://en.wikipedia.org/wiki/Record_(computer_science)"
+      },
+      {
+        "name": "Value.FieldFunction",
+        "text": "Represents a function that extract a field from a record value passed to it.<ul><li>.foo -- FieldFunction [ 'foo' ]</li></ul>"
+      },
+      {
+        "name": "Value.Lambda",
+        "text":"Represents a lambda abstraction.<br>&nbsp;&nbsp;**Note**:<ul><li>We use currying to represent lambda abstractions with multiple arguments.</li><li>Arguments are not just names, they are patterns.</li></ul>&nbsp;&nbsp;&nbsp;-&nbsp;\a -> a -- Lambda (AsPattern WildcardPattern [ 'a' ]) (Variable [ 'a' ])<br>&nbsp;&nbsp;&nbsp;-&nbsp;\a b -> a -- Lambda (AsPattern WildcardPattern [ 'a' ]) (Lambda (AsPattern WildcardPattern [ 'b' ]) (Variable [ 'a' ]))"
+      },
+      {
+        "name": "Value.LetRecursion",
+        "text": "Represents a let expression with one or many recursive definitions.<br>&nbsp;&nbsp;&nbsp;let a = b<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b = a<br>&nbsp;&nbsp;&nbsp;in<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a<ul><li>LetRec --     [ ( [ 'a' ], UntypedDefinition [] (Variable [ 'b' ]) ), ( [ 'b' ], UntypedDefinition [] (Variable [ 'a' ]) )]<br>(Variable [ 'a' ])"
+      },
+      {
+        "name": "Value.Destructure",
+        "text": "Represents a let expression that extracts values using a pattern.<br>&nbsp;&nbsp;&nbsp;let<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;( a, b ) =<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;in<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a<br>&nbsp;&nbsp;&nbsp;LetDestruct<br>&nbsp;&nbsp;&nbsp;(TuplePattern [ AsPattern WildcardPattern ['a'], AsPattern WildcardPattern ['b'] ])<br>&nbsp;&nbsp;&nbsp;(Variable ['a'])"
+      },
+      {
+        "name":"Value.PatternMatch",
+        "text": "Represents a pattern-match.<br>&nbsp;&nbsp;&nbsp;case a of<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1 -><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'yea'<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_ -><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'nay'<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PatternMatch (Variable ['a'])<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ ( LiteralPattern (WholeNumberLiteral 1), Literal (StringLiteral 'yea') )<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;,( WildcardPattern, Literal (StringLiteral 'nay') )<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]"
+      },
+      {
+        "name": "Value.UpdateRecord",
+        "text": "Update one or many fields of a record value.<br>&nbsp;&nbsp;&nbsp;{ a | foo = 1 } -- Update (Variable ['a']) [ ( ['foo'], Literal (WholeNumberLiteral 1) ) ]"
+      },
+      {
+        "name" : "Value.Unit",
+        "text" : "Represents the unit value.<br>&nbsp;&nbsp;&nbsp;() -- Unit"
+      },
+      {
+		"file": "ViewValue",
+        "name" : "viewValueByLanguageFeature",
+        "text" : "Checks if the typedValue is of type Literal, Constructor, Tuple, List, Variable, Reference, Field, Apply, LetDefinition, IfThenElse and calls the appropriate view function ( ie. ViewIfThenElse.view for typedValue of IfThenElse )"
+      },
+	  {
+        "name" : "Documented",
+        "text" : "Tools to assign documentation to nodes in the IR. Type that represents a documented value.<br>type alias Documented a =<br>&nbsp;&nbsp;&nbsp;{ doc : String <br>&nbsp;&nbsp;&nbsp;, value : a<br>&nbsp;&nbsp;&nbsp;}<br>"
+	  },
+	  {
+        "name" : "Literal",
+        "text" : "Type that represents a literal value."
+	  },
+	  {
+        "name" : "boolLiteral",
+        "text" : "Represents a boolean value. Only possible values are: 'True', 'False'"
+	  },
+	  {
+        "name" : "charLiteral",
+        "text" : "Represents a character value. Some possible values are: 'a', 'Z', '3'"
+	  },
+	  {
+        "name" : "stringLiteral",
+        "text" : "Represents a string value. Some possible values are: \"\", \"foo\", \"Bar baz: 123\""
+	  },
+	  {
+        "name" : "intLiteral",
+        "text" : "Represents an integer value. Some possible values are: 0, -1, 9832479"
+	  },
+	  {
+        "name" : "floatLiteral",
+        "text" : "Represents a floating-point number. Some possible values are: 1.25, -13.4"
+	  },
+	  {
+        "name" : "Value.PatternMatch",
+        "text" : "Represents a pattern-match.<br>&nbsp;&nbsp;&nbsp;case a of<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1 -><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\"yea\"<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_ ->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\"nay\"<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PatternMatch (Variable [\"a\"])<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[(LiteralPattern (WholeNumberLiteral 1), Literal (StringLiteral \"yea\"))<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;, (WildcardPattern, Literal (StringLiteral \"nay\") )<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]"
+	  },
+	  {
+        "name" : "Value.UpdateRecord",
+        "text" : "Matches any value and ignores it (assigns no variable name).<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_ -- WildcardPattern"
+	  },
+	  {
+        "name" : "Value.AsPattern",
+        "text" : "Assigns a variable name to a pattern.<ul><li>_ as foo -- AsPattern WildCardPattern [\"foo\"]</li><li>foo -- AsPattern WildcardPattern [\"foo\"]</li><li>[] as foo -- AsPattern EmptyListPattern [\"foo\"]</li></ul>"
+	  },
+	  {
+        "name" : "Value.TuplePattern",
+        "text" : "Destructures a tuple using a pattern for every element.<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(_, foo) -- TuplePattern [ WildcardPattern, AsPattern WildcardPattern [\"foo\"] ]"
+	  },
+	  {
+        "name" : "Value.ConstructorPattern",
+        "text" : "Matches on a custom type's constructor.<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**Note**: When the custom type has a single constructor this can be used for destructuring. When there are multiple constructors it also does the filtering so it cannot be used in a [\"LetDestruct\"](#letDestruct) but it can be used in a [pattern-match](#patternMatch).<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Just _ -- ConstructorPattern ( ..., [[\"maybe\"]], [\"just\"]) [WildcardPattern ]"
+	  },
+	  {
+        "name" : "Value.EmptyListPattern",
+        "text" : "Matches an empty list. Can be used standalone but frequently used as a terminal pattern in a [\"HeadTailPattern\"](#headTailPattern).<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[] -- EmptyListPattern<br><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ _ ]<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--HeadTailPattern<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- WildcardPattern<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- EmptyListPattern"
+	  },
+	  {
+        "name" : "Value.HeadTailPattern",
+        "text" : "Matches the head and the tail of a list. It can be used to match lists of at least N items by nesting this pattern N times and terminating with [\"EmptyListPattern\"](#emptyListPattern).<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ a ]<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- HeadTailPattern<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- (AsPattern WildcardPattern [\"a\"])<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- EmptyListPattern<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a :: b<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- HeadTailPattern<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- (AsPattern WildcardPattern [\"a\"])<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- (AsPattern WildcardPattern [\"b\"])<br><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ a, b ] :: b<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- HeadTailPattern<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- (AsPattern WildcardPattern [\"a\"])<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(HeadTailPattern<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(AsPattern WildcardPattern [\"b\"])<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;EmptyListPattern<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)<br>"
+	  },
+	  {
+        "name" : "Value.LiteralPattern",
+        "text" : "Matches a specific literal value. This pattern can only be used in a [pattern-match](#patternMatch) since it always filters.<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;True -- LiteralPattern (BoolLiteral True)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'a' -- LiteralPattern (CharLiteral 'a')<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\"foo\" -- LiteralPattern (StringLiteral \"foo\")<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;13 -- LiteralPattern (WholeNumberLiteral 13)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;15.4 -- LiteralPattern (FloatLiteral 15.4)"
+	  }
+
+
+    ]
+
+$(document).ready(function(){
+  let previousPosition = 0;
+    $(".sandbox").click(function(){
+      let word = "";
+      if($(".sandbox").val().length >= 2)
+        {
+    let position = $(".sandbox").prop("selectionStart");
+    let starting = Math.max($(".sandbox").val().substring(0, position).lastIndexOf(" "), $(".sandbox").val().substring(0, position).lastIndexOf("\n"));
+          starting = Math.max(starting, $(".sandbox").val().substring(starting, position).indexOf("("));
+
+              if($(".sandbox").val().substring(starting, starting+4).trim() == "( )")
+            {
+              word = "Unit"
+            }
+          else
+            {
+    let endingSentence = $(".sandbox").val().substring(starting + 1, $(".sandbox").val().length)
+    let ending = Math.min(starting + 1 + endingSentence.indexOf(" "), starting + 1 + endingSentence.indexOf("\n"));
+     ending = Math.min(ending, starting + 1 + endingSentence.indexOf(")"));
+    word = $(".sandbox").val().substring(starting + 1, ending);
+        }
+        }
+    //$("body").prepend(word);
+       $(".matching").removeClass("highlighted")
+      $("#" + word.replace(".","")).addClass("highlighted")
+
+      a = document.getElementById(word.replace(/\./g, "")).getBoundingClientRect().top + previousPosition - document.getElementsByClassName("explanation")[0].getBoundingClientRect().top;
+      previousPosition = a;
+document.getElementsByClassName("explanation")[0].scroll({
+  top: a,
+  behavior: 'smooth'
+});
+  });
+
+
+  $(".sandbox").keyup(function(){
+    let stringy = $(this).val();
+    stringy = stringy.replace(/\( /g,"(");
+    stringy = stringy.replace(/\(/g, "( ");
+    $(this).val(stringy);
+    lines = stringy.split("\n");
+    $(".explanation").html("");
+    let doneDefinitions = [];
+    for(let r = 0; r < lines.length; r++)
+      {
+        lines[r] = lines[r].replace("( )", "Unit");
+        let words = lines[r].split(" ");
+        for(let j = 0; j < words.length; j++)
+          {
+            for(let b = 0; b < definitionArray.length; b++)
+              {
+                if(words[j].match(definitionArray[b].name) && !doneDefinitions.includes(words[j].match(definitionArray[b].name)[0]) && ($(".sandbox").val().match("module Morphir.*" + definitionArray[b].file) || typeof definitionArray[b].file == "undefined"))
+                  {
+                    $(".explanation").append("<div class='matching' id='"+ words[j].match(definitionArray[b].name)[0].replace(".","") +"'><div class='keyword'><i class='fas fa-angle-right'></i>" + words[j].match(definitionArray[b].name)[0] + ": </i></div><i class='fas fa-info-circle'></i>" + definitionArray[b].text + "</div>");
+                    doneDefinitions.push(words[j].match(definitionArray[b].name)[0]);
+                  }
+              }
+          }
+      }
+  })
+});
+    </script>
+  </head>
+  <body>
+    <div class="heading-description">
+    Hello! Paste your Morphir Code here...
+    </div>
+    <div>
+    <textarea rows="25" cols="224" class="sandbox" spellcheck="false"></textarea>
+      </div>
+    <div class="explanation">
+    </div>
+  </body>
+</html>
