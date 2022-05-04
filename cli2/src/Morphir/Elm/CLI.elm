@@ -14,6 +14,7 @@
 
 port module Morphir.Elm.CLI exposing (..)
 
+import Dict
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
@@ -79,8 +80,8 @@ type alias BuildIncrementallyInput =
 type Msg
     = BuildFromScratch Decode.Value
     | BuildIncrementally Decode.Value
-    | OrderFileChanges PackageName FileChanges Frontend.Options Repo
-    | ApplyFileChanges OrderedFileChanges Frontend.Options Repo
+    | OrderFileChanges PackageName PackageInfo Frontend.Options FileChanges Repo
+    | ApplyFileChanges PackageInfo Frontend.Options OrderedFileChanges Repo
 
 
 main : Platform.Program () () Msg
@@ -116,8 +117,9 @@ process msg =
                         |> Result.mapError (IncrementalFrontend.RepoError "Error while building repo." >> List.singleton)
                         |> Result.map
                             (OrderFileChanges input.packageInfo.name
-                                (input.fileSnapshot |> FileSnapshot.toInserts |> keepElmFilesOnly)
+                                input.packageInfo
                                 input.options
+                                (input.fileSnapshot |> FileSnapshot.toInserts |> keepElmFilesOnly)
                             )
                         |> failOrProceed
 
@@ -144,8 +146,9 @@ process msg =
                         |> Result.mapError (IncrementalFrontend.RepoError "Error while building repo." >> List.singleton)
                         |> Result.map
                             (OrderFileChanges input.packageInfo.name
-                                (input.fileChanges |> keepElmFilesOnly)
+                                input.packageInfo
                                 input.options
+                                (input.fileChanges |> keepElmFilesOnly)
                             )
                         |> failOrProceed
 
@@ -154,13 +157,13 @@ process msg =
                         |> Decode.errorToString
                         |> decodeFailed
 
-        OrderFileChanges packageName fileChanges opts repo ->
+        OrderFileChanges packageName packageInfo opts fileChanges repo ->
             IncrementalFrontend.orderFileChanges packageName fileChanges
-                |> Result.map (\orderedFileChanges -> ApplyFileChanges orderedFileChanges opts repo)
+                |> Result.map (\orderedFileChanges -> ApplyFileChanges packageInfo opts orderedFileChanges repo)
                 |> failOrProceed
 
-        ApplyFileChanges orderedFileChanges opts repo ->
-            IncrementalFrontend.applyFileChanges orderedFileChanges opts repo
+        ApplyFileChanges packageInfo opts orderedFileChanges repo ->
+            IncrementalFrontend.applyFileChanges orderedFileChanges opts packageInfo.exposedModules repo
                 |> returnDistribution
 
 
@@ -173,10 +176,10 @@ report msg =
         BuildIncrementally _ ->
             reportProgress "Building incrementally ..."
 
-        OrderFileChanges _ _ _ _ ->
+        OrderFileChanges _ _ _ _ _ ->
             reportProgress "Parsing files and ordering file changes"
 
-        ApplyFileChanges orderedFileChanges _ _ ->
+        ApplyFileChanges _ _ orderedFileChanges _ ->
             reportProgress
                 (String.concat
                     [ "Applying file changes in the following order:\n"
@@ -199,8 +202,13 @@ keepElmFilesOnly fileChanges =
 
 returnDistribution : Result IncrementalFrontend.Errors Repo -> Cmd Msg
 returnDistribution repoResult =
+    let
+        removePackageDependencies (Library packageName _ packageDefinition) =
+            Library packageName Dict.empty packageDefinition
+    in
     repoResult
         |> Result.map Repo.toDistribution
+        |> Result.map removePackageDependencies
         |> encodeResult (Encode.list IncrementalFrontendCodec.encodeError) DistroCodec.encodeVersionedDistribution
         |> buildCompleted
 
