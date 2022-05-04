@@ -16,7 +16,7 @@
 
 
 module Morphir.Scala.Backend exposing
-    ( mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue
+    ( mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue, mapFQNameToPathAndName
     , Options
     )
 
@@ -24,7 +24,7 @@ module Morphir.Scala.Backend exposing
 representation of files generated. The consumer is responsible for getting the input IR and saving the output
 to the file-system.
 
-@docs mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue
+@docs mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue, mapFQNameToPathAndName
 
 
 # Options
@@ -96,6 +96,8 @@ mapPackageDefinition opt distribution packagePath packageDef =
         |> Dict.fromList
 
 
+{-| Map a Morphir fully-qualified name to a Scala package path and name.
+-}
 mapFQNameToPathAndName : FQName -> ( Scala.Path, Name )
 mapFQNameToPathAndName ( packagePath, modulePath, localName ) =
     let
