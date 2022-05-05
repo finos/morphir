@@ -300,4 +300,21 @@ describe('Testing Morphir-elm make command', () => {
 
 		await expect(cli.make(PATH_TO_PROJECT, CLI_OPTIONS)).rejects.toBeInstanceOf(Array)
 	})
+
+    test.skip('should make value private', async () => {
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (logic)',
+				'',
+                'privateValue = 1',
+                '',
+				'logic l = ',
+                '   String.append "Player level: " l'
+			)
+		)
+        const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		const rentalModule = irUtils.findModuleByName('Rentals', JSON.parse(IR))
+		expect(irUtils.getValueAccess(rentalModule, "privateValue")).toMatch(/[Pp]rivate/)
+	})
 })
