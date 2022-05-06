@@ -28,5 +28,5 @@ mapTypeDefinitionTests =
         [ positiveTest "simple reference"
             ( [ [ "test" ], [ "pack" ] ], [ [ "test" ], [ "mod" ] ], [ "foo" ] )
             (Type.TypeAliasDefinition [] (Type.Reference () ( [ [ "test" ], [ "pack" ] ], [ [ "test" ], [ "mod" ] ], [ "bar" ] ) []))
-            [ "val encodeFoo: io.circe.Encoder[test.pack.test.Mod.Foo] = test.pack.test.mod.Codec.encodeBar" ]
+            [ "val encodeFoo: io.circe.Encoder[test1.pack.test.Mod.Foo] = test.pack.test.mod.Codec.encodeBar" ]
         ]

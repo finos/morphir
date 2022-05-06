@@ -121,12 +121,9 @@ mapTypeTests_Record =
 
         field2 : IRType.Field ()
         field2 =
-            IRType.Field ["bar"] (IRType.Reference () (FQName.fromString "Morphir.SDK.Basics.String" ".") [])
+            IRType.Field ["bar"] (IRType.Reference () (FQName.fqn "Morphir.sdk" "string" "string" ) [])
 
-        iRRecord : IRType.Type ()
-        iRRecord =
-            IRType.Record () [field1]
-
+        scalafield1 : Scala.MemberDecl
         scalafield1 =
             Scala.FunctionDecl
                         { modifiers = []
@@ -139,6 +136,48 @@ mapTypeTests_Record =
     in
     describe "Record Mapping Test"
     [
-        test "Test for empty record" <|
-            \_ -> Backend.mapType iRRecord |> (Expect.equal (Scala.StructuralType [scalafield1]))
+        test "Test for record with empty field" <|
+            \_ -> Backend.mapType (IRType.Record () []) |> (Expect.equal (Scala.StructuralType []))
+        ,
+        test "Test for record with a single field" <|
+            \_ -> Backend.mapType (IRType.Record () [field2]) |> (Expect.equal (Scala.StructuralType [scalafield1]))
+    ]
+
+mapTypeTests_ExtensibleRecord : Test
+mapTypeTests_ExtensibleRecord =
+    let
+        iRField1 : IRType.Field ()
+        iRField1 =
+            IRType.Field ["foo"] (IRType.Reference () (FQName.fqn "Morphir" "sdk" "String") [])
+
+        scalafield1 : Scala.MemberDecl
+        scalafield1 =
+            Scala.FunctionDecl
+                        { modifiers = []
+                        , name = Backend.mapValueName ["foo"]
+                        , typeArgs = []
+                        , args = []
+                        , returnType = Just (Backend.mapType (IRType.Reference () (FQName.fromString "Morphir.SDK.Basics.String" ".") []))
+                        , body = Nothing
+                        }
+
+    in
+    describe "Extensible Record Mapping"
+    [
+         test "Test for empty extensible record" <|
+            \_ -> Backend.mapType (IRType.ExtensibleRecord () ["foo"] []) |> Expect.equal (Scala.StructuralType [])
+
+       , test "Test for extensible record with single field" <|
+            \_ -> Backend.mapType (IRType.ExtensibleRecord () ["bar"] [iRField1]) |> Expect.equal (Scala.StructuralType [scalafield1])
+    ]
+
+
+-- Map Function types
+matTypeTests_Function : Test
+matTypeTests_Function  =
+    describe "Map function test"
+    [
+        test "Test for function of string and string" <|
+            \_ -> Backend.mapType (IRType.Function () (IRType.Reference () (FQName.fromString "Morphir.SDK.Basics.String" ".") []) (IRType.Reference () (FQName.fromString "Morphir.SDK.Basics.String" ".") []))
+                |> Expect.equal (Scala.FunctionType (Scala.TypeRef ["morphir", "sdk", "string"] "String") (Scala.TypeRef ["morphir", "sdk", "string"] "String"))
     ]

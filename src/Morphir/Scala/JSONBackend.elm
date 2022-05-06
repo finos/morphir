@@ -3,6 +3,8 @@ module Morphir.Scala.JSONBackend exposing (..)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Value exposing (Value(..))
+import Morphir.SDK.ResultList as ResultList
 import Morphir.Scala.AST as Scala exposing (MemberDecl(..))
 import Morphir.Scala.Backend as ScalaBackend
 
@@ -39,7 +41,7 @@ mapTypeDefinition (( packageName, moduleName, typeName ) as fQTypeName) typeDef 
                     )
 
         Type.CustomTypeDefinition typeArgs accessControlledConstructors ->
-            Debug.todo "implement"
+            Debug.todo "Implement"
 
 
 genEncodeReference : Type () -> Result Error Scala.Value
@@ -70,7 +72,31 @@ genEncodeReference tpe =
             Debug.todo "implement"
 
         Type.Record a fields ->
-            Debug.todo "implement"
+            let
+                objFields : Result Error (List Scala.ArgValue)
+                objFields =
+                    fields
+                        |> List.map
+                            (\field ->
+                                genEncodeReference field.tpe
+                                    |> Result.map
+                                        (\fieldValue ->
+                                            let
+                                                fieldName : Scala.Value
+                                                fieldName =
+                                                    Scala.Literal (Scala.StringLit (Name.toCamelCase field.name))
+                                            in
+                                            Scala.ArgValue Nothing (Scala.Tuple [ fieldName, fieldValue ])
+                                        )
+                            )
+                        |> ResultList.keepFirstError
+
+                objRef : Result Error Scala.Value
+                objRef =
+                    objFields
+                        |> Result.map (Scala.Apply (Scala.Ref [ "io", "circe", "Json" ] "obj"))
+            in
+            objRef
 
         Type.ExtensibleRecord a name fields ->
             Debug.todo "implement"
