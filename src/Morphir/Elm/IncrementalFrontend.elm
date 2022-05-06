@@ -10,6 +10,7 @@ import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Expression exposing (Expression(..))
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation as TypeAnnotation
+import List.Extra as List
 import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
 import Morphir.Elm.IncrementalFrontend.Mapper as Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
@@ -20,7 +21,7 @@ import Morphir.File.Path as FilePath
 import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..))
 import Morphir.IR.FQName exposing (FQName, fQName)
 import Morphir.IR.KindOfName exposing (KindOfName(..))
-import Morphir.IR.Module exposing (ModuleName)
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
@@ -52,6 +53,12 @@ type alias OrderedFileChanges =
     { insertsAndUpdates : List ( ModuleName, ParsedModule )
     , deletes : Set ModuleName
     }
+
+
+type ModuleChange
+    = ModuleInsert ModuleName ParsedModule
+    | ModuleUpdate ModuleName ParsedModule
+    | ModuleDelete ModuleName
 
 
 type alias SignatureAndValue =
@@ -146,8 +153,249 @@ filePathToModuleName packageName filePath =
 applyFileChanges : OrderedFileChanges -> Repo -> Result Errors Repo
 applyFileChanges fileChanges repo =
     repo
-        |> applyInsertsAndUpdates fileChanges.insertsAndUpdates
-        |> Result.andThen (applyDeletes fileChanges.deletes)
+        |> applyChangesByOrder fileChanges
+
+
+applyChangesByOrder : OrderedFileChanges -> Repo -> Result Errors Repo
+applyChangesByOrder orderedFileChanges repo =
+    let
+        updateAndInsertsAsDict : Dict ModuleName ParsedModule
+        updateAndInsertsAsDict =
+            Dict.fromList orderedFileChanges.insertsAndUpdates
+
+        -- updates and deletes ordered by the existing moduleDependency
+        updatesAndDeletesChanges : List ModuleChange
+        updatesAndDeletesChanges =
+            Repo.moduleDependencies repo
+                |> (DAG.forwardTopologicalOrdering >> List.concat)
+                |> List.filterMap
+                    (\modName ->
+                        case Dict.get modName updateAndInsertsAsDict of
+                            Just parsedModule ->
+                                ModuleUpdate modName parsedModule
+                                    |> Just
+
+                            Nothing ->
+                                if Set.member modName orderedFileChanges.deletes then
+                                    ModuleDelete modName |> Just
+
+                                else
+                                    Nothing
+                    )
+
+        insertsAndUpdatesChanges : List ModuleChange
+        insertsAndUpdatesChanges =
+            orderedFileChanges.insertsAndUpdates
+                |> List.map
+                    (\( modName, parsedModule ) ->
+                        Repo.modules repo
+                            |> (\existingMods ->
+                                    if Dict.member modName existingMods then
+                                        ModuleUpdate modName parsedModule
+
+                                    else
+                                        ModuleInsert modName parsedModule
+                               )
+                    )
+
+        insertAfterOrBefore : Maybe ModuleChange -> Maybe ModuleChange -> ModuleChange -> List ModuleChange -> List ModuleChange
+        insertAfterOrBefore after before item list =
+            let
+                insertAt index =
+                    case List.splitAt index list of
+                        ( firstPart, secondPart ) ->
+                            List.concat [ firstPart, [ item ], secondPart ]
+
+                tryInsertAfter =
+                    case after of
+                        Just afterValue ->
+                            case List.elemIndex afterValue list of
+                                Just index ->
+                                    insertAt (index + 1)
+
+                                Nothing ->
+                                    tryInsertBefore
+
+                        Nothing ->
+                            tryInsertBefore
+
+                tryInsertBefore =
+                    case before of
+                        Just beforeValue ->
+                            case List.elemIndex beforeValue list of
+                                Just index ->
+                                    insertAt index
+
+                                Nothing ->
+                                    list
+
+                        Nothing ->
+                            list
+            in
+            tryInsertAfter
+
+        allChangesMerged : List ModuleChange
+        allChangesMerged =
+            updatesAndDeletesChanges
+                |> List.indexedMap (\idx change -> ( change, idx ))
+                |> List.foldl
+                    (\( change, idx ) mergeSoFar ->
+                        case change of
+                            ModuleInsert _ _ ->
+                                -- no inserts will show up, continue.
+                                mergeSoFar
+
+                            ModuleUpdate _ _ ->
+                                insertAfterOrBefore
+                                    (List.getAt (idx - 1) updatesAndDeletesChanges)
+                                    (List.getAt (idx + 1) updatesAndDeletesChanges)
+                                    change
+                                    mergeSoFar
+
+                            ModuleDelete _ ->
+                                insertAfterOrBefore
+                                    (List.getAt (idx - 1) updatesAndDeletesChanges)
+                                    (List.getAt (idx + 1) updatesAndDeletesChanges)
+                                    change
+                                    mergeSoFar
+                    )
+                    insertsAndUpdatesChanges
+    in
+    allChangesMerged
+        |> List.foldl
+            (\modChange repoResultSoFar ->
+                case modChange of
+                    ModuleInsert modName parsedModule ->
+                        repoResultSoFar
+                            |> Result.andThen (applyInsert modName parsedModule)
+
+                    ModuleUpdate modName parsedModule ->
+                        repoResultSoFar
+                            |> Result.andThen (applyUpdate modName parsedModule)
+
+                    ModuleDelete _ ->
+                        repoResultSoFar
+            )
+            (Ok repo)
+        |> Result.andThen
+            (\updatedRepo ->
+                List.reverse allChangesMerged
+                    |> List.foldl
+                        (\modChange repoResultSoFar ->
+                            case modChange of
+                                ModuleInsert _ _ ->
+                                    repoResultSoFar
+
+                                ModuleUpdate modName parsedModule ->
+                                    repoResultSoFar
+                                        |> Result.andThen (applyUpdateCleanup modName parsedModule repo)
+
+                                ModuleDelete modName ->
+                                    repoResultSoFar |> Result.andThen (applyDelete modName)
+                        )
+                        (Ok updatedRepo)
+            )
+
+
+applyInsert : ModuleName -> ParsedModule -> Repo -> Result Errors Repo
+applyInsert moduleName parsedModule repo =
+    processModule moduleName parsedModule repo
+
+
+applyUpdate : ModuleName -> ParsedModule -> Repo -> Result Errors Repo
+applyUpdate moduleName parsedModule repo =
+    processModule moduleName parsedModule repo
+
+
+applyUpdateCleanup : ModuleName -> ParsedModule -> Repo -> Repo -> Result Errors Repo
+applyUpdateCleanup moduleName parsedModule oldRepoState newRepoState =
+    let
+        currentTypes : Set Name
+        currentTypes =
+            extractTypeNames parsedModule
+                |> Set.fromList
+
+        currentValues : Set Name
+        currentValues =
+            extractValueNames parsedModule
+                |> Set.fromList
+
+        previousTypes : Set Name
+        previousTypes =
+            Repo.modules oldRepoState
+                |> Dict.get moduleName
+                |> Maybe.map (.value >> .types >> Dict.keys >> Set.fromList)
+                |> Maybe.withDefault Set.empty
+
+        previousValues : Set Name
+        previousValues =
+            Repo.modules oldRepoState
+                |> Dict.get moduleName
+                |> Maybe.map (.value >> .values >> Dict.keys >> Set.fromList)
+                |> Maybe.withDefault Set.empty
+
+        deletedTypes : Set Name
+        deletedTypes =
+            Set.diff previousTypes currentTypes
+
+        deletedValues : Set Name
+        deletedValues =
+            Set.diff previousValues currentValues
+
+        deletedTypesOrderedByDeps : List Name
+        deletedTypesOrderedByDeps =
+            Repo.typeDependencies oldRepoState
+                |> (DAG.forwardTopologicalOrdering >> List.concat)
+                |> List.filterMap
+                    (\( _, mn, name ) ->
+                        if mn == moduleName && Set.member name deletedTypes then
+                            Just name
+
+                        else
+                            Nothing
+                    )
+
+        deletedValuesOrderedByDeps : List Name
+        deletedValuesOrderedByDeps =
+            Repo.valueDependencies oldRepoState
+                |> (DAG.forwardTopologicalOrdering >> List.concat)
+                |> List.filterMap
+                    (\( _, mn, name ) ->
+                        if mn == moduleName && Set.member name deletedValues then
+                            Just name
+
+                        else
+                            Nothing
+                    )
+    in
+    deletedValuesOrderedByDeps
+        |> List.foldl
+            (\valueName repoResultSoFar ->
+                repoResultSoFar
+                    |> Result.andThen
+                        (Repo.deleteValue moduleName valueName
+                            >> Result.mapError (RepoError "could not delete value" >> List.singleton)
+                        )
+            )
+            (Ok newRepoState)
+        |> (\repoResultWithValueDeleted ->
+                deletedTypesOrderedByDeps
+                    |> List.foldl
+                        (\typeName repoResultSoFar ->
+                            repoResultSoFar
+                                |> Result.andThen
+                                    (Repo.deleteType moduleName typeName
+                                        >> Result.mapError (RepoError "could not delete type" >> List.singleton)
+                                    )
+                        )
+                        repoResultWithValueDeleted
+           )
+
+
+applyDelete : ModuleName -> Repo -> Result Errors Repo
+applyDelete moduleName repo =
+    Repo.deleteModule moduleName repo
+        |> Result.mapError (RepoError "Cannot delete module" >> List.singleton)
 
 
 applyInsertsAndUpdates : List ( ModuleName, ParsedModule ) -> Repo -> Result Errors Repo
@@ -210,6 +458,13 @@ processModule moduleName parsedModule repo =
                     else
                         Private
 
+        -- if a moduleName is not in repo insert it because it's probably a module insert
+        repoWithModuleInserted : Repo
+        repoWithModuleInserted =
+            repo
+                |> Repo.insertModule moduleName Module.emptyDefinition
+                |> Result.withDefault repo
+
         typeNames : List Name
         typeNames =
             extractTypeNames parsedModule
@@ -233,11 +488,11 @@ processModule moduleName parsedModule repo =
         resolveName modName localName kindOfName =
             parsedModule
                 |> ParsedModule.imports
-                |> IncrementalResolve.resolveImports repo
+                |> IncrementalResolve.resolveImports repoWithModuleInserted
                 |> Result.andThen
                     (\resolvedImports ->
                         IncrementalResolve.resolveLocalName
-                            repo
+                            repoWithModuleInserted
                             moduleName
                             localNames
                             resolvedImports
@@ -247,14 +502,14 @@ processModule moduleName parsedModule repo =
                     )
     in
     extractTypes resolveName parsedModule
-        |> Result.andThen (orderTypesByDependency (Repo.getPackageName repo) moduleName)
+        |> Result.andThen (orderTypesByDependency (Repo.getPackageName repoWithModuleInserted) moduleName)
         |> Result.andThen
             (List.foldl
                 (\( typeName, typeDef ) repoResultForType ->
                     repoResultForType
                         |> Result.andThen (processType moduleName typeName typeDef)
                 )
-                (Ok repo)
+                (Ok repoWithModuleInserted)
             )
         |> Result.andThen
             (\repoWithTypesInserted ->
@@ -272,9 +527,23 @@ processModule moduleName parsedModule repo =
 
 processType : ModuleName -> Name -> Type.Definition () -> Repo -> Result (List Error) Repo
 processType moduleName typeName typeDef repo =
-    repo
-        |> Repo.insertType moduleName typeName typeDef
-        |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
+    case repo |> Repo.modules |> Dict.get moduleName of
+        Just existingModDef ->
+            case Dict.member typeName existingModDef.value.types of
+                True ->
+                    repo
+                        |> Repo.updateType moduleName typeName typeDef
+                        |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
+
+                False ->
+                    repo
+                        |> Repo.insertType moduleName typeName typeDef
+                        |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
+
+        Nothing ->
+            -- module does not exist, do nothing
+            -- TODO : module should already exist, but error out if it doesn't
+            Ok repo
 
 
 processValue : Access -> ModuleName -> Name -> SignatureAndValue -> Repo -> Result (List Error) Repo
@@ -283,9 +552,23 @@ processValue access moduleName valueName ( maybeValueType, body ) repo =
         _ =
             Debug.log "processing value" (String.concat [ Path.toString Name.toTitleCase "." moduleName, ".", Name.toCamelCase valueName ])
     in
-    repo
-        |> Repo.insertValue access moduleName valueName maybeValueType body
-        |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
+    case repo |> Repo.modules |> Dict.get moduleName of
+        Just existingModDef ->
+            case Dict.member valueName existingModDef.value.values of
+                True ->
+                    repo
+                        |> Repo.updateValue access moduleName valueName maybeValueType body
+                        |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
+
+                False ->
+                    repo
+                        |> Repo.insertValue access moduleName valueName maybeValueType body
+                        |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
+
+        Nothing ->
+            -- module does not exist, do nothing
+            -- TODO : module should already exist, but error out if it doesn't
+            Ok repo
 
 
 {-| convert New or Updated Elm modules into ParsedModules for further processing

@@ -85,3 +85,15 @@ encodeError error =
                 , encodeName typeName
                 , encodeError cause
                 ]
+
+        TypeNotFound fQName ->
+            Encode.list identity
+                [ Encode.string "TypeNotFound"
+                , encodeFQName fQName
+                ]
+
+        ValueNotFound fQName ->
+            Encode.list identity
+                [ Encode.string "ValueNotFound"
+                , encodeFQName fQName
+                ]
