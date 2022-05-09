@@ -1,0 +1,59 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+:root {
+	--ifm-color-primary: #00a3e2;
+	--ifm-color-primary-dark: #0093cb;
+	--ifm-color-primary-darker: #008bc0;
+	--ifm-color-primary-darkest: #00729e;
+	--ifm-color-primary-light: #00b3f9;
+	--ifm-color-primary-lighter: #05b9ff;
+	--ifm-color-primary-lightest: #27c3ff;
+
+	--ifm-color-secondary: #ff6a00;
+	--ifm-color-secondary-dark: #e65f00;
+	--ifm-color-secondary-darker: #d95a00;
+	--ifm-color-secondary-darkest: #b34a00;
+	--ifm-color-secondary-light: #ff791a;
+	--ifm-color-secondary-lighter: #ff8026;
+	--ifm-color-secondary-lightest: #ff974d;
+}
+
+html[data-theme='dark'] {
+	--ifm-color-primary: #00a3e2;
+	--ifm-color-primary-dark: #0093cb;
+	--ifm-color-primary-darker: #008bc0;
+	--ifm-color-primary-darkest: #00729e;
+	--ifm-color-primary-light: #00b3f9;
+	--ifm-color-primary-lighter: #05b9ff;
+	--ifm-color-primary-lightest: #27c3ff;
+
+	--ifm-color-secondary: #ff6a00;
+	--ifm-color-secondary-dark: #e65f00;
+	--ifm-color-secondary-darker: #d95a00;
+	--ifm-color-secondary-darkest: #b34a00;
+	--ifm-color-secondary-light: #ff791a;
+	--ifm-color-secondary-lighter: #ff8026;
+	--ifm-color-secondary-lightest: #ff974d;
+}
+
+.heroBanner {
+	padding: 4rem 0;
+	text-align: center;
+	position: relative;
+	overflow: hidden;
+}
+
+@media screen and (max-width: 966px) {
+	.heroBanner {
+		padding: 2rem;
+	}
+}
+
+.buttons {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
