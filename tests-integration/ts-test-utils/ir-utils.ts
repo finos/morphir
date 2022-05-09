@@ -36,6 +36,10 @@ export function findModuleByName(moduleName: string, ir): Array<any> {
 	return getModules(ir).find(module => toModuleNameString(module[0]) == moduleName)
 }
 
+export function findValueByName(module: any[], valueName: string): any[] | undefined {
+	return module?.[1].value.values.find(value => toCamelCaseString(value[0]) === valueName)
+}
+
 export function getModuleTypesFromIR(moduleName: string, ir): Array<any> {
 	return findModuleByName(moduleName, ir)[1].value.types
 }
@@ -60,8 +64,11 @@ export function moduleHasValue(mod: any[], valueName: string): boolean {
 }
 
 export function getModuleAccess(mod: any[]): string {
-	console.log(mod)
-
 	if (!mod || mod.length < 2) return undefined
 	return mod[1].access
+}
+
+export function getValueAccess(mod: any[], valueName: string): string | undefined {
+	if (!mod || mod.length < 2) return undefined
+	return findValueByName(mod, valueName)?.[1]?.access
 }

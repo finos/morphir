@@ -6,6 +6,7 @@ import Expect
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend
 import Morphir.Elm.ParsedModule exposing (parsedModule)
 import Morphir.File.FileChanges exposing (Change(..), FileChanges)
+import Morphir.IR.AccessControlled exposing (Access(..))
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
@@ -101,8 +102,11 @@ parseElmModulesTest =
 extractTypesTest : Test
 extractTypesTest =
     let
-        nameResolver _ localName kindOfName =
+        nameResolver _ localName _ =
             Ok (FQName.fqn "Morphir.Elm" "Morphir.Elm.Examlple" localName)
+
+        accessOf _ _ =
+            Public
 
         exampleModuleResult : Result (List DeadEnd) Morphir.Elm.ParsedModule.ParsedModule
         exampleModuleResult =
@@ -126,7 +130,7 @@ extractTypesTest =
                         |> Result.mapError (IncrementalFrontend.ParseError "" >> List.singleton)
                         |> Result.andThen
                             (\parsedModule ->
-                                IncrementalFrontend.extractTypes nameResolver parsedModule
+                                IncrementalFrontend.extractTypes nameResolver accessOf parsedModule
                             )
                         |> (\extractedTypesResult ->
                                 case extractedTypesResult of
