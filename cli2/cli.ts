@@ -9,6 +9,7 @@ const fsExists = util.promisify(fs.exists)
 const fsWriteFile = util.promisify(fs.writeFile)
 const fsMakeDir = util.promisify(fs.mkdir)
 const fsReadFile = util.promisify(fs.readFile)
+const readdir = util.promisify(fs.readdir)
 
 const worker = require('./../Morphir.Elm.CLI').Elm.Morphir.Elm.CLI.init()
 
@@ -30,7 +31,7 @@ async function make(projectDir: string, options: any): Promise<string | undefine
     const morphirJson: MorphirJson = JSON.parse((await fsReadFile(morphirJsonPath)).toString())
 
     // Check if there is an existing IR
-    if (await fsExists(morphirIrPath)) {
+    if (await fsExists(morphirIrPath) && await fsExists(hashFilePath)) {
         const oldContentHashes = await readContentHashes(hashFilePath)
         const fileChanges = await FileChanges.detectChanges(oldContentHashes, path.join(projectDir, morphirJson.sourceDirectory))
         if (reportFileChangeStats(fileChanges)) {
@@ -43,7 +44,7 @@ async function make(projectDir: string, options: any): Promise<string | undefine
             console.log('There were no file changes and there is an existing IR. No actions needed.')
         }
     } else {
-        console.log('There is no existing IR. Building from scratch.')
+        console.log('There is no existing IR Or Hash file. Building from scratch.')
         // We invoke file change detection but pass in no hashes which will generate inserts only
         const fileChanges = await FileChanges.detectChanges(new Map(), path.join(projectDir, morphirJson.sourceDirectory))
         const fileSnapshot = FileChanges.toFileSnapshotJson(fileChanges)
@@ -181,6 +182,132 @@ function reportFileChangeStats(fileChanges: FileChanges.FileChanges): boolean {
     }
 }
 
+const gen = async (input:string, outputPath: string, options: any) => {
+    await fsMakeDir(outputPath,{
+        recursive:true
+    })
+    const morphirIrJson: Buffer = await fsReadFile(path.resolve(input))
+    const opts: any = options
+    opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(',') : null
+    const fileMap:any = await generate(opts, JSON.parse(morphirIrJson.toString()))
+    
+    
+
+    const writePromises = fileMap.map(async ([
+        [dirPath, fileName], content
+    ]:any) => {
+        const fileDir: string = dirPath.reduce((accum: string, next: string)=> path.join(accum,next), outputPath)
+        const filePath: string = path.join(fileDir,fileName)
+        if(await fileExist(filePath)){
+            await fsWriteFile(filePath, content)
+            console.log(`UPDATE - ${filePath}`)
+        }else{
+            await fsMakeDir(fileDir, {
+                recursive: true
+            })
+            await fsWriteFile(filePath, content)
+            console.log(`INSERT - ${filePath}`)
+        }
+    })
+    const filesToDelete:any = await findFilesToDelete(outputPath, fileMap)
+    const deletePromises =
+        filesToDelete.map(async (fileToDelete: string) => {
+            console.log(`DELETE - ${fileToDelete}`)
+            return fs.unlinkSync(fileToDelete)
+        })
+    copyRedistributables(options, outputPath)
+    return Promise.all(writePromises.concat(deletePromises))
+}
+
+const generate = async (options:any, ir: any) => {
+    return new Promise((resolve, reject) =>{
+        worker.ports.jsonDecodeError.subscribe((err: any) =>{
+            reject(err)
+        })
+        worker.ports.generateResult.subscribe(([err, ok]:any) => {
+            if (err) {
+                reject(err)
+            } else {
+                resolve(ok)
+            }
+        })
+
+        worker.ports.generate.send([options, ir])
+    })
+}
+
+const fileExist = async (filePath:string) => {
+    return new Promise((resolve, reject)=>{
+        fs.access(filePath, fs.constants.F_OK, (err) =>{
+            if(err){
+                resolve(false)
+            }else{
+                resolve(true)
+            }
+        })
+    })
+}
+
+const findFilesToDelete =async (outputPath:string, fileMap:any) => {
+    const readDir = async function (currentDir:string, generatedFiles: any) {
+        const entries:any = await readdir(currentDir, {
+            withFileTypes: true
+        })
+        const filesToDelete: any =
+            entries.filter((entry :any) =>{
+                const entryPath:string = path.join(currentDir, entry.name)
+                return entry.isFile() && !generatedFiles.includes(entryPath)
+            })
+            .map((entry :any) => path.join(currentDir, entry.name))
+        const subDirFilesToDelete:any =
+            entries
+                .filter((entry :any) => entry.isDirectory())
+                .map((entry :any) => readDir(path.join(currentDir, entry.name), generatedFiles))
+                .reduce(async (soFarPromise: any, nextPromise: any) => {
+                    const soFar = await soFarPromise
+                    const next = await nextPromise
+                    return soFar.concat(next)
+                }, Promise.resolve([]))
+        return filesToDelete.concat(await subDirFilesToDelete)
+    }
+    const files:any =
+        fileMap.map(([
+            [dirPath, fileName], content
+        ]:any) => {
+            const fileDir = dirPath.reduce((accum: string, next: string) => path.join(accum, next), outputPath)
+            return path.resolve(fileDir, fileName)
+        })
+    return Promise.all(await readDir(outputPath, files))  
+}
+
+function copyRedistributables(options:any, outputPath:string) {
+    const copyFiles = (src:string, dest:string) => {
+        const sourceDirectory: string = path.join(path.dirname(__dirname), 'redistributable', src)
+        copyRecursiveSync(sourceDirectory, outputPath)
+    }
+    copyFiles('Scala/sdk/src', outputPath)
+    copyFiles(`Scala/sdk/src-${options.targetVersion}`, outputPath)
+}
+
+function copyRecursiveSync(src:string, dest:string) {
+    const exists = fs.existsSync(src);
+    if (exists) {
+        const stats = exists && fs.statSync(src);
+        const isDirectory = exists && stats.isDirectory();
+        if (isDirectory) {
+            if (!fs.existsSync(dest))
+                fs.mkdirSync(dest);
+            fs.readdirSync(src).forEach(function (childItemName) {
+                copyRecursiveSync(path.join(src, childItemName),
+                    path.join(dest, childItemName));
+            });
+        } else {
+            fs.copyFileSync(src, dest);
+            console.log(`COPY - ${dest}`)
+        }
+    }
+}
+
 async function writeFile(filePath: string, content: string) {
     await fsMakeDir(path.dirname(filePath), {
         recursive: true
@@ -188,4 +315,4 @@ async function writeFile(filePath: string, content: string) {
     return await fsWriteFile(filePath, content)
 }
 
-export = { make, writeFile }
+export = { make, writeFile,gen }
