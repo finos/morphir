@@ -5,6 +5,7 @@ dist
 .idea
 .metals/
 morphir-ir.json
+reference-model/morphir-hashes.json
 generated/
 out/
 redistributable/Scala
