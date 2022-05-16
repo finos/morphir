@@ -1,4 +1,4 @@
-module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Demand.Bills exposing (..)
+module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Expenditure.Bills exposing (..)
 
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Name exposing (Name)
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Price exposing (Price)

@@ -1,4 +1,4 @@
-module Morphir.Reference.Model.Sample.DataDefinition.Field.ElectronicShop exposing (..)
+module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.ElectronicShop exposing (..)
 
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Date exposing (Date)
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Price exposing (Price)

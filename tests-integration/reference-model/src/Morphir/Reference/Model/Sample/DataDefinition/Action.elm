@@ -1,10 +1,10 @@
-module Morphir.Reference.Model.Sample.DataTables.Action exposing (..)
+module Morphir.Reference.Model.Sample.DataDefinition.Action exposing (..)
 
-import Morphir.Reference.Model.Sample.DataDefinition.Field.ElectronicShop exposing (Electronic)
-import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Demand.Bills exposing (Bills)
-import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Demand.Loans exposing (Loans)
-import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Supply.AntiqueShop exposing (Antique)
-import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Supply.GroceryShop exposing (Grocery)
+import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Expenditure.Bills exposing (Bills)
+import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Expenditure.Loans exposing (Loans)
+import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique)
+import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.ElectronicShop exposing (Electronic)
+import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.GroceryShop exposing (Grocery)
 
 
 type alias Action =
