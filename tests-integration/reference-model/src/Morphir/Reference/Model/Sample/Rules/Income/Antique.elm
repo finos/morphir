@@ -2,14 +2,7 @@ module Morphir.Reference.Model.Sample.Rules.Income.Antique exposing (..)
 
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Category exposing (Category(..))
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Report exposing (FeedBack(..))
-import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income exposing (Income)
 import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique, Product(..))
-
-
-applyRules : Income -> List ( String, Float )
-applyRules shopItems =
-    List.concat
-        []
 
 
 is_item_antique : Antique -> Bool
