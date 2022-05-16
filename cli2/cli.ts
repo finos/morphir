@@ -182,14 +182,14 @@ function reportFileChangeStats(fileChanges: FileChanges.FileChanges): boolean {
     }
 }
 
-const gen = async (input:string, outputPath: string, options: any) => {
+const gen = async (input:string, outputPath: string, options:{limitToModules:string[] | null, modulesToInclude:string} ) => {
     await fsMakeDir(outputPath,{
         recursive:true
     })
     const morphirIrJson: Buffer = await fsReadFile(path.resolve(input))
-    const opts: any = options
+    const opts = options
     opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(',') : null
-    const fileMap:any = await generate(opts, JSON.parse(morphirIrJson.toString()))
+    const fileMap: any = await generate(opts, JSON.parse(morphirIrJson.toString()))
     
     
 
@@ -209,7 +209,7 @@ const gen = async (input:string, outputPath: string, options: any) => {
             console.log(`INSERT - ${filePath}`)
         }
     })
-    const filesToDelete:any = await findFilesToDelete(outputPath, fileMap)
+    const filesToDelete = await findFilesToDelete(outputPath, fileMap)
     const deletePromises =
         filesToDelete.map(async (fileToDelete: string) => {
             console.log(`DELETE - ${fileToDelete}`)
@@ -219,7 +219,7 @@ const gen = async (input:string, outputPath: string, options: any) => {
     return Promise.all(writePromises.concat(deletePromises))
 }
 
-const generate = async (options:any, ir: any) => {
+const generate = async (options: any, ir: string) => {
     return new Promise((resolve, reject) =>{
         worker.ports.jsonDecodeError.subscribe((err: any) =>{
             reject(err)
@@ -249,28 +249,28 @@ const fileExist = async (filePath:string) => {
 }
 
 const findFilesToDelete =async (outputPath:string, fileMap:any) => {
-    const readDir = async function (currentDir:string, generatedFiles: any) {
-        const entries:any = await readdir(currentDir, {
+    const readDir = async function (currentDir:string, generatedFiles: string) {
+        const entries = await readdir(currentDir, {
             withFileTypes: true
         })
-        const filesToDelete: any =
-            entries.filter((entry :any) =>{
+        const filesToDelete =
+            entries.filter((entry) =>{
                 const entryPath:string = path.join(currentDir, entry.name)
                 return entry.isFile() && !generatedFiles.includes(entryPath)
             })
-            .map((entry :any) => path.join(currentDir, entry.name))
+            .map((entry) => path.join(currentDir, entry.name))
         const subDirFilesToDelete:any =
             entries
-                .filter((entry :any) => entry.isDirectory())
-                .map((entry :any) => readDir(path.join(currentDir, entry.name), generatedFiles))
-                .reduce(async (soFarPromise: any, nextPromise: any) => {
+                .filter((entry) => entry.isDirectory())
+                .map((entry) => readDir(path.join(currentDir, entry.name), generatedFiles))
+                .reduce(async (soFarPromise, nextPromise) => {
                     const soFar = await soFarPromise
                     const next = await nextPromise
                     return soFar.concat(next)
                 }, Promise.resolve([]))
         return filesToDelete.concat(await subDirFilesToDelete)
     }
-    const files:any =
+    const files:string =
         fileMap.map(([
             [dirPath, fileName], content
         ]:any) => {
