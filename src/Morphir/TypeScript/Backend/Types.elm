@@ -268,6 +268,9 @@ mapTypeExp tpe =
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) [] ->
             TS.String
 
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) [ itemType ] ->
+            TS.Nullable (mapTypeExp itemType)
+
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "dict" ] ) [ dictKeyType, dictValType ] ->
             TS.Map (mapTypeExp dictKeyType) (mapTypeExp dictValType)
 
@@ -359,6 +362,14 @@ decoderExpression customTypeVars typeExp inputArg =
 
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) [] ->
             { function = codecsModule "decodeString", arguments = [ inputArg ] }
+
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) [ itemType ] ->
+            { function = codecsModule "decodeMaybe"
+            , arguments =
+                [ specificDecoderForType customTypeVars itemType
+                , inputArg
+                ]
+            }
 
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "dict" ] ) [ dictKeyType, dictValType ] ->
             { function = codecsModule "decodeDict"
@@ -675,6 +686,14 @@ encoderExpression customTypeVars typeExp valueArg =
 
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "string" ] ], [ "string" ] ) [] ->
             { function = codecsModule "encodeString", arguments = [ valueArg ] }
+
+        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) [ itemType ] ->
+            { function = codecsModule "encodeMaybe"
+            , arguments =
+                [ specificEncoderForType customTypeVars itemType
+                , valueArg
+                ]
+            }
 
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "dict" ] ], [ "dict" ] ) [ dictKeyType, dictValType ] ->
             { function = codecsModule "encodeDict"

@@ -155,6 +155,9 @@ mapTypeExp typeExp =
                 , " */"
                 ]
 
+        Nullable tpe ->
+            concat [ mapTypeExp tpe, " | null" ]
+
 
 namespaceNameFromPackageAndModule : Path -> Path -> String
 namespaceNameFromPackageAndModule packagePath modulePath =

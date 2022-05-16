@@ -21,8 +21,6 @@ viewAsCard theme header content =
     column
         [ Background.color gray
         , Border.rounded 3
-        , height (shrink |> minimum 200)
-        , width (shrink |> minimum 200)
         , padding 5
         , spacing 5
         ]

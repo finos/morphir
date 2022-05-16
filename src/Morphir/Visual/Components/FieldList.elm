@@ -1,6 +1,6 @@
 module Morphir.Visual.Components.FieldList exposing (..)
 
-import Element exposing (Element, centerY, el, fill, none, paddingXY, rgb, rgb255, spacing, table, text, width)
+import Element exposing (Element, centerY, el, fill, none, paddingXY, rgb, rgb255, spacing, table, text, width, shrink)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -16,7 +16,7 @@ view fields =
         ]
         { columns =
             [ { header = none
-              , width = fill
+              , width = shrink
               , view =
                     \( fieldName, _ ) ->
                         el
@@ -36,7 +36,7 @@ view fields =
                             (text (nameToText fieldName))
               }
             , { header = none
-              , width = fill
+              , width = shrink
               , view =
                     \( _, fieldValue ) ->
                         fieldValue
