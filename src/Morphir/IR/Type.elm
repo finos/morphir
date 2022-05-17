@@ -209,7 +209,6 @@ type alias Field a =
     , tpe : Type a
     }
 
-
 {-| -}
 type Specification a
     = TypeAliasSpecification (List Name) (Type a)

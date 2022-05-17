@@ -18,7 +18,7 @@
 module Morphir.Scala.AST exposing
     ( Name, Path, Documented, Annotated, withAnnotation, withoutAnnotation, CompilationUnit, PackageDecl
     , ImportDecl, ImportName, Mod(..), TypeDecl(..), ArgDecl, ArgValue(..), MemberDecl(..)
-    , Type(..), Value(..), Pattern(..), Lit(..)
+    , Type(..), Value(..), Pattern(..), Lit(..), Generator(..)
     , nameOfTypeDecl
     )
 
@@ -30,7 +30,7 @@ generator uses. It's a relatively large portion of the language but it's not aim
 
 @docs Name, Path, Documented, Annotated, withAnnotation, withoutAnnotation, CompilationUnit, PackageDecl
 @docs ImportDecl, ImportName, Mod, TypeDecl, ArgDecl, ArgValue, MemberDecl
-@docs Type, Value, Pattern, Lit
+@docs Type, Value, Pattern, Lit, Generator
 
 
 # Utilities
@@ -215,6 +215,14 @@ type Value
     | Unit
     | This
     | CommentedValue Value String
+    | ForComp (List Generator) Value
+
+
+{-| -}
+type Generator
+    = Extract Pattern Value
+    | Bind Pattern Value
+    | Guard Value
 
 
 {-| -}

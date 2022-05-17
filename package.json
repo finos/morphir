@@ -43,7 +43,8 @@
     "cli2/lib/cli.js",
     "cli2/lib/morphir-make.js",
     "cli2/lib/morphir.js",
-    "cli2/lib/morphir-scala-gen.js"
+    "cli2/lib/morphir-scala-gen.js",
+    "cli2/lib/FileChanges.js"
   ],
   "keywords": [
     "morphir",
