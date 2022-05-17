@@ -25,7 +25,7 @@ The GitHub action will take care of the rest. Here are the detailed steps:
     ```
     or
     ```
-    git pull origin master
+    git pull origin main
     ```
 2. Build the CLI.
     ```
