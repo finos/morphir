@@ -1,7 +1,7 @@
-module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Supply.GroceryShop exposing (..)
+module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.GroceryShop exposing (..)
 
+import Morphir.Reference.Model.Sample.DataDefinition.Field.Category exposing (Category)
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Price exposing (Price)
-import Morphir.Reference.Model.Sample.Field.Category exposing (Category)
 
 
 type alias Grocery =

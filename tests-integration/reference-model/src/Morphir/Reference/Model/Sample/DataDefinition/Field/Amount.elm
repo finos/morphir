@@ -1,4 +1,4 @@
-module Morphir.Reference.Model.Sample.Field.Amount exposing (..)
+module Morphir.Reference.Model.Sample.DataDefinition.Field.Amount exposing (..)
 
 
 type alias Amount =

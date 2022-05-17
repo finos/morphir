@@ -1,4 +1,4 @@
-module Morphir.Reference.Model.Sample.Field.Category exposing (..)
+module Morphir.Reference.Model.Sample.DataDefinition.Field.Category exposing (..)
 
 
 type Category

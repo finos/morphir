@@ -1,7 +1,7 @@
-module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Demand.Loans exposing (..)
+module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Expenditure.Loans exposing (..)
 
+import Morphir.Reference.Model.Sample.DataDefinition.Field.Amount exposing (Amount)
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Name exposing (Name)
-import Morphir.Reference.Model.Sample.Field.Amount exposing (Amount)
 
 
 type alias Loans =

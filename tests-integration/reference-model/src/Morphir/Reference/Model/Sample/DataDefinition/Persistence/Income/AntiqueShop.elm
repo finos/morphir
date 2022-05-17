@@ -1,9 +1,9 @@
-module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Supply.AntiqueShop exposing (..)
+module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.AntiqueShop exposing (..)
 
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Age exposing (Age)
+import Morphir.Reference.Model.Sample.DataDefinition.Field.Category exposing (Category)
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Price exposing (Price)
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Report exposing (FeedBack)
-import Morphir.Reference.Model.Sample.Field.Category exposing (Category)
 
 
 type alias Antique =
