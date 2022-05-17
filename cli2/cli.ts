@@ -182,24 +182,24 @@ function reportFileChangeStats(fileChanges: FileChanges.FileChanges): boolean {
     }
 }
 
-type genOptions ={
-    limitToModules: string[] | null;
+interface GenOptions {
+    limitToModules?: string[] | null;
     modulesToInclude: string;
     targetVersion: string;
 }
 
-const gen = async (input:string, outputPath: string, options:genOptions ) => {
+const gen = async (input:string, outputPath: string, options:GenOptions ) => {
     await fsMakeDir(outputPath,{
         recursive:true
     })
     const morphirIrJson: Buffer = await fsReadFile(path.resolve(input))
     const opts = options
     opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(',') : null
-    const fileMap: string[] = await generate(opts, JSON.parse(morphirIrJson.toString()))
+    const generatedFiles: string[] = await generate(opts, JSON.parse(morphirIrJson.toString()))
     
     
 
-    const writePromises = fileMap.map(async ([
+    const writePromises = generatedFiles.map(async ([
         [dirPath, fileName], content
     ]:any) => {
         const fileDir: string = dirPath.reduce((accum: string, next: string)=> path.join(accum,next), outputPath)
@@ -215,7 +215,7 @@ const gen = async (input:string, outputPath: string, options:genOptions ) => {
             console.log(`INSERT - ${filePath}`)
         }
     })
-    const filesToDelete = await findFilesToDelete(outputPath, fileMap)
+    const filesToDelete = await findFilesToDelete(outputPath, generatedFiles)
     const deletePromises =
         filesToDelete.map(async (fileToDelete: string) => {
             console.log(`DELETE - ${fileToDelete}`)
@@ -225,15 +225,18 @@ const gen = async (input:string, outputPath: string, options:genOptions ) => {
     return Promise.all(writePromises.concat(deletePromises))
 }
 
-const generate = async (options: genOptions, ir: string): Promise<string[]> => {
+const generate = async (options: GenOptions, ir: string): Promise<string[]> => 
+{
     return new Promise((resolve, reject) =>{
         worker.ports.jsonDecodeError.subscribe((err: any) =>{
             reject(err)
         })
-        worker.ports.generateResult.subscribe(([err, ok]:any) => {
+        worker.ports.generateResult.subscribe(([err, ok]:any) => 
+        {
             if (err) {
                 reject(err)
-            } else {
+            } 
+            else {
                 resolve(ok)
             }
         })
@@ -244,10 +247,12 @@ const generate = async (options: genOptions, ir: string): Promise<string[]> => {
 
 const fileExist = async (filePath:string) => {
     return new Promise((resolve, reject)=>{
-        fs.access(filePath, fs.constants.F_OK, (err) =>{
-            if(err){
+        fs.access(filePath, fs.constants.F_OK, (err) =>
+        {
+            if(err) {
                 resolve(false)
-            }else{
+            }
+            else {
                 resolve(true)
             }
         })
@@ -286,7 +291,7 @@ const findFilesToDelete =async (outputPath:string, fileMap:string[]) => {
     return Promise.all( await readDir(outputPath, files) )
 }
 
-function copyRedistributables(options: genOptions, outputPath:string) {
+function copyRedistributables(options: GenOptions, outputPath:string) {
     const copyFiles = (src:string, dest:string) => {
         const sourceDirectory: string = path.join(path.dirname(__dirname), 'redistributable', src)
         copyRecursiveSync(sourceDirectory, outputPath)
