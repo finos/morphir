@@ -182,14 +182,20 @@ function reportFileChangeStats(fileChanges: FileChanges.FileChanges): boolean {
     }
 }
 
-const gen = async (input:string, outputPath: string, options:{limitToModules:string[] | null, modulesToInclude:string} ) => {
+type genOptions ={
+    limitToModules: string[] | null;
+    modulesToInclude: string;
+    targetVersion: string;
+}
+
+const gen = async (input:string, outputPath: string, options:genOptions ) => {
     await fsMakeDir(outputPath,{
         recursive:true
     })
     const morphirIrJson: Buffer = await fsReadFile(path.resolve(input))
     const opts = options
     opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(',') : null
-    const fileMap: any = await generate(opts, JSON.parse(morphirIrJson.toString()))
+    const fileMap: string[] = await generate(opts, JSON.parse(morphirIrJson.toString()))
     
     
 
@@ -219,7 +225,7 @@ const gen = async (input:string, outputPath: string, options:{limitToModules:str
     return Promise.all(writePromises.concat(deletePromises))
 }
 
-const generate = async (options: any, ir: string) => {
+const generate = async (options: genOptions, ir: string): Promise<string[]> => {
     return new Promise((resolve, reject) =>{
         worker.ports.jsonDecodeError.subscribe((err: any) =>{
             reject(err)
@@ -248,9 +254,9 @@ const fileExist = async (filePath:string) => {
     })
 }
 
-const findFilesToDelete =async (outputPath:string, fileMap:any) => {
-    const readDir = async function (currentDir:string, generatedFiles: string) {
-        const entries = await readdir(currentDir, {
+const findFilesToDelete =async (outputPath:string, fileMap:string[]) => {
+    const readDir = async function (currentDir:string, generatedFiles: string[]) {
+        const entries:fs.Dirent[]= await readdir(currentDir, {
             withFileTypes: true
         })
         const filesToDelete =
@@ -259,7 +265,7 @@ const findFilesToDelete =async (outputPath:string, fileMap:any) => {
                 return entry.isFile() && !generatedFiles.includes(entryPath)
             })
             .map((entry) => path.join(currentDir, entry.name))
-        const subDirFilesToDelete:any =
+        const subDirFilesToDelete:Promise<string[]> =
             entries
                 .filter((entry) => entry.isDirectory())
                 .map((entry) => readDir(path.join(currentDir, entry.name), generatedFiles))
@@ -270,17 +276,17 @@ const findFilesToDelete =async (outputPath:string, fileMap:any) => {
                 }, Promise.resolve([]))
         return filesToDelete.concat(await subDirFilesToDelete)
     }
-    const files:string =
+    const files =
         fileMap.map(([
             [dirPath, fileName], content
         ]:any) => {
             const fileDir = dirPath.reduce((accum: string, next: string) => path.join(accum, next), outputPath)
             return path.resolve(fileDir, fileName)
         })
-    return Promise.all(await readDir(outputPath, files))  
+    return Promise.all( await readDir(outputPath, files) )
 }
 
-function copyRedistributables(options:any, outputPath:string) {
+function copyRedistributables(options: genOptions, outputPath:string) {
     const copyFiles = (src:string, dest:string) => {
         const sourceDirectory: string = path.join(path.dirname(__dirname), 'redistributable', src)
         copyRecursiveSync(sourceDirectory, outputPath)
