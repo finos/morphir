@@ -22,6 +22,7 @@ import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaF
 import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.Solve as Solve exposing (SolutionMap(..), UnificationError(..), UnificationErrorType(..))
 import Set exposing (Set)
+import Morphir.SDK.Decimal exposing (Decimal)
 
 
 type alias TypedValue va =
@@ -941,6 +942,10 @@ constrainLiteral thisTypeVar literalValue =
 
         FloatLiteral _ ->
             expectExactType MetaType.floatType
+
+        DecimalLiteral _ ->
+            ConstraintSet.singleton
+                (class (metaVar thisTypeVar) Class.Number)
 
 
 solve : IR -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )

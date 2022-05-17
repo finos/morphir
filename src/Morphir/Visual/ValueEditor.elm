@@ -59,6 +59,8 @@ import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Svg
 import Svg.Attributes
+import Morphir.IR.SDK.Decimal as Decimal
+import Morphir.SDK.Decimal as Decimal
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -165,7 +167,7 @@ initComponentState ir valueType maybeInitialValue =
     let
         textEditorTypes : List (Type ())
         textEditorTypes =
-            [ Basics.intType (), Basics.stringType (), Basics.charType (), Basics.floatType () ]
+            [ Basics.intType (), Basics.stringType (), Basics.charType (), Basics.floatType (), Decimal.decimalType () ]
     in
     case valueType of
         Type.Record _ fieldTypes ->
@@ -237,6 +239,9 @@ initTextEditor maybeInitialValue =
 
                 Value.Literal _ (FloatLiteral float) ->
                     ( Nothing, TextEditor (String.fromFloat float) )
+
+                Value.Literal _ (DecimalLiteral decimal) ->
+                    ( Nothing, TextEditor (Decimal.toString decimal) )
 
                 _ ->
                     ( Nothing, TextEditor (initialValue |> Value.toString) )
@@ -502,6 +507,11 @@ view ir valueType updateEditorState editorState =
                                     String.toFloat updatedText
                                         |> Maybe.map (\float -> Value.Literal () (FloatLiteral float))
                                         |> Result.fromMaybe "Expecting a number like 1, -3.14 or 100.56"
+
+                                else if tpe == Decimal.decimalType () then
+                                    Decimal.fromString updatedText
+                                        |> Maybe.map (\dec -> Value.Literal () (DecimalLiteral dec))
+                                        |> Result.fromMaybe "Expecting a decimal number"
 
                                 else
                                     updatedText

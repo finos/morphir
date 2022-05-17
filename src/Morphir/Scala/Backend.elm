@@ -534,6 +534,9 @@ mapValue inScopeVars value =
                 FloatLiteral v ->
                     wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
 
+                DecimalLiteral _ ->
+                    Debug.todo "branch 'DecimalLiteral _' not implemented"
+
         Constructor constructorType fQName ->
             curryConstructorArgs inScopeVars constructorType fQName []
 
@@ -835,6 +838,9 @@ mapPattern pattern =
 
                         FloatLiteral v ->
                             Scala.FloatLit v
+
+                        DecimalLiteral v ->
+                            Scala.DecimalLit v
             in
             Scala.LiteralMatch (map literal)
 

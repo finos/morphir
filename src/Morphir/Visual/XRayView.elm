@@ -11,6 +11,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, Value)
 import Morphir.Visual.Common exposing (grayScale)
 import Morphir.IR.Path exposing (Path)
+import Morphir.SDK.Decimal as Decimal
 
 
 
@@ -452,6 +453,10 @@ viewLiteral lit =
 
         FloatLiteral float ->
             text (String.fromFloat float)
+
+
+        DecimalLiteral decimal ->
+            text (Decimal.toString decimal)
 
 
 noPadding : { left : number, right : number, top : number, bottom : number }
