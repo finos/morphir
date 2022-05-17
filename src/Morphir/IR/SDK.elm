@@ -31,6 +31,7 @@ import Morphir.IR.SDK.Int as Int
 import Morphir.IR.SDK.Key as Key
 import Morphir.IR.SDK.List as List
 import Morphir.IR.SDK.LocalDate as LocalDate
+import Morphir.IR.SDK.LocalTime as LocalTime
 import Morphir.IR.SDK.Maybe as Maybe
 import Morphir.IR.SDK.Month as Month
 import Morphir.IR.SDK.Number as Number
@@ -61,6 +62,7 @@ packageSpec =
             , ( [ [ "set" ] ], Set.moduleSpec )
             , ( [ [ "string" ] ], String.moduleSpec )
             , ( [ [ "local", "date" ] ], LocalDate.moduleSpec )
+            , ( [ [ "local", "time" ] ], LocalTime.moduleSpec )
             , ( [ [ "maybe" ] ], Maybe.moduleSpec )
             , ( [ [ "month" ] ], Month.moduleSpec )
             , ( [ [ "result" ] ], Result.moduleSpec )

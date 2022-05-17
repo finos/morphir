@@ -18,6 +18,7 @@
 module Morphir.IR exposing
     ( IR
     , fromPackageSpecifications, fromDistribution
+    , typeSpecifications
     , lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification, lookupValueDefinition
     , empty, resolveAliases, resolveType, resolveRecordConstructors
     )
@@ -34,6 +35,7 @@ module Morphir.IR exposing
 
 # Lookups
 
+@docs typeSpecifications
 @docs lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification, lookupValueDefinition
 
 
@@ -98,7 +100,7 @@ fromDistribution (Distribution.Library libraryName dependencies packageDef) =
                             |> Dict.toList
                             |> List.map
                                 (\( valueName, valueDef ) ->
-                                    ( ( libraryName, moduleName, valueName ), valueDef.value )
+                                    ( ( libraryName, moduleName, valueName ), valueDef.value.value )
                                 )
                     )
                 |> Dict.fromList
@@ -123,7 +125,7 @@ fromPackageSpecifications packageSpecs =
                             |> Dict.toList
                             |> List.map
                                 (\( valueName, valueSpec ) ->
-                                    ( ( packageName, moduleName, valueName ), valueSpec )
+                                    ( ( packageName, moduleName, valueName ), valueSpec.value )
                                 )
                     )
 
@@ -181,6 +183,13 @@ flattenPackages packages f =
                 f packageName package
             )
         |> Dict.fromList
+
+
+{-| Get all type specifications.
+-}
+typeSpecifications : IR -> Dict FQName (Type.Specification ())
+typeSpecifications ir =
+    ir.typeSpecifications
 
 
 {-| Look up a value specification by fully-qualified name. Dependencies will be included in the search.

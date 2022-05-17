@@ -15,11 +15,11 @@
 -}
 
 
-module Morphir.Scala.PrettyPrinter exposing (Options, mapCompilationUnit)
+module Morphir.Scala.PrettyPrinter exposing (Options, mapCompilationUnit, mapMemberDecl)
 
 {-| Pretty-printer for the Scala AST.
 
-@docs Options, mapCompilationUnit
+@docs Options, mapCompilationUnit, mapMemberDecl
 
 -}
 
@@ -161,6 +161,8 @@ mapTypeDecl opt typeDecl =
             mapModifiers decl.modifiers ++ "object " ++ decl.name ++ mapExtends opt decl.extends ++ "{" ++ memberDoc ++ bodyDoc ++ "}"
 
 
+{-| Map a member declaration to Doc.
+-}
 mapMemberDecl : Options -> MemberDecl -> Doc
 mapMemberDecl opt memberDecl =
     case memberDecl of
@@ -525,6 +527,29 @@ mapValue opt value =
 
         CommentedValue childValue message ->
             mapValue opt childValue ++ " /* " ++ message ++ " */ "
+
+        ForComp generators yieldValue ->
+            concat
+                [ "for {"
+                , newLine
+                , generators
+                    |> List.map
+                        (\generator ->
+                            case generator of
+                                Guard expr ->
+                                    concat [ "if ", mapValue opt expr ]
+
+                                Extract pattern expr ->
+                                    concat [ mapPattern pattern, " <- ", mapValue opt expr ]
+
+                                Bind pattern expr ->
+                                    concat [ mapPattern pattern, " <- ", mapValue opt expr ]
+                        )
+                    |> indentLines opt.indentDepth
+                , newLine
+                , "}  yield "
+                , mapValue opt yieldValue
+                ]
 
 
 mapPattern : Pattern -> Doc

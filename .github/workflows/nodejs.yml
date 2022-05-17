@@ -16,7 +16,10 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [10.x, 12.x, 16.x]
+        node-version: [16.x]
+
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
     - uses: actions/checkout@v2
@@ -24,37 +27,36 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
+    - name: Cache NPM
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+    - name: Cache Elm
+      uses: actions/cache@v3
+      id: elm-cache
+      with:
+        path: ~/.elm
+        key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
+        restore-keys: |
+          ${{ runner.os }}-elm-
+    - name: Download dependencies
+      run: npm ci
+    - name: Build
+      run: npm run build --if-present
+    - name: Test
+      run: npm test
       env:
         CI: true
-
-  publish-elm-package:
-    needs: [build]
-    runs-on: ubuntu-latest
-    if: github.repository_owner == 'finos'
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Use Node.js 13
-        uses: actions/setup-node@v1
-        with:
-          node-version: 13
-      - uses: actions/cache@v1
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-      - uses: actions/cache@v1
-        id: elm-cache
-        with:
-          path: ~/.elm
-          key: ${{ runner.os }}-elm--home-${{ hashFiles('**/elm.json') }}
-      - run: npm ci
-      - name: Elm Publish
-        uses: dillonkearns/elm-publish-action@1.1.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-elm: ./node_modules/.bin/elm
+    - name: Publish Elm (as needed)
+      uses: dillonkearns/elm-publish-action@1.1.0
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-elm: ./node_modules/.bin/elm
+    - name: Publish (as needed)
+      uses: JS-DevTools/npm-publish@v1
+      if: env.NPM_TOKEN != 0
+      with:
+        token: ${{ env.NPM_TOKEN }}

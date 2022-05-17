@@ -52,7 +52,7 @@ encodeSpecification encodeTypeAttributes spec =
                     (\( name, valueSpec ) ->
                         Encode.list identity
                             [ encodeName name
-                            , valueSpec |> ValueCodec.encodeSpecification encodeTypeAttributes
+                            , valueSpec |> encodeDocumented (ValueCodec.encodeSpecification encodeTypeAttributes)
                             ]
                     )
           )
@@ -77,7 +77,7 @@ decodeSpecification decodeTypeAttributes =
                 (Decode.list
                     (Decode.map2 Tuple.pair
                         (Decode.index 0 decodeName)
-                        (Decode.index 1 (ValueCodec.decodeSpecification decodeTypeAttributes))
+                        (Decode.index 1 (decodeDocumented (ValueCodec.decodeSpecification decodeTypeAttributes)))
                     )
                 )
             )
@@ -105,7 +105,7 @@ encodeDefinition encodeTypeAttributes encodeValueAttributes def =
                     (\( name, valueDef ) ->
                         Encode.list identity
                             [ encodeName name
-                            , valueDef |> encodeAccessControlled (ValueCodec.encodeDefinition encodeTypeAttributes encodeValueAttributes)
+                            , valueDef |> encodeAccessControlled (encodeDocumented (ValueCodec.encodeDefinition encodeTypeAttributes encodeValueAttributes))
                             ]
                     )
           )
@@ -130,7 +130,7 @@ decodeDefinition decodeTypeAttributes decodeValueAttributes =
                 (Decode.list
                     (Decode.map2 Tuple.pair
                         (Decode.index 0 decodeName)
-                        (Decode.index 1 (decodeAccessControlled (ValueCodec.decodeDefinition decodeTypeAttributes decodeValueAttributes)))
+                        (Decode.index 1 (decodeAccessControlled (decodeDocumented (ValueCodec.decodeDefinition decodeTypeAttributes decodeValueAttributes))))
                     )
                 )
             )

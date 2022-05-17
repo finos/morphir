@@ -28,7 +28,7 @@ program
     .parse(process.argv)
 
 
-gen(program.projectDir, program.output, program.debug, program.delete)
+gen(program.opts().projectDir, program.opts().output, program.opts().debug, program.opts().delete)
     .then(result => {
         console.log('Done!')
     })

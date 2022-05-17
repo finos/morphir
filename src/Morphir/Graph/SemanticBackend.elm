@@ -21,6 +21,7 @@ import Dict
 import List.Extra as List
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.SourceCode as Doc exposing (Doc, concat, indentLines, newLine, space)
+import Morphir.Graph.CypherBackend exposing (Options)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module exposing (ModuleName)
@@ -28,7 +29,6 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type exposing (Type)
 import Morphir.Metadata as Metadata exposing (Types)
-import Morphir.Scala.Backend exposing (Options)
 import Set
 
 

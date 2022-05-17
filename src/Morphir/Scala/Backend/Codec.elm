@@ -27,11 +27,23 @@ module Morphir.Scala.Backend.Codec exposing (decodeOptions)
 -}
 
 import Json.Decode as Decode
+import Morphir.IR.Path as Path
 import Morphir.Scala.Backend exposing (Options)
+import Set
 
 
 {-| Decode Options.
 -}
 decodeOptions : Decode.Decoder Options
 decodeOptions =
-    Decode.succeed Options
+    Decode.map Options
+        (Decode.field "limitToModules"
+            (Decode.maybe
+                (Decode.list
+                    (Decode.string
+                        |> Decode.map Path.fromString
+                    )
+                    |> Decode.map Set.fromList
+                )
+            )
+        )

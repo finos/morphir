@@ -183,6 +183,7 @@ type TypeExp
     | TypeRef FQName (List TypeExp)
     | Union (List TypeExp)
     | Variable String
+    | Nullable TypeExp
     | UnhandledType String
 
 

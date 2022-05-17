@@ -21,7 +21,7 @@ program
   .parse(process.argv)
 
 const app = express()
-const port = program.port
+const port = program.opts().port
 
 const wrap = fn => (...args) => fn(...args).catch(args[2])
 
@@ -36,29 +36,29 @@ app.use(express.static(webDir))
 app.use(express.json());
 
 app.get('/server/morphir.json', wrap(async (req, res, next) => {
-  const morphirJsonPath = path.join(program.projectDir, 'morphir.json')
+  const morphirJsonPath = path.join(program.opts().projectDir, 'morphir.json')
   const morphirJsonContent = await readFile(morphirJsonPath)
   const morphirJson = JSON.parse(morphirJsonContent.toString())
   res.send(morphirJson)
 }))
 
 app.get('/server/morphir-ir.json', wrap(async (req, res, next) => {
-  const morphirJsonPath = path.join(program.projectDir, 'morphir-ir.json')
+  const morphirJsonPath = path.join(program.opts().projectDir, 'morphir-ir.json')
   const morphirJsonContent = await readFile(morphirJsonPath)
   const morphirJson = JSON.parse(morphirJsonContent.toString())
   res.send(morphirJson)
 }))
 
 app.get('/server/morphir-tests.json', wrap(async (req, res, next) => {
-  const morphirTestsJsonPath = path.join(program.projectDir, 'morphir-tests.json')
+  const morphirTestsJsonPath = path.join(program.opts().projectDir, 'morphir-tests.json')
   const morphirTestsJsonContent = await readFile(morphirTestsJsonPath)
   const morphirTestsJson = JSON.parse(morphirTestsJsonContent.toString())
   res.send(morphirTestsJson)
 }))
 
 app.post('/server/morphir-tests.json', wrap(async (req, res, next) => {
-  const morphirTestsJsonPath = path.join(program.projectDir, 'morphir-tests.json')
-  var jsonContent = JSON.stringify(req.body,null,4)
+  const morphirTestsJsonPath = path.join(program.opts().projectDir, 'morphir-tests.json')
+  var jsonContent = JSON.stringify(req.body, null, 4)
   await writeFile(morphirTestsJsonPath, jsonContent)
   const morphirTestsJsonContent = await readFile(morphirTestsJsonPath)
   const morphirTestsJson = JSON.parse(morphirTestsJsonContent.toString())
@@ -69,6 +69,6 @@ app.get('*', (req, res) => {
   res.sendFile(indexHtml)
 })
 
-app.listen(port,program.host,() => {
-  console.log(`Developer server listening at http://${program.host}:${port}`)
+app.listen(port, program.opts().host, () => {
+  console.log(`Developer server listening at http://${program.opts().host}:${port}`)
 })

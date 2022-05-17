@@ -8,6 +8,7 @@
     "dependencies": {
         "direct": {
             "cuducos/elm-format-number": "8.1.4",
+            "dillonkearns/elm-markdown": "7.0.0",
             "dosarf/elm-tree-view": "3.0.0",
             "elm/browser": "1.0.2",
             "elm/core": "1.0.5",
@@ -22,6 +23,8 @@
             "elm-community/graph": "6.0.0",
             "elm-community/list-extra": "8.2.3",
             "elm-community/maybe-extra": "5.2.0",
+            "elm-explorations/markdown": "1.0.0",
+            "matthewsj/elm-ordering": "2.0.0",
             "mdgriffith/elm-ui": "1.1.8",
             "rundis/elm-bootstrap": "5.2.0",
             "stil4m/elm-syntax": "7.2.0"

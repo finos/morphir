@@ -16,15 +16,15 @@
 
 
 module Morphir.Scala.Backend exposing
-    ( mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue
+    ( mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue, mapFQNameToPathAndName
     , Options
-    )
+    , mapValueName, mapFQNameToTypeRef)
 
 {-| This module encapsulates the Scala backend. It takes the Morphir IR as the input and returns an in-memory
 representation of files generated. The consumer is responsible for getting the input IR and saving the output
 to the file-system.
 
-@docs mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue
+@docs mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue, mapFQNameToTypeRef, mapFQNameToPathAndName, mapValueName
 
 
 # Options
@@ -42,7 +42,7 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (FQName, fqn)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Module as Module
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
@@ -57,7 +57,8 @@ import Set exposing (Set)
 {-| Placeholder for code generator options. Currently empty.
 -}
 type alias Options =
-    {}
+    { limitToModules : Maybe (Set ModuleName)
+    }
 
 
 {-| Entry point for the Scala backend. It takes the Morphir IR as the input and returns an in-memory
@@ -66,8 +67,13 @@ representation of files generated.
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution opt distro =
     case distro of
-        Distribution.Library packagePath dependencies packageDef ->
-            mapPackageDefinition opt distro packagePath packageDef
+        Distribution.Library packageName dependencies packageDef ->
+            case opt.limitToModules of
+                Just modulesToInclude ->
+                    mapPackageDefinition opt distro packageName (Package.selectModules modulesToInclude packageName packageDef)
+
+                Nothing ->
+                    mapPackageDefinition opt distro packageName packageDef
 
 
 mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> FileMap
@@ -90,6 +96,8 @@ mapPackageDefinition opt distribution packagePath packageDef =
         |> Dict.fromList
 
 
+{-| Map a Morphir fully-qualified name to a Scala package path and name.
+-}
 mapFQNameToPathAndName : FQName -> ( Scala.Path, Name )
 mapFQNameToPathAndName ( packagePath, modulePath, localName ) =
     let
@@ -114,7 +122,9 @@ mapFQNameToPathAndName ( packagePath, modulePath, localName ) =
     , localName
     )
 
-
+{-|
+ Map Fully Qualified name Type Ref
+-}
 mapFQNameToTypeRef : FQName -> Scala.Type
 mapFQNameToTypeRef fQName =
     let
@@ -224,29 +234,29 @@ mapModuleDefinition opt distribution currentPackagePath currentModulePath access
                             , name =
                                 mapValueName valueName
                             , typeArgs =
-                                accessControlledValueDef.value.inputTypes
+                                accessControlledValueDef.value.value.inputTypes
                                     |> List.map (\( _, _, tpe ) -> tpe)
-                                    |> (::) accessControlledValueDef.value.outputType
+                                    |> (::) accessControlledValueDef.value.value.outputType
                                     |> gatherAllTypeNames
                             , args =
-                                if List.isEmpty accessControlledValueDef.value.inputTypes then
+                                if List.isEmpty accessControlledValueDef.value.value.inputTypes then
                                     []
 
                                 else
-                                    accessControlledValueDef.value.inputTypes
+                                    accessControlledValueDef.value.value.inputTypes
                                         |> List.map
                                             (\( argName, a, argType ) ->
                                                 [ { modifiers = []
                                                   , tpe = mapType argType
-                                                  , name = argName |> Name.toCamelCase
+                                                  , name = mapValueName argName
                                                   , defaultValue = Nothing
                                                   }
                                                 ]
                                             )
                             , returnType =
-                                Just (mapType accessControlledValueDef.value.outputType)
+                                Just (mapType accessControlledValueDef.value.value.outputType)
                             , body =
-                                Just (mapFunctionBody distribution accessControlledValueDef.value)
+                                Just (mapFunctionBody distribution accessControlledValueDef.value.value)
                             }
                         ]
                     )
@@ -524,12 +534,8 @@ mapValue inScopeVars value =
                 FloatLiteral v ->
                     wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
 
-        Constructor tpe fQName ->
-            let
-                ( path, name ) =
-                    mapFQNameToPathAndName fQName
-            in
-            Scala.Ref path (name |> Name.toTitleCase)
+        Constructor constructorType fQName ->
+            curryConstructorArgs inScopeVars constructorType fQName []
 
         Tuple a elemValues ->
             Scala.Tuple
@@ -568,7 +574,7 @@ mapValue inScopeVars value =
                         )
 
         Variable a name ->
-            Scala.Variable (name |> Name.toCamelCase)
+            Scala.Variable (mapValueName name)
 
         Reference a fQName ->
             let
@@ -597,51 +603,7 @@ mapValue inScopeVars value =
             in
             case bottomFun of
                 Constructor constructorType fQName ->
-                    let
-                        ( path, name ) =
-                            mapFQNameToPathAndName fQName
-
-                        extractArgTypes : Type () -> List (Type ())
-                        extractArgTypes tpe =
-                            case tpe of
-                                Type.Function _ argType returnType ->
-                                    argType :: extractArgTypes returnType
-
-                                _ ->
-                                    []
-
-                        constructorArgTypes : List (Type ())
-                        constructorArgTypes =
-                            extractArgTypes constructorType
-
-                        unspecifiedArgs : List ( String, Type () )
-                        unspecifiedArgs =
-                            constructorArgTypes
-                                |> List.drop (List.length args)
-                                |> List.indexedMap
-                                    (\index argType ->
-                                        ( uniqueVarName inScopeVars index, argType )
-                                    )
-
-                        curryUnspecifiedArgs : List ( String, Type () ) -> Scala.Value -> List Scala.ArgValue -> Scala.Value
-                        curryUnspecifiedArgs argsToCurry constructor specifiedArgs =
-                            case argsToCurry of
-                                ( firstArgName, firstArgType ) :: restOfArgs ->
-                                    Scala.Lambda [ ( firstArgName, Just (mapType firstArgType) ) ]
-                                        (curryUnspecifiedArgs restOfArgs constructor (specifiedArgs ++ [ Scala.ArgValue Nothing (Scala.Variable firstArgName) ]))
-
-                                [] ->
-                                    Scala.Apply constructor specifiedArgs
-                    in
-                    curryUnspecifiedArgs
-                        unspecifiedArgs
-                        (mapValue inScopeVars bottomFun)
-                        (args
-                            |> List.map
-                                (\arg ->
-                                    Scala.ArgValue Nothing (mapValue inScopeVars arg)
-                                )
-                        )
+                    curryConstructorArgs inScopeVars constructorType fQName args
 
                 _ ->
                     Scala.Apply (mapValue inScopeVars applyFun)
@@ -659,7 +621,7 @@ mapValue inScopeVars value =
             case argPattern of
                 AsPattern tpe (WildcardPattern _) alias ->
                     Scala.Lambda
-                        [ ( alias |> Name.toCamelCase, Just (mapType tpe) ) ]
+                        [ ( mapValueName alias, Just (mapType tpe) ) ]
                         (mapValue newInScopeVars bodyValue)
 
                 _ ->
@@ -707,16 +669,16 @@ mapValue inScopeVars value =
                                     , name = mapValueName defName
                                     , typeArgs = []
                                     , args =
-                                        [ def.inputTypes
+                                        def.inputTypes
                                             |> List.map
                                                 (\( argName, _, argType ) ->
-                                                    { modifiers = []
-                                                    , tpe = mapType argType
-                                                    , name = argName |> Name.toCamelCase
-                                                    , defaultValue = Nothing
-                                                    }
+                                                    [ { modifiers = []
+                                                      , tpe = mapType argType
+                                                      , name = argName |> Name.toCamelCase
+                                                      , defaultValue = Nothing
+                                                      }
+                                                    ]
                                                 )
-                                        ]
                                     , returnType =
                                         Just (mapType def.outputType)
                                     , body =
@@ -880,6 +842,9 @@ mapPattern pattern =
             Scala.WildcardMatch
 
 
+{-|
+ Map IR value to Scala Value
+-}
 mapValueName : Name -> String
 mapValueName name =
     let
@@ -887,11 +852,59 @@ mapValueName name =
         scalaName =
             Name.toCamelCase name
     in
-    if Set.member scalaName javaObjectMethods then
+    if Set.member scalaName scalaKeywords || Set.member scalaName javaObjectMethods then
         "_" ++ scalaName
 
     else
         scalaName
+
+
+{-| Scala keywords that cannot be used as variable name.
+-}
+scalaKeywords : Set String
+scalaKeywords =
+    Set.fromList
+        [ "abstract"
+        , "case"
+        , "catch"
+        , "class"
+        , "def"
+        , "do"
+        , "else"
+        , "extends"
+        , "false"
+        , "final"
+        , "finally"
+        , "for"
+        , "forSome"
+        , "if"
+        , "implicit"
+        , "import"
+        , "lazy"
+        , "macro"
+        , "match"
+        , "new"
+        , "null"
+        , "object"
+        , "override"
+        , "package"
+        , "private"
+        , "protected"
+        , "return"
+        , "sealed"
+        , "super"
+        , "this"
+        , "throw"
+        , "trait"
+        , "try"
+        , "true"
+        , "type"
+        , "val"
+        , "var"
+        , "while"
+        , "with"
+        , "yield"
+        ]
 
 
 {-| We cannot use any method names in `java.lang.Object` because values are represented as functions/values in a Scala
@@ -938,3 +951,64 @@ uniqueVarName varNamesInUse hint =
 
     else
         firstCandidate
+
+
+curryConstructorArgs : Set Name -> Type () -> FQName -> List (Value a (Type ())) -> Scala.Value
+curryConstructorArgs inScopeVars constructorType constructorFQName constructorArgs =
+    let
+        -- Get the argument types from a curried function type
+        extractArgTypes : Type () -> List (Type ())
+        extractArgTypes tpe =
+            case tpe of
+                Type.Function _ argType returnType ->
+                    argType :: extractArgTypes returnType
+
+                _ ->
+                    []
+
+        -- Get the argument types of the constructor
+        constructorArgTypes : List (Type ())
+        constructorArgTypes =
+            extractArgTypes constructorType
+
+        -- Collect the arguments that were not specified
+        unspecifiedArgs : List ( String, Type () )
+        unspecifiedArgs =
+            constructorArgTypes
+                |> List.drop (List.length constructorArgs)
+                |> List.indexedMap
+                    (\index argType ->
+                        ( uniqueVarName inScopeVars index, argType )
+                    )
+
+        -- Wrap the constructor into as many lambdas as many unspecified arguments there are
+        curryUnspecifiedArgs : List ( String, Type () ) -> Scala.Value -> List Scala.ArgValue -> Scala.Value
+        curryUnspecifiedArgs argsToCurry scalaConstructorValue scalaArgumentsSpecified =
+            case argsToCurry of
+                ( firstArgName, firstArgType ) :: restOfArgs ->
+                    Scala.Lambda [ ( firstArgName, Just (mapType firstArgType) ) ]
+                        (curryUnspecifiedArgs restOfArgs scalaConstructorValue (scalaArgumentsSpecified ++ [ Scala.ArgValue Nothing (Scala.Variable firstArgName) ]))
+
+                [] ->
+                    Scala.Apply scalaConstructorValue scalaArgumentsSpecified
+
+        ( path, name ) =
+            mapFQNameToPathAndName constructorFQName
+    in
+    case ( constructorArgTypes, unspecifiedArgs ) of
+        ( [], _ ) ->
+            Scala.Ref path (name |> Name.toTitleCase)
+
+        ( [ _ ], [ _ ] ) ->
+            Scala.Ref path (name |> Name.toTitleCase)
+
+        _ ->
+            curryUnspecifiedArgs
+                unspecifiedArgs
+                (Scala.Ref path (name |> Name.toTitleCase))
+                (constructorArgs
+                    |> List.map
+                        (\arg ->
+                            Scala.ArgValue Nothing (mapValue inScopeVars arg)
+                        )
+                )

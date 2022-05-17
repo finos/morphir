@@ -20,7 +20,7 @@ module Morphir.IR.Package exposing
     , Definition, emptyDefinition
     , lookupModuleSpecification, lookupModuleDefinition, lookupTypeSpecification, lookupValueSpecification, lookupValueDefinition
     , PackageName, definitionToSpecification, definitionToSpecificationWithPrivate, eraseDefinitionAttributes, eraseSpecificationAttributes
-    , mapDefinitionAttributes, mapSpecificationAttributes
+    , mapDefinitionAttributes, mapSpecificationAttributes, selectModules, modulesOrderedByDependency
     )
 
 {-| A package is collection of types and values that are versioned together. If this sounds abstract just think of any
@@ -47,17 +47,19 @@ including implementation and private types and values.
 # Other utilities
 
 @docs PackageName, definitionToSpecification, definitionToSpecificationWithPrivate, eraseDefinitionAttributes, eraseSpecificationAttributes
-@docs mapDefinitionAttributes, mapSpecificationAttributes
+@docs mapDefinitionAttributes, mapSpecificationAttributes, selectModules, modulesOrderedByDependency
 
 -}
 
 import Dict exposing (Dict)
+import Morphir.Dependency.DAG as DAG exposing (DAG)
 import Morphir.IR.AccessControlled exposing (AccessControlled, withPrivateAccess, withPublicAccess)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
-import Morphir.IR.Type as Type
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
+import Set exposing (Set)
 
 
 {-| A package name is a globally unique identifier for a package. It is represented by a path, which is a list of names.
@@ -227,3 +229,96 @@ eraseDefinitionAttributes : Definition ta va -> Definition () ()
 eraseDefinitionAttributes def =
     def
         |> mapDefinitionAttributes (\_ -> ()) (\_ -> ())
+
+
+{-| Filter down the modules in this distribution to the specified modules and their transitive dependencies.
+-}
+selectModules : Set ModuleName -> PackageName -> Definition ta va -> Definition ta va
+selectModules modulesToInclude packageName packageDef =
+    let
+        findAllDependencies : Set ModuleName -> Set ModuleName
+        findAllDependencies current =
+            current
+                |> Set.toList
+                |> List.filterMap
+                    (\currentModuleName ->
+                        packageDef.modules
+                            |> Dict.get currentModuleName
+                            |> Maybe.map
+                                (\mDef ->
+                                    mDef.value
+                                        |> Module.dependsOnModules
+                                        |> Set.toList
+                                        |> List.filterMap
+                                            (\( pName, mName ) ->
+                                                if pName == packageName then
+                                                    Just mName
+
+                                                else
+                                                    Nothing
+                                            )
+                                        |> Set.fromList
+                                )
+                    )
+                |> List.foldl Set.union Set.empty
+
+        expandedModulesToInclude : Set ModuleName
+        expandedModulesToInclude =
+            Set.union
+                (findAllDependencies modulesToInclude)
+                modulesToInclude
+    in
+    if modulesToInclude == expandedModulesToInclude then
+        { packageDef
+            | modules =
+                packageDef.modules
+                    |> Dict.toList
+                    |> List.filter
+                        (\( moduleName, _ ) ->
+                            modulesToInclude |> Set.member moduleName
+                        )
+                    |> Dict.fromList
+        }
+
+    else
+        selectModules expandedModulesToInclude packageName packageDef
+
+
+{-| Get the list of modules within this package ordered by dependency. If module B depends on A than module B is
+guaranteed to be after A in the list.
+-}
+modulesOrderedByDependency : PackageName -> Definition () (Type ()) -> Result (DAG.CycleDetected ModuleName) (List ( ModuleName, AccessControlled (Module.Definition () (Type ())) ))
+modulesOrderedByDependency packageName packageDef =
+    packageDef.modules
+        |> Dict.toList
+        |> List.foldl
+            (\( moduleName, accessControlledModuleDef ) dagResultSoFar ->
+                let
+                    dependsOnModules : Set ModuleName
+                    dependsOnModules =
+                        accessControlledModuleDef.value
+                            |> Module.dependsOnModules
+                            -- Keep only dependencies within the package
+                            |> Set.filter (\( dependsOnPackage, _ ) -> dependsOnPackage == packageName)
+                            -- Remove the package name
+                            |> Set.map Tuple.second
+                in
+                dagResultSoFar
+                    |> Result.andThen (DAG.insertNode moduleName dependsOnModules)
+            )
+            (Ok DAG.empty)
+        |> Result.map
+            (\moduleDependencies ->
+                moduleDependencies
+                    -- Use the dependency graph to order the modules topologically
+                    |> DAG.backwardTopologicalOrdering
+                    -- Turn the partial ordering represented as a list of lists into a simple list
+                    |> List.concat
+                    -- Look up the module definition for each module name
+                    |> List.filterMap
+                        (\moduleName ->
+                            packageDef.modules
+                                |> Dict.get moduleName
+                                |> Maybe.map (Tuple.pair moduleName)
+                        )
+            )

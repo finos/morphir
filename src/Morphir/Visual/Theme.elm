@@ -1,10 +1,12 @@
 module Morphir.Visual.Theme exposing (..)
 
-import Element exposing (Color, Element, column, el, fill, padding, paddingXY, rgb, rgb255, row, spacing, toRgb, width)
+import Element exposing (Color, Element, Attribute, el, fill, paddingXY, rgb, rgb255, row, spacing, toRgb, width, height, table, none, mouseOver)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (center)
 import Element.Input as Input
+import Html exposing (div, text)
+import Html.Attributes exposing (style)
 
 
 type alias Theme =
@@ -21,6 +23,9 @@ type alias Colors =
     , secondaryHighlight : Color
     , positive : Color
     , negative : Color
+    , backgroundColor : Color
+    , selectionColor : Color
+    , secondaryInformation : Color
     }
 
 
@@ -38,8 +43,22 @@ defaultColors =
     , secondaryHighlight = rgb255 255 105 0
     , positive = rgb 0 0.6 0
     , negative = rgb 0.7 0 0
+    , backgroundColor = rgb 0.9529 0.9176 0.8078
+    , selectionColor = rgb 0.8 0.9 0.9
+    , secondaryInformation = rgb 0.5 0.5 0.5
     }
 
+labelStyles : Theme -> List (Attribute msg)
+labelStyles theme =
+            [ width fill
+            , height fill
+            , paddingXY 10 5
+            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+            , Border.color theme.colors.backgroundColor
+            ]
+
+boldLabelStyles : Theme -> List (Attribute msg)
+boldLabelStyles theme =  Font.bold :: labelStyles theme
 
 fromConfig : Maybe ThemeConfig -> Theme
 fromConfig maybeConfig =
@@ -142,3 +161,34 @@ header theme parts =
             ]
             parts.right
         ]
+
+twoColumnTableView : List record -> (record -> Element msg) -> (record -> Element msg) -> Element msg
+twoColumnTableView tableData leftView rightView = 
+    table
+        [ width fill
+        ]
+        { columns =
+            [ { header = none
+              , width = fill
+              , view = leftView
+              }
+            , { header = none
+              , width = fill
+              , view = rightView
+              }
+            ]
+        , data = tableData
+        }
+
+
+ellipseText : String -> Element msg
+ellipseText str =
+    Element.html <|
+        div
+            [ style "text-overflow" "ellipsis"
+            , style "white-space" "nowrap"
+            , style "overflow" "hidden"
+            , style "width" "100%"
+            , style "flex-basis" "auto"
+            ]
+            [ text str ]

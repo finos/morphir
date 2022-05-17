@@ -4,6 +4,7 @@ import Dict exposing (Dict)
 import Morphir.Compiler as Compiler
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
+import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
@@ -64,13 +65,14 @@ inferModuleDefinition refs moduleName moduleDef =
         |> Dict.toList
         |> List.map
             (\( valueName, valueDef ) ->
-                let
-                    _ =
-                        Debug.log
-                            (String.concat [ "Inferring types for ", moduleName |> Path.toString Name.toTitleCase ".", ".", valueName |> Name.toCamelCase, " of size" ])
-                            (valueDef.value.body |> Value.countValueNodes)
-                in
-                inferValueDefinition refs valueDef.value
+                --let
+                --    _ =
+                --        Debug.log
+                --            (String.concat [ "Inferring types for ", moduleName |> Path.toString Name.toTitleCase ".", ".", valueName |> Name.toCamelCase, " of size" ])
+                --            (valueDef.value.value.body |> Value.countValueNodes)
+                --in
+                inferValueDefinition refs valueDef.value.value
+                    |> Result.map (Documented valueDef.value.doc)
                     |> Result.map (AccessControlled valueDef.access)
                     |> Result.map (Tuple.pair valueName)
                     |> Result.mapError
@@ -170,8 +172,8 @@ inferValueDefinition ir def =
                         Dict.empty
                         annotatedDef
 
-                _ =
-                    Debug.log "Generated constraints" (cs |> ConstraintSet.toList |> List.length)
+                --_ =
+                --    Debug.log "Generated constraints" (cs |> ConstraintSet.toList |> List.length)
             in
             cs
 
@@ -179,8 +181,8 @@ inferValueDefinition ir def =
         solution =
             solve ir constraints
 
-        _ =
-            Debug.log "Generated solutions" (solution |> Result.map (Tuple.second >> Solve.toList) |> Result.withDefault [] |> List.length)
+        --_ =
+        --    Debug.log "Generated solutions" (solution |> Result.map (Tuple.second >> Solve.toList) |> Result.withDefault [] |> List.length)
     in
     solution
         |> Result.map (applySolutionToAnnotatedDefinition ir annotatedDef)
@@ -966,7 +968,13 @@ solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
                         Just newSolutions ->
                             case Solve.mergeSolutions refs newSolutions solutionsSoFar of
                                 Ok mergedSolutions ->
-                                    solveHelp refs mergedSolutions (constraintSet |> ConstraintSet.applySubstitutions mergedSolutions)
+                                    let
+                                        -- Compare the latest set of solutions to the previous set and keep only the new solutions
+                                        newMergedSolutions : SolutionMap
+                                        newMergedSolutions =
+                                            solutionsSoFar |> Solve.diff mergedSolutions
+                                    in
+                                    solveHelp refs mergedSolutions (constraintSet |> ConstraintSet.applySubstitutions newMergedSolutions)
 
                                 Err error ->
                                     Err (UnifyError error)
@@ -984,17 +992,17 @@ validateConstraints constraints =
         |> List.map
             (\constraint ->
                 case constraint of
-                    Class (MetaVar _) _ ->
+                    Class _ (MetaVar _) _ ->
                         Ok constraint
 
-                    Class metaType class ->
+                    Class _ metaType class ->
                         if Class.member metaType class then
                             Ok constraint
 
                         else
                             Err (ClassConstraintViolation metaType class)
 
-                    Equality metaType1 metaType2 ->
+                    Equality _ metaType1 metaType2 ->
                         if isRecursive constraint then
                             Err (RecursiveConstraint metaType1 metaType2)
 

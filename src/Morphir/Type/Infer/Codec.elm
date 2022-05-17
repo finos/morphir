@@ -1,13 +1,13 @@
 module Morphir.Type.Infer.Codec exposing (..)
 
-import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.FQName.Codec exposing (encodeFQName)
-import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
+import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.Type.Class.Codec exposing (encodeClass)
 import Morphir.Type.Infer exposing (TypeError(..), ValueTypeError(..))
 import Morphir.Type.MetaType.Codec exposing (encodeMetaType)
 import Morphir.Type.MetaTypeMapping exposing (LookupError(..))
+import Morphir.Type.Solve.Codec exposing (encodeUnificationError)
 
 
 encodeValueTypeError : ValueTypeError -> Encode.Value
@@ -17,14 +17,6 @@ encodeValueTypeError (ValueTypeError valueName typeError) =
         , encodeName valueName
         , encodeTypeError typeError
         ]
-
-
-decodeValueTypeError : Decode.Decoder ValueTypeError
-decodeValueTypeError =
-    Decode.map2 ValueTypeError
-        (Decode.index 1 decodeName)
-        -- TODO: implement
-        (Decode.succeed (TypeErrors []))
 
 
 encodeTypeError : TypeError -> Encode.Value
@@ -55,11 +47,18 @@ encodeTypeError typeError =
                 , Encode.string message
                 ]
 
-        RecursiveConstraint metaType metaType2 ->
-            Debug.todo "implement"
+        RecursiveConstraint metaType1 metaType2 ->
+            Encode.list identity
+                [ Encode.string "RecursiveConstraint"
+                , encodeMetaType metaType1
+                , encodeMetaType metaType2
+                ]
 
         UnifyError unificationError ->
-            Debug.todo "implement"
+            Encode.list identity
+                [ Encode.string "UnifyError"
+                , encodeUnificationError unificationError
+                ]
 
 
 encodeLookupError : LookupError -> Encode.Value

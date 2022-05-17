@@ -23,6 +23,7 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value
+import Morphir.IR.Documented exposing (Documented)
 
 
 moduleName : ModuleName
@@ -58,7 +59,7 @@ moduleSpec =
         valueNames
             |> List.map
                 (\valueName ->
-                    ( Name.fromString valueName, dummyValueSpec )
+                    ( Name.fromString valueName, Documented "" dummyValueSpec )
                 )
             |> Dict.fromList
     }
