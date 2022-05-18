@@ -5,6 +5,38 @@ The consumer is responsible for getting the input IR and saving the output to th
 
 The transformation from the Morphir IR to to the FileMap is based on the Scala AST.
 
+## **Reading Input IR**
+The IR is saved on disk as JSON formatted file, morphir-ir.json.
+The IR (as Json) and command line option is passed to Elm through port:
+```
+worker.ports.generate.send([options, ir])
+```
+The file is received in the CLI.elm and decoded into a Decode Value.
+
+```
+    targetOption =
+        Decode.decodeValue (field "target" string) optionsJson
+
+    optionsResult =
+        Decode.decodeValue (decodeOptions targetOption) optionsJson
+
+    packageDistroResult =
+        Decode.decodeValue DistributionCodec.decodeVersionedDistribution packageDistJson
+
+```
+The packageDistroResult is a _Morphir.IR.Distribution_ type which is an in memory representation of the IR.
+
+The distribution is passed to the Scala backend to generate a FileMap
+```                        
+fileMap =
+   mapDistribution options enrichedDistro
+```
+The code generation phase consists of  functions that transform the distribution into a FileMap
+
+
+
+## **Code Generation**
+The code generation consists of a number of mapping functions that map the Morphir IR types to Scala Types.
 
 **mapDistribution**
 This is the entry point for the Scala backend. This function take Morphir IR
@@ -62,3 +94,66 @@ object which implicitly inherits those methods which can result in name collisio
 
 **uniqueVarName**
 
+## **Saving Generated Files**
+The Scala backend returns a FileMap to the Typescript CLI. 
+The fileMap returned from the backend is encoded into Json and send through the generateResult port.
+
+```
+    ...
+    ...
+    fileMap =
+        mapDistribution options enrichedDistro
+in
+( model, fileMap 
+    |> Ok 
+    |> encodeResult Encode.string encodeFileMap 
+    |> generateResult )
+```
+
+The generated FileMap is received in the JavaScript and parsed into a string.
+```
+const fileMap = await generate(opts, JSON.parse(morphirIrJson.toString()))
+```
+
+Finally, the returned files are written to disk. The complete gen() function is given below:
+```
+async function gen(input, outputPath, options) {
+    await mkdir(outputPath, {
+        recursive: true
+    })
+    const morphirIrJson = await readFile(path.resolve(input))
+    const opts = options
+    opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(',') : null
+    const fileMap = await generate(opts, JSON.parse(morphirIrJson.toString()))
+
+    const writePromises =
+        fileMap.map(async ([
+            [dirPath, fileName], content
+        ]) => {
+            const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)
+            const filePath = path.join(fileDir, fileName)
+            if (await fileExist(filePath)) {
+                console.log(`UPDATE - ${filePath}`)
+            } else {
+                await mkdir(fileDir, {
+                    recursive: true
+                })
+                console.log(`INSERT - ${filePath}`)
+            }
+            if (options.target == 'TypeScript') {
+                return fsWriteFile(filePath, prettier.format(content, { parser: "typescript" }))
+            } else {
+                return fsWriteFile(filePath, content)
+            }
+        })
+    const filesToDelete = await findFilesToDelete(outputPath, fileMap)
+    const deletePromises =
+        filesToDelete.map(async (fileToDelete) => {
+            console.log(`DELETE - ${fileToDelete}`)
+            return fs.unlinkSync(fileToDelete)
+        })
+    copyRedistributables(options, outputPath)
+    return Promise.all(writePromises.concat(deletePromises))
+}
+
+```
