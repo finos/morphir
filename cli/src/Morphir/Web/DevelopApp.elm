@@ -38,7 +38,6 @@ import Element
         , row
         , scrollbars
         , spacing
-        , spacingXY
         , text
         , width
         )
@@ -54,7 +53,6 @@ import Markdown.Parser as Markdown
 import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
-import Morphir.Elm.Backend.Dapr.StatefulApp exposing (test)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -89,6 +87,7 @@ import Set exposing (Set)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
+import Array.Extra
 
 
 
@@ -238,7 +237,7 @@ type Msg
 
 type TestingMsg
     = DescriptionUpdated Int String
-    | DeleteTestCase Int
+    | DeleteTestCase FQName Int
     | SaveTestSuite FQName TestCase
     | LoadTestCase (List ( Name, Type () )) (List RawValue)
 
@@ -358,7 +357,7 @@ update msg model =
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
 
         Insight insightMsg ->
-             let
+            let
                 insightViewState : Morphir.Visual.Config.VisualState
                 insightViewState =
                     model.insightViewState
@@ -453,8 +452,16 @@ update msg model =
                 DescriptionUpdated _ _ ->
                     Debug.todo "branch 'FunctionDescriptionUpdated _ _' not implemented"
 
-                DeleteTestCase _ ->
-                    Debug.todo "branch 'FunctionDeleteTestCase _' not implemented"
+                DeleteTestCase fQName index ->
+                   let
+                        newTestSuite =
+                            Dict.insert fQName
+                                ( Array.Extra.removeAt index ((Dict.get fQName model.testSuite) |> Maybe.withDefault Array.empty))
+                                model.testSuite
+                    in
+                    ( { model | testSuite = newTestSuite }
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite)
+                    )
 
                 LoadTestCase inputTypes values ->
                     let
@@ -1801,18 +1808,30 @@ viewDefinitionDetails model =
                         loadTestCaseMsg =
                             Testing (LoadTestCase (List.map (\( name, _, tpe ) -> ( name, tpe )) inputTypes) testCase.inputs)
                     in
-                    row
-                        [ Background.color <| evaluate testCase
-                        , Border.solid
-                        , Border.color model.theme.colors.lightest
-                        , Border.width 2
-                        , onClick loadTestCaseMsg
-                        , pointer
-                        , mouseOver [ Border.color model.theme.colors.darkest ]
+                    row [ width fill ]
+                        [ el [ width <| fillPortion 1, padding 15, Font.bold, Font.color model.theme.colors.negative, pointer, onClick <| Testing (DeleteTestCase fQName index) ] (text " X ")
+                        , row
+                            [ Background.color <| evaluate testCase
+                            , Border.solid
+                            , Border.color model.theme.colors.lightest
+                            , Border.width 2
+                            , onClick loadTestCaseMsg
+                            , pointer
+                            , mouseOver [ Border.color model.theme.colors.darkest ]
+                            , width <| fillPortion 18
+                            ]
+                            ([ text " description: "
+                             , text testCase.description
+                             , text ", inputs:"
+                             ]
+                                ++ List.map displayValue testCase.inputs
+                                ++ [ text ", expected output:"
+                                   , displayValue testCase.expectedOutput
+                                   ]
+                            )
                         ]
-                        ([ text " description: ", text testCase.description, text ", inputs:" ] ++ List.map displayValue testCase.inputs ++ [ text ", expected output:", displayValue testCase.expectedOutput ])
             in
-            column [ spacing 4 ] (text "Test Cases" :: List.map displayTestCase (Array.toIndexedList listOfTestcases))
+            column [ paddingXY 10 0, spacing 4, width <| fillPortion 1 ] (text "Test Cases" :: List.map displayTestCase (Array.toIndexedList listOfTestcases))
     in
     case model.irState of
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
