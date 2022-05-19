@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-class DecodeError extends Error {}
+class DecodeError extends Error { }
 
 Object.defineProperty(DecodeError.prototype, "name", {
   value: "DecodeError",
@@ -83,6 +83,13 @@ export function decodeFloat(input: any): number {
   return input;
 }
 
+export function decodeMaybe<T>(decodeElement: (any) => T, input: any): T | null {
+  if (input == null) {
+    return null
+  } else {
+    return decodeElement(input)
+  }
+}
 export function decodeDict<K, V>(
   decodeKey: (any) => K,
   decodeValue: (any) => V,
@@ -133,8 +140,7 @@ export function decodeRecord<recordType>(
   }
   if (Object.keys(inputObject).length > fieldNames.length) {
     throw new DecodeError(
-      `Input object has extra fields, expected ${fieldNames.length}, got ${
-        input.keys().length
+      `Input object has extra fields, expected ${fieldNames.length}, got ${input.keys().length
       }`
     );
   }
@@ -215,6 +221,13 @@ export function encodeFloat(value: number): number {
   return value;
 }
 
+export function encodeMaybe<T>(encodeElement: (any) => T, value: T | null) {
+  if (value == null) {
+    return null
+  } else {
+    return encodeElement(value)
+  }
+}
 export function encodeDict<K, V>(
   encodeKey: (any) => K,
   encodeValue: (any) => V,
@@ -289,6 +302,6 @@ export function raiseDecodeErrorFromCustomType(
 ): void {
   throw new DecodeError(
     `Error while attempting to decode an instance of ${customTypeName}.` +
-      ` "${kind}" is not a valid 'kind' field for ${customTypeName}.`
+    ` "${kind}" is not a valid 'kind' field for ${customTypeName}.`
   );
 }

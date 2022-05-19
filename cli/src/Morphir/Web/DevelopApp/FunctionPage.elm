@@ -370,31 +370,3 @@ evaluateOutput theme config ir testCase fQName =
             text (Debug.toString error)
 
 
-compareState : TestCases -> TestCases -> Bool
-compareState testCaseList1 testCaseList2 =
-    if List.length testCaseList1 == List.length testCaseList2 then
-        testCaseList2
-            |> List.map2
-                (\testCase1 testCase2 ->
-                    compareTestCase testCase1 testCase2
-                )
-                testCaseList1
-            |> List.foldl (\val1 val2 -> val1 && val2) True
-
-    else
-        False
-
-
-compareTestCase : TestCase -> TestCase -> Bool
-compareTestCase testCase1 testCase2 =
-    testCase2.inputs
-        |> List.map2
-            (\input1 input2 ->
-                if input1 == input2 then
-                    True
-
-                else
-                    False
-            )
-            testCase1.inputs
-        |> List.foldl (\val1 val2 -> val1 && val2) True
