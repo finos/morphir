@@ -1,6 +1,11 @@
 # **Spark Backend Documentation**
 This is the entry point for the Spark Backend.
 
+# The Spark API
+The Spark API defines types for working with Spark.
+The current Spark API defines the following values:
+
+
 
 **mapDistribution**
 This function takes a distribution and produces a Morphir FileMap 
@@ -19,4 +24,5 @@ This function take a Relational IR and returns Scala Value Result
 **mapColumnExpression**
 This function  takes a Morphir IR TypeValue (value with type information) and
 returns a Scala value.
+
 
