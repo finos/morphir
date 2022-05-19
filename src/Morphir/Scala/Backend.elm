@@ -97,7 +97,6 @@ mapPackageDefinition opt distribution packagePath packageDef =
                             ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
                         )
             )
-        |> List.append []
         |> Dict.fromList
 
 
