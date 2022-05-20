@@ -53,7 +53,6 @@ import Markdown.Parser as Markdown
 import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
-import Morphir.Elm.Backend.Dapr.StatefulApp exposing (test)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -88,6 +87,7 @@ import Set exposing (Set)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
+import Array.Extra
 
 
 
@@ -115,7 +115,7 @@ type alias Model =
     , theme : Theme
     , irState : IRState
     , serverState : ServerState
-    , testSuite : TestSuite
+    , testSuite : Dict FQName (Array TestCase)
     , collapsedModules : Set (TreeLayout.NodePath ModuleName)
     , showModules : Bool
     , showDefinitions : Bool
@@ -123,12 +123,13 @@ type alias Model =
     , repo : Repo
     , insightViewState : Morphir.Visual.Config.VisualState
     , definitionDisplayType : DisplayType
-    , argState : InsightArgumentState
+    , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     }
 
+
 type alias InsightArgumentState =
-    Dict FQName (Dict Name ValueEditor.EditorState)
+    Dict Name ValueEditor.EditorState
 
 
 type alias HomeState =
@@ -197,7 +198,7 @@ init _ url key =
             , repo = Repo.empty []
             , insightViewState = emptyVisualState
             , definitionDisplayType = XRayView
-            , argState = Dict.empty
+            , argStates = Dict.empty
             , expandedValues = Dict.empty
             }
     in
@@ -236,9 +237,9 @@ type Msg
 
 type TestingMsg
     = DescriptionUpdated Int String
-    | DeleteTestCase Int
-    | SaveTestCase Int
+    | DeleteTestCase FQName Int
     | SaveTestSuite FQName TestCase
+    | LoadTestCase (List ( Name, Type () )) (List RawValue)
 
 
 type NavigationMsg
@@ -265,7 +266,7 @@ type InsightMsg
     | ExpandVariable Int (Maybe RawValue)
     | ShrinkVariable Int
     | SwitchDisplayType
-    | ArgValueUpdated FQName Name ValueEditor.EditorState
+    | ArgValueUpdated Name ValueEditor.EditorState
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -279,6 +280,14 @@ update msg model =
 
                 _ ->
                     Library [] Dict.empty Package.emptyDefinition
+
+        fromStoredTestSuite : Dict comparable (List a) -> Dict comparable (Array a)
+        fromStoredTestSuite testSuite =
+            Dict.fromList (List.map (\( k, v ) -> ( k, Array.fromList v )) (Dict.toList testSuite))
+
+        toStoredTestSuite : Dict comparable (Array a) -> Dict comparable (List a)
+        toStoredTestSuite testSuite =
+            Dict.fromList (List.map (\( k, v ) -> ( k, Array.toList v )) (Dict.toList testSuite))
     in
     case msg of
         Navigate navigationMsg ->
@@ -345,9 +354,14 @@ update msg model =
                     )
 
         ServerGetTestsResponse testSuite ->
-            ( { model | testSuite = testSuite }, Cmd.none )
+            ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
 
         Insight insightMsg ->
+            let
+                insightViewState : Morphir.Visual.Config.VisualState
+                insightViewState =
+                    model.insightViewState
+            in
             case insightMsg of
                 ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
                     if model.expandedValues |> Dict.member ( fQName, localName ) then
@@ -369,19 +383,9 @@ update msg model =
                         )
 
                 ExpandVariable varIndex maybeRawValue ->
-                    let
-                        insightViewState : Morphir.Visual.Config.VisualState
-                        insightViewState =
-                            model.insightViewState
-                    in
                     ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue } }, Cmd.none )
 
                 ShrinkVariable varIndex ->
-                    let
-                        insightViewState : Morphir.Visual.Config.VisualState
-                        insightViewState =
-                            model.insightViewState
-                    in
                     ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing } }, Cmd.none )
 
                 SwitchDisplayType ->
@@ -394,79 +398,51 @@ update msg model =
                     , Cmd.none
                     )
 
-                ArgValueUpdated fQName argName rawValue ->
+                ArgValueUpdated argName editorState ->
                     let
                         variables : InsightArgumentState -> Dict Name (Value () ())
                         variables argState =
                             argState
-                                |> Dict.get fQName
-                                |> Maybe.map (\args -> args |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ())))
-                                |> Maybe.withDefault Dict.empty
-
-                        insightViewState : Morphir.Visual.Config.VisualState
-                        insightViewState =
-                            model.insightViewState |> Debug.log "state"
+                                |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ()))
 
                         newArgState : InsightArgumentState
                         newArgState =
-                            model.argState
-                                |> Dict.update fQName
-                                    (\maybeArgs ->
-                                        case maybeArgs of
-                                            Just args ->
-                                                args |> Dict.insert argName rawValue |> Just
-
-                                            Nothing ->
-                                                Dict.singleton argName rawValue |> Just
-                                    )
+                            model.argStates |> Dict.insert argName editorState
                     in
                     ( { model
-                        | argState = newArgState
+                        | argStates = newArgState
                         , insightViewState = { insightViewState | variables = variables newArgState }
                       }
                     , Cmd.none
                     )
 
         Filter filterMsg ->
+            let
+                homeState : HomeState
+                homeState =
+                    model.homeState
+
+                filterState : FilterState
+                filterState =
+                    homeState.filterState
+            in
             case filterMsg of
                 SearchDefinition s ->
-                    let
-                        homeState : HomeState
-                        homeState =
-                            model.homeState
-
-                        filterState : FilterState
-                        filterState =
-                            homeState.filterState
-                    in
                     ( { model | homeState = { homeState | filterState = { filterState | searchText = s } } }
                     , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | searchText = s })
                     )
 
                 ToggleValues v ->
-                    let
-                        filterState : FilterState
-                        filterState =
-                            model.homeState.filterState
-                    in
                     ( model
                     , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | showValues = v })
                     )
 
                 ToggleTypes t ->
-                    let
-                        filterState =
-                            model.homeState.filterState
-                    in
                     ( model
                     , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | showTypes = t })
                     )
 
                 ModuleClicked path ->
-                    let
-                        filterState =
-                            model.homeState.filterState
-                    in
                     ( model
                     , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | moduleClicked = path })
                     )
@@ -476,25 +452,61 @@ update msg model =
                 DescriptionUpdated _ _ ->
                     Debug.todo "branch 'FunctionDescriptionUpdated _ _' not implemented"
 
-                DeleteTestCase _ ->
-                    Debug.todo "branch 'FunctionDeleteTestCase _' not implemented"
-
-                SaveTestCase _ ->
-                    Debug.todo "branch 'FunctionSaveTestCase _' not implemented"
-
-                SaveTestSuite fQName testCase ->
-                    let
-                        a : List TestCase
-                        a =
-                            []
-
+                DeleteTestCase fQName index ->
+                   let
                         newTestSuite =
                             Dict.insert fQName
-                                (testCase :: (Dict.get fQName model.testSuite |> Maybe.withDefault a))
+                                ( Array.Extra.removeAt index ((Dict.get fQName model.testSuite) |> Maybe.withDefault Array.empty))
                                 model.testSuite
                     in
                     ( { model | testSuite = newTestSuite }
-                    , httpSaveTestSuite (IR.fromDistribution getDistribution) newTestSuite
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite)
+                    )
+
+                LoadTestCase inputTypes values ->
+                    let
+                        insightViewState : Morphir.Visual.Config.VisualState
+                        insightViewState =
+                            model.insightViewState
+
+                        dictfromRecord : { a | keys : List comparable, vals : List b } -> Dict comparable b
+                        dictfromRecord { keys, vals } =
+                            Dict.fromList <| List.map2 Tuple.pair keys vals
+
+                        newVariables : Dict Name RawValue
+                        newVariables =
+                            dictfromRecord
+                                { keys = List.map Tuple.first inputTypes
+                                , vals = values
+                                }
+
+                        newArgState : Type () -> RawValue -> ValueEditor.EditorState
+                        newArgState tpe val =
+                            ValueEditor.initEditorState (IR.fromDistribution getDistribution) tpe (Just val)
+
+                        newArgStates : Dict Name ValueEditor.EditorState
+                        newArgStates =
+                            dictfromRecord
+                                { keys = List.map Tuple.first inputTypes
+                                , vals = List.map2 newArgState (List.map Tuple.second inputTypes) values
+                                }
+                    in
+                    ( { model
+                        | argStates = newArgStates
+                        , insightViewState = { insightViewState | variables = newVariables }
+                      }
+                    , Cmd.none
+                    )
+
+                SaveTestSuite fQName testCase ->
+                    let
+                        newTestSuite =
+                            Dict.insert fQName
+                                (Array.push testCase (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
+                                model.testSuite
+                    in
+                    ( { model | testSuite = newTestSuite }
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite)
                     )
 
 
@@ -549,7 +561,7 @@ updateHomeState pack mod def filterState =
 
         updateModel : HomeState -> ModelUpdate
         updateModel newState model =
-            { model | homeState = newState, insightViewState = emptyVisualState, argState = Dict.empty }
+            { model | homeState = newState, insightViewState = emptyVisualState, argStates = Dict.empty }
 
         -- When selecting a definition, we should not change the selected module, once the user explicitly selected one
         keepOrChangeSelectedModule : ( List Path, List Name )
@@ -1685,8 +1697,8 @@ definitionName definition =
 viewDefinitionDetails : Model -> Element Msg
 viewDefinitionDetails model =
     let
-        insightViewConfig : Distribution -> Morphir.Visual.Config.Config Msg
-        insightViewConfig distribution =
+        insightViewConfig : IR -> Morphir.Visual.Config.Config Msg
+        insightViewConfig ir =
             let
                 referenceClicked : FQName -> Bool -> Msg
                 referenceClicked fqname t =
@@ -1697,25 +1709,23 @@ viewDefinitionDetails model =
                     Insight (ExpandVariable index value)
             in
             Morphir.Visual.Config.fromIR
-                (IR.fromDistribution distribution)
+                ir
                 model.insightViewState
                 { onReferenceClicked = referenceClicked
                 , onHoverOver = hoverOver
                 , onHoverLeave = Insight << ShrinkVariable
                 }
 
-
-
-        viewArgumentEditors : IR -> InsightArgumentState -> FQName -> Value.Definition () (Type ()) -> Element Msg
-        viewArgumentEditors ir argState fQName valueDef =
-            valueDef.inputTypes
+        viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
+        viewArgumentEditors ir argState inputTypes =
+            inputTypes
                 |> List.map
                     (\( argName, _, argType ) ->
                         ( argName
                         , ValueEditor.view ir
                             argType
-                            (Insight << ArgValueUpdated fQName argName)
-                            (argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
+                            (Insight << ArgValueUpdated argName)
+                            (argState |> Dict.get argName |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
                         )
                     )
                 |> FieldList.view
@@ -1738,13 +1748,13 @@ viewDefinitionDetails model =
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save Test" ]
                 }
 
-        viewActualOutput : Theme -> Morphir.Visual.Config.Config Msg -> IR -> TestCase -> FQName -> Element Msg
-        viewActualOutput theme config ir testCase fQName =
+        viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
+        viewActualOutput theme ir testCase fQName =
             Common.viewAsCard theme
                 (el [ Font.bold, Font.size (theme |> Theme.scaled 2), spacing 5, padding 5 ] (text "ACTUAL OUTPUT"))
                 (case evaluateOutput ir testCase.inputs fQName of
                     Ok rawValue ->
-                        el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue config ir rawValue)
+                        el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
 
                     Err error ->
                         text "Invalid inputs"
@@ -1763,20 +1773,20 @@ viewDefinitionDetails model =
                 Err error ->
                     el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
 
-        scenarios : FQName -> Distribution -> Element Msg
-        scenarios fQName distribution =
+        scenarios : FQName -> Distribution -> List ( Name, a, Type () ) -> Element Msg
+        scenarios fQName distribution inputTypes =
             let
                 ir : IR
                 ir =
                     IR.fromDistribution distribution
 
-                listOfTestcases : List TestCase
+                listOfTestcases : Array TestCase
                 listOfTestcases =
-                    Dict.get fQName model.testSuite |> Maybe.withDefault []
+                    Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty
 
                 displayValue : RawValue -> Element Msg
                 displayValue t =
-                    viewRawValue (insightViewConfig distribution) ir t
+                    viewRawValue (insightViewConfig ir) ir t
 
                 evaluate : TestCase -> Element.Color
                 evaluate testCase =
@@ -1791,86 +1801,101 @@ viewDefinitionDetails model =
                         Err _ ->
                             model.theme.colors.negative
 
-                diplayTestcase : TestCase -> Element Msg
-                diplayTestcase testCase =
-                    row [ Background.color <| evaluate testCase ] (
-                        [text " description: ",  text testCase.description, text ", inputs:" ] ++ List.map (\t -> displayValue t) testCase.inputs ++ [ text ", expected output:", displayValue testCase.expectedOutput ]
-                    )
+                displayTestCase : ( Int, TestCase ) -> Element Msg
+                displayTestCase ( index, testCase ) =
+                    let
+                        loadTestCaseMsg : Msg
+                        loadTestCaseMsg =
+                            Testing (LoadTestCase (List.map (\( name, _, tpe ) -> ( name, tpe )) inputTypes) testCase.inputs)
+                    in
+                    row [ width fill ]
+                        [ el [ width <| fillPortion 1, padding 15, Font.bold, Font.color model.theme.colors.negative, pointer, onClick <| Testing (DeleteTestCase fQName index) ] (text " X ")
+                        , row
+                            [ Background.color <| evaluate testCase
+                            , Border.solid
+                            , Border.color model.theme.colors.lightest
+                            , Border.width 2
+                            , onClick loadTestCaseMsg
+                            , pointer
+                            , mouseOver [ Border.color model.theme.colors.darkest ]
+                            , width <| fillPortion 18
+                            ]
+                            ([ text " description: "
+                             , text testCase.description
+                             , text ", inputs:"
+                             ]
+                                ++ List.map displayValue testCase.inputs
+                                ++ [ text ", expected output:"
+                                   , displayValue testCase.expectedOutput
+                                   ]
+                            )
+                        ]
             in
-            column [] (List.map (\t -> diplayTestcase t) listOfTestcases)
+            column [ paddingXY 10 0, spacing 4, width <| fillPortion 1 ] (text "Test Cases" :: List.map displayTestCase (Array.toIndexedList listOfTestcases))
     in
     case model.irState of
-        IRLoading ->
-            none
-
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
             case model.homeState.selectedDefinition of
                 Just selectedDefinition ->
                     case selectedDefinition of
                         Value ( moduleName, valueName ) ->
-                            packageDef.modules
-                                |> Dict.get moduleName
-                                |> Maybe.andThen
-                                    (\accessControlledModuleDef ->
-                                        accessControlledModuleDef.value.values
-                                            |> Dict.get valueName
-                                            |> Maybe.map
-                                                (\_ ->
-                                                    case packageDef.modules |> Dict.get moduleName of
-                                                        Just acmoduledef ->
-                                                            acmoduledef.value.values
-                                                                |> Dict.get valueName
-                                                                |> Maybe.andThen
-                                                                    (\accessControlledValueDef ->
-                                                                        let
-                                                                            fullyQualifiedName : ( PackageName, ModuleName, Name )
-                                                                            fullyQualifiedName =
-                                                                                ( packageName, moduleName, valueName )
+                            case packageDef.modules |> Dict.get moduleName of
+                                Just acmoduledef ->
+                                    acmoduledef.value.values
+                                        |> Dict.get valueName
+                                        |> Maybe.map .value
+                                        |> Maybe.map .value
+                                        |> Maybe.andThen
+                                            (\valueDef ->
+                                                let
+                                                    fullyQualifiedName : ( PackageName, ModuleName, Name )
+                                                    fullyQualifiedName =
+                                                        ( packageName, moduleName, valueName )
 
-                                                                            ir : IR
-                                                                            ir =
-                                                                                IR.fromDistribution distribution
+                                                    ir : IR
+                                                    ir =
+                                                        IR.fromDistribution distribution
 
-                                                                            saveButton =
-                                                                                case evaluateOutput ir (Dict.values model.insightViewState.variables) fullyQualifiedName of
-                                                                                    Ok rawValue ->
-                                                                                        saveTestcaseButton
-                                                                                            fullyQualifiedName
-                                                                                            { description = "", expectedOutput = rawValue, inputs = Dict.values model.insightViewState.variables }
+                                                    saveButton : Element Msg
+                                                    saveButton =
+                                                        case evaluateOutput ir (Dict.values model.insightViewState.variables) fullyQualifiedName of
+                                                            Ok rawValue ->
+                                                                saveTestcaseButton
+                                                                    fullyQualifiedName
+                                                                    { description = "", expectedOutput = rawValue, inputs = Dict.values model.insightViewState.variables }
 
-                                                                                    Err _ ->
-                                                                                        none
-                                                                        in
-                                                                        case model.definitionDisplayType of
-                                                                            XRayView ->
-                                                                                Just <| XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) accessControlledValueDef.value.value
+                                                            Err _ ->
+                                                                none
+                                                in
+                                                case model.definitionDisplayType of
+                                                    XRayView ->
+                                                        Just <| XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef
 
-                                                                            InsightView ->
-                                                                                Just <|
-                                                                                    column
-                                                                                        [ width fill, height fill, spacing 20 ]
-                                                                                        [viewArgumentEditors (IR.fromDistribution distribution) model.argState fullyQualifiedName accessControlledValueDef.value.value
-                                                                                        ,(ViewValue.viewDefinition (insightViewConfig distribution) fullyQualifiedName accessControlledValueDef.value.value)
-                                                                                        , viewActualOutput
-                                                                                            model.theme
-                                                                                            (insightViewConfig distribution)
-                                                                                            (IR.fromDistribution distribution)
-                                                                                            { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = Dict.values model.insightViewState.variables }
-                                                                                            fullyQualifiedName
-                                                                                        , saveButton
-                                                                                        , scenarios fullyQualifiedName distribution
-                                                                                        ]
-                                                                    )
-                                                                |> Maybe.withDefault none
+                                                    InsightView ->
+                                                        Just <|
+                                                            column
+                                                                [ width fill, height fill, spacing 20 ]
+                                                                [ viewArgumentEditors ir model.argStates valueDef.inputTypes
+                                                                , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                , viewActualOutput
+                                                                    model.theme
+                                                                    ir
+                                                                    { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = Dict.values model.insightViewState.variables }
+                                                                    fullyQualifiedName
+                                                                , saveButton
+                                                                , scenarios fullyQualifiedName distribution valueDef.inputTypes
+                                                                ]
+                                            )
+                                        |> Maybe.withDefault none
 
-                                                        Nothing ->
-                                                            none
-                                                )
-                                    )
-                                |> Maybe.withDefault none
+                                Nothing ->
+                                    none
 
                         Type _ ->
                             none
 
                 Nothing ->
                     none
+
+        IRLoading ->
+            none
