@@ -1,12 +1,12 @@
 {
   "name": "morphir-elm",
-  "version": "2.49.2",
+  "version": "2.50.2",
   "description": "Elm bindings for Morphir",
   "scripts": {
     "clean": "gulp clean",
     "test": "gulp test",
     "test-morphir-ir-typescript": "gulp testMorphirIRTypeScript",
-    "jest-test": "cd cli2 && elm make src/Morphir/Elm/CLI.elm --output=Morphir.Elm.CLI.js && cd .. && npx jest",
+    "jest-test": "cd cli2 && elm make src/Morphir/Elm/CLI.elm --output=Morphir.Elm.CLI.js && cd ../cli && elm make src/Morphir/Elm/CLI.elm --output=Morphir.Elm.CLI.js && cd .. && npx jest",
     "insight-server-live": "cd cli && elm-live src/Morphir/Web/Insight.elm --start-page=./web/insight.html --dir=./web --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/insight.js",
     "dev-server-live": "cd cli && elm-live src/Morphir/Web/DevelopApp.elm --dir=web --pushstate --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/index.js",
     "try-morphir-live": "cd cli && elm-live src/Morphir/Web/TryMorphir.elm",
@@ -42,7 +42,9 @@
     "redistributable/**",
     "cli2/lib/cli.js",
     "cli2/lib/morphir-make.js",
-    "cli2/lib/morphir.js"
+    "cli2/lib/morphir.js",
+    "cli2/lib/FileChanges.js",
+    "cli2/Morphir.Elm.CLI.js"
   ],
   "keywords": [
     "morphir",

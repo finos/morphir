@@ -1,6 +1,6 @@
-module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), Page(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, update, view, viewBody, viewHeader)
+module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, update, view, viewBody, viewHeader)
 
-import Array
+import Array exposing (Array)
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
@@ -10,6 +10,8 @@ import Element
         , alignLeft
         , alignRight
         , alignTop
+        , centerX
+        , centerY
         , clipX
         , clipY
         , column
@@ -41,6 +43,7 @@ import Element
         )
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
@@ -49,7 +52,7 @@ import Http exposing (Error(..), emptyBody, jsonBody)
 import Markdown.Parser as Markdown
 import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
-import Morphir.Correctness.Test exposing (TestSuite)
+import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -57,22 +60,25 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
-import Morphir.IR.Path as Path
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Repo as Repo exposing (Repo)
+import Morphir.IR.SDK as SDK
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.Type.Infer as Infer
+import Morphir.Value.Error exposing (Error(..))
+import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (PopupScreenRecord)
+import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.DevelopApp.Common as Common exposing (ifThenElse, pathToDisplayString, pathToFullUrl, pathToUrl, urlFragmentToNodePath, viewAsCard)
-import Morphir.Web.DevelopApp.FunctionPage as FunctionPage
-import Morphir.Web.DevelopApp.ModulePage as ModulePage exposing (ViewType(..))
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Morphir.Web.TryMorphir exposing (Model)
 import Ordering
@@ -81,6 +87,7 @@ import Set exposing (Set)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
+import Array.Extra
 
 
 
@@ -94,8 +101,8 @@ main =
         , view = view
         , update = update
         , subscriptions = subscriptions
-        , onUrlChange = UrlChanged
-        , onUrlRequest = LinkClicked
+        , onUrlChange = Navigate << UrlChanged
+        , onUrlRequest = Navigate << LinkClicked
         }
 
 
@@ -108,8 +115,7 @@ type alias Model =
     , theme : Theme
     , irState : IRState
     , serverState : ServerState
-    , testSuite : TestSuite
-    , functionStates : Dict FQName FunctionPage.Model
+    , testSuite : Dict FQName (Array TestCase)
     , collapsedModules : Set (TreeLayout.NodePath ModuleName)
     , showModules : Bool
     , showDefinitions : Bool
@@ -117,13 +123,13 @@ type alias Model =
     , repo : Repo
     , insightViewState : Morphir.Visual.Config.VisualState
     , definitionDisplayType : DisplayType
-    , argState : InsightArgumentState
+    , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     }
 
 
 type alias InsightArgumentState =
-    Dict FQName (Dict Name ValueEditor.EditorState)
+    Dict Name ValueEditor.EditorState
 
 
 type alias HomeState =
@@ -138,6 +144,7 @@ type alias FilterState =
     { searchText : String
     , showValues : Bool
     , showTypes : Bool
+    , moduleClicked : String
     }
 
 
@@ -165,13 +172,6 @@ type ServerState
     | ServerHttpError Http.Error
 
 
-type Page
-    = Home HomeState
-    | Module ModulePage.Model
-    | Function FQName
-    | NotFound
-
-
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
     let
@@ -181,7 +181,6 @@ init _ url key =
             , irState = IRLoading
             , serverState = ServerReady
             , testSuite = Dict.empty
-            , functionStates = Dict.empty
             , collapsedModules = Set.empty
             , showModules = True
             , showDefinitions = True
@@ -193,12 +192,13 @@ init _ url key =
                     { searchText = ""
                     , showValues = True
                     , showTypes = True
+                    , moduleClicked = ""
                     }
                 }
             , repo = Repo.empty []
             , insightViewState = emptyVisualState
             , definitionDisplayType = XRayView
-            , argState = Dict.empty
+            , argStates = Dict.empty
             , expandedValues = Dict.empty
             }
     in
@@ -225,24 +225,48 @@ emptyVisualState =
 
 
 type Msg
-    = LinkClicked Browser.UrlRequest
-    | UrlChanged Url.Url
+    = Navigate NavigationMsg
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
-    | InvalidArgValue FQName Name String
+    | Filter FilterMsg
+    | UI UIMsg
+    | Insight InsightMsg
+    | Testing TestingMsg
+
+
+type TestingMsg
+    = DescriptionUpdated Int String
+    | DeleteTestCase FQName Int
+    | SaveTestSuite FQName TestCase
+    | LoadTestCase (List ( Name, Type () )) (List RawValue)
+
+
+type NavigationMsg
+    = LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
+
+
+type UIMsg
+    = ToggleModulesMenu
+    | ToggleDefinitionsMenu
     | ExpandModule (TreeLayout.NodePath ModuleName)
     | CollapseModule (TreeLayout.NodePath ModuleName)
-    | SearchDefinition String
+
+
+type FilterMsg
+    = SearchDefinition String
     | ToggleValues Bool
     | ToggleTypes Bool
-    | ToggleModulesMenu
-    | ToggleDefinitionsMenu
-    | ExpandReference FQName Bool
+    | ModuleClicked String
+
+
+type InsightMsg
+    = ExpandReference FQName Bool
     | ExpandVariable Int (Maybe RawValue)
     | ShrinkVariable Int
     | SwitchDisplayType
-    | ArgValueUpdated FQName Name ValueEditor.EditorState
+    | ArgValueUpdated Name ValueEditor.EditorState
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -256,18 +280,28 @@ update msg model =
 
                 _ ->
                     Library [] Dict.empty Package.emptyDefinition
+
+        fromStoredTestSuite : Dict comparable (List a) -> Dict comparable (Array a)
+        fromStoredTestSuite testSuite =
+            Dict.fromList (List.map (\( k, v ) -> ( k, Array.fromList v )) (Dict.toList testSuite))
+
+        toStoredTestSuite : Dict comparable (Array a) -> Dict comparable (List a)
+        toStoredTestSuite testSuite =
+            Dict.fromList (List.map (\( k, v ) -> ( k, Array.toList v )) (Dict.toList testSuite))
     in
-    case msg |> Debug.log "msg" of
-        LinkClicked urlRequest ->
-            case urlRequest of
-                Browser.Internal url ->
-                    ( model, Nav.pushUrl model.key (Url.toString url) )
+    case msg of
+        Navigate navigationMsg ->
+            case navigationMsg of
+                LinkClicked urlRequest ->
+                    case urlRequest of
+                        Browser.Internal url ->
+                            ( model, Nav.pushUrl model.key (Url.toString url) )
 
-                Browser.External href ->
-                    ( model, Nav.load href )
+                        Browser.External href ->
+                            ( model, Nav.load href )
 
-        UrlChanged url ->
-            ( toRoute url model |> Debug.log "urlChanged", Cmd.none )
+                UrlChanged url ->
+                    ( toRoute url model, Cmd.none )
 
         HttpError httpError ->
             case model.irState of
@@ -295,29 +329,94 @@ update msg model =
                     , httpTestModel (IR.fromDistribution distribution)
                     )
 
-        ExpandModule nodePath ->
-            ( { model | collapsedModules = model.collapsedModules |> Set.remove nodePath }, Cmd.none )
+        UI uiMsg ->
+            case uiMsg of
+                ExpandModule nodePath ->
+                    ( { model | collapsedModules = model.collapsedModules |> Set.remove nodePath }, Cmd.none )
 
-        CollapseModule nodePath ->
-            ( { model | collapsedModules = model.collapsedModules |> Set.insert nodePath }, Cmd.none )
+                CollapseModule nodePath ->
+                    ( { model | collapsedModules = model.collapsedModules |> Set.insert nodePath }, Cmd.none )
 
-        ToggleModulesMenu ->
-            ( { model
-                | showModules = not model.showModules
-                , showDefinitions = ifThenElse (not model.showModules) True model.showDefinitions
-              }
-            , Cmd.none
-            )
+                ToggleModulesMenu ->
+                    ( { model
+                        | showModules = not model.showModules
+                        , showDefinitions = ifThenElse (not model.showModules) True model.showDefinitions
+                      }
+                    , Cmd.none
+                    )
 
-        ToggleDefinitionsMenu ->
-            ( { model
-                | showDefinitions = not model.showDefinitions
-                , showModules = ifThenElse (not model.showDefinitions) model.showDefinitions False
-              }
-            , Cmd.none
-            )
+                ToggleDefinitionsMenu ->
+                    ( { model
+                        | showDefinitions = not model.showDefinitions
+                        , showModules = ifThenElse (not model.showDefinitions) model.showDefinitions False
+                      }
+                    , Cmd.none
+                    )
 
-        SearchDefinition s ->
+        ServerGetTestsResponse testSuite ->
+            ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
+
+        Insight insightMsg ->
+            let
+                insightViewState : Morphir.Visual.Config.VisualState
+                insightViewState =
+                    model.insightViewState
+            in
+            case insightMsg of
+                ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
+                    if model.expandedValues |> Dict.member ( fQName, localName ) then
+                        if isFunctionPresent then
+                            ( { model | expandedValues = model.expandedValues |> Dict.remove ( fQName, localName ) }, Cmd.none )
+
+                        else
+                            ( model, Cmd.none )
+
+                    else
+                        ( { model
+                            | expandedValues =
+                                Distribution.lookupValueDefinition (QName moduleName localName)
+                                    getDistribution
+                                    |> Maybe.map (\valueDef -> model.expandedValues |> Dict.insert ( fQName, localName ) valueDef)
+                                    |> Maybe.withDefault model.expandedValues
+                          }
+                        , Cmd.none
+                        )
+
+                ExpandVariable varIndex maybeRawValue ->
+                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue } }, Cmd.none )
+
+                ShrinkVariable varIndex ->
+                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing } }, Cmd.none )
+
+                SwitchDisplayType ->
+                    ( case model.definitionDisplayType of
+                        XRayView ->
+                            { model | definitionDisplayType = InsightView }
+
+                        InsightView ->
+                            { model | definitionDisplayType = XRayView }
+                    , Cmd.none
+                    )
+
+                ArgValueUpdated argName editorState ->
+                    let
+                        variables : InsightArgumentState -> Dict Name (Value () ())
+                        variables argState =
+                            argState
+                                |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ()))
+
+                        newArgState : InsightArgumentState
+                        newArgState =
+                            model.argStates |> Dict.insert argName editorState
+                    in
+                    ( { model
+                        | argStates = newArgState
+                        , insightViewState = { insightViewState | variables = variables newArgState }
+                      }
+                    , Cmd.none
+                    )
+
+        Filter filterMsg ->
             let
                 homeState : HomeState
                 homeState =
@@ -327,113 +426,88 @@ update msg model =
                 filterState =
                     homeState.filterState
             in
-            ( { model | homeState = { homeState | filterState = { filterState | searchText = s } } }
-            , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | searchText = s })
-            )
+            case filterMsg of
+                SearchDefinition s ->
+                    ( { model | homeState = { homeState | filterState = { filterState | searchText = s } } }
+                    , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | searchText = s })
+                    )
 
-        ToggleValues v ->
-            let
-                filterState : FilterState
-                filterState =
-                    model.homeState.filterState
-            in
-            ( model
-            , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | showValues = v })
-            )
+                ToggleValues v ->
+                    ( model
+                    , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | showValues = v })
+                    )
 
-        ToggleTypes t ->
-            let
-                filterState =
-                    model.homeState.filterState
-            in
-            ( model
-            , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | showTypes = t })
-            )
+                ToggleTypes t ->
+                    ( model
+                    , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | showTypes = t })
+                    )
 
-        ServerGetTestsResponse _ ->
-            -- TODO: function test cases
-            ( model, Cmd.none )
+                ModuleClicked path ->
+                    ( model
+                    , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | moduleClicked = path })
+                    )
 
-        InvalidArgValue _ _ _ ->
-            -- TODO: todo implement
-            ( model, Cmd.none )
+        Testing testingMsg ->
+            case testingMsg of
+                DescriptionUpdated _ _ ->
+                    Debug.todo "branch 'FunctionDescriptionUpdated _ _' not implemented"
 
-        ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
-            if model.expandedValues |> Dict.member ( fQName, localName ) then
-                if isFunctionPresent then
-                    ( { model | expandedValues = model.expandedValues |> Dict.remove ( fQName, localName ) }, Cmd.none )
+                DeleteTestCase fQName index ->
+                   let
+                        newTestSuite =
+                            Dict.insert fQName
+                                ( Array.Extra.removeAt index ((Dict.get fQName model.testSuite) |> Maybe.withDefault Array.empty))
+                                model.testSuite
+                    in
+                    ( { model | testSuite = newTestSuite }
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite)
+                    )
 
-                else
-                    ( model, Cmd.none )
+                LoadTestCase inputTypes values ->
+                    let
+                        insightViewState : Morphir.Visual.Config.VisualState
+                        insightViewState =
+                            model.insightViewState
 
-            else
-                ( { model
-                    | expandedValues =
-                        Distribution.lookupValueDefinition (QName moduleName localName)
-                            getDistribution
-                            |> Maybe.map (\valueDef -> model.expandedValues |> Dict.insert ( fQName, localName ) valueDef)
-                            |> Maybe.withDefault model.expandedValues
-                  }
-                , Cmd.none
-                )
+                        dictfromRecord : { a | keys : List comparable, vals : List b } -> Dict comparable b
+                        dictfromRecord { keys, vals } =
+                            Dict.fromList <| List.map2 Tuple.pair keys vals
 
-        ExpandVariable varIndex maybeRawValue ->
-            let
-                insightViewState : Morphir.Visual.Config.VisualState
-                insightViewState =
-                    model.insightViewState
-            in
-            ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue } }, Cmd.none )
+                        newVariables : Dict Name RawValue
+                        newVariables =
+                            dictfromRecord
+                                { keys = List.map Tuple.first inputTypes
+                                , vals = values
+                                }
 
-        ShrinkVariable varIndex ->
-            let
-                insightViewState : Morphir.Visual.Config.VisualState
-                insightViewState =
-                    model.insightViewState
-            in
-            ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing } }, Cmd.none )
+                        newArgState : Type () -> RawValue -> ValueEditor.EditorState
+                        newArgState tpe val =
+                            ValueEditor.initEditorState (IR.fromDistribution getDistribution) tpe (Just val)
 
-        SwitchDisplayType ->
-            ( case model.definitionDisplayType of
-                XRayView ->
-                    { model | definitionDisplayType = InsightView }
+                        newArgStates : Dict Name ValueEditor.EditorState
+                        newArgStates =
+                            dictfromRecord
+                                { keys = List.map Tuple.first inputTypes
+                                , vals = List.map2 newArgState (List.map Tuple.second inputTypes) values
+                                }
+                    in
+                    ( { model
+                        | argStates = newArgStates
+                        , insightViewState = { insightViewState | variables = newVariables }
+                      }
+                    , Cmd.none
+                    )
 
-                InsightView ->
-                    { model | definitionDisplayType = XRayView }
-            , Cmd.none
-            )
-
-        ArgValueUpdated fQName argName rawValue ->
-            let
-                variables : InsightArgumentState -> Dict (Name) (Value () ())
-                variables argState =
-                    argState
-                    |> Dict.get fQName
-                    |> Maybe.map (\args -> args |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ())))
-                    |> Maybe.withDefault Dict.empty
-
-                insightViewState : Morphir.Visual.Config.VisualState
-                insightViewState =
-                    model.insightViewState
-
-                newArgState : InsightArgumentState
-                newArgState = 
-                    model.argState
-                        |> Dict.update fQName
-                            (\maybeArgs ->
-                                case maybeArgs of
-                                    Just args ->
-                                        args |> Dict.insert argName rawValue |> Just
-
-                                    Nothing ->
-                                        Dict.singleton argName rawValue |> Just
-                            )
-            in
-            ( { model
-                | argState = newArgState, insightViewState = { insightViewState | variables = variables newArgState}
-              }
-            , Cmd.none
-            )
+                SaveTestSuite fQName testCase ->
+                    let
+                        newTestSuite =
+                            Dict.insert fQName
+                                (Array.push testCase (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
+                                model.testSuite
+                    in
+                    ( { model | testSuite = newTestSuite }
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite)
+                    )
 
 
 
@@ -472,6 +546,7 @@ routeParser =
 updateHomeState : String -> String -> String -> FilterState -> ModelUpdate
 updateHomeState pack mod def filterState =
     let
+        toTypeOrValue : String -> String -> Maybe Definition
         toTypeOrValue m d =
             case String.uncons d of
                 Just ( first, _ ) ->
@@ -486,8 +561,20 @@ updateHomeState pack mod def filterState =
 
         updateModel : HomeState -> ModelUpdate
         updateModel newState model =
-            { model | homeState = newState, insightViewState = emptyVisualState, argState = Dict.empty }
+            { model | homeState = newState, insightViewState = emptyVisualState, argStates = Dict.empty }
+
+        -- When selecting a definition, we should not change the selected module, once the user explicitly selected one
+        keepOrChangeSelectedModule : ( List Path, List Name )
+        keepOrChangeSelectedModule =
+            if filterState.moduleClicked == pack then
+                ( urlFragmentToNodePath "", [] )
+
+            else
+                ifThenElse (filterState.moduleClicked == "")
+                    ( urlFragmentToNodePath mod, Path.fromString mod )
+                    ( urlFragmentToNodePath filterState.moduleClicked, Path.fromString filterState.moduleClicked )
     in
+    -- initial state, nothing is selected
     if pack == "" then
         updateModel
             { selectedPackage = Nothing
@@ -495,6 +582,7 @@ updateHomeState pack mod def filterState =
             , selectedDefinition = Nothing
             , filterState = filterState
             }
+        -- a top level package is selected
 
     else if mod == "" then
         updateModel
@@ -503,12 +591,22 @@ updateHomeState pack mod def filterState =
             , selectedDefinition = Nothing
             , filterState = filterState
             }
+        -- a module is selected
+
+    else if def == "" then
+        updateModel
+            { selectedPackage = Just (Path.fromString pack)
+            , selectedModule = Just ( urlFragmentToNodePath mod, Path.fromString mod )
+            , selectedDefinition = Nothing
+            , filterState = filterState
+            }
+        -- a definition is selected
 
     else
         updateModel
             { selectedPackage = Just (Path.fromString pack)
-            , selectedModule = Just ( urlFragmentToNodePath mod, Path.fromString mod )
-            , selectedDefinition = ifThenElse (def == "") Nothing (toTypeOrValue mod def)
+            , selectedModule = Just keepOrChangeSelectedModule
+            , selectedDefinition = toTypeOrValue mod def
             , filterState = filterState
             }
 
@@ -629,8 +727,12 @@ queryParams =
         showTypes : Query.Parser Bool
         showTypes =
             Query.enum "showTypes" trueOrFalse |> Query.map (Maybe.withDefault True)
+
+        moduleClicked : Query.Parser String
+        moduleClicked =
+            Query.string "moduleClicked" |> Query.map (Maybe.withDefault "")
     in
-    Query.map3 FilterState search showValues showTypes
+    Query.map4 FilterState search showValues showTypes moduleClicked
 
 
 {-| Turns the model's current filter state into a query parameter string to be used in building the url
@@ -649,8 +751,11 @@ filterStateToQueryParams filterState =
         filterTypes : String
         filterTypes =
             ifThenElse filterState.showTypes "" "&showTypes=false"
+
+        moduleClicked =
+            ifThenElse (filterState.moduleClicked == "") "" ("&moduleClicked=" ++ filterState.moduleClicked)
     in
-    "?" ++ search ++ filterValues ++ filterTypes
+    "?" ++ search ++ filterValues ++ filterTypes ++ moduleClicked
 
 
 
@@ -986,7 +1091,7 @@ viewHome model packageName packageDef =
                 , padding (model.theme |> Theme.scaled -2)
                 , width (fillPortion 7)
                 ]
-                { onChange = SearchDefinition
+                { onChange = Filter << SearchDefinition
                 , text = model.homeState.filterState.searchText
                 , placeholder = Just (Element.Input.placeholder [] (text "Search for a definition"))
                 , label = Element.Input.labelHidden "Search"
@@ -997,7 +1102,7 @@ viewHome model packageName packageDef =
         valueCheckbox =
             Element.Input.checkbox
                 [ width (fillPortion 2) ]
-                { onChange = ToggleValues
+                { onChange = Filter << ToggleValues
                 , checked = model.homeState.filterState.showValues
                 , icon = Element.Input.defaultCheckbox
                 , label = Element.Input.labelLeft [] (text "values:")
@@ -1008,7 +1113,7 @@ viewHome model packageName packageDef =
         typeCheckbox =
             Element.Input.checkbox
                 [ width (fillPortion 2) ]
-                { onChange = ToggleTypes
+                { onChange = Filter << ToggleTypes
                 , checked = model.homeState.filterState.showTypes
                 , icon = Element.Input.defaultCheckbox
                 , label = Element.Input.labelLeft [] (text "types:")
@@ -1026,7 +1131,7 @@ viewHome model packageName packageDef =
                 , Font.size (model.theme |> Theme.scaled 2)
                 , mouseOver [ Background.color <| ifThenElse model.showModules morphIrBlue morphIrOrange ]
                 ]
-                { onPress = Just ToggleModulesMenu
+                { onPress = Just (UI ToggleModulesMenu)
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showModules "🗁" "🗀", text "Modules" ]
                 }
 
@@ -1042,7 +1147,7 @@ viewHome model packageName packageDef =
                 , Font.size (model.theme |> Theme.scaled 2)
                 , mouseOver [ Background.color <| ifThenElse model.showDefinitions morphIrBlue morphIrOrange ]
                 ]
-                { onPress = Just ToggleDefinitionsMenu
+                { onPress = Just (UI ToggleDefinitionsMenu)
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showDefinitions "🗁" "🗀", text "Definitions" ]
                 }
 
@@ -1052,8 +1157,8 @@ viewHome model packageName packageDef =
             el
                 (listStyles ++ [ height fill, scrollbars ])
                 (TreeLayout.view TreeLayout.defaultTheme
-                    { onCollapse = CollapseModule
-                    , onExpand = ExpandModule
+                    { onCollapse = UI << CollapseModule
+                    , onExpand = UI << ExpandModule
                     , collapsedPaths = model.collapsedModules
                     , selectedPaths =
                         model.homeState.selectedModule
@@ -1117,7 +1222,7 @@ viewHome model packageName packageDef =
                 , Font.size (model.theme |> Theme.scaled 2)
                 , mouseOver [ Background.color <| xrayOrInsight morphIrBlue morphIrOrange ]
                 ]
-                { onPress = Just SwitchDisplayType
+                { onPress = Just (Insight SwitchDisplayType)
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text <| "Switch to " ++ xrayOrInsight "InsightView" "XRayView" ]
                 }
     in
@@ -1167,7 +1272,7 @@ viewHome model packageName packageDef =
                     [ viewDefinition model.homeState.selectedDefinition
                     , toggleDisplayType
                     , el [ height fill, width fill, scrollbars ]
-                        (viewDefinitionDetails model.theme model.irState model.homeState.selectedDefinition model.insightViewState model.argState model.definitionDisplayType)
+                        (viewDefinitionDetails model)
                     ]
                 )
             ]
@@ -1544,15 +1649,22 @@ viewModuleNames model packageName parentModule allModuleNames =
                     )
                 |> Set.fromList
                 |> Set.toList
+
+        handleClick : Path -> Msg
+        handleClick path =
+            Filter (ModuleClicked <| Path.toString Name.toTitleCase "." path)
     in
     TreeLayout.Node
         (\_ ->
             case currentModuleName of
                 Just name ->
-                    link [ pointer ] { label = text (name |> nameToTitleText), url = pathToFullUrl [ packageName, parentModule ] ++ filterStateToQueryParams model.homeState.filterState }
+                    link [ pointer, onClick (handleClick parentModule) ]
+                        { label = text (name |> nameToTitleText)
+                        , url = pathToFullUrl [ packageName, parentModule ] ++ filterStateToQueryParams model.homeState.filterState
+                        }
 
                 Nothing ->
-                    link [ pointer ] { label = text (pathToUrl packageName), url = pathToFullUrl [ packageName ] ++ filterStateToQueryParams model.homeState.filterState }
+                    link [ pointer, onClick (handleClick packageName) ] { label = text (pathToUrl packageName), url = pathToFullUrl [ packageName ] ++ filterStateToQueryParams model.homeState.filterState }
         )
         Array.empty
         (childModuleNames
@@ -1582,82 +1694,208 @@ definitionName definition =
 
 {-| Displays the inner workings of the selected Definition
 -}
-viewDefinitionDetails : Theme -> IRState -> Maybe Definition -> Morphir.Visual.Config.VisualState -> InsightArgumentState -> DisplayType -> Element Msg
-viewDefinitionDetails theme irState maybeSelectedDefinition visualState argstate displayType =
+viewDefinitionDetails : Model -> Element Msg
+viewDefinitionDetails model =
     let
-        insightViewConfig : Distribution -> Morphir.Visual.Config.Config Msg
-        insightViewConfig distribution =
+        insightViewConfig : IR -> Morphir.Visual.Config.Config Msg
+        insightViewConfig ir =
+            let
+                referenceClicked : FQName -> Bool -> Msg
+                referenceClicked fqname t =
+                    Insight (ExpandReference fqname t)
+
+                hoverOver : Int -> Maybe RawValue -> Msg
+                hoverOver index value =
+                    Insight (ExpandVariable index value)
+            in
             Morphir.Visual.Config.fromIR
-                (IR.fromDistribution distribution)
-                visualState
-                { onReferenceClicked = ExpandReference
-                , onHoverOver = ExpandVariable
-                , onHoverLeave = ShrinkVariable
+                ir
+                model.insightViewState
+                { onReferenceClicked = referenceClicked
+                , onHoverOver = hoverOver
+                , onHoverLeave = Insight << ShrinkVariable
                 }
 
-        insightViewCard : Distribution -> FQName -> Value.Definition () (Type ()) -> Element Msg
-        insightViewCard distribution fQName valueDef =
-            Common.viewAsCard theme
-                (column [ width fill, spacing 5 ]
-                    [ viewArgumentEditors (IR.fromDistribution distribution) argstate fQName valueDef
-                    ]
-                )
-                (ViewValue.viewDefinition (insightViewConfig distribution) fQName valueDef)
-
-        viewArgumentEditors : IR -> InsightArgumentState -> FQName -> Value.Definition () (Type ()) -> Element Msg
-        viewArgumentEditors ir argState fQName valueDef =
-            valueDef.inputTypes
+        viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
+        viewArgumentEditors ir argState inputTypes =
+            inputTypes
                 |> List.map
                     (\( argName, _, argType ) ->
                         ( argName
                         , ValueEditor.view ir
                             argType
-                            (ArgValueUpdated fQName argName)
-                            (argState |> Dict.get fQName |> Maybe.andThen (Dict.get argName) |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
+                            (Insight << ArgValueUpdated argName)
+                            (argState |> Dict.get argName |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
                         )
                     )
                 |> FieldList.view
-    in
-    case irState of
-        IRLoading ->
-            none
 
+        saveTestcaseButton : FQName -> TestCase -> Element Msg
+        saveTestcaseButton fqName testCase =
+            let
+                saveMsg =
+                    Testing (SaveTestSuite fqName testCase)
+            in
+            Element.Input.button
+                [ padding 7
+                , Border.rounded 3
+                , Background.color model.theme.colors.darkest
+                , Font.color model.theme.colors.lightest
+                , Font.bold
+                , Font.size (model.theme |> Theme.scaled 2)
+                ]
+                { onPress = Just saveMsg
+                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save Test" ]
+                }
+
+        viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
+        viewActualOutput theme ir testCase fQName =
+            Common.viewAsCard theme
+                (el [ Font.bold, Font.size (theme |> Theme.scaled 2), spacing 5, padding 5 ] (text "ACTUAL OUTPUT"))
+                (case evaluateOutput ir testCase.inputs fQName of
+                    Ok rawValue ->
+                        el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
+
+                    Err error ->
+                        text "Invalid inputs"
+                )
+
+        evaluateOutput : IR -> List RawValue -> FQName -> Result Error RawValue
+        evaluateOutput ir inputs fQName =
+            evaluateFunctionValue SDK.nativeFunctions ir fQName inputs
+
+        viewRawValue : Morphir.Visual.Config.Config Msg -> IR -> RawValue -> Element Msg
+        viewRawValue config ir rawValue =
+            case fromRawValue ir rawValue of
+                Ok typedValue ->
+                    el [ spacing 5, padding 5 ] (ViewValue.viewValue config typedValue)
+
+                Err error ->
+                    el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
+
+        scenarios : FQName -> Distribution -> List ( Name, a, Type () ) -> Element Msg
+        scenarios fQName distribution inputTypes =
+            let
+                ir : IR
+                ir =
+                    IR.fromDistribution distribution
+
+                listOfTestcases : Array TestCase
+                listOfTestcases =
+                    Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty
+
+                displayValue : RawValue -> Element Msg
+                displayValue t =
+                    viewRawValue (insightViewConfig ir) ir t
+
+                evaluate : TestCase -> Element.Color
+                evaluate testCase =
+                    case evaluateOutput ir testCase.inputs fQName of
+                        Ok rawValue ->
+                            if rawValue == testCase.expectedOutput then
+                                model.theme.colors.positive
+
+                            else
+                                model.theme.colors.negative
+
+                        Err _ ->
+                            model.theme.colors.negative
+
+                displayTestCase : ( Int, TestCase ) -> Element Msg
+                displayTestCase ( index, testCase ) =
+                    let
+                        loadTestCaseMsg : Msg
+                        loadTestCaseMsg =
+                            Testing (LoadTestCase (List.map (\( name, _, tpe ) -> ( name, tpe )) inputTypes) testCase.inputs)
+                    in
+                    row [ width fill ]
+                        [ el [ width <| fillPortion 1, padding 15, Font.bold, Font.color model.theme.colors.negative, pointer, onClick <| Testing (DeleteTestCase fQName index) ] (text " X ")
+                        , row
+                            [ Background.color <| evaluate testCase
+                            , Border.solid
+                            , Border.color model.theme.colors.lightest
+                            , Border.width 2
+                            , onClick loadTestCaseMsg
+                            , pointer
+                            , mouseOver [ Border.color model.theme.colors.darkest ]
+                            , width <| fillPortion 18
+                            ]
+                            ([ text " description: "
+                             , text testCase.description
+                             , text ", inputs:"
+                             ]
+                                ++ List.map displayValue testCase.inputs
+                                ++ [ text ", expected output:"
+                                   , displayValue testCase.expectedOutput
+                                   ]
+                            )
+                        ]
+            in
+            column [ paddingXY 10 0, spacing 4, width <| fillPortion 1 ] (text "Test Cases" :: List.map displayTestCase (Array.toIndexedList listOfTestcases))
+    in
+    case model.irState of
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
-            case maybeSelectedDefinition of
+            case model.homeState.selectedDefinition of
                 Just selectedDefinition ->
                     case selectedDefinition of
                         Value ( moduleName, valueName ) ->
-                            packageDef.modules
-                                |> Dict.get moduleName
-                                |> Maybe.andThen
-                                    (\accessControlledModuleDef ->
-                                        accessControlledModuleDef.value.values
-                                            |> Dict.get valueName
-                                            |> Maybe.map
-                                                (\_ ->
-                                                    case packageDef.modules |> Dict.get moduleName of
-                                                        Just acmoduledef ->
-                                                            acmoduledef.value.values
-                                                                |> Dict.get valueName
-                                                                |> Maybe.andThen
-                                                                    (\accessControlledValueDef ->
-                                                                        case displayType of
-                                                                            XRayView ->
-                                                                                Just <| XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) accessControlledValueDef.value.value
+                            case packageDef.modules |> Dict.get moduleName of
+                                Just acmoduledef ->
+                                    acmoduledef.value.values
+                                        |> Dict.get valueName
+                                        |> Maybe.map .value
+                                        |> Maybe.map .value
+                                        |> Maybe.andThen
+                                            (\valueDef ->
+                                                let
+                                                    fullyQualifiedName : ( PackageName, ModuleName, Name )
+                                                    fullyQualifiedName =
+                                                        ( packageName, moduleName, valueName )
 
-                                                                            InsightView ->
-                                                                                Just <| insightViewCard distribution ( packageName, moduleName, valueName ) accessControlledValueDef.value.value
-                                                                    )
-                                                                |> Maybe.withDefault none
+                                                    ir : IR
+                                                    ir =
+                                                        IR.fromDistribution distribution
 
-                                                        Nothing ->
-                                                            none
-                                                )
-                                    )
-                                |> Maybe.withDefault none
+                                                    saveButton : Element Msg
+                                                    saveButton =
+                                                        case evaluateOutput ir (Dict.values model.insightViewState.variables) fullyQualifiedName of
+                                                            Ok rawValue ->
+                                                                saveTestcaseButton
+                                                                    fullyQualifiedName
+                                                                    { description = "", expectedOutput = rawValue, inputs = Dict.values model.insightViewState.variables }
+
+                                                            Err _ ->
+                                                                none
+                                                in
+                                                case model.definitionDisplayType of
+                                                    XRayView ->
+                                                        Just <| XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef
+
+                                                    InsightView ->
+                                                        Just <|
+                                                            column
+                                                                [ width fill, height fill, spacing 20 ]
+                                                                [ viewArgumentEditors ir model.argStates valueDef.inputTypes
+                                                                , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                , viewActualOutput
+                                                                    model.theme
+                                                                    ir
+                                                                    { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = Dict.values model.insightViewState.variables }
+                                                                    fullyQualifiedName
+                                                                , saveButton
+                                                                , scenarios fullyQualifiedName distribution valueDef.inputTypes
+                                                                ]
+                                            )
+                                        |> Maybe.withDefault none
+
+                                Nothing ->
+                                    none
 
                         Type _ ->
                             none
 
                 Nothing ->
                     none
+
+        IRLoading ->
+            none

@@ -528,6 +528,29 @@ mapValue opt value =
         CommentedValue childValue message ->
             mapValue opt childValue ++ " /* " ++ message ++ " */ "
 
+        ForComp generators yieldValue ->
+            concat
+                [ "for {"
+                , newLine
+                , generators
+                    |> List.map
+                        (\generator ->
+                            case generator of
+                                Guard expr ->
+                                    concat [ "if ", mapValue opt expr ]
+
+                                Extract pattern expr ->
+                                    concat [ mapPattern pattern, " <- ", mapValue opt expr ]
+
+                                Bind pattern expr ->
+                                    concat [ mapPattern pattern, " <- ", mapValue opt expr ]
+                        )
+                    |> indentLines opt.indentDepth
+                , newLine
+                , "}  yield "
+                , mapValue opt yieldValue
+                ]
+
 
 mapPattern : Pattern -> Doc
 mapPattern pattern =

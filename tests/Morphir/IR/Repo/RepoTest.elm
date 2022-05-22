@@ -3,7 +3,7 @@ module Morphir.IR.Repo.RepoTest exposing (..)
 import Dict
 import Expect
 import Morphir.Dependency.DAG as DAG
-import Morphir.IR.AccessControlled exposing (AccessControlled, public)
+import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
@@ -47,7 +47,7 @@ insertModuleTest =
                         repoResultSoFar
                             |> Result.andThen
                                 (\r ->
-                                    Repo.insertModule modName modDef r
+                                    Repo.insertModule modName modDef Public r
                                 )
                     )
                     (Ok localRepo)
@@ -89,7 +89,7 @@ insertTypeTest =
         repo : Repo
         repo =
             Repo.empty packageName
-                |> Repo.insertModule moduleName Module.emptyDefinition
+                |> Repo.insertModule moduleName Module.emptyDefinition Public
                 |> Result.withDefault (Repo.empty packageName)
 
         typeList : List ( Name, Definition () )
@@ -122,7 +122,7 @@ insertTypeTest =
                 |> List.foldl
                     (\( typeName, typeDef ) repoResultSoFar ->
                         repoResultSoFar
-                            |> Result.andThen (Repo.insertType moduleName typeName typeDef)
+                            |> Result.andThen (Repo.insertType moduleName typeName typeDef Public)
                     )
                     (Ok repo)
 
@@ -185,14 +185,14 @@ insertTypeTest =
             (\_ ->
                 let
                     updatedRepo =
-                        Repo.insertModule (toModuleName "Morphir.IR.DAG") Module.emptyDefinition repo
+                        Repo.insertModule (toModuleName "Morphir.IR.DAG") Module.emptyDefinition Public repo
 
                     insertTypes =
                         cyclicModuleTypeList
                             |> List.foldl
                                 (\( name, def, modname ) repoSoFar ->
                                     repoSoFar
-                                        |> Result.andThen (Repo.insertType modname name def)
+                                        |> Result.andThen (Repo.insertType modname name def Public)
                                 )
                                 updatedRepo
                 in
@@ -215,7 +215,7 @@ insertValueTest =
         repo : Repo
         repo =
             Repo.empty packageName
-                |> Repo.insertModule moduleName Module.emptyDefinition
+                |> Repo.insertModule moduleName Module.emptyDefinition Public
                 |> Result.withDefault (Repo.empty packageName)
 
         uniqueValueList : List ( Name, Value.Definition () (Type ()) )
@@ -354,7 +354,7 @@ insertValueTest =
             (\_ ->
                 let
                     updatedRepo =
-                        Repo.insertModule (toModuleName "Morphir.IR.DAG") Module.emptyDefinition repo
+                        Repo.insertModule (toModuleName "Morphir.IR.DAG") Module.emptyDefinition Public repo
 
                     insertValues =
                         valueListWithCyclicModuleDeps
@@ -398,9 +398,9 @@ toDistributionTest =
     in
     packageName
         |> Repo.empty
-        |> Repo.insertModule moduleName Module.emptyDefinition
+        |> Repo.insertModule moduleName Module.emptyDefinition Public
         |> Result.andThen
-            (Repo.insertType moduleName typeName typeDef)
+            (Repo.insertType moduleName typeName typeDef Public)
         |> Result.andThen
             (Repo.insertTypedValue moduleName valueName valueDef)
         |> (\validRepo ->
