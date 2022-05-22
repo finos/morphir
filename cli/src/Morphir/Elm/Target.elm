@@ -10,6 +10,7 @@ import Morphir.IR.Package as Package
 import Morphir.Scala.Backend
 import Morphir.Scala.Backend.Codec
 import Morphir.Scala.Spark.Backend
+import Morphir.Spark.Backend
 import Morphir.SpringBoot.Backend as SpringBoot
 import Morphir.SpringBoot.Backend.Codec
 import Morphir.TypeScript.Backend
@@ -70,4 +71,4 @@ mapDistribution back dist =
             Morphir.TypeScript.Backend.mapDistribution options dist
 
         SparkOptions options ->
-            Morphir.Scala.Spark.Backend.mapDistribution options dist
+            Morphir.Spark.Backend.mapDistribution options dist

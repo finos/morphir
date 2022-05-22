@@ -98,3 +98,9 @@ join rightRelation predicate joinTypeLabel leftRelation =
                 (Scala.StringLit joinTypeLabel)
             )
         ]
+
+
+transform : Scala.Value -> Scala.Value -> Scala.Value
+transform col value =
+    Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "transform")
+        [ Scala.ArgValue Nothing col, Scala.ArgValue Nothing value ]
