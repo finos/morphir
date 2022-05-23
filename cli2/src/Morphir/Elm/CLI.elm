@@ -15,7 +15,7 @@
 port module Morphir.Elm.CLI exposing (..)
 
 import Dict
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
@@ -23,12 +23,15 @@ import Morphir.Elm.IncrementalFrontend as IncrementalFrontend exposing (Errors, 
 import Morphir.Elm.IncrementalFrontend.Codec as IncrementalFrontendCodec
 import Morphir.File.FileChanges as FileChanges exposing (FileChanges)
 import Morphir.File.FileChanges.Codec as FileChangesCodec
+import Morphir.File.FileMap exposing (FileMap)
+import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.File.FileSnapshot as FileSnapshot exposing (FileSnapshot)
 import Morphir.File.FileSnapshot.Codec as FileSnapshotCodec
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.Name as Name
 import Morphir.IR.Package exposing (PackageName)
+import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.IR.Path as Path
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 import Morphir.IR.SDK as SDK
@@ -54,11 +57,21 @@ port buildFailed : Encode.Value -> Cmd msg
 port reportProgress : String -> Cmd msg
 
 
+port jsonDecodeError : String -> Cmd msg
+
+
+port generate : (( Decode.Value, Decode.Value ) -> msg) -> Sub msg
+
+
+port generateResult : Encode.Value -> Cmd msg
+
+
 subscriptions : () -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ buildFromScratch BuildFromScratch
         , buildIncrementally BuildIncrementally
+        ,   generate Generate
         ]
 
 
@@ -82,6 +95,7 @@ type Msg
     | BuildIncrementally Decode.Value
     | OrderFileChanges PackageName PackageInfo Frontend.Options FileChanges Repo
     | ApplyFileChanges PackageInfo Frontend.Options OrderedFileChanges Repo
+    | Generate ( Decode.Value, Decode.Value )
 
 
 main : Platform.Program () () Msg
@@ -96,6 +110,7 @@ main =
 update : Msg -> () -> ( (), Cmd Msg )
 update msg model =
     ( model, Cmd.batch [ process msg, report msg ] )
+
 
 
 process : Msg -> Cmd Msg
@@ -166,6 +181,35 @@ process msg =
             IncrementalFrontend.applyFileChanges orderedFileChanges opts packageInfo.exposedModules repo
                 |> returnDistribution
 
+        Generate ( optionsJson, packageDistJson ) ->
+            let
+                targetOption =
+                    Decode.decodeValue (field "target" string) optionsJson
+
+                optionsResult =
+                    Decode.decodeValue (decodeOptions targetOption) optionsJson
+
+                packageDistroResult =
+                    Decode.decodeValue DistroCodec.decodeVersionedDistribution packageDistJson
+            in
+            case Result.map2 Tuple.pair optionsResult packageDistroResult of
+                 Ok ( options, packageDist ) ->
+                    let
+                        enrichedDistro =
+                            case packageDist of
+                                 Library packageName dependencies packageDef ->
+                                    Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
+
+                        fileMap : FileMap
+                        fileMap =
+                            mapDistribution options enrichedDistro
+                    in
+                        fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult
+
+                 Err errorMessage ->
+                            errorMessage |> Decode.errorToString |> jsonDecodeError
+
+
 
 report : Msg -> Cmd Msg
 report msg =
@@ -189,6 +233,10 @@ report msg =
                         |> String.join "\n  - "
                     ]
                 )
+
+        Generate (optionJson, packageDistJson)  ->
+            reportProgress " Generating target code from IR ..."
+
 
 
 keepElmFilesOnly : FileChanges -> FileChanges
