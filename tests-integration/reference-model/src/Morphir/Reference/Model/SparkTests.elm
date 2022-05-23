@@ -88,6 +88,20 @@ testMapAndFilter source =
         |> List.filter filterFn
 
 
+testMapAndFilter2 : List Record1 -> List Record1
+testMapAndFilter2 source =
+    source
+        |> List.map
+            (\a ->
+                { firstName = String.join " " [ a.firstName, "hello" ]
+                , lastName = String.toUpper a.lastName
+                , age = a.age
+                , title = a.title
+                }
+            )
+        |> List.filter filterFn
+
+
 testBadAnnotation : List Record1 -> List Title
 testBadAnnotation source =
     source
