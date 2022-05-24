@@ -3,11 +3,10 @@ module Morphir.Scala.Feature.Core exposing (..)
 import Dict
 import List
 import List.Extra as ListExtra
-import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
-import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName, fqn)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -16,12 +15,16 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 import Morphir.Scala.AST as Scala exposing (Annotated, MemberDecl(..))
-import Morphir.Scala.Backend exposing (Options)
-import Morphir.Scala.PrettyPrinter as PrettyPrinter
-import Morphir.Scala.WellKnownTypes as ScalaTypes exposing (anyVal)
+import Morphir.Scala.WellKnownTypes exposing (anyVal)
 import Set exposing (Set)
 
 
+type alias Options =
+    { limitToModules : Maybe (Set ModuleName) }
+
+
+{-| Map a Morphir fully-qualified name to a Scala package path and name.
+-}
 mapFQNameToPathAndName : FQName -> ( Scala.Path, Name )
 mapFQNameToPathAndName ( packagePath, modulePath, localName ) =
     let
@@ -257,6 +260,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                     , members = []
                     }
 
+        parentTraitRef : Scala.Type
         parentTraitRef =
             mapFQNameToTypeRef ( currentPackagePath, currentModulePath, typeName )
 

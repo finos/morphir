@@ -1,4 +1,5 @@
 {
     "name": "Morphir.Reference.Model",
-    "sourceDirectory": "src"
+    "sourceDirectory": "src",
+    "exposedModules":["BasicTypes"]
 }

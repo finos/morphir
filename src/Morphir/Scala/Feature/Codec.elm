@@ -3,6 +3,7 @@ module Morphir.Scala.Feature.Codec exposing (..)
 import Dict
 import List
 import List.Extra as ListExtra
+import Maybe exposing (withDefault)
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Documented exposing (Documented)
@@ -12,11 +13,15 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type(..))
-import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 import Morphir.SDK.ResultList as ResultList
 import Morphir.Scala.AST as Scala exposing (Annotated)
-import Morphir.Scala.Backend exposing (Options)
-import Morphir.Scala.Feature.Core as ScalaBackend exposing (mapFQNameToPathAndName, mapTypeMember)
+import Morphir.Scala.Feature.Core as ScalaBackend exposing (mapFQNameToPathAndName, mapFQNameToTypeRef)
+import Morphir.Scala.WellKnownTypes exposing (anyVal)
+import Set exposing (Set)
+
+
+type alias Options =
+    { limitToModules : Maybe (Set ModuleName) }
 
 
 type alias Error =
@@ -26,16 +31,22 @@ type alias Error =
 mapModuleDefinitionToCodecs : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
 mapModuleDefinitionToCodecs opt distribution currentPackagePath currentModulePath accessControlledModuleDef =
     let
+        newModulePath : String
+        newModulePath =
+            (List.head (List.reverse (Path.toList currentModulePath)) |> withDefault []) |> Name.toTitleCase
+
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of
                 [] ->
                     ( [], [] )
 
                 lastName :: reverseModulePath ->
-                    ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.map (Name.toCamelCase >> String.toLower)), lastName )
+                    ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.append [ [ newModulePath ] ] |> List.map (Name.toCamelCase >> String.toLower))
+                    , lastName
+                    )
 
-        typeMembers : List (Scala.Annotated Scala.MemberDecl)
-        typeMembers =
+        encoderTypeMembers : List (Scala.Annotated Scala.MemberDecl)
+        encoderTypeMembers =
             accessControlledModuleDef.value.types
                 |> Dict.toList
                 |> List.concatMap
@@ -44,10 +55,20 @@ mapModuleDefinitionToCodecs opt distribution currentPackagePath currentModulePat
                             |> Result.withDefault []
                     )
 
+        decoderTypeMembers : List (Scala.Annotated Scala.MemberDecl)
+        decoderTypeMembers =
+            accessControlledModuleDef.value.types
+                |> Dict.toList
+                |> List.concatMap
+                    (\types ->
+                        mapTypeDefinitionToDecoder currentPackagePath currentModulePath accessControlledModuleDef types
+                            |> Result.withDefault []
+                    )
+
         moduleUnit : Scala.CompilationUnit
         moduleUnit =
             { dirPath = scalaPackagePath
-            , fileName = (moduleName |> Name.toTitleCase) ++ ".scala"
+            , fileName = "Codec.scala"
             , packageDecl = scalaPackagePath
             , imports = []
             , typeDecls =
@@ -69,7 +90,7 @@ mapModuleDefinitionToCodecs opt distribution currentPackagePath currentModulePat
                             , name =
                                 moduleName |> Name.toTitleCase
                             , members =
-                                typeMembers
+                                List.concat [ encoderTypeMembers, decoderTypeMembers ]
                             , extends =
                                 []
                             , body = Nothing
@@ -90,7 +111,7 @@ mapModuleDefinitionToCodecs opt distribution currentPackagePath currentModulePat
 mapTypeDefinitionToEncoder : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> Result Error (List (Scala.Annotated Scala.MemberDecl))
 mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
     case accessControlledDocumentedTypeDef.value.value of
-        Type.TypeAliasDefinition typeArgs typeExp ->
+        Type.TypeAliasDefinition typeParams typeExp ->
             let
                 ( scalaTypePath, scalaName ) =
                     ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
@@ -116,8 +137,283 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlled
                         ]
                     )
 
-        Type.CustomTypeDefinition typeArgs accessControlledConstructors ->
-            Debug.todo "Implement"
+        Type.CustomTypeDefinition typeParams accessControlledCtors ->
+            Ok
+                (mapCustomTypeDefinitionToEncoder
+                    currentPackagePath
+                    currentModulePath
+                    accessControlledModuleDef.value
+                    typeName
+                    typeParams
+                    accessControlledCtors
+                )
+
+
+mapCustomTypeDefinitionToEncoder : Package.PackageName -> Path -> Module.Definition ta (Type ()) -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List (Scala.Annotated Scala.MemberDecl)
+mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
+    let
+        ( scalaTypePath, scalaName ) =
+            ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
+
+        caseClass name args extends =
+            if List.isEmpty args then
+                Scala.Object
+                    { modifiers = [ Scala.Case ]
+                    , name = "encode" :: name |> Name.toCamelCase
+                    , extends = extends
+                    , members = []
+                    , body = Nothing
+                    }
+
+            else
+                Scala.Class
+                    { modifiers = [ Scala.Final, Scala.Case ]
+                    , name = "encode" :: name |> Name.toCamelCase
+                    , typeArgs = []
+                    , ctorArgs =
+                        args
+                            |> List.map
+                                (\( argName, argType ) ->
+                                    { modifiers = []
+                                    , tpe =
+                                        Scala.TypeApply
+                                            (Scala.TypeRef [ "io", "circe" ] "Encoder")
+                                            [ Scala.TypeRef scalaTypePath (name |> Name.toTitleCase)
+                                            ]
+                                    , name = argName |> Name.toCamelCase
+                                    , defaultValue = Nothing
+                                    }
+                                )
+                            |> List.singleton
+                    , extends = extends
+                    , members = []
+                    }
+
+        parentTraitRef =
+            mapFQNameToTypeRef ( currentPackagePath, currentModulePath, typeName )
+
+        ( parentPackagePath, parentTraitName ) =
+            let
+                ( thePath, theName ) =
+                    mapFQNameToPathAndName ( currentPackagePath, currentModulePath, typeName )
+            in
+            ( thePath, theName |> Name.toTitleCase )
+
+        sealedTraitHierarchy =
+            [ Scala.Trait
+                { modifiers = [ Scala.Sealed ]
+                , name = typeName |> Name.toTitleCase
+                , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                , extends = []
+                , members = []
+                }
+            , Scala.Object
+                { modifiers = []
+                , name = typeName |> Name.toTitleCase
+                , extends = []
+                , members =
+                    accessControlledCtors.value
+                        |> Dict.toList
+                        |> List.map
+                            (\( ctorName, ctorArgs ) ->
+                                Scala.withAnnotation []
+                                    (caseClass
+                                        ctorName
+                                        ctorArgs
+                                        (if List.isEmpty typeParams then
+                                            [ parentTraitRef ]
+
+                                         else
+                                            [ Scala.TypeApply parentTraitRef (typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)) ]
+                                        )
+                                        |> Scala.MemberTypeDecl
+                                    )
+                            )
+                , body = Nothing
+                }
+            ]
+    in
+    case accessControlledCtors.value |> Dict.toList of
+        [ ( ctorName, ctorArgs ) ] ->
+            -- When the type name is the same as the constructor name
+            if ctorName == typeName then
+                if List.length ctorArgs == 1 then
+                    [ Scala.withoutAnnotation
+                        (Scala.ValueDecl
+                            { modifiers = [ Scala.Implicit ]
+                            , pattern = Scala.NamedMatch ("encode" :: ctorName |> Name.toCamelCase)
+                            , valueType =
+                                Just
+                                    (Scala.TypeApply
+                                        (Scala.TypeRef [ "io", "circe" ] "Encoder")
+                                        [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
+                                        ]
+                                    )
+                            , value = Scala.Lambda [ ( "a", Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ] (Scala.Variable "foo")
+                            }
+                        )
+                    ]
+
+                else
+                    [ Scala.withoutAnnotation
+                        (Scala.ValueDecl
+                            { modifiers = [ Scala.Implicit ]
+                            , pattern = Scala.NamedMatch ("encode" :: ctorName |> Name.toCamelCase)
+                            , valueType =
+                                Just
+                                    (Scala.TypeApply
+                                        (Scala.TypeRef [ "io", "circe" ] "Encoder")
+                                        [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
+                                        ]
+                                    )
+                            , value = Scala.Ref scalaTypePath ("encode" :: scalaName |> Name.toCamelCase)
+                            }
+                        )
+                    ]
+
+            else
+                -- When the  type name is not the same as the Constructor name
+                List.concat
+                    [ [ Scala.withoutAnnotation
+                            (Scala.ValueDecl
+                                { modifiers = [ Scala.Implicit ]
+                                , pattern = Scala.NamedMatch ("encode" :: scalaName |> Name.toCamelCase)
+                                , valueType =
+                                    Just
+                                        (Scala.TypeApply
+                                            (Scala.TypeRef [ "io", "circe" ] "Encoder")
+                                            [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
+                                            ]
+                                        )
+                                , value = Scala.Ref scalaTypePath ("encode" :: ctorName |> Name.toCamelCase)
+                                }
+                            )
+                      ]
+                    , []
+                    ]
+
+        _ ->
+            List.concat
+                [ sealedTraitHierarchy
+                    |> List.map (Scala.MemberTypeDecl >> Scala.withoutAnnotation)
+                , []
+                ]
+
+
+mapCustomTypeDefinitionToDecoder : Package.PackageName -> Path -> Module.Definition ta (Type ()) -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List (Scala.Annotated Scala.MemberDecl)
+mapCustomTypeDefinitionToDecoder currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
+    let
+        ( scalaTypePath, scalaName ) =
+            ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
+
+        caseClass name args extends =
+            if List.isEmpty args then
+                Scala.Object
+                    { modifiers = [ Scala.Case ]
+                    , name = "decode" :: name |> Name.toCamelCase
+                    , extends = extends
+                    , members = []
+                    , body = Nothing
+                    }
+
+            else
+                Scala.Class
+                    { modifiers = [ Scala.Final, Scala.Case ]
+                    , name = "decode" :: name |> Name.toCamelCase
+                    , typeArgs = []
+                    , ctorArgs =
+                        args
+                            |> List.map
+                                (\( argName, argType ) ->
+                                    { modifiers = []
+                                    , tpe =
+                                        Scala.TypeApply
+                                            (Scala.TypeRef [ "io", "circe" ] "Decoder")
+                                            [ Scala.TypeRef scalaTypePath (name |> Name.toTitleCase)
+                                            ]
+                                    , name = argName |> Name.toCamelCase
+                                    , defaultValue = Nothing
+                                    }
+                                )
+                            |> List.singleton
+                    , extends = extends
+                    , members = []
+                    }
+
+        parentTraitRef =
+            mapFQNameToTypeRef ( currentPackagePath, currentModulePath, typeName )
+
+        ( parentPackagePath, parentTraitName ) =
+            let
+                ( thePath, theName ) =
+                    mapFQNameToPathAndName ( currentPackagePath, currentModulePath, typeName )
+            in
+            ( thePath, theName |> Name.toTitleCase )
+
+        sealedTraitHierarchy =
+            [ Scala.Trait
+                { modifiers = [ Scala.Sealed ]
+                , name = typeName |> Name.toTitleCase
+                , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
+                , extends = []
+                , members = []
+                }
+            , Scala.Object
+                { modifiers = []
+                , name = typeName |> Name.toTitleCase
+                , extends = []
+                , members =
+                    accessControlledCtors.value
+                        |> Dict.toList
+                        |> List.map
+                            (\( ctorName, ctorArgs ) ->
+                                Scala.withAnnotation []
+                                    (caseClass
+                                        ctorName
+                                        ctorArgs
+                                        (if List.isEmpty typeParams then
+                                            [ parentTraitRef ]
+
+                                         else
+                                            [ Scala.TypeApply parentTraitRef (typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)) ]
+                                        )
+                                        |> Scala.MemberTypeDecl
+                                    )
+                            )
+                , body = Nothing
+                }
+            ]
+    in
+    case accessControlledCtors.value |> Dict.toList of
+        [ ( ctorName, ctorArgs ) ] ->
+            if ctorName == typeName then
+                if List.length ctorArgs == 1 then
+                    [ Scala.withoutAnnotation
+                        (Scala.MemberTypeDecl
+                            (caseClass ctorName ctorArgs [ anyVal ])
+                        )
+                    ]
+
+                else
+                    [ Scala.withoutAnnotation
+                        (Scala.MemberTypeDecl
+                            (caseClass ctorName ctorArgs [])
+                        )
+                    ]
+
+            else
+                List.concat
+                    [ sealedTraitHierarchy
+                        |> List.map (Scala.MemberTypeDecl >> Scala.withoutAnnotation)
+                    , []
+                    ]
+
+        _ ->
+            List.concat
+                [ sealedTraitHierarchy
+                    |> List.map (Scala.MemberTypeDecl >> Scala.withoutAnnotation)
+                , []
+                ]
 
 
 {-|
@@ -125,15 +421,15 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlled
     Maps a Morphir Type Definition to a Decoder
 
 -}
-mapTypeDefinitionToDecoder : FQName -> Type.Definition () -> Result Error (List (Scala.Annotated Scala.MemberDecl))
-mapTypeDefinitionToDecoder (( packageName, moduleName, typeName ) as fQTypeName) typeDef =
-    case typeDef of
+mapTypeDefinitionToDecoder : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> Result Error (List (Scala.Annotated Scala.MemberDecl))
+mapTypeDefinitionToDecoder currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
+    case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition typeArgs typeExp ->
             let
                 ( scalaTypePath, scalaName ) =
-                    ScalaBackend.mapFQNameToPathAndName fQTypeName
+                    ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
             in
-            genDecodeReference fQTypeName typeExp
+            genDecodeReference (FQName.fQName currentPackagePath currentModulePath typeName) typeExp
                 |> Result.map
                     (\encodeValue ->
                         [ Scala.withoutAnnotation
@@ -154,8 +450,16 @@ mapTypeDefinitionToDecoder (( packageName, moduleName, typeName ) as fQTypeName)
                         ]
                     )
 
-        Type.CustomTypeDefinition typeArgs accessControlledConstructors ->
-            Debug.todo "Implement"
+        Type.CustomTypeDefinition typeParams accessControlledCtors ->
+            Ok
+                (mapCustomTypeDefinitionToDecoder
+                    currentPackagePath
+                    currentModulePath
+                    accessControlledModuleDef.value
+                    typeName
+                    typeParams
+                    accessControlledCtors
+                )
 
 
 {-|
@@ -182,7 +486,7 @@ genEncodeReference tpe =
                 scalaReference : Scala.Value
                 scalaReference =
                     Scala.Ref
-                        (scalaPackageName ++ [ scalaModuleName ])
+                        scalaPackageName
                         ("encode" :: typeName |> Name.toCamelCase)
             in
             Ok scalaReference
@@ -241,7 +545,7 @@ genEncodeReference tpe =
     Get an Decoder reference for a Type
 
 -}
-genDecodeReference : FQName -> Type () -> Result Error Scala.Value
+genDecodeReference : FQName -> Type ta -> Result Error Scala.Value
 genDecodeReference fqName tpe =
     case tpe of
         Type.Variable _ varName ->
