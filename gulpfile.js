@@ -180,6 +180,28 @@ async function testIntegrationBuildScala(cb) {
     // }
 }
 
+async function testIntegrationGenSpark(cb) {
+    await morphirElmGen(
+        './tests-integration/generated/refModel/morphir-ir.json',
+        './tests-integration/generated/refModel/src/spark/',
+        'Spark')
+}
+
+async function testIntegrationBuildSpark(cb) {
+     try {
+         await execa(
+             'mill', ['__.compile'],
+             { stdio, cwd: 'tests-integration' },
+         )
+     } catch (err) {
+         if (err.code == 'ENOENT') {
+    console.log("Skipping testIntegrationBuildSpark as `mill` build tool isn't available.");
+         } else {
+             throw err;
+         }
+     }
+}
+
 // Generate TypeScript API for reference model.
 async function testIntegrationGenTypeScript(cb) {
     await morphirElmGen(
@@ -202,6 +224,10 @@ const testIntegration = series(
         series(
             testIntegrationGenScala,
             testIntegrationBuildScala,
+        ),
+        series(
+            testIntegrationGenSpark,
+            testIntegrationBuildSpark
         ),
         series(
             testIntegrationGenTypeScript,
