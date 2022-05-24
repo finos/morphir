@@ -171,100 +171,50 @@ mapObjectExpressionToScala objectExpression =
 mapExpression : Expression -> Scala.Value
 mapExpression value =
     case value of
-        Simple simpleExpression ->
-            mapSimpleExpression simpleExpression
-
-        Operator simpleExpression leftExpr rightExpr ->
+        BinaryOperation simpleExpression leftExpr rightExpr ->
             Scala.BinOp
                 (mapExpression leftExpr)
-                (mapMorphirSDKBasics simpleExpression)
+                simpleExpression
                 (mapExpression rightExpr)
 
-        Function functionExpression ->
-            mapFunctionExpression functionExpression
-
-        Unresolved typedValue ->
-            mapMorphirValue typedValue
-
-
-mapSimpleExpression : SimpleExpression -> Scala.Value
-mapSimpleExpression simpleExpression =
-    case simpleExpression of
         Column colName ->
             Spark.column colName
 
         Literal literal ->
             mapLiteral literal |> Scala.Literal
 
-        Reference (( p, _, _ ) as fQName) ->
-            case p of
-                [ [ "morphir", "sdk" ] ] ->
-                    mapMorphirSDKFunctionToSpark fQName
-
-                _ ->
-                    let
-                        ( path, name ) =
-                            ScalaBackend.mapFQNameToPathAndName fQName
-                    in
-                    Scala.Ref path (ScalaBackend.mapValueName name)
-
         Variable name ->
             Scala.Variable name
 
-        Unknown typedValue ->
-            mapMorphirValue typedValue
-
-
-mapFunctionExpression : FunctionExpression -> Scala.Value
-mapFunctionExpression functionExpression =
-    case functionExpression of
         WhenOtherwise condition thenBranch elseBranch ->
             let
-                toIfElseChain : FunctionExpression -> Scala.Value -> Scala.Value
+                toIfElseChain : Expression -> Scala.Value -> Scala.Value
                 toIfElseChain v branchesSoFar =
                     case v of
                         WhenOtherwise cond nextThenBranch nextElseBranch ->
                             Spark.andWhen
-                                (mapFunctionExpression cond)
-                                (mapFunctionExpression nextThenBranch)
+                                (mapExpression cond)
+                                (mapExpression nextThenBranch)
                                 branchesSoFar
                                 |> toIfElseChain nextElseBranch
 
                         _ ->
                             Spark.otherwise
-                                (mapFunctionExpression v)
+                                (mapExpression v)
                                 branchesSoFar
             in
             Spark.when
-                (mapFunctionExpression condition)
-                (mapFunctionExpression thenBranch)
+                (mapExpression condition)
+                (mapExpression thenBranch)
                 |> toIfElseChain elseBranch
 
-        Transform col lambda ->
-            Spark.transform
-                (mapSimpleExpression col)
-                (mapFunctionExpression lambda)
-
-        Lambda paramList body ->
-            let
-                params =
-                    paramList
-                        |> List.map (\name -> ( name, Nothing ))
-            in
-            Scala.Lambda
-                params
-                (mapFunctionExpression body)
-
-        Apply targetExpression argList ->
+        Apply fQName argList ->
             Scala.Apply
-                (mapFunctionExpression targetExpression)
+                (toScalaRef fQName)
                 (argList
-                    |> List.map mapFunctionExpression
+                    |> List.map mapExpression
                     |> List.map (Scala.ArgValue Nothing)
                 )
-
-        Value simpleExpression ->
-            mapSimpleExpression simpleExpression
 
 
 mapFieldExpressions : NamedExpressions -> List Scala.Value
@@ -296,73 +246,6 @@ mapLiteral l =
             Scala.FloatLit float
 
 
-mapMorphirSDKBasics : FQName -> String
-mapMorphirSDKBasics fQName =
-    case FQName.toString fQName of
-        "Morphir.SDK:Basics:equal" ->
-            "==="
-
-        "Morphir.SDK:Basics:notEqual" ->
-            "=!="
-
-        "Morphir.SDK:Basics:add" ->
-            "+"
-
-        "Morphir.SDK:Basics:subtract" ->
-            "-"
-
-        "Morphir.SDK:Basics:multiply" ->
-            "*"
-
-        "Morphir.SDK:Basics:divide" ->
-            "/"
-
-        "Morphir.SDK:Basics:power" ->
-            "pow"
-
-        "Morphir.SDK:Basics:modBy" ->
-            "mod"
-
-        "Morphir.SDK:Basics:remainderBy" ->
-            "%"
-
-        "Morphir.SDK:Basics:logBase" ->
-            "log"
-
-        "Morphir.SDK:Basics:atan2" ->
-            "atan2"
-
-        "Morphir.SDK:Basics:lessThan" ->
-            "<"
-
-        "Morphir.SDK:Basics:greaterThan" ->
-            ">"
-
-        "Morphir.SDK:Basics:lessThanOrEqual" ->
-            "<="
-
-        "Morphir.SDK:Basics:greaterThanOrEqual" ->
-            ">="
-
-        "Morphir.SDK:Basics:max" ->
-            "max"
-
-        "Morphir.SDK:Basics:min" ->
-            "min"
-
-        "Morphir.SDK:Basics:and" ->
-            "and"
-
-        "Morphir.SDK:Basics:or" ->
-            "or"
-
-        "Morphir.SDK:Basics:xor" ->
-            "xor"
-
-        _ ->
-            ""
-
-
 mapMorphirSDKFunctionToSpark : FQName -> Scala.Value
 mapMorphirSDKFunctionToSpark fQName =
     let
@@ -381,3 +264,12 @@ mapMorphirSDKFunctionToSpark fQName =
 mapMorphirValue : TypedValue -> Scala.Value
 mapMorphirValue morphirValue =
     ScalaBackend.mapValue Set.empty morphirValue
+
+
+toScalaRef : FQName -> Scala.Value
+toScalaRef fQName =
+    let
+        ( path, name ) =
+            ScalaBackend.mapFQNameToPathAndName fQName
+    in
+    Scala.Ref path (ScalaBackend.mapValueName name)

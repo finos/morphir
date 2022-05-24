@@ -40,6 +40,22 @@ testWhere2 source =
             )
 
 
+testWhere3 : List Record1 -> List Record1
+testWhere3 source =
+    source
+        |> List.filter
+            (\a ->
+                if a.age <= 13 then
+                    False
+
+                else if a.age > 13 && a.age < 15 then
+                    False
+
+                else
+                    True
+            )
+
+
 testSelect1 : List Record1 -> List { nickname : String, familyName : String, foo : String }
 testSelect1 source =
     source
@@ -100,6 +116,11 @@ testMapAndFilter2 source =
                 }
             )
         |> List.filter filterFn
+
+
+foo : List Record1 -> List Record1
+foo record1s =
+    record1s
 
 
 testBadAnnotation : List Record1 -> List Title

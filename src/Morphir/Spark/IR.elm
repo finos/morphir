@@ -20,32 +20,17 @@ type ObjectExpression
     | Select NamedExpressions ObjectExpression
 
 
-type alias NamedExpressions =
-    List ( Name, Expression )
-
-
 type Expression
-    = Simple SimpleExpression
-    | Operator FQName Expression Expression
-    | Function FunctionExpression
-    | Unresolved TypedValue
-
-
-type FunctionExpression
-    = WhenOtherwise FunctionExpression FunctionExpression FunctionExpression
-    | Transform SimpleExpression FunctionExpression
-    | Lambda (List String) FunctionExpression
-    | Apply FunctionExpression (List FunctionExpression)
-      --| Compound FunctionExpression FunctionExpression -- chained expression
-    | Value SimpleExpression
-
-
-type SimpleExpression
     = Column String
     | Literal Literal
-    | Reference FQName
     | Variable String
-    | Unknown TypedValue
+    | BinaryOperation String Expression Expression
+    | WhenOtherwise Expression Expression Expression
+    | Apply FQName (List Expression)
+
+
+type alias NamedExpressions =
+    List ( Name, Expression )
 
 
 type alias DataFrame =
@@ -64,10 +49,12 @@ type alias FieldName =
 
 type Error
     = UnhandledValue TypedValue
-    | UnknownValueReturnedByMapFunction TypedValue
+    | UnknownValueReturnedByFunction TypedValue
     | FunctionNotFound FQName
     | UnknownArgumentType (Type ())
+    | UnsupportedOperatorReference FQName
     | LambdaExpected TypedValue
+    | ReferenceExpected
 
 
 objectExpressionFromValue : IR -> TypedValue -> Result Error ObjectExpression
@@ -78,15 +65,19 @@ objectExpressionFromValue ir morphirValue =
 
         Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter" ] )) predicate) sourceRelation ->
             objectExpressionFromValue ir sourceRelation
-                |> Result.map
+                |> Result.andThen
                     (\source ->
                         expressionFromValue ir predicate
-                            |> (\fieldExp -> Filter fieldExp source)
+                            |> Result.map (\fieldExp -> Filter fieldExp source)
                     )
 
         Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "map" ] )) mappingFunction) sourceRelation ->
             objectExpressionFromValue ir sourceRelation
-                |> Result.map (Select (namedExpressionsFromValue ir mappingFunction))
+                |> Result.andThen
+                    (\source ->
+                        namedExpressionsFromValue ir mappingFunction
+                            |> Result.map (\expr -> Select expr source)
+                    )
 
         other ->
             let
@@ -96,169 +87,169 @@ objectExpressionFromValue ir morphirValue =
             Err (UnhandledValue other)
 
 
-namedExpressionsFromValue : IR -> TypedValue -> NamedExpressions
+namedExpressionsFromValue : IR -> TypedValue -> Result Error NamedExpressions
 namedExpressionsFromValue ir typedValue =
     case typedValue of
         Value.Lambda _ _ (Value.Record _ fields) ->
             fields
                 |> List.map
                     (\( name, value ) ->
-                        ( name, expressionFromValue ir value )
+                        expressionFromValue ir value
+                            |> Result.map (Tuple.pair name)
                     )
+                |> ResultList.keepFirstError
 
         Value.FieldFunction _ name ->
-            [ ( name, expressionFromValue ir typedValue ) ]
+            expressionFromValue ir typedValue
+                |> Result.map (Tuple.pair name >> List.singleton)
 
         _ ->
-            []
+            LambdaExpected typedValue |> Err
 
 
-expressionFromValue : IR -> TypedValue -> Expression
+expressionFromValue : IR -> TypedValue -> Result Error Expression
 expressionFromValue ir morphirValue =
     case morphirValue of
-        Value.Literal _ _ ->
-            simpleExpressionFromValue ir morphirValue |> Simple
+        Value.Literal _ literal ->
+            Literal literal |> Ok
 
-        Value.FieldFunction _ _ ->
-            simpleExpressionFromValue ir morphirValue |> Simple
+        Value.Variable _ name ->
+            Name.toCamelCase name |> Variable |> Ok
 
-        Value.Field _ _ _ ->
-            simpleExpressionFromValue ir morphirValue |> Simple
+        Value.Field _ _ name ->
+            Name.toCamelCase name |> Column |> Ok
+
+        Value.FieldFunction _ name ->
+            Name.toCamelCase name |> Column |> Ok
 
         Value.Lambda _ _ body ->
             expressionFromValue ir body
 
-        Value.Apply _ (Value.Reference _ _) _ ->
-            functionExpressionFromValue ir morphirValue |> Function
+        Value.Apply _ _ _ ->
+            let
+                collectArgsAsList : TypedValue -> List Expression -> Result Error ( List Expression, FQName )
+                collectArgsAsList v argsLifted =
+                    case v of
+                        Value.Apply _ body a ->
+                            expressionFromValue ir a
+                                |> Result.andThen
+                                    (\expr ->
+                                        collectArgsAsList body (expr :: argsLifted)
+                                    )
 
-        Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
-            -- check if the fqn is inherently supported and then map to
-            -- the appropraite expression
-            case ( package, modName ) of
-                ( [ [ "morphir" ], [ "sdk" ] ], [ [ "basics" ] ] ) ->
-                    Operator
-                        ref
-                        (expressionFromValue ir arg)
-                        (expressionFromValue ir argValue)
+                        Value.Reference _ fqn ->
+                            Ok ( argsLifted, fqn )
+
+                        _ ->
+                            Err ReferenceExpected
+            in
+            case morphirValue of
+                Value.Apply _ ((Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) as target) argValue ->
+                    case ( package, modName ) of
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ) ->
+                            Result.map3
+                                BinaryOperation
+                                (binaryOpString ref)
+                                (expressionFromValue ir arg)
+                                (expressionFromValue ir argValue)
+
+                        _ ->
+                            expressionFromValue ir argValue
+                                |> Result.andThen (List.singleton >> collectArgsAsList target)
+                                |> Result.map (\( expressions, targetFQN ) -> Apply targetFQN expressions)
+
+                Value.Apply _ (Value.Reference _ fqName) arg ->
+                    expressionFromValue ir arg
+                        |> Result.map
+                            (List.singleton
+                                >> Apply fqName
+                            )
 
                 _ ->
-                    functionExpressionFromValue ir morphirValue |> Function
-
-        Value.Apply _ _ _ ->
-            functionExpressionFromValue ir morphirValue |> Function
-
-        Value.IfThenElse _ _ _ _ ->
-            functionExpressionFromValue ir morphirValue |> Function
+                    collectArgsAsList morphirValue []
+                        |> Result.map (\( expressions, targetFQN ) -> Apply targetFQN expressions)
 
         Value.Reference _ fqName ->
             case IR.lookupValueDefinition fqName ir of
                 Just { body } ->
-                    functionExpressionFromValue ir body |> Function
+                    expressionFromValue ir body
 
                 Nothing ->
-                    simpleExpressionFromValue ir morphirValue |> Simple
-
-        _ ->
-            Unresolved morphirValue
-
-
-functionExpressionFromValue : IR -> TypedValue -> FunctionExpression
-functionExpressionFromValue ir morphirValue =
-    case morphirValue of
-        Value.Literal _ _ ->
-            simpleExpressionFromValue ir morphirValue |> Value
-
-        Value.Variable _ _ ->
-            simpleExpressionFromValue ir morphirValue |> Value
-
-        Value.Reference _ _ ->
-            simpleExpressionFromValue ir morphirValue |> Value
+                    FunctionNotFound fqName |> Err
 
         Value.IfThenElse _ cond thenBranch elseBranch ->
-            WhenOtherwise
-                (functionExpressionFromValue ir cond)
-                (functionExpressionFromValue ir thenBranch)
-                (functionExpressionFromValue ir elseBranch)
-
-        Value.Apply _ ((Value.Reference _ fqName) as ref) arg ->
-            case IR.lookupValueDefinition fqName ir of
-                Just { body } ->
-                    functionExpressionFromValue ir body
-
-                Nothing ->
-                    Apply
-                        (functionExpressionFromValue ir ref)
-                        (functionExpressionFromValue ir arg |> List.singleton)
-
-        Value.Apply _ target arg ->
-            let
-                colName =
-                    case arg of
-                        Value.Field _ _ name ->
-                            Name.toCamelCase name
-
-                        Value.FieldFunction _ name ->
-                            Name.toCamelCase name
-
-                        _ ->
-                            -- Todo Handle this better
-                            ""
-
-                -- TODO needs revision
-                collectArgsAsList : TypedValue -> List SimpleExpression -> ( List SimpleExpression, FunctionExpression )
-                collectArgsAsList v argsLifted =
-                    case v of
-                        Value.Apply _ body a ->
-                            collectArgsAsList body (simpleExpressionFromValue ir a :: argsLifted)
-
-                        Value.Reference _ _ ->
-                            ( argsLifted
-                            , simpleExpressionFromValue ir v |> Value
-                            )
-
-                        val ->
-                            ( argsLifted, functionExpressionFromValue ir val )
-
-                simpleExpressionToNamedArgs : SimpleExpression -> SimpleExpression
-                simpleExpressionToNamedArgs simpleExpression =
-                    case simpleExpression of
-                        Column name ->
-                            Variable name
-
-                        other ->
-                            other
-
-                lambdaBody =
-                    simpleExpressionFromValue ir arg
-                        |> List.singleton
-                        |> collectArgsAsList target
-                        |> Tuple.mapFirst (List.map (simpleExpressionToNamedArgs >> Value))
-                        |> (\( simpleExprs, fnExpr ) -> Apply fnExpr simpleExprs)
-            in
-            Transform (Column colName)
-                (Lambda [ colName ] lambdaBody)
+            Result.map3
+                WhenOtherwise
+                (expressionFromValue ir cond)
+                (expressionFromValue ir thenBranch)
+                (expressionFromValue ir elseBranch)
 
         other ->
-            Value (simpleExpressionFromValue ir other)
+            UnhandledValue other |> Err
 
 
-simpleExpressionFromValue : IR -> TypedValue -> SimpleExpression
-simpleExpressionFromValue ir morphirValue =
-    case morphirValue of
-        Value.Literal _ literal ->
-            Literal literal
+binaryOpString : FQName -> Result Error String
+binaryOpString fQName =
+    case FQName.toString fQName of
+        "Morphir.SDK:Basics:equal" ->
+            Ok "==="
 
-        Value.Variable _ name ->
-            Name.toCamelCase name |> Variable
+        "Morphir.SDK:Basics:notEqual" ->
+            Ok "=!="
 
-        Value.Reference _ fQName ->
-            Reference fQName
+        "Morphir.SDK:Basics:add" ->
+            Ok "+"
 
-        Value.Field _ _ name ->
-            Name.toCamelCase name |> Column
+        "Morphir.SDK:Basics:subtract" ->
+            Ok "-"
 
-        Value.FieldFunction _ name ->
-            Name.toCamelCase name |> Column
+        "Morphir.SDK:Basics:multiply" ->
+            Ok "*"
+
+        "Morphir.SDK:Basics:divide" ->
+            Ok "/"
+
+        "Morphir.SDK:Basics:power" ->
+            Ok "pow"
+
+        "Morphir.SDK:Basics:modBy" ->
+            Ok "mod"
+
+        "Morphir.SDK:Basics:remainderBy" ->
+            Ok "%"
+
+        "Morphir.SDK:Basics:logBase" ->
+            Ok "log"
+
+        "Morphir.SDK:Basics:atan2" ->
+            Ok "atan2"
+
+        "Morphir.SDK:Basics:lessThan" ->
+            Ok "<"
+
+        "Morphir.SDK:Basics:greaterThan" ->
+            Ok ">"
+
+        "Morphir.SDK:Basics:lessThanOrEqual" ->
+            Ok "<="
+
+        "Morphir.SDK:Basics:greaterThanOrEqual" ->
+            Ok ">="
+
+        "Morphir.SDK:Basics:max" ->
+            Ok "max"
+
+        "Morphir.SDK:Basics:min" ->
+            Ok "min"
+
+        "Morphir.SDK:Basics:and" ->
+            Ok "and"
+
+        "Morphir.SDK:Basics:or" ->
+            Ok "or"
+
+        "Morphir.SDK:Basics:xor" ->
+            Ok "xor"
 
         _ ->
-            Unknown morphirValue
+            UnsupportedOperatorReference fQName |> Err
