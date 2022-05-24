@@ -1,24 +1,50 @@
+{-
+   Copyright 2020 Morgan Stanley
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-}
+
+
 module Morphir.Spark.Backend exposing (..)
 
-{-| This module contains the Spark backend that takes a turns a Morphir IR into a Spark IR
+{-| This module encapsulates the Spark backend. It takes the Morphir IR as the input and returns an in-memory
+representation of files generated. The consumer is responsible for getting the input IR and saving the output
+to the file-system.
+
+This uses a two-step process
+
+1.  Map value nodes to the Spark IR
+2.  Map the Spark IR to scala value nodes.
+
+@docs mapDistribution, mapFunctionDefinition, mapValue, mapObjectExpression, mapExpression, mapNamedExpression, mapLiteral, mapFQName
+
 -}
 
 import Dict exposing (Dict)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
-import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (TypedValue, Value)
+import Morphir.IR.Value exposing (TypedValue, Value)
 import Morphir.SDK.ResultList as ResultList
 import Morphir.Scala.AST as Scala
 import Morphir.Scala.Backend as ScalaBackend
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Morphir.Scala.Spark.API as Spark
 import Morphir.Spark.IR as SparkIR exposing (..)
-import Set
 
 
 type alias Options =
@@ -26,16 +52,16 @@ type alias Options =
 
 
 type Error
-    = UnhandledValue TypedValue
-    | UnknownValueReturnedByMapFunction TypedValue
-    | FunctionNotFound FQName
+    = FunctionNotFound FQName
     | UnknownArgumentType (Type ())
-    | LambdaExpected TypedValue
     | MappingError SparkIR.Error
 
 
+{-| Entry point for the Spark backend. It takes the Morphir IR as the input and returns an in-memory
+representation of files generated.
+-}
 mapDistribution : Options -> Distribution -> FileMap
-mapDistribution opt distro =
+mapDistribution _ distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
             let
@@ -95,6 +121,8 @@ mapDistribution opt distro =
                 |> Dict.fromList
 
 
+{-| Maps function definitions defined within the current package to scala
+-}
 mapFunctionDefinition : IR -> FQName -> Result Error Scala.MemberDecl
 mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionName) =
     let
@@ -104,7 +132,7 @@ mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionN
                 |> List.map
                     (\( argName, _, argType ) ->
                         case argType of
-                            Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ->
+                            Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ _ ] ->
                                 Ok
                                     { modifiers = []
                                     , tpe = Spark.dataFrame
@@ -116,13 +144,6 @@ mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionN
                                 Err (UnknownArgumentType other)
                     )
                 |> ResultList.keepFirstError
-
-        mapFunctionBody : TypedValue -> Result Error Scala.Value
-        mapFunctionBody body =
-            body
-                |> SparkIR.objectExpressionFromValue ir
-                |> Result.mapError MappingError
-                |> Result.andThen mapObjectExpressionToScala
     in
     ir
         |> IR.lookupValueDefinition fullyQualifiedFunctionName
@@ -141,10 +162,23 @@ mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionN
                             }
                     )
                     (mapFunctionInputs functionDef.inputTypes)
-                    (mapFunctionBody functionDef.body)
+                    (mapValue ir functionDef.body)
             )
 
 
+{-| Maps morphir values to scala values
+-}
+mapValue : IR -> TypedValue -> Result Error Scala.Value
+mapValue ir body =
+    body
+        |> SparkIR.objectExpressionFromValue ir
+        |> Result.mapError MappingError
+        |> Result.andThen mapObjectExpressionToScala
+
+
+{-| Maps Spark ObjectExpressions to scala values.
+ObjectExpressions are defined as part of the SparkIR
+-}
 mapObjectExpressionToScala : ObjectExpression -> Result Error Scala.Value
 mapObjectExpressionToScala objectExpression =
     case objectExpression of
@@ -163,14 +197,17 @@ mapObjectExpressionToScala objectExpression =
                 |> Result.map
                     (Spark.select
                         (fieldExpressions
-                            |> mapFieldExpressions
+                            |> mapNamedExpressions
                         )
                     )
 
 
+{-| Maps Spark Expressions to scala values.
+Expressions are defined as part of the SparkIR.
+-}
 mapExpression : Expression -> Scala.Value
-mapExpression value =
-    case value of
+mapExpression expression =
+    case expression of
         BinaryOperation simpleExpression leftExpr rightExpr ->
             Scala.BinOp
                 (mapExpression leftExpr)
@@ -210,23 +247,27 @@ mapExpression value =
 
         Apply fQName argList ->
             Scala.Apply
-                (toScalaRef fQName)
+                (mapFQName fQName)
                 (argList
                     |> List.map mapExpression
                     |> List.map (Scala.ArgValue Nothing)
                 )
 
 
-mapFieldExpressions : NamedExpressions -> List Scala.Value
-mapFieldExpressions fieldExpressions =
+{-| Maps NamedExpressions to scala values.
+-}
+mapNamedExpressions : NamedExpressions -> List Scala.Value
+mapNamedExpressions nameExpressions =
     List.map
-        (\( columnName, fieldExpression ) ->
-            mapExpression fieldExpression
+        (\( columnName, named ) ->
+            mapExpression named
                 |> Spark.alias (Name.toCamelCase columnName)
         )
-        fieldExpressions
+        nameExpressions
 
 
+{-| Maps Spark Literals to scala Literals.
+-}
 mapLiteral : Literal -> Scala.Lit
 mapLiteral l =
     case l of
@@ -246,28 +287,10 @@ mapLiteral l =
             Scala.FloatLit float
 
 
-mapMorphirSDKFunctionToSpark : FQName -> Scala.Value
-mapMorphirSDKFunctionToSpark fQName =
-    let
-        sparkFunctionsPath =
-            [ "org", "apache", "spark", "sql", "functions" ]
-    in
-    case FQName.toString fQName of
-        _ ->
-            let
-                ( path, n ) =
-                    ScalaBackend.mapFQNameToPathAndName fQName
-            in
-            Scala.Ref path (ScalaBackend.mapValueName n)
-
-
-mapMorphirValue : TypedValue -> Scala.Value
-mapMorphirValue morphirValue =
-    ScalaBackend.mapValue Set.empty morphirValue
-
-
-toScalaRef : FQName -> Scala.Value
-toScalaRef fQName =
+{-| Maps a fully qualified name to scala Ref value.
+-}
+mapFQName : FQName -> Scala.Value
+mapFQName fQName =
     let
         ( path, name ) =
             ScalaBackend.mapFQNameToPathAndName fQName
