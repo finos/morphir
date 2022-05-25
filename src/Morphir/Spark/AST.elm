@@ -1,6 +1,35 @@
-module Morphir.Spark.IR exposing (..)
+{-
+   Copyright 2020 Morgan Stanley
 
-{-| An IR for Spark
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-}
+
+
+module Morphir.Spark.AST exposing (..)
+
+{-| An abstract-syntax tree for Spark. This is a custom built AST that focuses on the subset of Spark features that our
+generator uses.
+
+
+# Abstract Syntax Tree
+
+@docs ObjectExpression, Expression, NamedExpression, DataFrame
+
+
+# Create
+
+@docs objectExpressionFromValue, namedExpressionFromValue, expressionFromValue
+
 -}
 
 import Array exposing (Array)
@@ -8,18 +37,63 @@ import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Path as Path
-import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.SDK.ResultList as ResultList
 
 
+{-| An ObjectExpression represents a transformation that is applied directly to a Spark Data Frame.
+Like in the case of df.select(...), df.filter(...), df.groupBy(...); these expressions apply a transformation step
+to the data within a Data Frame. They are also referred to as **Transformations** within spark.
+ObjectExpressions produce DataFrames as output, making chaining of these transformations possible and for this reason,
+ObjectExpression is expressed as a recursive type.
+
+These are the supported Transformations:
+
+  - **From**
+      - Specifies a source that other ObjectExpressions can be applied on
+      - The general assumption is that all sources are spark DataFrames
+  - **Filter**
+      - Represents a `df.filter(...)` transformation to be applied on DataFrame ObjectExpression.
+      - The two arguments are: the ColumnExpression and the ObjectExpression to apply a filter on.
+  - **Select**
+      - Represents a `df.select(...)` transformation.
+      - The two arguments are:
+          - A List of (Name, Expression) which represent a alias for a column expression and a column expression
+            like `col(name)` within spark.
+          - A target ObjectExpression from which to select.
+
+-}
 type ObjectExpression
     = From ObjectName
     | Filter Expression ObjectExpression
     | Select NamedExpressions ObjectExpression
 
 
+{-| An Expression represents an column expression.
+Expressions produce a value that is usually of type `Column` in spark. ,
+An Expression could take in a `Column` type or `Any` type as input and also produce a Column type and for this reason,
+Expression is expressed as a recursive type.
+
+These are the supported Expressions:
+
+  - **Column**
+      - Specifies the name of a column in a DataFrame similar to the `col("name")` in spark
+  - **Literal**
+      - Represents a literal value like `1`, `"Hello"`, `2.3`.
+  - **Variable**
+      - Represents a variable name like `param`.
+  - **BinaryOperation**
+      - BinaryOperations represent binary operations like `1 + 2`.
+      - The three arguments are: the operator, the left hand side expression, and the right hand side expression
+  - **WhenOtherwise**
+      - Represent a `when(expression, result).otherwise(expression, result)` in spark.
+      - It maps directly to an IfElse statement and can be chained.
+      - The three arguments are: the condition, the Then expression evaluated if the condition passes, and the Else expression.
+  - **Apply**
+      - Applies a list of arguments on a function.
+      - The two arguments are: The fully qualified name of the function to invoke, and a list of arguments to invoke the function with
+
+-}
 type Expression
     = Column String
     | Literal Literal
@@ -29,10 +103,15 @@ type Expression
     | Apply FQName (List Expression)
 
 
+{-| A List of (Name, Expression) where each Name represents an alias for a column expression,
+and the Expression is a column expression like `col(name)` within spark that gets aliased.
+-}
 type alias NamedExpressions =
     List ( Name, Expression )
 
 
+{-| A representation of an acceptable DataFrame structure
+-}
 type alias DataFrame =
     { schema : List FieldName
     , data : List (Array Expression)
@@ -49,14 +128,16 @@ type alias FieldName =
 
 type Error
     = UnhandledValue TypedValue
-    | UnknownValueReturnedByFunction TypedValue
     | FunctionNotFound FQName
-    | UnknownArgumentType (Type ())
     | UnsupportedOperatorReference FQName
     | LambdaExpected TypedValue
     | ReferenceExpected
 
 
+{-| provides a way to create ObjectExpressions from a Morphir Value.
+This is where support for various top level expression is added. This function fails to produce an ObjectExpression
+when it encounters a value that is not supported.
+-}
 objectExpressionFromValue : IR -> TypedValue -> Result Error ObjectExpression
 objectExpressionFromValue ir morphirValue =
     case morphirValue of
@@ -87,6 +168,8 @@ objectExpressionFromValue ir morphirValue =
             Err (UnhandledValue other)
 
 
+{-| Provides a way to create NamedExpressions from a Morphir Value.
+-}
 namedExpressionsFromValue : IR -> TypedValue -> Result Error NamedExpressions
 namedExpressionsFromValue ir typedValue =
     case typedValue of
@@ -107,6 +190,10 @@ namedExpressionsFromValue ir typedValue =
             LambdaExpected typedValue |> Err
 
 
+{-| Provides a way to create Expressions from a Morphir Value.
+This is where support for various column expression is added. This function fails to produce an Expression
+when it encounters a value that is not supported.
+-}
 expressionFromValue : IR -> TypedValue -> Result Error Expression
 expressionFromValue ir morphirValue =
     case morphirValue of
@@ -188,6 +275,8 @@ expressionFromValue ir morphirValue =
             UnhandledValue other |> Err
 
 
+{-| A simple mapping for a Morphir.SDK:Basics binary operations to it's spark string equivalent
+-}
 binaryOpString : FQName -> Result Error String
 binaryOpString fQName =
     case FQName.toString fQName of

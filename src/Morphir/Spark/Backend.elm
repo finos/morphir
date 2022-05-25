@@ -44,7 +44,7 @@ import Morphir.Scala.AST as Scala
 import Morphir.Scala.Backend as ScalaBackend
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Morphir.Scala.Spark.API as Spark
-import Morphir.Spark.IR as SparkIR exposing (..)
+import Morphir.Spark.AST as SparkAST exposing (..)
 
 
 type alias Options =
@@ -54,7 +54,7 @@ type alias Options =
 type Error
     = FunctionNotFound FQName
     | UnknownArgumentType (Type ())
-    | MappingError SparkIR.Error
+    | MappingError SparkAST.Error
 
 
 {-| Entry point for the Spark backend. It takes the Morphir IR as the input and returns an in-memory
@@ -171,7 +171,7 @@ mapFunctionDefinition ir (( _, _, localFunctionName ) as fullyQualifiedFunctionN
 mapValue : IR -> TypedValue -> Result Error Scala.Value
 mapValue ir body =
     body
-        |> SparkIR.objectExpressionFromValue ir
+        |> SparkAST.objectExpressionFromValue ir
         |> Result.mapError MappingError
         |> Result.andThen mapObjectExpressionToScala
 
