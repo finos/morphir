@@ -83,7 +83,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Zip folder as package and install
-        run: npm i -g $(npm pack)
+        run: npm ci $(npm pack)
 
       - name: run Build against zipped package
         run: npm run build --if-present
