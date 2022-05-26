@@ -171,7 +171,6 @@ jobs:
           path-to-elm: ./node_modules/.bin/elm 
 
       - name: Publish (as needed)
-        run: npm publish
         uses: JS-DevTools/npm-publish@v1
         if: env.NPM_TOKEN != 0
         with:
