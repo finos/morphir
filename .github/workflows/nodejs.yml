@@ -18,12 +18,19 @@ jobs:
       matrix:
         node-version: [16.x]
         os: [ ubuntu-latest ]
+    outputs:
+      nodeElmSetup: ${{ steps.checkoutProject }} ${{ steps.setupNode }} ${{ steps.cacheNpm }} ${{ steps.cacheElm }}
     steps:
+      - id: checkoutProject
       - uses: actions/checkout@v2
+      
+      - id: setupNode
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+      
+      - id: cacheNpm
       - name: Cache NPM
         uses: actions/cache@v3
         with:
@@ -31,6 +38,8 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
+      
+      - id: cacheElm
       - name: Cache Elm
         uses: actions/cache@v3
         id: elm-cache
@@ -51,8 +60,10 @@ jobs:
         os: [ ubuntu-latest ]
 
     steps:
-    - name: Download dependencies
-      run: npm ci
-    
-    - name: Build
-      run: npm run build --if-present
+      - run: ${{ needs.setupEnvironment.outputs.nodeElmSetup }}
+
+      - name: Download dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build --if-present
