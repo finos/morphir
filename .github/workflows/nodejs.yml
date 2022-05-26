@@ -42,7 +42,6 @@ jobs:
       - id: cacheElm
       - name: Cache Elm
         uses: actions/cache@v3
-        id: elm-cache
         with:
           path: ~/.elm
           key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
