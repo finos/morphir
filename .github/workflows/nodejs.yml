@@ -45,6 +45,10 @@ jobs:
     name: "Building Project"
     needs: [ setupEnvironment ]
     runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        node-version: [16.x]
+        os: [ ubuntu-latest ]
 
     steps:
     - name: Download dependencies
