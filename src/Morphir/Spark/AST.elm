@@ -214,21 +214,34 @@ expressionFromValue ir morphirValue =
 
         Value.Apply _ _ _ ->
             let
-                collectArgsAsList : TypedValue -> List Expression -> Result Error ( List Expression, FQName )
-                collectArgsAsList v argsLifted =
+                collectArgValues : TypedValue -> List TypedValue -> Result Error ( List TypedValue, FQName )
+                collectArgValues v argsSoFar =
                     case v of
                         Value.Apply _ body a ->
-                            expressionFromValue ir a
-                                |> Result.andThen
-                                    (\expr ->
-                                        collectArgsAsList body (expr :: argsLifted)
-                                    )
+                            collectArgValues body (a :: argsSoFar)
 
                         Value.Reference _ fqn ->
-                            Ok ( argsLifted, fqn )
+                            Ok ( argsSoFar, fqn )
 
                         _ ->
                             Err ReferenceExpected
+
+                collectArgsAsList : TypedValue -> List Expression -> Result Error ( List Expression, FQName )
+                collectArgsAsList v argsLifted =
+                    collectArgValues v []
+                        |> Result.andThen
+                            (\( args, fqn ) ->
+                                List.map (expressionFromValue ir) args
+                                    |> ResultList.keepFirstError
+                                    |> Result.map
+                                        (\exprs -> ( List.append argsLifted exprs, fqn ))
+                            )
+
+                --inline : TypedValue -> FQName -> List args -> Expression
+                --inline typedValue fQName =
+                --    case IR.lookupValueDefinition fQName ir of
+                --        _ ->
+                --            ""
             in
             case morphirValue of
                 Value.Apply _ ((Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) as target) argValue ->
