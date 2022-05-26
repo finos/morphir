@@ -10,27 +10,23 @@ on:
     branches: [ main ]
 
 jobs:
-  # setup recurring environment
-  setupEnvironment: 
-    name: "Cache NPM & Elm"
+  # building project
+  build:
+    name: Build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         node-version: [16.x]
         os: [ ubuntu-latest ]
-    outputs:
-      nodeElmSetup: ${{ steps.checkoutProject }} ${{ steps.setupNode }} ${{ steps.cacheNpm }} ${{ steps.cacheElm }}
+
     steps:
-      - id: checkoutProject
       - uses: actions/checkout@v2
       
-      - id: setupNode
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
       
-      - id: cacheNpm
       - name: Cache NPM
         uses: actions/cache@v3
         with:
@@ -39,7 +35,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
       
-      - id: cacheElm
       - name: Cache Elm
         uses: actions/cache@v3
         with:
@@ -47,11 +42,17 @@ jobs:
           key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
           restore-keys: |
             ${{ runner.os }}-elm- 
-  
-  # building project
-  build:
-    name: "Building Project"
-    needs: [ setupEnvironment ]
+
+      - name: Download dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build --if-present
+ 
+  # Zip package, upload to artifact
+  packageForTesting: 
+    name: Zip Package For Testing
+    needs: [ build ]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -59,10 +60,119 @@ jobs:
         os: [ ubuntu-latest ]
 
     steps:
-      - run: ${{ needs.setupEnvironment.outputs.nodeElmSetup }}
-
-      - name: Download dependencies
+      # Environment Setup
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - uses: actions/cache@v3
+        id: elm-cache
+        with:
+          path: ~/.elm
+          key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
+          restore-keys: |
+            ${{ runner.os }}-elm-    
+      
+      - name: Download Dependencies
         run: npm ci
       
-      - name: Build
+      - name: Run Build
         run: npm run build --if-present
+      
+      # - name: Mark version as Prelease To Prevent Upload To NPM Directly
+      #   run: npm version prelease --preid=ci-$GITHUB_RUN_ID --no-git-tag-version
+      
+      - run: npm pack
+      
+      - name: Upload To Github Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: morphir-elm
+          path: ./*.tgz
+          if-no-files-found: error
+          retention-days: 1
+
+
+  # download artifact and install for testing
+  checkValidityOfPackage: 
+    name: Download and install package and run test
+    needs: [ packageForTesting ]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        node-version: [16.x]
+        os: [ ubuntu-latest ]
+
+    steps:
+      # Environment Setup
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - uses: actions/cache@v3
+        with:
+          path: ~/.elm
+          key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
+          restore-keys: |
+            ${{ runner.os }}-elm-    
+      
+      - name: download uploaded artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: morphir-elm
+      
+      - name: Install Downloaded Package
+        run: npm install $(ls *.tgz)
+      
+      - name: Run Build
+        run: npm run build --if-present
+
+      - name: Link Test to Local Package
+        run: npm link morphir-elm
+
+      - name: running test 
+        run: npm test
+
+      - name: check morphir cmd
+        run: |
+          cd './test-integrations/reference-model'
+          morphir -v 
+
+  # publish package 
+  publish:
+    name: Publish NPM Package
+    needs: [ checkValidityOfPackage ]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        node-version: [16.x]
+        os: [ ubuntu-latest ]
+
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    steps:
+      - name: Publish Elm (as needed)
+        uses: dillonkearns/elm-publish-action@1.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-elm: ./node_modules/.bin/elm 
+
+      - name: Publish (as needed)
+        run: npm publish
+        uses: JS-DevTools/npm-publish@v1
+        if: env.NPM_TOKEN != 0
+        with:
+          token: ${{ env.NPM_TOKEN }}
