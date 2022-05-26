@@ -77,7 +77,8 @@ mapPackageDefinition opt distribution packagePath packageDef =
             (\( modulePath, moduleImpl ) ->
                 List.concat
                     [ mapModuleDefinition opt distribution packagePath modulePath moduleImpl
-                    , mapModuleDefinitionToCodecs opt distribution packagePath modulePath moduleImpl
+
+                    --, mapModuleDefinitionToCodecs opt distribution packagePath modulePath moduleImpl
                     ]
             )
         |> List.map

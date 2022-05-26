@@ -31,10 +31,6 @@ type alias Error =
 mapModuleDefinitionToCodecs : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
 mapModuleDefinitionToCodecs opt distribution currentPackagePath currentModulePath accessControlledModuleDef =
     let
-        newModulePath : String
-        newModulePath =
-            (List.head (List.reverse (Path.toList currentModulePath)) |> withDefault []) |> Name.toTitleCase
-
         scalaPackagePath : List String
         scalaPackagePath =
             currentPackagePath
@@ -479,7 +475,7 @@ genEncodeReference tpe =
             Ok scalaReference
 
         Type.Tuple a types ->
-            Debug.todo "implement"
+            Err "Not implemented yet"
 
         Type.Record a fields ->
             let
@@ -518,13 +514,13 @@ genEncodeReference tpe =
             objRef
 
         Type.ExtensibleRecord a name fields ->
-            Debug.todo "implement"
+            Err "Not implemented yet"
 
         Type.Function a argType returnType ->
             Err "Cannot encode a function"
 
         Type.Unit a ->
-            Debug.todo "implement"
+            Err "Not implemented yet"
 
 
 {-|
@@ -554,7 +550,7 @@ genDecodeReference fqName tpe =
             Ok scalaReference
 
         Type.Tuple a types ->
-            Debug.todo "Add Implementation"
+            Err "Not implemented yet"
 
         Record a fields ->
             let
@@ -613,7 +609,7 @@ genDecodeReference fqName tpe =
             Err "Cannot decode a function"
 
         Type.Unit a ->
-            Debug.todo "Implement"
+            Err "Not implemented yet"
 
         ExtensibleRecord a name fields ->
-            Debug.todo "Implement"
+            Err "Not implemented yet"
