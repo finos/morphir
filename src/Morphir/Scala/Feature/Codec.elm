@@ -35,15 +35,11 @@ mapModuleDefinitionToCodecs opt distribution currentPackagePath currentModulePat
         newModulePath =
             (List.head (List.reverse (Path.toList currentModulePath)) |> withDefault []) |> Name.toTitleCase
 
-        ( scalaPackagePath, moduleName ) =
-            case currentModulePath |> List.reverse of
-                [] ->
-                    ( [], [] )
-
-                lastName :: reverseModulePath ->
-                    ( List.append (currentPackagePath |> List.map (Name.toCamelCase >> String.toLower)) (reverseModulePath |> List.reverse |> List.append [ [ newModulePath ] ] |> List.map (Name.toCamelCase >> String.toLower))
-                    , lastName
-                    )
+        scalaPackagePath : List String
+        scalaPackagePath =
+            currentPackagePath
+                ++ currentModulePath
+                |> List.map (Name.toCamelCase >> String.toLower)
 
         encoderTypeMembers : List (Scala.Annotated Scala.MemberDecl)
         encoderTypeMembers =
@@ -88,7 +84,7 @@ mapModuleDefinitionToCodecs opt distribution currentPackagePath currentModulePat
                                             )
                                         ]
                             , name =
-                                moduleName |> Name.toTitleCase
+                                "Codec"
                             , members =
                                 List.concat [ encoderTypeMembers, decoderTypeMembers ]
                             , extends =
@@ -155,54 +151,10 @@ mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef 
         ( scalaTypePath, scalaName ) =
             ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
 
-        caseClass name args extends =
-            if List.isEmpty args then
-                Scala.Object
-                    { modifiers = [ Scala.Case ]
-                    , name = "encode" :: name |> Name.toCamelCase
-                    , extends = extends
-                    , members = []
-                    , body = Nothing
-                    }
-
-            else
-                Scala.Class
-                    { modifiers = [ Scala.Final, Scala.Case ]
-                    , name = "encode" :: name |> Name.toCamelCase
-                    , typeArgs = []
-                    , ctorArgs =
-                        args
-                            |> List.map
-                                (\( argName, argType ) ->
-                                    { modifiers = []
-                                    , tpe =
-                                        Scala.TypeApply
-                                            (Scala.TypeRef [ "io", "circe" ] "Encoder")
-                                            [ Scala.TypeRef scalaTypePath (name |> Name.toTitleCase)
-                                            ]
-                                    , name = argName |> Name.toCamelCase
-                                    , defaultValue = Nothing
-                                    }
-                                )
-                            |> List.singleton
-                    , extends = extends
-                    , members = []
-                    }
-
-        parentTraitRef =
-            mapFQNameToTypeRef ( currentPackagePath, currentModulePath, typeName )
-
-        ( parentPackagePath, parentTraitName ) =
-            let
-                ( thePath, theName ) =
-                    mapFQNameToPathAndName ( currentPackagePath, currentModulePath, typeName )
-            in
-            ( thePath, theName |> Name.toTitleCase )
-
         sealedTraitHierarchy =
             [ Scala.Trait
                 { modifiers = [ Scala.Sealed ]
-                , name = typeName |> Name.toTitleCase
+                , name = "encode" ++ (typeName |> Name.toTitleCase)
                 , typeArgs = typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)
                 , extends = []
                 , members = []
@@ -211,24 +163,7 @@ mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef 
                 { modifiers = []
                 , name = typeName |> Name.toTitleCase
                 , extends = []
-                , members =
-                    accessControlledCtors.value
-                        |> Dict.toList
-                        |> List.map
-                            (\( ctorName, ctorArgs ) ->
-                                Scala.withAnnotation []
-                                    (caseClass
-                                        ctorName
-                                        ctorArgs
-                                        (if List.isEmpty typeParams then
-                                            [ parentTraitRef ]
-
-                                         else
-                                            [ Scala.TypeApply parentTraitRef (typeParams |> List.map (Name.toTitleCase >> Scala.TypeVar)) ]
-                                        )
-                                        |> Scala.MemberTypeDecl
-                                    )
-                            )
+                , members = []
                 , body = Nothing
                 }
             ]
@@ -249,16 +184,33 @@ mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef 
                                         [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
                                         ]
                                     )
-                            , value = Scala.Lambda [ ( "a", Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ] (Scala.Variable "foo")
+                            , value =
+                                Scala.Lambda [ ( "a", Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ]
+                                    (Scala.Apply (Scala.Select (Scala.Ref [ "io", "circe" ] "Json") "arr")
+                                        [ Scala.ArgValue Nothing (Scala.Select (Scala.Ref [ "io", "circe" ] "Json") "fromString")
+                                        ]
+                                    )
                             }
                         )
                     ]
+                    -- If the length of the ctorArgs is 2 or more
 
                 else
+                    let
+                        encoderArgs =
+                            ctorArgs
+                                |> List.map
+                                    (\( argName, argType ) ->
+                                        Scala.ArgValue Nothing
+                                            (Scala.Apply (genEncodeReference argType |> Result.withDefault (Scala.Variable ""))
+                                                [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable "a") (argName |> Name.toCamelCase)) ]
+                                            )
+                                    )
+                    in
                     [ Scala.withoutAnnotation
                         (Scala.ValueDecl
                             { modifiers = [ Scala.Implicit ]
-                            , pattern = Scala.NamedMatch ("encode" :: ctorName |> Name.toCamelCase)
+                            , pattern = Scala.NamedMatch ("encode" :: scalaName |> Name.toCamelCase)
                             , valueType =
                                 Just
                                     (Scala.TypeApply
@@ -266,38 +218,73 @@ mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef 
                                         [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
                                         ]
                                     )
-                            , value = Scala.Ref scalaTypePath ("encode" :: scalaName |> Name.toCamelCase)
+                            , value =
+                                Scala.Lambda [ ( "a", Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ]
+                                    (Scala.Apply (Scala.Select (Scala.Ref [ "io", "circe" ] "Json") "arr") encoderArgs)
                             }
                         )
                     ]
 
             else
-                -- When the  type name is not the same as the Constructor name
-                List.concat
-                    [ [ Scala.withoutAnnotation
-                            (Scala.ValueDecl
-                                { modifiers = [ Scala.Implicit ]
-                                , pattern = Scala.NamedMatch ("encode" :: scalaName |> Name.toCamelCase)
-                                , valueType =
-                                    Just
-                                        (Scala.TypeApply
-                                            (Scala.TypeRef [ "io", "circe" ] "Encoder")
-                                            [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
-                                            ]
+            -- When the  type name is not the same as the Constructor name
+            if
+                List.length ctorArgs == 1
+            then
+                [ Scala.withoutAnnotation
+                    (Scala.ValueDecl
+                        { modifiers = [ Scala.Implicit ]
+                        , pattern = Scala.NamedMatch ("encode" :: ctorName |> Name.toCamelCase)
+                        , valueType =
+                            Just
+                                (Scala.TypeApply
+                                    (Scala.TypeRef [ "io", "circe" ] "Encoder")
+                                    [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
+                                    ]
+                                )
+                        , value =
+                            Scala.Lambda [ ( "a", Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ]
+                                (Scala.Apply (Scala.Select (Scala.Ref [ "io", "circe" ] "Json") "arr")
+                                    [ Scala.ArgValue Nothing (Scala.Select (Scala.Ref [ "io", "circe" ] "Json") "fromString")
+                                    ]
+                                )
+                        }
+                    )
+                ]
+                -- If the length of the ctorArgs is 2 or more
+
+            else
+                let
+                    encoderArgs =
+                        ctorArgs
+                            |> List.map
+                                (\( argName, argType ) ->
+                                    Scala.ArgValue Nothing
+                                        (Scala.Apply (genEncodeReference argType |> Result.withDefault (Scala.Variable ""))
+                                            [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable "a") (argName |> Name.toCamelCase)) ]
                                         )
-                                , value = Scala.Ref scalaTypePath ("encode" :: ctorName |> Name.toCamelCase)
-                                }
-                            )
-                      ]
-                    , []
-                    ]
+                                )
+                in
+                [ Scala.withoutAnnotation
+                    (Scala.ValueDecl
+                        { modifiers = [ Scala.Implicit ]
+                        , pattern = Scala.NamedMatch ("encode" :: scalaName |> Name.toCamelCase)
+                        , valueType =
+                            Just
+                                (Scala.TypeApply
+                                    (Scala.TypeRef [ "io", "circe" ] "Encoder")
+                                    [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
+                                    ]
+                                )
+                        , value =
+                            Scala.Lambda [ ( "a", Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ]
+                                (Scala.Apply (Scala.Select (Scala.Ref [ "io", "circe" ] "Json") "arr") encoderArgs)
+                        }
+                    )
+                ]
 
         _ ->
             List.concat
-                [ sealedTraitHierarchy
-                    |> List.map (Scala.MemberTypeDecl >> Scala.withoutAnnotation)
-                , []
-                ]
+                []
 
 
 mapCustomTypeDefinitionToDecoder : Package.PackageName -> Path -> Module.Definition ta (Type ()) -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List (Scala.Annotated Scala.MemberDecl)
