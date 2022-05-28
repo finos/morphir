@@ -418,6 +418,17 @@ resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName
                                 [ ( packageName, moduleName ) ] ->
                                     Ok ( packageName, moduleName, localName )
 
+                                -- If there are conflicts with the SDK, assume we're not referring to the SDK
+                                [ ( package1Name, module1Name ), ( package2Name, module2Name ) ] as multipleModuleNames ->
+                                    if package1Name == [ [ "morphir" ], [ "s", "d", "k" ] ] then
+                                        Ok ( package2Name, module2Name, localName )
+
+                                    else if package2Name == [ [ "morphir" ], [ "s", "d", "k" ] ] then
+                                        Ok ( package1Name, module1Name, localName )
+
+                                    else
+                                        Err (MultipleModulesExposeLocalName multipleModuleNames localName kindOfName)
+
                                 -- If there's more than one module for this local name then the import is ambiguous
                                 multipleModuleNames ->
                                     Err (MultipleModulesExposeLocalName multipleModuleNames localName kindOfName)
