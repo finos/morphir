@@ -37,6 +37,7 @@ import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.SDK.ResultList as ResultList
 
@@ -196,6 +197,64 @@ when it encounters a value that is not supported.
 -}
 expressionFromValue : IR -> TypedValue -> Result Error Expression
 expressionFromValue ir morphirValue =
+    let
+        collectArgValues : TypedValue -> List TypedValue -> Result Error ( List TypedValue, FQName )
+        collectArgValues v argsSoFar =
+            case v of
+                Value.Apply _ body a ->
+                    collectArgValues body (a :: argsSoFar)
+
+                Value.Reference _ fqn ->
+                    Ok ( argsSoFar, fqn )
+
+                _ ->
+                    Err ReferenceExpected
+
+        collectArgsAsList : TypedValue -> List Expression -> Result Error ( List Expression, FQName )
+        collectArgsAsList v argsLifted =
+            collectArgValues v []
+                |> Result.andThen
+                    (\( args, fqn ) ->
+                        List.map (expressionFromValue ir) args
+                            |> ResultList.keepFirstError
+                            |> Result.map
+                                (\exprs -> ( List.append argsLifted exprs, fqn ))
+                    )
+
+        rewriteVariables : List ( Name, va, Type ta ) -> TypedValue -> TypedValue
+        rewriteVariables fnArgs fnBody =
+            let
+                rewriteVariable : Name -> TypedValue -> TypedValue -> TypedValue
+                rewriteVariable searchTerm replacement scope =
+                    case scope of
+                        Value.Apply a target ((Value.Variable _ name) as var) ->
+                            if name == searchTerm then
+                                Value.Apply a target replacement
+
+                            else
+                                Value.Apply a
+                                    (rewriteVariable searchTerm replacement target)
+                                    var
+
+                        Value.Apply a target arg ->
+                            Value.Apply a
+                                (rewriteVariable searchTerm replacement target)
+                                (rewriteVariable searchTerm replacement arg)
+
+                        _ ->
+                            scope
+
+                args =
+                    collectArgValues morphirValue [] |> Result.map Tuple.first |> Result.withDefault []
+            in
+            fnArgs
+                |> List.map2 Tuple.pair args
+                |> List.foldl
+                    (\( arg, ( varName, _, _ ) ) body ->
+                        rewriteVariable varName arg body
+                    )
+                    fnBody
+    in
     case morphirValue of
         Value.Literal _ literal ->
             Literal literal |> Ok
@@ -213,36 +272,6 @@ expressionFromValue ir morphirValue =
             expressionFromValue ir body
 
         Value.Apply _ _ _ ->
-            let
-                collectArgValues : TypedValue -> List TypedValue -> Result Error ( List TypedValue, FQName )
-                collectArgValues v argsSoFar =
-                    case v of
-                        Value.Apply _ body a ->
-                            collectArgValues body (a :: argsSoFar)
-
-                        Value.Reference _ fqn ->
-                            Ok ( argsSoFar, fqn )
-
-                        _ ->
-                            Err ReferenceExpected
-
-                collectArgsAsList : TypedValue -> List Expression -> Result Error ( List Expression, FQName )
-                collectArgsAsList v argsLifted =
-                    collectArgValues v []
-                        |> Result.andThen
-                            (\( args, fqn ) ->
-                                List.map (expressionFromValue ir) args
-                                    |> ResultList.keepFirstError
-                                    |> Result.map
-                                        (\exprs -> ( List.append argsLifted exprs, fqn ))
-                            )
-
-                --inline : TypedValue -> FQName -> List args -> Expression
-                --inline typedValue fQName =
-                --    case IR.lookupValueDefinition fQName ir of
-                --        _ ->
-                --            ""
-            in
             case morphirValue of
                 Value.Apply _ ((Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) as target) argValue ->
                     case ( package, modName ) of
@@ -258,21 +287,15 @@ expressionFromValue ir morphirValue =
                                 |> Result.andThen (List.singleton >> collectArgsAsList target)
                                 |> Result.map (\( expressions, targetFQN ) -> Apply targetFQN expressions)
 
-                Value.Apply _ (Value.Reference _ fqName) arg ->
-                    expressionFromValue ir arg
-                        |> Result.map
-                            (List.singleton
-                                >> Apply fqName
-                            )
-
                 _ ->
                     collectArgsAsList morphirValue []
                         |> Result.map (\( expressions, targetFQN ) -> Apply targetFQN expressions)
 
         Value.Reference _ fqName ->
             case IR.lookupValueDefinition fqName ir of
-                Just { body } ->
-                    expressionFromValue ir body
+                Just def ->
+                    rewriteVariables def.inputTypes def.body
+                        |> expressionFromValue ir
 
                 Nothing ->
                     FunctionNotFound fqName |> Err
