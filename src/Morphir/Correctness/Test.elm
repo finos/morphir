@@ -6,7 +6,7 @@ import Morphir.IR.Value exposing (RawValue, Value(..))
 
 
 type alias TestCase =
-    { inputs : List RawValue
+    { inputs : List (Maybe RawValue)
     , expectedOutput : RawValue
     , description : String
     }
