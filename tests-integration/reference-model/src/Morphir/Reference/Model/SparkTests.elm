@@ -90,6 +90,11 @@ testFilter source =
     source |> List.filter filterFn
 
 
+testFilter2 : List Record1 -> List Record1
+testFilter2 source =
+    source |> List.filter (filterFnWithVar 17)
+
+
 testMapAndFilter : List Record1 -> List Record1
 testMapAndFilter source =
     source
@@ -135,3 +140,8 @@ testBadAnnotation source =
 filterFn : Record1 -> Bool
 filterFn record1 =
     modBy record1.age 2 <= 3
+
+
+filterFnWithVar : Int -> Record1 -> Bool
+filterFnWithVar max record =
+    record.age <= max

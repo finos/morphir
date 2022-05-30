@@ -15,7 +15,11 @@
 -}
 
 
-module Morphir.Spark.AST exposing (..)
+module Morphir.Spark.AST exposing
+    ( ObjectExpression(..), Expression(..), DataFrame
+    , objectExpressionFromValue
+    , Error, NamedExpressions
+    )
 
 {-| An abstract-syntax tree for Spark. This is a custom built AST that focuses on the subset of Spark features that our
 generator uses.
@@ -197,64 +201,6 @@ when it encounters a value that is not supported.
 -}
 expressionFromValue : IR -> TypedValue -> Result Error Expression
 expressionFromValue ir morphirValue =
-    let
-        collectArgValues : TypedValue -> List TypedValue -> Result Error ( List TypedValue, FQName )
-        collectArgValues v argsSoFar =
-            case v of
-                Value.Apply _ body a ->
-                    collectArgValues body (a :: argsSoFar)
-
-                Value.Reference _ fqn ->
-                    Ok ( argsSoFar, fqn )
-
-                _ ->
-                    Err ReferenceExpected
-
-        collectArgsAsList : TypedValue -> List Expression -> Result Error ( List Expression, FQName )
-        collectArgsAsList v argsLifted =
-            collectArgValues v []
-                |> Result.andThen
-                    (\( args, fqn ) ->
-                        List.map (expressionFromValue ir) args
-                            |> ResultList.keepFirstError
-                            |> Result.map
-                                (\exprs -> ( List.append argsLifted exprs, fqn ))
-                    )
-
-        rewriteVariables : List ( Name, va, Type ta ) -> TypedValue -> TypedValue
-        rewriteVariables fnArgs fnBody =
-            let
-                rewriteVariable : Name -> TypedValue -> TypedValue -> TypedValue
-                rewriteVariable searchTerm replacement scope =
-                    case scope of
-                        Value.Apply a target ((Value.Variable _ name) as var) ->
-                            if name == searchTerm then
-                                Value.Apply a target replacement
-
-                            else
-                                Value.Apply a
-                                    (rewriteVariable searchTerm replacement target)
-                                    var
-
-                        Value.Apply a target arg ->
-                            Value.Apply a
-                                (rewriteVariable searchTerm replacement target)
-                                (rewriteVariable searchTerm replacement arg)
-
-                        _ ->
-                            scope
-
-                args =
-                    collectArgValues morphirValue [] |> Result.map Tuple.first |> Result.withDefault []
-            in
-            fnArgs
-                |> List.map2 Tuple.pair args
-                |> List.foldl
-                    (\( arg, ( varName, _, _ ) ) body ->
-                        rewriteVariable varName arg body
-                    )
-                    fnBody
-    in
     case morphirValue of
         Value.Literal _ literal ->
             Literal literal |> Ok
@@ -273,7 +219,7 @@ expressionFromValue ir morphirValue =
 
         Value.Apply _ _ _ ->
             case morphirValue of
-                Value.Apply _ ((Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) as target) argValue ->
+                Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
                     case ( package, modName ) of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ) ->
                             Result.map3
@@ -283,19 +229,33 @@ expressionFromValue ir morphirValue =
                                 (expressionFromValue ir argValue)
 
                         _ ->
-                            expressionFromValue ir argValue
-                                |> Result.andThen (List.singleton >> collectArgsAsList target)
-                                |> Result.map (\( expressions, targetFQN ) -> Apply targetFQN expressions)
+                            collectArgValues morphirValue []
+                                |> Result.andThen
+                                    (\( args, fqn ) ->
+                                        lookupFQName ir fqn
+                                            |> Result.map
+                                                (\def ->
+                                                    inlineArguments def.inputTypes args def.body
+                                                )
+                                    )
+                                |> Result.andThen (expressionFromValue ir)
 
                 _ ->
-                    collectArgsAsList morphirValue []
-                        |> Result.map (\( expressions, targetFQN ) -> Apply targetFQN expressions)
+                    collectArgValues morphirValue []
+                        |> Result.andThen
+                            (\( args, fqn ) ->
+                                lookupFQName ir fqn
+                                    |> Result.map
+                                        (\def ->
+                                            inlineArguments def.inputTypes args def.body
+                                        )
+                            )
+                        |> Result.andThen (expressionFromValue ir)
 
         Value.Reference _ fqName ->
             case IR.lookupValueDefinition fqName ir of
                 Just def ->
-                    rewriteVariables def.inputTypes def.body
-                        |> expressionFromValue ir
+                    expressionFromValue ir def.body
 
                 Nothing ->
                     FunctionNotFound fqName |> Err
@@ -309,6 +269,70 @@ expressionFromValue ir morphirValue =
 
         other ->
             UnhandledValue other |> Err
+
+
+collectArgValues : TypedValue -> List TypedValue -> Result Error ( List TypedValue, FQName )
+collectArgValues v argsSoFar =
+    case v of
+        Value.Apply _ body a ->
+            collectArgValues body (a :: argsSoFar)
+
+        Value.Reference _ fqn ->
+            Ok ( argsSoFar, fqn )
+
+        _ ->
+            Err ReferenceExpected
+
+
+{-| A utility function that looks up a value definition within the IR
+-}
+lookupFQName : IR -> FQName -> Result Error (Value.Definition () (Type ()))
+lookupFQName ir fQName =
+    case IR.lookupValueDefinition fQName ir of
+        Just def ->
+            Ok def
+
+        Nothing ->
+            FunctionNotFound fQName |> Err
+
+
+{-| A utility function that replaces variables in a function with their values.
+-}
+inlineArguments : List ( Name, va, Type ta ) -> List TypedValue -> TypedValue -> TypedValue
+inlineArguments paramList argList fnBody =
+    let
+        overwriteValue : Name -> TypedValue -> TypedValue -> TypedValue
+        overwriteValue searchTerm replacement scope =
+            -- TODO handle replacement of the variable within a lambda
+            case scope of
+                Value.Apply a target ((Value.Variable _ name) as var) ->
+                    if name == searchTerm then
+                        -- Replace variable if the name matches the searchTerm
+                        Value.Apply a
+                            (overwriteValue searchTerm replacement target)
+                            replacement
+
+                    else
+                        -- Name does not match. Maintain variable
+                        Value.Apply a
+                            (overwriteValue searchTerm replacement target)
+                            var
+
+                Value.Apply a target arg ->
+                    Value.Apply a
+                        (overwriteValue searchTerm replacement target)
+                        (overwriteValue searchTerm replacement arg)
+
+                _ ->
+                    scope
+    in
+    paramList
+        |> List.map2 Tuple.pair argList
+        |> List.foldl
+            (\( arg, ( varName, _, _ ) ) body ->
+                overwriteValue varName arg body
+            )
+            fnBody
 
 
 {-| A simple mapping for a Morphir.SDK:Basics binary operations to it's spark string equivalent
