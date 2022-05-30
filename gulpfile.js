@@ -191,7 +191,7 @@ async function testIntegrationBuildSpark(cb) {
      try {
          await execa(
              'mill', ['__.compile'],
-             { stdio, cwd: 'tests-integration' },
+             { stdio, cwd: 'tests-integration/generated/refModel/src/spark/' },
          )
      } catch (err) {
          if (err.code == 'ENOENT') {
