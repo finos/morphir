@@ -28,7 +28,7 @@ type alias Variables =
 
 
 {-| -}
-evaluateFunctionValue : Dict FQName Native.Function -> IR -> FQName -> List RawValue -> Result Error RawValue
+evaluateFunctionValue : Dict FQName Native.Function -> IR -> FQName -> List (Maybe RawValue) -> Result Error RawValue
 evaluateFunctionValue nativeFunctions ir fQName variableValues =
     ir
         |> IR.lookupValueDefinition fQName
@@ -42,7 +42,7 @@ evaluateFunctionValue nativeFunctions ir fQName variableValues =
                         (valueDef.inputTypes
                             |> List.map (\( name, _, _ ) -> name)
                         )
-                        variableValues
+                        (List.map (Maybe.withDefault (Value.Unit ())) variableValues)
                         |> Dict.fromList
                     )
                     []
@@ -181,6 +181,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                             )
                         |> ResultList.keepFirstError
                         -- If this is a reference to another Morphir value we need to look it up and evaluate.
+                        |> Result.map (\resultList -> List.map (\result -> Just result) resultList)
                         |> Result.andThen (evaluateFunctionValue nativeFunctions ir fQName)
 
         Value.Field _ subjectValue fieldName ->
