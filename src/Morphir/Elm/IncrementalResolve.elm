@@ -94,7 +94,9 @@ type alias QualifiedModuleName =
 type alias ResolvedImports =
     { visibleNamesByModuleName : Dict QualifiedModuleName VisibleNames
     , moduleNamesByAliasOrSingleModuleName : Dict String (Set QualifiedModuleName)
-    , moduleNamesByLocalName : Dict Name (Set QualifiedModuleName)
+    , moduleNamesByLocalTypeName : Dict Name (Set QualifiedModuleName)
+    , moduleNamesByLocalValueName : Dict Name (Set QualifiedModuleName)
+    , moduleNamesByLocalConstructorName : Dict Name (Set QualifiedModuleName)
     }
 
 
@@ -205,14 +207,36 @@ resolveImports repo imports =
 
         addLocalName : KindOfName -> QualifiedModuleName -> Name -> ResolvedImports -> ResolvedImports
         addLocalName kindOfName qualifiedModuleName name resolvedImports =
-            { resolvedImports
-                | visibleNamesByModuleName =
-                    resolvedImports.visibleNamesByModuleName
-                        |> Dict.update qualifiedModuleName (insertOrCreateVisibleNames kindOfName name)
-                , moduleNamesByLocalName =
-                    resolvedImports.moduleNamesByLocalName
-                        |> Dict.update name (insertOrCreateSet qualifiedModuleName)
-            }
+            case kindOfName of
+                Type ->
+                    { resolvedImports
+                        | visibleNamesByModuleName =
+                            resolvedImports.visibleNamesByModuleName
+                                |> Dict.update qualifiedModuleName (insertOrCreateVisibleNames kindOfName name)
+                        , moduleNamesByLocalTypeName =
+                            resolvedImports.moduleNamesByLocalTypeName
+                                |> Dict.update name (insertOrCreateSet qualifiedModuleName)
+                    }
+
+                Constructor ->
+                    { resolvedImports
+                        | visibleNamesByModuleName =
+                            resolvedImports.visibleNamesByModuleName
+                                |> Dict.update qualifiedModuleName (insertOrCreateVisibleNames kindOfName name)
+                        , moduleNamesByLocalConstructorName =
+                            resolvedImports.moduleNamesByLocalConstructorName
+                                |> Dict.update name (insertOrCreateSet qualifiedModuleName)
+                    }
+
+                Value ->
+                    { resolvedImports
+                        | visibleNamesByModuleName =
+                            resolvedImports.visibleNamesByModuleName
+                                |> Dict.update qualifiedModuleName (insertOrCreateVisibleNames kindOfName name)
+                        , moduleNamesByLocalValueName =
+                            resolvedImports.moduleNamesByLocalValueName
+                                |> Dict.update name (insertOrCreateSet qualifiedModuleName)
+                    }
 
         addLocalNames : Import -> QualifiedModuleName -> Module.Specification () -> ResolvedImports -> Result Error ResolvedImports
         addLocalNames imp qualifiedModuleName moduleSpec resolvedImports =
@@ -349,7 +373,7 @@ resolveImports repo imports =
                                     )
                         )
             )
-            (Ok (ResolvedImports Dict.empty Dict.empty Dict.empty))
+            (Ok (ResolvedImports Dict.empty Dict.empty Dict.empty Dict.empty Dict.empty))
 
 
 {-| Finds out the Morphir package and module name from an Elm module name and a Repo.
@@ -401,8 +425,20 @@ resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName
                 Ok ( Repo.getPackageName repo, currentModuleName, localName )
 
             else
+                let
+                    moduleNamesByLocalName =
+                        case kindOfName of
+                            Type ->
+                                resolvedImports.moduleNamesByLocalTypeName
+
+                            Constructor ->
+                                resolvedImports.moduleNamesByLocalConstructorName
+
+                            Value ->
+                                resolvedImports.moduleNamesByLocalValueName
+                in
                 -- If it's not a local name then we search through the imports
-                resolvedImports.moduleNamesByLocalName
+                moduleNamesByLocalName
                     |> Dict.get localName
                     -- Report an error if the local name is not found
                     |> Result.fromMaybe (LocalNameNotImported localName kindOfName)
@@ -418,17 +454,16 @@ resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName
                                 [ ( packageName, moduleName ) ] ->
                                     Ok ( packageName, moduleName, localName )
 
-                                -- If there are conflicts with the SDK, assume we're not referring to the SDK
-                                [ ( package1Name, module1Name ), ( package2Name, module2Name ) ] as multipleModuleNames ->
-                                    if package1Name == [ [ "morphir" ], [ "s", "d", "k" ] ] then
-                                        Ok ( package2Name, module2Name, localName )
-
-                                    else if package2Name == [ [ "morphir" ], [ "s", "d", "k" ] ] then
-                                        Ok ( package1Name, module1Name, localName )
-
-                                    else
-                                        Err (MultipleModulesExposeLocalName multipleModuleNames localName kindOfName)
-
+                                ---- If there are conflicts with the SDK, assume we're not referring to the SDK
+                                --[ ( package1Name, module1Name ), ( package2Name, module2Name ) ] as multipleModuleNames ->
+                                --    if package1Name == [ [ "morphir" ], [ "s", "d", "k" ] ] then
+                                --        Ok ( package2Name, module2Name, localName )
+                                --
+                                --    else if package2Name == [ [ "morphir" ], [ "s", "d", "k" ] ] then
+                                --        Ok ( package1Name, module1Name, localName )
+                                --
+                                --    else
+                                --        Err (MultipleModulesExposeLocalName multipleModuleNames localName kindOfName)
                                 -- If there's more than one module for this local name then the import is ambiguous
                                 multipleModuleNames ->
                                     Err (MultipleModulesExposeLocalName multipleModuleNames localName kindOfName)
