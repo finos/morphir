@@ -48,112 +48,36 @@ jobs:
       
       - name: Build
         run: npm run build --if-present
- 
-  # Zip package, upload to artifact
-  packageForTesting: 
-    name: Zip Package For Testing
-    needs: [ build ]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        node-version: [16.x]
-        os: [ ubuntu-latest ]
 
-    steps:
-      # Environment Setup
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-      - uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-      - uses: actions/cache@v3
-        id: elm-cache
-        with:
-          path: ~/.elm
-          key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
-          restore-keys: |
-            ${{ runner.os }}-elm-    
-      
-      - name: Download Dependencies
-        run: npm ci
-      
-      - name: Run Build
-        run: npm run build --if-present
-      
-      # - name: Mark version as Prelease To Prevent Upload To NPM Directly
-      #   run: npm version prelease --preid=ci-$GITHUB_RUN_ID --no-git-tag-version
-      
-      - run: npm pack
-      
-      - name: Upload To Github Artifact
+      - name: Zip Package For Test
+        run: npm pack 
+
+      - name: Install Zip Package
+        run: npm install $(ls *.tgz)
+
+      - name: Link To Local Package 
+        run: npm link 
+
+      - name: Running Test
+        run: npm test
+
+      - name: Check Morphir Cmd 
+        run: |
+          cd tests-integration/reference-model
+          morphir -v 
+
+      - name: Upload to Artifact for Easier Publish 
         uses: actions/upload-artifact@v3
         with:
           name: morphir-elm
           path: ./*.tgz
           if-no-files-found: error
-          retention-days: 1
-
-
-  # download artifact and install for testing
-  checkValidityOfPackage: 
-    name: Download and install package and run test
-    needs: [ packageForTesting ]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        node-version: [16.x]
-        os: [ ubuntu-latest ]
-
-    steps:
-      # Environment Setup
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-      - uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-      - uses: actions/cache@v3
-        with:
-          path: ~/.elm
-          key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
-          restore-keys: |
-            ${{ runner.os }}-elm-    
-      
-      - name: download uploaded artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: morphir-elm
-      
-      - name: Install Downloaded Package
-        run: npm install $(ls *.tgz)
-      
-      - name: Run Build
-        run: npm run build --if-present
-
-      - name: Link Test to Local Package
-        run: npm link morphir-elm
-
-      - name: running test 
-        run: npm test
-
-      - name: check morphir cmd
-        run: |
-          cd './test-integrations/reference-model'
-          morphir -v 
+          retention-days: 0
 
   # publish package 
   publish:
     name: Publish NPM Package
-    needs: [ checkValidityOfPackage ]
+    needs: [ build ]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -164,6 +88,20 @@ jobs:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: morphir-elm
+
+      - uses: actions/checkout@v2
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install Zip Package
+        run: npm install $(ls *.tgz)
+        
       - name: Publish Elm (as needed)
         uses: dillonkearns/elm-publish-action@1.1.0
         with:
