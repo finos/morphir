@@ -1,6 +1,7 @@
 module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, update, view, viewBody, viewHeader)
 
 import Array exposing (Array)
+import Array.Extra
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
@@ -78,7 +79,7 @@ import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common as Common exposing (ifThenElse, pathToDisplayString, pathToFullUrl, pathToUrl, urlFragmentToNodePath, viewAsCard)
+import Morphir.Web.DevelopApp.Common exposing (ifThenElse, pathToDisplayString, pathToFullUrl, pathToUrl, urlFragmentToNodePath, viewAsCard)
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Morphir.Web.TryMorphir exposing (Model)
 import Ordering
@@ -87,7 +88,6 @@ import Set exposing (Set)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
-import Array.Extra
 
 
 
@@ -239,7 +239,7 @@ type TestingMsg
     = DescriptionUpdated Int String
     | DeleteTestCase FQName Int
     | SaveTestSuite FQName TestCase
-    | LoadTestCase (List ( Name, Type () )) (List RawValue)
+    | LoadTestCase (List ( Name, Type () )) (List (Maybe RawValue))
 
 
 type NavigationMsg
@@ -453,10 +453,10 @@ update msg model =
                     Debug.todo "branch 'FunctionDescriptionUpdated _ _' not implemented"
 
                 DeleteTestCase fQName index ->
-                   let
+                    let
                         newTestSuite =
                             Dict.insert fQName
-                                ( Array.Extra.removeAt index ((Dict.get fQName model.testSuite) |> Maybe.withDefault Array.empty))
+                                (Array.Extra.removeAt index (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
                     in
                     ( { model | testSuite = newTestSuite }
@@ -477,12 +477,12 @@ update msg model =
                         newVariables =
                             dictfromRecord
                                 { keys = List.map Tuple.first inputTypes
-                                , vals = values
+                                , vals = List.map (Maybe.withDefault (Value.Unit ())) values
                                 }
 
-                        newArgState : Type () -> RawValue -> ValueEditor.EditorState
+                        newArgState : Type () -> Maybe RawValue -> ValueEditor.EditorState
                         newArgState tpe val =
-                            ValueEditor.initEditorState (IR.fromDistribution getDistribution) tpe (Just val)
+                            ValueEditor.initEditorState (IR.fromDistribution getDistribution) tpe val
 
                         newArgStates : Dict Name ValueEditor.EditorState
                         newArgStates =
@@ -505,7 +505,7 @@ update msg model =
                                 (Array.push testCase (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
                     in
-                    ( { model | testSuite = newTestSuite }
+                    ( { model | testSuite = newTestSuite, argStates = Dict.empty, insightViewState = emptyVisualState }
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite)
                     )
 
@@ -913,8 +913,33 @@ viewHome model packageName packageDef =
             ]
 
         -- Display a single selected definition on the ui
-        viewDefinition : Maybe Definition -> Element msg
+        viewDefinition : Maybe Definition -> Element Msg
         viewDefinition maybeSelectedDefinition =
+            let
+                toggleDisplayType : Element Msg
+                toggleDisplayType =
+                    let
+                        xrayOrInsight a b =
+                            case model.definitionDisplayType of
+                                XRayView ->
+                                    a
+
+                                InsightView ->
+                                    b
+                    in
+                    Element.Input.button
+                        [ padding 7
+                        , Background.color <| xrayOrInsight lightMorphIrBlue lightMorphIrOrange
+                        , Border.rounded 3
+                        , Font.color model.theme.colors.lightest
+                        , Font.bold
+                        , Font.size (model.theme |> Theme.scaled 2)
+                        , mouseOver [ Background.color <| xrayOrInsight morphIrBlue morphIrOrange ]
+                        ]
+                        { onPress = Just (Insight SwitchDisplayType)
+                        , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text <| "Switch to " ++ xrayOrInsight "InsightView" "XRayView" ]
+                        }
+            in
             case maybeSelectedDefinition of
                 Just selectedDefinition ->
                     case selectedDefinition of
@@ -927,7 +952,8 @@ viewHome model packageName packageDef =
                                             |> Dict.get valueName
                                             |> Maybe.map
                                                 (\valueDef ->
-                                                    viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
+                                                    column []
+                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc, toggleDisplayType ]
                                                 )
                                     )
                                 |> Maybe.withDefault none
@@ -1201,30 +1227,6 @@ viewHome model packageName packageDef =
                 , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ] [ Theme.ellipseText pathToSelectedModule ]
                 , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
                 ]
-
-        toggleDisplayType : Element Msg
-        toggleDisplayType =
-            let
-                xrayOrInsight a b =
-                    case model.definitionDisplayType of
-                        XRayView ->
-                            a
-
-                        InsightView ->
-                            b
-            in
-            Element.Input.button
-                [ padding 7
-                , Background.color <| xrayOrInsight lightMorphIrBlue lightMorphIrOrange
-                , Border.rounded 3
-                , Font.color model.theme.colors.lightest
-                , Font.bold
-                , Font.size (model.theme |> Theme.scaled 2)
-                , mouseOver [ Background.color <| xrayOrInsight morphIrBlue morphIrOrange ]
-                ]
-                { onPress = Just (Insight SwitchDisplayType)
-                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text <| "Switch to " ++ xrayOrInsight "InsightView" "XRayView" ]
-                }
     in
     row [ width fill, height fill, Background.color gray, spacing 10 ]
         [ column
@@ -1268,9 +1270,8 @@ viewHome model packageName packageDef =
             [ ifThenElse (model.homeState.selectedDefinition == Nothing)
                 (dependencyGraph model.homeState.selectedModule model.repo)
                 (column
-                    [ height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, width fill, spacing (model.theme |> Theme.scaled 1) ]
+                    [ scrollbars, height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, width fill, spacing (model.theme |> Theme.scaled 1) ]
                     [ viewDefinition model.homeState.selectedDefinition
-                    , toggleDisplayType
                     , el [ height fill, width fill, scrollbars ]
                         (viewDefinitionDetails model)
                     ]
@@ -1733,6 +1734,7 @@ viewDefinitionDetails model =
         saveTestcaseButton : FQName -> TestCase -> Element Msg
         saveTestcaseButton fqName testCase =
             let
+                saveMsg : Msg
                 saveMsg =
                     Testing (SaveTestSuite fqName testCase)
             in
@@ -1745,22 +1747,21 @@ viewDefinitionDetails model =
                 , Font.size (model.theme |> Theme.scaled 2)
                 ]
                 { onPress = Just saveMsg
-                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save Test" ]
+                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save as testcase" ]
                 }
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
-            Common.viewAsCard theme
-                (el [ Font.bold, Font.size (theme |> Theme.scaled 2), spacing 5, padding 5 ] (text "ACTUAL OUTPUT"))
+            row [ Background.color <| rgba 0.9 0.9 0.9 0.5, Border.rounded 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
                 (case evaluateOutput ir testCase.inputs fQName of
                     Ok rawValue ->
-                        el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
+                        [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value:"), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
 
-                    Err error ->
-                        text "Invalid inputs"
+                    Err _ ->
+                        [ text "Invalid inputs" ]
                 )
 
-        evaluateOutput : IR -> List RawValue -> FQName -> Result Error RawValue
+        evaluateOutput : IR -> List (Maybe RawValue) -> FQName -> Result Error RawValue
         evaluateOutput ir inputs fQName =
             evaluateFunctionValue SDK.nativeFunctions ir fQName inputs
 
@@ -1768,7 +1769,7 @@ viewDefinitionDetails model =
         viewRawValue config ir rawValue =
             case fromRawValue ir rawValue of
                 Ok typedValue ->
-                    el [ spacing 5, padding 5 ] (ViewValue.viewValue config typedValue)
+                    el [ centerY ] (ViewValue.viewValue config typedValue)
 
                 Err error ->
                     el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
@@ -1784,54 +1785,108 @@ viewDefinitionDetails model =
                 listOfTestcases =
                     Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty
 
-                displayValue : RawValue -> Element Msg
+                displayValue : Maybe RawValue -> Element Msg
                 displayValue t =
-                    viewRawValue (insightViewConfig ir) ir t
+                    viewRawValue (insightViewConfig ir) ir (Maybe.withDefault (Value.Unit ()) t)
+
+                inputNameList : List ( Int, String )
+                inputNameList =
+                    List.indexedMap (\i ( n, _, _ ) -> ( i, nameToText n )) inputTypes
 
                 evaluate : TestCase -> Element.Color
                 evaluate testCase =
                     case evaluateOutput ir testCase.inputs fQName of
                         Ok rawValue ->
                             if rawValue == testCase.expectedOutput then
-                                model.theme.colors.positive
+                                model.theme.colors.positiveLight
 
                             else
-                                model.theme.colors.negative
+                                model.theme.colors.negativeLight
 
                         Err _ ->
                             model.theme.colors.negative
 
-                displayTestCase : ( Int, TestCase ) -> Element Msg
-                displayTestCase ( index, testCase ) =
+                testsTable : Element Msg
+                testsTable =
                     let
-                        loadTestCaseMsg : Msg
-                        loadTestCaseMsg =
-                            Testing (LoadTestCase (List.map (\( name, _, tpe ) -> ( name, tpe )) inputTypes) testCase.inputs)
+                        deleteButton : Int -> Element Msg
+                        deleteButton index =
+                            Element.Input.button
+                                [ Border.width 1
+                                , mouseOver [ Border.color model.theme.colors.darkest ]
+                                , Background.color model.theme.colors.negativeLight
+                                , Font.color model.theme.colors.lightest
+                                , Font.size (model.theme |> Theme.scaled 5)
+                                , pointer
+                                , height fill
+                                , Border.roundEach { topLeft = 0, bottomLeft = 0, topRight = 6, bottomRight = 6 }
+                                ]
+                                { onPress = Just <| Testing (DeleteTestCase fQName index)
+                                , label = el [ centerX, centerY ] (text " 🗑 ")
+                                }
+
+                        testRow : Int -> Int -> Int -> TestCase -> Element Msg
+                        testRow columnIndex selfIndex maxIndex  test =
+                            let
+                                loadTestCaseMsg : Msg
+                                loadTestCaseMsg =
+                                    Testing (LoadTestCase (List.map (\( name, _, tpe ) -> ( name, tpe )) inputTypes) test.inputs)
+
+                                styles : List (Element.Attr () Msg)
+                                styles =
+                                    [ Background.color <| evaluate test
+                                    , height fill
+                                    , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
+                                    , paddingXY (model.theme |> Theme.scaled -1) (model.theme |> Theme.scaled -5)
+                                    , Border.color model.theme.colors.lightest
+                                    , pointer
+                                    , onClick loadTestCaseMsg
+                                    ]
+                            in
+                            if columnIndex == 0 then
+                                el (styles ++ [ Border.roundEach { topLeft = 6, bottomLeft = 6, topRight = 0, bottomRight = 0 } ])
+                                    ((Array.get columnIndex <| Array.fromList test.inputs) |> Maybe.withDefault (Just <| Value.Unit ()) |> displayValue)
+
+                            else if columnIndex < maxIndex then
+                                el styles
+                                    ((Array.get columnIndex <| Array.fromList test.inputs) |> Maybe.withDefault (Just <| Value.Unit ()) |> displayValue)
+
+                            else
+                                row [ width fill, height fill]
+                                    [ el (styles ++ [paddingEach {right = model.theme |> Theme.scaled 7, left = 0, top = 0, bottom = 0 } ])
+                                        (Just test.expectedOutput |> displayValue)
+                                    , deleteButton selfIndex
+                                    ]
+
+                        columns : List (Element.IndexedColumn TestCase Msg)
+                        columns =
+                            let
+                                maxIndex : Int
+                                maxIndex =
+                                    List.length inputNameList + 1
+                                styles : List (Element.Attribute msg)
+                                styles = [paddingXY (model.theme |> Theme.scaled -2) (model.theme |> Theme.scaled -5)]
+                            in
+                            List.map
+                                (\( columnIndex, columnName ) ->
+                                    { header = ifThenElse (columnIndex == maxIndex) (el (Font.bold :: styles ) <| Theme.ellipseText columnName) (el styles <| Theme.ellipseText columnName)
+                                    , width = fill
+                                    , view =
+                                        \index test ->
+                                            testRow columnIndex index maxIndex test
+                                    }
+                                )
+                                (inputNameList ++ [ ( maxIndex, "exp. output" ) ])
                     in
-                    row [ width fill ]
-                        [ el [ width <| fillPortion 1, padding 15, Font.bold, Font.color model.theme.colors.negative, pointer, onClick <| Testing (DeleteTestCase fQName index) ] (text " X ")
-                        , row
-                            [ Background.color <| evaluate testCase
-                            , Border.solid
-                            , Border.color model.theme.colors.lightest
-                            , Border.width 2
-                            , onClick loadTestCaseMsg
-                            , pointer
-                            , mouseOver [ Border.color model.theme.colors.darkest ]
-                            , width <| fillPortion 18
-                            ]
-                            ([ text " description: "
-                             , text testCase.description
-                             , text ", inputs:"
-                             ]
-                                ++ List.map displayValue testCase.inputs
-                                ++ [ text ", expected output:"
-                                   , displayValue testCase.expectedOutput
-                                   ]
-                            )
+                    Element.indexedTable
+                        [padding (model.theme |> Theme.scaled -2)
                         ]
+                        { data = Array.toList listOfTestcases
+                        , columns = columns
+                        }
             in
-            column [ paddingXY 10 0, spacing 4, width <| fillPortion 1 ] (text "Test Cases" :: List.map displayTestCase (Array.toIndexedList listOfTestcases))
+            ifThenElse (Array.isEmpty listOfTestcases) none (column [height fill, width fill] [el [Font.bold, padding (model.theme |> Theme.scaled -2)] (text "TEST CASES"), testsTable])
+
     in
     case model.irState of
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
@@ -1852,20 +1907,28 @@ viewDefinitionDetails model =
                                                     fullyQualifiedName =
                                                         ( packageName, moduleName, valueName )
 
+                                                    inputs : List (Maybe RawValue)
+                                                    inputs =
+                                                        List.map (\n -> Dict.get n model.insightViewState.variables) (List.map (\( n, _, _ ) -> n) valueDef.inputTypes)
+
                                                     ir : IR
                                                     ir =
                                                         IR.fromDistribution distribution
 
                                                     saveButton : Element Msg
                                                     saveButton =
-                                                        case evaluateOutput ir (Dict.values model.insightViewState.variables) fullyQualifiedName of
-                                                            Ok rawValue ->
-                                                                saveTestcaseButton
-                                                                    fullyQualifiedName
-                                                                    { description = "", expectedOutput = rawValue, inputs = Dict.values model.insightViewState.variables }
+                                                        if List.isEmpty inputs then
+                                                            none
 
-                                                            Err _ ->
-                                                                none
+                                                        else
+                                                            case evaluateOutput ir inputs fullyQualifiedName of
+                                                                Ok rawValue ->
+                                                                    saveTestcaseButton
+                                                                        fullyQualifiedName
+                                                                        { description = "", expectedOutput = rawValue, inputs = inputs }
+
+                                                                Err _ ->
+                                                                    none
                                                 in
                                                 case model.definitionDisplayType of
                                                     XRayView ->
@@ -1874,15 +1937,17 @@ viewDefinitionDetails model =
                                                     InsightView ->
                                                         Just <|
                                                             column
-                                                                [ width fill, height fill, spacing 20 ]
+                                                                [ width fill, height fill, spacing 20, paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
                                                                 [ viewArgumentEditors ir model.argStates valueDef.inputTypes
                                                                 , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
-                                                                , viewActualOutput
-                                                                    model.theme
-                                                                    ir
-                                                                    { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = Dict.values model.insightViewState.variables }
-                                                                    fullyQualifiedName
-                                                                , saveButton
+                                                                , row [ spacing (model.theme |> Theme.scaled 2) ]
+                                                                    [ viewActualOutput
+                                                                        model.theme
+                                                                        ir
+                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                        fullyQualifiedName
+                                                                    , saveButton
+                                                                    ]
                                                                 , scenarios fullyQualifiedName distribution valueDef.inputTypes
                                                                 ]
                                             )
