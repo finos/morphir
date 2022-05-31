@@ -96,7 +96,6 @@ type alias ResolvedImports =
     , moduleNamesByAliasOrSingleModuleName : Dict String (Set QualifiedModuleName)
     , moduleNamesByLocalTypeName : Dict Name (Set QualifiedModuleName)
     , moduleNamesByLocalValueName : Dict Name (Set QualifiedModuleName)
-    , moduleNamesByLocalConstructorName : Dict Name (Set QualifiedModuleName)
     }
 
 
@@ -223,8 +222,8 @@ resolveImports repo imports =
                         | visibleNamesByModuleName =
                             resolvedImports.visibleNamesByModuleName
                                 |> Dict.update qualifiedModuleName (insertOrCreateVisibleNames kindOfName name)
-                        , moduleNamesByLocalConstructorName =
-                            resolvedImports.moduleNamesByLocalConstructorName
+                        , moduleNamesByLocalTypeName =
+                            resolvedImports.moduleNamesByLocalTypeName
                                 |> Dict.update name (insertOrCreateSet qualifiedModuleName)
                     }
 
@@ -373,7 +372,7 @@ resolveImports repo imports =
                                     )
                         )
             )
-            (Ok (ResolvedImports Dict.empty Dict.empty Dict.empty Dict.empty Dict.empty))
+            (Ok (ResolvedImports Dict.empty Dict.empty Dict.empty Dict.empty))
 
 
 {-| Finds out the Morphir package and module name from an Elm module name and a Repo.
@@ -432,7 +431,7 @@ resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName
                                 resolvedImports.moduleNamesByLocalTypeName
 
                             Constructor ->
-                                resolvedImports.moduleNamesByLocalConstructorName
+                                resolvedImports.moduleNamesByLocalTypeName
 
                             Value ->
                                 resolvedImports.moduleNamesByLocalValueName
