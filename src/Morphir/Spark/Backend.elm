@@ -245,9 +245,9 @@ mapExpression expression =
                 (mapExpression thenBranch)
                 |> toIfElseChain elseBranch
 
-        Apply fQName argList ->
+        Function name argList ->
             Scala.Apply
-                (mapFQName fQName)
+                (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] name)
                 (argList
                     |> List.map mapExpression
                     |> List.map (Scala.ArgValue Nothing)

@@ -105,7 +105,7 @@ type Expression
     | Variable String
     | BinaryOperation String Expression Expression
     | WhenOtherwise Expression Expression Expression
-    | Apply FQName (List Expression)
+    | Function String (List Expression)
 
 
 {-| A List of (Name, Expression) where each Name represents an alias for a column expression,
@@ -119,7 +119,7 @@ type alias NamedExpressions =
 -}
 type alias DataFrame =
     { schema : List FieldName
-    , data : List (Array Expression)
+    , data : List (Array ObjectExpression)
     }
 
 
@@ -137,6 +137,7 @@ type Error
     | UnsupportedOperatorReference FQName
     | LambdaExpected TypedValue
     | ReferenceExpected
+    | UnsupportedSDKFunction FQName
 
 
 {-| provides a way to create ObjectExpressions from a Morphir Value.
@@ -230,27 +231,11 @@ expressionFromValue ir morphirValue =
 
                         _ ->
                             collectArgValues morphirValue []
-                                |> Result.andThen
-                                    (\( args, fqn ) ->
-                                        lookupFQName ir fqn
-                                            |> Result.map
-                                                (\def ->
-                                                    inlineArguments def.inputTypes args def.body
-                                                )
-                                    )
-                                |> Result.andThen (expressionFromValue ir)
+                                |> Result.andThen (\( args, fqn ) -> inlineReference ir args fqn)
 
                 _ ->
                     collectArgValues morphirValue []
-                        |> Result.andThen
-                            (\( args, fqn ) ->
-                                lookupFQName ir fqn
-                                    |> Result.map
-                                        (\def ->
-                                            inlineArguments def.inputTypes args def.body
-                                        )
-                            )
-                        |> Result.andThen (expressionFromValue ir)
+                        |> Result.andThen (\( args, fqn ) -> inlineReference ir args fqn)
 
         Value.Reference _ fqName ->
             case IR.lookupValueDefinition fqName ir of
@@ -258,7 +243,7 @@ expressionFromValue ir morphirValue =
                     expressionFromValue ir def.body
 
                 Nothing ->
-                    FunctionNotFound fqName |> Err
+                    inlineReference ir [] fqName
 
         Value.IfThenElse _ cond thenBranch elseBranch ->
             Result.map3
@@ -284,16 +269,21 @@ collectArgValues v argsSoFar =
             Err ReferenceExpected
 
 
-{-| A utility function that looks up a value definition within the IR
+{-| A utility function that looks up a value definition within the IR and returns
+and expression from it's value.
 -}
-lookupFQName : IR -> FQName -> Result Error (Value.Definition () (Type ()))
-lookupFQName ir fQName =
-    case IR.lookupValueDefinition fQName ir of
+inlineReference : IR -> List TypedValue -> FQName -> Result Error Expression
+inlineReference ir args fqn =
+    case IR.lookupValueDefinition fqn ir of
         Just def ->
-            Ok def
+            inlineArguments def.inputTypes args def.body
+                |> expressionFromValue ir
 
         Nothing ->
-            FunctionNotFound fQName |> Err
+            args
+                |> List.map (expressionFromValue ir)
+                |> ResultList.keepFirstError
+                |> Result.andThen (mapSDKFunctions fqn)
 
 
 {-| A utility function that replaces variables in a function with their values.
@@ -333,6 +323,28 @@ inlineArguments paramList argList fnBody =
                 overwriteValue varName arg body
             )
             fnBody
+
+
+mapSDKFunctions : FQName -> List Expression -> Result Error Expression
+mapSDKFunctions fQName expressions =
+    case ( FQName.toString fQName, expressions ) of
+        ( "Morphir.SDK:String:replace", pattern :: replacement :: target :: [] ) ->
+            Function "regexp_replace" [ target, pattern, replacement ]
+                |> Ok
+
+        ( "Morphir.SDK:String:reverse", _ ) ->
+            Function "reverse" expressions
+                |> Ok
+
+        ( "Morphir.SDK:String:toUpper", _ ) ->
+            Function "upper" expressions
+                |> Ok
+
+        ( "Morphir.SDK:String:concat", _ ) ->
+            UnsupportedSDKFunction fQName |> Err
+
+        _ ->
+            FunctionNotFound fQName |> Err
 
 
 {-| A simple mapping for a Morphir.SDK:Basics binary operations to it's spark string equivalent

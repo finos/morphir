@@ -3,23 +3,9 @@ module Morphir.Scala.Spark.API exposing (..)
 import Morphir.Scala.AST as Scala
 
 
-spark : Scala.Value
-spark =
-    Scala.Variable "spark"
-
-
 dataFrame : Scala.Type
 dataFrame =
     Scala.TypeRef [ "org", "apache", "spark", "sql" ] "DataFrame"
-
-
-
---createDataFrame :
---createDataFrame schema data =
---    Scala.Apply (Scala.Select spark "createDataFrame")
---        [ data
---        , schema
---        ]
 
 
 literal : Scala.Value -> Scala.Value
@@ -98,9 +84,3 @@ join rightRelation predicate joinTypeLabel leftRelation =
                 (Scala.StringLit joinTypeLabel)
             )
         ]
-
-
-transform : Scala.Value -> Scala.Value -> Scala.Value
-transform col value =
-    Scala.Apply (Scala.Ref [ "org", "apache", "spark", "sql", "functions" ] "transform")
-        [ Scala.ArgValue Nothing col, Scala.ArgValue Nothing value ]

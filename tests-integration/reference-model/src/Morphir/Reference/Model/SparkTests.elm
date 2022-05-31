@@ -114,7 +114,7 @@ testMapAndFilter2 source =
     source
         |> List.map
             (\a ->
-                { firstName = String.join " " [ a.firstName, "hello" ]
+                { firstName = String.reverse a.firstName
                 , lastName = String.toUpper a.lastName
                 , age = a.age
                 , title = a.title
@@ -123,9 +123,18 @@ testMapAndFilter2 source =
         |> List.filter filterFn
 
 
-foo : List Record1 -> List Record1
-foo record1s =
-    record1s
+testMapAndFilter3 : List Record1 -> List Record1
+testMapAndFilter3 source =
+    source
+        |> List.map
+            (\a ->
+                { firstName = String.replace "." " " a.firstName
+                , lastName = String.toUpper a.lastName
+                , age = a.age
+                , title = a.title
+                }
+            )
+        |> List.filter filterFn
 
 
 testBadAnnotation : List Record1 -> List Title
