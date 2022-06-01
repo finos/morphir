@@ -297,8 +297,13 @@ initRecordEditor ir fieldTypes maybeInitialValue =
 {-| Creates a component state for a custom type editor with an optional error.
 -}
 initCustomEditor : IR -> FQName -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
-initCustomEditor _ ( packageName, moduleName, _ ) constructors _ =
-    ( Nothing, CustomEditor packageName moduleName constructors (Name.fromString "") Dict.empty )
+initCustomEditor _ ( packageName, moduleName, _ ) constructors maybeSelected =
+    case maybeSelected of
+        Just (Value.Constructor _ ( _, _, selectedName )) ->
+            ( Nothing, CustomEditor packageName moduleName constructors selectedName Dict.empty )
+
+        _ ->
+            ( Nothing, CustomEditor packageName moduleName constructors (Name.fromString "") Dict.empty )
 
 
 {-| Creates a component state for a optional values.
@@ -591,19 +596,24 @@ view ir valueType updateEditorState editorState =
                                                     newFieldEditorStates
                                                         |> Dict.toList
                                                         |> List.foldr
-                                                            (\( nextFieldName, ( _, nextFieldEditorState ) ) fieldsResultSoFar ->
+                                                            (\( nextFieldName, ( nextFieldType, nextFieldEditorState ) ) fieldsResultSoFar ->
                                                                 fieldsResultSoFar
                                                                     |> Result.andThen
                                                                         (\fieldsSoFar ->
                                                                             editorStateToRawValueResult nextFieldEditorState
-                                                                                |> Result.map
+                                                                                |> Result.andThen
                                                                                     (\maybeNextFieldValue ->
                                                                                         case maybeNextFieldValue of
                                                                                             Just nextFieldValue ->
-                                                                                                ( nextFieldName, nextFieldValue ) :: fieldsSoFar
+                                                                                                Ok <| ( nextFieldName, nextFieldValue ) :: fieldsSoFar
 
                                                                                             Nothing ->
-                                                                                                fieldsSoFar
+                                                                                                case nextFieldType of
+                                                                                                    Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ->
+                                                                                                        Ok <| ( nextFieldName, Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ) :: fieldsSoFar
+
+                                                                                                    _ ->
+                                                                                                        Err <| "Missing field value: " ++ Name.toCamelCase nextFieldName
                                                                                     )
                                                                         )
                                                             )
@@ -677,6 +687,7 @@ view ir valueType updateEditorState editorState =
                                     (\( constructorName, _ ) ->
                                         Html.option
                                             [ Html.Attributes.value (Name.toTitleCase constructorName)
+                                            , Html.Attributes.selected (selectedConstructor == constructorName)
                                             ]
                                             [ Html.text (nameToText constructorName)
                                             ]
@@ -996,7 +1007,9 @@ view ir valueType updateEditorState editorState =
                 set rowIndex columnIndex item list =
                     List.concat
                         [ List.take rowIndex list
-                        , list |> List.drop rowIndex |> List.take 1
+                        , list
+                            |> List.drop rowIndex
+                            |> List.take 1
                             |> List.map
                                 (\( k, v ) ->
                                     if columnIndex == 0 then
