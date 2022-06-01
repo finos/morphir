@@ -40,7 +40,7 @@ expectedTestSuite =
                     , Literal () (FloatLiteral 0)
                     , Literal () (FloatLiteral 12)
                     , Literal () (FloatLiteral 13)
-                    ]
+                    ] |> List.map Just
               }
             , { description = "List of Tracking Advantage"
               , expectedOutput =
@@ -66,7 +66,7 @@ expectedTestSuite =
                     , Literal () (FloatLiteral 10)
                     , Literal () (FloatLiteral 12)
                     , Literal () (FloatLiteral 13)
-                    ]
+                    ] |> List.map Just
               }
             , { description = "List of Tracking Advantage"
               , expectedOutput =
@@ -106,34 +106,34 @@ expectedTestSuite =
                     , Literal () (FloatLiteral 10)
                     , Literal () (FloatLiteral 12)
                     , Literal () (FloatLiteral -13)
-                    ]
+                    ] |> List.map Just
               }
             ]
           )
         , ( ( [ [ "morphir" ], [ "reference" ], [ "model" ] ], [ [ "issues" ], [ "issue", "410" ] ], [ "add", "function" ] )
           , [ { description = "Add"
               , expectedOutput = Literal () (WholeNumberLiteral 9)
-              , inputs = [ Literal () (WholeNumberLiteral 4), Literal () (WholeNumberLiteral 5) ]
+              , inputs = [ Literal () (WholeNumberLiteral 4), Literal () (WholeNumberLiteral 5) ] |> List.map Just
               }
             , { description = "Add"
               , expectedOutput = Literal () (WholeNumberLiteral 29)
-              , inputs = [ Literal () (WholeNumberLiteral 14), Literal () (WholeNumberLiteral 15) ]
+              , inputs = [ Literal () (WholeNumberLiteral 14), Literal () (WholeNumberLiteral 15) ] |> List.map Just
               }
             , { description = "Add"
               , expectedOutput = Literal () (WholeNumberLiteral 38)
-              , inputs = [ Literal () (WholeNumberLiteral 12), Literal () (WholeNumberLiteral 26) ]
+              , inputs = [ Literal () (WholeNumberLiteral 12), Literal () (WholeNumberLiteral 26) ] |> List.map Just
               }
             , { description = "Add"
               , expectedOutput = Literal () (WholeNumberLiteral 248)
-              , inputs = [ Literal () (WholeNumberLiteral 122), Literal () (WholeNumberLiteral 126) ]
+              , inputs = [ Literal () (WholeNumberLiteral 122), Literal () (WholeNumberLiteral 126) ] |> List.map Just
               }
             , { description = "Add"
               , expectedOutput = Literal () (WholeNumberLiteral 11)
-              , inputs = [ Literal () (WholeNumberLiteral 10), Literal () (WholeNumberLiteral 1) ]
+              , inputs = [ Literal () (WholeNumberLiteral 10), Literal () (WholeNumberLiteral 1) ] |> List.map Just
               }
             , { description = "Add"
               , expectedOutput = Literal () (WholeNumberLiteral -9)
-              , inputs = [ Literal () (WholeNumberLiteral -10), Literal () (WholeNumberLiteral 1) ]
+              , inputs = [ Literal () (WholeNumberLiteral -10), Literal () (WholeNumberLiteral 1) ] |> List.map Just
               }
             ]
           )

@@ -11,4 +11,5 @@ const program = new Command()
 program
     .version(packageJson.version, '-v, --version')
     .command('make', 'Translate Elm sources to Morphir IR')
+    .command('scala-gen','Generate scala code from Morphir IR')
     .parse(process.argv)

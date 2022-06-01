@@ -4,6 +4,8 @@ import Elm.Syntax.Range as Range
 import Json.Encode as Encode
 import Morphir.Elm.IncrementalFrontend.Mapper exposing (Error(..), SourceLocation)
 import Morphir.Elm.IncrementalResolve.Codec as IncrementalResolveCodec
+import Morphir.IR.Path.Codec exposing (encodePath)
+import Morphir.Type.Infer.Codec exposing (encodeTypeError)
 import Set
 
 
@@ -54,6 +56,13 @@ encodeError error =
                 [ Encode.string "UnresolvedVariable"
                 , encodeSourceLocation sourceLocation
                 , Encode.string varName
+                ]
+
+        TypeCheckError moduleName typeError ->
+            Encode.list identity
+                [ Encode.string "TypeCheckError"
+                , encodePath moduleName
+                , encodeTypeError typeError
                 ]
 
 
