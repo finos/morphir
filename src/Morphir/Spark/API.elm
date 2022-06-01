@@ -1,4 +1,4 @@
-module Morphir.Scala.Spark.API exposing (..)
+module Morphir.Spark.API exposing (..)
 
 import Morphir.Scala.AST as Scala
 
