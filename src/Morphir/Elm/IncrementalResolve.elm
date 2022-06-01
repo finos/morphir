@@ -121,8 +121,48 @@ defaultImports =
         en : a -> Node a
         en a =
             Node emptyRange a
+
+        defaultBasicImports =
+            List.map (Exposing.FunctionExpose >> en)
+                [ "toFloat"
+                , "round"
+                , "floor"
+                , "ceiling"
+                , "truncate"
+                , "max"
+                , "min"
+                , "compare"
+                , "not"
+                , "xor"
+                , "modBy"
+                , "remainderBy"
+                , "negate"
+                , "abs"
+                , "clamp"
+                , "sqrt"
+                , "logBase"
+                , "e"
+                , "pi"
+                , "cos"
+                , "sin"
+                , "tan"
+                , "acos"
+                , "asin"
+                , "atan"
+                , "atan2"
+                , "degrees"
+                , "radians"
+                , "turns"
+                , "toPolar"
+                , "fromPolar"
+                , "isNaN"
+                , "isInfinite"
+                , "identity"
+                , "always"
+                , "never"
+                ]
     in
-    [ Import (en [ "Basics" ]) Nothing (Just (en (Exposing.All emptyRange)))
+    [ Import (en [ "Basics" ]) Nothing (Just (en (Exposing.Explicit defaultBasicImports)))
     , Import (en [ "List" ]) Nothing (Just (en (Exposing.Explicit [ en (Exposing.TypeOrAliasExpose "List") ])))
     , Import (en [ "Maybe" ]) Nothing (Just (en (Exposing.Explicit [ en (Exposing.TypeExpose (Exposing.ExposedType "Maybe" (Just er))) ])))
     , Import (en [ "Result" ]) Nothing (Just (en (Exposing.Explicit [ en (Exposing.TypeExpose (Exposing.ExposedType "Result" (Just er))) ])))
