@@ -19,10 +19,6 @@ import Morphir.Scala.WellKnownTypes exposing (anyVal)
 import Set exposing (Set)
 
 
-type alias Options =
-    { limitToModules : Maybe (Set ModuleName) }
-
-
 {-| Map a Morphir fully-qualified name to a Scala package path and name.
 -}
 mapFQNameToPathAndName : FQName -> ( Scala.Path, Name )
@@ -114,8 +110,8 @@ mapTypeMember currentPackagePath currentModulePath accessControlledModuleDef ( t
                 accessControlledCtors
 
 
-mapModuleDefinition : Options -> Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
-mapModuleDefinition opt distribution currentPackagePath currentModulePath accessControlledModuleDef =
+mapModuleDefinition : Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
+mapModuleDefinition distribution currentPackagePath currentModulePath accessControlledModuleDef =
     let
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of

@@ -236,6 +236,7 @@ type Pattern
     | EmptyListMatch
     | HeadTailMatch Pattern Pattern
     | CommentedPattern Pattern String
+    | ApplyMatch Name (List Pattern)
 
 
 {-| -}

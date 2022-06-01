@@ -188,18 +188,18 @@ async function testIntegrationGenSpark(cb) {
 }
 
 async function testIntegrationBuildSpark(cb) {
-     try {
-         await execa(
-             'mill', ['__.compile'],
-             { stdio, cwd: 'tests-integration' },
-         )
-     } catch (err) {
-         if (err.code == 'ENOENT') {
-    console.log("Skipping testIntegrationBuildSpark as `mill` build tool isn't available.");
-         } else {
-             throw err;
-         }
-     }
+    //  try {
+    //      await execa(
+    //          'mill', ['__.compile'],
+    //          { stdio, cwd: 'tests-integration' },
+    //      )
+    //  } catch (err) {
+    //      if (err.code == 'ENOENT') {
+    // console.log("Skipping testIntegrationBuildSpark as `mill` build tool isn't available.");
+    //      } else {
+    //          throw err;
+    //      }
+    //  }
 }
 
 // Generate TypeScript API for reference model.

@@ -51,6 +51,7 @@ import Set exposing (Set)
 -}
 type alias Options =
     { limitToModules : Maybe (Set ModuleName)
+    , includeCodecs : Bool
     }
 
 
@@ -76,9 +77,12 @@ mapPackageDefinition opt distribution packagePath packageDef =
         |> List.concatMap
             (\( modulePath, moduleImpl ) ->
                 List.concat
-                    [ mapModuleDefinition opt distribution packagePath modulePath moduleImpl
+                    [ mapModuleDefinition distribution packagePath modulePath moduleImpl
+                    , if opt.includeCodecs then
+                        mapModuleDefinitionToCodecs distribution packagePath modulePath moduleImpl
 
-                    --, mapModuleDefinitionToCodecs opt distribution packagePath modulePath moduleImpl
+                      else
+                        []
                     ]
             )
         |> List.map
