@@ -12,15 +12,18 @@ import Graph exposing (Graph)
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.KindOfName exposing (KindOfName(..))
 import Morphir.IR.Literal as Literal
+import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK.Basics as SDKBasics
 import Morphir.IR.SDK.List as List
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.SDK.ResultList as ResultList
+import Morphir.Type.Infer as Infer
 import Set exposing (Set)
 
 
@@ -37,6 +40,7 @@ type Error
     | SameNameAppearsMultipleTimesInPattern SourceLocation (Set String)
     | VariableNameCollision SourceLocation String
     | UnresolvedVariable SourceLocation String
+    | TypeCheckError ModuleName Infer.TypeError
 
 
 type alias SourceLocation =
@@ -439,8 +443,18 @@ mapFunction resolveName moduleName variables (Node functionRange function) =
                     }
                 )
 
-        declaredValueTypeResult : Result Errors (Type TypeAttribute)
-        declaredValueTypeResult =
+        inferValue : Value () ValueAttribute -> Result Errors (Value () (Type ()))
+        inferValue value =
+            Infer.inferValue IR.empty value
+                |> Result.map (Value.mapValueAttributes identity Tuple.second)
+                |> Result.mapError
+                    (TypeCheckError
+                        (List.map Name.fromString moduleName)
+                        >> List.singleton
+                    )
+
+        declaredOrInferredTypeResult : Value TypeAttribute ValueAttribute -> Result Errors (Type TypeAttribute)
+        declaredOrInferredTypeResult value =
             case function.signature of
                 Just (Node _ signature) ->
                     signature.typeAnnotation
@@ -448,17 +462,22 @@ mapFunction resolveName moduleName variables (Node functionRange function) =
                         |> Result.map (Type.mapTypeAttributes (always True))
 
                 Nothing ->
-                    Ok (Type.Unit False)
+                    Value.mapValueAttributes (always ()) identity value
+                        |> inferValue
+                        |> Result.map (Value.valueAttribute >> Type.mapTypeAttributes (always True))
     in
-    Result.map2
-        (\value declaredValueType ->
-            { inputTypes = []
-            , outputType = declaredValueType
-            , body = value |> Value.mapValueAttributes (always False) identity
-            }
-        )
-        (mapExpression resolveName moduleName variables expression)
-        declaredValueTypeResult
+    mapExpression resolveName moduleName variables expression
+        |> Result.andThen
+            (\value ->
+                declaredOrInferredTypeResult value
+                    |> Result.map
+                        (\valueType ->
+                            { inputTypes = []
+                            , outputType = valueType
+                            , body = value |> Value.mapValueAttributes (always False) identity
+                            }
+                        )
+            )
 
 
 mapPattern : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Node Pattern -> Result Errors ( Set String, Value.Pattern ValueAttribute )
