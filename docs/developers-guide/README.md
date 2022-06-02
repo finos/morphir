@@ -31,10 +31,10 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
     1. [Elm Frontend](#) <br>
     2. [Elm Incremental Frontend](#) <br>
 10. [The Morphir Backends](#) <br>
-    1. [Scala Backend](#)
-    2. [Spark Backend](#)
-    3. [Relational IR Backends](#)
-    4. [Scala Json Codecs Backend](#)
+    1. [Scala Backend](https://github.com/finos/morphir-elm/blob/documentation/docs/developers-guide/files/scala-backend.md)
+    2. [Spark Backend](https://github.com/finos/morphir-elm/blob/documentation/docs/developers-guide/files/spark-backend.md)
+    3. [Relational IR Backends](https://github.com/finos/morphir-elm/blob/documentation/docs/developers-guide/files/relational-backend.md)
+    4. [Scala Json Codecs Backend](https://github.com/finos/morphir-elm/blob/main/docs/developers-guide/files/scala-backend.md)
 11. [Working with CODECS](#) <br>
     1. [Introduction to Encoding/Decoding](#) <br>
     2. [JSON Decoder Building Blocks](#) <br>
