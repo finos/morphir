@@ -69,7 +69,7 @@ jobs:
       - name: Upload to Artifact for Easier Publish 
         uses: actions/upload-artifact@v3
         with:
-          name: morphir-elm
+          name: morphir-elm-artifact
           path: ./*.tgz
           if-no-files-found: error
           retention-days: 0
@@ -88,19 +88,25 @@ jobs:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
-      - name: Download Artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: morphir-elm
-
       - uses: actions/checkout@v2
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Install Zip Package
-        run: npm install $(ls *.tgz)
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: morphir-elm-artifact
+          path: ~/artifact-download/
+
+      - name: UnZipping Tar File 
+        run: | 
+          cd ~/artifact-download
+          mkdir -p morphir-elm-artifact
+          tar -zxvf $(ls *.tgz)  -C ~/artifact-download/morphir-elm-artifact
+          ls -l ~/artifact-download/morphir-elm-artifact
         
       - name: Publish Elm (as needed)
         uses: dillonkearns/elm-publish-action@1.1.0
@@ -113,3 +119,4 @@ jobs:
         if: env.NPM_TOKEN != 0
         with:
           token: ${{ env.NPM_TOKEN }}
+          package: ~/artifact-download/morphir-elm-artifact/package
