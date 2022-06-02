@@ -4,6 +4,17 @@ This documents provides a description of the JSON codecs backend.
 The Json Codecs Backend for Scala contains function to generating Codecs from types in the IR.<br>
 [Circe](https://circe.github.io/circe/) is used as the base JSON library.
 
+```mermaid
+graph TD;
+    Backend-->Core;
+    Backend-->Features
+```
+The Scala backend is split into two aspects: <br>
+1. **Core** - the core Scala codes represending the user business logic
+2. **Feature** - the Codecs for each type defined in the input model
+
+
+
 ## 1. Elm Type to Scala Type Mapping
 This section describes the mapping of Elm types to Scala Codec. It's important to note that all codecs generated from the Elm types
 are Scala values defined in the Scala AST. The Codec files generated contains value declarations as lamda functions.
@@ -35,25 +46,52 @@ Function are currently not mapped.
 
 
 #### Custom Type Definition
-
+Codecs for custom types are composed using helper functions.
 
 
 ## 2.  Scala Json Codecs Backend Functions
-The following functions are defined in the Json-Codecs:
+The following functions are defined in the Scala Json Codecs backend
+
+#### MapModuleDefinitionToCodecs
+This function takes an modules definition and generates the encoders and 
+decoders for the types defined in that module
+
 
 #### generateEncodeReference
+Generates and encoder reference for the input type using the FQName
 
 
 #### generateDecodeReference
+Generates and decoder reference for the input type using the FQName
 
 
 #### mapTypeDefinitionToEncoder
-
+Type definition could be any of the following:<br>
+_**Type Alias Definition**_ - maps to an encoder for record type <br>
+**_Custom Type Definition_** - uses helper functions to build encoder for custom
+types <br><br>
 
 #### mapTypeDefinitionToDecoder
+Type definition could be any of the following:<br>
+_**Type Alias Definition**_ - maps to an encoder for record type <br>
+**_Custom Type Definition_** - uses helper functions to build encoder for custom
+types <br><br>
+
+
+#### mapCustomTypeDefinitionToEncoder
+Builds encoder for custom type using pattern matching
+
+#### mapCustomTypeDefinitionToDecoder
+Builds a decoder for custom type using patten mathing on the  type constructors.
 
 
 #### composeEncoders
-
+Builds an encoder for one member of a union type
 
 #### composeDecoders
+Builds a decoder for on member of a union type using for comprehension.
+
+## 3. Conditionally Generate Codecs
+
+Codecs can be generated conditionally by adding the --s flag to the 
+morphir-elm gen command.
