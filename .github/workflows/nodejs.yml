@@ -103,10 +103,12 @@ jobs:
 
       - name: UnZipping Tar File 
         run: | 
-          cd ~/artifact-download
-          mkdir -p morphir-elm-artifact
-          tar -zxvf $(ls *.tgz)  -C ~/artifact-download/morphir-elm-artifact
+          mkdir -p ~/artifact-download/morphir-elm-artifact
+          tar -zxvf $(ls ~/artifact-download/*.tgz)  -C ~/artifact-download/morphir-elm-artifact
           ls -l ~/artifact-download/morphir-elm-artifact
+
+      - name: Install
+        run: npm install
         
       - name: Publish Elm (as needed)
         uses: dillonkearns/elm-publish-action@1.1.0
