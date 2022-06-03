@@ -1,25 +1,11 @@
-module Morphir.Scala.Spark.API exposing (..)
+module Morphir.Spark.API exposing (..)
 
 import Morphir.Scala.AST as Scala
-
-
-spark : Scala.Value
-spark =
-    Scala.Variable "spark"
 
 
 dataFrame : Scala.Type
 dataFrame =
     Scala.TypeRef [ "org", "apache", "spark", "sql" ] "DataFrame"
-
-
-
---createDataFrame :
---createDataFrame schema data =
---    Scala.Apply (Scala.Select spark "createDataFrame")
---        [ data
---        , schema
---        ]
 
 
 literal : Scala.Value -> Scala.Value
