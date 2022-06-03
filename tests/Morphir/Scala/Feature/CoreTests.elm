@@ -1,4 +1,4 @@
-module Morphir.Scala.BackendTests exposing (..)
+module Morphir.Scala.Feature.CoreTests exposing (..)
 
 import Expect
 import Morphir.IR.FQName as FQName

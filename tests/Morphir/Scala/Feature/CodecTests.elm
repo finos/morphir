@@ -1,11 +1,10 @@
-module Morphir.Scala.JSONBackendTests exposing (..)
+module Morphir.Scala.Feature.CodecTests exposing (..)
 
 import Expect
 import Morphir.IR.FQName exposing (fqn)
 import Morphir.IR.Type as Type
 import Morphir.Scala.AST as Scala exposing (ArgValue(..), Generator(..), Lit(..), Pattern(..), Value(..))
-import Morphir.Scala.Feature.Codec exposing (composeEncoder, genDecodeReference, genEncodeReference, mapTypeDefinitionToDecoder, mapTypeDefinitionToEncoder)
-import Morphir.Scala.PrettyPrinter as PrettyPrinter
+import Morphir.Scala.Feature.Codec exposing (genDecodeReference, genEncodeReference)
 import Test exposing (Test, describe, test)
 
 

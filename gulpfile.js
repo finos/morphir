@@ -166,18 +166,18 @@ async function testIntegrationGenScala(cb) {
 }
 
 async function testIntegrationBuildScala(cb) {
-    // try {
-    //     await execa(
-    //         'mill', ['__.compile'],
-    //         { stdio, cwd: 'tests-integration' },
-    //     )
-    // } catch (err) {
-    //     if (err.code == 'ENOENT') {
+    try {
+        await execa(
+            'mill', ['__.compile'],
+            { stdio, cwd: 'tests-integration' },
+        )
+    } catch (err) {
+        if (err.code == 'ENOENT') {
     console.log("Skipping testIntegrationBuildScala as `mill` build tool isn't available.");
-    //     } else {
-    //         throw err;
-    //     }
-    // }
+        } else {
+            throw err;
+        }
+    }
 }
 
 async function testIntegrationGenSpark(cb) {

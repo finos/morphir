@@ -197,7 +197,7 @@ composeEncoder ctorName ctorArgs =
         ( Scala.NamedMatch (ctorName |> Name.toTitleCase), Scala.Apply (Scala.Variable (ctorName |> Name.toTitleCase)) [] )
 
     else
-        ( Scala.ApplyMatch (ctorName |> Name.toTitleCase) argNames
+        ( Scala.UnapplyMatch [ "" ] (ctorName |> Name.toTitleCase) argNames
         , Scala.Apply (Scala.Variable (ctorName |> Name.toTitleCase)) (args |> List.map (Scala.ArgValue Nothing))
         )
 
