@@ -256,7 +256,7 @@ export function hasChanges(stats: Stats): boolean {
  * @param content content to hash
  * @returns the hash
  */
-export function calculateContentHash(content: string): string {
+function calculateContentHash(content: string): string {
     return crypto
         .createHash('md5')
         .update(content, 'utf8')

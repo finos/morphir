@@ -266,9 +266,7 @@ const gen = async (
       const filePath: string = path.join(fileDir, fileName);
       if (await fileExist(filePath)) {
         const existingGenFileContent :Buffer = await fsReadFile(filePath)
-        const existingGenFileHash :string = FileChanges.calculateContentHash(existingGenFileContent.toString())
-        const newGenFileHash :string = FileChanges.calculateContentHash(content)
-        if(newGenFileHash != existingGenFileHash){
+        if(existingGenFileContent.toString() != content){
           await fsWriteFile(filePath, content);
           console.log(`UPDATE - ${filePath}`);
         }
