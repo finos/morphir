@@ -264,12 +264,15 @@ const gen = async (
         outputPath
       );
       const filePath: string = path.join(fileDir, fileName);
+
       if (await fileExist(filePath)) {
-        const existingGenFileContent :Buffer = await fsReadFile(filePath)
-        if(existingGenFileContent.toString() != content){
+        const existingContent: Buffer = await fsReadFile(filePath);
+
+        if (existingContent.toString() !== content) {
           await fsWriteFile(filePath, content);
           console.log(`UPDATE - ${filePath}`);
         }
+
       } else {
         await fsMakeDir(fileDir, {
           recursive: true,
