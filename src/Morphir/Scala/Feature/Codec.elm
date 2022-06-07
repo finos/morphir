@@ -288,14 +288,18 @@ composeDecoder ctorName ctorArgs =
                 |> List.map
                     (\( argName, argType ) ->
                         let
-                            typeRef : Scala.Value
-                            typeRef =
-                                genEncodeReference argType |> Result.withDefault (Scala.Variable "")
+                            typeRefResult =
+                                genEncodeReference argType
 
                             arg =
                                 Scala.Variable (argName |> Name.toCamelCase)
                         in
-                        Scala.Apply typeRef [ Scala.ArgValue Nothing arg ]
+                        case typeRefResult of
+                            Ok typeRef ->
+                                Scala.Apply typeRef [ Scala.ArgValue Nothing arg ]
+
+                            Err err ->
+                                Scala.Literal (Scala.StringLit "Unable to obtain reference")
                     )
 
         generators =
@@ -309,16 +313,20 @@ composeDecoder ctorName ctorArgs =
                             downApply =
                                 Scala.Variable ("c.downN(" ++ argIndex ++ ")")
 
-                            typeRef : Scala.Value
-                            typeRef =
-                                genEncodeReference (Tuple.second arg) |> Result.withDefault (Scala.Variable "")
+                            typeRefResult =
+                                genEncodeReference (Tuple.second arg)
 
                             asSelect : Scala.Value
                             asSelect =
                                 Scala.Select downApply "as"
 
                             generatorRHS =
-                                Scala.Apply asSelect [ Scala.ArgValue Nothing typeRef ]
+                                case typeRefResult of
+                                    Ok typeRef ->
+                                        Scala.Apply asSelect [ Scala.ArgValue Nothing typeRef ]
+
+                                    Err _ ->
+                                        Scala.Literal (Scala.StringLit "Unable to obtain reference")
                         in
                         Scala.Extract (Scala.NamedMatch (Tuple.first arg |> Name.toCamelCase)) generatorRHS
                     )

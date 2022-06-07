@@ -601,23 +601,6 @@ mapPattern pattern =
         CommentedPattern childPattern message ->
             mapPattern childPattern ++ " /* " ++ message ++ " */ "
 
-        ApplyMatch ctorName argNames ->
-            let
-                argsDoc =
-                    case argNames of
-                        [] ->
-                            empty
-
-                        _ ->
-                            parens
-                                (argNames
-                                    |> List.map mapPattern
-                                    |> List.intersperse ", "
-                                    |> concat
-                                )
-            in
-            ctorName ++ argsDoc
-
 
 mapLit : Lit -> Doc
 mapLit lit =
