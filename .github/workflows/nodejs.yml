@@ -1,14 +1,11 @@
 # This workflow will do a clean install of node dependencies, build the source code and run tests across different versions of node
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
-
 name: Node.js CI
-
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
 jobs:
   # building project
   build:
@@ -18,7 +15,6 @@ jobs:
       matrix:
         node-version: [16.x]
         os: [ ubuntu-latest ]
-
     steps:
       - uses: actions/checkout@v2
       
@@ -42,30 +38,23 @@ jobs:
           key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
           restore-keys: |
             ${{ runner.os }}-elm- 
-
       - name: Download dependencies
         run: npm ci
       
       - name: Build
         run: npm run build --if-present
-
       - name: Zip Package For Test
         run: npm pack 
-
       - name: Install Zip Package
         run: npm install $(ls *.tgz)
-
       - name: Link To Local Package 
         run: npm link 
-
       - name: Running Test
         run: npm test
-
       - name: Check Morphir Cmd 
         run: |
           cd tests-integration/reference-model
           morphir -v 
-
       - name: Upload to Artifact for Easier Publish 
         uses: actions/upload-artifact@v3
         with:
@@ -73,7 +62,6 @@ jobs:
           path: ./*.tgz
           if-no-files-found: error
           retention-days: 0
-
   # publish package 
   publish:
     name: Publish NPM Package
@@ -85,28 +73,24 @@ jobs:
         os: [ ubuntu-latest ]
 
     env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      NPM_TOKEN: ${{ secrets.MORPHIR_TEST_PUBLISH }}
 
     steps:
       - uses: actions/checkout@v2
-
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
           name: morphir-elm-artifact
           path: ~/artifact-download/
-
       - name: UnZipping Tar File 
         run: | 
           mkdir -p ~/artifact-download/morphir-elm-artifact
           tar -zxvf $(ls ~/artifact-download/*.tgz)  -C ~/artifact-download/morphir-elm-artifact
           ls -l ~/artifact-download/morphir-elm-artifact
-
       - name: Install
         run: npm install
         
@@ -121,4 +105,4 @@ jobs:
         if: env.NPM_TOKEN != 0
         with:
           token: ${{ env.NPM_TOKEN }}
-          package: ~/artifact-download/morphir-elm-artifact/package/package.json
+          package: /home/runner/artifact-download/morphir-elm-artifact/package/package.json
