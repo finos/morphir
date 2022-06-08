@@ -122,7 +122,17 @@ defaultImports =
         en a =
             Node emptyRange a
 
-        defaultBasicImports =
+        defaultBasicTypeImports =
+            List.map
+                en
+                [ Exposing.TypeOrAliasExpose "Int"
+                , Exposing.TypeOrAliasExpose "Float"
+                , Exposing.TypeExpose (Exposing.ExposedType "Order" (Just er))
+                , Exposing.TypeOrAliasExpose "Bool"
+                , Exposing.TypeOrAliasExpose "Never"
+                ]
+
+        defaultBasicValueImports =
             List.map (Exposing.FunctionExpose >> en)
                 [ "toFloat"
                 , "round"
@@ -161,6 +171,9 @@ defaultImports =
                 , "always"
                 , "never"
                 ]
+
+        defaultBasicImports =
+            defaultBasicTypeImports ++ defaultBasicValueImports
     in
     [ Import (en [ "Basics" ]) Nothing (Just (en (Exposing.Explicit defaultBasicImports)))
     , Import (en [ "List" ]) Nothing (Just (en (Exposing.Explicit [ en (Exposing.TypeOrAliasExpose "List") ])))
