@@ -85,7 +85,7 @@ jobs:
         os: [ ubuntu-latest ]
 
     env:
-      NPM_TOKEN: ${{ secrets.MORPHIR_TEST_PUBLISH }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
       - uses: actions/checkout@v2
@@ -121,4 +121,4 @@ jobs:
         if: env.NPM_TOKEN != 0
         with:
           token: ${{ env.NPM_TOKEN }}
-          package: ./package.json
+          package: ~/artifact-download/morphir-elm-artifact/package
