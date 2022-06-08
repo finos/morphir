@@ -30,7 +30,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Specification(..))
 import Morphir.IR.Value as Value exposing (Value(..))
 import Morphir.Scala.AST as Scala exposing (Annotated, ArgDecl, ArgValue(..), CompilationUnit, Documented, MemberDecl(..), Mod(..), Pattern(..), Type(..), TypeDecl(..), Value(..))
-import Morphir.Scala.Backend exposing (mapFunctionBody, mapType, mapTypeMember)
+import Morphir.Scala.Feature.Core exposing (mapFunctionBody, mapType, mapTypeMember)
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Tuple exposing (first, second)
 

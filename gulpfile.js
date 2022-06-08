@@ -124,8 +124,6 @@ function morphirElmGen(inputPath, outputDir, target) {
 }
 
 
-
-
 async function testUnit(cb) {
     await execa('elm-test');
 }
