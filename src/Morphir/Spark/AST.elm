@@ -41,6 +41,7 @@ import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.SDK.ResultList as ResultList
 
@@ -165,6 +166,10 @@ objectExpressionFromValue ir morphirValue =
                             |> Result.map (\expr -> Select expr source)
                     )
 
+        Value.LetDefinition _ _ _ _ ->
+            inlineLetDef [] [] morphirValue
+                |> objectExpressionFromValue ir
+
         other ->
             let
                 _ =
@@ -230,11 +235,11 @@ expressionFromValue ir morphirValue =
 
                         _ ->
                             collectArgValues morphirValue []
-                                |> Result.andThen (\( args, applyTarget ) -> inlineValue ir args applyTarget)
+                                |> (\( args, applyTarget ) -> inlineValue ir args applyTarget)
 
                 _ ->
                     collectArgValues morphirValue []
-                        |> Result.andThen (\( args, applyTarget ) -> inlineValue ir args applyTarget)
+                        |> (\( args, applyTarget ) -> inlineValue ir args applyTarget)
 
         Value.Reference _ _ ->
             inlineValue ir [] morphirValue
@@ -246,26 +251,68 @@ expressionFromValue ir morphirValue =
                 (expressionFromValue ir thenBranch)
                 (expressionFromValue ir elseBranch)
 
+        Value.LetDefinition _ _ _ _ ->
+            inlineLetDef [] [] morphirValue
+                |> expressionFromValue ir
+
         other ->
             UnhandledValue other |> Err
 
 
-collectArgValues : TypedValue -> List TypedValue -> Result Error ( List TypedValue, TypedValue )
+{-| Turns a Value definition into a lambda function.
+-}
+lambdaFromDefinition : Value.Definition () (Type.Type ()) -> TypedValue
+lambdaFromDefinition valueDef =
+    valueDef.inputTypes
+        |> List.foldr
+            (\( name, va, _ ) val ->
+                Value.Lambda va
+                    (Value.AsPattern va
+                        (Value.WildcardPattern va)
+                        name
+                    )
+                    val
+            )
+            valueDef.body
+
+
+{-| Inline simple let bindings
+-}
+inlineLetDef : List Name -> List TypedValue -> TypedValue -> TypedValue
+inlineLetDef names letValues v =
+    case v of
+        Value.LetDefinition _ name def inValue ->
+            let
+                inlined =
+                    inlineArguments names letValues def.body
+            in
+            inlineLetDef
+                (List.append [ name ] names)
+                ({ def | body = inlined }
+                    |> lambdaFromDefinition
+                    |> List.singleton
+                    |> List.append letValues
+                )
+                inValue
+
+        _ ->
+            inlineArguments names letValues v
+
+
+{-| Collect arguments that are applied on a value
+-}
+collectArgValues : TypedValue -> List TypedValue -> ( List TypedValue, TypedValue )
 collectArgValues v argsSoFar =
     case v of
         Value.Apply _ body a ->
             collectArgValues body (a :: argsSoFar)
 
-        Value.Reference _ _ ->
-            Ok ( argsSoFar, v )
-
-        Value.Lambda _ _ _ ->
-            Ok ( argsSoFar, v )
-
         _ ->
-            Err ReferenceExpected
+            ( argsSoFar, v )
 
 
+{-| Collect the params in a lambda
+-}
 collectLambdaParams : TypedValue -> List Name -> List Name
 collectLambdaParams value paramsCollected =
     case value of
