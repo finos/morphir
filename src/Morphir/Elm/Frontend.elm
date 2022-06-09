@@ -20,6 +20,7 @@ module Morphir.Elm.Frontend exposing
     , defaultDependencies
     , Options, ContentLocation, ContentRange, Error(..), Errors, PackageInfo, SourceFile, SourceLocation, mapSource
     , mapValueToFile
+    , parseRawValue
     )
 
 {-| The Elm frontend turns Elm source code into Morphir IR.
@@ -36,6 +37,7 @@ module Morphir.Elm.Frontend exposing
 
 @docs Options, ContentLocation, ContentRange, Error, Errors, PackageInfo, SourceFile, SourceLocation, mapSource
 @docs mapValueToFile
+@docs parseRawValue
 
 -}
 
@@ -45,7 +47,7 @@ import Elm.Processing as Processing exposing (ProcessContext)
 import Elm.RawFile as RawFile exposing (RawFile)
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
-import Elm.Syntax.Expression as Expression exposing (Expression, Function, FunctionImplementation)
+import Elm.Syntax.Expression as Expression exposing (Expression, Function)
 import Elm.Syntax.File exposing (File)
 import Elm.Syntax.Module as ElmModule
 import Elm.Syntax.ModuleName exposing (ModuleName)
@@ -56,7 +58,6 @@ import Elm.Syntax.TypeAnnotation exposing (TypeAnnotation(..))
 import Graph exposing (Graph)
 import Json.Encode as Encode
 import Morphir.Compiler as Compiler
-import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Elm.Frontend.Resolve as Resolve exposing (ModuleResolver)
 import Morphir.Elm.WellKnownOperators as WellKnownOperators
 import Morphir.Graph
@@ -64,7 +65,7 @@ import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled, private, public)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.FQName as FQName exposing (FQName, fQName)
+import Morphir.IR.FQName as FQName exposing (fQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name exposing (Name)
@@ -76,9 +77,11 @@ import Morphir.IR.SDK.Basics as SDKBasics
 import Morphir.IR.SDK.List as List
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.Rewrite exposing (rewriteType)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Rewrite as Rewrite
+import Morphir.Type.Infer as Infer
+import Morphir.Type.Infer.Codec exposing (encodeTypeError)
 import Parser exposing (DeadEnd)
 import Set exposing (Set)
 
@@ -96,7 +99,7 @@ type alias Options =
 {-| -}
 type alias PackageInfo =
     { name : Path
-    , exposedModules : Set Path
+    , exposedModules : Maybe (Set Path)
     }
 
 
@@ -156,6 +159,7 @@ type Error
     | VariableShadowing Name SourceLocation SourceLocation
     | MissingTypeSignature SourceLocation
     | RecordPatternNotSupported SourceLocation
+    | TypeInferenceError SourceLocation Infer.TypeError
 
 
 type alias Imports =
@@ -178,6 +182,65 @@ defaultDependencies =
     Dict.fromList
         [ ( SDK.packageName, SDK.packageSpec )
         ]
+
+
+{-| Parses an expression written in the Elm syntax into a RawValue.
+-}
+parseRawValue : IR -> String -> Result String RawValue
+parseRawValue ir valueSourceCode =
+    let
+        dummyPackageName : Path
+        dummyPackageName =
+            Path.fromString "Morphir.Elm.Frontend"
+
+        dummyModuleName : Path
+        dummyModuleName =
+            Path.fromString "ParseValue"
+
+        dummyValueName : Name
+        dummyValueName =
+            Name.fromString "morphirElmFrontendParseValue"
+
+        dummyModuleSource : String
+        dummyModuleSource =
+            String.join "\n"
+                [ "module " ++ Path.toString Name.toTitleCase "." (dummyPackageName ++ dummyModuleName) ++ " exposing (..)"
+                , ""
+                , Name.toCamelCase dummyValueName ++ " = " ++ valueSourceCode
+                ]
+
+        dummyModule =
+            { path = Path.toString Name.toTitleCase "/" dummyModuleName ++ ".elm"
+            , content = dummyModuleSource
+            }
+
+        packageInfo =
+            { name =
+                dummyPackageName
+            , exposedModules =
+                Just
+                    (Set.fromList
+                        [ dummyModuleName
+                        ]
+                    )
+            }
+    in
+    mapSource (Options False) packageInfo defaultDependencies [ dummyModule ]
+        |> Result.mapError (always "Unknown error")
+        |> Result.andThen
+            (\packageDef ->
+                packageDef
+                    |> Package.mapDefinitionAttributes (always ()) (always ())
+                    |> .modules
+                    |> Dict.get dummyModuleName
+                    |> Maybe.andThen
+                        (\moduleDef ->
+                            moduleDef.value.values
+                                |> Dict.get dummyValueName
+                                |> Maybe.map (.value >> .value >> .body)
+                        )
+                    |> Result.fromMaybe "Cannot find parsed value"
+            )
 
 
 {-| -}
@@ -206,9 +269,11 @@ mapValueToFile ir outputType content =
             { name =
                 packageName
             , exposedModules =
-                Set.fromList
-                    [ moduleA
-                    ]
+                Just
+                    (Set.fromList
+                        [ moduleA
+                        ]
+                    )
             }
     in
     mapSource (Options False) packageInfo defaultDependencies [ sourceA ]
@@ -220,7 +285,7 @@ mapValueToFile ir outputType content =
                     |> Library packageName Dict.empty
                     |> IR.fromDistribution
             )
-        |> Result.mapError (\errorList -> errorList |> Debug.toString)
+        |> Result.mapError (always "Unknown error")
 
 
 
@@ -365,6 +430,12 @@ mapSource opts packageInfo dependencies sourceFiles =
                                                 "Record pattern not supported"
                                                 sourceLocation
                                                 []
+
+                                        TypeInferenceError sourceLocation typeError ->
+                                            mapSourceLocations
+                                                ("Type inference error: " ++ Encode.encode 0 (encodeTypeError typeError))
+                                                sourceLocation
+                                                []
                                 )
                             |> List.foldl
                                 (\( filePath, fileError ) soFar ->
@@ -422,10 +493,10 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
             sources
                 |> List.map
                     (\sourceFile ->
-                        let
-                            _ =
-                                Debug.log "Parsing source" sourceFile.path
-                        in
+                        --let
+                        --    _ =
+                        --        Debug.log "Parsing source" sourceFile.path
+                        --in
                         Elm.Parser.parse sourceFile.content
                             |> Result.map
                                 (\rawFile ->
@@ -437,18 +508,8 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
                     )
                 |> ListOfResults.liftAllErrors
 
-        exposedModuleNames : Set ModuleName
-        exposedModuleNames =
-            packageInfo.exposedModules
-                |> Set.map
-                    (\modulePath ->
-                        (packageInfo.name |> Path.toList)
-                            ++ (modulePath |> Path.toList)
-                            |> List.map Name.toTitleCase
-                    )
-
-        treeShakeModules : List ( ModuleName, ParsedFile ) -> List ( ModuleName, ParsedFile )
-        treeShakeModules allModules =
+        treeShakeModules : Set ModuleName -> List ( ModuleName, ParsedFile ) -> List ( ModuleName, ParsedFile )
+        treeShakeModules exposedModuleNames allModules =
             let
                 allUsedModules : Set ModuleName
                 allUsedModules =
@@ -494,38 +555,80 @@ packageDefinitionFromSource opts packageInfo dependencies sourceFiles =
             else
                 Err [ CyclicModules cycles ]
     in
-    parseSources sourceFiles
-        |> Result.andThen
-            (\parsedFiles ->
-                let
-                    _ =
-                        Debug.log "Parsed sources" (parsedFiles |> List.length)
-
-                    parsedFilesByModuleName =
-                        parsedFiles
-                            |> Dict.fromList
-                in
-                parsedFiles
-                    |> treeShakeModules
-                    |> sortModules
-                    |> Result.andThen (mapParsedFiles opts dependencies packageInfo.name parsedFilesByModuleName)
-            )
-        |> Result.map
-            (\moduleDefs ->
-                { modules =
-                    moduleDefs
-                        |> Dict.toList
-                        |> List.map
-                            (\( modulePath, m ) ->
-                                if packageInfo.exposedModules |> Set.member modulePath then
-                                    ( modulePath, public m )
-
-                                else
-                                    ( modulePath, private m )
+    case packageInfo.exposedModules of
+        Just exposedModules ->
+            let
+                exposedModuleNames : Set ModuleName
+                exposedModuleNames =
+                    exposedModules
+                        |> Set.map
+                            (\modulePath ->
+                                (packageInfo.name |> Path.toList)
+                                    ++ (modulePath |> Path.toList)
+                                    |> List.map Name.toTitleCase
                             )
-                        |> Dict.fromList
-                }
-            )
+            in
+            parseSources sourceFiles
+                |> Result.andThen
+                    (\parsedFiles ->
+                        let
+                            --_ =
+                            --    Debug.log "Parsed sources" (parsedFiles |> List.length)
+                            --
+                            parsedFilesByModuleName =
+                                parsedFiles
+                                    |> Dict.fromList
+                        in
+                        parsedFiles
+                            |> treeShakeModules exposedModuleNames
+                            |> sortModules
+                            |> Result.andThen (mapParsedFiles opts dependencies packageInfo.name parsedFilesByModuleName)
+                    )
+                |> Result.map
+                    (\moduleDefs ->
+                        { modules =
+                            moduleDefs
+                                |> Dict.toList
+                                |> List.map
+                                    (\( modulePath, m ) ->
+                                        if exposedModules |> Set.member modulePath then
+                                            ( modulePath, public m )
+
+                                        else
+                                            ( modulePath, private m )
+                                    )
+                                |> Dict.fromList
+                        }
+                    )
+
+        Nothing ->
+            parseSources sourceFiles
+                |> Result.andThen
+                    (\parsedFiles ->
+                        let
+                            --_ =
+                            --    Debug.log "Parsed sources" (parsedFiles |> List.length)
+                            --
+                            parsedFilesByModuleName =
+                                parsedFiles
+                                    |> Dict.fromList
+                        in
+                        parsedFiles
+                            |> sortModules
+                            |> Result.andThen (mapParsedFiles opts dependencies packageInfo.name parsedFilesByModuleName)
+                    )
+                |> Result.map
+                    (\moduleDefs ->
+                        { modules =
+                            moduleDefs
+                                |> Dict.toList
+                                |> List.map
+                                    (\( modulePath, m ) ->
+                                        ( modulePath, public m )
+                                    )
+                                |> Dict.fromList
+                        }
+                    )
 
 
 mapParsedFiles : Options -> Dict Path (Package.Specification ()) -> Path -> Dict ModuleName ParsedFile -> List ModuleName -> Result Errors (Dict Path (Module.Definition SourceLocation SourceLocation))
@@ -596,7 +699,7 @@ mapProcessedFile opts dependencies currentPackagePath processedFile modulesSoFar
             mapDeclarationsToType processedFile.parsedFile.sourceFile moduleExpose (processedFile.file.declarations |> List.map Node.value)
                 |> Result.map Dict.fromList
 
-        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation SourceLocation)))
+        valuesResult : Result Errors (Dict Name (AccessControlled (Documented (Value.Definition SourceLocation SourceLocation))))
         valuesResult =
             if opts.typesOnly then
                 Ok Dict.empty
@@ -774,6 +877,7 @@ mapDeclarationsToType sourceFile expose decls =
                                     |> Result.map Dict.fromList
                                     |> Result.mapError List.concat
 
+                            doc : String
                             doc =
                                 customType.documentation
                                     |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
@@ -793,7 +897,7 @@ mapDeclarationsToType sourceFile expose decls =
         |> Result.mapError List.concat
 
 
-mapDeclarationsToValue : SourceFile -> Exposing -> List (Node Declaration) -> Result Errors (List ( Name, AccessControlled (Value.Definition SourceLocation SourceLocation) ))
+mapDeclarationsToValue : SourceFile -> Exposing -> List (Node Declaration) -> Result Errors (List ( Name, AccessControlled (Documented (Value.Definition SourceLocation SourceLocation)) ))
 mapDeclarationsToValue sourceFile expose decls =
     decls
         |> List.filterMap
@@ -809,10 +913,17 @@ mapDeclarationsToValue sourceFile expose decls =
                                     |> Node.value
                                     |> Name.fromString
 
-                            valueDef : Result Errors (AccessControlled (Value.Definition SourceLocation SourceLocation))
+                            doc : String
+                            doc =
+                                function.documentation
+                                    |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
+                                    |> Maybe.withDefault ""
+
+                            valueDef : Result Errors (AccessControlled (Documented (Value.Definition SourceLocation SourceLocation)))
                             valueDef =
                                 Node range function
                                     |> mapFunction sourceFile
+                                    |> Result.map (Documented doc)
                                     |> Result.map public
                         in
                         valueDef
@@ -886,73 +997,87 @@ mapTypeAnnotation sourceFile (Node range typeAnnotation) =
 
 
 mapFunction : SourceFile -> Node Function -> Result Errors (Value.Definition SourceLocation SourceLocation)
-mapFunction sourceFile (Node range function) =
-    let
-        valueTypeResult : Result Errors (Type SourceLocation)
-        valueTypeResult =
-            case function.signature of
-                Just (Node _ signature) ->
-                    mapTypeAnnotation sourceFile signature.typeAnnotation
-
-                Nothing ->
-                    Err [ MissingTypeSignature (SourceLocation sourceFile range) ]
-    in
-    valueTypeResult
-        |> Result.andThen
-            (\valueType ->
-                function.declaration
-                    |> Node.value
-                    |> (\funImpl ->
-                            mapFunctionImplementation sourceFile valueType funImpl.arguments funImpl.expression
-                       )
-            )
-
-
-mapFunctionImplementation : SourceFile -> Type SourceLocation -> List (Node Pattern) -> Node Expression -> Result Errors (Value.Definition SourceLocation SourceLocation)
-mapFunctionImplementation sourceFile valueType argumentNodes expression =
+mapFunction sourceFile (Node functionRange function) =
     let
         sourceLocation : Range -> SourceLocation
         sourceLocation range =
             range |> SourceLocation sourceFile
 
-        extractNamedParams : List ( Name, SourceLocation, Type SourceLocation ) -> List (Node Pattern) -> Type SourceLocation -> ( List ( Name, SourceLocation, Type SourceLocation ), Type SourceLocation, List (Node Pattern) )
-        extractNamedParams namedParams patternParams restOfTypeSignature =
-            case ( patternParams, restOfTypeSignature ) of
-                ( [], _ ) ->
-                    ( namedParams, restOfTypeSignature, patternParams )
-
-                ( (Node range firstParam) :: restOfParams, Type.Function _ inType outType ) ->
-                    case firstParam of
-                        VarPattern paramName ->
-                            extractNamedParams (namedParams ++ [ ( Name.fromString paramName, range |> SourceLocation sourceFile, inType ) ]) restOfParams outType
-
-                        _ ->
-                            ( namedParams, restOfTypeSignature, patternParams )
-
-                _ ->
-                    ( namedParams, restOfTypeSignature, patternParams )
-
-        ( inputTypes, outputType, lambdaArgPatterns ) =
-            extractNamedParams [] argumentNodes valueType
-
-        bodyResult : Result Errors (Value.Value SourceLocation SourceLocation)
-        bodyResult =
-            let
-                lambdaWithParams : List (Node Pattern) -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
-                lambdaWithParams params body =
-                    case params of
-                        [] ->
-                            mapExpression sourceFile body
-
-                        (Node range firstParam) :: restOfParams ->
-                            Result.map2 (\lambdaArg lambdaBody -> Value.Lambda (sourceLocation range) lambdaArg lambdaBody)
-                                (mapPattern sourceFile (Node range firstParam))
-                                (lambdaWithParams restOfParams body)
-            in
-            lambdaWithParams lambdaArgPatterns expression
+        expression : Node Expression
+        expression =
+            Node
+                functionRange
+                (Expression.LambdaExpression
+                    { args =
+                        function.declaration
+                            |> Node.value
+                            |> .arguments
+                    , expression =
+                        function.declaration
+                            |> Node.value
+                            |> .expression
+                    }
+                )
     in
-    bodyResult
-        |> Result.map (Value.Definition inputTypes outputType)
+    case function.signature of
+        Just (Node _ signature) ->
+            mapTypeAnnotation sourceFile signature.typeAnnotation
+                |> Result.andThen
+                    (\declaredType ->
+                        mapExpression sourceFile expression
+                            |> Result.map (Value.Definition [] declaredType)
+                    )
+                |> Result.map liftLambdaArguments
+
+        Nothing ->
+            let
+                exp =
+                    mapExpression sourceFile expression
+            in
+            exp
+                |> Result.andThen
+                    (\body ->
+                        Infer.inferValue IR.empty (body |> Value.mapValueAttributes (always ()) identity)
+                            |> Result.mapError (\err -> [ TypeInferenceError (sourceLocation functionRange) err ])
+                            |> Result.map (Value.valueAttribute >> Tuple.second >> Type.mapTypeAttributes (always (sourceLocation functionRange)))
+                    )
+                |> Result.andThen
+                    (\inferredType ->
+                        exp
+                            |> Result.map (Value.Definition [] inferredType)
+                    )
+                |> Result.map liftLambdaArguments
+
+
+{-| Moves lambda arguments into function arguments as much as possible. For example given this function definition:
+
+    foo : Int -> Bool -> ( Int, Int ) -> String
+    foo =
+        \a ->
+            \b ->
+                ( c, d ) ->
+                    doSomething a b c d
+
+It turns it into the following:
+
+    foo : Int -> Bool -> ( Int, Int ) -> String
+    foo a b =
+        ( c, d ) ->
+            doSomething a b c d
+
+-}
+liftLambdaArguments : Value.Definition ta va -> Value.Definition ta va
+liftLambdaArguments valueDef =
+    case ( valueDef.body, valueDef.outputType ) of
+        ( Value.Lambda va (Value.AsPattern _ (Value.WildcardPattern _) argName) lambdaBody, Type.Function _ argType returnType ) ->
+            liftLambdaArguments
+                { inputTypes = valueDef.inputTypes ++ [ ( argName, va, argType ) ]
+                , outputType = returnType
+                , body = lambdaBody
+                }
+
+        _ ->
+            valueDef
 
 
 mapExpression : SourceFile -> Node Expression -> Result Errors (Value.Value SourceLocation SourceLocation)
@@ -1581,7 +1706,7 @@ resolveLocalNames moduleResolver moduleDef =
                 |> Result.map Dict.fromList
                 |> Result.mapError List.concat
 
-        valuesResult : Result Errors (Dict Name (AccessControlled (Value.Definition SourceLocation SourceLocation)))
+        valuesResult : Result Errors (Dict Name (AccessControlled (Documented (Value.Definition SourceLocation SourceLocation))))
         valuesResult =
             moduleDef.values
                 |> Dict.toList
@@ -1590,12 +1715,13 @@ resolveLocalNames moduleResolver moduleDef =
                         let
                             variables : Dict Name SourceLocation
                             variables =
-                                valueDef.value.inputTypes
+                                valueDef.value.value.inputTypes
                                     |> List.map (\( name, loc, _ ) -> ( name, loc ))
                                     |> Dict.fromList
                         in
-                        valueDef.value
+                        valueDef.value.value
                             |> Value.mapDefinition (rewriteTypes moduleResolver) (rewriteValues variables)
+                            |> Result.map (Documented valueDef.value.doc)
                             |> Result.map (AccessControlled valueDef.access)
                             |> Result.map (Tuple.pair valueName)
                             |> Result.mapError List.concat

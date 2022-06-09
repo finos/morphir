@@ -1,0 +1,20 @@
+<html>
+
+<head>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script type="text/javascript" src="elm-graph.js"></script>
+</head>
+
+<body>
+
+<div id="dependencyGraph"></div>
+
+<script src="../src/Morphir/Web/Graph/graph.js"></script>
+<script>
+        var app = Elm.Morphir.Web.Graph.Graph.init({
+            node: document.getElementById('dependencyGraph')
+        });
+    </script>
+</body>
+
+</html>

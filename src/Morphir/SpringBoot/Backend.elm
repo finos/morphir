@@ -96,7 +96,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                 Just acsCtrlValueDef ->
                                     case acsCtrlValueDef.access of
                                         Public ->
-                                            case acsCtrlValueDef.value.body of
+                                            case acsCtrlValueDef.value.value.body of
                                                 Value.Apply _ (Constructor _ _) (Value.Reference _ ( _, _, name )) ->
                                                     name
 
@@ -132,11 +132,11 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                 , typeArgs =
                                     []
                                 , args =
-                                    if List.isEmpty accessControlledValueDef.value.inputTypes then
+                                    if List.isEmpty accessControlledValueDef.value.value.inputTypes then
                                         []
 
                                     else
-                                        accessControlledValueDef.value.inputTypes
+                                        accessControlledValueDef.value.value.inputTypes
                                             |> List.map
                                                 (\( argName, _, argType ) ->
                                                     [ { modifiers = []
@@ -147,9 +147,9 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                                     ]
                                                 )
                                 , returnType =
-                                    Just (mapType accessControlledValueDef.value.outputType)
+                                    Just (mapType accessControlledValueDef.value.value.outputType)
                                 , body =
-                                    Just (mapFunctionBody distribution accessControlledValueDef.value)
+                                    Just (mapFunctionBody distribution accessControlledValueDef.value.value)
                                 }
                             ]
 
@@ -164,7 +164,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                 |> Dict.toList
                 |> List.concatMap
                     (\( _, a ) ->
-                        case a.value.outputType of
+                        case a.value.value.outputType of
                             Type.Reference _ ( mod, package, name ) list ->
                                 case
                                     ( Path.toString Name.toTitleCase "." mod

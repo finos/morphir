@@ -1,13 +1,13 @@
 module Morphir.Type.Infer.Codec exposing (..)
 
-import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.FQName.Codec exposing (encodeFQName)
-import Morphir.IR.Name.Codec exposing (decodeName, encodeName)
+import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.Type.Class.Codec exposing (encodeClass)
-import Morphir.Type.Infer exposing (TypeError(..), UnificationError(..), ValueTypeError(..))
+import Morphir.Type.Infer exposing (TypeError(..), ValueTypeError(..))
 import Morphir.Type.MetaType.Codec exposing (encodeMetaType)
 import Morphir.Type.MetaTypeMapping exposing (LookupError(..))
+import Morphir.Type.Solve.Codec exposing (encodeUnificationError)
 
 
 encodeValueTypeError : ValueTypeError -> Encode.Value
@@ -17,14 +17,6 @@ encodeValueTypeError (ValueTypeError valueName typeError) =
         , encodeName valueName
         , encodeTypeError typeError
         ]
-
-
-decodeValueTypeError : Decode.Decoder ValueTypeError
-decodeValueTypeError =
-    Decode.map2 ValueTypeError
-        (Decode.index 1 decodeName)
-        -- TODO: implement
-        (Decode.succeed (TypeErrors []))
 
 
 encodeTypeError : TypeError -> Encode.Value
@@ -55,12 +47,17 @@ encodeTypeError typeError =
                 , Encode.string message
                 ]
 
-        CouldNotUnify unificationError metaType1 metaType2 ->
+        RecursiveConstraint metaType1 metaType2 ->
             Encode.list identity
-                [ Encode.string "could_not_unify"
-                , encodeUnificationError unificationError
+                [ Encode.string "RecursiveConstraint"
                 , encodeMetaType metaType1
                 , encodeMetaType metaType2
+                ]
+
+        UnifyError unificationError ->
+            Encode.list identity
+                [ Encode.string "UnifyError"
+                , encodeUnificationError unificationError
                 ]
 
 
@@ -89,28 +86,4 @@ encodeLookupError lookupError =
             Encode.list identity
                 [ Encode.string "expected_alias"
                 , encodeFQName fQName
-                ]
-
-
-encodeUnificationError : UnificationError -> Encode.Value
-encodeUnificationError unificationError =
-    case unificationError of
-        NoUnificationRule ->
-            Encode.list identity
-                [ Encode.string "no_unification_rule"
-                ]
-
-        TuplesOfDifferentSize ->
-            Encode.list identity
-                [ Encode.string "tuples_of_different_size"
-                ]
-
-        RefMismatch ->
-            Encode.list identity
-                [ Encode.string "ref_mismatch"
-                ]
-
-        FieldMismatch ->
-            Encode.list identity
-                [ Encode.string "field_mismatch"
                 ]

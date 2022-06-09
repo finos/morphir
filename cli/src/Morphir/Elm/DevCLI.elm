@@ -76,20 +76,20 @@ nativeFun =
                                                 other ->
                                                     collectVariables other |> Set.isEmpty
                                     in
-                                    List.all filterFunction (functionSpec.inputs |> List.map Tuple.second) && filterFunction functionSpec.output
+                                    List.all filterFunction (functionSpec.value.inputs |> List.map Tuple.second) && filterFunction functionSpec.value.output
                                 )
                             |> List.map
                                 (\( functionName, functionSpec ) ->
                                     let
                                         evalFunc =
-                                            "eval" ++ (List.length functionSpec.inputs |> String.fromInt)
+                                            "eval" ++ (List.length functionSpec.value.inputs |> String.fromInt)
 
                                         funName =
                                             (Path.toString Name.toTitleCase "." moduleName ++ "." ++ Name.toCamelCase functionName) |> mapOperators
 
                                         inputTypes : String
                                         inputTypes =
-                                            functionSpec.inputs
+                                            functionSpec.value.inputs
                                                 |> List.map
                                                     (\( _, argType ) ->
                                                         [ mapEncodeOrDecode "decode" argType
@@ -103,8 +103,8 @@ nativeFun =
 
                                         outputType : String
                                         outputType =
-                                            [ mapEncodeOrDecode "encode" functionSpec.output
-                                            , functionSpec.output |> mapTypeValue "encode"
+                                            [ mapEncodeOrDecode "encode" functionSpec.value.output
+                                            , functionSpec.value.output |> mapTypeValue "encode"
                                             ]
                                                 |> List.filter (\val -> not (String.isEmpty val))
                                                 |> String.join " "

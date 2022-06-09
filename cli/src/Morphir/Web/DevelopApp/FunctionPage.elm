@@ -20,11 +20,11 @@ import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Config exposing (Config, HighlightState(..), PopupScreenRecord)
+import Morphir.Visual.Config as Config exposing (Config, HighlightState(..), PopupScreenRecord)
+import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
-import Morphir.Visual.VisualTypedValue exposing (rawToVisualTypedValue)
 import Morphir.Web.DevelopApp.Common exposing (viewAsCard)
 import Url.Parser as UrlParser exposing ((</>))
 
@@ -136,13 +136,13 @@ viewScenarios theme handlers distribution model =
                     )
                 |> Maybe.withDefault ( [], Type.Unit () )
 
+        ir : IR
+        ir =
+            IR.fromDistribution distribution
+
         config : Int -> Config msg
         config index =
-            { irContext =
-                { distribution = distribution
-                , nativeFunctions = SDK.nativeFunctions
-                }
-            , state =
+            Config.fromIR ir
                 { expandedFunctions =
                     Array.get index model.testCaseStates
                         |> Maybe.map .expandedValues
@@ -167,16 +167,10 @@ viewScenarios theme handlers distribution model =
                 , theme = Theme.fromConfig Nothing
                 , highlightState = Nothing
                 }
-            , handlers =
                 { onReferenceClicked = handlers.expandReference index
                 , onHoverOver = handlers.expandVariable index
                 , onHoverLeave = handlers.shrinkVariable index
                 }
-            }
-
-        ir : IR
-        ir =
-            IR.fromDistribution distribution
     in
     Array.toList model.testCaseStates
         |> List.indexedMap
@@ -354,7 +348,7 @@ viewActualOutput theme config references testCase fQName =
 
 viewRawValue : Config msg -> IR -> RawValue -> Element msg
 viewRawValue config ir rawValue =
-    case rawToVisualTypedValue ir rawValue of
+    case fromRawValue ir rawValue of
         Ok typedValue ->
             el [ spacing 5, padding 5 ] (ViewValue.viewValue config typedValue)
 
@@ -376,31 +370,3 @@ evaluateOutput theme config ir testCase fQName =
             text (Debug.toString error)
 
 
-compareState : TestCases -> TestCases -> Bool
-compareState testCaseList1 testCaseList2 =
-    if List.length testCaseList1 == List.length testCaseList2 then
-        testCaseList2
-            |> List.map2
-                (\testCase1 testCase2 ->
-                    compareTestCase testCase1 testCase2
-                )
-                testCaseList1
-            |> List.foldl (\val1 val2 -> val1 && val2) True
-
-    else
-        False
-
-
-compareTestCase : TestCase -> TestCase -> Bool
-compareTestCase testCase1 testCase2 =
-    testCase2.inputs
-        |> List.map2
-            (\input1 input2 ->
-                if input1 == input2 then
-                    True
-
-                else
-                    False
-            )
-            testCase1.inputs
-        |> List.foldl (\val1 val2 -> val1 && val2) True

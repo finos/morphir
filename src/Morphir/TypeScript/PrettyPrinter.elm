@@ -7,6 +7,7 @@ representation.
 
 -}
 
+import Elm.Syntax.Expression exposing (Expression(..))
 import Morphir.File.SourceCode exposing (Doc, concat, indentLines, newLine)
 import Morphir.IR.Path exposing (Path)
 import Morphir.TypeScript.AST exposing (CompilationUnit, Expression(..), FunctionScope(..), ImportDeclaration, NamespacePath, Parameter, Privacy(..), Statement(..), TypeDef(..), TypeExp(..))
@@ -168,6 +169,17 @@ mapExpression expression =
         Identifier name ->
             name
 
+        IntLiteralExpression num ->
+            String.fromInt num
+
+        IndexedExpression { object, index } ->
+            concat
+                [ mapExpression object
+                , "["
+                , mapExpression index
+                , "]"
+                ]
+
         MemberExpression { object, member } ->
             concat
                 [ mapExpression object
@@ -224,7 +236,7 @@ mapMaybeStatement maybeStatement =
 mapStatement : Statement -> String
 mapStatement statement =
     case statement of
-        FunctionDeclaration { name, scope, parameters, body, privacy } ->
+        FunctionDeclaration { name, typeVariables, returnType, scope, parameters, body, privacy } ->
             let
                 prefaceKeywords : String
                 prefaceKeywords =
@@ -242,13 +254,38 @@ mapStatement statement =
 
                         _ ->
                             ""
+
+                typeVariablesString : String
+                typeVariablesString =
+                    case typeVariables of
+                        [] ->
+                            ""
+
+                        _ ->
+                            concat
+                                [ "<"
+                                , String.join ", " (typeVariables |> List.map mapTypeExp)
+                                , ">"
+                                ]
+
+                returnTypeExpression : String
+                returnTypeExpression =
+                    case returnType of
+                        Nothing ->
+                            ""
+
+                        Just typeExp ->
+                            concat [ ": ", mapTypeExp typeExp ]
             in
             concat
                 [ prefaceKeywords
                 , name
+                , typeVariablesString
                 , "("
                 , String.join ", " (parameters |> List.map mapParameter)
-                , ") {"
+                , ")"
+                , returnTypeExpression
+                , " {"
                 , newLine
                 , body |> List.map mapStatement |> indentLines defaultIndent
                 , newLine
@@ -280,22 +317,23 @@ mapStatement statement =
         ExpressionStatement expression ->
             concat [ mapExpression expression, ";" ]
 
-
-mapParameter : Parameter -> String
-mapParameter { modifiers, name, typeAnnotation } =
-    concat
-        [ modifiers |> String.join " "
-        , " "
-        , name
-        , mapMaybeAnnotation typeAnnotation
-        ]
-
-
-mapMaybeAnnotation : Maybe TypeExp -> String
-mapMaybeAnnotation maybeTypeExp =
-    case maybeTypeExp of
-        Nothing ->
-            ""
-
-        Just typeExp ->
-            ": " ++ mapTypeExp typeExp
+        SwitchStatement condition cases ->
+            let
+                mapCase : ( Expression, List Statement ) -> String
+                mapCase ( caseExpr, statementList ) =
+                    concat
+                        [ "case "
+                        , mapExpression caseExpr
+                        , ":"
+                        , statementList |> List.map mapStatement |> indentLines defaultIndent
+                        ]
+            in
+            concat
+                [ "switch ("
+                , mapExpression condition
+                , ") {"
+                , newLine
+                , cases |> List.map mapCase |> indentLines defaultIndent
+                , newLine
+                , "}"
+                ]

@@ -19,10 +19,10 @@ program
     .option('-t, --target <type>', 'Language to Generate (Scala | SpringBoot | cypher | triples | TypeScript).', 'Scala')
     .option('-e, --target-version <version>', 'Language version to Generate.', '2.11')
     .option('-c, --copy-deps', 'Copy the dependencies used by the generated code to the output path.', false)
+    .option('-m, --modules-to-include <comma.separated,list.of,module.names>', 'Limit the set of modules that will be included.')
     .parse(process.argv)
 
-
-cli.gen(program.input, path.resolve(program.output), program.opts())
+cli.gen(program.opts().input, path.resolve(program.opts().output), program.opts())
     .then(() => {
         console.log("Done.")
     })

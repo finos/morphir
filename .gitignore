@@ -5,6 +5,14 @@ dist
 .idea
 .metals/
 morphir-ir.json
+morphir-hashes.json
 generated/
 out/
 redistributable/Scala
+cli/web/insightapp.js
+cli/treeStuff.js
+cli/index.html
+lib
+Morphir.Elm.CLI.js
+docs.json
+/.coverage/

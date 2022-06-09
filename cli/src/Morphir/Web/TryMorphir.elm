@@ -24,6 +24,8 @@ import Morphir.Type.Infer as Infer
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.SourceEditor as SourceEditor
+import Morphir.Web.DevelopApp.Common exposing (pathToUrl)
+
 import Set
 
 
@@ -287,11 +289,11 @@ viewModuleDefinition viewAttribute moduleDef irView =
                                     , Background.color (rgb 1 0.9 0.8)
                                     ]
                                     [ text ":"
-                                    , XRayView.viewType valueDef.value.outputType
+                                    , XRayView.viewType pathToUrl valueDef.value.value.outputType
                                     ]
                                 ]
                             )
-                        , if List.isEmpty valueDef.value.inputTypes then
+                        , if List.isEmpty valueDef.value.value.inputTypes then
                             none
 
                           else
@@ -301,7 +303,7 @@ viewModuleDefinition viewAttribute moduleDef irView =
                                 , Background.color (rgb 0.95 0.95 0.95)
                                 , width fill
                                 ]
-                                (valueDef.value.inputTypes
+                                (valueDef.value.value.inputTypes
                                     |> List.map
                                         (\( argName, _, argType ) ->
                                             row []
@@ -312,7 +314,7 @@ viewModuleDefinition viewAttribute moduleDef irView =
                                                     , Background.color (rgb 1 0.9 0.8)
                                                     ]
                                                     [ text ":"
-                                                    , XRayView.viewType argType
+                                                    , XRayView.viewType pathToUrl argType
                                                     ]
                                                 ]
                                         )
@@ -324,14 +326,14 @@ viewModuleDefinition viewAttribute moduleDef irView =
                             , Background.color (rgb 1 1 1)
                             , width fill
                             ]
-                            (viewValue irView valueDef)
+                            (viewValue irView valueDef.value.value)
                         ]
                 )
             |> column [ spacing 20 ]
         ]
 
 
-viewValue : IRView -> AccessControlled (Value.Definition () (Type ())) -> Element Msg
+viewValue : IRView -> Value.Definition () (Type ()) -> Element Msg
 viewValue irView valueDef =
     case irView of
         VisualView ->
@@ -342,13 +344,13 @@ viewValue irView valueDef =
                         , Background.color (rgb 1 0.9 0.8)
                         ]
                         [ text ":"
-                        , XRayView.viewType tpe
+                        , XRayView.viewType pathToUrl tpe
                         ]
                 )
                 valueDef
 
         JsonView ->
-            ValueCodec.encodeValue (always Encode.null) (TypeCodec.encodeType (always Encode.null)) valueDef.value.body
+            ValueCodec.encodeValue (always Encode.null) (TypeCodec.encodeType (always Encode.null)) valueDef.body
                 |> Encode.encode 2
                 |> text
 
@@ -417,7 +419,7 @@ subscriptions model =
 
 packageInfo =
     { name = [ [ "my" ] ]
-    , exposedModules = Set.fromList [ [ [ "test" ] ] ]
+    , exposedModules = Nothing
     }
 
 

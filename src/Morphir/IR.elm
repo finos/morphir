@@ -18,8 +18,9 @@
 module Morphir.IR exposing
     ( IR
     , fromPackageSpecifications, fromDistribution
+    , typeSpecifications
     , lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification, lookupValueDefinition
-    , empty, resolveAliases, resolveType
+    , empty, resolveAliases, resolveType, resolveRecordConstructors
     )
 
 {-| This module contains data structures and functions to make working with the IR easier and more efficient.
@@ -34,12 +35,13 @@ module Morphir.IR exposing
 
 # Lookups
 
+@docs typeSpecifications
 @docs lookupTypeSpecification, lookupTypeConstructor, lookupValueSpecification, lookupValueDefinition
 
 
 # Utilities
 
-@docs empty, resolveAliases, resolveType
+@docs empty, resolveAliases, resolveType, resolveRecordConstructors
 
 -}
 
@@ -49,7 +51,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value)
 
 
 {-| Data structure to store types and values efficiently.
@@ -98,7 +100,7 @@ fromDistribution (Distribution.Library libraryName dependencies packageDef) =
                             |> Dict.toList
                             |> List.map
                                 (\( valueName, valueDef ) ->
-                                    ( ( libraryName, moduleName, valueName ), valueDef.value )
+                                    ( ( libraryName, moduleName, valueName ), valueDef.value.value )
                                 )
                     )
                 |> Dict.fromList
@@ -123,7 +125,7 @@ fromPackageSpecifications packageSpecs =
                             |> Dict.toList
                             |> List.map
                                 (\( valueName, valueSpec ) ->
-                                    ( ( packageName, moduleName, valueName ), valueSpec )
+                                    ( ( packageName, moduleName, valueName ), valueSpec.value )
                                 )
                     )
 
@@ -181,6 +183,13 @@ flattenPackages packages f =
                 f packageName package
             )
         |> Dict.fromList
+
+
+{-| Get all type specifications.
+-}
+typeSpecifications : IR -> Dict FQName (Type.Specification ())
+typeSpecifications ir =
+    ir.typeSpecifications
 
 
 {-| Look up a value specification by fully-qualified name. Dependencies will be included in the search.
@@ -279,3 +288,41 @@ resolveType tpe ir =
 
         Type.Unit a ->
             Type.Unit a
+
+
+{-| Replace record constructors with the corresponding record value.
+-}
+resolveRecordConstructors : Value ta va -> IR -> Value ta va
+resolveRecordConstructors value ir =
+    value
+        |> Value.rewriteValue
+            (\v ->
+                case v of
+                    Value.Apply _ fun lastArg ->
+                        let
+                            ( bottomFun, args ) =
+                                Value.uncurryApply fun lastArg
+                        in
+                        case bottomFun of
+                            Value.Constructor va fqn ->
+                                ir
+                                    |> lookupTypeSpecification fqn
+                                    |> Maybe.andThen
+                                        (\typeSpec ->
+                                            case typeSpec of
+                                                Type.TypeAliasSpecification _ (Type.Record _ fields) ->
+                                                    Just
+                                                        (Value.Record va
+                                                            (List.map2 Tuple.pair (fields |> List.map .name) args)
+                                                        )
+
+                                                _ ->
+                                                    Nothing
+                                        )
+
+                            _ ->
+                                Nothing
+
+                    _ ->
+                        Nothing
+            )

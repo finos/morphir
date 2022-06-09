@@ -60,6 +60,7 @@ import Morphir.Elm.Frontend.Resolve as Resolve
 import Morphir.IR.Name.Codec exposing (encodeName)
 import Morphir.IR.Path as Path
 import Morphir.JsonExtra as JsonExtra
+import Morphir.Type.Infer.Codec as InferCodec
 import Parser exposing (DeadEnd)
 import Set
 
@@ -82,9 +83,11 @@ decodePackageInfo =
                 |> Decode.map Path.fromString
             )
         )
-        (Decode.field "exposedModules"
-            (Decode.list (Decode.string |> Decode.map Path.fromString)
-                |> Decode.map Set.fromList
+        (Decode.maybe
+            (Decode.field "exposedModules"
+                (Decode.list (Decode.string |> Decode.map Path.fromString)
+                    |> Decode.map Set.fromList
+                )
             )
         )
 
@@ -160,6 +163,12 @@ encodeError error =
         RecordPatternNotSupported sourceLocation ->
             JsonExtra.encodeConstructor "RecordPatternNotSupported"
                 [ encodeSourceLocation sourceLocation
+                ]
+
+        TypeInferenceError sourceLocation typeError ->
+            JsonExtra.encodeConstructor "RecordPatternNotSupported"
+                [ encodeSourceLocation sourceLocation
+                , InferCodec.encodeTypeError typeError
                 ]
 
 

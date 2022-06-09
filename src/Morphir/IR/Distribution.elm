@@ -2,7 +2,7 @@ module Morphir.IR.Distribution exposing
     ( Distribution(..)
     , lookupModuleSpecification, lookupTypeSpecification, lookupValueSpecification, lookupBaseTypeName, lookupValueDefinition
     , lookupPackageSpecification, lookupPackageName
-    , resolveTypeReference, resolveRecordConstructors
+    , insertDependency
     )
 
 {-| A distribution is a complete package of Morphir types and functions with all their dependencies.
@@ -26,9 +26,9 @@ information:
 @docs lookupPackageSpecification, lookupPackageName
 
 
-# Utilities
+# Updates
 
-@docs resolveTypeReference, resolveRecordConstructors
+@docs insertDependency
 
 -}
 
@@ -92,71 +92,6 @@ lookupBaseTypeName (( packageName, moduleName, localName ) as fQName) distributi
             )
 
 
-{-| Resolve a type reference by looking up its specification and resolving type variables.
--}
-resolveTypeReference : FQName -> List (Type ()) -> Distribution -> Result String (Type ())
-resolveTypeReference (( packageName, moduleName, localName ) as fQName) typeArgs distribution =
-    case lookupTypeSpecification packageName moduleName localName distribution of
-        Just typeSpec ->
-            case typeSpec of
-                Type.TypeAliasSpecification paramNames tpe ->
-                    let
-                        paramMapping : Dict Name (Type ())
-                        paramMapping =
-                            List.map2 Tuple.pair paramNames typeArgs
-                                |> Dict.fromList
-                    in
-                    tpe
-                        |> Type.substituteTypeVariables paramMapping
-                        |> Ok
-
-                Type.OpaqueTypeSpecification _ ->
-                    Err (String.concat [ "Opaque types cannot be resolved: ", fQName |> FQName.toString ])
-
-                Type.CustomTypeSpecification _ _ ->
-                    Err (String.concat [ "Custom types cannot be resolved: ", fQName |> FQName.toString ])
-
-        Nothing ->
-            Err (String.concat [ "Type specification not found: ", fQName |> FQName.toString ])
-
-
-{-| Replace record constructors with the corresponding record value.
--}
-resolveRecordConstructors : Value ta va -> Distribution -> Value ta va
-resolveRecordConstructors value distribution =
-    value
-        |> Value.rewriteValue
-            (\v ->
-                case v of
-                    Value.Apply _ fun lastArg ->
-                        let
-                            ( bottomFun, args ) =
-                                Value.uncurryApply fun lastArg
-                        in
-                        case bottomFun of
-                            Value.Constructor va ( packageName, moduleName, localName ) ->
-                                lookupTypeSpecification packageName moduleName localName distribution
-                                    |> Maybe.andThen
-                                        (\typeSpec ->
-                                            case typeSpec of
-                                                Type.TypeAliasSpecification _ (Type.Record _ fields) ->
-                                                    Just
-                                                        (Value.Record va
-                                                            (List.map2 Tuple.pair (fields |> List.map .name) args)
-                                                        )
-
-                                                _ ->
-                                                    Nothing
-                                        )
-
-                            _ ->
-                                Nothing
-
-                    _ ->
-                        Nothing
-            )
-
-
 {-| Look up a value specification by package, module and local name in a distribution.
 -}
 lookupValueSpecification : PackageName -> ModuleName -> Name -> Distribution -> Maybe (Value.Specification ())
@@ -196,3 +131,12 @@ lookupPackageName distribution =
     case distribution of
         Library packageName _ _ ->
             packageName
+
+
+{-| Add a package specification as a dependency of this library.
+-}
+insertDependency : PackageName -> Package.Specification () -> Distribution -> Distribution
+insertDependency dependencyPackageName dependencyPackageSpec distribution =
+    case distribution of
+        Library packageName dependencies packageDef ->
+            Library packageName (dependencies |> Dict.insert dependencyPackageName dependencyPackageSpec) packageDef

@@ -22,7 +22,7 @@ module Morphir.IR.Value exposing
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
-    , definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
+    , definitionToSpecification, typeAndValueToDefinition, uncurryApply, collectVariables, collectReferences, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
     , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
     )
@@ -111,7 +111,7 @@ which is just the specification of those. Value definitions can be typed or unty
 
 # Utilities
 
-@docs definitionToSpecification, uncurryApply, collectVariables, collectDefinitionAttributes, collectPatternAttributes
+@docs definitionToSpecification, typeAndValueToDefinition, uncurryApply, collectVariables, collectReferences, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
 @docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
 
@@ -328,20 +328,58 @@ argument:
     --     )
 
 -}
-definitionToValue : Definition ta () -> Value ta ()
+definitionToValue : Definition ta va -> Value ta va
 definitionToValue def =
     case def.inputTypes of
         [] ->
             def.body
 
-        ( firstArgName, _, _ ) :: restOfArgs ->
-            Lambda ()
-                (AsPattern () (WildcardPattern ()) firstArgName)
+        ( firstArgName, va, _ ) :: restOfArgs ->
+            Lambda va
+                (AsPattern va (WildcardPattern va) firstArgName)
                 (definitionToValue
                     { def
                         | inputTypes = restOfArgs
                     }
                 )
+
+
+{-| Moves lambda arguments into function arguments as much as possible. For example given this function definition:
+
+    foo : Int -> Bool -> ( Int, Int ) -> String
+    foo =
+        \a ->
+            \b ->
+                ( c, d ) ->
+                    doSomething a b c d
+
+It turns it into the following:
+
+    foo : Int -> Bool -> ( Int, Int ) -> String
+    foo a b =
+        ( c, d ) ->
+            doSomething a b c d
+
+-}
+typeAndValueToDefinition : Type ta -> Value ta va -> Definition ta va
+typeAndValueToDefinition valueType value =
+    let
+        liftLambdaArguments : List ( Name, va, Type ta ) -> Type ta -> Value ta va -> Definition ta va
+        liftLambdaArguments args bodyType body =
+            case ( body, bodyType ) of
+                ( Lambda va (AsPattern _ (WildcardPattern _) argName) lambdaBody, Type.Function _ argType returnType ) ->
+                    liftLambdaArguments
+                        (args ++ [ ( argName, va, argType ) ])
+                        returnType
+                        lambdaBody
+
+                _ ->
+                    { inputTypes = args
+                    , outputType = bodyType
+                    , body = body
+                    }
+    in
+    liftLambdaArguments [] valueType value
 
 
 {-| -}
@@ -779,6 +817,72 @@ collectVariables value =
             Set.empty
 
 
+{-| Collect all references in a value recursively.
+-}
+collectReferences : Value ta va -> Set FQName
+collectReferences value =
+    let
+        collectUnion : List (Value ta va) -> Set FQName
+        collectUnion values =
+            values
+                |> List.map collectReferences
+                |> List.foldl Set.union Set.empty
+    in
+    case value of
+        Tuple _ elements ->
+            collectUnion elements
+
+        List _ items ->
+            collectUnion items
+
+        Record _ fields ->
+            collectUnion (fields |> List.map Tuple.second)
+
+        Reference _ fQName ->
+            Set.singleton fQName
+
+        Field _ subjectValue _ ->
+            collectReferences subjectValue
+
+        Apply _ function argument ->
+            collectUnion [ function, argument ]
+
+        Lambda _ _ body ->
+            collectReferences body
+
+        LetDefinition _ _ valueDefinition inValue ->
+            collectUnion [ valueDefinition.body, inValue ]
+
+        LetRecursion _ valueDefinitions inValue ->
+            List.foldl Set.union
+                Set.empty
+                (valueDefinitions
+                    |> Dict.toList
+                    |> List.map
+                        (\( _, def ) ->
+                            collectReferences def.body
+                        )
+                    |> List.append [ collectReferences inValue ]
+                )
+
+        Destructure _ _ valueToDestruct inValue ->
+            collectUnion [ valueToDestruct, inValue ]
+
+        IfThenElse _ condition thenBranch elseBranch ->
+            collectUnion [ condition, thenBranch, elseBranch ]
+
+        PatternMatch _ branchOutOn cases ->
+            collectUnion (cases |> List.map Tuple.second)
+                |> Set.union (collectReferences branchOutOn)
+
+        UpdateRecord _ valueToUpdate fieldsToUpdate ->
+            collectUnion (fieldsToUpdate |> List.map Tuple.second)
+                |> Set.union (collectReferences valueToUpdate)
+
+        _ ->
+            Set.empty
+
+
 {-| Collect all variables in a pattern.
 -}
 collectPatternVariables : Pattern va -> Set Name
@@ -806,6 +910,41 @@ collectPatternVariables pattern =
 
         HeadTailPattern _ headPattern tailPattern ->
             Set.union (collectPatternVariables headPattern) (collectPatternVariables tailPattern)
+
+        LiteralPattern _ _ ->
+            Set.empty
+
+        UnitPattern _ ->
+            Set.empty
+
+
+{-| Collect all references in a pattern.
+-}
+collectPatternReferences : Pattern va -> Set FQName
+collectPatternReferences pattern =
+    case pattern of
+        WildcardPattern _ ->
+            Set.empty
+
+        AsPattern _ subject _ ->
+            collectPatternReferences subject
+
+        TuplePattern _ elemPatterns ->
+            elemPatterns
+                |> List.map collectPatternReferences
+                |> List.foldl Set.union Set.empty
+
+        ConstructorPattern _ fQName argPatterns ->
+            argPatterns
+                |> List.map collectPatternReferences
+                |> List.foldl Set.union Set.empty
+                |> Set.insert fQName
+
+        EmptyListPattern _ ->
+            Set.empty
+
+        HeadTailPattern _ headPattern tailPattern ->
+            Set.union (collectPatternReferences headPattern) (collectPatternReferences tailPattern)
 
         LiteralPattern _ _ ->
             Set.empty
@@ -1740,6 +1879,7 @@ toString value =
 
                 ConstructorPattern _ ( packageName, moduleName, localName ) argPatterns ->
                     let
+                        constructorString : String
                         constructorString =
                             String.join "."
                                 [ Path.toString Name.toTitleCase "." packageName

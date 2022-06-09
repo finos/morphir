@@ -66,11 +66,15 @@ encodeTestCases ir valueSpec testCases =
         encodeInput : List ( Name, Type () ) -> TestCase -> Result String Encode.Value
         encodeInput inputTypes testCase =
             List.map2
-                (\( _, tpe ) testcase ->
+                (\( _, tpe ) maybeTestCaseInput ->
                     DataCodec.encodeData ir tpe
                         |> Result.andThen
                             (\encoder ->
-                                testcase |> encoder
+                                case maybeTestCaseInput of
+                                    Just testCaseInput ->
+                                        testCaseInput |> encoder
+                                    Nothing ->
+                                        Ok Encode.null
                             )
                 )
                 inputTypes
@@ -132,6 +136,7 @@ decodeTestCase ir valueSpec =
                                     Decode.index index
                                         (DataCodec.decodeData ir argType
                                             |> resultToFailure
+                                            |> Decode.maybe
                                             |> Decode.map
                                                 (\input ->
                                                     List.append inputsSoFar [ input ]

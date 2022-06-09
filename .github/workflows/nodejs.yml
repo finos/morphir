@@ -1,60 +1,108 @@
 # This workflow will do a clean install of node dependencies, build the source code and run tests across different versions of node
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
-
 name: Node.js CI
-
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
 jobs:
+  # building project
   build:
-
-    runs-on: ubuntu-latest
-
+    name: Build
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        node-version: [10.x, 12.x, 16.x]
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
-      env:
-        CI: true
-
-  publish-elm-package:
-    needs: [build]
-    runs-on: ubuntu-latest
-    if: github.repository_owner == 'finos'
-
+        node-version: [16.x]
+        os: [ ubuntu-latest ]
     steps:
       - uses: actions/checkout@v2
-      - name: Use Node.js 13
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
-          node-version: 13
-      - uses: actions/cache@v1
+          node-version: ${{ matrix.node-version }}
+      
+      - name: Cache NPM
+        uses: actions/cache@v3
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
-      - uses: actions/cache@v1
-        id: elm-cache
+      
+      - name: Cache Elm
+        uses: actions/cache@v3
         with:
           path: ~/.elm
-          key: ${{ runner.os }}-elm--home-${{ hashFiles('**/elm.json') }}
-      - run: npm ci
-      - name: Elm Publish
-        uses: dillonkearns/elm-publish-action@1.0.1
+          key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
+          restore-keys: |
+            ${{ runner.os }}-elm- 
+      - name: Download dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build --if-present
+      - name: Zip Package For Test
+        run: npm pack 
+      - name: Install Zip Package
+        run: npm install $(ls *.tgz)
+      - name: Link To Local Package 
+        run: npm link 
+      - name: Running Test
+        run: npm test
+      - name: Check Morphir Cmd 
+        run: |
+          cd tests-integration/reference-model
+          morphir -v 
+      - name: Upload to Artifact for Easier Publish 
+        uses: actions/upload-artifact@v3
+        with:
+          name: morphir-elm-artifact
+          path: ./*.tgz
+          if-no-files-found: error
+          retention-days: 0
+  # publish package 
+  publish:
+    name: Publish NPM Package
+    needs: [ build ]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        node-version: [16.x]
+        os: [ ubuntu-latest ]
+
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: morphir-elm-artifact
+          path: ~/artifact-download/
+      - name: UnZipping Tar File 
+        run: | 
+          mkdir -p ~/artifact-download/morphir-elm-artifact
+          tar -zxvf $(ls ~/artifact-download/*.tgz)  -C ~/artifact-download/morphir-elm-artifact
+          ls -l ~/artifact-download/morphir-elm-artifact
+      - name: Install
+        run: npm install
+        
+      - name: Publish Elm (as needed)
+        uses: dillonkearns/elm-publish-action@1.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-elm: ./node_modules/.bin/elm
+          path-to-elm: ./node_modules/.bin/elm 
+
+      - name: Publish (as needed)
+        uses: JS-DevTools/npm-publish@v1
+        if: env.NPM_TOKEN != 0
+        with:
+          token: ${{ env.NPM_TOKEN }}
+          package: /home/runner/artifact-download/morphir-elm-artifact/package/package.json

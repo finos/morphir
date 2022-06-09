@@ -16,20 +16,21 @@
 
 
 module Morphir.IR.Module exposing
-    ( ModuleName
+    ( ModuleName, QualifiedModuleName
     , Specification, emptySpecification
     , Definition, emptyDefinition
     , definitionToSpecification, definitionToSpecificationWithPrivate
     , lookupTypeSpecification, lookupValueSpecification, lookupValueDefinition
     , eraseSpecificationAttributes, eraseDefinitionAttributes
     , mapDefinitionAttributes, mapSpecificationAttributes
+    , collectTypeReferences, collectValueReferences, collectReferences, dependsOnModules
     )
 
 {-| Modules are used to group types and values together to make them easier to find. A module serves the same purpose as
 a package in Java or namespaces in other languages. A module is identified by a module name within the package. Within a
 module each type and value is identified using a local name.
 
-@docs ModuleName
+@docs ModuleName, QualifiedModuleName
 
 
 # Specification vs Definition
@@ -52,16 +53,19 @@ including implementation and private types and values.
 
 @docs eraseSpecificationAttributes, eraseDefinitionAttributes
 @docs mapDefinitionAttributes, mapSpecificationAttributes
+@docs collectTypeReferences, collectValueReferences, collectReferences, dependsOnModules
 
 -}
 
 import Dict exposing (Dict)
 import Morphir.IR.AccessControlled exposing (AccessControlled, withPrivateAccess, withPublicAccess)
 import Morphir.IR.Documented as Documented exposing (Documented)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
+import Set exposing (Set)
 
 
 {-| A module name is a unique identifier for a module within a package. It is represented by a path, which is a list of
@@ -69,6 +73,13 @@ names.
 -}
 type alias ModuleName =
     Path
+
+
+{-| A qualified module name is a globally unique identifier for a module. It is represented by a tuple of the package
+and the module name.
+-}
+type alias QualifiedModuleName =
+    ( Path, Path )
 
 
 {-| Type that represents a module specification. A module specification only contains types that are exposed
@@ -82,7 +93,7 @@ A module contains types and values which is represented by two field in this typ
 -}
 type alias Specification ta =
     { types : Dict Name (Documented (Type.Specification ta))
-    , values : Dict Name (Value.Specification ta)
+    , values : Dict Name (Documented (Value.Specification ta))
     }
 
 
@@ -103,10 +114,11 @@ A module contains types and values which is represented by two field in this typ
   - types: a dictionary of local name to access controlled, documented type specification.
   - values: a dictionary of local name to access controlled value specification.
 
+Type variables ta and va refer to type annotation and value annotation
 -}
 type alias Definition ta va =
     { types : Dict Name (AccessControlled (Documented (Type.Definition ta)))
-    , values : Dict Name (AccessControlled (Value.Definition ta va))
+    , values : Dict Name (AccessControlled (Documented  (Value.Definition ta va)))
     }
 
 
@@ -134,6 +146,7 @@ lookupValueSpecification : Name -> Specification ta -> Maybe (Value.Specificatio
 lookupValueSpecification localName moduleSpec =
     moduleSpec.values
         |> Dict.get localName
+        |> Maybe.map .value
 
 
 {-| Look up a value definition by its name in a module specification.
@@ -142,7 +155,7 @@ lookupValueDefinition : Name -> Definition ta va -> Maybe (Value.Definition ta v
 lookupValueDefinition localName moduleDef =
     moduleDef.values
         |> Dict.get localName
-        |> Maybe.map withPrivateAccess
+        |> Maybe.map (withPrivateAccess >> .value)
 
 
 {-| Turn a module definition into a module specification. Only publicly exposed types and values will be included in the
@@ -172,7 +185,7 @@ definitionToSpecification def =
                         |> withPublicAccess
                         |> Maybe.map
                             (\valueDef ->
-                                ( path, Value.definitionToSpecification valueDef )
+                                ( path, valueDef |> Documented.map Value.definitionToSpecification )
                             )
                 )
             |> Dict.fromList
@@ -204,7 +217,7 @@ definitionToSpecificationWithPrivate def =
                     ( path
                     , accessControlledValue
                         |> withPrivateAccess
-                        |> Value.definitionToSpecification
+                        |> Documented.map Value.definitionToSpecification
                     )
                 )
             |> Dict.fromList
@@ -240,7 +253,7 @@ mapSpecificationAttributes tf spec =
         (spec.values
             |> Dict.map
                 (\_ valueSpec ->
-                    Value.mapSpecificationAttributes tf valueSpec
+                    valueSpec |> Documented.map (Value.mapSpecificationAttributes tf)
                 )
         )
 
@@ -260,6 +273,78 @@ mapDefinitionAttributes tf vf def =
             |> Dict.map
                 (\_ valueDef ->
                     AccessControlled valueDef.access
-                        (Value.mapDefinitionAttributes tf vf valueDef.value)
+                        ( valueDef.value |> Documented.map (Value.mapDefinitionAttributes tf vf))
                 )
         )
+
+
+{-| Collect all type references from the module.
+-}
+collectTypeReferences : Definition ta va -> Set FQName
+collectTypeReferences moduleDef =
+    let
+        typeRefs : Set FQName
+        typeRefs =
+            moduleDef.types
+                |> Dict.values
+                |> List.map
+                    (\typeDef ->
+                        case typeDef.value.value of
+                            Type.TypeAliasDefinition _ tpe ->
+                                Type.collectReferences tpe
+
+                            Type.CustomTypeDefinition _ ctors ->
+                                ctors.value
+                                    |> Dict.values
+                                    |> List.concatMap
+                                        (\ctorArgs ->
+                                            ctorArgs
+                                                |> List.map (\( _, tpe ) -> Type.collectReferences tpe)
+                                        )
+                                    |> List.foldl Set.union Set.empty
+                    )
+                |> List.foldl Set.union Set.empty
+
+        valueRefs : Set FQName
+        valueRefs =
+            moduleDef.values
+                |> Dict.values
+                |> List.concatMap
+                    (\valueDef ->
+                        valueDef.value.value.outputType
+                            :: (valueDef.value.value.inputTypes |> List.map (\( _, _, tpe ) -> tpe))
+                            |> List.map Type.collectReferences
+                    )
+                |> List.foldl Set.union Set.empty
+    in
+    Set.union typeRefs valueRefs
+
+
+{-| Collect all value references from the module.
+-}
+collectValueReferences : Definition ta va -> Set FQName
+collectValueReferences moduleDef =
+    moduleDef.values
+        |> Dict.values
+        |> List.map
+            (\valueDef ->
+                Value.collectReferences valueDef.value.value.body
+            )
+        |> List.foldl Set.union Set.empty
+
+
+{-| Collect all type and value references from the module.
+-}
+collectReferences : Definition ta va -> Set FQName
+collectReferences moduleDef =
+    Set.union
+        (collectTypeReferences moduleDef)
+        (collectValueReferences moduleDef)
+
+
+{-| Find all the modules that this module depends on.
+-}
+dependsOnModules : Definition ta va -> Set QualifiedModuleName
+dependsOnModules moduleDef =
+    collectReferences moduleDef
+        |> Set.map (\( packageName, moduleName, _ ) -> ( packageName, moduleName ))
