@@ -1,10 +1,13 @@
 module Morphir.Scala.Feature.CodecTests exposing (..)
 
+import Dict
 import Expect
+import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName exposing (fqn)
-import Morphir.IR.Type as Type
+import Morphir.IR.Type as Type exposing (Definition(..), Type)
 import Morphir.Scala.AST as Scala exposing (ArgValue(..), Generator(..), Lit(..), Pattern(..), Value(..))
-import Morphir.Scala.Feature.Codec exposing (genDecodeReference, genEncodeReference)
+import Morphir.Scala.Feature.Codec exposing (genDecodeReference, genEncodeReference, mapTypeDefinitionToEncoder)
 import Test exposing (Test, describe, test)
 
 
@@ -116,4 +119,63 @@ genDecodeReferenceTests =
                 ]
                 (Apply (Ref [ "morphir", "Sdk" ] "foo") [ ArgValue Nothing (Variable "name"), ArgValue Nothing (Variable "age") ])
             )
+        , positiveTest "4. Tuple with 2 fields"
+            (Type.Tuple () [ Type.Reference () (fqn "morphir.sdk" "basics" "string") [] ])
+            (Scala.Apply (Scala.Variable "io.circe.arr") [ ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics" ] "encodeString") ])
+        ]
+
+
+{-| -}
+mapTypeDefinitionToEncoderTests : Test
+mapTypeDefinitionToEncoderTests =
+    let
+        positiveTest name currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) outputResult =
+            test name
+                (\_ ->
+                    case mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) of
+                        Ok output ->
+                            output
+                                |> Expect.equal outputResult
+
+                        Err error ->
+                            Expect.fail error
+                )
+
+        accTypeDef : AccessControlled (Documented (Definition ()))
+        accTypeDef =
+            Documented "" (TypeAliasDefinition [ [ "foo" ] ] (Type.Unit ()))
+                |> AccessControlled Public
+
+        accModDef =
+            AccessControlled Public { values = Dict.empty, types = Dict.singleton [ "foo" ] accTypeDef }
+    in
+    describe "Tests for Generate Encoders for Custom Types"
+        [ positiveTest "Empty Type Definition"
+            []
+            []
+            accModDef
+            ( [ "foo" ], accTypeDef )
+            [ Scala.withoutAnnotation
+                (Scala.ValueDecl
+                    { modifiers = [ Scala.Implicit ]
+                    , pattern = Scala.NamedMatch "foo"
+                    , valueType = Nothing
+                    , value = Scala.Variable "foo"
+                    }
+                )
+            ]
+        , positiveTest "Empty another Definition"
+            []
+            []
+            accModDef
+            ( [ "foo" ], accTypeDef )
+            [ Scala.withoutAnnotation
+                (Scala.ValueDecl
+                    { modifiers = [ Scala.Implicit ]
+                    , pattern = Scala.NamedMatch "foo"
+                    , valueType = Nothing
+                    , value = Scala.Variable "foo"
+                    }
+                )
+            ]
         ]

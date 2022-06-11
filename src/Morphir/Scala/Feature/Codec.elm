@@ -421,7 +421,7 @@ genEncodeReference tpe =
             Err "Cannot encode a function"
 
         Type.Unit a ->
-            Err "Not implemented yet"
+            Ok (Scala.Variable "a")
 
 
 {-|
@@ -451,7 +451,24 @@ genDecodeReference fqName tpe =
             Ok scalaReference
 
         Type.Tuple a types ->
-            Err "Not implemented yet"
+            let
+                encodedTypesResult =
+                    types
+                        |> List.map
+                            (\currentType ->
+                                genEncodeReference currentType
+                            )
+                        |> ResultList.keepFirstError
+                        |> Result.map
+                            (\x ->
+                                x |> List.map (\y -> Scala.ArgValue Nothing y)
+                            )
+            in
+            encodedTypesResult
+                |> Result.map
+                    (\argVal ->
+                        Scala.Apply (Scala.Variable "io.circe.arr") argVal
+                    )
 
         Record a fields ->
             let
