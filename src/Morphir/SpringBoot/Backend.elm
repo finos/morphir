@@ -149,7 +149,7 @@ mapStatefulAppImplementation opt distribution currentPackagePath currentModulePa
                                 , returnType =
                                     Just (mapType accessControlledValueDef.value.value.outputType)
                                 , body =
-                                    Just (mapFunctionBody distribution accessControlledValueDef.value.value)
+                                    Just (mapFunctionBody accessControlledValueDef.value.value)
                                 }
                             ]
 

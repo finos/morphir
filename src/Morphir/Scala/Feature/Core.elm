@@ -110,8 +110,8 @@ mapTypeMember currentPackagePath currentModulePath accessControlledModuleDef ( t
                 accessControlledCtors
 
 
-mapModuleDefinition : Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
-mapModuleDefinition distribution currentPackagePath currentModulePath accessControlledModuleDef =
+mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
+mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef =
     let
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of
@@ -179,7 +179,7 @@ mapModuleDefinition distribution currentPackagePath currentModulePath accessCont
                             , returnType =
                                 Just (mapType accessControlledValueDef.value.value.outputType)
                             , body =
-                                Just (mapFunctionBody distribution accessControlledValueDef.value.value)
+                                Just (mapFunctionBody accessControlledValueDef.value.value)
                             }
                         ]
                     )
@@ -419,8 +419,8 @@ mapType tpe =
 
 {-| Generate Scala for a Morphir function body.
 -}
-mapFunctionBody : Distribution -> Value.Definition ta (Type ()) -> Scala.Value
-mapFunctionBody distribution valueDef =
+mapFunctionBody : Value.Definition ta (Type ()) -> Scala.Value
+mapFunctionBody valueDef =
     mapValue
         (valueDef.inputTypes
             |> List.map (\( name, _, _ ) -> name)

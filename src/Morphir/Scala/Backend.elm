@@ -77,9 +77,9 @@ mapPackageDefinition opt distribution packagePath packageDef =
         |> List.concatMap
             (\( modulePath, moduleImpl ) ->
                 List.concat
-                    [ mapModuleDefinition distribution packagePath modulePath moduleImpl
+                    [ mapModuleDefinition packagePath modulePath moduleImpl
                     , if opt.includeCodecs then
-                        mapModuleDefinitionToCodecs distribution packagePath modulePath moduleImpl
+                        mapModuleDefinitionToCodecs packagePath modulePath moduleImpl
 
                       else
                         []
