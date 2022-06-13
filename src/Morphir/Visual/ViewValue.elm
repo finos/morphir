@@ -114,16 +114,23 @@ viewValueByLanguageFeature config value =
                     ViewLiteral.view config literal
 
                 Value.Constructor _ (( packageName, moduleName, localName ) as fQName) ->
-                    Element.row
-                        [ smallPadding config.state.theme |> padding
-                        , smallSpacing config.state.theme |> spacing
-                        , onClick (config.handlers.onReferenceClicked fQName False)
-                        ]
-                        [ Element.el []
-                            (text
-                                (nameToText localName)
-                            )
-                        ]
+                    case fQName of
+
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], _ ) ->
+                            Element.none
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], _ ) ->
+                            Element.none 
+                        _ ->
+                            Element.row
+                                [ smallPadding config.state.theme |> padding
+                                , smallSpacing config.state.theme |> spacing
+                                , onClick (config.handlers.onReferenceClicked fQName False)
+                                ]
+                                [ Element.el []
+                                    (text
+                                        (nameToText localName)
+                                    )
+                                ]
 
                 Value.Tuple _ elems ->
                     column
