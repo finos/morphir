@@ -1,12 +1,12 @@
 module Morphir.Elm.Target exposing (..)
 
 import Json.Decode as Decode exposing (Error, Value)
+import Morphir.FeatureMetrics.Backend
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.Graph.Backend.Codec
 import Morphir.Graph.CypherBackend as Cypher
 import Morphir.Graph.SemanticBackend as SemanticBackend
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.Package as Package
 import Morphir.Scala.Backend
 import Morphir.Scala.Backend.Codec
 import Morphir.Scala.Spark.Backend
@@ -14,7 +14,6 @@ import Morphir.Spark.Backend
 import Morphir.SpringBoot.Backend as SpringBoot
 import Morphir.SpringBoot.Backend.Codec
 import Morphir.TypeScript.Backend
-import Morphir.TypeScript.Backend.Codec
 
 
 
@@ -28,6 +27,7 @@ type BackendOptions
     | CypherOptions Cypher.Options
     | TypeScriptOptions Morphir.TypeScript.Backend.Options
     | SparkOptions Morphir.Scala.Spark.Backend.Options
+    | FeatureMetrics
 
 
 decodeOptions : Result Error String -> Decode.Decoder BackendOptions
@@ -47,6 +47,9 @@ decodeOptions gen =
 
         Ok "Spark" ->
             Decode.map SparkOptions (Decode.succeed Morphir.Scala.Spark.Backend.Options)
+
+        Ok "FeatureMetrics" ->
+            Decode.succeed FeatureMetrics
 
         _ ->
             Decode.map (\options -> ScalaOptions options) Morphir.Scala.Backend.Codec.decodeOptions
@@ -72,3 +75,6 @@ mapDistribution back dist =
 
         SparkOptions options ->
             Morphir.Spark.Backend.mapDistribution options dist
+
+        FeatureMetrics ->
+            Morphir.FeatureMetrics.Backend.collectFeaturesFromDistribution dist
