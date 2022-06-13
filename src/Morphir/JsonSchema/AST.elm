@@ -16,10 +16,6 @@ type alias Schema =
     }
 
 
-type alias SchemaObject =
-    { properties : Dict String Int }
-
-
 type SchemaType
     = Integer
     | Array SchemaType
