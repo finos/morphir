@@ -146,6 +146,23 @@ testBadAnnotation source =
             )
 
 
+item_filter : Record1 -> Bool
+item_filter record =
+    let
+        qualifiedYearsToBeCalledAntique =
+            100
+    in
+    record.age
+        >= qualifiedYearsToBeCalledAntique
+        && (record.firstName == "Micheal")
+
+
+testLetBinding : List Record1 -> List Record1
+testLetBinding source =
+    source
+        |> List.filter item_filter
+
+
 filterFn : Record1 -> Bool
 filterFn record1 =
     modBy record1.age 2 <= 3
@@ -153,4 +170,8 @@ filterFn record1 =
 
 filterFnWithVar : Int -> Record1 -> Bool
 filterFnWithVar max record =
-    record.age <= max
+    max
+        |> (\age maximumAllowedAge ->
+                age <= (maximumAllowedAge + max)
+           )
+            record.age
