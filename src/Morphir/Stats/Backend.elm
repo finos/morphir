@@ -1,4 +1,4 @@
-module Morphir.FeatureMetrics.Backend exposing (..)
+module Morphir.Stats.Backend exposing (..)
 
 import Dict exposing (Dict)
 import Json.Encode as Encode
@@ -47,14 +47,23 @@ collectFeaturesFromDistribution distribution =
                 encodedFeatureListAsJSON : String
                 encodedFeatureListAsJSON =
                     featureList
-                        --|> List.sortBy Tuple.second
-                        --|> List.reverse
-                        --|> Encode.list (\( s, i ) -> Encode.list identity [ Encode.string s, Encode.int i ])
                         |> Dict.fromList
                         |> Encode.dict identity Encode.int
                         |> Encode.encode 4
+
+                featureListFormattedAsMD : String
+                featureListFormattedAsMD =
+                    featureList
+                        |> List.sortBy Tuple.second
+                        |> List.reverse
+                        |> List.map (\( feat, freq ) -> "- [ ] " ++ feat ++ " - " ++ String.fromInt freq)
+                        |> List.append [ "# Morphir Features & Frequencies\n" ]
+                        |> String.join "\n"
             in
-            Dict.singleton ( [], "FeatureMetrics.json" ) encodedFeatureListAsJSON
+            [ ( ( [], "FeatureMetrics.json" ), encodedFeatureListAsJSON )
+            , ( ( [], "FeatureMetrics.md" ), featureListFormattedAsMD )
+            ]
+                |> Dict.fromList
 
 
 collectFeaturesFromPackage : IR -> Package.Definition ta va -> FeatureCollection
@@ -92,11 +101,11 @@ collectTypeFeatures ir types featureCollection =
                             Type.TypeAliasDefinition names tpe ->
                                 let
                                     withTypeAlias =
-                                        incrementOrAdd "TypeAlias" featureSetSoFar
+                                        incrementOrAdd "Type.TypeAlias" featureSetSoFar
 
                                     withTypeVariables =
                                         if List.length names > 0 then
-                                            incrementOrAdd "Variable" featureSetSoFar
+                                            incrementOrAdd "Type.Variable" featureSetSoFar
 
                                         else
                                             withTypeAlias
@@ -106,11 +115,11 @@ collectTypeFeatures ir types featureCollection =
                             Type.CustomTypeDefinition names accessControlledConstructors ->
                                 let
                                     withCustomType =
-                                        incrementOrAdd "CustomType" featureSetSoFar
+                                        incrementOrAdd "Type.CustomType" featureSetSoFar
 
                                     withCustomTypeVariables =
                                         if List.length names > 0 then
-                                            incrementOrAdd "Variable" featureSetSoFar
+                                            incrementOrAdd "Type.Variable" featureSetSoFar
 
                                         else
                                             withCustomType

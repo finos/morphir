@@ -21,6 +21,7 @@ import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, Sourc
 import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend exposing (Errors, OrderedFileChanges)
 import Morphir.Elm.IncrementalFrontend.Codec as IncrementalFrontendCodec
+import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.File.FileChanges as FileChanges exposing (FileChanges)
 import Morphir.File.FileChanges.Codec as FileChangesCodec
 import Morphir.File.FileMap exposing (FileMap)
@@ -31,10 +32,10 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.Name as Name
 import Morphir.IR.Package exposing (PackageName)
-import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.IR.Path as Path
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 import Morphir.IR.SDK as SDK
+import Morphir.Stats.Backend as Stats
 import Process
 import Task
 
@@ -66,12 +67,19 @@ port generate : (( Decode.Value, Decode.Value ) -> msg) -> Sub msg
 port generateResult : Encode.Value -> Cmd msg
 
 
+port stats : (Decode.Value -> msg) -> Sub msg
+
+
+port statsResult : Encode.Value -> Cmd msg
+
+
 subscriptions : () -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ buildFromScratch BuildFromScratch
         , buildIncrementally BuildIncrementally
-        ,   generate Generate
+        , generate Generate
+        , stats Stats
         ]
 
 
@@ -96,6 +104,7 @@ type Msg
     | OrderFileChanges PackageName PackageInfo Frontend.Options FileChanges Repo
     | ApplyFileChanges PackageInfo Frontend.Options OrderedFileChanges Repo
     | Generate ( Decode.Value, Decode.Value )
+    | Stats Decode.Value
 
 
 main : Platform.Program () () Msg
@@ -110,7 +119,6 @@ main =
 update : Msg -> () -> ( (), Cmd Msg )
 update msg model =
     ( model, Cmd.batch [ process msg, report msg ] )
-
 
 
 process : Msg -> Cmd Msg
@@ -193,22 +201,43 @@ process msg =
                     Decode.decodeValue DistroCodec.decodeVersionedDistribution packageDistJson
             in
             case Result.map2 Tuple.pair optionsResult packageDistroResult of
-                 Ok ( options, packageDist ) ->
+                Ok ( options, packageDist ) ->
                     let
                         enrichedDistro =
                             case packageDist of
-                                 Library packageName dependencies packageDef ->
+                                Library packageName dependencies packageDef ->
                                     Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
                         fileMap : FileMap
                         fileMap =
                             mapDistribution options enrichedDistro
                     in
-                        fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult
+                    fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult
 
-                 Err errorMessage ->
-                            errorMessage |> Decode.errorToString |> jsonDecodeError
+                Err errorMessage ->
+                    errorMessage |> Decode.errorToString |> jsonDecodeError
 
+        Stats packageDistJson ->
+            let
+                packageDistroResult =
+                    Decode.decodeValue DistroCodec.decodeVersionedDistribution packageDistJson
+            in
+            case packageDistroResult of
+                Ok packageDist ->
+                    let
+                        enrichedDistro =
+                            case packageDist of
+                                Library packageName dependencies packageDef ->
+                                    Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
+
+                        fileMap : FileMap
+                        fileMap =
+                            Stats.collectFeaturesFromDistribution enrichedDistro
+                    in
+                    fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> statsResult
+
+                Err errorMessage ->
+                    errorMessage |> Decode.errorToString |> jsonDecodeError
 
 
 report : Msg -> Cmd Msg
@@ -234,9 +263,11 @@ report msg =
                     ]
                 )
 
-        Generate (optionJson, packageDistJson)  ->
+        Generate ( optionJson, packageDistJson ) ->
             reportProgress " Generating target code from IR ..."
 
+        Stats _ ->
+            reportProgress "Generating stats from IR ..."
 
 
 keepElmFilesOnly : FileChanges -> FileChanges
