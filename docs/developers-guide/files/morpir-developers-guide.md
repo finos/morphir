@@ -12,7 +12,7 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
 2. [Overview of Morphir](#)
 3. [The Morphir Architecture](#) <br>
 4. [The Morphir SDK](#) <br>
-5. [Morphir Commands Processing](Morphir-elm Commands Processing) <br>
+5. [Morphir Commands Processing](https://github.com/finos/morphir-elm/blob/main/docs/developers-guide/files/morphir-commands-processing.md) <br>
    1. [morphir-elm make](#) <br>
    2. [morphir-elm gen](#) <br>
    3. [morphir-elm test](#) <br>
@@ -32,7 +32,7 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
    2. [Elm Incremental Frontend](#) <br>
 10. [The Morphir Backends](#) <br>
     1. [Scala Backend](#)
-11. [Working with CODECS](#) <br>
+11. [Working with CODECS](https://github.com/finos/morphir-elm/blob/main/docs/developers-guide/files/working-with-codecs.md) <br>
     1. [Introduction to Encoding/Decoding](#) <br>
     2. [JSON Decoder Building Blocks](#) <br>
     3. [Combining Decoders](#) <br>
