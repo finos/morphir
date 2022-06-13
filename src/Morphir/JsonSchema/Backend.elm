@@ -31,7 +31,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.JsonSchema.AST as ShemaType exposing (Schema, SchemaType(..), TypeName)
+import Morphir.JsonSchema.AST exposing (Schema, SchemaType(..), TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
 
 
@@ -113,21 +113,7 @@ mapTypeDefinition typeName definition =
                 |> Maybe.map (Tuple.pair typeName)
 
         Type.CustomTypeDefinition typeArgs accessControlledConstructors ->
-            --let
-            --    _ =
-            --        Debug.log "Output" typeArgs
-            --in
-            --accessControlledConstructors.value
-            --    |> Dict.
             Nothing
-
-
-
--- Pattern match on a Record type
--- Convert list of fields to a list of (name , tpe)
--- A Field is a record of name and type
--- Name should be converted to a string
--- Build a Dict with Name and type
 
 
 mapType : Type ta -> Maybe SchemaType

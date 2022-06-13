@@ -16,22 +16,6 @@ type alias Schema =
     }
 
 
-
---
---type alias IntegerConstraints =
---    { maximum : Maybe Int
---    , minimum : Maybe Int
---    , exclusiveMaximum : Maybe Int
---    , exclusiveMinimum : Maybe Int
---    }
---
---
---type alias StringConstraints =
---    { maxLength : Maybe Int
---    , minLength : Maybe Int
---    }
-
-
 type alias SchemaObject =
     { properties : Dict String Int }
 
