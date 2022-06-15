@@ -1,7 +1,7 @@
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.explode
 import org.scalatest.FunSuite
-import morphir.reference.model.sparktests.SparkJobs
+import sparktests.functiontests.SparkJobs
 
 class test1 extends FunSuite {
 

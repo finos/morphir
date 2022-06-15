@@ -2,11 +2,11 @@
 import mill._, scalalib._
 
 object generated extends Module {
-  object refModel extends Module {
+  object sparkModel extends Module {
     object spark extends ScalaModule {
         def scalaVersion = "2.12.12"
         val paths = Seq(
-          millSourcePath / os.up / "src" / "spark" / "morphir" / "reference" / "model" / "sparktests"
+          millSourcePath / os.up / "src" / "spark" / "sparktests"
         )
         def sources = T.sources {
           paths.map(p => PathRef(p))
@@ -23,7 +23,7 @@ object generated extends Module {
 }
 object spark extends ScalaModule {
   def scalaVersion = "2.12.12"
-  def moduleDeps = Seq(generated.refModel.spark)
+  def moduleDeps = Seq(generated.sparkModel.spark)
   def ivyDeps = Agg(
     ivy"org.apache.spark::spark-core:3.2.1",
     ivy"org.apache.spark::spark-sql:3.2.1",
