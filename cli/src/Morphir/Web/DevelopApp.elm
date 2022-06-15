@@ -1876,12 +1876,12 @@ viewDefinitionDetails model =
 
                                 styles : List (Element.Attribute msg)
                                 styles =
-                                    [ paddingXY (model.theme |> Theme.scaled -2) (model.theme |> Theme.scaled -5) ]
+                                    [ paddingXY (model.theme |> Theme.scaled -2) (model.theme |> Theme.scaled -5), Background.color <| rgb 0.9 0.9 0.9 ]
                             in
                             List.map
                                 (\( columnIndex, columnName ) ->
                                     { header = ifThenElse (columnIndex == maxIndex) (el (Font.bold :: styles) <| Theme.ellipseText columnName) (el styles <| Theme.ellipseText columnName)
-                                    , width = fill
+                                    , width = Element.shrink |> Element.minimum 400
                                     , view =
                                         \index test ->
                                             testRow columnIndex index maxIndex test
@@ -1896,7 +1896,14 @@ viewDefinitionDetails model =
                         , columns = columns
                         }
             in
-            ifThenElse (Array.isEmpty listOfTestcases) none (column [ height fill, width fill ] [ el [ Font.bold, padding (model.theme |> Theme.scaled -2) ] (text "TEST CASES"), testsTable ])
+            ifThenElse (Array.isEmpty listOfTestcases)
+                none
+                (column [ height fill, width fill ]
+                    [ el [ Font.bold, padding (model.theme |> Theme.scaled -2), Font.underline ]
+                        (text "TEST CASES")
+                    , testsTable
+                    ]
+                )
     in
     case model.irState of
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
@@ -1932,15 +1939,18 @@ viewDefinitionDetails model =
                                                     InsightView ->
                                                         Just <|
                                                             column
-                                                                [ width fill, height fill, spacing 20, paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
-                                                                [ viewArgumentEditors ir model.argStates valueDef.inputTypes
-                                                                , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
-                                                                , row [ spacing (model.theme |> Theme.scaled 2) ]
-                                                                    [ viewActualOutput
-                                                                        model.theme
-                                                                        ir
-                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                        fullyQualifiedName
+                                                                [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
+                                                                [ column [ spacing (model.theme |> Theme.scaled 5) ]
+                                                                    [ el [ Font.bold, Font.underline ] (text "INPUTS")
+                                                                    , viewArgumentEditors ir model.argStates valueDef.inputTypes
+                                                                    , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                    , row [ spacing (model.theme |> Theme.scaled 2) ]
+                                                                        [ viewActualOutput
+                                                                            model.theme
+                                                                            ir
+                                                                            { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                            fullyQualifiedName
+                                                                        ]
                                                                     ]
                                                                 , scenarios fullyQualifiedName distribution valueDef.inputTypes
                                                                 ]

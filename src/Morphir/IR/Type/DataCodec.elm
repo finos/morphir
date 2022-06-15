@@ -252,8 +252,8 @@ encodeData ir tpe =
                                 Err (String.concat [ "Expected tuple but found: ", Debug.toString value ])
                     )
 
-        _ ->
-            Debug.todo "implement"
+        a ->
+           Debug.log "" a |> Debug.todo "implement"
 
 
 decodeData : IR -> Type () -> Result String (Decode.Decoder RawValue)

@@ -4,17 +4,27 @@ import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, el, fill, moveUp, padding, row, spacing, text, width)
 import Element.Font as Font
 import Morphir.IR.Name as Name
+import Morphir.IR as IR
 import Morphir.IR.Path as Path
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value as Value
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
+import Morphir.IR.Type as Type
+import Morphir.Visual.Components.FieldList as FieldList
 
 
 view : Config msg -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
 view config viewValue functionValue argValues =
     case ( functionValue, argValues ) of
+        ( Value.Constructor _ ((_, _, localName) as fQName), _ ) ->
+            case config.ir |> IR.lookupTypeSpecification (config.ir |> IR.resolveAliases fQName) of
+                Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
+                    FieldList.view (List.map2 (\field arg -> ( field.name, Element.el [Element.centerX, Element.centerY] (viewValue arg) )) fields argValues)
+                _ ->
+                    Element.row [ smallSpacing config.state.theme |> spacing] (List.concat [[text <| nameToText localName], argValues |> List.map viewValue] )
+
         ( Value.Reference _ ( _, _, ("is" :: _) as localName ), [ argValue ] ) ->
             row
                 [ width fill

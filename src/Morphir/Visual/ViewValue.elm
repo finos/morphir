@@ -1,6 +1,6 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
-import Dict exposing (Dict)
+import Dict
 import Element exposing (Element, column, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
@@ -9,9 +9,10 @@ import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
+import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (definition, nameToText)
@@ -28,11 +29,10 @@ import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewRecord as ViewRecord
 import Morphir.Visual.XRayView as XRayView
-import Morphir.IR.Path as Path exposing (Path)
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
-viewDefinition config ( _, _, valueName ) valueDef =
+viewDefinition config ( packageName, moduleName, valueName ) valueDef =
     let
         definitionElem =
             definition config
@@ -73,12 +73,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
 
 
 viewValue : Config msg -> EnrichedValue -> Element msg
-viewValue config value =
-    viewValueByValueType config value
-
-
-viewValueByValueType : Config msg -> EnrichedValue -> Element msg
-viewValueByValueType config typedValue =
+viewValue config typedValue =
     let
         valueType : Type ()
         valueType =
@@ -113,13 +108,17 @@ viewValueByLanguageFeature config value =
                 Value.Literal _ literal ->
                     ViewLiteral.view config literal
 
-                Value.Constructor _ (( packageName, moduleName, localName ) as fQName) ->
+                Value.Constructor _ (( _, _, localName ) as fQName) ->
                     case fQName of
-
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], _ ) ->
                             Element.none
-                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], _ ) ->
-                            Element.none 
+
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) ->
+                            Element.none
+
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
+                            el [ Font.bold ] (text " - ")
+
                         _ ->
                             Element.row
                                 [ smallPadding config.state.theme |> padding
@@ -149,13 +148,13 @@ viewValueByLanguageFeature config value =
                             ]
                         ]
 
-                Value.List ( index, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
+                Value.List ( _, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
                     ViewList.view config (viewValue config) itemType items
 
                 Value.Record _ items ->
                     ViewRecord.view config (viewValue config) items
 
-                Value.Variable ( index, tpe ) name ->
+                Value.Variable ( index, _ ) name ->
                     let
                         variableValue : Maybe RawValue
                         variableValue =
@@ -176,7 +175,7 @@ viewValueByLanguageFeature config value =
                         ]
                         (text (nameToText name))
 
-                Value.Reference _ (( packageName, moduleName, localName ) as fQName) ->
+                Value.Reference _ (( _, _, localName ) as fQName) ->
                     Element.row
                         [ smallPadding config.state.theme |> padding
                         , smallSpacing config.state.theme |> spacing
@@ -188,12 +187,13 @@ viewValueByLanguageFeature config value =
                             )
                         ]
 
-                Value.Field ( index1, tpe ) subjectValue fieldName ->
+                Value.Field ( _, _ ) subjectValue fieldName ->
                     let
                         defaultValue =
                             Element.row
-                                [ spacing 10 ]
+                                [ spacing 1 ]
                                 [ viewValue config subjectValue
+                                , el [ Font.bold ] (text ".")
                                 , text (nameToText fieldName)
                                 ]
                     in
@@ -231,7 +231,7 @@ viewValueByLanguageFeature config value =
                                 _ ->
                                     defaultValue
 
-                        Err error ->
+                        Err _ ->
                             defaultValue
 
                 Value.Apply _ fun arg ->
@@ -297,11 +297,14 @@ viewValueByLanguageFeature config value =
                 Value.IfThenElse _ _ _ _ ->
                     ViewIfThenElse.view config (viewValue config) value
 
-                Value.PatternMatch tpe param patterns ->
+                Value.PatternMatch _ param patterns ->
                     ViewPatternMatch.view config viewValue param patterns
 
                 Value.Unit _ ->
-                    el [] (text "not set")
+                    el [ Element.centerX, Element.centerY, smallPadding config.state.theme |> padding ] (text "not set")
+
+                Value.UpdateRecord _ b c ->
+                    Element.column [ Element.height fill ] [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating ", viewValue config b, text " with" ], ViewRecord.view config (viewValue config) c ]
 
                 other ->
                     Element.column
@@ -320,7 +323,7 @@ viewValueByLanguageFeature config value =
                             , Border.rounded 6
                             , width fill
                             ]
-                            (XRayView.viewValue (XRayView.viewType moduleNameToPathString) (other |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
+                            (XRayView.viewValue (XRayView.viewType moduleNameToPathString) ((other |> Debug.log "?") |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
                         ]
     in
     valueElem
@@ -329,6 +332,7 @@ viewValueByLanguageFeature config value =
 moduleNameToPathString : Path -> String
 moduleNameToPathString moduleName =
     pathToStringWithSeparator "/" moduleName
+
 
 pathToStringWithSeparator : String -> Path -> String
 pathToStringWithSeparator =
