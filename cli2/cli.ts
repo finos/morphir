@@ -291,6 +291,65 @@ const gen = async (
   return Promise.all(writePromises.concat(deletePromises));
 };
 
+const stats = async (
+  input: string,
+  outputPath: string,
+  options: CommandOptions
+) => {
+  await fsMakeDir(outputPath, {
+    recursive: true,
+  });
+
+  const collectStats = async (ir: string): Promise<string[]> => {
+    return new Promise((resolve, reject) => {
+        worker.ports.jsonDecodeError.subscribe((err: any) => { reject(err); });
+        worker.ports.statsResult.subscribe(([err, ok]: any) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(ok);
+            }
+        });
+
+        worker.ports.stats.send(ir);
+    });
+    };
+
+  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input));
+
+  const stats: string[] = await collectStats(
+    JSON.parse(morphirIrJson.toString())
+  );
+
+  const writePromises = stats.map(
+    async ([[dirPath, fileName], content]: any) => {
+      const fileDir: string = dirPath.reduce(
+        (accum: string, next: string) => path.join(accum, next),
+        outputPath
+      );
+      const filePath: string = path.join(fileDir, fileName);
+
+      if (await fileExist(filePath)) {
+        const existingContent: Buffer = await fsReadFile(filePath);
+
+        if (existingContent.toString() !== content) {
+          await fsWriteFile(filePath, content);
+          console.log(`UPDATE - ${filePath}`);
+        }
+
+      } else {
+        await fsMakeDir(fileDir, {
+          recursive: true,
+        });
+        await fsWriteFile(filePath, content);
+        console.log(`INSERT - ${filePath}`);
+      }
+    }
+  );
+  return Promise.all(writePromises);
+};
+
+
 const generate = async (
   options: WorkerOptions,
   ir: string
@@ -399,4 +458,4 @@ async function writeFile(filePath: string, content: string) {
   return await fsWriteFile(filePath, content);
 }
 
-export = { make, writeFile, gen };
+export = { make, writeFile, gen, stats };

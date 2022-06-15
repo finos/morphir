@@ -6,7 +6,6 @@ import Morphir.Graph.Backend.Codec
 import Morphir.Graph.CypherBackend as Cypher
 import Morphir.Graph.SemanticBackend as SemanticBackend
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.Package as Package
 import Morphir.Scala.Backend
 import Morphir.Scala.Backend.Codec
 import Morphir.Scala.Spark.Backend
@@ -14,7 +13,6 @@ import Morphir.Spark.Backend
 import Morphir.SpringBoot.Backend as SpringBoot
 import Morphir.SpringBoot.Backend.Codec
 import Morphir.TypeScript.Backend
-import Morphir.TypeScript.Backend.Codec
 
 
 
