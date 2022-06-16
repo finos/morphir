@@ -5,10 +5,9 @@ import Element exposing (Element, centerX, centerY, el, fill, height, indexedTab
 import Element.Border as Border
 import Element.Font as Font
 import Morphir.IR as IR
-import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Name as Name
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Value as Value
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
@@ -17,8 +16,8 @@ import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 view : Config msg -> (EnrichedValue -> Element msg) -> Type () -> List EnrichedValue -> Element msg
 view config viewValue itemType items =
     if List.isEmpty items then
-        el []
-            (text "[ ]")
+        el [centerX, centerY]
+            (text " [ ] ")
 
     else
         case config.ir |> IR.resolveType itemType of

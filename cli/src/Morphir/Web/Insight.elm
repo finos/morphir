@@ -22,6 +22,8 @@ import Morphir.Visual.Config as Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme, ThemeConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Theme.Codec exposing (decodeThemeConfig)
 import Morphir.Visual.ViewValue as ViewValue
+import Morphir.IR as IR exposing (IR)
+
 
 
 
@@ -50,6 +52,7 @@ type alias Flag =
 type alias Model =
     { theme : Theme
     , modelState : ModelState
+    , ir : Maybe IR
     }
 
 
@@ -65,10 +68,10 @@ init json =
         model =
             case json |> Decode.decodeValue decodeFlag of
                 Ok flag ->
-                    { theme = Theme.fromConfig flag.config, modelState = IRLoaded flag.distribution }
+                    { theme = Theme.fromConfig flag.config, modelState = IRLoaded flag.distribution, ir = Just <| IR.fromDistribution flag.distribution }
 
                 Err error ->
-                    { theme = Theme.fromConfig Nothing, modelState = Failed ("Wrong IR: " ++ Decode.errorToString error) }
+                    { theme = Theme.fromConfig Nothing, modelState = Failed ("Wrong IR: " ++ Decode.errorToString error), ir = Nothing }
     in
     ( model, Cmd.none )
 
@@ -323,8 +326,12 @@ view model =
                         ( Library packageName _ _, QName moduleName localName ) ->
                             ( packageName, moduleName, localName )
             in
-            ViewValue.viewDefinition config valueFQName visualizationState.functionDefinition
-                |> Element.layout [ Font.size model.theme.fontSize, smallPadding model.theme |> padding, smallSpacing model.theme |> spacing ]
+            case model.ir of
+                Just ir ->
+                    ViewValue.viewDefinition config valueFQName visualizationState.functionDefinition
+                    |> Element.layout [ Font.size model.theme.fontSize, smallPadding model.theme |> padding, smallSpacing model.theme |> spacing ]
+                Nothing ->
+                    Html.div [] []
 
 
 decodeFlag : Decode.Decoder Flag
