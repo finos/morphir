@@ -41,7 +41,7 @@ import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.SDK.ResultList as ResultList
 
@@ -166,6 +166,10 @@ objectExpressionFromValue ir morphirValue =
                             |> Result.map (\expr -> Select expr source)
                     )
 
+        Value.LetDefinition _ _ _ _ ->
+            inlineLetDef [] [] morphirValue
+                |> objectExpressionFromValue ir
+
         other ->
             let
                 _ =
@@ -231,19 +235,14 @@ expressionFromValue ir morphirValue =
 
                         _ ->
                             collectArgValues morphirValue []
-                                |> Result.andThen (\( args, fqn ) -> inlineReference ir args fqn)
+                                |> (\( args, applyTarget ) -> inlineValue ir args applyTarget)
 
                 _ ->
                     collectArgValues morphirValue []
-                        |> Result.andThen (\( args, fqn ) -> inlineReference ir args fqn)
+                        |> (\( args, applyTarget ) -> inlineValue ir args applyTarget)
 
-        Value.Reference _ fqName ->
-            case IR.lookupValueDefinition fqName ir of
-                Just def ->
-                    expressionFromValue ir def.body
-
-                Nothing ->
-                    inlineReference ir [] fqName
+        Value.Reference _ _ ->
+            inlineValue ir [] morphirValue
 
         Value.IfThenElse _ cond thenBranch elseBranch ->
             Result.map3
@@ -252,43 +251,122 @@ expressionFromValue ir morphirValue =
                 (expressionFromValue ir thenBranch)
                 (expressionFromValue ir elseBranch)
 
+        Value.LetDefinition _ _ _ _ ->
+            inlineLetDef [] [] morphirValue
+                |> expressionFromValue ir
+
         other ->
             UnhandledValue other |> Err
 
 
-collectArgValues : TypedValue -> List TypedValue -> Result Error ( List TypedValue, FQName )
+{-| Turns a Value definition into a lambda function.
+-}
+lambdaFromDefinition : Value.Definition () (Type.Type ()) -> TypedValue
+lambdaFromDefinition valueDef =
+    valueDef.inputTypes
+        |> List.foldr
+            (\( name, va, _ ) val ->
+                Value.Lambda va
+                    (Value.AsPattern va
+                        (Value.WildcardPattern va)
+                        name
+                    )
+                    val
+            )
+            valueDef.body
+
+
+{-| Inline simple let bindings
+-}
+inlineLetDef : List Name -> List TypedValue -> TypedValue -> TypedValue
+inlineLetDef names letValues v =
+    case v of
+        Value.LetDefinition _ name def inValue ->
+            let
+                inlined =
+                    inlineArguments names letValues def.body
+            in
+            inlineLetDef
+                (List.append [ name ] names)
+                ({ def | body = inlined }
+                    |> lambdaFromDefinition
+                    |> List.singleton
+                    |> List.append letValues
+                )
+                inValue
+
+        _ ->
+            inlineArguments names letValues v
+
+
+{-| Collect arguments that are applied on a value
+-}
+collectArgValues : TypedValue -> List TypedValue -> ( List TypedValue, TypedValue )
 collectArgValues v argsSoFar =
     case v of
         Value.Apply _ body a ->
             collectArgValues body (a :: argsSoFar)
 
-        Value.Reference _ fqn ->
-            Ok ( argsSoFar, fqn )
+        _ ->
+            ( argsSoFar, v )
+
+
+{-| Collect the params in a lambda
+-}
+collectLambdaParams : TypedValue -> List Name -> List Name
+collectLambdaParams value paramsCollected =
+    case value of
+        Value.Lambda _ pattern body ->
+            case pattern of
+                Value.AsPattern _ (Value.WildcardPattern _) name ->
+                    List.concat [ paramsCollected, [ name ] ]
+                        |> collectLambdaParams body
+
+                _ ->
+                    paramsCollected
 
         _ ->
-            Err ReferenceExpected
+            paramsCollected
 
 
-{-| A utility function that looks up a value definition within the IR and returns
-and expression from it's value.
+{-| A utility function that does a complete inlining of a value.
+If the `target` to is a `Reference` it looks up the function and replaces all references to it's
+param variables with the arguments. If the `target` is a lambda, it first attempts to look into
+the lambda body and rewrite and reference to enclosed variables and then repeats the process for
+the lambda's params.
 -}
-inlineReference : IR -> List TypedValue -> FQName -> Result Error Expression
-inlineReference ir args fqn =
-    case IR.lookupValueDefinition fqn ir of
-        Just def ->
-            inlineArguments def.inputTypes args def.body
+inlineValue : IR -> List TypedValue -> TypedValue -> Result Error Expression
+inlineValue ir args target =
+    case target of
+        Value.Reference _ fqn ->
+            case IR.lookupValueDefinition fqn ir of
+                Just def ->
+                    inlineArguments
+                        (List.map (\( n, _, _ ) -> n) def.inputTypes)
+                        args
+                        def.body
+                        |> expressionFromValue ir
+
+                Nothing ->
+                    args
+                        |> List.map (expressionFromValue ir)
+                        |> ResultList.keepFirstError
+                        |> Result.andThen (mapSDKFunctions fqn)
+
+        Value.Lambda _ _ body ->
+            inlineArguments
+                (collectLambdaParams target [])
+                args
+                body
                 |> expressionFromValue ir
 
-        Nothing ->
-            args
-                |> List.map (expressionFromValue ir)
-                |> ResultList.keepFirstError
-                |> Result.andThen (mapSDKFunctions fqn)
+        _ ->
+            UnhandledValue target |> Err
 
 
 {-| A utility function that replaces variables in a function with their values.
 -}
-inlineArguments : List ( Name, va, Type ta ) -> List TypedValue -> TypedValue -> TypedValue
+inlineArguments : List Name -> List TypedValue -> TypedValue -> TypedValue
 inlineArguments paramList argList fnBody =
     let
         overwriteValue : Name -> TypedValue -> TypedValue -> TypedValue
@@ -313,13 +391,17 @@ inlineArguments paramList argList fnBody =
                         (overwriteValue searchTerm replacement target)
                         (overwriteValue searchTerm replacement arg)
 
+                Value.Lambda a pattern body ->
+                    overwriteValue searchTerm replacement body
+                        |> Value.Lambda a pattern
+
                 _ ->
                     scope
     in
     paramList
         |> List.map2 Tuple.pair argList
         |> List.foldl
-            (\( arg, ( varName, _, _ ) ) body ->
+            (\( arg, varName ) body ->
                 overwriteValue varName arg body
             )
             fnBody
