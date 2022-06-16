@@ -8,7 +8,6 @@ import Elm.Parser
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Expression exposing (Expression(..))
-import Elm.Syntax.ModuleName as Elm
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation as TypeAnnotation
 import List.Extra as List
@@ -33,7 +32,6 @@ import Morphir.IR.Value as Value exposing (Value)
 import Morphir.SDK.ResultList as ResultList
 import Parser
 import Set exposing (Set)
-import Svg.Attributes exposing (d)
 
 
 type alias Errors =
