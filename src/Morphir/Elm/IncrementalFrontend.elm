@@ -8,6 +8,7 @@ import Elm.Parser
 import Elm.Syntax.Declaration exposing (Declaration(..))
 import Elm.Syntax.Exposing as Exposing
 import Elm.Syntax.Expression exposing (Expression(..))
+import Elm.Syntax.ModuleName as Elm
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.TypeAnnotation as TypeAnnotation
 import List.Extra as List
@@ -32,6 +33,7 @@ import Morphir.IR.Value as Value exposing (Value)
 import Morphir.SDK.ResultList as ResultList
 import Parser
 import Set exposing (Set)
+import Svg.Attributes exposing (d)
 
 
 type alias Errors =
@@ -164,7 +166,47 @@ applyFileChanges fileChanges opts maybeExposedModules repo =
                 Ok repo
 
             else
-                applyChangesByOrder fileChanges opts exposedModules repo
+                let
+                    updateRepoModDep : ( ModuleName, Set ModuleName ) -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
+                    updateRepoModDep ( modName, modDeps ) moduleDepDAGRes =
+                        moduleDepDAGRes
+                            |> Result.andThen
+                                (DAG.insertNode modName modDeps >> Result.mapError (\(DAG.CycleDetected from to) -> [ ModuleCycleDetected from to ]))
+
+                    updatedModuleDep : Result Errors (DAG ModuleName)
+                    updatedModuleDep =
+                        fileChanges.insertsAndUpdates
+                            |> List.map
+                                (\( modName, parsedModule ) ->
+                                    ( modName
+                                    , ParsedModule.imports parsedModule
+                                        |> List.map (.moduleName >> Node.value >> List.map Name.fromString)
+                                        |> Set.fromList
+                                    )
+                                )
+                            |> List.foldl updateRepoModDep (Repo.moduleDependencies repo |> Ok)
+
+                    usedModules : DAG ModuleName -> Set ModuleName
+                    usedModules modulesDeps =
+                        exposedModules
+                            |> Set.foldl
+                                (\exposedModule usedModulesSoFar ->
+                                    DAG.collectForwardReachableNodes exposedModule modulesDeps
+                                        |> Set.union usedModulesSoFar
+                                )
+                                exposedModules
+
+                    modulesToProcess : Set ModuleName -> OrderedFileChanges
+                    modulesToProcess usedModuleSet =
+                        { fileChanges
+                            | insertsAndUpdates =
+                                fileChanges.insertsAndUpdates
+                                    |> List.filter (\( modName, _ ) -> Set.member modName usedModuleSet)
+                        }
+                in
+                updatedModuleDep
+                    |> Result.map (usedModules >> modulesToProcess)
+                    |> Result.andThen (\filterFileChanges -> applyChangesByOrder filterFileChanges opts exposedModules repo)
 
         Nothing ->
             -- make everything public when exposedModules not defined
