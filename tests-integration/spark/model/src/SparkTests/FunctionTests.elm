@@ -1,20 +1,6 @@
-module Morphir.Reference.Model.SparkTests exposing (..)
+module SparkTests.FunctionTests exposing (..)
 
-
-type Title
-    = Associate
-    | VP
-    | ED
-    | MD
-
-
-type alias Record1 =
-    { firstName : String
-    , lastName : String
-    , age : Int
-    , title : Title
-    }
-
+import SparkTests.Types exposing (..)
 
 testFrom : List Record1 -> List Record1
 testFrom source =
