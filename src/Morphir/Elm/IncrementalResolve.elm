@@ -96,6 +96,7 @@ type alias ResolvedImports =
     , moduleNamesByAliasOrSingleModuleName : Dict String (Set QualifiedModuleName)
     , moduleNamesByLocalTypeName : Dict Name (Set QualifiedModuleName)
     , moduleNamesByLocalValueName : Dict Name (Set QualifiedModuleName)
+    , moduleNamesByLocalConstructorName : Dict Name (Set QualifiedModuleName)
     }
 
 
@@ -275,8 +276,8 @@ resolveImports repo imports =
                         | visibleNamesByModuleName =
                             resolvedImports.visibleNamesByModuleName
                                 |> Dict.update qualifiedModuleName (insertOrCreateVisibleNames kindOfName name)
-                        , moduleNamesByLocalTypeName =
-                            resolvedImports.moduleNamesByLocalTypeName
+                        , moduleNamesByLocalConstructorName =
+                            resolvedImports.moduleNamesByLocalConstructorName
                                 |> Dict.update name (insertOrCreateSet qualifiedModuleName)
                     }
 
@@ -484,7 +485,7 @@ resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName
                                 resolvedImports.moduleNamesByLocalTypeName
 
                             Constructor ->
-                                resolvedImports.moduleNamesByLocalTypeName
+                                resolvedImports.moduleNamesByLocalConstructorName
 
                             Value ->
                                 resolvedImports.moduleNamesByLocalValueName
