@@ -1,6 +1,6 @@
 module Morphir.Visual.Components.FieldList exposing (..)
 
-import Element exposing (Element, centerY, el, fill, none, paddingXY, rgb, spacingXY, spacing, table, text, width, shrink)
+import Element exposing (Element, centerY, el, fill, none, paddingXY, rgb, shrink, spacingXY, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font

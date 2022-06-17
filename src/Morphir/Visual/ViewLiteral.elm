@@ -1,6 +1,6 @@
 module Morphir.Visual.ViewLiteral exposing (..)
 
-import Element exposing (Element, centerX, centerY, el, padding, row, text)
+import Element exposing (Element, alignLeft, centerX, centerY, el, padding, row, text)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (Decimals(..), usLocale)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -44,4 +44,4 @@ view config literal =
 
 viewLiteralText : String -> String -> Element msg
 viewLiteralText className literalText =
-    el [ Common.cssClass className, centerX, centerY, padding 1 ] (text literalText)
+    el [ Common.cssClass className, centerX, centerY, padding 3, alignLeft ] (text literalText)

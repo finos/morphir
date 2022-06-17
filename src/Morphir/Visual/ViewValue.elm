@@ -8,7 +8,7 @@ import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
 import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.Name exposing (Name, toCamelCase)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
@@ -24,6 +24,7 @@ import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
+import Morphir.Visual.ViewLambda as ViewLambda
 import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
@@ -125,11 +126,7 @@ viewValueByLanguageFeature config value =
                                 , smallSpacing config.state.theme |> spacing
                                 , onClick (config.handlers.onReferenceClicked fQName False)
                                 ]
-                                [ Element.el []
-                                    (text
-                                        (nameToText localName)
-                                    )
-                                ]
+                                [ text (nameToText localName) ]
 
                 Value.Tuple _ elems ->
                     column
@@ -170,7 +167,6 @@ viewValueByLanguageFeature config value =
                              else
                                 Element.none
                             )
-                        , width fill
                         , center
                         ]
                         (text (nameToText name))
@@ -181,20 +177,16 @@ viewValueByLanguageFeature config value =
                         , smallSpacing config.state.theme |> spacing
                         , onClick (config.handlers.onReferenceClicked fQName False)
                         ]
-                        [ Element.el []
-                            (text
-                                (nameToText localName)
-                            )
-                        ]
+                        [ text (nameToText localName) ]
 
                 Value.Field ( _, _ ) subjectValue fieldName ->
                     let
                         defaultValue =
                             Element.row
-                                [ spacing 1 ]
+                                [ smallPadding config.state.theme |> padding, spacing 1, alignLeft ]
                                 [ viewValue config subjectValue
                                 , el [ Font.bold ] (text ".")
-                                , text (nameToText fieldName)
+                                , text (toCamelCase fieldName)
                                 ]
                     in
                     case Config.evaluate (subjectValue |> Value.toRawValue) config of
@@ -216,7 +208,6 @@ viewValueByLanguageFeature config value =
                                              else
                                                 Element.text "Not Found"
                                             )
-                                        , width fill
                                         , center
                                         ]
                                         (String.concat
@@ -299,6 +290,12 @@ viewValueByLanguageFeature config value =
 
                 Value.PatternMatch _ param patterns ->
                     ViewPatternMatch.view config viewValue param patterns
+
+                Value.Lambda _ pattern param ->
+                    ViewLambda.view config viewValue pattern param
+
+                Value.FieldFunction _ name ->
+                    text <| "." ++ toCamelCase name
 
                 Value.Unit _ ->
                     el [ Element.centerX, Element.centerY, smallPadding config.state.theme |> padding ] (text "not set")

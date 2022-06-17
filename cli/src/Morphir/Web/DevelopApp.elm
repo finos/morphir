@@ -1804,7 +1804,7 @@ viewDefinitionDetails model =
                 evaluate testCase =
                     case evaluateOutput ir testCase.inputs fQName of
                         Ok rawValue ->
-                            if rawValue == testCase.expectedOutput then
+                            if (rawValue |> Debug.log "rawValue") == (testCase.expectedOutput |> Debug.log "expectoutput") then
                                 model.theme.colors.positiveLight
 
                             else
@@ -1876,12 +1876,12 @@ viewDefinitionDetails model =
 
                                 styles : List (Element.Attribute msg)
                                 styles =
-                                    [ paddingXY (model.theme |> Theme.scaled -2) (model.theme |> Theme.scaled -5), Background.color <| rgb 0.9 0.9 0.9 ]
+                                    [ paddingXY (model.theme |> Theme.scaled -2) (model.theme |> Theme.scaled -5), Background.color <| rgb 0.9 0.9 0.9, width fill ]
                             in
                             List.map
                                 (\( columnIndex, columnName ) ->
                                     { header = ifThenElse (columnIndex == maxIndex) (el (Font.bold :: styles) <| Theme.ellipseText columnName) (el styles <| Theme.ellipseText columnName)
-                                    , width = Element.shrink |> Element.minimum 400
+                                    , width = Element.shrink
                                     , view =
                                         \index test ->
                                             testRow columnIndex index maxIndex test
