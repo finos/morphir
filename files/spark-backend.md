@@ -196,6 +196,32 @@ gets translated into
     source.filter((org.apache.spark.sql.functions.col("foo")) === ("bar"))
 ```
 
+_**Maybe**_ <br>
+Maybes are how Elm makes it possible to return a value or Nothing, equivalent to null in other languages.
+In Spark, all pure Spark functions and operators handle null gracefully
+(usually returning null itself if any operand is null).
+
+Where Elm code compares against Nothing, Morphir will translate this into a comparison to null in Spark.
+
+For example, to take a list of records and filter out null records in Elm, we would do:
+```
+testMaybeBoolConditionalNull : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
+testMaybeBoolConditionalNull source =
+    source
+        |> List.filter
+            (\a ->
+                a.foo == Nothing
+            )
+```
+
+In Spark, this would be:
+```
+def testMaybeBoolConditional(
+  source: org.apache.spark.sql.DataFrame
+): org.apache.spark.sql.DataFrame =
+  source.filter(org.apache.spark.sql.functions.isnull(org.apache.spark.sql.functions.col("foo")))
+```
+
 # Spark Backend
 
 **mapDistribution**
