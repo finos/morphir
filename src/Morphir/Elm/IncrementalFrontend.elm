@@ -208,7 +208,12 @@ applyFileChanges fileChanges opts maybeExposedModules repo =
 
         Nothing ->
             -- make everything public when exposedModules not defined
-            applyChangesByOrder fileChanges opts (List.map Tuple.first fileChanges.insertsAndUpdates |> Set.fromList) repo
+            -- create the list of exposedModules from insertsAndUpdates and the modules already in the repo
+            Repo.modules repo
+                |> Dict.keys
+                |> List.append (List.map Tuple.first fileChanges.insertsAndUpdates)
+                |> Set.fromList
+                |> (\exposedMods -> applyChangesByOrder fileChanges opts exposedMods repo)
 
 
 applyChangesByOrder : OrderedFileChanges -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
