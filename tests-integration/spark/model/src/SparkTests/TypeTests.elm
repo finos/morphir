@@ -26,6 +26,22 @@ testInt source =
                 a.foo == 13
             )
 
+testMaybeBoolConditionalNull : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
+testMaybeBoolConditionalNull source =
+    source
+        |> List.filter
+            (\a ->
+                a.foo == Nothing
+            )
+
+testMaybeBoolConditionalNotNull : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
+testMaybeBoolConditionalNotNull source =
+    source
+        |> List.filter
+            (\a ->
+                a.foo /= Nothing
+            )
+
 testString : List { foo : String } -> List { foo : String }
 testString source =
     source

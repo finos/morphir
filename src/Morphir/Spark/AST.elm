@@ -226,6 +226,14 @@ expressionFromValue ir morphirValue =
 
         Value.Apply _ _ _ ->
             case morphirValue of
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "not", "equal" ] )) arg) (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
+                    -- `arg /= Nothing` becomes `not(isnull(arg))`
+                    expressionFromValue ir arg
+                        |> Result.map (\expr -> Function "not" [Function "isnull" [expr]])
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "equal" ] )) arg) (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
+                    -- `arg == Nothing` becomes `isnull(arg)`
+                    expressionFromValue ir arg
+                        |> Result.map (\expr -> Function "isnull" [expr])
                 Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
                     case ( package, modName ) of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ) ->
