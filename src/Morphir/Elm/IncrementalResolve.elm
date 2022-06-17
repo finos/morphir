@@ -426,7 +426,7 @@ resolveImports repo imports =
                                     )
                         )
             )
-            (Ok (ResolvedImports Dict.empty Dict.empty Dict.empty Dict.empty))
+            (Ok (ResolvedImports Dict.empty Dict.empty Dict.empty Dict.empty Dict.empty))
 
 
 {-| Finds out the Morphir package and module name from an Elm module name and a Repo.
