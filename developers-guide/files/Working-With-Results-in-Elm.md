@@ -1,5 +1,5 @@
 # Working With Results in Elm - With Morphir Examples
-This post explains the Result type in the Elm Programming Language and use cases is Morphir.
+This post explains the Result type in the Elm Programming Language and use cases in Morphir.
 
 ##Content
 1. [Overview of the Result Type](#) <br>
@@ -11,7 +11,7 @@ This post explains the Result type in the Elm Programming Language and use cases
 
 ###1. [Overview of the Result Type](#) <br>
 Result is a built-in type in Elm that accepts two arguments: error and value. It represents the result of a computation that has the possibility
-of failure. The two type of costructors for the result type is given below:
+of failure. The two types of constructors for the result type are given below:
 ```
 type Result error value
     = Ok value
@@ -26,10 +26,10 @@ So the Result type has two parameters: error and value. It also has two construc
 <br>
 
 ###2. [Mapping Results (map)](#) <br>
-When a computation returns a Result, it is common ot use the map function to further process
-the Result. if the result is Ok (which means that it is successful), then the function is
-applied  and a value is return. If however, the result fails, then the error is propagated.
-An example is given below taken from  the [String.elm](#) file
+When a computation returns a Result, it is common to use the map function to further process
+the Result. If the result is Ok (which means that it is successful), then the function is
+applied  and a value is returned. If however, the result fails, then the error is propagated.
+An example is given below taken from the [String.elm](#) file
 
 **Example 1**
 This example is taken from the String module <br>
@@ -38,7 +38,7 @@ evaluate "" value
 |> Result.map 
     (\val -> Value.Literal () (StringLiteral val))
 ```
-In the snipped, the evaluate function is called which takes  two string argumnents
+In the snippet, the evaluate function is called which takes two string argumnents
 (an empty string and a value) and returns a **Result Error String**. The output of the evaluate
 function is transformed to a **Value Literal** using the map function.<br>
 
@@ -74,7 +74,7 @@ transformed into an IR using the map functon applied to IR.fromDistribution.
 
 
 ### 3. [Chaining Results (andThen)](#) <br><br>
-Sometimes we could have a sequence of operations where each of them have the posibility of failure.
+Sometimes we could have a sequence of operations where each of them have the possibility of failure.
 The signature for the **andThen** function is given below:
 
 ```
@@ -84,8 +84,8 @@ andThen callback result =
       Ok value -> callback value
       Err msg -> Err msg
 ```
-In the code snipped above, the andThen function takes two arguments:<br>
-* **the callback** - this is the funciton that gets called on the value when the result is OK
+In the code snippet above, the andThen function takes two arguments:<br>
+* **the callback** - this is the function that gets called on the value when the result is OK
 * **result** = this is Result type returned by a prior computation
 <br><br>
 
@@ -98,12 +98,12 @@ Elm provides the following function that could be used for handling errors with 
 ```
 withDefault: a -> Result x a -> a
 ```
-This function returns a specified default  value when the result is Err <br>
+This function returns a specified default value when the result is Err <br>
 
 ```
 toMaybe: Result x a -> Maybe a
 ```
-This function returns a specified default  value when the result is Err <br>
+This function returns a specified default value when the result is Err <br>
 
 ```
 fromMaybe: x -> Maybe a -> Result x a
@@ -113,7 +113,7 @@ This function converts a Maybe to a Result <br>
 ```
 mapError: (x -> y) -> Result x a -> Result y a
 ```
-Just like to map function mentioned earlier, the mapError allows you to apply a function
+Just like the map function mentioned earlier, the mapError function allows you to apply a function
 to a result if it is an error<br>
 <br>
 
@@ -122,8 +122,8 @@ To understand the result type more clearly, we would look at a number of use cas
 the Morphir codebase.
 
 **Returning a Result Type**<br>
-In an computatation that contains the posibility of failure, it would be neccessary to 
-return a Result type. For example, the code snipped below takenf rom the JSONBackend.elm 
+In a computatation that contains the possibility of failure, it would be necessary to 
+return a Result type. For example, the code snippet below taken from the JSONBackend.elm 
 file contains a function that returns the encoder reference for a given type:
 
 ```
@@ -156,10 +156,10 @@ parseSource ( path, content ) =
         |> Result.mapError (ParseError path)
         |> Result.map ParsedModule.parsedModule
 ```
-In the example, the parseSource function returns a **Result** typebut the **Elm.Parser.parse**
-function returns a **Result (List Deadend) RawFile**. This means that we neeed to transform
+In the example, the parseSource function returns a **Result** type but the **Elm.Parser.parse**
+function returns a **Result (List Deadend) RawFile**. This means that we need to transform
 both the two parameters of the Result.
-The **mapError** tranforms the **(List Deadend)** into **Error** while the *map* transforms
+The **mapError** transforms the **(List Deadend)** into **Error** while the *map* transforms
 the *RawFile* into *ParsedModule* <br>
 
 **Chaining Result Example**
@@ -176,6 +176,6 @@ mapFunctionBody body =
 ```
 
 In the *mapFunctionBody* example, **Result.mapError** and **Result.andThen** is used.
-First, the **mapFunctionBody** returns a **Rsult Error Scala.Value**. As explained earlier,
-the **mapError** is used to tranform the Error using the *RelationalBackendError*. 
-The *andThen* is used to chain the result with *mapRelation* (which als returns a Resulte)
+First, the **mapFunctionBody** returns a **Result Error Scala.Value**. As explained earlier,
+the **mapError** is used to transform the Error using the *RelationalBackendError*. 
+The *andThen* is used to chain the result with *mapRelation* (which also returns a Result)

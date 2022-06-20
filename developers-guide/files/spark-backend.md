@@ -25,7 +25,7 @@ dataFrame =
 <br>
 
 **_literal_**  <br>
-A literal returns a Scala.Value by apply a Scala.Ref type to a list of arguments.
+A literal returns a Scala.Value by applying a Scala.Ref type to a list of arguments.
 ```
 dataFrame : Scala.Type
 dataFrame =
@@ -34,7 +34,7 @@ dataFrame =
 
 
 _**column**_  <br>
-This is a reference to a column in a Dataframe. This returns a Scala value by apply a reference to column
+This is a reference to a column in a Dataframe. This returns a Scala value by applying a reference to column
 to a string literal representing the name of the column
 ```
 dataFrame : Scala.Type
@@ -49,7 +49,7 @@ This method takes condition and a then branch and returns a Scala value
 
 
 **_andWhen_**  <br>
-This method takes  three parameters: a condition, a then branch and sofar and return a new value
+This method takes  three parameters: a condition, a then branch and soFar and return a new value
 
 
 **_otherwise_**  <br>
@@ -71,7 +71,7 @@ dataFrame =
 
 
 **_select_**  <br>
-Select is used to represent a projection in a relation. It takes a list of columns and returns 
+Select is used to represent a projection in a relation. It takes a list of columns and returns
 a Scala Value representing a dataset
 
 ```
@@ -199,7 +199,7 @@ gets translated into
 # Spark Backend
 
 **mapDistribution**
-This function takes a distribution and produces a Morphir FileMap 
+This function takes a distribution and produces a Morphir FileMap
 which is a dictionary of file paths and their contents. The distribution is the internal repsentation of the IR
 
 
@@ -209,7 +209,7 @@ Result
 
 
 **mapRelation**
-This function take a Relational IR and returns S
+This function takes a Relational IR and returns S
 
 
 **mapColumnExpression**
