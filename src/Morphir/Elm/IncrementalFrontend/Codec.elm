@@ -136,10 +136,6 @@ encodeError error =
                 , Encode.string message
                 ]
 
-        IncrementalFrontend.NoExposedModulesFound ->
-            Encode.list identity
-                [ Encode.string "NoExposedModulesFound" ]
-
         IncrementalFrontend.TypeNotFound fQName ->
             Encode.list identity
                 [ Encode.string "TypeNotFound"
