@@ -1804,7 +1804,7 @@ viewDefinitionDetails model =
                 evaluate testCase =
                     case evaluateOutput ir testCase.inputs fQName of
                         Ok rawValue ->
-                            if (rawValue |> Debug.log "rawValue") == (testCase.expectedOutput |> Debug.log "expectoutput") then
+                            if rawValue == testCase.expectedOutput then
                                 model.theme.colors.positiveLight
 
                             else

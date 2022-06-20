@@ -37,7 +37,7 @@ view config viewValue pattern val =
             row styles [ el [ mediumPadding config.state.theme |> padding ] (text (nameToText name)), text " -> ", viewValue config val ]
 
         _ ->
-            Element.none |> Debug.log "1"
+            Element.none
 
 
 toTypedValue : EnrichedValue -> TypedValue
