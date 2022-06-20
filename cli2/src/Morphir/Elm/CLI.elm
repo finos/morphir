@@ -186,7 +186,7 @@ process msg =
                 |> failOrProceed
 
         ApplyFileChanges packageInfo opts orderedFileChanges repo ->
-            IncrementalFrontend.applyFileChanges orderedFileChanges opts packageInfo.exposedModules repo
+            IncrementalFrontend.applyFileChanges packageInfo.name orderedFileChanges opts packageInfo.exposedModules repo
                 |> returnDistribution
 
         Generate ( optionsJson, packageDistJson ) ->

@@ -15,7 +15,7 @@ import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
 import Morphir.Elm.Frontend as Frontend
 import Morphir.Elm.IncrementalFrontend.Mapper as Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
-import Morphir.Elm.ModuleName as ElmModuleName
+import Morphir.Elm.ModuleName as ElmModuleName exposing (toIRModuleName)
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
 import Morphir.File.Path as FilePath
@@ -153,8 +153,8 @@ filePathToModuleName packageName filePath =
             Err (InvalidSourceFilePath filePath "A valid file path must have at least one directory and one file.")
 
 
-applyFileChanges : OrderedFileChanges -> Frontend.Options -> Maybe (Set Path) -> Repo -> Result Errors Repo
-applyFileChanges fileChanges opts maybeExposedModules repo =
+applyFileChanges : PackageName -> OrderedFileChanges -> Frontend.Options -> Maybe (Set Path) -> Repo -> Result Errors Repo
+applyFileChanges packageName fileChanges opts maybeExposedModules repo =
     case maybeExposedModules of
         Just exposedModules ->
             if Set.isEmpty exposedModules then
@@ -176,11 +176,17 @@ applyFileChanges fileChanges opts maybeExposedModules repo =
                         fileChanges.insertsAndUpdates
                             |> List.map
                                 (\( modName, parsedModule ) ->
-                                    ( modName
-                                    , ParsedModule.imports parsedModule
-                                        |> List.map (.moduleName >> Node.value >> List.map Name.fromString)
+                                    ParsedModule.imports parsedModule
+                                        |> List.filterMap
+                                            (\imp ->
+                                                let
+                                                    importedModuleName =
+                                                        imp.moduleName |> Node.value
+                                                in
+                                                importedModuleName |> toIRModuleName packageName
+                                            )
                                         |> Set.fromList
-                                    )
+                                        |> Tuple.pair modName
                                 )
                             |> List.foldl updateRepoModDep (Repo.moduleDependencies repo |> Ok)
 
@@ -190,12 +196,17 @@ applyFileChanges fileChanges opts maybeExposedModules repo =
                             |> Set.foldl
                                 (\exposedModule usedModulesSoFar ->
                                     DAG.collectForwardReachableNodes exposedModule modulesDeps
+                                        |> Debug.log "DAG.collectForwardReachableNodes exposedModule"
                                         |> Set.union usedModulesSoFar
                                 )
                                 exposedModules
 
                     modulesToProcess : Set ModuleName -> OrderedFileChanges
                     modulesToProcess usedModuleSet =
+                        let
+                            _ =
+                                Debug.log "usedModuleSet" usedModuleSet
+                        in
                         { fileChanges
                             | insertsAndUpdates =
                                 fileChanges.insertsAndUpdates
@@ -540,14 +551,16 @@ processModule moduleName parsedModule opts exposedModules repo =
             , constructors = Set.fromList constructorNames
             , values = Set.fromList valueNames
             }
-
-        resolveName : List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName
-        resolveName modName localName kindOfName =
-            parsedModule
-                |> ParsedModule.imports
-                |> IncrementalResolve.resolveImports repoWithModuleInserted
-                |> Result.andThen
-                    (\resolvedImports ->
+    in
+    parsedModule
+        |> ParsedModule.imports
+        |> IncrementalResolve.resolveImports repoWithModuleInserted
+        |> Result.mapError (ResolveError moduleName >> List.singleton)
+        |> Result.andThen
+            (\resolvedImports ->
+                let
+                    resolveName : List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName
+                    resolveName modName localName kindOfName =
                         IncrementalResolve.resolveLocalName
                             repoWithModuleInserted
                             moduleName
@@ -556,33 +569,33 @@ processModule moduleName parsedModule opts exposedModules repo =
                             modName
                             kindOfName
                             localName
-                    )
-    in
-    extractTypes resolveName accessOf parsedModule
-        |> Result.andThen (orderTypesByDependency (Repo.getPackageName repoWithModuleInserted) moduleName)
-        |> Result.andThen
-            (List.foldl
-                (\( typeName, typeDef ) repoResultForType ->
-                    repoResultForType
-                        |> Result.andThen (processType moduleName typeName typeDef (accessOf Type typeName))
-                )
-                (Ok repoWithModuleInserted)
-            )
-        |> Result.andThen
-            (\repoWithTypesInserted ->
-                if opts.typesOnly then
-                    Ok repoWithTypesInserted
-
-                else
-                    extractValues resolveName parsedModule
-                        |> Result.andThen
-                            (List.foldl
-                                (\( valueName, valueDef ) repoResultSoFar ->
-                                    repoResultSoFar
-                                        |> Result.andThen (processValue (accessOf Value valueName) moduleName valueName valueDef)
-                                )
-                                (Ok repoWithTypesInserted)
+                in
+                extractTypes resolveName accessOf parsedModule
+                    |> Result.andThen (orderTypesByDependency (Repo.getPackageName repoWithModuleInserted) moduleName)
+                    |> Result.andThen
+                        (List.foldl
+                            (\( typeName, typeDef ) repoResultForType ->
+                                repoResultForType
+                                    |> Result.andThen (processType moduleName typeName typeDef (accessOf Type typeName))
                             )
+                            (Ok repoWithModuleInserted)
+                        )
+                    |> Result.andThen
+                        (\repoWithTypesInserted ->
+                            if opts.typesOnly then
+                                Ok repoWithTypesInserted
+
+                            else
+                                extractValues resolveName parsedModule
+                                    |> Result.andThen
+                                        (List.foldl
+                                            (\( valueName, valueDef ) repoResultSoFar ->
+                                                repoResultSoFar
+                                                    |> Result.andThen (processValue (accessOf Value valueName) moduleName valueName valueDef)
+                                            )
+                                            (Ok repoWithTypesInserted)
+                                        )
+                        )
             )
 
 
