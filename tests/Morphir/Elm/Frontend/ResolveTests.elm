@@ -245,7 +245,7 @@ moduleResolverTests =
 collectImportedNamesTests : Test
 collectImportedNamesTests =
     let
-        -- This is a mock to simulate looking up other modules in the package or in it's dependencies
+        -- This is a mock to simulate looking up other modules in the package or in its dependencies
         getModulesExposedNames : Path -> Result Error ( Path, Path, LocalNames )
         getModulesExposedNames moduleName =
             case moduleName of
