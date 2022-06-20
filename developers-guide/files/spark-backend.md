@@ -201,6 +201,28 @@ Maybes are how Elm makes it possible to return a value or Nothing, equivalent to
 In Spark, all pure Spark functions and operators handle null gracefully
 (usually returning null itself if any operand is null).
 
+**Just** <br>
+In Elm, comparison against Maybes must be explicitly against `Just <Value>`.
+In Spark, no special treatment is needed to compare against a value that may be null.
+Therefore, elm code that looks like:
+```
+testMaybeBoolConditional : List { foo: Maybe Bool } -> List { foo : Maybe Bool }
+testMaybeBoolConditional source =
+    source
+        |> List.filter
+            (\a ->
+                a.foo == Just True
+            )
+```
+gets translated in Spark to
+```
+  def testMaybeBoolConditional(
+    source: org.apache.spark.sql.DataFrame
+  ): org.apache.spark.sql.DataFrame =
+    source.filter((org.apache.spark.sql.functions.col("foo")) === (true))
+```
+
+**Nothing** <br>
 Where Elm code compares against Nothing, Morphir will translate this into a comparison to null in Spark.
 
 For example, to take a list of records and filter out null records in Elm, we would do:
