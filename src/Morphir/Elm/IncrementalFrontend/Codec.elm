@@ -124,7 +124,10 @@ encodeError error =
                 ]
 
         IncrementalFrontend.MappingError errors ->
-            Encode.list MapperCodec.encodeError errors
+            Encode.list identity
+                [ Encode.string "MappingError"
+                , Encode.list MapperCodec.encodeError errors
+                ]
 
         IncrementalFrontend.InvalidSourceFilePath path message ->
             Encode.list identity
