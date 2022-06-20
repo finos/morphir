@@ -226,6 +226,9 @@ expressionFromValue ir morphirValue =
 
         Value.Apply _ _ _ ->
             case morphirValue of
+                Value.Apply _ (Value.Constructor _ ( [ [ "morphir" ], [ "s" ,"d" ,"k" ] ], [ [ "maybe" ] ], [ "just" ] ) ) arg ->
+                    -- `Just arg` becomes `arg`
+                    expressionFromValue ir arg
                 Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "not", "equal" ] )) arg) (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
                     -- `arg /= Nothing` becomes `not(isnull(arg))`
                     expressionFromValue ir arg

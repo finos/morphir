@@ -43,6 +43,19 @@ class SparkTypeTest extends FunSuite {
     assert(result.collect()(0)(0) == good_value)
   }
 
+  test("testMaybeBoolConditional") {
+    val data = Seq(Row(null, "baz"), Row(true, "baz"))
+    val schema = StructType(List(
+      StructField("foo", BooleanType, true),
+      StructField("bar", StringType, false),
+    ))
+    val rdd = localTestSession.sparkContext.parallelize(data)
+    val df = localTestSession.createDataFrame(rdd, schema)
+    val result = SparkJobs.testMaybeBoolConditional(df)
+    assert(result.count() == 1)
+    assert(result.collect()(0)(0) == true)
+  }
+
   test("testMaybeBoolConditonalNull") {
     val data = Seq(Row(null, "baz"), Row(true, "baz"))
     val schema = StructType(List(
