@@ -180,10 +180,16 @@ async function testIntegrationBuildScala(cb) {
     // }
 }
 
+async function testIntegrationMakeSpark(cb) {
+    await morphirElmMake(
+        './tests-integration/spark/model',
+        './tests-integration/generated/sparkModel/morphir-ir.json')
+}
+
 async function testIntegrationGenSpark(cb) {
     await morphirElmGen(
-        './tests-integration/generated/refModel/morphir-ir.json',
-        './tests-integration/generated/refModel/src/spark/',
+        './tests-integration/generated/sparkModel/morphir-ir.json',
+        './tests-integration/generated/sparkModel/src/spark/',
         'Spark')
 }
 
@@ -196,6 +202,21 @@ async function testIntegrationBuildSpark(cb) {
      } catch (err) {
          if (err.code == 'ENOENT') {
     console.log("Skipping testIntegrationBuildSpark as `mill` build tool isn't available.");
+         } else {
+             throw err;
+         }
+     }
+}
+
+async function testIntegrationTestSpark(cb) {
+     try {
+         await execa(
+             'mill', ['spark.test'],
+             { stdio, cwd: 'tests-integration' },
+         )
+     } catch (err) {
+         if (err.code == 'ENOENT') {
+    console.log("Skipping testIntegrationTestSpark as `mill` build tool isn't available.");
          } else {
              throw err;
          }
@@ -216,18 +237,22 @@ function testIntegrationTestTypeScript(cb) {
         .pipe(mocha({ require: 'ts-node/register' }));
 }
 
+testIntegrationSpark = series(
+    testIntegrationMakeSpark,
+    testIntegrationGenSpark,
+    testIntegrationBuildSpark,
+    testIntegrationTestSpark,
+)
+
 const testIntegration = series(
     testIntegrationClean,
     testIntegrationMake,
     parallel(
         testIntegrationMorphirTest,
+	testIntegrationSpark,
         series(
             testIntegrationGenScala,
             testIntegrationBuildScala,
-        ),
-        series(
-            testIntegrationGenSpark,
-            testIntegrationBuildSpark
         ),
         series(
             testIntegrationGenTypeScript,
@@ -277,6 +302,7 @@ exports.buildCLI2 = buildCLI2;
 exports.build = build;
 exports.test = test;
 exports.testIntegration = testIntegration;
+exports.testIntegrationSpark = testIntegrationSpark;
 exports.testMorphirIR = testMorphirIR;
 exports.testMorphirIRTypeScript = testMorphirIR;
 exports.default =

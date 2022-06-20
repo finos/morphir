@@ -164,11 +164,56 @@ applyFileChanges fileChanges opts maybeExposedModules repo =
                 Ok repo
 
             else
-                applyChangesByOrder fileChanges opts exposedModules repo
+                let
+                    updateRepoModDep : ( ModuleName, Set ModuleName ) -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
+                    updateRepoModDep ( modName, modDeps ) moduleDepDAGRes =
+                        moduleDepDAGRes
+                            |> Result.andThen
+                                (DAG.insertNode modName modDeps >> Result.mapError (\(DAG.CycleDetected from to) -> [ ModuleCycleDetected from to ]))
+
+                    updatedModuleDep : Result Errors (DAG ModuleName)
+                    updatedModuleDep =
+                        fileChanges.insertsAndUpdates
+                            |> List.map
+                                (\( modName, parsedModule ) ->
+                                    ( modName
+                                    , ParsedModule.imports parsedModule
+                                        |> List.map (.moduleName >> Node.value >> List.map Name.fromString)
+                                        |> Set.fromList
+                                    )
+                                )
+                            |> List.foldl updateRepoModDep (Repo.moduleDependencies repo |> Ok)
+
+                    usedModules : DAG ModuleName -> Set ModuleName
+                    usedModules modulesDeps =
+                        exposedModules
+                            |> Set.foldl
+                                (\exposedModule usedModulesSoFar ->
+                                    DAG.collectForwardReachableNodes exposedModule modulesDeps
+                                        |> Set.union usedModulesSoFar
+                                )
+                                exposedModules
+
+                    modulesToProcess : Set ModuleName -> OrderedFileChanges
+                    modulesToProcess usedModuleSet =
+                        { fileChanges
+                            | insertsAndUpdates =
+                                fileChanges.insertsAndUpdates
+                                    |> List.filter (\( modName, _ ) -> Set.member modName usedModuleSet)
+                        }
+                in
+                updatedModuleDep
+                    |> Result.map (usedModules >> modulesToProcess)
+                    |> Result.andThen (\filterFileChanges -> applyChangesByOrder filterFileChanges opts exposedModules repo)
 
         Nothing ->
             -- make everything public when exposedModules not defined
-            applyChangesByOrder fileChanges opts (List.map Tuple.first fileChanges.insertsAndUpdates |> Set.fromList) repo
+            -- create the list of exposedModules from insertsAndUpdates and the modules already in the repo
+            Repo.modules repo
+                |> Dict.keys
+                |> List.append (List.map Tuple.first fileChanges.insertsAndUpdates)
+                |> Set.fromList
+                |> (\exposedMods -> applyChangesByOrder fileChanges opts exposedMods repo)
 
 
 applyChangesByOrder : OrderedFileChanges -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo

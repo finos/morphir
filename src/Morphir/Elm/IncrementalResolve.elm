@@ -96,6 +96,7 @@ type alias ResolvedImports =
     , moduleNamesByAliasOrSingleModuleName : Dict String (Set QualifiedModuleName)
     , moduleNamesByLocalTypeName : Dict Name (Set QualifiedModuleName)
     , moduleNamesByLocalValueName : Dict Name (Set QualifiedModuleName)
+    , moduleNamesByLocalConstructorName : Dict Name (Set QualifiedModuleName)
     }
 
 
@@ -275,8 +276,8 @@ resolveImports repo imports =
                         | visibleNamesByModuleName =
                             resolvedImports.visibleNamesByModuleName
                                 |> Dict.update qualifiedModuleName (insertOrCreateVisibleNames kindOfName name)
-                        , moduleNamesByLocalTypeName =
-                            resolvedImports.moduleNamesByLocalTypeName
+                        , moduleNamesByLocalConstructorName =
+                            resolvedImports.moduleNamesByLocalConstructorName
                                 |> Dict.update name (insertOrCreateSet qualifiedModuleName)
                     }
 
@@ -338,6 +339,29 @@ resolveImports repo imports =
                             explicitExposeNodes
                                 |> List.foldl
                                     (\(Node _ explicitExpose) resolvedImportsSoFar ->
+                                        let
+                                            addTypeOrConstructor : Name -> Result Error ResolvedImports
+                                            addTypeOrConstructor typeName =
+                                                moduleSpec.types
+                                                    |> Dict.get typeName
+                                                    |> Result.fromMaybe (ImportedLocalNameNotFound qualifiedModuleName typeName Type)
+                                                    |> Result.andThen
+                                                        (\documentedTypeSpec ->
+                                                            case documentedTypeSpec.value of
+                                                                Type.TypeAliasSpecification _ (Type.Record _ _) ->
+                                                                    -- Record aliases define an implicit type constructor
+                                                                    resolvedImportsSoFar
+                                                                        |> Result.map
+                                                                            (\soFar ->
+                                                                                soFar 
+                                                                                    |> addLocalName Type qualifiedModuleName typeName
+                                                                                    |> addLocalName Constructor qualifiedModuleName typeName
+                                                                            )
+
+                                                                _ ->
+                                                                    resolvedImportsSoFar |> Result.map (addLocalName Type qualifiedModuleName typeName)
+                                                        )
+                                        in
                                         case explicitExpose of
                                             Exposing.InfixExpose _ ->
                                                 -- We ignore infix declarations
@@ -362,7 +386,7 @@ resolveImports repo imports =
                                                         Name.fromString localName
                                                 in
                                                 if moduleSpec.types |> Dict.member typeName then
-                                                    resolvedImportsSoFar |> Result.map (addLocalName Type qualifiedModuleName typeName)
+                                                    addTypeOrConstructor typeName
 
                                                 else
                                                     Err (ImportedLocalNameNotFound qualifiedModuleName typeName Type)
@@ -381,6 +405,14 @@ resolveImports repo imports =
                                                             |> Result.andThen
                                                                 (\documentedTypeSpec ->
                                                                     case documentedTypeSpec.value of
+                                                                        Type.TypeAliasSpecification _ (Type.Record _ _) ->
+                                                                            -- Record aliases define an implicit type constructor
+                                                                            resolvedImportsSoFar
+                                                                                |> Result.map
+                                                                                    (\soFar ->
+                                                                                        soFar |> addLocalName Constructor qualifiedModuleName typeName
+                                                                                    )
+
                                                                         Type.CustomTypeSpecification _ ctors ->
                                                                             resolvedImportsSoFar
                                                                                 |> Result.map
@@ -396,8 +428,7 @@ resolveImports repo imports =
                                                                 )
 
                                                     Nothing ->
-                                                        resolvedImportsSoFar
-                                                            |> Result.map (addLocalName Type qualifiedModuleName typeName)
+                                                        addTypeOrConstructor typeName
                                     )
                                     (Ok resolvedImports)
 
@@ -425,7 +456,7 @@ resolveImports repo imports =
                                     )
                         )
             )
-            (Ok (ResolvedImports Dict.empty Dict.empty Dict.empty Dict.empty))
+            (Ok (ResolvedImports Dict.empty Dict.empty Dict.empty Dict.empty Dict.empty))
 
 
 {-| Finds out the Morphir package and module name from an Elm module name and a Repo.
@@ -484,7 +515,7 @@ resolveLocalName repo currentModuleName localNames resolvedImports elmModuleName
                                 resolvedImports.moduleNamesByLocalTypeName
 
                             Constructor ->
-                                resolvedImports.moduleNamesByLocalTypeName
+                                resolvedImports.moduleNamesByLocalConstructorName
 
                             Value ->
                                 resolvedImports.moduleNamesByLocalValueName

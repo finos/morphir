@@ -3,8 +3,10 @@ This is the entry point for the Spark Backend.
 
 # The Spark API
 The Spark API defines types for working with Spark.
-The current Spark API defines the following values:
 
+
+## Values
+The current Spark API defines the following values:
 
 **_spark_** <br>
 This is a variable maps to a Scala value
@@ -115,8 +117,84 @@ filter predicate from =
         ]
 ```
 
+## Types
+The current Spark API processes the following types:
 
+_**Bool**_ <br>
+Values translated form basic Elm Booleans are treated as basic Scala Booleans, i.e.
+```
+testBool : List { foo : Bool } -> List { foo : Bool }
+testBool source =
+    source
+        |> List.filter
+            (\a ->
+                a.foo == False
+            )
+```
+gets translated into
+```
+  def testBool(
+    source: org.apache.spark.sql.DataFrame
+  ): org.apache.spark.sql.DataFrame =
+    source.filter((org.apache.spark.sql.functions.col("foo")) === (false))
+```
 
+_**Float**_ <br>
+Values translated from basic Elm Floating-point numbers are treated as basic Scala Floats, i.e.
+```
+testFloat : List { foo : Float } -> List { foo : Float }
+testFloat source =
+    source
+        |> List.filter
+            (\a ->
+                a.foo == 9.99
+            )
+```
+gets translated into
+```
+  def testFloat(
+    source: org.apache.spark.sql.DataFrame
+  ): org.apache.spark.sql.DataFrame =
+    source.filter((org.apache.spark.sql.functions.col("foo")) === (9.99))
+```
+
+_**Int**_ <br>
+Values translated from basic Elm Integers are treated as basic Scala Integers, i.e.
+```
+testInt : List { foo : Int } -> List { foo : Int }
+testInt source =
+    source
+        |> List.filter
+            (\a ->
+                a.foo == 13
+            )
+```
+gets translated into
+```
+  def testInt(
+    source: org.apache.spark.sql.DataFrame
+  ): org.apache.spark.sql.DataFrame =
+    source.filter((org.apache.spark.sql.functions.col("foo")) === (13))
+```
+
+_**String**_ <br>
+Values translated from basic Elm Strings are treated as basic Scala Strings, i.e.
+```
+testString : List { foo : String } -> List { foo : String }
+testString source =
+    source
+        |> List.filter
+            (\a ->
+                a.foo == "bar"
+            )
+```
+gets translated into
+```
+  def testString(
+    source: org.apache.spark.sql.DataFrame
+  ): org.apache.spark.sql.DataFrame =
+    source.filter((org.apache.spark.sql.functions.col("foo")) === ("bar"))
+```
 
 # Spark Backend
 

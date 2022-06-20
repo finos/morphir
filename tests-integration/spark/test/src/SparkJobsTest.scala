@@ -1,7 +1,7 @@
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.explode
 import org.scalatest.FunSuite
-import morphir.reference.model.sparktests.SparkJobs
+import sparktests.functiontests.SparkJobs
 
 class test1 extends FunSuite {
 
@@ -10,7 +10,7 @@ class test1 extends FunSuite {
   import localTestSession.implicits._
 
   val columns = Seq("firstName","lastName", "age")
-  val data = Seq(("Jane", "Doe", 13), ("John", "Smith", 30))
+  val data = Seq(("Jane", "Doe", 13), ("John", "Smith", 12))
   val rdd = localTestSession.sparkContext.parallelize(data)
 
   test("testFrom") {
@@ -30,7 +30,7 @@ class test1 extends FunSuite {
       val row1 = rows(1)
       assert(row1(0) == "John")
       assert(row1(1) == "Smith")
-      assert(row1(2) == 30)
+      assert(row1(2) == 12)
     }
 
   test("testSelect1") {
@@ -81,7 +81,7 @@ class test1 extends FunSuite {
       val row0 = rows(0)
       assert(row0(0) == "John")
       assert(row0(1) == "Smith")
-      assert(row0(2) == 30)
+      assert(row0(2) == 12)
     }
 }
 
