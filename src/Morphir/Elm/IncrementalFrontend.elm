@@ -49,7 +49,6 @@ type Error
     | MappingError Mapper.Errors
     | ResolveError ModuleName IncrementalResolve.Error
     | InvalidSourceFilePath FilePath.Path String
-    | NoExposedModulesFound
 
 
 type alias OrderedFileChanges =
