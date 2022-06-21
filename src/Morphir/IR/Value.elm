@@ -200,7 +200,7 @@ type Value ta va
     | Constructor va FQName
     | Tuple va (List (Value ta va))
     | List va (List (Value ta va))
-    | Record va (List ( Name, Value ta va ))
+    | Record va (Dict Name (Value ta va))
     | Variable va Name
     | Reference va FQName
     | Field va (Value ta va) Name
@@ -521,9 +521,9 @@ mapValueAttributes f g v =
         Record a fields ->
             Record (g a)
                 (fields
-                    |> List.map
-                        (\( fieldName, fieldValue ) ->
-                            ( fieldName, mapValueAttributes f g fieldValue )
+                    |> Dict.map
+                        (\_ fieldValue ->
+                            mapValueAttributes f g fieldValue
                         )
                 )
 
@@ -643,7 +643,7 @@ collectValueAttributes v =
             a :: (items |> List.concatMap collectValueAttributes)
 
         Record a fields ->
-            a :: (fields |> List.concatMap (Tuple.second >> collectValueAttributes))
+            a :: (fields |> Dict.values |> List.concatMap collectValueAttributes)
 
         Variable a _ ->
             [ a ]
@@ -768,7 +768,7 @@ collectVariables value =
             collectUnion items
 
         Record _ fields ->
-            collectUnion (fields |> List.map Tuple.second)
+            collectUnion (Dict.values fields)
 
         Variable _ name ->
             Set.singleton name
@@ -836,7 +836,7 @@ collectReferences value =
             collectUnion items
 
         Record _ fields ->
-            collectUnion (fields |> List.map Tuple.second)
+            collectUnion (Dict.values fields)
 
         Reference _ fQName ->
             Set.singleton fQName
@@ -990,9 +990,9 @@ indexedMapValue f baseIndex value =
                             ( ( fieldName, mappedFieldValue ), lastFieldIndex )
                         )
                         baseIndex
-                        fields
+                        (Dict.toList fields)
             in
-            ( Record (f baseIndex a) mappedFields, valuesLastIndex )
+            ( Record (f baseIndex a) (Dict.fromList mappedFields), valuesLastIndex )
 
         Variable a name ->
             ( Variable (f baseIndex a) name, baseIndex )
@@ -1252,7 +1252,7 @@ rewriteValue f value =
                     List va (items |> List.map (rewriteValue f))
 
                 Record va fields ->
-                    Record va (fields |> List.map (\( n, v ) -> ( n, rewriteValue f v )))
+                    Record va (fields |> Dict.map (\_ v -> rewriteValue f v))
 
                 Field va subject name ->
                     Field va (rewriteValue f subject) name
@@ -1448,7 +1448,7 @@ list attributes items =
     List attributes items
 
 
-{-| A [record] represents a list of fields where each field has a name and a value.
+{-| A [record] represents a dictionary of fields where the keys are the field names, and the values are the field values
 
     { foo = "bar" } -- Record [ ( [ "foo" ], Literal (StringLiteral "bar") ) ]
 
@@ -1459,7 +1459,7 @@ list attributes items =
 [record]: https://en.wikipedia.org/wiki/Record_(computer_science)
 
 -}
-record : va -> List ( Name, Value ta va ) -> Value ta va
+record : va -> Dict Name (Value ta va) -> Value ta va
 record attributes fields =
     Record attributes fields
 
@@ -1819,7 +1819,7 @@ isData value =
 
         Record _ fields ->
             fields
-                |> List.map Tuple.second
+                |> Dict.values
                 |> List.all isData
 
         Apply _ fun arg ->
@@ -1924,6 +1924,7 @@ toString value =
                     String.concat
                         [ "{ "
                         , fields
+                            |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     String.concat [ Name.toCamelCase fieldName, " = ", toString fieldValue ]

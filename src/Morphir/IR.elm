@@ -312,8 +312,8 @@ resolveRecordConstructors value ir =
                                             case typeSpec of
                                                 Type.TypeAliasSpecification _ (Type.Record _ fields) ->
                                                     Just
-                                                        (Value.Record va
-                                                            (List.map2 Tuple.pair (fields |> List.map .name) args)
+                                                        (Value.Record va <|
+                                                            Dict.fromList (List.map2 Tuple.pair (fields |> List.map .name) args)
                                                         )
 
                                                 _ ->

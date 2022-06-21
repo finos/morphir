@@ -1,17 +1,16 @@
 module Morphir.Visual.XRayView exposing (NodeType(..), TreeNode(..), childNodes, noPadding, patternToNode, valueToNode, viewConstructorName, viewLiteral, viewPatternAsHeader, viewReferenceName, viewTreeNode, viewType, viewValue, viewValueAsHeader, viewValueDefinition)
 
 import Dict
-import Element exposing (Element, column, el, fill, paddingEach, paddingXY, rgb, row, spacing, text, width, link)
+import Element exposing (Element, column, el, fill, link, paddingEach, paddingXY, rgb, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, Value)
 import Morphir.Visual.Common exposing (grayScale)
-import Morphir.IR.Path exposing (Path)
-
 
 
 viewValueDefinition : (va -> Element msg) -> Value.Definition ta va -> Element msg
@@ -148,7 +147,7 @@ viewValueAsHeader value =
                 header [ dataLabel "List" ]
 
         Value.Record _ fields ->
-            if List.isEmpty fields then
+            if Dict.isEmpty fields then
                 header [ dataLabel "Record", text "{}" ]
 
             else
@@ -259,10 +258,11 @@ valueToNode tag value =
             TreeNode tag
                 (ValueNode value)
                 (fields
-                    |> List.map
-                        (\( fieldName, fieldValue ) ->
+                    |> Dict.map
+                        (\fieldName fieldValue ->
                             valueToNode (Just (fieldName |> Name.toCamelCase)) fieldValue
                         )
+                    |> Dict.values
                 )
 
         Value.Field _ subject _ ->
@@ -419,13 +419,13 @@ patternToNode maybeTag pattern =
                 []
 
 
-viewReferenceName : (a, b, Name) -> Element msg
+viewReferenceName : ( a, b, Name ) -> Element msg
 viewReferenceName ( _, _, localName ) =
     text
         (localName |> Name.toCamelCase)
 
 
-viewConstructorName : (a, b, Name) -> Element msg
+viewConstructorName : ( a, b, Name ) -> Element msg
 viewConstructorName ( _, _, localName ) =
     text
         (localName |> Name.toTitleCase)
@@ -459,7 +459,7 @@ noPadding =
     { left = 0, right = 0, top = 0, bottom = 0 }
 
 
-viewType : (Path -> String) -> Type () ->  Element msg
+viewType : (Path -> String) -> Type () -> Element msg
 viewType urlBuilder tpe =
     case tpe of
         Type.Variable _ varName ->
@@ -467,7 +467,8 @@ viewType urlBuilder tpe =
 
         Type.Reference _ ( b, c, localName ) argTypes ->
             if List.isEmpty argTypes then
-                link [] {url = "/home" ++ urlBuilder b ++ urlBuilder c ++ "/" ++ Name.toTitleCase localName, label = text <| Name.toTitleCase localName}
+                link [] { url = "/home" ++ urlBuilder b ++ urlBuilder c ++ "/" ++ Name.toTitleCase localName, label = text <| Name.toTitleCase localName }
+
             else
                 row [ spacing 6 ]
                     (List.concat

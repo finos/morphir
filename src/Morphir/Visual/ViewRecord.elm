@@ -1,6 +1,7 @@
 module Morphir.Visual.ViewRecord exposing (..)
 
-import Element exposing (Element, el, padding, rgb, none)
+import Dict exposing (Dict)
+import Element exposing (Element, el, none, padding, rgb)
 import Element.Background as Background
 import Element.Border as Border
 import Morphir.IR.Name exposing (Name)
@@ -10,15 +11,15 @@ import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding)
 
 
-view : Config msg -> (EnrichedValue -> Element msg) -> List ( Name, EnrichedValue ) -> Element msg
+view : Config msg -> (EnrichedValue -> Element msg) -> Dict Name EnrichedValue -> Element msg
 view config viewValue items =
     let
         fields =
-            List.map (\( name, val ) -> ( name, viewValue val )) items
+            Dict.toList <| Dict.map (\name val -> viewValue val) items
     in
-
-    if List.isEmpty items then
+    if Dict.isEmpty items then
         none
+
     else
         el
             [ smallPadding config.state.theme |> padding

@@ -16,7 +16,7 @@ import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
 view : Config msg -> (EnrichedValue -> Element msg) -> Type () -> List EnrichedValue -> Element msg
 view config viewValue itemType items =
     if List.isEmpty items then
-        el [centerX, centerY]
+        el [ centerX, centerY ]
             (text " [ ] ")
 
     else
@@ -55,7 +55,6 @@ view config viewValue itemType items =
                                                     (case item of
                                                         Value.Record _ fieldValues ->
                                                             fieldValues
-                                                                |> Dict.fromList
                                                                 |> Dict.get field.name
                                                                 |> Maybe.map viewValue
                                                                 |> Maybe.withDefault (text "???")
