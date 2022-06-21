@@ -64,7 +64,7 @@ type alias IR =
     }
 
 
-{-| Creates and empty IR with no types or values.
+{-| Creates an empty IR with no types or values.
 -}
 empty : IR
 empty =
