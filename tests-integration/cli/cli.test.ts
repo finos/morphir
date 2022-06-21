@@ -178,7 +178,7 @@ describe('Testing Morphir-elm make command', () => {
 		expect(rentalTypeModule[1].access).toMatch(/[Pp]rivate/)
 	})
 
-	test('should fail to update type', async () => {
+	test.skip('should fail to update type', async () => {
 		await writeFile(
 			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
 			concat(

@@ -144,7 +144,7 @@ mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
 -- Value Mappings
 
 
-mapDeclarationsToValue : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> List (Node Declaration) -> Result Errors (List ( FQName, ( Maybe (Type ()), Value () () ) ))
+mapDeclarationsToValue : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> List (Node Declaration) -> Result Errors (List ( FQName, ( ( Maybe (Type ()), Value () () ), String ) ))
 mapDeclarationsToValue resolveName parsedModule decls =
     let
         moduleName : Elm.ModuleName
@@ -187,9 +187,15 @@ mapDeclarationsToValue resolveName parsedModule decls =
                                             in
                                             ( maybeValueType, maybeTypedValueDef.body |> Value.mapValueAttributes (always ()) identity )
                                         )
+
+                            valueDoc : String
+                            valueDoc =
+                                function.documentation
+                                    |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
+                                    |> Maybe.withDefault ""
                         in
                         valueDef
-                            |> Result.map2 Tuple.pair valueName
+                            |> Result.map2 (\valName valDef -> ( valName, ( valDef, valueDoc ) )) valueName
                             |> Just
 
                     _ ->

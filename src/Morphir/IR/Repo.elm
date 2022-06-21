@@ -362,8 +362,8 @@ deleteModule moduleName (Repo repo) =
 
 {-| Insert types into repo modules and update the type dependency graph of the repo
 -}
-insertType : ModuleName -> Name -> Type.Definition () -> Access -> Repo -> Result Errors Repo
-insertType moduleName typeName typeDef access (Repo repo) =
+insertType : ModuleName -> Name -> Type.Definition () -> Access -> String -> Repo -> Result Errors Repo
+insertType moduleName typeName typeDef access typeDoc (Repo repo) =
     let
         validateTypeExistsResult : AccessControlled (Module.Definition () (Type ())) -> Result Errors (AccessControlled (Module.Definition () (Type ())))
         validateTypeExistsResult accessControlledModuleDef =
@@ -403,7 +403,7 @@ insertType moduleName typeName typeDef access (Repo repo) =
             accessControlledModDef
                 |> AccessControlled.map
                     (\modDef ->
-                        Dict.insert typeName (AccessControlled access (typeDef |> Documented.Documented "")) modDef.types
+                        Dict.insert typeName (AccessControlled access (typeDef |> Documented.Documented typeDoc)) modDef.types
                             |> (\updatedTypes -> { modDef | types = updatedTypes })
                     )
                 |> (\updatedAccessControlledModDef ->
@@ -538,8 +538,8 @@ deleteType moduleName typeName (Repo repo) =
 {-| Insert a new value into the repo without type information on each node. The repo will infer the types of each node
 and store it. This function might fail if the inferred type is not compatible with the declared type that's passed in.
 -}
-insertValue : ModuleName -> Name -> Maybe (Type ()) -> Value () () -> Access -> Repo -> Result Errors Repo
-insertValue moduleName valueName maybeValueType value access repo =
+insertValue : ModuleName -> Name -> Maybe (Type ()) -> Value () () -> Access -> String -> Repo -> Result Errors Repo
+insertValue moduleName valueName maybeValueType value access valueDoc repo =
     let
         ir : IR
         ir =
@@ -558,7 +558,7 @@ insertValue moduleName valueName maybeValueType value access repo =
             Infer.inferValueDefinition ir valueDef
                 |> Result.map (Value.mapDefinitionAttributes identity Tuple.second)
                 |> Result.mapError (TypeCheckError moduleName valueName >> List.singleton)
-                |> Result.andThen (\typedValueDef -> insertTypedValue moduleName valueName typedValueDef repo)
+                |> Result.andThen (\typedValueDef -> insertTypedValue moduleName valueName typedValueDef valueDoc repo)
 
         Nothing ->
             Infer.inferValue ir value
@@ -571,7 +571,7 @@ insertValue moduleName valueName maybeValueType value access repo =
                             typedValueDef =
                                 Value.typeAndValueToDefinition (typedValue |> Value.valueAttribute) typedValue
                         in
-                        insertTypedValue moduleName valueName typedValueDef repo
+                        insertTypedValue moduleName valueName typedValueDef valueDoc repo
                     )
 
 
@@ -629,7 +629,7 @@ updateValue moduleName valueName maybeValueType value access repo =
                 |> Result.andThen
                     (\typedValueDef ->
                         removeValue repo
-                            |> Result.andThen (insertTypedValue moduleName valueName typedValueDef)
+                            |> Result.andThen (insertTypedValue moduleName valueName typedValueDef "")
                     )
 
         Nothing ->
@@ -644,7 +644,7 @@ updateValue moduleName valueName maybeValueType value access repo =
                                 Value.typeAndValueToDefinition (typedValue |> Value.valueAttribute) typedValue
                         in
                         removeValue repo
-                            |> Result.andThen (insertTypedValue moduleName valueName typedValueDef)
+                            |> Result.andThen (insertTypedValue moduleName valueName typedValueDef "")
                     )
 
 
@@ -674,8 +674,8 @@ deleteValue moduleName valueName (Repo repo) =
 
 {-| Insert typed values into repo modules and update the value dependency graph of the repo
 -}
-insertTypedValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
-insertTypedValue moduleName valueName valueDef repo =
+insertTypedValue : ModuleName -> Name -> Value.Definition () (Type ()) -> String -> Repo -> Result Errors Repo
+insertTypedValue moduleName valueName valueDef valueDoc repo =
     let
         validateValueExistsResult : AccessControlled (Module.Definition () (Type ())) -> Result Errors (AccessControlled (Module.Definition () (Type ())))
         validateValueExistsResult accessControlledModuleDef =
@@ -715,7 +715,7 @@ insertTypedValue moduleName valueName valueDef repo =
             accessControlledModDef
                 |> AccessControlled.map
                     (\modDef ->
-                        Dict.insert valueName (public (valueDef |> Documented.Documented "")) modDef.values
+                        Dict.insert valueName (public (valueDef |> Documented.Documented valueDoc)) modDef.values
                             |> (\updatedValues -> { modDef | values = updatedValues })
                     )
                 |> (\updatedAccessControlledModDef ->
