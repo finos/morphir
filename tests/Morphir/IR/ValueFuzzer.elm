@@ -175,7 +175,7 @@ recordFuzzer fieldFuzzers =
                     fieldFuzzer
             )
             (Fuzz.constant [])
-        |> Fuzz.map (Value.Record ())
+        |> Fuzz.map (Dict.fromList >> Value.Record ())
 
 
 customFuzzer : Path -> Path -> List ( Name, List (Fuzzer RawValue) ) -> Fuzzer RawValue
