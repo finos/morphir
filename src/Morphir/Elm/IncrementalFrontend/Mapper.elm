@@ -414,7 +414,9 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                         )
 
             else
-                Err [ UnresolvedVariable (SourceLocation moduleName targetVarRange) targetVarName ]
+                resolveReferenceName [] targetVarName Value
+                    |> Result.mapError (ResolveError (SourceLocation moduleName targetVarRange) >> List.singleton)
+                    |> Result.map (Value.Reference defaultValueAttribute)
 
         Expression.GLSLExpression _ ->
             Err
