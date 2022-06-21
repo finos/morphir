@@ -368,6 +368,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                             Value.Record _ fields ->
                                 -- Once we hve the fields we fold through the field updates
                                 fieldUpdates
+                                    |> Dict.toList
                                     |> List.foldl
                                         -- For each field update we update a single field and return the new field dictionary
                                         (\( fieldName, newFieldValue ) fieldsResultSoFar ->

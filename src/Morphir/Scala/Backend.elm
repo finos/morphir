@@ -773,12 +773,13 @@ mapValue inScopeVars value =
             Scala.Apply
                 (Scala.Select (mapValue inScopeVars subjectValue) "copy")
                 (fieldUpdates
-                    |> List.map
-                        (\( fieldName, fieldValue ) ->
+                    |> Dict.map
+                        (\fieldName fieldValue ->
                             Scala.ArgValue
                                 (Just (mapValueName fieldName))
                                 (mapValue inScopeVars fieldValue)
                         )
+                    |> Dict.values
                 )
 
         Unit a ->

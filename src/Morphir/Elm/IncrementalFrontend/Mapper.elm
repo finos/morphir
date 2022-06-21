@@ -408,6 +408,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                         )
                     |> ResultList.keepAllErrors
                     |> Result.mapError List.concat
+                    |> Result.map Dict.fromList
                     |> Result.map
                         (Value.UpdateRecord
                             defaultValueAttribute

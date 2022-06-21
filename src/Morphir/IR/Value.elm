@@ -212,7 +212,7 @@ type Value ta va
     | Destructure va (Pattern va) (Value ta va) (Value ta va)
     | IfThenElse va (Value ta va) (Value ta va) (Value ta va)
     | PatternMatch va (Value ta va) (List ( Pattern va, Value ta va ))
-    | UpdateRecord va (Value ta va) (List ( Name, Value ta va ))
+    | UpdateRecord va (Value ta va) (Dict Name (Value ta va))
     | Unit va
 
 
@@ -578,9 +578,9 @@ mapValueAttributes f g v =
             UpdateRecord (g a)
                 (mapValueAttributes f g valueToUpdate)
                 (fieldsToUpdate
-                    |> List.map
-                        (\( fieldName, fieldValue ) ->
-                            ( fieldName, mapValueAttributes f g fieldValue )
+                    |> Dict.map
+                        (\_ fieldValue ->
+                            mapValueAttributes f g fieldValue
                         )
                 )
 
@@ -697,7 +697,8 @@ collectValueAttributes v =
                 :: List.append
                     (collectValueAttributes valueToUpdate)
                     (fieldsToUpdate
-                        |> List.concatMap (Tuple.second >> collectValueAttributes)
+                        |> Dict.values
+                        |> List.concatMap collectValueAttributes
                     )
 
         Unit a ->
@@ -810,7 +811,7 @@ collectVariables value =
                 |> Set.union (collectVariables branchOutOn)
 
         UpdateRecord _ valueToUpdate fieldsToUpdate ->
-            collectUnion (fieldsToUpdate |> List.map Tuple.second)
+            collectUnion (fieldsToUpdate |> Dict.values)
                 |> Set.union (collectVariables valueToUpdate)
 
         _ ->
@@ -876,7 +877,7 @@ collectReferences value =
                 |> Set.union (collectReferences branchOutOn)
 
         UpdateRecord _ valueToUpdate fieldsToUpdate ->
-            collectUnion (fieldsToUpdate |> List.map Tuple.second)
+            collectUnion (fieldsToUpdate |> Dict.values)
                 |> Set.union (collectReferences valueToUpdate)
 
         _ ->
@@ -1162,9 +1163,9 @@ indexedMapValue f baseIndex value =
                             ( ( fieldName, mappedFieldValue ), lastFieldIndex )
                         )
                         (subjectValueLastIndex + 1)
-                        fields
+                        (Dict.toList fields)
             in
-            ( UpdateRecord (f baseIndex a) mappedSubjectValue mappedFields, valuesLastIndex )
+            ( UpdateRecord (f baseIndex a) mappedSubjectValue (Dict.fromList mappedFields), valuesLastIndex )
 
         Unit a ->
             ( Unit (f baseIndex a), baseIndex )
@@ -1294,7 +1295,7 @@ rewriteValue f value =
                 UpdateRecord va subject fields ->
                     UpdateRecord va
                         (rewriteValue f subject)
-                        (fields |> List.map (\( n, v ) -> ( n, rewriteValue f v )))
+                        (fields |> Dict.map (\_ v -> rewriteValue f v))
 
                 _ ->
                     value
@@ -1655,7 +1656,7 @@ patternMatch attributes branchOutOn cases =
     { a | foo = 1 } -- Update (Variable ["a"]) [ ( ["foo"], Literal (WholeNumberLiteral 1) ) ]
 
 -}
-update : va -> Value ta va -> List ( Name, Value ta va ) -> Value ta va
+update : va -> Value ta va -> Dict Name (Value ta va) -> Value ta va
 update attributes valueToUpdate fieldsToUpdate =
     UpdateRecord attributes valueToUpdate fieldsToUpdate
 
@@ -2010,6 +2011,7 @@ toString value =
                         , valueToString subject
                         , " | "
                         , fields
+                            |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     String.concat [ Name.toCamelCase fieldName, " = ", toString fieldValue ]

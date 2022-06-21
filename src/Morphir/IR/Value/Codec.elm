@@ -182,6 +182,7 @@ encodeValue encodeTypeAttributes encodeValueAttributes v =
                 , encodeValueAttributes a
                 , encodeValue encodeTypeAttributes encodeValueAttributes valueToUpdate
                 , fieldsToUpdate
+                    |> Dict.toList
                     |> Encode.list
                         (\( fieldName, fieldValue ) ->
                             Encode.list identity
@@ -332,7 +333,7 @@ decodeValue decodeTypeAttributes decodeValueAttributes =
                                     (Decode.map2 Tuple.pair
                                         (Decode.index 0 decodeName)
                                         (Decode.index 1 (decodeValue decodeTypeAttributes decodeValueAttributes))
-                                    )
+                                    ) |> Decode.map Dict.fromList
                                 )
                             )
 

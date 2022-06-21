@@ -300,8 +300,11 @@ viewValueByLanguageFeature config value =
                 Value.Unit _ ->
                     el [ Element.centerX, Element.centerY, smallPadding config.state.theme |> padding ] (text "not set")
 
-                Value.UpdateRecord _ b c ->
-                    Element.column [ Element.height fill ] [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating ", viewValue config b, text " with" ], ViewRecord.view config (viewValue config) (Dict.fromList c) ]
+                Value.UpdateRecord _ record newFields ->
+                    Element.column [ Element.height fill ]
+                        [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating ", viewValue config record, text " with" ]
+                        , ViewRecord.view config (viewValue config) newFields
+                        ]
 
                 other ->
                     Element.column

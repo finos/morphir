@@ -720,16 +720,16 @@ constrainValue ir vars annotatedValue =
                 extensibleRecordType =
                     metaRecord (Just extendsVar)
                         (fieldValues
-                            |> List.map
-                                (\( fieldName, fieldValue ) ->
-                                    ( fieldName, metaTypeVarForValue fieldValue )
+                            |> Dict.map
+                                (\_ fieldValue ->
+                                    metaTypeVarForValue fieldValue
                                 )
-                            |> Dict.fromList
                         )
 
                 fieldValueConstraints : ConstraintSet
                 fieldValueConstraints =
                     fieldValues
+                        |> Dict.toList
                         |> List.map
                             (\( _, fieldValue ) ->
                                 constrainValue ir vars fieldValue

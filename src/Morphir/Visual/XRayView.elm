@@ -374,6 +374,7 @@ valueToNode tag value =
                 (List.concat
                     [ [ valueToNode Nothing subject ]
                     , fields
+                        |> Dict.toList
                         |> List.map
                             (\( fieldName, fieldValue ) ->
                                 valueToNode (Just (fieldName |> Name.toCamelCase)) fieldValue
