@@ -121,7 +121,7 @@ genDecodeReferenceTests =
             )
         , positiveTest "4. Tuple with 2 fields"
             (Type.Tuple () [ Type.Reference () (fqn "morphir.sdk" "basics" "string") [] ])
-            (Scala.Apply (Scala.Variable "io.circe.arr") [ ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics" ] "encodeString") ])
+            (Scala.Apply (Scala.Variable "io.circe.arr") [ ArgValue Nothing (Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "decodeString") ])
         ]
 
 
@@ -158,9 +158,9 @@ mapTypeDefinitionToEncoderTests =
             [ Scala.withoutAnnotation
                 (Scala.ValueDecl
                     { modifiers = [ Scala.Implicit ]
-                    , pattern = Scala.NamedMatch "foo"
-                    , valueType = Nothing
-                    , value = Scala.Variable "foo"
+                    , pattern = Scala.NamedMatch "encodeFoo"
+                    , valueType = Just (Scala.TypeApply (Scala.TypeRef ["io","circe"] "Encoder") [Scala.TypeRef [] "Foo"])
+                    , value = Lambda [("a",Just (Scala.TypeRef [] "Foo"))] Unit
                     }
                 )
             ]
@@ -172,9 +172,9 @@ mapTypeDefinitionToEncoderTests =
             [ Scala.withoutAnnotation
                 (Scala.ValueDecl
                     { modifiers = [ Scala.Implicit ]
-                    , pattern = Scala.NamedMatch "foo"
-                    , valueType = Nothing
-                    , value = Scala.Variable "foo"
+                    , pattern = Scala.NamedMatch "encodeFoo"
+                    , valueType = Just (Scala.TypeApply (Scala.TypeRef ["io","circe"] "Encoder") [Scala.TypeRef [] "Foo"])
+                    , value = Scala.Lambda [("a",Just (Scala.TypeRef [] "Foo"))] Unit
                     }
                 )
             ]
