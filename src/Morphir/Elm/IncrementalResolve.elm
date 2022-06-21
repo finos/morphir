@@ -257,6 +257,35 @@ resolveImports repo imports =
 
                 _ ->
                     resolvedImports
+        moduleSpecToVisibleNames : Module.Specification () -> VisibleNames
+        moduleSpecToVisibleNames moduleSpec =
+            { types = 
+                moduleSpec.types |> Dict.keys |> Set.fromList
+            , constructors = 
+                moduleSpec.types 
+                    |> Dict.toList
+                    |> List.concatMap
+                        (\( _, typeSpec ) ->
+                            case typeSpec.value of
+                                Type.CustomTypeSpecification _ constructors ->
+                                    constructors |> Dict.keys 
+
+                                _ ->
+                                    []   
+                        )
+                    |> Set.fromList    
+            , values = 
+                moduleSpec.values |> Dict.keys |> Set.fromList
+            }    
+
+        addModuleSpec :  QualifiedModuleName -> Module.Specification () -> ResolvedImports -> ResolvedImports
+        addModuleSpec qualifiedModuleName moduleSpec resolvedImports =
+                { resolvedImports
+                        | visibleNamesByModuleName =
+                            resolvedImports.visibleNamesByModuleName
+                                |> Dict.update qualifiedModuleName (always (Just (moduleSpecToVisibleNames moduleSpec)))
+
+                }        
 
         addLocalName : KindOfName -> QualifiedModuleName -> Name -> ResolvedImports -> ResolvedImports
         addLocalName kindOfName qualifiedModuleName name resolvedImports =
@@ -452,6 +481,7 @@ resolveImports repo imports =
                                         resolvedImportsSoFar
                                             |> Result.map (maybeAddAlias nextImport resolvedModuleName)
                                             |> Result.map (maybeAddModuleName nextImport resolvedModuleName)
+                                            |> Result.map (addModuleSpec resolvedModuleName moduleSpec)
                                             |> Result.andThen (addLocalNames nextImport resolvedModuleName moduleSpec)
                                     )
                         )
