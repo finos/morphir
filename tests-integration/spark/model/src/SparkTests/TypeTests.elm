@@ -50,6 +50,24 @@ testMaybeBoolConditionalNotNull source =
                 a.foo /= Nothing
             )
 
+
+testMaybeMapDefault : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
+testMaybeMapDefault source =
+    source
+        |> List.filter
+            (\item ->
+                item.foo
+                    |> Maybe.map
+                        (\a ->
+                            if a == False then
+                                True
+                            else
+                                False
+                        )
+                    |> Maybe.withDefault False
+            )
+
+
 testString : List { foo : String } -> List { foo : String }
 testString source =
     source

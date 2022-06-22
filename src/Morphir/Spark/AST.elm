@@ -201,6 +201,30 @@ namedExpressionsFromValue ir typedValue =
         _ ->
             LambdaExpected typedValue |> Err
 
+{- | Helper function to replace the value declared in a lambda with a specific other value
+-}
+replaceLambdaArg : TypedValue -> TypedValue -> Result Error TypedValue
+replaceLambdaArg replacementValue lam =
+    -- extract the name of the lambda arg and replace every variable with replacementValue
+    case lam of
+        Value.Lambda _ (Value.AsPattern _ _ name) body ->
+            body
+                |> Value.rewriteValue
+                    (\currentValue ->
+                        case currentValue of
+                            Value.Variable _ otherName ->
+                                if name == otherName then
+                                    Just replacementValue
+                                else
+                                    Nothing
+                            _ ->
+                                Nothing
+                    )
+                |> Ok
+
+        other ->
+            UnhandledValue other |> Err
+
 
 {-| Provides a way to create Expressions from a Morphir Value.
 This is where support for various column expression is added. This function fails to produce an Expression
@@ -226,7 +250,18 @@ expressionFromValue ir morphirValue =
 
         Value.Apply _ _ _ ->
             case morphirValue of
-                Value.Apply _ (Value.Constructor _ ( [ [ "morphir" ], [ "s" ,"d" ,"k" ] ], [ [ "maybe" ] ], [ "just" ] ) ) arg ->
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ([["morphir"],["s","d","k"]], [["maybe"]], ["with","default"] ) ) elseValue) (Value.Apply _ (Value.Apply _ (Value.Reference _ ([["morphir"],["s","d","k"]], [["maybe"]], ["map"])) thenValue) sourceValue) ->
+                    -- `value |> Maybe.map thenValue |> Maybe.withDefault elseValue` becomes `when(not(isnull(value)), thenValue).otherwise(elseValue)`
+                    Result.map3
+                        (\sourceExpr thenExpr elseExpr ->
+                            WhenOtherwise (Function "not" [Function "isnull" [sourceExpr]]) thenExpr elseExpr
+                        )
+                        (expressionFromValue ir sourceValue)
+                        (thenValue
+                            |> replaceLambdaArg sourceValue
+                            |> Result.andThen (expressionFromValue ir))
+                        (expressionFromValue ir elseValue)
+                Value.Apply _ (Value.Constructor _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "just" ] ) ) arg ->
                     -- `Just arg` becomes `arg`
                     expressionFromValue ir arg
                 Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "not", "equal" ] )) arg) (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
