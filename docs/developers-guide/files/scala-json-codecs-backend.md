@@ -1,7 +1,7 @@
 # Scala JSON-Codecs Backend Documentation
 
-This documents provides a description of the JSON codecs backend.
-The Json Codecs Backend for Scala contains function to generating Codecs from types in the IR.<br>
+This document provides a description of the JSON codecs backend.
+The Json Codecs Backend for Scala contains functions to generate Codecs from types in the IR.<br>
 [Circe](https://circe.github.io/circe/) is used as the base JSON library.
 
 ```mermaid
@@ -10,7 +10,7 @@ graph TD;
     Backend-->Features
 ```
 The Scala backend is split into two aspects: <br>
-1. **Core** - the core Scala codes represending the user business logic
+1. **Core** - the core Scala codes representing the user business logic
 2. **Feature** - the Codecs for each type defined in the input model
 
 
@@ -31,7 +31,7 @@ to create a Scala Ref value
 Not completed yet
 
 #### Record
-An Elm record type maps to Circe object which consists of a list of fields which are applie
+An Elm record type maps to Circe object which consists of a list of fields which are applied to
 the Circe.json.obj function.
 
 
@@ -39,10 +39,10 @@ the Circe.json.obj function.
 Similar to a record
 
 #### Function
-Function are currently not mapped.
+Functions are currently not mapped.
 
 #### Unit
-Function are currently not mapped.
+Functions are currently not mapped.
 
 
 #### Custom Type Definition
@@ -53,7 +53,7 @@ Codecs for custom types are composed using helper functions.
 The following functions are defined in the Scala Json Codecs backend
 
 #### MapModuleDefinitionToCodecs
-This function takes an modules definition and generates the encoders and 
+This function takes a modules definition and generates the encoders and 
 decoders for the types defined in that module
 
 
@@ -82,7 +82,7 @@ types <br><br>
 Builds encoder for custom type using pattern matching
 
 #### mapCustomTypeDefinitionToDecoder
-Builds a decoder for custom type using patten mathing on the  type constructors.
+Builds a decoder for custom type using pattern mathing on the type constructors.
 
 
 #### composeEncoders

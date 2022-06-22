@@ -332,7 +332,7 @@ collectLambdaParams value paramsCollected =
 
 
 {-| A utility function that does a complete inlining of a value.
-If the `target` to is a `Reference` it looks up the function and replaces all references to it's
+If the `target` to is a `Reference` it looks up the function and replaces all references to its
 param variables with the arguments. If the `target` is a lambda, it first attempts to look into
 the lambda body and rewrite and reference to enclosed variables and then repeats the process for
 the lambda's params.
@@ -431,7 +431,7 @@ mapSDKFunctions fQName expressions =
             FunctionNotFound fQName |> Err
 
 
-{-| A simple mapping for a Morphir.SDK:Basics binary operations to it's spark string equivalent
+{-| A simple mapping for a Morphir.SDK:Basics binary operations to its spark string equivalent
 -}
 binaryOpString : FQName -> Result Error String
 binaryOpString fQName =

@@ -1513,7 +1513,7 @@ viewAsCard theme header class backgroundColor docs content =
         ]
 
 
-{-| Display a Definition with it's name and path as a clickable UI element with a url pointing to the Definition
+{-| Display a Definition with its name and path as a clickable UI element with a url pointing to the Definition
 -}
 viewAsLabel : Theme -> Bool -> Element msg -> Element msg -> String -> String -> Element msg
 viewAsLabel theme shouldColorBg icon header class url =
@@ -1680,7 +1680,7 @@ viewModuleNames model packageName parentModule allModuleNames =
         )
 
 
-{-| Given a definition, return it's name
+{-| Given a definition, return its name
 -}
 definitionName : Definition -> Name
 definitionName definition =
