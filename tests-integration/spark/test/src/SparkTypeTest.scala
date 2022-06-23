@@ -43,6 +43,20 @@ class SparkTypeTest extends FunSuite {
     assert(result.collect()(0)(0) == good_value)
   }
 
+  test("testMaybeMapDefault") {
+    val data = Seq(Row(null, "bax"), Row(true, "bay"), Row(false, "baz"))
+    val schema = StructType(List(
+      StructField("foo", BooleanType, true),
+      StructField("bar", StringType, false),
+    ))
+    val rdd = localTestSession.sparkContext.parallelize(data)
+    val df = localTestSession.createDataFrame(rdd, schema)
+    val result = SparkJobs.testMaybeMapDefault(df)
+    assert(result.count() == 1)
+    assert(result.collect()(0)(0) == false)
+    assert(result.collect()(0)(1) == "baz")
+  }
+
   test("testMaybeBoolConditional") {
     val data = Seq(Row(null, "baz"), Row(true, "baz"))
     val schema = StructType(List(
