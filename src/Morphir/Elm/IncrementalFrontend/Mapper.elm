@@ -381,6 +381,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                     )
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
+                |> Result.map Dict.fromList
                 |> Result.map (Value.Record defaultValueAttribute)
 
         Expression.ListExpr itemNodes ->
@@ -415,6 +416,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                             )
                         |> ResultList.keepAllErrors
                         |> Result.mapError List.concat
+                        |> Result.map Dict.fromList
                         |> Result.map
                             (Value.UpdateRecord
                                 defaultValueAttribute
@@ -423,7 +425,6 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
             in
             if variables |> Set.member targetVarName then
                 wrapInUpdateRecord (targetVarName |> Name.fromString |> Value.Variable defaultValueAttribute)
-                        
 
             else
                 resolveReferenceName [] targetVarName Value

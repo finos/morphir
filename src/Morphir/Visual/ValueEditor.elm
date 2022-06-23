@@ -336,7 +336,7 @@ initRecordEditor ir fieldTypes maybeInitialValue =
         Just initialValue ->
             case initialValue of
                 Value.Record _ fieldValues ->
-                    ( Nothing, recordEditor (fieldValues |> Dict.fromList) )
+                    ( Nothing, recordEditor fieldValues )
 
                 _ ->
                     ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), recordEditor Dict.empty )
@@ -403,14 +403,10 @@ initListEditor ir itemType maybeInitialValue =
                                         (\record ->
                                             case record of
                                                 Value.Record _ fieldValues ->
-                                                    let
-                                                        fieldValueDict =
-                                                            fieldValues |> Dict.fromList
-                                                    in
                                                     columnTypes
                                                         |> List.map
                                                             (\( columnName, columnType ) ->
-                                                                initEditorState ir columnType (fieldValueDict |> Dict.get columnName)
+                                                                initEditorState ir columnType (fieldValues |> Dict.get columnName)
                                                             )
                                                         |> Array.fromList
 
@@ -695,7 +691,7 @@ view ir valueType updateEditorState editorState =
                                                                             )
                                                                 )
                                                                 (Ok [])
-                                                            |> Result.map (Value.Record ())
+                                                            |> Result.map (Dict.fromList >> Value.Record ())
                                                 in
                                                 updateEditorState
                                                     (applyResult recordResult
@@ -1020,7 +1016,7 @@ view ir valueType updateEditorState editorState =
                                                            )
                                                 )
                                             |> ListOfResults.liftFirstError
-                                            |> Result.map (Value.Record ())
+                                            |> Result.map (Dict.fromList >> Value.Record ())
                                     )
                                 |> ListOfResults.liftFirstError
                                 |> Result.map (Value.List ())

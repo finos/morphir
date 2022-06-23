@@ -297,7 +297,7 @@ collectFeaturesFromValue ir value featureCollection =
 
         Value.UpdateRecord _ _ updates ->
             updates
-                |> List.map Tuple.second
+                |> Dict.values
                 |> List.foldl (collectFeaturesFromValue ir)
                     (incrementOrAdd "Value.UpdateRecord" featureCollection)
 

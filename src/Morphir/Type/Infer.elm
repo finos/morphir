@@ -364,17 +364,17 @@ constrainValue ir vars annotatedValue =
                 fieldConstraints : ConstraintSet
                 fieldConstraints =
                     fieldValues
-                        |> List.map (Tuple.second >> constrainValue ir vars)
+                        |> Dict.values
+                        |> List.map (constrainValue ir vars)
                         |> ConstraintSet.concat
 
                 recordType : MetaType
                 recordType =
                     fieldValues
-                        |> List.map
-                            (\( fieldName, fieldValue ) ->
-                                ( fieldName, metaTypeVarForValue fieldValue )
+                        |> Dict.map
+                            (\_ fieldValue ->
+                                metaTypeVarForValue fieldValue
                             )
-                        |> Dict.fromList
                         |> metaRecord Nothing
 
                 recordConstraints : ConstraintSet
@@ -720,16 +720,16 @@ constrainValue ir vars annotatedValue =
                 extensibleRecordType =
                     metaRecord (Just extendsVar)
                         (fieldValues
-                            |> List.map
-                                (\( fieldName, fieldValue ) ->
-                                    ( fieldName, metaTypeVarForValue fieldValue )
+                            |> Dict.map
+                                (\_ fieldValue ->
+                                    metaTypeVarForValue fieldValue
                                 )
-                            |> Dict.fromList
                         )
 
                 fieldValueConstraints : ConstraintSet
                 fieldValueConstraints =
                     fieldValues
+                        |> Dict.toList
                         |> List.map
                             (\( _, fieldValue ) ->
                                 constrainValue ir vars fieldValue

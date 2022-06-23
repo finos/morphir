@@ -44,6 +44,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.SDK.ResultList as ResultList
+import Dict
 
 
 {-| An ObjectExpression represents a transformation that is applied directly to a Spark Data Frame.
@@ -185,6 +186,7 @@ namedExpressionsFromValue ir typedValue =
     case typedValue of
         Value.Lambda _ _ (Value.Record _ fields) ->
             fields
+                |> Dict.toList
                 |> List.map
                     (\( name, value ) ->
                         expressionFromValue ir value
