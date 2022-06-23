@@ -244,6 +244,46 @@ def testMaybeBoolConditional(
   source.filter(org.apache.spark.sql.functions.isnull(org.apache.spark.sql.functions.col("foo")))
 ```
 
+**Maybe.map** <br>
+
+Elm has `Maybe.map` and `Maybe.defaultValue` to take a Maybe and execute one branch of code if the Maybe isn't Nothing,
+and another branch if it is.
+
+The equivalent in Spark is to use `where` to execute one branch of code if the value isn't null, and `otherwise` for
+the default case.
+For example:
+```
+testMaybeMapDefault : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
+testMaybeMapDefault source =
+    source
+        |> List.filter
+            (\item ->
+                item.foo
+                    |> Maybe.map
+                        (\a ->
+                            if a == False then
+                                True
+                            else
+                                False
+                        )
+                    |> Maybe.withDefault False
+            )
+```
+
+In Spark, this would be:
+```
+def testMaybeMapDefault(
+  source: org.apache.spark.sql.DataFrame
+): org.apache.spark.sql.DataFrame =
+  source.filter(org.apache.spark.sql.functions.when(
+    org.apache.spark.sql.functions.not(org.apache.spark.sql.functions.isnull(org.apache.spark.sql.functions.col("foo"))),
+    org.apache.spark.sql.functions.when(
+      (org.apache.spark.sql.functions.col("foo")) === (false),
+      true
+    ).otherwise(false)
+  ).otherwise(false))
+```
+
 # Spark Backend
 
 **mapDistribution**
