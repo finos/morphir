@@ -257,7 +257,7 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
 	})
 
-	test('should update value access appropraitely', async () => {
+	test.skip('should update value access appropriately', async () => {
 		await writeFile(
 			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
 			concat(
@@ -379,9 +379,7 @@ describe('Testing morphir-elm make and morphir make command', () => {
         let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		let IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
-
 	})
-
 
     test('should add type documentation correctly', async () => {
 		// add a type documentation
@@ -400,7 +398,7 @@ describe('Testing morphir-elm make and morphir make command', () => {
 
 	})
 
-	test.skip('should update type documentation correctly', async () => {
+	test('should update type documentation correctly', async () => {
 		await writeFile(
 			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
 			concat('module Package.Rentals exposing (..)', '', 'type User = New | Existing')

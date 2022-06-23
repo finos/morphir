@@ -604,23 +604,13 @@ processModule moduleName parsedModule opts exposedModules repo =
 
 processType : ModuleName -> Name -> Type.Definition () -> Access -> String -> Repo -> Result (List Error) Repo
 processType moduleName typeName typeDef access doc repo =
-    let
-        updateType r =
-            r
-                |> Repo.updateType moduleName
-                    typeName
-                    (Maybe.map
-                        (\( _, existingDoc, _ ) ->
-                            ( access, existingDoc, typeDef )
-                        )
-                    )
-    in
     case repo |> Repo.modules |> Dict.get moduleName of
         Just existingModDef ->
             case Dict.member typeName existingModDef.value.types of
                 True ->
                     -- TODO update a type using an update function
-                    updateType repo
+                    repo
+                        |> Repo.updateType moduleName typeName typeDef access doc
                         |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
                 False ->
@@ -645,7 +635,7 @@ processValue access moduleName valueName ( maybeValueType, body ) valueDoc repo 
             case Dict.member valueName existingModDef.value.values of
                 True ->
                     repo
-                        |> Repo.updateValue moduleName valueName maybeValueType body access
+                        |> Repo.updateValue moduleName valueName maybeValueType body access valueDoc
                         |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
                 False ->
