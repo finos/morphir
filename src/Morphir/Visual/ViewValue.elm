@@ -7,7 +7,7 @@ import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName exposing (FQName, getLocalName)
 import Morphir.IR.Name exposing (Name, toCamelCase)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
@@ -23,6 +23,7 @@ import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
+import Morphir.Visual.ViewDestructure as ViewDestructure
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
 import Morphir.Visual.ViewLambda as ViewLambda
 import Morphir.Visual.ViewList as ViewList
@@ -118,7 +119,7 @@ viewValueByLanguageFeature config value =
                             Element.none
 
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
-                            el [ Font.bold ] (text " - ")
+                            el [Element.centerY ] (text " - ")
 
                         _ ->
                             Element.row
@@ -305,6 +306,12 @@ viewValueByLanguageFeature config value =
                         [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating ", viewValue config record, text " with" ]
                         , ViewRecord.view config (viewValue config) newFields
                         ]
+
+                Value.Destructure _ pattern val1 val2 ->
+                    ViewDestructure.view config viewValue pattern val1 val2
+
+                Value.LetRecursion tpe definitionDict val ->
+                    Element.column [] (Dict.map (\k v -> Value.LetDefinition tpe k v val) definitionDict |> Dict.values |> List.map (viewValue config))
 
                 other ->
                     Element.column

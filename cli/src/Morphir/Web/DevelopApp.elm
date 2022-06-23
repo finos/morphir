@@ -883,9 +883,6 @@ viewBody model =
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
 viewHome model packageName packageDef =
     let
-        gray : Element.Color
-        gray =
-            rgb 0.9 0.9 0.9
 
         morphIrBlue : Element.Color
         morphIrBlue =
@@ -1211,7 +1208,7 @@ viewHome model packageName packageDef =
         definitionList : Element Msg
         definitionList =
             column
-                [ Background.color gray
+                [ Background.color model.theme.colors.gray
                 , height fill
                 , width (ifThenElse model.showModules (fillPortion 3) fill)
                 , spacing (model.theme |> Theme.scaled -4)
@@ -1227,7 +1224,7 @@ viewHome model packageName packageDef =
                 , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
                 ]
     in
-    row [ width fill, height fill, Background.color gray, spacing 10 ]
+    row [ width fill, height fill, Background.color model.theme.colors.gray, spacing 10 ]
         [ column
             [ width
                 (ifThenElse model.showDefinitions
@@ -1245,7 +1242,7 @@ viewHome model packageName packageDef =
                 , clipY
                 ]
                 [ row
-                    [ Background.color gray
+                    [ Background.color model.theme.colors.gray
                     , height fill
                     , width (ifThenElse model.showModules (fillPortion 2) (px 40))
                     , clipX
@@ -1751,7 +1748,7 @@ viewDefinitionDetails model =
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
-            row [ Background.color <| rgba 0.9 0.9 0.9 0.5, Border.rounded 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
+            row [ Border.rounded 5, Border.width 3,  spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
                 (case evaluateOutput ir testCase.inputs fQName of
                     Ok rawValue ->
                         case rawValue of
