@@ -1,5 +1,7 @@
 module SparkTests.TypeTests exposing (..)
 
+import SparkTests.Types exposing (..)
+
 testBool : List { foo : Bool } -> List { foo : Bool }
 testBool source =
     source
@@ -30,5 +32,13 @@ testString source =
         |> List.filter
             (\a ->
                 a.foo == "bar"
+            )
+
+testEnum : List { title : Title } -> List { title : Title }
+testEnum source =
+    source
+        |> List.filter
+            (\a ->
+                a.title == ED
             )
 
