@@ -2,7 +2,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.explode
 import org.scalatest.FunSuite
 import sparktests.typetests.SparkJobs
-import org.apache.spark.sql.types.{BooleanType, StringType, StructField, StructType}
+import org.apache.spark.sql.types.{BooleanType, FloatType, IntegerType, StringType, StructField, StructType}
 import org.apache.spark.sql.Row
 
 class SparkTypeTest extends FunSuite {
@@ -41,6 +41,34 @@ class SparkTypeTest extends FunSuite {
     val result = SparkJobs.testInt(df)
     assert(result.count() == 1)
     assert(result.collect()(0)(0) == good_value)
+  }
+
+  test("testMaybeFloat") {
+    val data = Seq(Row(9.99f, "bax"), Row(5.55f, "bar"), Row(null, "baz"))
+    val schema = StructType(List(
+      StructField("foo", FloatType, true),
+      StructField("bar", StringType, false),
+    ))
+    val rdd = localTestSession.sparkContext.parallelize(data)
+    val df = localTestSession.createDataFrame(rdd, schema)
+    val result = SparkJobs.testMaybeFloat(df)
+    assert(result.count() == 2)
+    assert(result.collect()(0)(0) == 9.99f)
+    assert(result.collect()(1)(0) == 5.55f)
+  }
+
+  test("testMaybeInt") {
+    val data = Seq(Row(13, "bax"), Row(8, "bar"), Row(null, "baz"))
+    val schema = StructType(List(
+      StructField("foo", IntegerType, true),
+      StructField("bar", StringType, false),
+    ))
+    val rdd = localTestSession.sparkContext.parallelize(data)
+    val df = localTestSession.createDataFrame(rdd, schema)
+    val result = SparkJobs.testMaybeInt(df)
+    assert(result.count() == 2)
+    assert(result.collect()(0)(0) == 13)
+    assert(result.collect()(1)(0) == 8)
   }
 
   test("testMaybeMapDefault") {
@@ -94,6 +122,19 @@ class SparkTypeTest extends FunSuite {
     val result = SparkJobs.testMaybeBoolConditionalNotNull(df)
     assert(result.count() == 1)
     assert(result.collect()(0)(0) == true)
+  }
+
+  test("testMaybeString") {
+    val data = Seq(Row("foo"), Row("bar"), Row(null))
+    val schema = StructType(List(
+      StructField("foo", StringType, true),
+    ))
+    val rdd = localTestSession.sparkContext.parallelize(data)
+    val df = localTestSession.createDataFrame(rdd, schema)
+    val result = SparkJobs.testMaybeString(df)
+    assert(result.count() == 2)
+    assert(result.collect()(0)(0) == "foo")
+    assert(result.collect()(1)(0) == "bar")
   }
 
   test("testString") {

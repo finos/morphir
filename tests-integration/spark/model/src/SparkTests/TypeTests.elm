@@ -51,6 +51,34 @@ testMaybeBoolConditionalNotNull source =
             )
 
 
+testMaybeFloat : List { foo : Maybe Float } -> List { foo : Maybe Float }
+testMaybeFloat source =
+    source
+        |> List.filter
+            (\a ->
+                if a.foo == Just 9.99 then
+                    True
+                else if a.foo /= Nothing then
+                    True
+                else
+                    False
+            )
+
+
+testMaybeInt : List { foo : Maybe Int } -> List { foo : Maybe Int }
+testMaybeInt source =
+    source
+        |> List.filter
+            (\a ->
+                if a.foo == Just 13 then
+                    True
+                else if a.foo /= Nothing then
+                    True
+                else
+                    False
+            )
+
+
 testMaybeMapDefault : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
 testMaybeMapDefault source =
     source
@@ -65,6 +93,20 @@ testMaybeMapDefault source =
                                 False
                         )
                     |> Maybe.withDefault False
+            )
+
+
+testMaybeString : List { foo : Maybe String } -> List { foo : Maybe String }
+testMaybeString source =
+    source
+        |> List.filter
+            (\a ->
+                if a.foo == Just "bar" then
+                    True
+                else if a.foo /= Nothing then
+                    True
+                else
+                    False
             )
 
 
