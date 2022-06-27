@@ -39,7 +39,7 @@ generator uses.
 import Array exposing (Array)
 import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Literal exposing (Literal)
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (TypedValue)
@@ -261,15 +261,15 @@ expressionFromValue ir morphirValue =
                             |> replaceLambdaArg sourceValue
                             |> Result.andThen (expressionFromValue ir))
                         (expressionFromValue ir elseValue)
-                Value.Apply _ (Value.Constructor _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "just" ] ) ) arg ->
-                    -- `Just arg` becomes `arg`
+                Value.Apply _ (Value.Literal (Type.Function _ _ (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) ) (StringLiteral "Just") ) arg ->
+                    -- `Just arg` becomes `arg` if `Just` was a Maybe.
                     expressionFromValue ir arg
-                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "not", "equal" ] )) arg) (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
-                    -- `arg /= Nothing` becomes `not(isnull(arg))`
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "not", "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) (StringLiteral "Nothing") ) ->
+                    -- `arg /= Nothing` becomes `not(isnull(arg))` if `Nothing` was a Maybe.
                     expressionFromValue ir arg
                         |> Result.map (\expr -> Function "not" [Function "isnull" [expr]])
-                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "equal" ] )) arg) (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] )) ->
-                    -- `arg == Nothing` becomes `isnull(arg)`
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) (StringLiteral "Nothing") ) ->
+                    -- `arg == Nothing` becomes `isnull(arg)` if `Nothing` was a Maybe.
                     expressionFromValue ir arg
                         |> Result.map (\expr -> Function "isnull" [expr])
                 Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
