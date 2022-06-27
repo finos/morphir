@@ -117,6 +117,33 @@ filter predicate from =
         ]
 ```
 
+_**case statements**_ <br>
+Simple case statements of:
+* a series of literals
+* ends with a default case
+
+Are translated into Spark as a chain of `when` expressions ending with an `otherwise`
+i.e.
+```
+case a.age of                                                                           
+    13 ->                                                                               
+        True
+    5->                                                                                 
+        False                                                                           
+    _ ->                                                                                
+        False                                                                           
+```
+is translated to
+```
+org.apache.spark.sql.functions.when(
+    (org.apache.spark.sql.functions.col("age")) === (13),
+    true  
+).when(         
+    (org.apache.spark.sql.functions.col("age")) === (5),
+    false
+).otherwise(false)
+```
+
 ## Types
 The current Spark API processes the following types:
 
