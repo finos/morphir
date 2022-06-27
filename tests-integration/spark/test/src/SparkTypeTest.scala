@@ -52,5 +52,15 @@ class SparkTypeTest extends FunSuite {
     assert(result.collect()(0)(0) == good_value)
   }
 
+  test("testEnum") {
+    val bad_value = "VP"
+    val good_value = "ED"
+    val data = Seq((bad_value), (good_value))
+    val rdd = localTestSession.sparkContext.parallelize(data)
+    val df = rdd.toDF("title")
+    val result = SparkJobs.testEnum(df)
+    assert(result.count() == 1)
+    assert(result.collect()(0)(0) == good_value)
+  }
 
 }
