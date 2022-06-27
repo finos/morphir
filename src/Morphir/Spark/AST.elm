@@ -42,7 +42,7 @@ import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value exposing (TypedValue)
+import Morphir.IR.Value as Value exposing (TypedValue, Pattern(..))
 import Morphir.SDK.ResultList as ResultList
 import Dict
 
@@ -139,6 +139,8 @@ type Error
     | LambdaExpected TypedValue
     | ReferenceExpected
     | UnsupportedSDKFunction FQName
+    | EmptyPatternMatch
+    | UnhandledPatternMatch ( Pattern (Type.Type ()), TypedValue )
 
 
 {-| provides a way to create ObjectExpressions from a Morphir Value.
@@ -201,6 +203,7 @@ namedExpressionsFromValue ir typedValue =
         _ ->
             LambdaExpected typedValue |> Err
 
+
 {- | Helper function to replace the value declared in a lambda with a specific other value
 -}
 replaceLambdaArg : TypedValue -> TypedValue -> Result Error TypedValue
@@ -224,6 +227,33 @@ replaceLambdaArg replacementValue lam =
 
         other ->
             UnhandledValue other |> Err
+
+
+{-| Transforms a list of pattern,value tuples into Expressions
+-}
+mapPatterns : IR -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> Result Error Expression
+mapPatterns ir onValue cases =
+    case cases of
+        [] ->
+            EmptyPatternMatch |> Err
+
+        ( LiteralPattern _ lit, thenValue ) :: remainingCases ->
+            Result.map3
+                (\onExpr thenExpr otherwiseExpr ->
+                    WhenOtherwise
+                        (BinaryOperation "===" onExpr (Literal lit))
+                        thenExpr
+                        otherwiseExpr
+                )
+                (expressionFromValue ir onValue)
+                (expressionFromValue ir thenValue)
+                (mapPatterns ir onValue remainingCases)
+
+        [ ( WildcardPattern _, thenValue ) ] ->
+            expressionFromValue ir thenValue
+
+        ( otherPattern, otherValue ) :: _ ->
+            UnhandledPatternMatch ( otherPattern, otherValue ) |> Err
 
 
 {-| Provides a way to create Expressions from a Morphir Value.
@@ -302,6 +332,9 @@ expressionFromValue ir morphirValue =
         Value.LetDefinition _ _ _ _ ->
             inlineLetDef [] [] morphirValue
                 |> expressionFromValue ir
+
+        Value.PatternMatch _ onValue cases ->
+            mapPatterns ir onValue cases
 
         other ->
             UnhandledValue other |> Err

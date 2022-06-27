@@ -2,6 +2,20 @@ module SparkTests.FunctionTests exposing (..)
 
 import SparkTests.Types exposing (..)
 
+testCase1 : List Antique -> List Antique
+testCase1 source =
+    source
+        |> List.filter
+            (\a ->
+                case a.ageOfItem of
+                    20 ->
+                        True
+                    5->
+                        False
+                    _ ->
+                        False
+            )
+
 testFrom : List Antique -> List Antique
 testFrom source =
     source
