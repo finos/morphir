@@ -9,18 +9,14 @@ module Morphir.Visual.Components.DecisionTable exposing
 
 -}
 
-import Dict
-import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, spacing, table, text, width)
+import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Font as Font
 import Morphir.IR.FQName exposing (getLocalName)
-import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value, indexedMapValue)
-import Morphir.Value.Interpreter exposing (matchPattern)
 import Morphir.Visual.Common exposing (nameToText)
-import Morphir.Visual.Config as Config exposing (Config, HighlightState(..), VisualState)
+import Morphir.Visual.Config exposing (Config, HighlightState(..), VisualState)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (mediumPadding)
 
@@ -53,7 +49,6 @@ type alias DecisionTable =
     { decomposeInput : List TypedValue
     , rules : List Rule
     }
-
 
 {-| Represents a match which is visualized as a cell in the decision table. It could either be a pattern or a guard
 which is a function that takes some input and returns a boolean.
@@ -175,7 +170,7 @@ getCaseFromIndex config head viewValue highlightState rule =
                             in
                             el [ Background.color result, mediumPadding config.state.theme |> padding ] (viewValue updatedConfig value)
 
-                        Value.ConstructorPattern tpe fQName matches ->
+                        Value.ConstructorPattern _ fQName matches ->
                             let
                                 parsedMatches : List (Element msg)
                                 parsedMatches =
@@ -185,10 +180,10 @@ getCaseFromIndex config head viewValue highlightState rule =
                             in
                             row [ width fill, Background.color result, mediumPadding config.state.theme |> padding ] (List.concat [ [ text "(", text (nameToText (getLocalName fQName)) ], List.intersperse (text ",") parsedMatches, [ text ")" ] ])
 
-                        Value.AsPattern tpe (Value.WildcardPattern _) name ->
+                        Value.AsPattern _ (Value.WildcardPattern _) name ->
                             el [ Background.color result, mediumPadding config.state.theme |> padding ] (text (nameToText name))
 
-                        Value.AsPattern tpe asPattern name ->
+                        Value.AsPattern _ asPattern _ ->
                             getCaseFromIndex config head viewValue highlightState (Just (patternToMatch asPattern))
 
                         _ ->
@@ -236,6 +231,7 @@ highlightStateToColor highlightState =
             highlightColor.default
 
 
+highlightColor : { true : Color, false : Color, default : Color }
 highlightColor =
     { true = rgb255 100 180 100
     , false = rgb255 180 100 100

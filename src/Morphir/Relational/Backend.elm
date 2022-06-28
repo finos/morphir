@@ -1,5 +1,6 @@
 module Morphir.Relational.Backend exposing (..)
 
+import Dict
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as V exposing (TypedValue)
 import Morphir.Relational.IR as R exposing (Relation(..))
@@ -34,7 +35,7 @@ mapValue value =
                     mapValue sourceRelation
                         |> Result.map
                             (\source ->
-                                R.Select fields source
+                                R.Select (Dict.toList fields) source
                             )
 
                 other ->

@@ -15,7 +15,7 @@ import Morphir.SDK.ResultList as ResultList
 import Morphir.Scala.AST as Scala
 import Morphir.Scala.Backend as ScalaBackend
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
-import Morphir.Scala.Spark.API as Spark
+import Morphir.Spark.API as Spark
 import Set
 
 

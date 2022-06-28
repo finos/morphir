@@ -1,6 +1,6 @@
 module Morphir.Visual.Theme exposing (..)
 
-import Element exposing (Color, Element, Attribute, el, fill, paddingXY, rgb, rgb255, row, spacing, toRgb, width, height, table, none, mouseOver)
+import Element exposing (Color, Element, Attribute, el, fill, paddingXY, rgb, rgba, rgb255, row, spacing, toRgb, width, height, table, none, mouseOver)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (center)
@@ -22,10 +22,13 @@ type alias Colors =
     , primaryHighlight : Color
     , secondaryHighlight : Color
     , positive : Color
+    , positiveLight : Color
     , negative : Color
+    , negativeLight : Color
     , backgroundColor : Color
     , selectionColor : Color
     , secondaryInformation : Color
+    , gray : Color
     }
 
 
@@ -42,10 +45,13 @@ defaultColors =
     , primaryHighlight = rgb255 0 163 225
     , secondaryHighlight = rgb255 255 105 0
     , positive = rgb 0 0.6 0
+    , positiveLight = rgba 0 0.6 0 0.5
     , negative = rgb 0.7 0 0
+    , negativeLight = rgba 0.7 0 0 0.5
     , backgroundColor = rgb 0.9529 0.9176 0.8078
     , selectionColor = rgb 0.8 0.9 0.9
     , secondaryInformation = rgb 0.5 0.5 0.5
+    , gray = rgb 0.9 0.9 0.9
     }
 
 labelStyles : Theme -> List (Attribute msg)

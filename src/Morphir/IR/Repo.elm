@@ -362,8 +362,8 @@ deleteModule moduleName (Repo repo) =
 
 {-| Insert types into repo modules and update the type dependency graph of the repo
 -}
-insertType : ModuleName -> Name -> Type.Definition () -> Access -> Repo -> Result Errors Repo
-insertType moduleName typeName typeDef access (Repo repo) =
+insertType : ModuleName -> Name -> Type.Definition () -> Access -> String -> Repo -> Result Errors Repo
+insertType moduleName typeName typeDef access typeDoc (Repo repo) =
     let
         validateTypeExistsResult : AccessControlled (Module.Definition () (Type ())) -> Result Errors (AccessControlled (Module.Definition () (Type ())))
         validateTypeExistsResult accessControlledModuleDef =
@@ -403,7 +403,7 @@ insertType moduleName typeName typeDef access (Repo repo) =
             accessControlledModDef
                 |> AccessControlled.map
                     (\modDef ->
-                        Dict.insert typeName (AccessControlled access (typeDef |> Documented.Documented "")) modDef.types
+                        Dict.insert typeName (AccessControlled access (typeDef |> Documented.Documented typeDoc)) modDef.types
                             |> (\updatedTypes -> { modDef | types = updatedTypes })
                     )
                 |> (\updatedAccessControlledModDef ->
@@ -429,25 +429,13 @@ insertType moduleName typeName typeDef access (Repo repo) =
 The update could fail with an Error if type access is changed in such a way that breaks the repo
 or the type update causes a cyclic dependency
 -}
-updateType : ModuleName -> Name -> (Maybe ( Access, String, Type.Definition () ) -> Maybe ( Access, String, Type.Definition () )) -> Repo -> Result Errors Repo
-updateType moduleName typeName updateFunctor repo =
+updateType : ModuleName -> Name -> Type.Definition () -> Access -> String -> Repo -> Result Errors Repo
+updateType moduleName typeName typeDef typeAccess typeDoc repo =
     let
-        tpe =
-            modules repo
-                |> Dict.get moduleName
-                |> Maybe.andThen
-                    (\accessControlledModDef ->
-                        Dict.get typeName accessControlledModDef.value.types
-                    )
-                |> Maybe.map
-                    (\accessControlledTypeDef ->
-                        ( accessControlledTypeDef.access, accessControlledTypeDef.value.doc, accessControlledTypeDef.value.value )
-                    )
-
         -- extract new moduleDependencies from type for updateModuleDependency
         moduleDepsFromType : Type.Definition () -> Set ModuleName
-        moduleDepsFromType typeDef =
-            Type.collectReferencesFromDefintion typeDef
+        moduleDepsFromType def =
+            Type.collectReferencesFromDefintion def
                 |> Set.toList
                 |> List.filterMap
                     (\( _, modName, _ ) ->
@@ -460,11 +448,11 @@ updateType moduleName typeName updateFunctor repo =
                 |> Set.fromList
 
         updateTypeDependency : Type.Definition () -> Repo -> Result Errors Repo
-        updateTypeDependency typeDef (Repo r) =
+        updateTypeDependency def (Repo r) =
             r.typeDependencies
                 |> DAG.insertNode
                     (FQName.fQName r.packageName moduleName typeName)
-                    (Type.collectReferencesFromDefintion typeDef)
+                    (Type.collectReferencesFromDefintion def)
                 |> Result.mapError (TypeCycleDetected >> List.singleton)
                 |> Result.map (\updatedTypeDep -> Repo { r | typeDependencies = updatedTypeDep })
 
@@ -474,7 +462,7 @@ updateType moduleName typeName updateFunctor repo =
                 hasExternallyDependentTypes =
                     typeDependencies (Repo r)
                         |> DAG.incomingEdges ( getPackageName (Repo r), moduleName, typeName )
-                        |> Set.filter (\( _, modName, _ ) -> moduleName == modName |> not)
+                        |> Set.filter (\( _, modName, _ ) -> moduleName /= modName)
                         |> Set.isEmpty
                         >> not
             in
@@ -483,13 +471,13 @@ updateType moduleName typeName updateFunctor repo =
 
             else
                 AccessControlled access (Documented doc def)
-                    |> (\typeDef ->
+                    |> (\updatedDef ->
                             modules (Repo r)
                                 |> Dict.get moduleName
                                 |> Maybe.map
                                     (AccessControlled.map
                                         (\modDef ->
-                                            Dict.insert typeName typeDef modDef.types
+                                            Dict.insert typeName updatedDef modDef.types
                                                 |> (\updatedTypes -> { modDef | types = updatedTypes })
                                         )
                                         >> (\updatedAccessControlledModDef ->
@@ -501,14 +489,9 @@ updateType moduleName typeName updateFunctor repo =
                                 |> Result.fromMaybe [ ModuleNotFound moduleName ]
                        )
     in
-    case updateFunctor tpe of
-        Just ( access, doc, def ) ->
-            updateTypeInDef access doc def repo
-                |> Result.andThen (updateTypeDependency def)
-                |> Result.andThen (updateModuleDependencies moduleName (moduleDepsFromType def))
-
-        Nothing ->
-            Ok repo
+    updateTypeInDef typeAccess typeDoc typeDef repo
+        |> Result.andThen (updateTypeDependency typeDef)
+        |> Result.andThen (updateModuleDependencies moduleName (moduleDepsFromType typeDef))
 
 
 deleteType : ModuleName -> Name -> Repo -> Result Errors Repo
@@ -538,8 +521,8 @@ deleteType moduleName typeName (Repo repo) =
 {-| Insert a new value into the repo without type information on each node. The repo will infer the types of each node
 and store it. This function might fail if the inferred type is not compatible with the declared type that's passed in.
 -}
-insertValue : ModuleName -> Name -> Maybe (Type ()) -> Value () () -> Access -> Repo -> Result Errors Repo
-insertValue moduleName valueName maybeValueType value access repo =
+insertValue : ModuleName -> Name -> Maybe (Type ()) -> Value () () -> Access -> String -> Repo -> Result Errors Repo
+insertValue moduleName valueName maybeValueType value access valueDoc repo =
     let
         ir : IR
         ir =
@@ -558,7 +541,7 @@ insertValue moduleName valueName maybeValueType value access repo =
             Infer.inferValueDefinition ir valueDef
                 |> Result.map (Value.mapDefinitionAttributes identity Tuple.second)
                 |> Result.mapError (TypeCheckError moduleName valueName >> List.singleton)
-                |> Result.andThen (\typedValueDef -> insertTypedValue moduleName valueName typedValueDef repo)
+                |> Result.andThen (\typedValueDef -> insertTypedValue moduleName valueName typedValueDef access valueDoc repo)
 
         Nothing ->
             Infer.inferValue ir value
@@ -571,15 +554,15 @@ insertValue moduleName valueName maybeValueType value access repo =
                             typedValueDef =
                                 Value.typeAndValueToDefinition (typedValue |> Value.valueAttribute) typedValue
                         in
-                        insertTypedValue moduleName valueName typedValueDef repo
+                        insertTypedValue moduleName valueName typedValueDef access valueDoc repo
                     )
 
 
-{-| Update an exisiting value in the repo without type information. The repo will infer the types of each node
+{-| Update an existing value in the repo without type information. The repo will infer the types of each node
 and store it. This function might fail if the inferred type is not compatible with the declared type that's passed in.
 -}
-updateValue : ModuleName -> Name -> Maybe (Type ()) -> Value () () -> Access -> Repo -> Result Errors Repo
-updateValue moduleName valueName maybeValueType value access repo =
+updateValue : ModuleName -> Name -> Maybe (Type ()) -> Value () () -> Access -> String -> Repo -> Result Errors Repo
+updateValue moduleName valueName maybeValueType value access doc repo =
     let
         ir : IR
         ir =
@@ -629,7 +612,7 @@ updateValue moduleName valueName maybeValueType value access repo =
                 |> Result.andThen
                     (\typedValueDef ->
                         removeValue repo
-                            |> Result.andThen (insertTypedValue moduleName valueName typedValueDef)
+                            |> Result.andThen (insertTypedValue moduleName valueName typedValueDef access doc)
                     )
 
         Nothing ->
@@ -644,7 +627,7 @@ updateValue moduleName valueName maybeValueType value access repo =
                                 Value.typeAndValueToDefinition (typedValue |> Value.valueAttribute) typedValue
                         in
                         removeValue repo
-                            |> Result.andThen (insertTypedValue moduleName valueName typedValueDef)
+                            |> Result.andThen (insertTypedValue moduleName valueName typedValueDef access doc)
                     )
 
 
@@ -674,8 +657,8 @@ deleteValue moduleName valueName (Repo repo) =
 
 {-| Insert typed values into repo modules and update the value dependency graph of the repo
 -}
-insertTypedValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Repo -> Result Errors Repo
-insertTypedValue moduleName valueName valueDef repo =
+insertTypedValue : ModuleName -> Name -> Value.Definition () (Type ()) -> Access -> String -> Repo -> Result Errors Repo
+insertTypedValue moduleName valueName valueDef valueAccess valueDoc repo =
     let
         validateValueExistsResult : AccessControlled (Module.Definition () (Type ())) -> Result Errors (AccessControlled (Module.Definition () (Type ())))
         validateValueExistsResult accessControlledModuleDef =
@@ -715,7 +698,7 @@ insertTypedValue moduleName valueName valueDef repo =
             accessControlledModDef
                 |> AccessControlled.map
                     (\modDef ->
-                        Dict.insert valueName (public (valueDef |> Documented.Documented "")) modDef.values
+                        Dict.insert valueName (AccessControlled valueAccess (valueDef |> Documented.Documented valueDoc)) modDef.values
                             |> (\updatedValues -> { modDef | values = updatedValues })
                     )
                 |> (\updatedAccessControlledModDef ->

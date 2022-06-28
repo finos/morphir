@@ -214,16 +214,10 @@ encodeData ir tpe =
                     (\fieldEncoders value ->
                         case value of
                             Value.Record _ fields ->
-                                let
-                                    fieldValues : Dict Name RawValue
-                                    fieldValues =
-                                        fields
-                                            |> Dict.fromList
-                                in
                                 fieldEncoders
                                     |> List.map
                                         (\( fieldName, fieldEncoder ) ->
-                                            fieldValues
+                                            fields
                                                 |> Dict.get fieldName
                                                 |> Result.fromMaybe (String.concat [ "Value for field not found: ", Name.toCamelCase fieldName ])
                                                 |> Result.andThen fieldEncoder
@@ -252,8 +246,8 @@ encodeData ir tpe =
                                 Err (String.concat [ "Expected tuple but found: ", Debug.toString value ])
                     )
 
-        _ ->
-            Debug.todo "implement"
+        a ->
+            Debug.log "" a |> Debug.todo "implement"
 
 
 decodeData : IR -> Type () -> Result String (Decode.Decoder RawValue)
@@ -422,7 +416,7 @@ decodeData ir tpe =
                                 )
                     )
                     (Ok (Decode.succeed []))
-                |> Result.map (\decoder -> Decode.map (Value.Record ()) decoder)
+                |> Result.map (\decoder -> Decode.map (Value.Record ()) (decoder |> Decode.map Dict.fromList))
 
         Type.Tuple _ elemTypes ->
             elemTypes

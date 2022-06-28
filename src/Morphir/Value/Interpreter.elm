@@ -28,7 +28,7 @@ type alias Variables =
 
 
 {-| -}
-evaluateFunctionValue : Dict FQName Native.Function -> IR -> FQName -> List RawValue -> Result Error RawValue
+evaluateFunctionValue : Dict FQName Native.Function -> IR -> FQName -> List (Maybe RawValue) -> Result Error RawValue
 evaluateFunctionValue nativeFunctions ir fQName variableValues =
     ir
         |> IR.lookupValueDefinition fQName
@@ -42,7 +42,7 @@ evaluateFunctionValue nativeFunctions ir fQName variableValues =
                         (valueDef.inputTypes
                             |> List.map (\( name, _, _ ) -> name)
                         )
-                        variableValues
+                        (List.map (Maybe.withDefault (Value.Unit ())) variableValues)
                         |> Dict.fromList
                     )
                     []
@@ -88,9 +88,10 @@ evaluateValue nativeFunctions ir variables arguments value =
                             Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
                                 Ok
                                     (Value.Record ()
-                                        (List.map2 Tuple.pair
-                                            (fields |> List.map .name)
-                                            evaluatedArgs
+                                        (Dict.fromList <|
+                                            List.map2 Tuple.pair
+                                                (fields |> List.map .name)
+                                                evaluatedArgs
                                         )
                                     )
 
@@ -131,6 +132,7 @@ evaluateValue nativeFunctions ir variables arguments value =
         Value.Record _ fields ->
             -- For a record we need to evaluate each element and return them wrapped back into a record
             fields
+                |> Dict.toList
                 -- We evaluate each field separately.
                 |> List.map
                     (\( fieldName, fieldValue ) ->
@@ -140,7 +142,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                 -- If any of those fails we return the first failure.
                 |> ListOfResults.liftFirstError
                 -- If nothing fails we wrap the result in a record.
-                |> Result.map (Value.Record ())
+                |> Result.map (Dict.fromList >> Value.Record ())
 
         Value.Variable _ varName ->
             -- When we run into a variable we simply look up the value of the variable in the state.
@@ -181,6 +183,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                             )
                         |> ResultList.keepFirstError
                         -- If this is a reference to another Morphir value we need to look it up and evaluate.
+                        |> Result.map (\resultList -> List.map (\result -> Just result) resultList)
                         |> Result.andThen (evaluateFunctionValue nativeFunctions ir fQName)
 
         Value.Field _ subjectValue fieldName ->
@@ -192,7 +195,6 @@ evaluateValue nativeFunctions ir variables arguments value =
                         case evaluatedSubjectValue of
                             Value.Record _ fields ->
                                 fields
-                                    |> Dict.fromList
                                     |> Dict.get fieldName
                                     |> Result.fromMaybe (FieldNotFound subjectValue fieldName)
 
@@ -211,7 +213,6 @@ evaluateValue nativeFunctions ir variables arguments value =
                                 case evaluatedSubjectValue of
                                     Value.Record _ fields ->
                                         fields
-                                            |> Dict.fromList
                                             |> Dict.get fieldName
                                             |> Result.fromMaybe (FieldNotFound subjectValue fieldName)
 
@@ -367,6 +368,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                             Value.Record _ fields ->
                                 -- Once we hve the fields we fold through the field updates
                                 fieldUpdates
+                                    |> Dict.toList
                                     |> List.foldl
                                         -- For each field update we update a single field and return the new field dictionary
                                         (\( fieldName, newFieldValue ) fieldsResultSoFar ->
@@ -394,8 +396,8 @@ evaluateValue nativeFunctions ir variables arguments value =
                                                     )
                                         )
                                         -- We start with the original fields
-                                        (Ok (fields |> Dict.fromList))
-                                    |> Result.map (Dict.toList >> Value.Record ())
+                                        (Ok fields)
+                                    |> Result.map (Value.Record ())
 
                             _ ->
                                 Err (RecordExpected subjectValue evaluatedSubjectValue)

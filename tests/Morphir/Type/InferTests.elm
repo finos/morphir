@@ -131,10 +131,11 @@ positiveOutcomes =
         ]
 
     -- record
-    , Value.Record (Type.Record () [ Type.Field [ "bar" ] (floatType ()), Type.Field [ "foo" ] (boolType ()) ])
-        [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
-        , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
-        ]
+    , Value.Record (Type.Record () [ Type.Field [ "bar" ] (floatType ()), Type.Field [ "foo" ] (boolType ()) ]) <|
+        Dict.fromList
+            [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
+            , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
+            ]
     , Value.Lambda (Type.Function () (barRecordType "t5_1") (floatType ()))
         (Value.AsPattern (barRecordType "t5_1") (Value.WildcardPattern (barRecordType "t5_1")) [ "rec" ])
         (Value.IfThenElse (floatType ())
@@ -172,11 +173,12 @@ positiveOutcomes =
         [ "rec" ]
         (Value.Definition []
             fooBarBazRecordType
-            (Value.Record fooBarBazRecordType
-                [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
-                , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 3.14) )
-                , ( [ "baz" ], Value.Literal (stringType ()) (StringLiteral "meh") )
-                ]
+            (Value.Record fooBarBazRecordType <|
+                Dict.fromList
+                    [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
+                    , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 3.14) )
+                    , ( [ "baz" ], Value.Literal (stringType ()) (StringLiteral "meh") )
+                    ]
             )
         )
         (Value.IfThenElse (floatType ())
@@ -194,8 +196,10 @@ positiveOutcomes =
         (Value.AsPattern (barRecordType "t3_1") (Value.WildcardPattern (barRecordType "t3_1")) [ "rec" ])
         (Value.UpdateRecord (barRecordType "t3_1")
             (Value.Variable (barRecordType "t3_1") [ "rec" ])
-            [ ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
-            ]
+         <|
+            Dict.fromList
+                [ ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
+                ]
         )
 
     -- reference

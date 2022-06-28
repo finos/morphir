@@ -12,15 +12,18 @@ import Graph exposing (Graph)
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
 import Morphir.Elm.ModuleName as ElmModuleName
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
+import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.KindOfName exposing (KindOfName(..))
 import Morphir.IR.Literal as Literal
+import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.SDK.Basics as SDKBasics
 import Morphir.IR.SDK.List as List
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Value)
 import Morphir.SDK.ResultList as ResultList
+import Morphir.Type.Infer as Infer
 import Set exposing (Set)
 
 
@@ -37,6 +40,7 @@ type Error
     | SameNameAppearsMultipleTimesInPattern SourceLocation (Set String)
     | VariableNameCollision SourceLocation String
     | UnresolvedVariable SourceLocation String
+    | TypeCheckError ModuleName Infer.TypeError
 
 
 type alias SourceLocation =
@@ -140,7 +144,7 @@ mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
 -- Value Mappings
 
 
-mapDeclarationsToValue : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> List (Node Declaration) -> Result Errors (List ( FQName, ( Maybe (Type ()), Value () () ) ))
+mapDeclarationsToValue : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> List (Node Declaration) -> Result Errors (List ( FQName, ( ( Maybe (Type ()), Value () () ), String ) ))
 mapDeclarationsToValue resolveName parsedModule decls =
     let
         moduleName : Elm.ModuleName
@@ -183,9 +187,15 @@ mapDeclarationsToValue resolveName parsedModule decls =
                                             in
                                             ( maybeValueType, maybeTypedValueDef.body |> Value.mapValueAttributes (always ()) identity )
                                         )
+
+                            valueDoc : String
+                            valueDoc =
+                                function.documentation
+                                    |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
+                                    |> Maybe.withDefault ""
                         in
                         valueDef
-                            |> Result.map2 Tuple.pair valueName
+                            |> Result.map2 (\valName valDef -> ( valName, ( valDef, valueDoc ) )) valueName
                             |> Just
 
                     _ ->
@@ -371,6 +381,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                     )
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
+                |> Result.map Dict.fromList
                 |> Result.map (Value.Record defaultValueAttribute)
 
         Expression.ListExpr itemNodes ->
@@ -393,24 +404,32 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
             Ok (Value.FieldFunction defaultValueAttribute (fieldName |> Name.fromString))
 
         Expression.RecordUpdateExpression (Node targetVarRange targetVarName) fieldNodes ->
+            let
+                wrapInUpdateRecord : Value TypeAttribute ValueAttribute -> Result (List Error) (Value TypeAttribute ValueAttribute)
+                wrapInUpdateRecord targetValue =
+                    fieldNodes
+                        |> List.map Node.value
+                        |> List.map
+                            (\( Node _ fieldName, fieldValue ) ->
+                                mapExpression resolveReferenceName moduleName variables fieldValue
+                                    |> Result.map (Tuple.pair (fieldName |> Name.fromString))
+                            )
+                        |> ResultList.keepAllErrors
+                        |> Result.mapError List.concat
+                        |> Result.map Dict.fromList
+                        |> Result.map
+                            (Value.UpdateRecord
+                                defaultValueAttribute
+                                targetValue
+                            )
+            in
             if variables |> Set.member targetVarName then
-                fieldNodes
-                    |> List.map Node.value
-                    |> List.map
-                        (\( Node _ fieldName, fieldValue ) ->
-                            mapExpression resolveReferenceName moduleName variables fieldValue
-                                |> Result.map (Tuple.pair (fieldName |> Name.fromString))
-                        )
-                    |> ResultList.keepAllErrors
-                    |> Result.mapError List.concat
-                    |> Result.map
-                        (Value.UpdateRecord
-                            defaultValueAttribute
-                            (targetVarName |> Name.fromString |> Value.Variable defaultValueAttribute)
-                        )
+                wrapInUpdateRecord (targetVarName |> Name.fromString |> Value.Variable defaultValueAttribute)
 
             else
-                Err [ UnresolvedVariable (SourceLocation moduleName targetVarRange) targetVarName ]
+                resolveReferenceName [] targetVarName Value
+                    |> Result.mapError (ResolveError (SourceLocation moduleName targetVarRange) >> List.singleton)
+                    |> Result.andThen (Value.Reference defaultValueAttribute >> wrapInUpdateRecord)
 
         Expression.GLSLExpression _ ->
             Err
@@ -439,8 +458,18 @@ mapFunction resolveName moduleName variables (Node functionRange function) =
                     }
                 )
 
-        declaredValueTypeResult : Result Errors (Type TypeAttribute)
-        declaredValueTypeResult =
+        inferValue : Value () ValueAttribute -> Result Errors (Value () (Type ()))
+        inferValue value =
+            Infer.inferValue IR.empty value
+                |> Result.map (Value.mapValueAttributes identity Tuple.second)
+                |> Result.mapError
+                    (TypeCheckError
+                        (List.map Name.fromString moduleName)
+                        >> List.singleton
+                    )
+
+        declaredOrInferredTypeResult : Value TypeAttribute ValueAttribute -> Result Errors (Type TypeAttribute)
+        declaredOrInferredTypeResult value =
             case function.signature of
                 Just (Node _ signature) ->
                     signature.typeAnnotation
@@ -448,17 +477,22 @@ mapFunction resolveName moduleName variables (Node functionRange function) =
                         |> Result.map (Type.mapTypeAttributes (always True))
 
                 Nothing ->
-                    Ok (Type.Unit False)
+                    Value.mapValueAttributes (always ()) identity value
+                        |> inferValue
+                        |> Result.map (Value.valueAttribute >> Type.mapTypeAttributes (always True))
     in
-    Result.map2
-        (\value declaredValueType ->
-            { inputTypes = []
-            , outputType = declaredValueType
-            , body = value |> Value.mapValueAttributes (always False) identity
-            }
-        )
-        (mapExpression resolveName moduleName variables expression)
-        declaredValueTypeResult
+    mapExpression resolveName moduleName variables expression
+        |> Result.andThen
+            (\value ->
+                declaredOrInferredTypeResult value
+                    |> Result.map
+                        (\valueType ->
+                            { inputTypes = []
+                            , outputType = valueType
+                            , body = value |> Value.mapValueAttributes (always False) identity
+                            }
+                        )
+            )
 
 
 mapPattern : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> Elm.ModuleName -> Set String -> Node Pattern -> Result Errors ( Set String, Value.Pattern ValueAttribute )
