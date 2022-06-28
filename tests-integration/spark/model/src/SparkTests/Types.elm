@@ -1,17 +1,20 @@
 module SparkTests.Types exposing (..)
 
-type Title
-    = Associate
-    | VP
-    | ED
-    | MD
-
-
-type alias Record1 =
-    { firstName : String
-    , lastName : String
-    , age : Int
-    , title : Title
+type Product
+    = Paintings
+    | Knife
+    | Plates
+    | Furniture
+    | HistoryWritings
+    
+    
+{-| This is a subset of the fields and types of the record from the Antiques example.
+-}
+type alias Antique =
+    { name : String
+    , ageOfItem : Int
+    , product : Product
+    , report : String
     }
 
 

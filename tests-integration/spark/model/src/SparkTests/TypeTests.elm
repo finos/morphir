@@ -34,11 +34,11 @@ testString source =
                 a.foo == "bar"
             )
 
-testEnum : List { title : Title } -> List { title : Title }
+testEnum : List { product : Product } -> List { product : Product }
 testEnum source =
     source
         |> List.filter
             (\a ->
-                a.title == ED
+                a.product == Plates
             )
 
