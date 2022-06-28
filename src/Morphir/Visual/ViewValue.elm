@@ -313,25 +313,37 @@ viewValueByLanguageFeature config value =
                 Value.LetRecursion tpe definitionDict val ->
                     Element.column [] (Dict.map (\k v -> Value.LetDefinition tpe k v val) definitionDict |> Dict.values |> List.map (viewValue config))
 
-                other ->
-                    Element.column
-                        [ Background.color (rgb 1 0.6 0.6)
-                        , smallPadding config.state.theme |> padding
-                        , Border.rounded 6
-                        ]
-                        [ Element.el
-                            [ smallPadding config.state.theme |> padding
-                            , Font.bold
-                            ]
-                            (Element.text "No visual mapping found for:")
-                        , Element.el
-                            [ Background.color (rgb 1 1 1)
-                            , smallPadding config.state.theme |> padding
-                            , Border.rounded 6
-                            , width fill
-                            ]
-                            (XRayView.viewValue (XRayView.viewType moduleNameToPathString) ((other |> Debug.log "?") |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
-                        ]
+                other   ->
+                    let
+                        unableToVisualize = 
+                            Element.column
+                                [ Background.color (rgb 1 0.6 0.6)
+                                , smallPadding config.state.theme |> padding
+                                , Border.rounded 6
+                                ]
+                                [ Element.el
+                                    [ smallPadding config.state.theme |> padding
+                                    , Font.bold
+                                    ]
+                                    (Element.text "No visual mapping found for:")
+                                , Element.el
+                                    [ Background.color (rgb 1 1 1)
+                                    , smallPadding config.state.theme |> padding
+                                    , Border.rounded 6
+                                    , width fill
+                                    ]
+                                    (XRayView.viewValue (XRayView.viewType moduleNameToPathString) ((other |> Debug.log "unable to visualize: ") |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
+                                ]
+                        in
+                    case Config.evaluate (other |> Value.toRawValue) config of
+                        Ok valueType ->
+                                case fromRawValue config.ir valueType of
+                                    Ok enrichedValue ->
+                                        viewValue config enrichedValue
+                                    Err _ ->
+                                        unableToVisualize
+                        Err _ ->
+                            unableToVisualize
     in
     valueElem
 
