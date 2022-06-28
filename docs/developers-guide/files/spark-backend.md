@@ -196,6 +196,94 @@ gets translated into
     source.filter((org.apache.spark.sql.functions.col("foo")) === ("bar"))
 ```
 
+_**Maybe**_ <br>
+Maybes are how Elm makes it possible to return a value or Nothing, equivalent to null in other languages.
+In Spark, all pure Spark functions and operators handle null gracefully
+(usually returning null itself if any operand is null).
+
+**Just** <br>
+In Elm, comparison against Maybes must be explicitly against `Just <Value>`.
+In Spark, no special treatment is needed to compare against a value that may be null.
+Therefore, elm code that looks like:
+```
+testMaybeBoolConditional : List { foo: Maybe Bool } -> List { foo : Maybe Bool }
+testMaybeBoolConditional source =
+    source
+        |> List.filter
+            (\a ->
+                a.foo == Just True
+            )
+```
+gets translated in Spark to
+```
+  def testMaybeBoolConditional(
+    source: org.apache.spark.sql.DataFrame
+  ): org.apache.spark.sql.DataFrame =
+    source.filter((org.apache.spark.sql.functions.col("foo")) === (true))
+```
+
+**Nothing** <br>
+Where Elm code compares against Nothing, Morphir will translate this into a comparison to null in Spark.
+
+For example, to take a list of records and filter out null records in Elm, we would do:
+```
+testMaybeBoolConditionalNull : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
+testMaybeBoolConditionalNull source =
+    source
+        |> List.filter
+            (\a ->
+                a.foo == Nothing
+            )
+```
+
+In Spark, this would be:
+```
+def testMaybeBoolConditional(
+  source: org.apache.spark.sql.DataFrame
+): org.apache.spark.sql.DataFrame =
+  source.filter(org.apache.spark.sql.functions.isnull(org.apache.spark.sql.functions.col("foo")))
+```
+
+**Maybe.map** <br>
+
+Elm has `Maybe.map` and `Maybe.defaultValue` to take a Maybe and execute one branch of code if the Maybe isn't Nothing,
+and another branch if it is.
+
+The equivalent in Spark is to use `where` to execute one branch of code if the value isn't null, and `otherwise` for
+the default case.
+For example:
+```
+testMaybeMapDefault : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
+testMaybeMapDefault source =
+    source
+        |> List.filter
+            (\item ->
+                item.foo
+                    |> Maybe.map
+                        (\a ->
+                            if a == False then
+                                True
+                            else
+                                False
+                        )
+                    |> Maybe.withDefault False
+            )
+```
+
+In Spark, this would be:
+```
+def testMaybeMapDefault(
+  source: org.apache.spark.sql.DataFrame
+): org.apache.spark.sql.DataFrame =
+  source.filter(org.apache.spark.sql.functions.when(
+    org.apache.spark.sql.functions.not(org.apache.spark.sql.functions.isnull(org.apache.spark.sql.functions.col("foo"))),
+    org.apache.spark.sql.functions.when(
+      (org.apache.spark.sql.functions.col("foo")) === (false),
+      true
+    ).otherwise(false)
+  ).otherwise(false))
+```
+
 # Spark Backend
 
 **mapDistribution**

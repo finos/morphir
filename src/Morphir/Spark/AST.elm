@@ -39,7 +39,7 @@ generator uses.
 import Array exposing (Array)
 import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Literal exposing (Literal)
+import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (TypedValue)
@@ -201,6 +201,30 @@ namedExpressionsFromValue ir typedValue =
         _ ->
             LambdaExpected typedValue |> Err
 
+{- | Helper function to replace the value declared in a lambda with a specific other value
+-}
+replaceLambdaArg : TypedValue -> TypedValue -> Result Error TypedValue
+replaceLambdaArg replacementValue lam =
+    -- extract the name of the lambda arg and replace every variable with replacementValue
+    case lam of
+        Value.Lambda _ (Value.AsPattern _ _ name) body ->
+            body
+                |> Value.rewriteValue
+                    (\currentValue ->
+                        case currentValue of
+                            Value.Variable _ otherName ->
+                                if name == otherName then
+                                    Just replacementValue
+                                else
+                                    Nothing
+                            _ ->
+                                Nothing
+                    )
+                |> Ok
+
+        other ->
+            UnhandledValue other |> Err
+
 
 {-| Provides a way to create Expressions from a Morphir Value.
 This is where support for various column expression is added. This function fails to produce an Expression
@@ -226,6 +250,28 @@ expressionFromValue ir morphirValue =
 
         Value.Apply _ _ _ ->
             case morphirValue of
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ([["morphir"],["s","d","k"]], [["maybe"]], ["with","default"] ) ) elseValue) (Value.Apply _ (Value.Apply _ (Value.Reference _ ([["morphir"],["s","d","k"]], [["maybe"]], ["map"])) thenValue) sourceValue) ->
+                    -- `value |> Maybe.map thenValue |> Maybe.withDefault elseValue` becomes `when(not(isnull(value)), thenValue).otherwise(elseValue)`
+                    Result.map3
+                        (\sourceExpr thenExpr elseExpr ->
+                            WhenOtherwise (Function "not" [Function "isnull" [sourceExpr]]) thenExpr elseExpr
+                        )
+                        (expressionFromValue ir sourceValue)
+                        (thenValue
+                            |> replaceLambdaArg sourceValue
+                            |> Result.andThen (expressionFromValue ir))
+                        (expressionFromValue ir elseValue)
+                Value.Apply _ (Value.Literal (Type.Function _ _ (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) ) (StringLiteral "Just") ) arg ->
+                    -- `Just arg` becomes `arg` if `Just` was a Maybe.
+                    expressionFromValue ir arg
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "not", "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) (StringLiteral "Nothing") ) ->
+                    -- `arg /= Nothing` becomes `not(isnull(arg))` if `Nothing` was a Maybe.
+                    expressionFromValue ir arg
+                        |> Result.map (\expr -> Function "not" [Function "isnull" [expr]])
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) (StringLiteral "Nothing") ) ->
+                    -- `arg == Nothing` becomes `isnull(arg)` if `Nothing` was a Maybe.
+                    expressionFromValue ir arg
+                        |> Result.map (\expr -> Function "isnull" [expr])
                 Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
                     case ( package, modName ) of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ) ->
