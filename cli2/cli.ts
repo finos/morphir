@@ -33,36 +33,8 @@ async function make(
     (await fsReadFile(morphirJsonPath)).toString()
   );
 
-  // Check if there is an existing IR
-  if ((await fsExists(morphirIrPath)) && (await fsExists(hashFilePath))) {
-    const oldContentHashes = await readContentHashes(hashFilePath);
-    const fileChanges = await FileChanges.detectChanges(
-      oldContentHashes,
-      path.join(projectDir, morphirJson.sourceDirectory)
-    );
-    if (reportFileChangeStats(fileChanges)) {
-      console.log(
-        "There were file changes and there is an existing IR. Building incrementally."
-      );
-      const previousIR: string = (await fsReadFile(morphirIrPath)).toString();
-      const updatedIR: string = await buildIncrementally(
-        morphirJson,
-        fileChanges,
-        options,
-        previousIR
-      );
-      await writeContentHashes(
-        hashFilePath,
-        FileChanges.toContentHashes(fileChanges)
-      );
-      return updatedIR;
-    } else {
-      console.log(
-        "There were no file changes and there is an existing IR. No actions needed."
-      );
-    }
-  } else {
-    console.log("There is no existing IR Or Hash file. Building from scratch.");
+  // check the status of the build incremental flag
+  if (options.buildIncrementally == false) {
     // We invoke file change detection but pass in no hashes which will generate inserts only
     const fileChanges = await FileChanges.detectChanges(
       new Map(),
@@ -79,6 +51,53 @@ async function make(
       FileChanges.toContentHashes(fileChanges)
     );
     return newIR;
+  } else {
+    if ((await fsExists(morphirIrPath)) && (await fsExists(hashFilePath))) {
+      const oldContentHashes = await readContentHashes(hashFilePath);
+      const fileChanges = await FileChanges.detectChanges(
+        oldContentHashes,
+        path.join(projectDir, morphirJson.sourceDirectory)
+      );
+      if (reportFileChangeStats(fileChanges)) {
+        console.log(
+          "There were file changes and there is an existing IR. Building incrementally."
+        );
+        const previousIR: string = (await fsReadFile(morphirIrPath)).toString();
+        const updatedIR: string = await buildIncrementally(
+          morphirJson,
+          fileChanges,
+          options,
+          previousIR
+        );
+        await writeContentHashes(
+          hashFilePath,
+          FileChanges.toContentHashes(fileChanges)
+        );
+        return updatedIR;
+      } else {
+        console.log(
+          "There were no file changes and there is an existing IR. No actions needed."
+        );
+      }
+    } else {
+      console.log("Building from scratch.");
+      // We invoke file change detection but pass in no hashes which will generate inserts only
+      const fileChanges = await FileChanges.detectChanges(
+        new Map(),
+        path.join(projectDir, morphirJson.sourceDirectory)
+      );
+      const fileSnapshot = FileChanges.toFileSnapshotJson(fileChanges);
+      const newIR: string = await buildFromScratch(
+        morphirJson,
+        fileSnapshot,
+        options
+      );
+      await writeContentHashes(
+        hashFilePath,
+        FileChanges.toContentHashes(fileChanges)
+      );
+      return newIR;
+    }
   }
 }
 
@@ -272,7 +291,6 @@ const gen = async (
           await fsWriteFile(filePath, content);
           console.log(`UPDATE - ${filePath}`);
         }
-
       } else {
         await fsMakeDir(fileDir, {
           recursive: true,
@@ -302,18 +320,20 @@ const stats = async (
 
   const collectStats = async (ir: string): Promise<string[]> => {
     return new Promise((resolve, reject) => {
-        worker.ports.jsonDecodeError.subscribe((err: any) => { reject(err); });
-        worker.ports.statsResult.subscribe(([err, ok]: any) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(ok);
-            }
-        });
+      worker.ports.jsonDecodeError.subscribe((err: any) => {
+        reject(err);
+      });
+      worker.ports.statsResult.subscribe(([err, ok]: any) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(ok);
+        }
+      });
 
-        worker.ports.stats.send(ir);
+      worker.ports.stats.send(ir);
     });
-    };
+  };
 
   const morphirIrJson: Buffer = await fsReadFile(path.resolve(input));
 
@@ -336,7 +356,6 @@ const stats = async (
           await fsWriteFile(filePath, content);
           console.log(`UPDATE - ${filePath}`);
         }
-
       } else {
         await fsMakeDir(fileDir, {
           recursive: true,
@@ -348,7 +367,6 @@ const stats = async (
   );
   return Promise.all(writePromises);
 };
-
 
 const generate = async (
   options: WorkerOptions,
