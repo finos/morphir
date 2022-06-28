@@ -71,6 +71,7 @@ view config viewValue itemType items =
                 viewAsList config viewValue items
 
 
+viewAsList : Config msg -> (records -> Element msg) -> List records -> Element msg
 viewAsList config viewValue items =
     table
         [ smallSpacing config.state.theme |> spacing
