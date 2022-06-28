@@ -1,7 +1,9 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, column, el, fill, moveUp, padding, row, spacing, text, width)
+import Element exposing (Element, centerX, el, fill, moveUp, padding, rgb, row, spacing, text, width)
+import Element.Background as Background
+import Element.Border as Border
 import Element.Font as Font
 import Morphir.IR as IR
 import Morphir.IR.Name as Name
@@ -20,15 +22,27 @@ view config viewValue functionValue argValues =
     let
         styles =
             [ smallSpacing config.state.theme |> spacing, Element.centerY ]
+
+        viewFunctionValue =
+            el [ Background.color <| config.state.theme.colors.selectionColor, padding 2 ] <| viewValue functionValue
     in
     case ( functionValue, argValues ) of
-        ( Value.Constructor _ (( _, _, localName ) as fQName), _ ) ->
+        ( (Value.Constructor _ fQName) as constr, _ ) ->
             case config.ir |> IR.lookupTypeSpecification (config.ir |> IR.resolveAliases fQName) of
                 Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
-                    FieldList.view (List.map2 (\field arg -> ( field.name, Element.el [ smallPadding config.state.theme |> padding, Element.centerY ] (viewValue arg) )) fields argValues)
+                    FieldList.view
+                        (List.map2
+                            (\field arg ->
+                                ( field.name
+                                , Element.el [ smallPadding config.state.theme |> padding, Element.centerY ] (viewValue arg)
+                                )
+                            )
+                            fields
+                            argValues
+                        )
 
                 _ ->
-                    Element.row styles (List.concat [ [ text <| nameToText localName ], argValues |> List.map viewValue ])
+                    Element.row styles (viewValue constr :: (argValues |> List.map viewValue))
 
         ( Value.Reference _ ( _, _, ("is" :: _) as localName ), [ argValue ] ) ->
             row
@@ -71,7 +85,7 @@ view config viewValue functionValue argValues =
             if moduleName == [ [ "basics" ] ] && (localName == [ "min" ] || localName == [ "max" ]) then
                 row
                     styles
-                    [ viewValue functionValue
+                    [ viewFunctionValue
                     , text " ("
                     , viewValue argValues1
                     , text ","
@@ -98,15 +112,13 @@ view config viewValue functionValue argValues =
 
                     Nothing ->
                         row
-                            ((smallPadding config.state.theme |> padding) :: styles)
-                            [ viewValue functionValue, viewValue argValues1, viewValue argValues2 ]
+                            ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding ] ++ styles)
+                            [ viewFunctionValue, viewValue argValues1, viewValue argValues2 ]
 
         _ ->
-            column [ smallSpacing config.state.theme |> spacing ]
-                [ column [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
-                    [ viewValue functionValue
-                    ]
-                , column [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
+            row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding ] ++ styles)
+                [ viewFunctionValue
+                , row [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
                     (argValues
                         |> List.map viewValue
                     )
