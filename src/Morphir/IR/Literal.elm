@@ -28,7 +28,7 @@ module Morphir.IR.Literal exposing (Literal(..), boolLiteral, charLiteral, strin
 @docs Literal, boolLiteral, charLiteral, stringLiteral, intLiteral, floatLiteral
 
 -}
-import Decimal exposing (Decimal)
+import Morphir.SDK.Decimal exposing (Decimal)
 
 
 

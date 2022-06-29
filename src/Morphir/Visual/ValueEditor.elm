@@ -550,6 +550,9 @@ view ir valueType updateEditorState editorState =
                     else if tpe == Basics.floatType () then
                         "real num."
 
+                    else if tpe == Decimal.decimalType () then
+                        "decimal"
+                    
                     else
                         "?"
             in

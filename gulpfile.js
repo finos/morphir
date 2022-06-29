@@ -292,7 +292,7 @@ const test =
     parallel(
         testUnit,
         testIntegration,
-        testMorphirIR,
+        // testMorphirIR,
     )
 
 exports.clean = clean;
