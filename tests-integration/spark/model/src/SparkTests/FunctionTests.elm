@@ -2,8 +2,34 @@ module SparkTests.FunctionTests exposing (..)
 
 import SparkTests.Types exposing (..)
 
-testCase1 : List Antique -> List Antique
-testCase1 source =
+testCaseBool : List { foo : Bool } -> List { foo : Bool }
+testCaseBool source =
+    source
+        |> List.filter
+            (\a ->
+                case a.foo of
+                    False ->
+                        True
+                    _ ->
+                        False
+            )
+
+
+testCaseFloat : List { foo : Float } -> List { foo : Float }
+testCaseFloat source =
+    source
+        |> List.filter
+            (\a ->
+                case a.foo of
+                    9.99 ->
+                        True
+                    _ ->
+                        False
+            )
+
+
+testCaseInt : List Antique -> List Antique
+testCaseInt source =
     source
         |> List.filter
             (\a ->
@@ -15,6 +41,20 @@ testCase1 source =
                     _ ->
                         False
             )
+
+
+testCaseString : List Antique -> List Antique
+testCaseString source =
+    source
+        |> List.filter
+            (\a ->
+                case a.name of
+                    "Wooden Chair" ->
+                        False
+                    _ ->
+                        True
+            )
+
 
 testFrom : List Antique -> List Antique
 testFrom source =
