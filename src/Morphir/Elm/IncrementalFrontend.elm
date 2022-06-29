@@ -67,8 +67,8 @@ type alias SignatureAndValue =
     ( Maybe (Type ()), Value () () )
 
 
-orderFileChanges : PackageName -> FileChanges -> Result Errors OrderedFileChanges
-orderFileChanges packageName fileChanges =
+orderFileChanges : PackageName -> Repo -> FileChanges -> Result Errors (List ModuleChange)
+orderFileChanges packageName repo fileChanges =
     let
         fileChangesByType : FileChanges.FileChangesByType
         fileChangesByType =
@@ -95,14 +95,19 @@ orderFileChanges packageName fileChanges =
                 |> List.map (filePathToModuleName packageName)
                 |> ResultList.keepAllErrors
                 |> Result.map Set.fromList
+
+        orderedFileChanges : Result Errors OrderedFileChanges
+        orderedFileChanges =
+            Result.map2 OrderedFileChanges
+                (parsedInsertsAndUpdates
+                    |> Result.andThen (orderElmModulesByDependency packageName)
+                )
+                (fileChangesByType.deletes
+                    |> filePathsToModuleNames
+                )
     in
-    Result.map2 OrderedFileChanges
-        (parsedInsertsAndUpdates
-            |> Result.andThen (orderElmModulesByDependency packageName)
-        )
-        (fileChangesByType.deletes
-            |> filePathsToModuleNames
-        )
+    orderedFileChanges
+        |> Result.map (reOrderChanges repo)
 
 
 filePathToModuleName : PackageName -> FilePath.Path -> Result Error ModuleName
@@ -152,8 +157,24 @@ filePathToModuleName packageName filePath =
             Err (InvalidSourceFilePath filePath "A valid file path must have at least one directory and one file.")
 
 
-applyFileChanges : PackageName -> OrderedFileChanges -> Frontend.Options -> Maybe (Set Path) -> Repo -> Result Errors Repo
+applyFileChanges : PackageName -> List ModuleChange -> Frontend.Options -> Maybe (Set Path) -> Repo -> Result Errors Repo
 applyFileChanges packageName fileChanges opts maybeExposedModules repo =
+    let
+        insertsAndUpdateChanges =
+            fileChanges
+                |> List.filterMap
+                    (\modChange ->
+                        case modChange of
+                            ModuleInsert modName _ ->
+                                Just modName
+
+                            ModuleUpdate modName _ ->
+                                Just modName
+
+                            ModuleDelete _ ->
+                                Nothing
+                    )
+    in
     case maybeExposedModules of
         Just exposedModules ->
             if Set.isEmpty exposedModules then
@@ -170,9 +191,24 @@ applyFileChanges packageName fileChanges opts maybeExposedModules repo =
                             |> Result.andThen
                                 (DAG.insertNode modName modDeps >> Result.mapError (\(DAG.CycleDetected from to) -> [ ModuleCycleDetected from to ]))
 
+                    insertsAndUpdates =
+                        fileChanges
+                            |> List.filterMap
+                                (\change ->
+                                    case change of
+                                        ModuleInsert modName parsedMod ->
+                                            Just ( modName, parsedMod )
+
+                                        ModuleUpdate modName parsedMod ->
+                                            Just ( modName, parsedMod )
+
+                                        _ ->
+                                            Nothing
+                                )
+
                     updatedModuleDep : Result Errors (DAG ModuleName)
                     updatedModuleDep =
-                        fileChanges.insertsAndUpdates
+                        insertsAndUpdates
                             |> List.map
                                 (\( modName, parsedModule ) ->
                                     ParsedModule.imports parsedModule
@@ -200,34 +236,42 @@ applyFileChanges packageName fileChanges opts maybeExposedModules repo =
                                 )
                                 exposedModules
 
-                    modulesToProcess : Set ModuleName -> OrderedFileChanges
+                    modulesToProcess : Set ModuleName -> List ModuleChange
                     modulesToProcess usedModuleSet =
                         let
                             _ =
-                                Debug.log "usedModuleSet" usedModuleSet
+                                Debug.log "Used Modules:" usedModuleSet
                         in
-                        { fileChanges
-                            | insertsAndUpdates =
-                                fileChanges.insertsAndUpdates
-                                    |> List.filter (\( modName, _ ) -> Set.member modName usedModuleSet)
-                        }
+                        fileChanges
+                            |> List.filter
+                                (\fileChange ->
+                                    case fileChange of
+                                        ModuleInsert moduleName _ ->
+                                            Set.member moduleName usedModuleSet
+
+                                        ModuleUpdate moduleName _ ->
+                                            Set.member moduleName usedModuleSet
+
+                                        ModuleDelete moduleName ->
+                                            Set.member moduleName usedModuleSet
+                                )
                 in
                 updatedModuleDep
                     |> Result.map (usedModules >> modulesToProcess)
-                    |> Result.andThen (\filterFileChanges -> applyChangesByOrder filterFileChanges opts exposedModules repo)
+                    |> Result.andThen (\filteredFileChanges -> applyChangesByOrder filteredFileChanges opts exposedModules repo)
 
         Nothing ->
             -- make everything public when exposedModules not defined
             -- create the list of exposedModules from insertsAndUpdates and the modules already in the repo
             Repo.modules repo
                 |> Dict.keys
-                |> List.append (List.map Tuple.first fileChanges.insertsAndUpdates)
+                |> List.append insertsAndUpdateChanges
                 |> Set.fromList
                 |> (\exposedMods -> applyChangesByOrder fileChanges opts exposedMods repo)
 
 
-applyChangesByOrder : OrderedFileChanges -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
-applyChangesByOrder orderedFileChanges opts exposedModules repo =
+reOrderChanges : Repo -> OrderedFileChanges -> List ModuleChange
+reOrderChanges repo orderedFileChanges =
     let
         updateAndInsertsAsDict : Dict ModuleName ParsedModule
         updateAndInsertsAsDict =
@@ -332,6 +376,11 @@ applyChangesByOrder orderedFileChanges opts exposedModules repo =
                     insertsAndUpdatesChanges
     in
     allChangesMerged
+
+
+applyChangesByOrder : List ModuleChange -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
+applyChangesByOrder orderedChanges opts exposedModules repo =
+    orderedChanges
         |> List.foldl
             (\modChange repoResultSoFar ->
                 case modChange of
@@ -349,7 +398,8 @@ applyChangesByOrder orderedFileChanges opts exposedModules repo =
             (Ok repo)
         |> Result.andThen
             (\updatedRepo ->
-                List.reverse allChangesMerged
+                orderedChanges
+                    |> List.reverse
                     |> List.foldl
                         (\modChange repoResultSoFar ->
                             case modChange of
