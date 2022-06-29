@@ -159,22 +159,6 @@ filePathToModuleName packageName filePath =
 
 applyFileChanges : PackageName -> List ModuleChange -> Frontend.Options -> Maybe (Set Path) -> Repo -> Result Errors Repo
 applyFileChanges packageName fileChanges opts maybeExposedModules repo =
-    let
-        insertsAndUpdateChanges =
-            fileChanges
-                |> List.filterMap
-                    (\modChange ->
-                        case modChange of
-                            ModuleInsert modName _ ->
-                                Just modName
-
-                            ModuleUpdate modName _ ->
-                                Just modName
-
-                            ModuleDelete _ ->
-                                Nothing
-                    )
-    in
     case maybeExposedModules of
         Just exposedModules ->
             if Set.isEmpty exposedModules then
@@ -263,6 +247,22 @@ applyFileChanges packageName fileChanges opts maybeExposedModules repo =
         Nothing ->
             -- make everything public when exposedModules not defined
             -- create the list of exposedModules from insertsAndUpdates and the modules already in the repo
+            let
+                insertsAndUpdateChanges =
+                    fileChanges
+                        |> List.filterMap
+                            (\modChange ->
+                                case modChange of
+                                    ModuleInsert modName _ ->
+                                        Just modName
+
+                                    ModuleUpdate modName _ ->
+                                        Just modName
+
+                                    ModuleDelete _ ->
+                                        Nothing
+                            )
+            in
             Repo.modules repo
                 |> Dict.keys
                 |> List.append insertsAndUpdateChanges
