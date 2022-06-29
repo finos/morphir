@@ -337,9 +337,6 @@ deleteModule moduleName (Repo repo) =
                     let
                         dependentModules =
                             repo.moduleDependencies |> DAG.incomingEdges moduleName
-
-                        _ =
-                            Debug.log "moduleDependencies:" repo.moduleDependencies
                     in
                     if Set.isEmpty dependentModules then
                         Nothing
