@@ -296,7 +296,7 @@ insertModule moduleName moduleDef access (Repo repo) =
         dependenciesCollectedFromTypesAndValues =
             List.map2
                 (\( _, modName, _ ) ( _, modName2, _ ) ->
-                    [ modName, modName2 ]
+                    List.filter (\mn -> mn /= moduleName) [ modName, modName2 ]
                 )
                 (allTypesInModule |> List.map (Tuple.second >> Set.toList) |> List.concat)
                 (allValuesInModule |> List.map (Tuple.second >> Set.toList) |> List.concat)
@@ -337,6 +337,9 @@ deleteModule moduleName (Repo repo) =
                     let
                         dependentModules =
                             repo.moduleDependencies |> DAG.incomingEdges moduleName
+
+                        _ =
+                            Debug.log "moduleDependencies:" repo.moduleDependencies
                     in
                     if Set.isEmpty dependentModules then
                         Nothing
