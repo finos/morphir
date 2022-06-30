@@ -15,9 +15,12 @@
 -}
 
 
-module Morphir.IR.Documented exposing (Documented)
+module Morphir.IR.Documented exposing (Documented, map)
 
-{-| Tools to assign documentation to nodes in the IR.
+{-|
+
+@docs Documented, map
+
 -}
 
 
@@ -29,6 +32,7 @@ type alias Documented a =
     }
 
 
+{-| -}
 map : (a -> b) -> Documented a -> Documented b
 map f d =
     Documented d.doc (f d.value)
