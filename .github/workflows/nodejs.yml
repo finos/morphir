@@ -95,12 +95,6 @@ jobs:
       - name: Install
         run: npm install
 
-      - name: Publish Elm (as needed)
-        uses: dillonkearns/elm-publish-action@1.1.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-elm: ./node_modules/.bin/elm 
-
       - name: Publish NPM (as needed)
         uses: JS-DevTools/npm-publish@v1
         if: env.NPM_TOKEN != 0
