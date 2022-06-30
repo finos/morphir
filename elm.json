@@ -24,6 +24,7 @@
         "Morphir.IR.QName",
         "Morphir.IR.FQName",
         "Morphir.IR.AccessControlled",
+        "Morphir.IR.Documented",
         "Morphir.IR.Type",
         "Morphir.IR.Value",
         "Morphir.IR.Literal",
