@@ -765,17 +765,16 @@ orderElmModulesByDependency packageName parsedModules =
                 elmModuleName =
                     ParsedModule.moduleName parsedModule
             in
-            elmModuleName
-                |> ElmModuleName.toIRModuleName packageName
-                |> Result.fromMaybe [ InvalidModuleName elmModuleName ]
-                |> Result.andThen
-                    (\fromModuleName ->
-                        graph
-                            |> Result.andThen
-                                (DAG.insertNode fromModuleName moduleDependencies
-                                    >> Result.mapError (\(DAG.CycleDetected from to) -> [ ModuleCycleDetected from to ])
-                                )
-                    )
+            case elmModuleName |> ElmModuleName.toIRModuleName packageName of
+                Nothing ->
+                    graph
+
+                Just fromModuleName ->
+                    graph
+                        |> Result.andThen
+                            (DAG.insertNode fromModuleName moduleDependencies
+                                >> Result.mapError (\(DAG.CycleDetected from to) -> [ ModuleCycleDetected from to ])
+                            )
     in
     parsedModules
         |> List.foldl foldFunction (Ok DAG.empty)

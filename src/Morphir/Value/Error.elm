@@ -20,6 +20,7 @@ type Error
     | ExpectedFloatLiteral RawValue
     | ExpectedStringLiteral RawValue
     | ExpectedCharLiteral RawValue
+    | ExpectedDecimalLiteral RawValue
     | ExpectedMaybe RawValue
     | ExpectedResult RawValue
     | IfThenElseConditionShouldEvaluateToBool RawValue RawValue

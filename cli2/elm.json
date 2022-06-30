@@ -7,6 +7,7 @@
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {
+            "chain-partners/elm-bignum": "1.0.1",
             "cuducos/elm-format-number": "8.1.4",
             "dillonkearns/elm-markdown": "7.0.0",
             "dosarf/elm-tree-view": "3.0.0",

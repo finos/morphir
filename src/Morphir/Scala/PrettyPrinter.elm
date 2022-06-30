@@ -26,6 +26,7 @@ module Morphir.Scala.PrettyPrinter exposing (Options, mapCompilationUnit, mapMem
 import Morphir.File.SourceCode exposing (Doc, concat, dot, dotSep, empty, indent, indentLines, newLine, parens, space)
 import Morphir.IR.Name as Name
 import Morphir.Scala.AST exposing (..)
+import Decimal
 
 
 {-| -}
@@ -623,6 +624,9 @@ mapLit lit =
 
         FloatLit float ->
             String.fromFloat float
+
+        DecimalLit decimal->
+            Decimal.toString decimal
 
 
 statementBlock : Options -> List String -> Doc

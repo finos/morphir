@@ -38,6 +38,7 @@ generator uses. It's a relatively large portion of the language but it's not aim
 @docs nameOfTypeDecl
 
 -}
+import Decimal exposing (Decimal)
 
 
 {-| -}
@@ -245,6 +246,7 @@ type Lit
     | StringLit String
     | IntegerLit Int
     | FloatLit Float
+    | DecimalLit Decimal
 
 
 {-| -}
