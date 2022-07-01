@@ -13,6 +13,17 @@ class test1 extends FunSuite {
   val data = Seq(("Bowie Knife", "Rusty blade", 20, "Knife"), ("Wooden Chair", "Chipped legs", 19, "Furniture"))
   val rdd = localTestSession.sparkContext.parallelize(data)
 
+  test("testCase1") {
+      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
+      val res = SparkJobs.testCase1(dfFromRDD)
+      val rows = res.collect()
+      assert(res.count() == 1)
+      assert(rows(0)(0) == "Bowie Knife")
+      assert(rows(0)(1) == "Rusty blade")
+      assert(rows(0)(2) == 20)
+      assert(rows(0)(3) == "Knife")
+  }
+
   test("testFrom") {
       val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
       val res = SparkJobs.testFrom(dfFromRDD)

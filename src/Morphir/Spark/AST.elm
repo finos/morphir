@@ -37,14 +37,14 @@ generator uses.
 -}
 
 import Array exposing (Array)
+import Dict
 import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value exposing (TypedValue)
+import Morphir.IR.Value as Value exposing (Pattern(..), TypedValue)
 import Morphir.SDK.ResultList as ResultList
-import Dict
 
 
 {-| An ObjectExpression represents a transformation that is applied directly to a Spark Data Frame.
@@ -139,6 +139,8 @@ type Error
     | LambdaExpected TypedValue
     | ReferenceExpected
     | UnsupportedSDKFunction FQName
+    | EmptyPatternMatch
+    | UnhandledPatternMatch ( Pattern (Type.Type ()), TypedValue )
 
 
 {-| provides a way to create ObjectExpressions from a Morphir Value.
@@ -201,7 +203,8 @@ namedExpressionsFromValue ir typedValue =
         _ ->
             LambdaExpected typedValue |> Err
 
-{- | Helper function to replace the value declared in a lambda with a specific other value
+
+{-| Helper function to replace the value declared in a lambda with a specific other value
 -}
 replaceLambdaArg : TypedValue -> TypedValue -> Result Error TypedValue
 replaceLambdaArg replacementValue lam =
@@ -215,8 +218,10 @@ replaceLambdaArg replacementValue lam =
                             Value.Variable _ otherName ->
                                 if name == otherName then
                                     Just replacementValue
+
                                 else
                                     Nothing
+
                             _ ->
                                 Nothing
                     )
@@ -224,6 +229,33 @@ replaceLambdaArg replacementValue lam =
 
         other ->
             UnhandledValue other |> Err
+
+
+{-| Transforms a list of pattern,value tuples into Expressions
+-}
+mapPatterns : IR -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> Result Error Expression
+mapPatterns ir onValue cases =
+    case cases of
+        [] ->
+            EmptyPatternMatch |> Err
+
+        ( LiteralPattern _ lit, thenValue ) :: remainingCases ->
+            Result.map3
+                (\onExpr thenExpr otherwiseExpr ->
+                    WhenOtherwise
+                        (BinaryOperation "===" onExpr (Literal lit))
+                        thenExpr
+                        otherwiseExpr
+                )
+                (expressionFromValue ir onValue)
+                (expressionFromValue ir thenValue)
+                (mapPatterns ir onValue remainingCases)
+
+        [ ( WildcardPattern _, thenValue ) ] ->
+            expressionFromValue ir thenValue
+
+        ( otherPattern, otherValue ) :: _ ->
+            UnhandledPatternMatch ( otherPattern, otherValue ) |> Err
 
 
 {-| Provides a way to create Expressions from a Morphir Value.
@@ -250,28 +282,33 @@ expressionFromValue ir morphirValue =
 
         Value.Apply _ _ _ ->
             case morphirValue of
-                Value.Apply _ (Value.Apply _ (Value.Reference _ ([["morphir"],["s","d","k"]], [["maybe"]], ["with","default"] ) ) elseValue) (Value.Apply _ (Value.Apply _ (Value.Reference _ ([["morphir"],["s","d","k"]], [["maybe"]], ["map"])) thenValue) sourceValue) ->
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "with", "default" ] )) elseValue) (Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "map" ] )) thenValue) sourceValue) ->
                     -- `value |> Maybe.map thenValue |> Maybe.withDefault elseValue` becomes `when(not(isnull(value)), thenValue).otherwise(elseValue)`
                     Result.map3
                         (\sourceExpr thenExpr elseExpr ->
-                            WhenOtherwise (Function "not" [Function "isnull" [sourceExpr]]) thenExpr elseExpr
+                            WhenOtherwise (Function "not" [ Function "isnull" [ sourceExpr ] ]) thenExpr elseExpr
                         )
                         (expressionFromValue ir sourceValue)
                         (thenValue
                             |> replaceLambdaArg sourceValue
-                            |> Result.andThen (expressionFromValue ir))
+                            |> Result.andThen (expressionFromValue ir)
+                        )
                         (expressionFromValue ir elseValue)
-                Value.Apply _ (Value.Literal (Type.Function _ _ (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) ) (StringLiteral "Just") ) arg ->
+
+                Value.Apply _ (Value.Literal (Type.Function _ _ (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _)) (StringLiteral "Just")) arg ->
                     -- `Just arg` becomes `arg` if `Just` was a Maybe.
                     expressionFromValue ir arg
-                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "not", "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) (StringLiteral "Nothing") ) ->
+
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "not", "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _) (StringLiteral "Nothing")) ->
                     -- `arg /= Nothing` becomes `not(isnull(arg))` if `Nothing` was a Maybe.
                     expressionFromValue ir arg
-                        |> Result.map (\expr -> Function "not" [Function "isnull" [expr]])
-                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) (StringLiteral "Nothing") ) ->
+                        |> Result.map (\expr -> Function "not" [ Function "isnull" [ expr ] ])
+
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _) (StringLiteral "Nothing")) ->
                     -- `arg == Nothing` becomes `isnull(arg)` if `Nothing` was a Maybe.
                     expressionFromValue ir arg
-                        |> Result.map (\expr -> Function "isnull" [expr])
+                        |> Result.map (\expr -> Function "isnull" [ expr ])
+
                 Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
                     case ( package, modName ) of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ) ->
@@ -302,6 +339,9 @@ expressionFromValue ir morphirValue =
         Value.LetDefinition _ _ _ _ ->
             inlineLetDef [] [] morphirValue
                 |> expressionFromValue ir
+
+        Value.PatternMatch _ onValue cases ->
+            mapPatterns ir onValue cases
 
         other ->
             UnhandledValue other |> Err
