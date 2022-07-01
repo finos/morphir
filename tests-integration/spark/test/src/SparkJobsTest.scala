@@ -24,6 +24,17 @@ class test1 extends FunSuite {
     assert(rows(0)(0) == false)
   }
 
+  test("testCaseEnum") {
+      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
+      val res = SparkJobs.testCaseEnum(dfFromRDD)
+      val rows = res.collect()
+      assert(res.count() == 1)
+      assert(rows(0)(0) == "Wooden Chair")
+      assert(rows(0)(1) == "Chipped legs")
+      assert(rows(0)(2) == 19)
+      assert(rows(0)(3) == "Furniture")
+  }
+
   test("testCaseFloat") {
     val df = localTestSession.sparkContext.parallelize(Seq(
       (9.99),

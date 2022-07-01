@@ -56,6 +56,21 @@ testCaseString source =
             )
 
 
+testCaseEnum : List Antique -> List Antique
+testCaseEnum source =
+    source
+        |> List.filter
+            (\a ->
+                case a.product of
+                    Paintings ->
+                        True
+                    Furniture ->
+                        True
+                    _ ->
+                        False
+            )
+
+
 testFrom : List Antique -> List Antique
 testFrom source =
     source
