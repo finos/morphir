@@ -223,6 +223,29 @@ gets translated into
     source.filter((org.apache.spark.sql.functions.col("foo")) === ("bar"))
 ```
 
+_**Enum**_ <br>
+Elm Union types with no arguments (or Constructors in Morphir IR), are translated into String Literals.
+For instance:
+```
+testEnum : List { product : Product } -> List { product : Product }
+testEnum source =
+    source
+        |> List.filter
+            (\a ->
+                a.product == Plates
+            )
+```
+gets translated into
+```
+  def testEnum(
+    source: org.apache.spark.sql.DataFrame
+  ): org.apache.spark.sql.DataFrame =
+    source.filter((org.apache.spark.sql.functions.col("product")) === ("Plates"))
+```
+
+Currently the implementation doesn't check that the Constructor has no arguments. 
+Nor does the current implementation check whether a Constructor has Public access, and only consider those to be Enums.
+
 _**Maybe**_ <br>
 Maybes are how Elm makes it possible to return a value or Nothing, equivalent to null in other languages.
 In Spark, all pure Spark functions and operators handle null gracefully
