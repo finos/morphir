@@ -226,14 +226,21 @@ collectFeaturesFromValue ir value featureCollection =
         Value.Constructor _ _ ->
             incrementOrAdd "Value.Constructor" featureCollection
 
-        Value.Tuple _ _ ->
-            incrementOrAdd "Value.Tuple" featureCollection
+        Value.Tuple _ values ->
+            values
+                |> List.foldl (collectFeaturesFromValue ir)
+                    (incrementOrAdd "Value.Tuple" featureCollection)
 
-        Value.List _ _ ->
-            incrementOrAdd "Value.List" featureCollection
+        Value.List _ values ->
+            values
+                |> List.foldl (collectFeaturesFromValue ir)
+                    (incrementOrAdd "Value.List" featureCollection)
 
-        Value.Record _ _ ->
-            incrementOrAdd "Value.Record" featureCollection
+        Value.Record _ values ->
+            values
+                |> Dict.values
+                |> List.foldl (collectFeaturesFromValue ir)
+                    (incrementOrAdd "Value.Record" featureCollection)
 
         Value.Variable _ _ ->
             incrementOrAdd "Value.Variable" featureCollection
