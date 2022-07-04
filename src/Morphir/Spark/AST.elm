@@ -328,6 +328,17 @@ expressionFromValue ir morphirValue =
                     expressionFromValue ir arg
                         |> Result.map (\expr -> Function "isnull" [ expr ])
 
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "member" ] )) item) (Value.List _ list) ->
+                    Result.map2
+                        (\itemExpr args ->
+                            Method itemExpr "isin" args
+                        )
+                        (expressionFromValue ir item)
+                        (list
+                            |> List.map (\val -> expressionFromValue ir val)
+                            |> ResultList.keepFirstError
+                        )
+
                 Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
                     case ( package, modName ) of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ) ->
