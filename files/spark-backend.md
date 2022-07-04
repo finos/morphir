@@ -144,6 +144,62 @@ org.apache.spark.sql.functions.when(
 ).otherwise(false)
 ```
 
+_**List.member constructs**_ <br>
+When List.member is used in conjunction with a List.filter function, such as in the following examples:
+```
+testEnumListMember : List { product : Product } -> List { product : Product }
+testEnumListMember source =
+    source
+        |> List.filter
+            (\a ->
+                List.member a.product [ Knife, Plates ]
+            )
+
+testStringListMember : List { name : String } -> List { name : String }
+testStringListMember source =
+    source
+        |> List.filter
+            (\a ->
+                List.member a.name [ "Upright Chair", "Small Table" ]
+            )
+
+testIntListMember : List { ageOfItem : Int } -> List { ageOfItem : Int }
+testIntListMember source =
+    source
+        |> List.filter
+            (\a ->
+                List.member a.ageOfItem [ 19, 20, 21 ]
+            )
+```
+The code is translated into a Spark 'Column.isin()' call. 
+For example, the three Elm snippets above are translated into this Spark code:
+```
+  def testEnumListMember(
+    source: org.apache.spark.sql.DataFrame
+  ): org.apache.spark.sql.DataFrame =
+    source.filter(org.apache.spark.sql.functions.col("product").isin(
+      "Knife",
+      "Plates"
+    ))
+  
+  def testStringListMember(
+    source: org.apache.spark.sql.DataFrame
+  ): org.apache.spark.sql.DataFrame =
+    source.filter(org.apache.spark.sql.functions.col("name").isin(
+      "Upright Chair",
+      "Small Table"
+    ))
+  
+  def testIntListMember(
+    source: org.apache.spark.sql.DataFrame
+  ): org.apache.spark.sql.DataFrame =
+    source.filter(org.apache.spark.sql.functions.col("ageOfItem").isin(
+      19,
+      20,
+      21
+    ))
+```
+
 ## Types
 The current Spark API processes the following types:
 
