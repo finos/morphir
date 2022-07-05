@@ -24,6 +24,31 @@ The easiest way to install the Elm tooling is using NPM. Here's a list of Elm to
 - `npm install -g elm-format`
 - `npm install -g elm-live` 
 
+#### Installing an elm-format git pre-commit hook
+
+If you wish to run elm-format on files that you are commiting to git, copy the following script to morphir-elm/.git/pre-commit and make it executable:
+
+```
+#!/usr/bin/env bash
+
+STAGED_ELM_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep ".elm$")
+
+# If any elm-format command fails, exit immediately with that command's exit status
+set -eo pipefail
+
+if [[ -n "$STAGED_ELM_FILES" ]] ; then
+    GIT_DIR=$(pwd)
+    # Run elm-format against staged elm files for this commit
+    for ELM_FILE in $STAGED_ELM_FILES ; do
+        ELM_PATH="$GIT_DIR/$ELM_FILE"
+        elm-format --yes "$ELM_PATH"
+    done
+fi
+```
+
+By default elm-format will be run for each file ending in '.elm', when they are commited. 
+If you don't wish to run elm-format, use the '--no-verify' option with your commit command.
+
 ### IDE
 
 Most contributors are using [IntelliJ](https://www.jetbrains.com/idea/download) with the 
