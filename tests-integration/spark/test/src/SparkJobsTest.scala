@@ -13,9 +13,53 @@ class test1 extends FunSuite {
   val data = Seq(("Bowie Knife", "Rusty blade", 20, "Knife"), ("Wooden Chair", "Chipped legs", 19, "Furniture"))
   val rdd = localTestSession.sparkContext.parallelize(data)
 
-  test("testCase1") {
+  test("testCaseBool") {
+    val df = localTestSession.sparkContext.parallelize(Seq(
+      (true),
+      (false),
+    )).toDF("foo")
+    val res = SparkJobs.testCaseBool(df)
+    val rows = res.collect()
+    assert(res.count() == 1)
+    assert(rows(0)(0) == false)
+  }
+
+  test("testCaseEnum") {
       val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-      val res = SparkJobs.testCase1(dfFromRDD)
+      val res = SparkJobs.testCaseEnum(dfFromRDD)
+      val rows = res.collect()
+      assert(res.count() == 1)
+      assert(rows(0)(0) == "Wooden Chair")
+      assert(rows(0)(1) == "Chipped legs")
+      assert(rows(0)(2) == 19)
+      assert(rows(0)(3) == "Furniture")
+  }
+
+  test("testCaseFloat") {
+    val df = localTestSession.sparkContext.parallelize(Seq(
+      (9.99),
+      (5.55),
+    )).toDF("foo")
+    val res = SparkJobs.testCaseFloat(df)
+    val rows = res.collect()
+    assert(res.count() == 1)
+    assert(rows(0)(0) == 9.99)
+  }
+
+  test("testCaseInt") {
+      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
+      val res = SparkJobs.testCaseInt(dfFromRDD)
+      val rows = res.collect()
+      assert(res.count() == 1)
+      assert(rows(0)(0) == "Bowie Knife")
+      assert(rows(0)(1) == "Rusty blade")
+      assert(rows(0)(2) == 20)
+      assert(rows(0)(3) == "Knife")
+  }
+
+  test("testCaseString") {
+      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
+      val res = SparkJobs.testCaseString(dfFromRDD)
       val rows = res.collect()
       assert(res.count() == 1)
       assert(rows(0)(0) == "Bowie Knife")
