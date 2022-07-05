@@ -37,6 +37,7 @@ generator uses.
 -}
 
 import Array exposing (Array)
+import Dict
 import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -44,7 +45,6 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.SDK.ResultList as ResultList
-import Dict
 
 
 {-| An ObjectExpression represents a transformation that is applied directly to a Spark Data Frame.
@@ -201,8 +201,11 @@ namedExpressionsFromValue ir typedValue =
         _ ->
             LambdaExpected typedValue |> Err
 
-{- | Helper function to replace the value declared in a lambda with a specific other value
--}
+
+
+{- | Helper function to replace the value declared in a lambda with a specific other value -}
+
+
 replaceLambdaArg : TypedValue -> TypedValue -> Result Error TypedValue
 replaceLambdaArg replacementValue lam =
     -- extract the name of the lambda arg and replace every variable with replacementValue
@@ -215,8 +218,10 @@ replaceLambdaArg replacementValue lam =
                             Value.Variable _ otherName ->
                                 if name == otherName then
                                     Just replacementValue
+
                                 else
                                     Nothing
+
                             _ ->
                                 Nothing
                     )
@@ -250,28 +255,33 @@ expressionFromValue ir morphirValue =
 
         Value.Apply _ _ _ ->
             case morphirValue of
-                Value.Apply _ (Value.Apply _ (Value.Reference _ ([["morphir"],["s","d","k"]], [["maybe"]], ["with","default"] ) ) elseValue) (Value.Apply _ (Value.Apply _ (Value.Reference _ ([["morphir"],["s","d","k"]], [["maybe"]], ["map"])) thenValue) sourceValue) ->
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "with", "default" ] )) elseValue) (Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "map" ] )) thenValue) sourceValue) ->
                     -- `value |> Maybe.map thenValue |> Maybe.withDefault elseValue` becomes `when(not(isnull(value)), thenValue).otherwise(elseValue)`
                     Result.map3
                         (\sourceExpr thenExpr elseExpr ->
-                            WhenOtherwise (Function "not" [Function "isnull" [sourceExpr]]) thenExpr elseExpr
+                            WhenOtherwise (Function "not" [ Function "isnull" [ sourceExpr ] ]) thenExpr elseExpr
                         )
                         (expressionFromValue ir sourceValue)
                         (thenValue
                             |> replaceLambdaArg sourceValue
-                            |> Result.andThen (expressionFromValue ir))
+                            |> Result.andThen (expressionFromValue ir)
+                        )
                         (expressionFromValue ir elseValue)
-                Value.Apply _ (Value.Literal (Type.Function _ _ (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) ) (StringLiteral "Just") ) arg ->
+
+                Value.Apply _ (Value.Literal (Type.Function _ _ (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _)) (StringLiteral "Just")) arg ->
                     -- `Just arg` becomes `arg` if `Just` was a Maybe.
                     expressionFromValue ir arg
-                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "not", "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) (StringLiteral "Nothing") ) ->
+
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "not", "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _) (StringLiteral "Nothing")) ->
                     -- `arg /= Nothing` becomes `not(isnull(arg))` if `Nothing` was a Maybe.
                     expressionFromValue ir arg
-                        |> Result.map (\expr -> Function "not" [Function "isnull" [expr]])
-                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s","d" ,"k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _ ) (StringLiteral "Nothing") ) ->
+                        |> Result.map (\expr -> Function "not" [ Function "isnull" [ expr ] ])
+
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "equal" ] )) arg) (Value.Literal (Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) _) (StringLiteral "Nothing")) ->
                     -- `arg == Nothing` becomes `isnull(arg)` if `Nothing` was a Maybe.
                     expressionFromValue ir arg
-                        |> Result.map (\expr -> Function "isnull" [expr])
+                        |> Result.map (\expr -> Function "isnull" [ expr ])
+
                 Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
                     case ( package, modName ) of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ) ->
@@ -283,14 +293,14 @@ expressionFromValue ir morphirValue =
 
                         _ ->
                             collectArgValues morphirValue []
-                                |> (\( args, applyTarget ) -> inlineValue ir args applyTarget)
+                                |> (\( args, applyTarget ) -> mapApply ir args applyTarget)
 
                 _ ->
                     collectArgValues morphirValue []
-                        |> (\( args, applyTarget ) -> inlineValue ir args applyTarget)
+                        |> (\( args, applyTarget ) -> mapApply ir args applyTarget)
 
         Value.Reference _ _ ->
-            inlineValue ir [] morphirValue
+            mapApply ir [] morphirValue
 
         Value.IfThenElse _ cond thenBranch elseBranch ->
             Result.map3
@@ -377,16 +387,17 @@ collectLambdaParams value paramsCollected =
             paramsCollected
 
 
-{-| A utility function that does a complete inlining of a value.
-If the `target` to is a `Reference` it looks up the function and replaces all references to its
+{-| Creates Expression from a function application.
+The input to this function include the list of arguments and the target of the apply.
+If the `target` is a `Reference` it looks up the function and replaces all references to its
 param variables with the arguments. If the `target` is a lambda, it first attempts to look into
-the lambda body and rewrite and reference to enclosed variables and then repeats the process for
+the lambda body and rewrite any enclosed variables and then repeats the process for
 the lambda's params.
 -}
-inlineValue : IR -> List TypedValue -> TypedValue -> Result Error Expression
-inlineValue ir args target =
+mapApply : IR -> List TypedValue -> TypedValue -> Result Error Expression
+mapApply ir args target =
     case target of
-        Value.Reference _ fqn ->
+        Value.Reference _ (( pkgName, modName, _ ) as fqn) ->
             case IR.lookupValueDefinition fqn ir of
                 Just def ->
                     inlineArguments
@@ -396,10 +407,16 @@ inlineValue ir args target =
                         |> expressionFromValue ir
 
                 Nothing ->
-                    args
-                        |> List.map (expressionFromValue ir)
-                        |> ResultList.keepFirstError
-                        |> Result.andThen (mapSDKFunctions fqn)
+                    case ( ( pkgName, modName ), args ) of
+                        ( ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ), left :: right :: [] ) ->
+                            Result.map3
+                                BinaryOperation
+                                (binaryOpString fqn)
+                                (expressionFromValue ir left)
+                                (expressionFromValue ir right)
+
+                        _ ->
+                            mapSDKFunctions ir args fqn
 
         Value.Lambda _ _ body ->
             inlineArguments
@@ -455,20 +472,26 @@ inlineArguments paramList argList fnBody =
             fnBody
 
 
-mapSDKFunctions : FQName -> List Expression -> Result Error Expression
-mapSDKFunctions fQName expressions =
-    case ( FQName.toString fQName, expressions ) of
+mapSDKFunctions : IR -> List TypedValue -> FQName -> Result Error Expression
+mapSDKFunctions ir args fQName =
+    case ( FQName.toString fQName, args ) of
         ( "Morphir.SDK:String:replace", pattern :: replacement :: target :: [] ) ->
-            Function "regexp_replace" [ target, pattern, replacement ]
-                |> Ok
+            [ target, pattern, replacement ]
+                |> List.map (expressionFromValue ir)
+                |> ResultList.keepFirstError
+                |> Result.map (Function "regexp_replace")
 
         ( "Morphir.SDK:String:reverse", _ ) ->
-            Function "reverse" expressions
-                |> Ok
+            args
+                |> List.map (expressionFromValue ir)
+                |> ResultList.keepFirstError
+                |> Result.map (Function "reverse")
 
         ( "Morphir.SDK:String:toUpper", _ ) ->
-            Function "upper" expressions
-                |> Ok
+            args
+                |> List.map (expressionFromValue ir)
+                |> ResultList.keepFirstError
+                |> Result.map (Function "upper")
 
         ( "Morphir.SDK:String:concat", _ ) ->
             UnsupportedSDKFunction fQName |> Err
