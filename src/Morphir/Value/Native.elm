@@ -2,7 +2,7 @@ module Morphir.Value.Native exposing
     ( Function
     , Eval
     , unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
-    , floatLiteral, intLiteral, oneOf, stringLiteral
+    , floatLiteral, intLiteral, oneOf, stringLiteral, decimalLiteral
     , decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
     , trinaryLazy, trinaryStrict
     )
@@ -38,7 +38,7 @@ example the predicate in a `filter` will need to be evaluated on each item in th
 Various utilities to help with implementing native functions.
 
 @docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
-@docs floatLiteral, intLiteral, oneOf, stringLiteral
+@docs floatLiteral, intLiteral, oneOf, stringLiteral, decimalLiteral
 @docs decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
 @docs trinaryLazy, trinaryStrict
 
@@ -48,6 +48,7 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Value.Error exposing (Error(..))
+import Morphir.SDK.Decimal exposing (Decimal)
 
 
 {-| Type that represents a native function. It's a function that takes two arguments:
@@ -326,6 +327,16 @@ stringLiteral lit =
 
         _ ->
             Err (ExpectedStringLiteral (Value.Literal () lit))
+
+{-| -}
+decimalLiteral : Literal -> Result Error Decimal
+decimalLiteral lit =
+    case lit of
+        DecimalLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedDecimalLiteral (Value.Literal () lit))
 
 
 {-| -}

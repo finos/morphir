@@ -43,7 +43,7 @@ import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value exposing (TypedValue)
+import Morphir.IR.Value as Value exposing (Pattern(..), TypedValue)
 import Morphir.SDK.ResultList as ResultList
 
 
@@ -139,6 +139,8 @@ type Error
     | LambdaExpected TypedValue
     | ReferenceExpected
     | UnsupportedSDKFunction FQName
+    | EmptyPatternMatch
+    | UnhandledPatternMatch ( Pattern (Type.Type ()), TypedValue )
 
 
 {-| provides a way to create ObjectExpressions from a Morphir Value.
@@ -202,10 +204,8 @@ namedExpressionsFromValue ir typedValue =
             LambdaExpected typedValue |> Err
 
 
-
-{- | Helper function to replace the value declared in a lambda with a specific other value -}
-
-
+{-| Helper function to replace the value declared in a lambda with a specific other value
+-}
 replaceLambdaArg : TypedValue -> TypedValue -> Result Error TypedValue
 replaceLambdaArg replacementValue lam =
     -- extract the name of the lambda arg and replace every variable with replacementValue
@@ -229,6 +229,48 @@ replaceLambdaArg replacementValue lam =
 
         other ->
             UnhandledValue other |> Err
+
+
+constructWhenEqualsOtherwise : IR -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> TypedValue -> Expression -> Result Error Expression
+constructWhenEqualsOtherwise ir thenValue remainingCases leftValue rightExpr =
+    Result.map3
+        (\leftExpr thenExpr otherwiseExpr ->
+            WhenOtherwise
+                (BinaryOperation "===" leftExpr rightExpr)
+                thenExpr
+                otherwiseExpr
+        )
+        (expressionFromValue ir leftValue)
+        (expressionFromValue ir thenValue)
+        (mapPatterns ir leftValue remainingCases)
+
+
+{-| Transforms a list of pattern,value tuples into Expressions
+-}
+mapPatterns : IR -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> Result Error Expression
+mapPatterns ir onValue cases =
+    case cases of
+        [] ->
+            EmptyPatternMatch |> Err
+
+        ( LiteralPattern _ lit, thenValue ) :: remainingCases ->
+            Literal lit
+                |> constructWhenEqualsOtherwise ir thenValue remainingCases onValue
+
+        ( ConstructorPattern va fqn [], thenValue ) :: remainingCases ->
+            -- e.g. 'Bar'. Note, 'Just Bar' would require the third arg to not be an empty list.
+            fqn
+                |> FQName.getLocalName
+                |> Name.toTitleCase
+                |> StringLiteral
+                |> Literal
+                |> constructWhenEqualsOtherwise ir thenValue remainingCases onValue
+
+        [ ( WildcardPattern _, thenValue ) ] ->
+            expressionFromValue ir thenValue
+
+        ( otherPattern, otherValue ) :: _ ->
+            UnhandledPatternMatch ( otherPattern, otherValue ) |> Err
 
 
 {-| Provides a way to create Expressions from a Morphir Value.
@@ -312,6 +354,9 @@ expressionFromValue ir morphirValue =
         Value.LetDefinition _ _ _ _ ->
             inlineLetDef [] [] morphirValue
                 |> expressionFromValue ir
+
+        Value.PatternMatch _ onValue cases ->
+            mapPatterns ir onValue cases
 
         other ->
             UnhandledValue other |> Err

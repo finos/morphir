@@ -6,6 +6,7 @@ import FormatNumber.Locales exposing (Decimals(..), usLocale)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.Visual.Common as Common
 import Morphir.Visual.Config exposing (Config)
+import Morphir.SDK.Decimal as Decimal
 
 
 view : Config msg -> Literal -> Element msg
@@ -40,6 +41,11 @@ view config literal =
                     { usLocale | decimals = Exact config.state.theme.decimalDigit, negativePrefix = "- ( ", negativeSuffix = " )" }
                     float
                 )
+
+        DecimalLiteral decimal ->
+            viewLiteralText "decimal-literal"
+                (Decimal.toString decimal)
+
 
 
 viewLiteralText : String -> String -> Element msg

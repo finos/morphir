@@ -117,6 +117,33 @@ filter predicate from =
         ]
 ```
 
+_**case statements**_ <br>
+Simple case statements of:
+* a series of literals
+* ends with a default case
+
+Are translated into Spark as a chain of `when` expressions ending with an `otherwise`
+i.e.
+```
+case a.age of                                                                           
+    13 ->                                                                               
+        True
+    5->                                                                                 
+        False                                                                           
+    _ ->                                                                                
+        False                                                                           
+```
+is translated to
+```
+org.apache.spark.sql.functions.when(
+    (org.apache.spark.sql.functions.col("age")) === (13),
+    true  
+).when(         
+    (org.apache.spark.sql.functions.col("age")) === (5),
+    false
+).otherwise(false)
+```
+
 ## Types
 The current Spark API processes the following types:
 
@@ -140,7 +167,9 @@ gets translated into
 ```
 
 _**Float**_ <br>
-Values translated from basic Elm Floating-point numbers are treated as basic Scala Floats, i.e.
+Values translated from basic Elm Floating-point numbers are treated as basic Scala Doubles.
+They use `org.apache.spark.sql.types.DoubleType` and their literals do not have a trailing 'f', i.e. `1.23` not `1.23f`.
+i.e.
 ```
 testFloat : List { foo : Float } -> List { foo : Float }
 testFloat source =

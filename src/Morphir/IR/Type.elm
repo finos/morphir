@@ -135,7 +135,7 @@ import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlle
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
-import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.ResultList as ResultList
 import Set exposing (Set)
 
 
@@ -299,10 +299,10 @@ mapDefinition f def =
                                             f argType
                                                 |> Result.map (Tuple.pair argName)
                                         )
-                                    |> ListOfResults.liftAllErrors
+                                    |> ResultList.keepAllErrors
                                     |> Result.map (Tuple.pair ctorName)
                             )
-                        |> ListOfResults.liftAllErrors
+                        |> ResultList.keepAllErrors
                         |> Result.map (Dict.fromList >> AccessControlled constructors.access)
                         |> Result.mapError List.concat
             in

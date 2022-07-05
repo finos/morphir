@@ -323,6 +323,9 @@ collectLiteralFeatures literal featureCollection =
         Literal.FloatLiteral _ ->
             incrementOrAdd "FloatLiteral" featureCollection
 
+        Literal.DecimalLiteral _ ->
+            Debug.todo "branch 'DecimalLiteral _' not implemented"
+
 
 collectPatternFeatures : Value.Pattern a -> FeatureCollection -> FeatureCollection
 collectPatternFeatures pattern featureCollection =

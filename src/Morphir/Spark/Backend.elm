@@ -371,6 +371,9 @@ mapLiteral l =
         FloatLiteral float ->
             Scala.FloatLit float
 
+        DecimalLiteral _ ->
+            Debug.todo "branch 'DecimalLiteral _' not implemented"
+
 
 {-| Maps a fully qualified name to scala Ref value.
 -}

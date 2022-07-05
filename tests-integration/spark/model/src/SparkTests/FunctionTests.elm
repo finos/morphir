@@ -2,23 +2,92 @@ module SparkTests.FunctionTests exposing (..)
 
 import SparkTests.Types exposing (..)
 
-testFrom : List Record1 -> List Record1
+testCaseBool : List { foo : Bool } -> List { foo : Bool }
+testCaseBool source =
+    source
+        |> List.filter
+            (\a ->
+                case a.foo of
+                    False ->
+                        True
+                    _ ->
+                        False
+            )
+
+
+testCaseFloat : List { foo : Float } -> List { foo : Float }
+testCaseFloat source =
+    source
+        |> List.filter
+            (\a ->
+                case a.foo of
+                    9.99 ->
+                        True
+                    _ ->
+                        False
+            )
+
+
+testCaseInt : List Antique -> List Antique
+testCaseInt source =
+    source
+        |> List.filter
+            (\a ->
+                case a.ageOfItem of
+                    20 ->
+                        True
+                    5->
+                        False
+                    _ ->
+                        False
+            )
+
+
+testCaseString : List Antique -> List Antique
+testCaseString source =
+    source
+        |> List.filter
+            (\a ->
+                case a.name of
+                    "Wooden Chair" ->
+                        False
+                    _ ->
+                        True
+            )
+
+
+testCaseEnum : List Antique -> List Antique
+testCaseEnum source =
+    source
+        |> List.filter
+            (\a ->
+                case a.product of
+                    Paintings ->
+                        True
+                    Furniture ->
+                        True
+                    _ ->
+                        False
+            )
+
+
+testFrom : List Antique -> List Antique
 testFrom source =
     source
 
 
-testWhere1 : List Record1 -> List Record1
+testWhere1 : List Antique -> List Antique
 testWhere1 source =
     source
-        |> List.filter (\a -> a.age == 13)
+        |> List.filter (\a -> a.ageOfItem == 20)
 
 
-testWhere2 : List Record1 -> List Record1
+testWhere2 : List Antique -> List Antique
 testWhere2 source =
     source
         |> List.filter
             (\a ->
-                if a.age == 13 then
+                if a.ageOfItem == 20 then
                     False
 
                 else
@@ -26,15 +95,15 @@ testWhere2 source =
             )
 
 
-testWhere3 : List Record1 -> List Record1
+testWhere3 : List Antique -> List Antique
 testWhere3 source =
     source
         |> List.filter
             (\a ->
-                if a.age <= 13 then
+                if a.ageOfItem <= 20 then
                     False
 
-                else if a.age > 13 && a.age < 15 then
+                else if a.ageOfItem > 20 && a.ageOfItem < 23 then
                     False
 
                 else
@@ -42,122 +111,123 @@ testWhere3 source =
             )
 
 
-testSelect1 : List Record1 -> List { nickname : String, familyName : String, foo : String }
+testSelect1 : List Antique -> List { newName : String, newReport : String, foo : String, product : Product }
 testSelect1 source =
     source
         |> List.map
             (\a ->
-                { nickname = a.firstName
-                , familyName = a.lastName
+                { newName = a.name
+                , newReport = a.report
                 , foo =
-                    if a.age >= 13 then
-                        "bar"
+                    if a.ageOfItem >= 20 then
+                        "old"
 
                     else
-                        "baz"
+                        "new"
+                , product = a.product
                 }
             )
 
 
-testSelect3 : List Record1 -> List { age : Int }
+testSelect3 : List Antique -> List { ageOfItem : Int }
 testSelect3 source =
     source
-        |> List.map (\record -> { age = record.age })
+        |> List.map (\record -> { ageOfItem = record.ageOfItem })
 
 
-testSelect4 : List Record1 -> List Int
+testSelect4 : List Antique -> List Int
 testSelect4 source =
     source
-        |> List.map .age
+        |> List.map .ageOfItem
 
 
-testFilter : List Record1 -> List Record1
+testFilter : List Antique -> List Antique
 testFilter source =
     source |> List.filter filterFn
 
 
-testFilter2 : List Record1 -> List Record1
+testFilter2 : List Antique -> List Antique
 testFilter2 source =
     source |> List.filter (filterFnWithVar 17)
 
 
-testMapAndFilter : List Record1 -> List Record1
+testMapAndFilter : List Antique -> List Antique
 testMapAndFilter source =
     source
         |> List.map
             (\a ->
-                { firstName = String.concat [ a.firstName, " hello" ]
-                , lastName = String.toUpper a.lastName
-                , age = a.age
-                , title = a.title
+                { name = String.concat [ a.name, " very old" ]
+                , report = String.toUpper a.report
+                , ageOfItem = a.ageOfItem
+                , product = a.product
                 }
             )
         |> List.filter filterFn
 
 
-testMapAndFilter2 : List Record1 -> List Record1
+testMapAndFilter2 : List Antique -> List Antique
 testMapAndFilter2 source =
     source
         |> List.map
             (\a ->
-                { firstName = String.reverse a.firstName
-                , lastName = String.toUpper a.lastName
-                , age = a.age
-                , title = a.title
+                { name = String.reverse a.name
+                , report = String.toUpper a.report
+                , ageOfItem = a.ageOfItem
+                , product = a.product
                 }
             )
         |> List.filter filterFn
 
 
-testMapAndFilter3 : List Record1 -> List Record1
+testMapAndFilter3 : List Antique -> List Antique
 testMapAndFilter3 source =
     source
         |> List.map
             (\a ->
-                { firstName = String.replace "." " " a.firstName
-                , lastName = String.toUpper a.lastName
-                , age = a.age
-                , title = a.title
+                { name = String.replace "." " " a.name
+                , report = String.toUpper a.report
+                , ageOfItem = a.ageOfItem
+                , product = a.product
                 }
             )
         |> List.filter filterFn
 
 
-testBadAnnotation : List Record1 -> List Title
+testBadAnnotation : List Antique -> List Product
 testBadAnnotation source =
     source
         |> List.map
             (\_ ->
-                Associate
+                Knife
             )
 
 
-item_filter : Record1 -> Bool
+item_filter : Antique -> Bool
 item_filter record =
     let
         qualifiedYearsToBeCalledAntique =
-            100
+            20
     in
-    record.age
+    record.ageOfItem
         >= qualifiedYearsToBeCalledAntique
-        && (record.firstName == "Micheal")
+        && (record.name == "Bowie Knife")
 
 
-testLetBinding : List Record1 -> List Record1
+testLetBinding : List Antique -> List Antique
 testLetBinding source =
     source
         |> List.filter item_filter
 
 
-filterFn : Record1 -> Bool
+filterFn : Antique -> Bool
 filterFn record1 =
-    modBy record1.age 2 <= 3
+    modBy record1.ageOfItem 2 <= 3
 
 
-filterFnWithVar : Int -> Record1 -> Bool
+filterFnWithVar : Int -> Antique -> Bool
 filterFnWithVar max record =
     max
-        |> (\age maximumAllowedAge ->
-                age <= (maximumAllowedAge + max)
+        |> (\ageOfItem maximumAllowedAge ->
+                ageOfItem <= (maximumAllowedAge + max)
            )
-            record.age
+            record.ageOfItem

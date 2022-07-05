@@ -10,6 +10,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern, Value)
+import Morphir.SDK.Decimal as Decimal
 import Morphir.Visual.Common exposing (grayScale)
 
 
@@ -453,6 +454,9 @@ viewLiteral lit =
 
         FloatLiteral float ->
             text (String.fromFloat float)
+
+        DecimalLiteral decimal ->
+            text (Decimal.toString decimal)
 
 
 noPadding : { left : number, right : number, top : number, bottom : number }
