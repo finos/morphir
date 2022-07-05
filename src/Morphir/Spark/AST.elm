@@ -231,6 +231,20 @@ replaceLambdaArg replacementValue lam =
             UnhandledValue other |> Err
 
 
+constructWhenEqualsOtherwise : IR -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> TypedValue -> Expression -> Result Error Expression
+constructWhenEqualsOtherwise ir thenValue remainingCases leftValue rightExpr =
+    Result.map3
+        (\leftExpr thenExpr otherwiseExpr ->
+            WhenOtherwise
+                (BinaryOperation "===" leftExpr rightExpr)
+                thenExpr
+                otherwiseExpr
+        )
+        (expressionFromValue ir leftValue)
+        (expressionFromValue ir thenValue)
+        (mapPatterns ir leftValue remainingCases)
+
+
 {-| Transforms a list of pattern,value tuples into Expressions
 -}
 mapPatterns : IR -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> Result Error Expression
@@ -240,16 +254,17 @@ mapPatterns ir onValue cases =
             EmptyPatternMatch |> Err
 
         ( LiteralPattern _ lit, thenValue ) :: remainingCases ->
-            Result.map3
-                (\onExpr thenExpr otherwiseExpr ->
-                    WhenOtherwise
-                        (BinaryOperation "===" onExpr (Literal lit))
-                        thenExpr
-                        otherwiseExpr
-                )
-                (expressionFromValue ir onValue)
-                (expressionFromValue ir thenValue)
-                (mapPatterns ir onValue remainingCases)
+            Literal lit
+                |> constructWhenEqualsOtherwise ir thenValue remainingCases onValue
+
+        ( ConstructorPattern va fqn [], thenValue ) :: remainingCases ->
+            -- e.g. 'Bar'. Note, 'Just Bar' would require the third arg to not be an empty list.
+            fqn
+                |> FQName.getLocalName
+                |> Name.toTitleCase
+                |> StringLiteral
+                |> Literal
+                |> constructWhenEqualsOtherwise ir thenValue remainingCases onValue
 
         [ ( WildcardPattern _, thenValue ) ] ->
             expressionFromValue ir thenValue
