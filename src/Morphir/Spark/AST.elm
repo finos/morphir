@@ -95,7 +95,10 @@ These are the supported Expressions:
       - Represent a `when(expression, result).otherwise(expression, result)` in spark.
       - It maps directly to an IfElse statement and can be chained.
       - The three arguments are: the condition, the Then expression evaluated if the condition passes, and the Else expression.
-  - **Apply**
+  - **Method**
+      - Applies a list of arguments on a method to a target instance.
+      - The three arguments are: An expression denoting the target instance, the name of the method to invoke, and a list of arguments to invoke the method with
+  - **Function**
       - Applies a list of arguments on a function.
       - The two arguments are: The fully qualified name of the function to invoke, and a list of arguments to invoke the function with
 
@@ -106,6 +109,7 @@ type Expression
     | Variable String
     | BinaryOperation String Expression Expression
     | WhenOtherwise Expression Expression Expression
+    | Method Expression String (List Expression)
     | Function String (List Expression)
 
 
@@ -323,6 +327,17 @@ expressionFromValue ir morphirValue =
                     -- `arg == Nothing` becomes `isnull(arg)` if `Nothing` was a Maybe.
                     expressionFromValue ir arg
                         |> Result.map (\expr -> Function "isnull" [ expr ])
+
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "member" ] )) item) (Value.List _ list) ->
+                    Result.map2
+                        (\itemExpr args ->
+                            Method itemExpr "isin" args
+                        )
+                        (expressionFromValue ir item)
+                        (list
+                            |> List.map (\val -> expressionFromValue ir val)
+                            |> ResultList.keepFirstError
+                        )
 
                 Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
                     case ( package, modName ) of

@@ -33,24 +33,22 @@ This uses a two-step process
 import Dict exposing (Dict)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR as IR exposing (IR)
+import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.Documented as Documented exposing (Documented)
-import Morphir.IR.FQName exposing (FQName)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value exposing (TypedValue, Value)
+import Morphir.IR.Value as Value exposing (TypedValue, Value)
 import Morphir.SDK.ResultList as ResultList
 import Morphir.Scala.AST as Scala
 import Morphir.Scala.Backend as ScalaBackend
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Morphir.Spark.API as Spark
 import Morphir.Spark.AST as SparkAST exposing (..)
-import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Value as Value exposing (TypedValue)
-import Morphir.IR.AccessControlled as AccessControlled exposing (Access(..), AccessControlled)
-import Morphir.IR.Value as Value exposing (Value)
+
 
 type alias Options =
     {}
@@ -68,7 +66,8 @@ representation of files generated.
 mapDistribution : Options -> Distribution -> FileMap
 mapDistribution _ distro =
     let
-        fixedDistro = fixDistribution distro
+        fixedDistro =
+            fixDistribution distro
     in
     case fixedDistro of
         Distribution.Library packageName _ packageDef ->
@@ -131,7 +130,7 @@ mapDistribution _ distro =
 
 {-| Fix up the modules in the Distribution prior to generating Spark code
 -}
-fixDistribution : Distribution ->  Distribution
+fixDistribution : Distribution -> Distribution
 fixDistribution distribution =
     case distribution of
         Distribution.Library libraryPackageName dependencies packageDef ->
@@ -146,10 +145,9 @@ fixDistribution distribution =
                                         accessControlledModuleDef
                                             |> AccessControlled.map fixModuleDef
                                 in
-                                (moduleName, updatedAccessControlledModuleDef)
+                                ( moduleName, updatedAccessControlledModuleDef )
                             )
                         |> Dict.fromList
-
             in
             Distribution.Library libraryPackageName dependencies { packageDef | modules = updatedModules }
 
@@ -168,15 +166,15 @@ fixModuleDef moduleDef =
                             updatedAccessControlledValueDef =
                                 accessControlledValueDef
                                     |> AccessControlled.map
-                                        (\ documentedValueDef ->
+                                        (\documentedValueDef ->
                                             documentedValueDef
                                                 |> Documented.map
-                                                    (\ valueDef ->
+                                                    (\valueDef ->
                                                         { valueDef | body = mapEnumToLiteral valueDef.body }
                                                     )
                                         )
                         in
-                        (valueName, updatedAccessControlledValueDef)
+                        ( valueName, updatedAccessControlledValueDef )
                     )
                 |> Dict.fromList
     in
@@ -193,15 +191,16 @@ mapEnumToLiteral value =
                 case currentValue of
                     Value.Constructor va fqn ->
                         let
-                            literal = fqn
-                                |> FQName.getLocalName
-                                |> Name.toTitleCase
-                                |> StringLiteral
-                                |> Value.Literal va
+                            literal =
+                                fqn
+                                    |> FQName.getLocalName
+                                    |> Name.toTitleCase
+                                    |> StringLiteral
+                                    |> Value.Literal va
                         in
                         Just literal
 
-                    _  ->
+                    _ ->
                         Nothing
             )
 
@@ -329,6 +328,14 @@ mapExpression expression =
                 (mapExpression condition)
                 (mapExpression thenBranch)
                 |> toIfElseChain elseBranch
+
+        Method target name argList ->
+            Scala.Apply
+                (Scala.Select (mapExpression target) name)
+                (argList
+                    |> List.map mapExpression
+                    |> List.map (Scala.ArgValue Nothing)
+                )
 
         Function name argList ->
             Scala.Apply
