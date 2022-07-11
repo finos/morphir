@@ -1,20 +1,22 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, el, fill, moveUp, padding, rgb, row, spacing, text, width)
+import Element exposing (Element, centerX, el, fill, link, moveUp, padding, pointer, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Html exposing (u)
 import Morphir.IR as IR
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type
-import Morphir.IR.Value as Value
+import Morphir.IR.Value as Value exposing (Value(..))
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
+import Morphir.Visual.Common exposing (pathToFullUrl)
 
 
 view : Config msg -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
@@ -24,7 +26,22 @@ view config viewValue functionValue argValues =
             [ smallSpacing config.state.theme |> spacing, Element.centerY ]
 
         viewFunctionValue =
-            el [ Background.color <| config.state.theme.colors.selectionColor, padding 2 ] <| viewValue functionValue
+            let
+                notClickable =
+                    el [ Background.color <| config.state.theme.colors.selectionColor, padding 2 ] <| viewValue functionValue
+            in
+            case functionValue of
+                Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) -> --we are not able to display SDK functions yet
+                    notClickable
+
+                Reference _ ( packageName, moduleName, name ) ->
+                    link [ Background.color <| config.state.theme.colors.selectionColor, padding 2, pointer ]
+                        { url = pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase name
+                        , label = viewValue functionValue
+                        }
+
+                _ ->
+                    notClickable
     in
     case ( functionValue, argValues ) of
         ( (Value.Constructor _ fQName) as constr, _ ) ->

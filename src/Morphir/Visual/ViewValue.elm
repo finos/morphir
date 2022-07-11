@@ -287,7 +287,7 @@ viewValueByLanguageFeature config value =
                         ]
 
                 Value.IfThenElse _ _ _ _ ->
-                    ViewIfThenElse.view config (viewValue config) value
+                    ViewIfThenElse.view config viewValue value
 
                 Value.PatternMatch _ param patterns ->
                     ViewPatternMatch.view config viewValue param patterns

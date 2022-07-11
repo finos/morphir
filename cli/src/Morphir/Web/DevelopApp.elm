@@ -70,7 +70,7 @@ import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
-import Morphir.Visual.Common exposing (nameToText, nameToTitleText)
+import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (PopupScreenRecord)
@@ -79,7 +79,7 @@ import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common exposing (ifThenElse, pathToDisplayString, pathToFullUrl, pathToUrl, urlFragmentToNodePath, viewAsCard)
+import Morphir.Web.DevelopApp.Common exposing (ifThenElse, urlFragmentToNodePath, viewAsCard)
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Morphir.Web.TryMorphir exposing (Model)
 import Ordering
@@ -197,7 +197,7 @@ init _ url key =
                 }
             , repo = Repo.empty []
             , insightViewState = emptyVisualState
-            , definitionDisplayType = XRayView
+            , definitionDisplayType = InsightView
             , argStates = Dict.empty
             , expandedValues = Dict.empty
             }
@@ -883,7 +883,6 @@ viewBody model =
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
 viewHome model packageName packageDef =
     let
-
         morphIrBlue : Element.Color
         morphIrBlue =
             rgb 0 0.639 0.882
@@ -1748,7 +1747,7 @@ viewDefinitionDetails model =
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
-            row [ Border.rounded 5, Border.width 3,  spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
+            row [ Border.rounded 5, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
                 (case evaluateOutput ir testCase.inputs fQName of
                     Ok rawValue ->
                         case rawValue of
