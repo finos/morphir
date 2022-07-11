@@ -1,15 +1,15 @@
 module Morphir.Visual.ViewIfThenElse exposing (view)
 
-import Dict exposing (Dict)
 import Element exposing (Element)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Value as Value exposing (TypedValue, Value)
 import Morphir.Visual.Components.DecisionTree as DecisionTree exposing (LeftOrRight(..))
 import Morphir.Visual.Config as Config exposing (Config)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
+import Dict
 
 
-view : Config msg -> (EnrichedValue -> Element msg) -> EnrichedValue -> Element msg
+view : Config msg -> ( Config msg -> EnrichedValue -> Element msg) -> EnrichedValue -> Element msg
 view config viewValue value =
     DecisionTree.layout config viewValue (valueToTree config True value)
 
@@ -19,8 +19,10 @@ valueToTree config doEval value =
     case value of
         Value.IfThenElse _ condition thenBranch elseBranch ->
             let
+                pathTaken : Bool
+                pathTaken = not (config.state.highlightState == Just Config.Unmatched || config.state.highlightState == Just Config.Default)
                 result =
-                    if doEval then
+                    if doEval && pathTaken then
                         case config |> Config.evaluate (Value.toRawValue condition) of
                             Ok (Value.Literal _ (BoolLiteral v)) ->
                                 Just v
