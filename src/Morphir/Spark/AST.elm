@@ -95,7 +95,10 @@ These are the supported Expressions:
       - Represent a `when(expression, result).otherwise(expression, result)` in spark.
       - It maps directly to an IfElse statement and can be chained.
       - The three arguments are: the condition, the Then expression evaluated if the condition passes, and the Else expression.
-  - **Apply**
+  - **Method**
+      - Applies a list of arguments on a method to a target instance.
+      - The three arguments are: An expression denoting the target instance, the name of the method to invoke, and a list of arguments to invoke the method with
+  - **Function**
       - Applies a list of arguments on a function.
       - The two arguments are: The fully qualified name of the function to invoke, and a list of arguments to invoke the function with
 
@@ -106,6 +109,7 @@ type Expression
     | Variable String
     | BinaryOperation String Expression Expression
     | WhenOtherwise Expression Expression Expression
+    | Method Expression String (List Expression)
     | Function String (List Expression)
 
 
@@ -324,19 +328,6 @@ expressionFromValue ir morphirValue =
                     expressionFromValue ir arg
                         |> Result.map (\expr -> Function "isnull" [ expr ])
 
-                Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
-                    case ( package, modName ) of
-                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ) ->
-                            Result.map3
-                                BinaryOperation
-                                (binaryOpString ref)
-                                (expressionFromValue ir arg)
-                                (expressionFromValue ir argValue)
-
-                        _ ->
-                            collectArgValues morphirValue []
-                                |> (\( args, applyTarget ) -> mapApply ir args applyTarget)
-
                 _ ->
                     collectArgValues morphirValue []
                         |> (\( args, applyTarget ) -> mapApply ir args applyTarget)
@@ -520,6 +511,7 @@ inlineArguments paramList argList fnBody =
 mapSDKFunctions : IR -> List TypedValue -> FQName -> Result Error Expression
 mapSDKFunctions ir args fQName =
     case ( FQName.toString fQName, args ) of
+        -- HANDLE STRING FUNCTIONS
         ( "Morphir.SDK:String:replace", pattern :: replacement :: target :: [] ) ->
             [ target, pattern, replacement ]
                 |> List.map (expressionFromValue ir)
@@ -540,6 +532,18 @@ mapSDKFunctions ir args fQName =
 
         ( "Morphir.SDK:String:concat", _ ) ->
             UnsupportedSDKFunction fQName |> Err
+
+        -- HANDLE LIST FUNCTIONS
+        ( "Morphir.SDK:List:member", item :: (Value.List _ list) :: [] ) ->
+            Result.map2
+                (\itemExpr listExpr ->
+                    Method itemExpr "isin" listExpr
+                )
+                (expressionFromValue ir item)
+                (list
+                    |> List.map (expressionFromValue ir)
+                    |> ResultList.keepFirstError
+                )
 
         _ ->
             FunctionNotFound fQName |> Err

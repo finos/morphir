@@ -72,7 +72,10 @@ displayTable config viewValue table =
 
 tableHelp : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> List TypedValue -> List Rule -> Element msg
 tableHelp config viewValue headerFunctions rows =
-    table [ Border.solid, Border.width 1 ]
+    let
+        whiteBg = Background.color <| rgb255 255 255 255
+    in
+    table [ Border.solid, Border.width 1, whiteBg ]
         { data = rows
         , columns =
             List.append (headerFunctions |> getColumnFromHeader config viewValue 0)
@@ -81,13 +84,15 @@ tableHelp config viewValue headerFunctions rows =
                         [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
                         , mediumPadding config.state.theme |> padding
                         , height fill
+                        , whiteBg
                         ]
                         (text "Result")
                     )
                     fill
                     (\rules ->
                         el
-                            [ Background.color (highlightStateToColor (List.head (List.reverse rules.highlightStates)))
+                            [ Border.color (highlightStateToColor (List.head (List.reverse rules.highlightStates)))
+                            , Border.width 5
                             , mediumPadding config.state.theme |> padding
                             ]
                             (viewValue (updateConfig config (List.head (List.reverse rules.highlightStates))) (toVisualTypedValue rules.result))
