@@ -1,7 +1,7 @@
-module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Expenditure.Bills exposing (..)
+module SparkTests.DataDefinition.Persistence.Expenditure.Bills exposing (..)
 
-import Morphir.Reference.Model.Sample.DataDefinition.Field.Name exposing (Name)
-import Morphir.Reference.Model.Sample.DataDefinition.Field.Price exposing (Price)
+import SparkTests.DataDefinition.Field.Name exposing (Name)
+import SparkTests.DataDefinition.Field.Price exposing (Price)
 
 
 type alias Bills =

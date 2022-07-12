@@ -1,4 +1,4 @@
-module Morphir.Reference.Model.Sample.DataDefinition.Field.Product exposing (..)
+module SparkTests.DataDefinition.Field.Product exposing (..)
 
 
 type alias Product =

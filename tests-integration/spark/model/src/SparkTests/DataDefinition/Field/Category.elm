@@ -1,4 +1,4 @@
-module Morphir.Reference.Model.Sample.DataDefinition.Field.Category exposing (..)
+module SparkTests.DataDefinition.Field.Category exposing (..)
 
 
 type Category

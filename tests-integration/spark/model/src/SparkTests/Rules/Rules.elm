@@ -1,4 +1,4 @@
-module Morphir.Reference.Model.Sample.Rules.Rules exposing (..)
+module SparkTests.Rules.Rules exposing (..)
 
 
 applyRules : Bool -> String -> Float -> List ( String, Float )

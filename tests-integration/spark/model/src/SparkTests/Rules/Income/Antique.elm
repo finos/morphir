@@ -1,9 +1,9 @@
-module Morphir.Reference.Model.Sample.Rules.Income.Antique exposing (..)
+module SparkTests.Rules.Income.Antique exposing (..)
 
-import Morphir.Reference.Model.Sample.DataDefinition.Field.Category exposing (Category(..))
-import Morphir.Reference.Model.Sample.DataDefinition.Field.Price exposing (Price)
-import Morphir.Reference.Model.Sample.DataDefinition.Field.Report exposing (FeedBack(..))
-import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique, Product(..))
+import SparkTests.DataDefinition.Field.Category exposing (Category(..))
+import SparkTests.DataDefinition.Field.Price exposing (Price)
+import SparkTests.DataDefinition.Field.Report exposing (FeedBack(..))
+import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique, Product(..))
 
 
 type alias PriceRange =

@@ -1,7 +1,7 @@
-module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.GroceryShop exposing (..)
+module SparkTests.DataDefinition.Persistence.Income.GroceryShop exposing (..)
 
-import Morphir.Reference.Model.Sample.DataDefinition.Field.Category exposing (Category)
-import Morphir.Reference.Model.Sample.DataDefinition.Field.Price exposing (Price)
+import SparkTests.DataDefinition.Field.Category exposing (Category)
+import SparkTests.DataDefinition.Field.Price exposing (Price)
 
 
 type alias Grocery =

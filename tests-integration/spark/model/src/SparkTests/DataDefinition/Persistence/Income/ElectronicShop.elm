@@ -1,7 +1,7 @@
-module Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.ElectronicShop exposing (..)
+module SparkTests.DataDefinition.Persistence.Income.ElectronicShop exposing (..)
 
-import Morphir.Reference.Model.Sample.DataDefinition.Field.Date exposing (Date)
-import Morphir.Reference.Model.Sample.DataDefinition.Field.Price exposing (Price)
+import SparkTests.DataDefinition.Field.Date exposing (Date)
+import SparkTests.DataDefinition.Field.Price exposing (Price)
 
 
 type alias Electronic =
