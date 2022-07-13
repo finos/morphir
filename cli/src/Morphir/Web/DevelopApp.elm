@@ -287,7 +287,17 @@ update msg model =
 
         toStoredTestSuite : Dict FQName (Array TestCase) -> Dict FQName (List TestCase)
         toStoredTestSuite testSuite =
-            Dict.fromList (List.map (\( k, v ) -> ( k, Array.toList v )) (Dict.toList testSuite))
+            Dict.fromList
+                (List.map
+                    (\( k, v ) ->
+                        ( k
+                        , Array.toList v
+                            -- the interpreter and insightViewState needs Unit in places where no input is given, but we can't encode a value that does not match the parameter type
+                            |> List.map (\testCase -> { testCase | inputs = List.map (\i -> ifThenElse (i == Just (Value.Unit ())) Nothing i) testCase.inputs })
+                        )
+                    )
+                    (Dict.toList testSuite)
+                )
     in
     case msg of
         Navigate navigationMsg ->
@@ -460,7 +470,7 @@ update msg model =
                                 model.testSuite
                     in
                     ( { model | testSuite = newTestSuite }
-                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite)
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
                 LoadTestCase inputTypes values ->
@@ -506,7 +516,7 @@ update msg model =
                                 model.testSuite
                     in
                     ( { model | testSuite = newTestSuite, argStates = Dict.empty, insightViewState = emptyVisualState }
-                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite)
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
 
@@ -1593,16 +1603,21 @@ httpTestModel ir =
         }
 
 
-httpSaveTestSuite : IR -> TestSuite -> Cmd Msg
-httpSaveTestSuite ir testSuite =
+httpSaveTestSuite : IR -> TestSuite -> TestSuite -> Cmd Msg
+httpSaveTestSuite ir newTestSuite oldTestSuite =
     let
         encodedTestSuite =
-            case encodeTestSuite ir testSuite of
+            case encodeTestSuite ir newTestSuite of
                 Ok encodedValue ->
                     jsonBody encodedValue
 
                 Err _ ->
-                    emptyBody
+                    case encodeTestSuite ir oldTestSuite of
+                        Ok fallBackEncoded ->
+                            jsonBody fallBackEncoded
+
+                        Err _ ->
+                            emptyBody
     in
     Http.post
         { url = "/server/morphir-tests.json"
@@ -1788,9 +1803,9 @@ viewDefinitionDetails model =
                 listOfTestcases =
                     Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty
 
-                displayValue : Maybe RawValue -> Element Msg
+                displayValue : RawValue -> Element Msg
                 displayValue t =
-                    viewRawValue (insightViewConfig ir) ir (Maybe.withDefault (Value.Unit ()) t)
+                    viewRawValue (insightViewConfig ir) ir t
 
                 inputNameList : List ( Int, String )
                 inputNameList =
@@ -1845,21 +1860,23 @@ viewDefinitionDetails model =
                                     , pointer
                                     , onClick loadTestCaseMsg
                                     ]
+
+                                rowCell : Element Msg
+                                rowCell =
+                                    (Array.get columnIndex <| Array.fromList test.inputs) |> Maybe.withDefault Nothing |> Maybe.withDefault (Value.Unit ()) |> displayValue
                             in
                             -- first cell's left border should be rounded
                             if columnIndex == 0 then
-                                el (styles ++ [ Border.roundEach { topLeft = 6, bottomLeft = 6, topRight = 0, bottomRight = 0 } ])
-                                    ((Array.get columnIndex <| Array.fromList test.inputs) |> Maybe.withDefault (Just <| Value.Unit ()) |> displayValue)
+                                el (styles ++ [ Border.roundEach { topLeft = 6, bottomLeft = 6, topRight = 0, bottomRight = 0 } ]) rowCell
 
                             else if columnIndex < maxIndex then
-                                el styles
-                                    ((Array.get columnIndex <| Array.fromList test.inputs) |> Maybe.withDefault (Just <| Value.Unit ()) |> displayValue)
+                                el styles rowCell
                                 -- last cell's right border should be rounded, and should have the delete button
 
                             else
                                 row [ width fill, height fill ]
                                     [ el (styles ++ [ paddingEach { right = model.theme |> Theme.scaled 7, left = 0, top = 0, bottom = 0 } ])
-                                        (Just test.expectedOutput |> displayValue)
+                                        (test.expectedOutput |> displayValue)
                                     , deleteButton selfIndex
                                     ]
 
