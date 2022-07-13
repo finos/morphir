@@ -200,6 +200,30 @@ For example, the three Elm snippets above are translated into this Spark code:
     ))
 ```
 
+## Aggregations
+The current Spark API recognizes the following patterns as aggregations:
+
+```
+source
+    |> List.map mappingFunction
+    |> (\a ->
+        [{
+            label = aggregationFunction a
+        }]
+    )
+```
+Where 'mappingFunction' could be a Lambda or a FieldFunction (e.g. '.fieldName').
+And 'label' can be any alias for the returned column.
+And 'aggregationFunction' is one of:
+* List.minimum
+
+
+Such code would generate Spark of the form
+```
+source.select(aggregationFunction(org.apache.spark.sql.col("fieldName")).alias("label"))
+```
+
+
 ## Types
 The current Spark API processes the following types:
 

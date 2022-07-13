@@ -37,7 +37,7 @@ generator uses.
 -}
 
 import Array exposing (Array)
-import Dict
+import Dict exposing (Dict)
 import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -145,6 +145,8 @@ type Error
     | UnsupportedSDKFunction FQName
     | EmptyPatternMatch
     | UnhandledPatternMatch ( Pattern (Type.Type ()), TypedValue )
+    | UnhandledNamedExpressions NamedExpressions
+    | UnhandledObjectExpression ObjectExpression
 
 
 {-| provides a way to create ObjectExpressions from a Morphir Value.
@@ -156,6 +158,28 @@ objectExpressionFromValue ir morphirValue =
     case morphirValue of
         Value.Variable _ varName ->
             From varName |> Ok
+
+        Value.Apply _ ((Value.Lambda _ _ (Value.List _ [ Value.Record _ _ ])) as lambda) sourceRelation ->
+            -- e.g. source |> List.map .fieldName |> (\a -> [{min = List.minimum(a)}])
+            objectExpressionFromValue ir sourceRelation
+                |> Result.andThen
+                    (\sourceExpression ->
+                        namedExpressionsFromValue ir lambda
+                            |> Result.andThen
+                                (\lambdaExpressions ->
+                                    case sourceExpression of
+                                        Select (( _, subExpression ) :: []) oldSourceExpression ->
+                                            case lambdaExpressions of
+                                                ( lamName, Function fname [ a ] ) :: [] ->
+                                                    Select [ ( lamName, Function fname [ subExpression ] ) ] oldSourceExpression |> Ok
+
+                                                other ->
+                                                    Err (UnhandledNamedExpressions other)
+
+                                        other ->
+                                            Err (UnhandledObjectExpression other)
+                                )
+                    )
 
         Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter" ] )) predicate) sourceRelation ->
             objectExpressionFromValue ir sourceRelation
@@ -185,20 +209,28 @@ objectExpressionFromValue ir morphirValue =
             Err (UnhandledValue other)
 
 
+namedExpressionsFromFields : IR -> Dict Name TypedValue -> Result Error NamedExpressions
+namedExpressionsFromFields ir fields =
+    fields
+        |> Dict.toList
+        |> List.map
+            (\( name, value ) ->
+                expressionFromValue ir value
+                    |> Result.map (Tuple.pair name)
+            )
+        |> ResultList.keepFirstError
+
+
 {-| Provides a way to create NamedExpressions from a Morphir Value.
 -}
 namedExpressionsFromValue : IR -> TypedValue -> Result Error NamedExpressions
 namedExpressionsFromValue ir typedValue =
     case typedValue of
+        Value.Lambda _ _ (Value.List _ [ Value.Record _ fields ]) ->
+            namedExpressionsFromFields ir fields
+
         Value.Lambda _ _ (Value.Record _ fields) ->
-            fields
-                |> Dict.toList
-                |> List.map
-                    (\( name, value ) ->
-                        expressionFromValue ir value
-                            |> Result.map (Tuple.pair name)
-                    )
-                |> ResultList.keepFirstError
+            namedExpressionsFromFields ir fields
 
         Value.FieldFunction _ name ->
             expressionFromValue ir typedValue
@@ -338,6 +370,10 @@ expressionFromValue ir morphirValue =
                             |> List.map (\val -> expressionFromValue ir val)
                             |> ResultList.keepFirstError
                         )
+
+                Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "minimum" ] )) arg ->
+                    expressionFromValue ir arg
+                        |> Result.map (\expr -> Function "min" [ expr ])
 
                 Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
                     case ( package, modName ) of

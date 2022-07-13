@@ -2,6 +2,7 @@ module SparkTests.FunctionTests exposing (..)
 
 import SparkTests.Types exposing (..)
 
+
 testCaseBool : List { foo : Bool } -> List { foo : Bool }
 testCaseBool source =
     source
@@ -10,6 +11,7 @@ testCaseBool source =
                 case a.foo of
                     False ->
                         True
+
                     _ ->
                         False
             )
@@ -23,6 +25,7 @@ testCaseFloat source =
                 case a.foo of
                     9.99 ->
                         True
+
                     _ ->
                         False
             )
@@ -36,8 +39,10 @@ testCaseInt source =
                 case a.ageOfItem of
                     20 ->
                         True
-                    5->
+
+                    5 ->
                         False
+
                     _ ->
                         False
             )
@@ -51,6 +56,7 @@ testCaseString source =
                 case a.name of
                     "Wooden Chair" ->
                         False
+
                     _ ->
                         True
             )
@@ -64,8 +70,10 @@ testCaseEnum source =
                 case a.product of
                     Paintings ->
                         True
+
                     Furniture ->
                         True
+
                     _ ->
                         False
             )
@@ -149,6 +157,18 @@ testFilter source =
 testFilter2 : List Antique -> List Antique
 testFilter2 source =
     source |> List.filter (filterFnWithVar 17)
+
+
+testListMinimum : List Antique -> List { min : Maybe Int }
+testListMinimum source =
+    source
+        |> List.map .ageOfItem
+        |> (\ages ->
+                [ { min =
+                        List.minimum ages
+                  }
+                ]
+           )
 
 
 testMapAndFilter : List Antique -> List Antique
