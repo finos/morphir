@@ -38,6 +38,7 @@ generator uses. It's a relatively large portion of the language but it's not aim
 @docs nameOfTypeDecl
 
 -}
+
 import Decimal exposing (Decimal)
 
 
@@ -196,7 +197,41 @@ type Type
     | CommentedType Type String
 
 
-{-| -}
+{-| Type that represents a Scala Value.
+
+These are the supported Values:
+
+  - **Literal**
+      - Specifies a Scala literal
+  - **Variable**
+      - Specifies a Scala variable
+  - **Ref**
+      - Represents a Scala function reference
+  - **Select**
+      - Represents an operation with a target expression and a name, where the name is applied with a '.' to the target.
+      - For example, '..obj.mymethod(param1, param2)' where 'mymethod' is the name and '..obj' is the target expression.
+      - Any argument list needed, such as '(param1, param2)', is appended to the Select value.
+  - **Wildcard**
+  - **Apply**
+      - Apply a Scala function
+  - **UnOp**
+  - **BinOp**
+      - Scala binary operation
+  - **Lambda**
+  - **Block**
+  - **MatchCases**
+  - **Match**
+  - **IfElse**
+  - **Tuple**
+  - **StructuralValue**
+  - **Unit**
+      - Return type of a Scala function which doesn't return anything
+      - Unit is represented as '{}'
+  - **This**
+  - **CommentedValue**
+  - **ForComp**
+
+-}
 type Value
     = Literal Lit
     | Variable Name

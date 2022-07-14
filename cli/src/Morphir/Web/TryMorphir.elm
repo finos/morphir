@@ -7,12 +7,11 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Html exposing (Attribute, Html)
+import Html exposing (Html)
 import Json.Encode as Encode
 import Morphir.Compiler as Compiler
-import Morphir.Elm.Frontend as Frontend exposing (Errors, SourceFile, SourceLocation)
+import Morphir.Elm.Frontend as Frontend exposing (SourceFile)
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Module as Module
 import Morphir.IR.Name as Name
 import Morphir.IR.Package as Package
@@ -21,12 +20,9 @@ import Morphir.IR.Type.Codec as TypeCodec
 import Morphir.IR.Value as Value
 import Morphir.IR.Value.Codec as ValueCodec
 import Morphir.Type.Infer as Infer
-import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Common exposing (nameToText, pathToUrl)
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.SourceEditor as SourceEditor
-import Morphir.Web.DevelopApp.Common exposing (pathToUrl)
-
-import Set
 
 
 
@@ -59,7 +55,7 @@ type IRView
 
 
 init : Flags -> ( Model, Cmd Msg )
-init flags =
+init _ =
     update (ChangeSource sampleSource) { source = "", maybePackageDef = Nothing, errors = [], irView = VisualView }
 
 
@@ -255,12 +251,12 @@ viewPackageDefinition viewAttribute packageDef irView =
     packageDef.modules
         |> Dict.toList
         |> List.map
-            (\( moduleName, moduleDef ) -> viewModuleDefinition viewAttribute moduleDef.value irView)
+            (\( _, moduleDef ) -> viewModuleDefinition viewAttribute moduleDef.value irView)
         |> column []
 
 
 viewModuleDefinition : (va -> Html Msg) -> Module.Definition () (Type ()) -> IRView -> Element Msg
-viewModuleDefinition viewAttribute moduleDef irView =
+viewModuleDefinition _ moduleDef irView =
     column []
         [ moduleDef.types
             |> viewDict
@@ -413,7 +409,7 @@ viewIRViewTabs irView =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 

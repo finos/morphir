@@ -61,21 +61,6 @@ ifThenElse boolValue ifTrue ifFalse =
         ifFalse
 
 
-pathToUrl : Path -> String
-pathToUrl path =
-    "/" ++ Path.toString Name.toTitleCase "." path
-
-
-pathToFullUrl : List Path -> String
-pathToFullUrl path =
-    "/home" ++ String.concat (List.map pathToUrl path)
-
-
-pathToDisplayString : Path -> String
-pathToDisplayString =
-    Path.toString (Name.toHumanWords >> String.join " ") " > "
-
-
 urlFragmentToNodePath : String -> List Path
 urlFragmentToNodePath f =
     let
