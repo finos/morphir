@@ -171,6 +171,18 @@ testListMinimum source =
            )
 
 
+testListMaximum : List Antique -> List { max : Maybe Int }
+testListMaximum source =
+    source
+        |> List.map .ageOfItem
+        |> (\ages ->
+                [ { max =
+                        List.maximum ages
+                  }
+                ]
+           )
+
+
 testMapAndFilter : List Antique -> List Antique
 testMapAndFilter source =
     source
