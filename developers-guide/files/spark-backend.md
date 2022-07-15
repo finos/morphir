@@ -216,6 +216,7 @@ Where 'mappingFunction' could be a Lambda or a FieldFunction (e.g. '.fieldName')
 And 'label' can be any alias for the returned column.
 And 'aggregationFunction' is one of:
 * List.minimum
+* List.maximum
 
 
 Such code would generate Spark of the form
