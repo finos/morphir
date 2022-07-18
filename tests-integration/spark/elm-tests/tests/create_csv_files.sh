@@ -64,6 +64,13 @@ elmTestOutputToCsv "TestIsItemAntique.elm" "is_item_antique"
 # Run the seize_item test and save the corresponding CSV file
 elmTestOutputToCsv "TestSeizeItem.elm" "seize_item"
 
+elmTestOutputToCsv "TestAggregateAverage.elm" "aggregateAverage"
+elmTestOutputToCsv "TestAggregateCount.elm" "aggregateCount"
+elmTestOutputToCsv "TestAggregateFilterAll.elm" "aggregateFilterAll"
+elmTestOutputToCsv "TestAggregateMaximum.elm" "aggregateMaximum"
+elmTestOutputToCsv "TestAggregateMinimum.elm" "aggregateMinimum"
+elmTestOutputToCsv "TestAggregateSum.elm" "aggregateSum"
+
 # Run the christmas_bonanza_15percent_priceRange test and save the corresponding CSV file
 # This one is slightly different from the others because it manually reformats the output into csv
 elm-test "TestChristmasBonanza.elm" > "$TEST_OUTPUT_DIR/christmas_bonanza_15percent_priceRange.txt"
