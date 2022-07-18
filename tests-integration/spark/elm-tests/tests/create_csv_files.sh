@@ -63,3 +63,13 @@ elmTestOutputToCsv "TestIsItemWorthThousands.elm" "is_item_worth_thousands"
 
 # Run the is_item_antique test and save the corresponding CSV file
 elmTestOutputToCsv "TestItemIsAntique.elm" "is_item_antique"
+
+# Run the seize_item test and save the corresponding CSV file
+elmTestOutputToCsv "TestSeizeItem.elm" "seize_item"
+
+# Run the christmas_bonanza_15percent_priceRange test and save the corresponding CSV file
+elm-test TestChristmasBonanza.elm > "$TEST_OUTPUT_DIR/christmas_bonanza_15percent_priceRange.txt"
+cat "$TEST_OUTPUT_DIR/christmas_bonanza_15percent_priceRange.txt" \
+    | grep -m1 "antiques_expected_results_christmas_bonanza_15percent_priceRange.csv" \
+    | sed -e "s?antiques_expected_results_christmas_bonanza_15percent_priceRange.csv: Ok (??" -e 's?)??g' -e 'i minimum,maximum' \
+    > "$SPARK_TEST_DATA_DIR/antiques_expected_results_christmas_bonanza_15percent_priceRange.csv"
