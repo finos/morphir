@@ -132,8 +132,8 @@ christmas_bonanza_15percent_priceRange antiqueList =
                         0.0
     in
     antiqueList
-        |> List.filter (\item -> is_item_antique item && is_item_vintage item)
-        |> List.map (\item -> item.priceValue / bonanzaDiscount)
+        |> List.filter (\item -> is_item_antique item || is_item_vintage item)
+        |> List.map (\item -> item.priceValue * bonanzaDiscount)
         |> (\lstOfPriceValues ->
                 ( getPriceValue lstOfPriceValues "min"
                 , getPriceValue lstOfPriceValues "max"
