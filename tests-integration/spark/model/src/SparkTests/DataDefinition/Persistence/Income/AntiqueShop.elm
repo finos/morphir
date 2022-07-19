@@ -41,6 +41,9 @@ productFromID id =
         4 ->
             Just Furniture
 
+        5 ->
+            Just HistoryWritings
+
         _ ->
             Nothing
 
@@ -65,10 +68,16 @@ antiqueItem4 =
     Furniture
 
 
+antiqueItem5 : Product
+antiqueItem5 =
+    HistoryWritings
+
+
 allAntiqueProducts : List Product
 allAntiqueProducts =
     [ Paintings
     , Knife
     , Plates
     , Furniture
+    , HistoryWritings
     ]
