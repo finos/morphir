@@ -22,6 +22,7 @@ import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.SDK.Basics exposing (intType)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
 import Morphir.IR.Type exposing (Specification(..), Type(..))
 
@@ -35,7 +36,7 @@ moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Key0", OpaqueTypeSpecification [] |> Documented "" )
+            [ ( Name.fromString "Key0", TypeAliasSpecification [] (intType ()) |> Documented "" )
             , ( Name.fromString "Key2", OpaqueTypeSpecification [] |> Documented "" )
             , ( Name.fromString "Key3", OpaqueTypeSpecification [] |> Documented "" )
             , ( Name.fromString "Key4", OpaqueTypeSpecification [] |> Documented "" )
@@ -54,9 +55,9 @@ moduleSpec =
             ]
     , values =
         Dict.fromList
-            [ vSpec "noKey" [] (key0Type ())
+            [ vSpec "noKey" [ ( "a", tVar "a" ) ] (key0Type ())
             , vSpec "key0"
-                []
+                [ ( "a", tVar "a" ) ]
                 (key0Type ())
             , vSpec "key2"
                 [ ( "getKey1", tFun [ tVar "a" ] (tVar "b1") )
