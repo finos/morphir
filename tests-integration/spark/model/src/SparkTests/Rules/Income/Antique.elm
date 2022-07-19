@@ -98,7 +98,7 @@ is_item_worth_millions antique =
 seize_item : Antique -> Bool
 seize_item antique =
     (is_item_antique antique == False)
-        || (is_item_vintage antique == False)
+        && (is_item_vintage antique == False)
         && antique.requiresExpert
         == True
         || antique.requiresExpert

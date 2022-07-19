@@ -51,4 +51,4 @@ testSeizeItem =
         _ =
             Debug.log "antiques_expected_results_seize_item.csv" csvResults
     in
-    test "Testing seize_item antique shop rule" (\_ -> Expect.equal (matchingAntiques |> Result.map (\list -> List.length list)) (23000 |> Ok))
+    test "Testing seize_item antique shop rule" (\_ -> Expect.equal (matchingAntiques |> Result.map (\list -> List.length list)) (12200 |> Ok))
