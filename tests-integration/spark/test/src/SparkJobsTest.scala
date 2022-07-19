@@ -90,6 +90,22 @@ class test1 extends FunSuite {
       assert(row1(2) == 19)
     }
 
+  test("testListMinimum") {
+    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
+    val res = SparkJobs.testListMinimum(dfFromRDD)
+    assert(res.count() == 1)
+    assert(res.columns(0) == "min")
+    assert(res.collect()(0)(0) == 19)
+  }
+
+  test("testListMaximum") {
+    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
+    val res = SparkJobs.testListMaximum(dfFromRDD)
+    assert(res.count() == 1)
+    assert(res.columns(0) == "max")
+    assert(res.collect()(0)(0) == 20)
+  }
+
   test("testSelect1") {
       val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
       val res = SparkJobs.testSelect1(dfFromRDD)
