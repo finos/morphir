@@ -14,7 +14,7 @@ const ts = require('gulp-typescript');
 const tsProject = ts.createProject('./cli2/tsconfig.json')
 
 const config = {
-    morphirJvmVersion: '0.9.0',
+    morphirJvmVersion: '0.9.1',
     morphirJvmCloneDir: tmp.dirSync()
 }
 
