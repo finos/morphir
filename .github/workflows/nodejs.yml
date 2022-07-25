@@ -93,6 +93,8 @@ jobs:
           mkdir -p ~/artifact-download/morphir-elm-artifact
           tar -zxvf $(ls ~/artifact-download/*.tgz)  -C ~/artifact-download/morphir-elm-artifact
           ls -l ~/artifact-download/morphir-elm-artifact
+      - name: Install
+        run: npm install
 
       - name: Auto release
         if: "env.NPM_TOKEN != 0 && !contains(github.event.head_commit.message, 'ci skip') && !contains(github.event.head_commit.message, 'ci skip')"
