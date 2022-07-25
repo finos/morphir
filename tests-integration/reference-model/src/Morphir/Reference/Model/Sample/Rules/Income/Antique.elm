@@ -1,8 +1,13 @@
 module Morphir.Reference.Model.Sample.Rules.Income.Antique exposing (..)
 
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Category exposing (Category(..))
+import Morphir.Reference.Model.Sample.DataDefinition.Field.Price exposing (Price)
 import Morphir.Reference.Model.Sample.DataDefinition.Field.Report exposing (FeedBack(..))
 import Morphir.Reference.Model.Sample.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique, Product(..))
+
+
+type alias PriceRange =
+    ( Price, Price )
 
 
 is_item_antique : Antique -> Bool
@@ -100,3 +105,37 @@ seize_item antique =
         == False
         && (antique.expertFeedback == Just Fake)
         && (antique.report == Nothing)
+
+
+christmas_bonanza_15percent_priceRange : List Antique -> PriceRange
+christmas_bonanza_15percent_priceRange antiqueList =
+    let
+        bonanzaDiscount =
+            0.15
+
+        getPriceValue : List Float -> String -> Float
+        getPriceValue priceValues order =
+            if order == "min" then
+                case priceValues |> List.minimum of
+                    Just va ->
+                        va
+
+                    Nothing ->
+                        0.0
+
+            else
+                case priceValues |> List.maximum of
+                    Just va ->
+                        va
+
+                    Nothing ->
+                        0.0
+    in
+    antiqueList
+        |> List.filter (\item -> is_item_antique item && is_item_vintage item)
+        |> List.map (\item -> item.priceValue / bonanzaDiscount)
+        |> (\lstOfPriceValues ->
+                ( getPriceValue lstOfPriceValues "min"
+                , getPriceValue lstOfPriceValues "max"
+                )
+           )

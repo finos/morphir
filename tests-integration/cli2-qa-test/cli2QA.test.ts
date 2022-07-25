@@ -257,7 +257,7 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
 	})
 
-	test('should update value access appropraitely', async () => {
+	test.skip('should update value access appropriately', async () => {
 		await writeFile(
 			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
 			concat(
@@ -365,43 +365,76 @@ describe('Testing morphir-elm make and morphir make command', () => {
 		expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
 	})
 
-	// test('should add and update type documentation correctly', async () => {
-	// 	await writeFile(
-	// 		path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
-	// 		concat('module Package.Rentals exposing (..)', '', 'type User = New | Existing')
-	// 	)
-	// 	let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
-	// 	let IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-	// 	expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
+    test('should add value documentation correctly', async () => {
+		// add a type documentation
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (..)',
+				'',
+				'{-| documentation for foo -}',
+				'foo = 1'
+			)
+		)
+        let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		let IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
+	})
 
-	// 	// add a type documentation
-	// 	await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR2)))
-	// 	await writeFile(
-	// 		path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
-	// 		concat(
-	// 			'module Package.Rentals exposing (..)',
-	// 			'',
-	// 			'{-| type to track user stage -}',
-	// 			'type User = New | Existing'
-	// 		)
-	// 	)
-	// 	IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
-	// 	IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-	// 	expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
+    test('should add type documentation correctly', async () => {
+		// add a type documentation
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (..)',
+				'',
+				'{-| type to track user stage -}',
+				'type User = New | Existing'
+			)
+		)
+        let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		let IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
 
-	// 	// update the type documentation
-	// 	await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR2)))
-	// 	await writeFile(
-	// 		path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
-	// 		concat(
-	// 			'module Package.Rentals exposing (..)',
-	// 			'',
-	// 			'{-| a type that tells what type a user is -}',
-	// 			'type User = New | Existing'
-	// 		)
-	// 	)
-	// 	IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
-	// 	IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
-	// 	expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
-	// })
+	})
+
+	test('should update type documentation correctly', async () => {
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat('module Package.Rentals exposing (..)', '', 'type User = New | Existing')
+		)
+		let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		let IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
+
+		// add a type documentation
+		await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR2)))
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (..)',
+				'',
+				'{-| type to track user stage -}',
+				'type User = New | Existing'
+			)
+		)
+		IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
+
+		// update the type documentation
+		await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR2)))
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (..)',
+				'',
+				'{-| a type that tells what type a user is -}',
+				'type User = New | Existing'
+			)
+		)
+		IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		IR2 = await cli2.make(PATH_TO_PROJECT, CLI_OPTIONS)
+		expect(JSON.stringify(JSON.parse(IR2))).toBe(JSON.stringify(IR))
+	})
 })

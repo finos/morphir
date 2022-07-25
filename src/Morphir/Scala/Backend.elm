@@ -16,9 +16,9 @@
 
 
 module Morphir.Scala.Backend exposing
-    ( mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue, mapFQNameToPathAndName
+    ( mapDistribution, mapFunctionBody, mapType, mapTypeMember, mapValue, mapFQNameToTypeRef, mapFQNameToPathAndName, mapValueName
     , Options
-    , mapValueName, mapFQNameToTypeRef)
+    )
 
 {-| This module encapsulates the Scala backend. It takes the Morphir IR as the input and returns an in-memory
 representation of files generated. The consumer is responsible for getting the input IR and saving the output
@@ -122,8 +122,8 @@ mapFQNameToPathAndName ( packagePath, modulePath, localName ) =
     , localName
     )
 
-{-|
- Map Fully Qualified name Type Ref
+
+{-| Map Fully Qualified name Type Ref
 -}
 mapFQNameToTypeRef : FQName -> Scala.Type
 mapFQNameToTypeRef fQName =
@@ -534,6 +534,9 @@ mapValue inScopeVars value =
                 FloatLiteral v ->
                     wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
 
+                DecimalLiteral _ ->
+                    Debug.todo "branch 'DecimalLiteral _' not implemented"
+
         Constructor constructorType fQName ->
             curryConstructorArgs inScopeVars constructorType fQName []
 
@@ -558,6 +561,7 @@ mapValue inScopeVars value =
                     in
                     Scala.Apply (Scala.Ref path (name |> Name.toTitleCase))
                         (fieldValues
+                            |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     Scala.ArgValue (Just (mapValueName fieldName)) (mapValue inScopeVars fieldValue)
@@ -567,6 +571,7 @@ mapValue inScopeVars value =
                 _ ->
                     Scala.StructuralValue
                         (fieldValues
+                            |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     ( mapValueName fieldName, mapValue inScopeVars fieldValue )
@@ -771,12 +776,13 @@ mapValue inScopeVars value =
             Scala.Apply
                 (Scala.Select (mapValue inScopeVars subjectValue) "copy")
                 (fieldUpdates
-                    |> List.map
-                        (\( fieldName, fieldValue ) ->
+                    |> Dict.map
+                        (\fieldName fieldValue ->
                             Scala.ArgValue
                                 (Just (mapValueName fieldName))
                                 (mapValue inScopeVars fieldValue)
                         )
+                    |> Dict.values
                 )
 
         Unit a ->
@@ -835,6 +841,9 @@ mapPattern pattern =
 
                         FloatLiteral v ->
                             Scala.FloatLit v
+
+                        DecimalLiteral v ->
+                            Scala.DecimalLit v
             in
             Scala.LiteralMatch (map literal)
 
@@ -842,8 +851,7 @@ mapPattern pattern =
             Scala.WildcardMatch
 
 
-{-|
- Map IR value to Scala Value
+{-| Map IR value to Scala Value
 -}
 mapValueName : Name -> String
 mapValueName name =

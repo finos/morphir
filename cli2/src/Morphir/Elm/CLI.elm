@@ -19,8 +19,9 @@ import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
-import Morphir.Elm.IncrementalFrontend as IncrementalFrontend exposing (Errors, OrderedFileChanges)
+import Morphir.Elm.IncrementalFrontend as IncrementalFrontend exposing (Errors, ModuleChange(..), OrderedFileChanges)
 import Morphir.Elm.IncrementalFrontend.Codec as IncrementalFrontendCodec
+import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.File.FileChanges as FileChanges exposing (FileChanges)
 import Morphir.File.FileChanges.Codec as FileChangesCodec
 import Morphir.File.FileMap exposing (FileMap)
@@ -31,10 +32,10 @@ import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.Name as Name
 import Morphir.IR.Package exposing (PackageName)
-import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
 import Morphir.IR.Path as Path
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 import Morphir.IR.SDK as SDK
+import Morphir.Stats.Backend as Stats
 import Process
 import Task
 
@@ -66,12 +67,19 @@ port generate : (( Decode.Value, Decode.Value ) -> msg) -> Sub msg
 port generateResult : Encode.Value -> Cmd msg
 
 
+port stats : (Decode.Value -> msg) -> Sub msg
+
+
+port statsResult : Encode.Value -> Cmd msg
+
+
 subscriptions : () -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ buildFromScratch BuildFromScratch
         , buildIncrementally BuildIncrementally
-        ,   generate Generate
+        , generate Generate
+        , stats Stats
         ]
 
 
@@ -94,8 +102,9 @@ type Msg
     = BuildFromScratch Decode.Value
     | BuildIncrementally Decode.Value
     | OrderFileChanges PackageName PackageInfo Frontend.Options FileChanges Repo
-    | ApplyFileChanges PackageInfo Frontend.Options OrderedFileChanges Repo
+    | ApplyFileChanges PackageInfo Frontend.Options (List ModuleChange) Repo
     | Generate ( Decode.Value, Decode.Value )
+    | Stats Decode.Value
 
 
 main : Platform.Program () () Msg
@@ -110,7 +119,6 @@ main =
 update : Msg -> () -> ( (), Cmd Msg )
 update msg model =
     ( model, Cmd.batch [ process msg, report msg ] )
-
 
 
 process : Msg -> Cmd Msg
@@ -173,12 +181,12 @@ process msg =
                         |> decodeFailed
 
         OrderFileChanges packageName packageInfo opts fileChanges repo ->
-            IncrementalFrontend.orderFileChanges packageName fileChanges
-                |> Result.map (\orderedFileChanges -> ApplyFileChanges packageInfo opts orderedFileChanges repo)
+            IncrementalFrontend.orderFileChanges packageName repo fileChanges
+                |> Result.map (\orderedModuleChanges -> ApplyFileChanges packageInfo opts orderedModuleChanges repo)
                 |> failOrProceed
 
-        ApplyFileChanges packageInfo opts orderedFileChanges repo ->
-            IncrementalFrontend.applyFileChanges orderedFileChanges opts packageInfo.exposedModules repo
+        ApplyFileChanges packageInfo opts orderedModuleChanges repo ->
+            IncrementalFrontend.applyFileChanges packageInfo.name orderedModuleChanges opts packageInfo.exposedModules repo
                 |> returnDistribution
 
         Generate ( optionsJson, packageDistJson ) ->
@@ -193,22 +201,43 @@ process msg =
                     Decode.decodeValue DistroCodec.decodeVersionedDistribution packageDistJson
             in
             case Result.map2 Tuple.pair optionsResult packageDistroResult of
-                 Ok ( options, packageDist ) ->
+                Ok ( options, packageDist ) ->
                     let
                         enrichedDistro =
                             case packageDist of
-                                 Library packageName dependencies packageDef ->
+                                Library packageName dependencies packageDef ->
                                     Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
                         fileMap : FileMap
                         fileMap =
                             mapDistribution options enrichedDistro
                     in
-                        fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult
+                    fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult
 
-                 Err errorMessage ->
-                            errorMessage |> Decode.errorToString |> jsonDecodeError
+                Err errorMessage ->
+                    errorMessage |> Decode.errorToString |> jsonDecodeError
 
+        Stats packageDistJson ->
+            let
+                packageDistroResult =
+                    Decode.decodeValue DistroCodec.decodeVersionedDistribution packageDistJson
+            in
+            case packageDistroResult of
+                Ok packageDist ->
+                    let
+                        enrichedDistro =
+                            case packageDist of
+                                Library packageName dependencies packageDef ->
+                                    Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
+
+                        fileMap : FileMap
+                        fileMap =
+                            Stats.collectFeaturesFromDistribution enrichedDistro
+                    in
+                    fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> statsResult
+
+                Err errorMessage ->
+                    errorMessage |> Decode.errorToString |> jsonDecodeError
 
 
 report : Msg -> Cmd Msg
@@ -223,20 +252,33 @@ report msg =
         OrderFileChanges _ _ _ _ _ ->
             reportProgress "Parsing files and ordering file changes"
 
-        ApplyFileChanges _ _ orderedFileChanges _ ->
+        ApplyFileChanges _ _ orderedModuleChanges _ ->
             reportProgress
                 (String.concat
-                    [ "Applying file changes in the following order:\n"
-                    , "  Additions:\n  - "
-                    , orderedFileChanges.insertsAndUpdates
-                        |> List.map (\( moduleName, _ ) -> moduleName |> Path.toString Name.toTitleCase ".")
+                    [ "Applying file changes in the following order:"
+                    , "\n  - "
+                    , orderedModuleChanges
+                        |> List.map
+                            (\moduleChange ->
+                                case moduleChange of
+                                    ModuleInsert moduleName _ ->
+                                        "Insert: " ++ (moduleName |> Path.toString Name.toTitleCase ".")
+
+                                    ModuleUpdate moduleName _ ->
+                                        "Update: " ++ (moduleName |> Path.toString Name.toTitleCase ".")
+
+                                    ModuleDelete moduleName ->
+                                        "Delete: " ++ (moduleName |> Path.toString Name.toTitleCase ".")
+                            )
                         |> String.join "\n  - "
                     ]
                 )
 
-        Generate (optionJson, packageDistJson)  ->
+        Generate ( optionJson, packageDistJson ) ->
             reportProgress " Generating target code from IR ..."
 
+        Stats _ ->
+            reportProgress "Generating stats from IR ..."
 
 
 keepElmFilesOnly : FileChanges -> FileChanges

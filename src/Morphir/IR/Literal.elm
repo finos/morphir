@@ -28,6 +28,8 @@ module Morphir.IR.Literal exposing (Literal(..), boolLiteral, charLiteral, strin
 @docs Literal, boolLiteral, charLiteral, stringLiteral, intLiteral, floatLiteral
 
 -}
+import Morphir.SDK.Decimal exposing (Decimal)
+
 
 
 {-| Type that represents a literal value.
@@ -38,6 +40,7 @@ type Literal
     | StringLiteral String
     | WholeNumberLiteral Int
     | FloatLiteral Float
+    | DecimalLiteral Decimal
 
 
 {-| Represents a boolean value. Only possible values are: `True`, `False`

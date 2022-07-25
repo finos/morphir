@@ -20,6 +20,7 @@ module Morphir.IR.Literal.CodecV1 exposing (..)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.SDK.Decimal as Decimal
 
 
 encodeLiteral : Literal -> Encode.Value
@@ -53,6 +54,12 @@ encodeLiteral l =
             Encode.list identity
                 [ Encode.string "float_literal"
                 , Encode.float v
+                ]
+
+        DecimalLiteral v ->
+            Encode.list identity
+                [ Encode.string "decimal_literal"
+                , Encode.string (Decimal.toString v)
                 ]
 
 
@@ -91,6 +98,17 @@ decodeLiteral =
                     "float_literal" ->
                         Decode.map FloatLiteral
                             (Decode.index 1 Decode.float)
+
+                    "decimal_literal" ->
+                        let
+                            dec v =
+                                Decimal.fromString v |> Maybe.withDefault (Decimal.fromInt 0)
+                        in
+                        Decode.map DecimalLiteral
+                            (Decode.index 1 Decode.string
+                                |> Decode.andThen
+                                    (\str -> Decode.succeed <| dec str)
+                            )
 
                     other ->
                         Decode.fail <| "Unknown literal type: " ++ other

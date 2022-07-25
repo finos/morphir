@@ -1,11 +1,12 @@
 module Morphir.Visual.ViewLiteral exposing (..)
 
-import Element exposing (Element, el, row, text)
+import Element exposing (Element, alignLeft, centerX, centerY, el, padding, row, text)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (Decimals(..), usLocale)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.Visual.Common as Common
 import Morphir.Visual.Config exposing (Config)
+import Morphir.SDK.Decimal as Decimal
 
 
 view : Config msg -> Literal -> Element msg
@@ -13,12 +14,11 @@ view config literal =
     case literal of
         BoolLiteral bool ->
             viewLiteralText "bool-literal"
-                (case bool of
-                    True ->
-                        "True"
+                (if bool then
+                    "True"
 
-                    False ->
-                        "False"
+                 else
+                    "False"
                 )
 
         CharLiteral char ->
@@ -42,11 +42,12 @@ view config literal =
                     float
                 )
 
+        DecimalLiteral decimal ->
+            viewLiteralText "decimal-literal"
+                (Decimal.toString decimal)
+
+
 
 viewLiteralText : String -> String -> Element msg
 viewLiteralText className literalText =
-    el []
-        (row
-            [ Common.cssClass className ]
-            [ text literalText ]
-        )
+    el [ Common.cssClass className, centerX, centerY, padding 3, alignLeft ] (text literalText)

@@ -34,7 +34,9 @@ moduleName =
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
-        Dict.empty
+         Dict.fromList
+            [ ( Name.fromString "Regex", OpaqueTypeSpecification [] |> Documented "Type that represents regular expressions" )
+            ]
     , values =
         let
             -- Used temporarily as a placeholder for function values until we can generate them based on the SDK.

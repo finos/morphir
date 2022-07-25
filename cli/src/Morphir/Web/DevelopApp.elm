@@ -70,7 +70,7 @@ import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
-import Morphir.Visual.Common exposing (nameToText, nameToTitleText)
+import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (PopupScreenRecord)
@@ -79,7 +79,7 @@ import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common exposing (ifThenElse, pathToDisplayString, pathToFullUrl, pathToUrl, urlFragmentToNodePath, viewAsCard)
+import Morphir.Web.DevelopApp.Common exposing (ifThenElse, urlFragmentToNodePath, viewAsCard)
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Morphir.Web.TryMorphir exposing (Model)
 import Ordering
@@ -197,7 +197,7 @@ init _ url key =
                 }
             , repo = Repo.empty []
             , insightViewState = emptyVisualState
-            , definitionDisplayType = XRayView
+            , definitionDisplayType = InsightView
             , argStates = Dict.empty
             , expandedValues = Dict.empty
             }
@@ -883,10 +883,6 @@ viewBody model =
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
 viewHome model packageName packageDef =
     let
-        gray : Element.Color
-        gray =
-            rgb 0.9 0.9 0.9
-
         morphIrBlue : Element.Color
         morphIrBlue =
             rgb 0 0.639 0.882
@@ -1211,7 +1207,7 @@ viewHome model packageName packageDef =
         definitionList : Element Msg
         definitionList =
             column
-                [ Background.color gray
+                [ Background.color model.theme.colors.gray
                 , height fill
                 , width (ifThenElse model.showModules (fillPortion 3) fill)
                 , spacing (model.theme |> Theme.scaled -4)
@@ -1227,7 +1223,7 @@ viewHome model packageName packageDef =
                 , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
                 ]
     in
-    row [ width fill, height fill, Background.color gray, spacing 10 ]
+    row [ width fill, height fill, Background.color model.theme.colors.gray, spacing 10 ]
         [ column
             [ width
                 (ifThenElse model.showDefinitions
@@ -1245,7 +1241,7 @@ viewHome model packageName packageDef =
                 , clipY
                 ]
                 [ row
-                    [ Background.color gray
+                    [ Background.color model.theme.colors.gray
                     , height fill
                     , width (ifThenElse model.showModules (fillPortion 2) (px 40))
                     , clipX
@@ -1513,7 +1509,7 @@ viewAsCard theme header class backgroundColor docs content =
         ]
 
 
-{-| Display a Definition with it's name and path as a clickable UI element with a url pointing to the Definition
+{-| Display a Definition with its name and path as a clickable UI element with a url pointing to the Definition
 -}
 viewAsLabel : Theme -> Bool -> Element msg -> Element msg -> String -> String -> Element msg
 viewAsLabel theme shouldColorBg icon header class url =
@@ -1680,7 +1676,7 @@ viewModuleNames model packageName parentModule allModuleNames =
         )
 
 
-{-| Given a definition, return it's name
+{-| Given a definition, return its name
 -}
 definitionName : Definition -> Name
 definitionName definition =
@@ -1751,7 +1747,7 @@ viewDefinitionDetails model =
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
-            row [ Background.color <| rgba 0.9 0.9 0.9 0.5, Border.rounded 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
+            row [ Border.rounded 5, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
                 (case evaluateOutput ir testCase.inputs fQName of
                     Ok rawValue ->
                         case rawValue of
@@ -1876,12 +1872,12 @@ viewDefinitionDetails model =
 
                                 styles : List (Element.Attribute msg)
                                 styles =
-                                    [ paddingXY (model.theme |> Theme.scaled -2) (model.theme |> Theme.scaled -5) ]
+                                    [ paddingXY (model.theme |> Theme.scaled -2) (model.theme |> Theme.scaled -5), Background.color <| rgb 0.9 0.9 0.9, width fill ]
                             in
                             List.map
                                 (\( columnIndex, columnName ) ->
                                     { header = ifThenElse (columnIndex == maxIndex) (el (Font.bold :: styles) <| Theme.ellipseText columnName) (el styles <| Theme.ellipseText columnName)
-                                    , width = fill
+                                    , width = Element.shrink
                                     , view =
                                         \index test ->
                                             testRow columnIndex index maxIndex test
@@ -1896,7 +1892,14 @@ viewDefinitionDetails model =
                         , columns = columns
                         }
             in
-            ifThenElse (Array.isEmpty listOfTestcases) none (column [ height fill, width fill ] [ el [ Font.bold, padding (model.theme |> Theme.scaled -2) ] (text "TEST CASES"), testsTable ])
+            ifThenElse (Array.isEmpty listOfTestcases)
+                none
+                (column [ height fill, width fill ]
+                    [ el [ Font.bold, padding (model.theme |> Theme.scaled -2), Font.underline ]
+                        (text "TEST CASES")
+                    , testsTable
+                    ]
+                )
     in
     case model.irState of
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
@@ -1932,15 +1935,18 @@ viewDefinitionDetails model =
                                                     InsightView ->
                                                         Just <|
                                                             column
-                                                                [ width fill, height fill, spacing 20, paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
-                                                                [ viewArgumentEditors ir model.argStates valueDef.inputTypes
-                                                                , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
-                                                                , row [ spacing (model.theme |> Theme.scaled 2) ]
-                                                                    [ viewActualOutput
-                                                                        model.theme
-                                                                        ir
-                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                        fullyQualifiedName
+                                                                [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
+                                                                [ column [ spacing (model.theme |> Theme.scaled 5) ]
+                                                                    [ el [ Font.bold, Font.underline ] (text "INPUTS")
+                                                                    , viewArgumentEditors ir model.argStates valueDef.inputTypes
+                                                                    , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                    , row [ spacing (model.theme |> Theme.scaled 2) ]
+                                                                        [ viewActualOutput
+                                                                            model.theme
+                                                                            ir
+                                                                            { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                            fullyQualifiedName
+                                                                        ]
                                                                     ]
                                                                 , scenarios fullyQualifiedName distribution valueDef.inputTypes
                                                                 ]

@@ -459,10 +459,10 @@ mapValueDefinition packageName moduleName valueName valueDef nodeRegistry =
                             [ value1, value2, value3 ] |> List.concatMap collectFunctions
 
                         Value.PatternMatch _ v tuples ->
-                            collectFunctions v ++ (tuples |> List.map (\( tk, tv ) -> tv) |> List.concatMap collectFunctions)
+                            collectFunctions v ++ (tuples |> List.map Tuple.second |> List.concatMap collectFunctions)
 
-                        Value.UpdateRecord _ v tuples ->
-                            collectFunctions v ++ (tuples |> List.map (\( tk, tv ) -> tv) |> List.concatMap collectFunctions)
+                        Value.UpdateRecord _ v dict ->
+                            collectFunctions v ++ (Dict.values dict |> List.concatMap collectFunctions)
 
                         _ ->
                             []

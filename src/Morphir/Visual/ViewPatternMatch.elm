@@ -1,12 +1,10 @@
 module Morphir.Visual.ViewPatternMatch exposing (..)
 
-import Dict exposing (Dict)
-import Element exposing (Attribute, Column, Element, fill, row, spacing, table, text, width)
-import List exposing (concat)
+import Element exposing (Element)
+import List
 import Morphir.IR.Literal as Value
-import Morphir.IR.Name exposing (Name)
-import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Pattern, TypedValue, Value)
+import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Value as Value exposing (Pattern, TypedValue)
 import Morphir.Value.Interpreter exposing (matchPattern)
 import Morphir.Visual.Components.DecisionTable as DecisionTable exposing (DecisionTable, Match(..), Rule, TypedPattern)
 import Morphir.Visual.Config as Config exposing (Config, HighlightState(..))
@@ -69,7 +67,7 @@ getRules subject matches =
 decomposePattern : List TypedValue -> ( TypedPattern, TypedValue ) -> List ( List Match, TypedValue )
 decomposePattern subject match =
     case match of
-        ( Value.WildcardPattern tpe, _ ) ->
+        ( Value.WildcardPattern _, _ ) ->
             let
                 wildcardMatch : Match
                 wildcardMatch =
@@ -77,7 +75,7 @@ decomposePattern subject match =
             in
             [ ( List.repeat (List.length subject) wildcardMatch, Tuple.second match ) ]
 
-        ( Value.LiteralPattern tpe literal, _ ) ->
+        ( Value.LiteralPattern _ _, _ ) ->
             let
                 literalMatch : Match
                 literalMatch =
@@ -85,7 +83,7 @@ decomposePattern subject match =
             in
             [ ( [ literalMatch ], Tuple.second match ) ]
 
-        ( Value.TuplePattern tpe matches, _ ) ->
+        ( Value.TuplePattern _ matches, _ ) ->
             let
                 tupleMatch : List Match
                 tupleMatch =
@@ -93,7 +91,7 @@ decomposePattern subject match =
             in
             [ ( tupleMatch, Tuple.second match ) ]
 
-        ( Value.ConstructorPattern tpe fQName matches, _ ) ->
+        ( Value.ConstructorPattern _ _ _, _ ) ->
             let
                 constructorMatch : Match
                 constructorMatch =
@@ -101,7 +99,7 @@ decomposePattern subject match =
             in
             [ ( [ constructorMatch ], Tuple.second match ) ]
 
-        ( Value.AsPattern tpe pattern name, _ ) ->
+        ( Value.AsPattern _ _ _, _ ) ->
             let
                 asMatch : Match
                 asMatch =
@@ -153,7 +151,7 @@ comparePreviousHighlightStates config matches previousStates =
         nextMatches =
             --check whether the previous row is either untouched or fully matched, meaning we should stop checking highlight logic.
             case mostRecentRow of
-                x :: _ ->
+                _ :: _ ->
                     if isFullyMatchedRow mostRecentRow || isFullyDefaultRow mostRecentRow then
                         List.repeat (List.length matches + 1) Default
 

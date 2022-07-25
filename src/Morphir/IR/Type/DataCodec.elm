@@ -11,6 +11,7 @@ import Morphir.IR.SDK.Maybe exposing (just, nothing)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.Decimal as Decimal
 
 
 encodeData : IR -> Type () -> Result String (RawValue -> Result String Encode.Value)
@@ -71,6 +72,17 @@ encodeData ir tpe =
 
                                 _ ->
                                     Err (String.concat [ "Expected float literal but found: ", Debug.toString value ])
+                        )
+
+                ( [ [ "decimal" ] ], [ "decimal" ], [] ) ->
+                    Ok
+                        (\value ->
+                            case value of
+                                Value.Literal _ (DecimalLiteral v) ->
+                                    Ok (Encode.string (Decimal.toString v))
+
+                                _ ->
+                                    Err (String.concat [ "Expected decimal literal but found: ", Debug.toString value ])
                         )
 
                 ( [ [ "list" ] ], [ "list" ], [ itemType ] ) ->
@@ -214,16 +226,10 @@ encodeData ir tpe =
                     (\fieldEncoders value ->
                         case value of
                             Value.Record _ fields ->
-                                let
-                                    fieldValues : Dict Name RawValue
-                                    fieldValues =
-                                        fields
-                                            |> Dict.fromList
-                                in
                                 fieldEncoders
                                     |> List.map
                                         (\( fieldName, fieldEncoder ) ->
-                                            fieldValues
+                                            fields
                                                 |> Dict.get fieldName
                                                 |> Result.fromMaybe (String.concat [ "Value for field not found: ", Name.toCamelCase fieldName ])
                                                 |> Result.andThen fieldEncoder
@@ -252,14 +258,18 @@ encodeData ir tpe =
                                 Err (String.concat [ "Expected tuple but found: ", Debug.toString value ])
                     )
 
-        _ ->
-            Debug.todo "implement"
+        a ->
+            Debug.log "" a |> Debug.todo "implement"
 
 
 decodeData : IR -> Type () -> Result String (Decode.Decoder RawValue)
 decodeData ir tpe =
     case tpe of
         Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
+            let
+                decodeToDecimal value =
+                    Decimal.fromString value |> Maybe.withDefault (Decimal.fromInt 0)
+            in
             case ( moduleName, localName, args ) of
                 ( [ [ "basics" ] ], [ "bool" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (BoolLiteral value)) Decode.bool)
@@ -269,6 +279,15 @@ decodeData ir tpe =
 
                 ( [ [ "basics" ] ], [ "float" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (FloatLiteral value)) Decode.float)
+
+                ( [ [ "decimal" ] ], [ "decimal" ], [] ) ->
+                    Ok
+                        (Decode.map (\value -> Value.Literal () (DecimalLiteral value))
+                            (Decode.string
+                                |> Decode.andThen
+                                    (\str -> Decode.succeed <| decodeToDecimal str)
+                            )
+                        )
 
                 ( [ [ "char" ] ], [ "char" ], [] ) ->
                     Ok
@@ -422,7 +441,7 @@ decodeData ir tpe =
                                 )
                     )
                     (Ok (Decode.succeed []))
-                |> Result.map (\decoder -> Decode.map (Value.Record ()) decoder)
+                |> Result.map (\decoder -> Decode.map (Value.Record ()) (decoder |> Decode.map Dict.fromList))
 
         Type.Tuple _ elemTypes ->
             elemTypes

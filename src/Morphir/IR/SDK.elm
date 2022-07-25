@@ -108,4 +108,6 @@ nativeFunctions =
         , moduleFunctions "Tuple" Tuple.nativeFunctions
         , moduleFunctions "Result" Result.nativeFunctions
         , moduleFunctions "Dict" Dict.nativeFunctions
+        , moduleFunctions "Decimal" Decimal.nativeFunctions
+        , moduleFunctions "Aggregate" Aggregate.nativeFunctions
         ]

@@ -77,8 +77,8 @@ For the tags we use **upper camel case** (which is also called **PascalCase**).
 
 ### Special case: enum values
 
-When a constructor doesn't have ny arguments it behaves like an enum value. The format described 
-above would dictate that we map those to single element arrays in JSON but for simplicity w will
+When a constructor doesn't have any arguments it behaves like an enum value. The format described 
+above would dictate that we map those to single element arrays in JSON but for simplicity we will
 map them to just a string value:
 
 ```elm

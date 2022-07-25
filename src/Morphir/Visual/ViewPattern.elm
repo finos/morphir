@@ -5,6 +5,7 @@ import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Value exposing (Pattern(..))
+import Decimal
 
 
 patternAsText : Pattern va -> String
@@ -59,6 +60,9 @@ patternAsText pattern =
 
                 FloatLiteral float ->
                     String.fromFloat float
+
+                DecimalLiteral decimal ->
+                    Decimal.toString decimal
 
         UnitPattern _ ->
             "()"
