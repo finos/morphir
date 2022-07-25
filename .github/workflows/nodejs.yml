@@ -95,9 +95,14 @@ jobs:
       - name: Install
         run: npm install
 
-      - name: Publish NPM (as needed)
-        uses: JS-DevTools/npm-publish@v1
-        if: env.NPM_TOKEN != 0
-        with:
-          token: ${{ env.NPM_TOKEN }}
-          package: /home/runner/artifact-download/morphir-elm-artifact/package/package.json
+      - name: Auto release
+        if: "env.NPM_TOKEN != 0 && !contains(github.event.head_commit.message, 'ci skip') && !contains(github.event.head_commit.message, 'ci skip')"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.MORPHIR_TEST_PUBLISH }}
+          NODE_AUTH_TOKEN: ${{ secrets.MORPHIR_TEST_PUBLISH }}
+        run: |
+          npm ci
+          git fetch --tags
+          npx auto shipit
+          npx auto shipit
