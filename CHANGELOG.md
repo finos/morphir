@@ -1,3 +1,15 @@
+# v2.65.3 (Mon Jul 25 2022)
+
+#### 🐛 Bug Fix
+
+- Add missing file for running 'gulp testIntegration' [#821](https://github.com/finos/morphir-elm/pull/821) ([@jonathanmaw](https://github.com/jonathanmaw))
+
+#### Authors: 1
+
+- [@jonathanmaw](https://github.com/jonathanmaw)
+
+---
+
 # v2.65.2 (Mon Jul 25 2022)
 
 #### 🐛 Bug Fix
