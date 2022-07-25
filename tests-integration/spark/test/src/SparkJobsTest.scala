@@ -106,6 +106,14 @@ class test1 extends FunSuite {
     assert(res.collect()(0)(0) == 20)
   }
 
+  test("testNameMaximum") {
+    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
+    val res = SparkJobs.testNameMaximum(dfFromRDD)
+    assert(res.count() == 1)
+    assert(res.columns(0) == "max")
+    assert(res.collect()(0)(0) == "Wooden Chair")
+  }
+
   test("testSelect1") {
       val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
       val res = SparkJobs.testSelect1(dfFromRDD)
@@ -163,6 +171,22 @@ class test1 extends FunSuite {
       assert(row0(2) == 19)
       assert(row0(3) == "Furniture")
     }
+
+  test("testListSum") {
+    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
+    val res = SparkJobs.testListSum(dfFromRDD)
+    assert(res.count() == 1)
+    assert(res.columns(0) == "agesum")
+    assert(res.collect()(0)(0) == 39)
+  }
+
+  test("testListLength") {
+    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
+    val res = SparkJobs.testListLength(dfFromRDD)
+    assert(res.count() == 1)
+    assert(res.columns(0) == "listlength")
+    assert(res.collect()(0)(0) == 2)
+  }
 }
 
 

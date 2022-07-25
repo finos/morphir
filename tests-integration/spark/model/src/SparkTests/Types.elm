@@ -1,6 +1,12 @@
 module SparkTests.Types exposing (..)
 
-import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Product)
+type Product
+    = Paintings
+    | Knife
+    | Plates
+    | Furniture
+    | HistoryWritings
+    
 
 
 {-| This is a subset of the fields and types of the record from the Antiques example.
