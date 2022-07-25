@@ -63,7 +63,8 @@ jobs:
           path: ./*.tgz
           if-no-files-found: error
           retention-days: 0
-  # publish package 
+
+  # publish package
   publish:
     name: Publish NPM Package
     needs: [ build ]
@@ -97,8 +98,8 @@ jobs:
         if: "env.NPM_TOKEN != 0 && !contains(github.event.head_commit.message, 'ci skip') && !contains(github.event.head_commit.message, 'ci skip')"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.MORPHIR_TEST_PUBLISH }}
-          NODE_AUTH_TOKEN: ${{ secrets.MORPHIR_TEST_PUBLISH }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm ci
           git fetch --tags
