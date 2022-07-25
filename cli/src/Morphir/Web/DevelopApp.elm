@@ -24,6 +24,7 @@ import Element
         , image
         , layout
         , link
+        , maximum
         , mouseOver
         , moveDown
         , none
@@ -38,6 +39,7 @@ import Element
         , rotate
         , row
         , scrollbars
+        , shrink
         , spacing
         , text
         , width
@@ -1204,14 +1206,41 @@ viewHome model packageName packageDef =
                 )
 
         -- A path to the currently selected module in an easily readable format
-        pathToSelectedModule : String
         pathToSelectedModule =
+            let
+                subPaths : Path -> List Path
+                subPaths path =
+                    let
+                        helper s xs =
+                            case xs of
+                                [] ->
+                                    []
+
+                                n :: ns ->
+                                    helper (s ++ [ n ]) ns ++ [ s ]
+                    in
+                    (List.drop 1 <| List.reverse <| helper [] path) ++ [ path ]
+            in
             case model.homeState.selectedModule |> Maybe.map Tuple.second of
                 Just moduleName ->
-                    "> " ++ pathToDisplayString moduleName
+                    subPaths moduleName
+                        |> List.map
+                            (\m ->
+                                link
+                                    [ pointer
+                                    , onClick <| handleModuleClick m
+                                    , width (maximum 100 shrink)
+                                    , Border.color model.theme.colors.gray
+                                    , Border.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
+                                    , mouseOver [ Border.color model.theme.colors.darkest ]
+                                    ]
+                                    { label = Theme.ellipseText <| " > " ++ (m |> List.reverse |> List.head |> Maybe.withDefault [ "" ] |> nameToTitleText)
+                                    , url = pathToFullUrl [ packageName, m ] ++ filterStateToQueryParams model.homeState.filterState
+                                    }
+                            )
 
                 _ ->
-                    ">"
+                    [ text ">" ]
 
         -- Second column on the UI, the list of definitions in a module
         definitionList : Element Msg
@@ -1229,7 +1258,8 @@ viewHome model packageName packageDef =
                     , height <| fillPortion 1
                     ]
                     [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
-                , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ] [ Theme.ellipseText pathToSelectedModule ]
+                , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ]
+                    pathToSelectedModule
                 , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
                 ]
     in
@@ -1660,22 +1690,18 @@ viewModuleNames model packageName parentModule allModuleNames =
                     )
                 |> Set.fromList
                 |> Set.toList
-
-        handleClick : Path -> Msg
-        handleClick path =
-            Filter (ModuleClicked <| Path.toString Name.toTitleCase "." path)
     in
     TreeLayout.Node
         (\_ ->
             case currentModuleName of
                 Just name ->
-                    link [ pointer, onClick (handleClick parentModule) ]
+                    link [ pointer, onClick (handleModuleClick parentModule) ]
                         { label = text (name |> nameToTitleText)
                         , url = pathToFullUrl [ packageName, parentModule ] ++ filterStateToQueryParams model.homeState.filterState
                         }
 
                 Nothing ->
-                    link [ pointer, onClick (handleClick packageName) ] { label = text (pathToUrl packageName), url = pathToFullUrl [ packageName ] ++ filterStateToQueryParams model.homeState.filterState }
+                    link [ pointer, onClick (handleModuleClick packageName) ] { label = text (pathToUrl packageName), url = pathToFullUrl [ packageName ] ++ filterStateToQueryParams model.homeState.filterState }
         )
         Array.empty
         (childModuleNames
@@ -1689,6 +1715,13 @@ viewModuleNames model packageName parentModule allModuleNames =
                 )
             |> Dict.fromList
         )
+
+
+{-| Note which module we last clicked on
+-}
+handleModuleClick : Path -> Msg
+handleModuleClick path =
+    Filter (ModuleClicked <| Path.toString Name.toTitleCase "." path)
 
 
 {-| Given a definition, return its name
