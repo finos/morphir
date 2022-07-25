@@ -62,7 +62,8 @@ jobs:
           path: ./*.tgz
           if-no-files-found: error
           retention-days: 0
-  # publish package 
+
+  # publish package
   publish:
     name: Publish NPM Package
     needs: [ build ]
@@ -77,32 +78,31 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
           name: morphir-elm-artifact
           path: ~/artifact-download/
-      - name: UnZipping Tar File 
-        run: | 
+
+      - name: UnZipping Tar File
+        run: |
           mkdir -p ~/artifact-download/morphir-elm-artifact
           tar -zxvf $(ls ~/artifact-download/*.tgz)  -C ~/artifact-download/morphir-elm-artifact
           ls -l ~/artifact-download/morphir-elm-artifact
-      - name: Install
-        run: npm install
-        
-      - name: Publish Elm (as needed)
-        uses: dillonkearns/elm-publish-action@1.1.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-elm: ./node_modules/.bin/elm 
 
-      - name: Publish (as needed)
-        uses: JS-DevTools/npm-publish@v1
-        if: env.NPM_TOKEN != 0
-        with:
-          token: ${{ env.NPM_TOKEN }}
-          package: /home/runner/artifact-download/morphir-elm-artifact/package/package.json
+      - name: Auto release
+        if: "env.NPM_TOKEN != 0 && !contains(github.event.head_commit.message, 'ci skip') && !contains(github.event.head_commit.message, 'ci skip')"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.MORPHIR_TEST_PUBLISH }}
+          NODE_AUTH_TOKEN: ${{ secrets.MORPHIR_TEST_PUBLISH }}
+        run: |
+          npm ci
+          git fetch --tags
+          npx auto shipit
