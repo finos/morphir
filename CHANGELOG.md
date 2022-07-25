@@ -1,3 +1,15 @@
+# v2.65.5 (Mon Jul 25 2022)
+
+#### 🐛 Bug Fix
+
+- Revert "Trying to fix the npm deploy" [#824](https://github.com/finos/morphir-elm/pull/824) ([@stephengoldbaum](https://github.com/stephengoldbaum))
+
+#### Authors: 1
+
+- Stephen Goldbaum ([@stephengoldbaum](https://github.com/stephengoldbaum))
+
+---
+
 # v2.65.4 (Mon Jul 25 2022)
 
 #### 🐛 Bug Fix
