@@ -46,7 +46,8 @@
     "cli2/lib/morphir-scala-gen.js",
     "cli2/lib/morphir-stats.js",
     "cli2/lib/FileChanges.js",
-    "cli2/Morphir.Elm.CLI.js"
+    "cli2/Morphir.Elm.CLI.js",
+    "cli2/lib/cliAPI.js"
   ],
   "keywords": [
     "morphir",
