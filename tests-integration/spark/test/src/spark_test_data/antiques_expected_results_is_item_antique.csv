@@ -1,0 +1,2401 @@
+category,product,priceValue,ageOfItem,handMade,requiresExpert,expertFeedback,report
+PaintCollections,Paintings,0,100,True,True,Genuine,Report #73
+PaintCollections,Paintings,0,100,True,True,Genuine,
+PaintCollections,Paintings,0,100,True,True,Fake,Report #74
+PaintCollections,Paintings,0,100,True,True,Fake,
+PaintCollections,Paintings,0,100,True,True,,Report #75
+PaintCollections,Paintings,0,100,True,True,,
+PaintCollections,Paintings,0,100,True,False,Genuine,Report #76
+PaintCollections,Paintings,0,100,True,False,Genuine,
+PaintCollections,Paintings,0,100,True,False,Fake,Report #77
+PaintCollections,Paintings,0,100,True,False,Fake,
+PaintCollections,Paintings,0,100,True,False,,Report #78
+PaintCollections,Paintings,0,100,True,False,,
+PaintCollections,Paintings,0,100,False,True,Genuine,Report #79
+PaintCollections,Paintings,0,100,False,True,Genuine,
+PaintCollections,Paintings,0,100,False,True,Fake,Report #80
+PaintCollections,Paintings,0,100,False,True,Fake,
+PaintCollections,Paintings,0,100,False,True,,Report #81
+PaintCollections,Paintings,0,100,False,True,,
+PaintCollections,Paintings,0,100,False,False,Genuine,Report #82
+PaintCollections,Paintings,0,100,False,False,Genuine,
+PaintCollections,Paintings,0,100,False,False,Fake,Report #83
+PaintCollections,Paintings,0,100,False,False,Fake,
+PaintCollections,Paintings,0,100,False,False,,Report #84
+PaintCollections,Paintings,0,100,False,False,,
+PaintCollections,Paintings,0,101,True,True,Genuine,Report #85
+PaintCollections,Paintings,0,101,True,True,Genuine,
+PaintCollections,Paintings,0,101,True,True,Fake,Report #86
+PaintCollections,Paintings,0,101,True,True,Fake,
+PaintCollections,Paintings,0,101,True,True,,Report #87
+PaintCollections,Paintings,0,101,True,True,,
+PaintCollections,Paintings,0,101,True,False,Genuine,Report #88
+PaintCollections,Paintings,0,101,True,False,Genuine,
+PaintCollections,Paintings,0,101,True,False,Fake,Report #89
+PaintCollections,Paintings,0,101,True,False,Fake,
+PaintCollections,Paintings,0,101,True,False,,Report #90
+PaintCollections,Paintings,0,101,True,False,,
+PaintCollections,Paintings,0,101,False,True,Genuine,Report #91
+PaintCollections,Paintings,0,101,False,True,Genuine,
+PaintCollections,Paintings,0,101,False,True,Fake,Report #92
+PaintCollections,Paintings,0,101,False,True,Fake,
+PaintCollections,Paintings,0,101,False,True,,Report #93
+PaintCollections,Paintings,0,101,False,True,,
+PaintCollections,Paintings,0,101,False,False,Genuine,Report #94
+PaintCollections,Paintings,0,101,False,False,Genuine,
+PaintCollections,Paintings,0,101,False,False,Fake,Report #95
+PaintCollections,Paintings,0,101,False,False,Fake,
+PaintCollections,Paintings,0,101,False,False,,Report #96
+PaintCollections,Paintings,0,101,False,False,,
+PaintCollections,Paintings,1,100,True,True,Genuine,Report #169
+PaintCollections,Paintings,1,100,True,True,Genuine,
+PaintCollections,Paintings,1,100,True,True,Fake,Report #170
+PaintCollections,Paintings,1,100,True,True,Fake,
+PaintCollections,Paintings,1,100,True,True,,Report #171
+PaintCollections,Paintings,1,100,True,True,,
+PaintCollections,Paintings,1,100,True,False,Genuine,Report #172
+PaintCollections,Paintings,1,100,True,False,Genuine,
+PaintCollections,Paintings,1,100,True,False,Fake,Report #173
+PaintCollections,Paintings,1,100,True,False,Fake,
+PaintCollections,Paintings,1,100,True,False,,Report #174
+PaintCollections,Paintings,1,100,True,False,,
+PaintCollections,Paintings,1,100,False,True,Genuine,Report #175
+PaintCollections,Paintings,1,100,False,True,Genuine,
+PaintCollections,Paintings,1,100,False,True,Fake,Report #176
+PaintCollections,Paintings,1,100,False,True,Fake,
+PaintCollections,Paintings,1,100,False,True,,Report #177
+PaintCollections,Paintings,1,100,False,True,,
+PaintCollections,Paintings,1,100,False,False,Genuine,Report #178
+PaintCollections,Paintings,1,100,False,False,Genuine,
+PaintCollections,Paintings,1,100,False,False,Fake,Report #179
+PaintCollections,Paintings,1,100,False,False,Fake,
+PaintCollections,Paintings,1,100,False,False,,Report #180
+PaintCollections,Paintings,1,100,False,False,,
+PaintCollections,Paintings,1,101,True,True,Genuine,Report #181
+PaintCollections,Paintings,1,101,True,True,Genuine,
+PaintCollections,Paintings,1,101,True,True,Fake,Report #182
+PaintCollections,Paintings,1,101,True,True,Fake,
+PaintCollections,Paintings,1,101,True,True,,Report #183
+PaintCollections,Paintings,1,101,True,True,,
+PaintCollections,Paintings,1,101,True,False,Genuine,Report #184
+PaintCollections,Paintings,1,101,True,False,Genuine,
+PaintCollections,Paintings,1,101,True,False,Fake,Report #185
+PaintCollections,Paintings,1,101,True,False,Fake,
+PaintCollections,Paintings,1,101,True,False,,Report #186
+PaintCollections,Paintings,1,101,True,False,,
+PaintCollections,Paintings,1,101,False,True,Genuine,Report #187
+PaintCollections,Paintings,1,101,False,True,Genuine,
+PaintCollections,Paintings,1,101,False,True,Fake,Report #188
+PaintCollections,Paintings,1,101,False,True,Fake,
+PaintCollections,Paintings,1,101,False,True,,Report #189
+PaintCollections,Paintings,1,101,False,True,,
+PaintCollections,Paintings,1,101,False,False,Genuine,Report #190
+PaintCollections,Paintings,1,101,False,False,Genuine,
+PaintCollections,Paintings,1,101,False,False,Fake,Report #191
+PaintCollections,Paintings,1,101,False,False,Fake,
+PaintCollections,Paintings,1,101,False,False,,Report #192
+PaintCollections,Paintings,1,101,False,False,,
+PaintCollections,Paintings,100,100,True,True,Genuine,Report #265
+PaintCollections,Paintings,100,100,True,True,Genuine,
+PaintCollections,Paintings,100,100,True,True,Fake,Report #266
+PaintCollections,Paintings,100,100,True,True,Fake,
+PaintCollections,Paintings,100,100,True,True,,Report #267
+PaintCollections,Paintings,100,100,True,True,,
+PaintCollections,Paintings,100,100,True,False,Genuine,Report #268
+PaintCollections,Paintings,100,100,True,False,Genuine,
+PaintCollections,Paintings,100,100,True,False,Fake,Report #269
+PaintCollections,Paintings,100,100,True,False,Fake,
+PaintCollections,Paintings,100,100,True,False,,Report #270
+PaintCollections,Paintings,100,100,True,False,,
+PaintCollections,Paintings,100,100,False,True,Genuine,Report #271
+PaintCollections,Paintings,100,100,False,True,Genuine,
+PaintCollections,Paintings,100,100,False,True,Fake,Report #272
+PaintCollections,Paintings,100,100,False,True,Fake,
+PaintCollections,Paintings,100,100,False,True,,Report #273
+PaintCollections,Paintings,100,100,False,True,,
+PaintCollections,Paintings,100,100,False,False,Genuine,Report #274
+PaintCollections,Paintings,100,100,False,False,Genuine,
+PaintCollections,Paintings,100,100,False,False,Fake,Report #275
+PaintCollections,Paintings,100,100,False,False,Fake,
+PaintCollections,Paintings,100,100,False,False,,Report #276
+PaintCollections,Paintings,100,100,False,False,,
+PaintCollections,Paintings,100,101,True,True,Genuine,Report #277
+PaintCollections,Paintings,100,101,True,True,Genuine,
+PaintCollections,Paintings,100,101,True,True,Fake,Report #278
+PaintCollections,Paintings,100,101,True,True,Fake,
+PaintCollections,Paintings,100,101,True,True,,Report #279
+PaintCollections,Paintings,100,101,True,True,,
+PaintCollections,Paintings,100,101,True,False,Genuine,Report #280
+PaintCollections,Paintings,100,101,True,False,Genuine,
+PaintCollections,Paintings,100,101,True,False,Fake,Report #281
+PaintCollections,Paintings,100,101,True,False,Fake,
+PaintCollections,Paintings,100,101,True,False,,Report #282
+PaintCollections,Paintings,100,101,True,False,,
+PaintCollections,Paintings,100,101,False,True,Genuine,Report #283
+PaintCollections,Paintings,100,101,False,True,Genuine,
+PaintCollections,Paintings,100,101,False,True,Fake,Report #284
+PaintCollections,Paintings,100,101,False,True,Fake,
+PaintCollections,Paintings,100,101,False,True,,Report #285
+PaintCollections,Paintings,100,101,False,True,,
+PaintCollections,Paintings,100,101,False,False,Genuine,Report #286
+PaintCollections,Paintings,100,101,False,False,Genuine,
+PaintCollections,Paintings,100,101,False,False,Fake,Report #287
+PaintCollections,Paintings,100,101,False,False,Fake,
+PaintCollections,Paintings,100,101,False,False,,Report #288
+PaintCollections,Paintings,100,101,False,False,,
+PaintCollections,Paintings,1000,100,True,True,Genuine,Report #361
+PaintCollections,Paintings,1000,100,True,True,Genuine,
+PaintCollections,Paintings,1000,100,True,True,Fake,Report #362
+PaintCollections,Paintings,1000,100,True,True,Fake,
+PaintCollections,Paintings,1000,100,True,True,,Report #363
+PaintCollections,Paintings,1000,100,True,True,,
+PaintCollections,Paintings,1000,100,True,False,Genuine,Report #364
+PaintCollections,Paintings,1000,100,True,False,Genuine,
+PaintCollections,Paintings,1000,100,True,False,Fake,Report #365
+PaintCollections,Paintings,1000,100,True,False,Fake,
+PaintCollections,Paintings,1000,100,True,False,,Report #366
+PaintCollections,Paintings,1000,100,True,False,,
+PaintCollections,Paintings,1000,100,False,True,Genuine,Report #367
+PaintCollections,Paintings,1000,100,False,True,Genuine,
+PaintCollections,Paintings,1000,100,False,True,Fake,Report #368
+PaintCollections,Paintings,1000,100,False,True,Fake,
+PaintCollections,Paintings,1000,100,False,True,,Report #369
+PaintCollections,Paintings,1000,100,False,True,,
+PaintCollections,Paintings,1000,100,False,False,Genuine,Report #370
+PaintCollections,Paintings,1000,100,False,False,Genuine,
+PaintCollections,Paintings,1000,100,False,False,Fake,Report #371
+PaintCollections,Paintings,1000,100,False,False,Fake,
+PaintCollections,Paintings,1000,100,False,False,,Report #372
+PaintCollections,Paintings,1000,100,False,False,,
+PaintCollections,Paintings,1000,101,True,True,Genuine,Report #373
+PaintCollections,Paintings,1000,101,True,True,Genuine,
+PaintCollections,Paintings,1000,101,True,True,Fake,Report #374
+PaintCollections,Paintings,1000,101,True,True,Fake,
+PaintCollections,Paintings,1000,101,True,True,,Report #375
+PaintCollections,Paintings,1000,101,True,True,,
+PaintCollections,Paintings,1000,101,True,False,Genuine,Report #376
+PaintCollections,Paintings,1000,101,True,False,Genuine,
+PaintCollections,Paintings,1000,101,True,False,Fake,Report #377
+PaintCollections,Paintings,1000,101,True,False,Fake,
+PaintCollections,Paintings,1000,101,True,False,,Report #378
+PaintCollections,Paintings,1000,101,True,False,,
+PaintCollections,Paintings,1000,101,False,True,Genuine,Report #379
+PaintCollections,Paintings,1000,101,False,True,Genuine,
+PaintCollections,Paintings,1000,101,False,True,Fake,Report #380
+PaintCollections,Paintings,1000,101,False,True,Fake,
+PaintCollections,Paintings,1000,101,False,True,,Report #381
+PaintCollections,Paintings,1000,101,False,True,,
+PaintCollections,Paintings,1000,101,False,False,Genuine,Report #382
+PaintCollections,Paintings,1000,101,False,False,Genuine,
+PaintCollections,Paintings,1000,101,False,False,Fake,Report #383
+PaintCollections,Paintings,1000,101,False,False,Fake,
+PaintCollections,Paintings,1000,101,False,False,,Report #384
+PaintCollections,Paintings,1000,101,False,False,,
+PaintCollections,Paintings,1000000,100,True,True,Genuine,Report #457
+PaintCollections,Paintings,1000000,100,True,True,Genuine,
+PaintCollections,Paintings,1000000,100,True,True,Fake,Report #458
+PaintCollections,Paintings,1000000,100,True,True,Fake,
+PaintCollections,Paintings,1000000,100,True,True,,Report #459
+PaintCollections,Paintings,1000000,100,True,True,,
+PaintCollections,Paintings,1000000,100,True,False,Genuine,Report #460
+PaintCollections,Paintings,1000000,100,True,False,Genuine,
+PaintCollections,Paintings,1000000,100,True,False,Fake,Report #461
+PaintCollections,Paintings,1000000,100,True,False,Fake,
+PaintCollections,Paintings,1000000,100,True,False,,Report #462
+PaintCollections,Paintings,1000000,100,True,False,,
+PaintCollections,Paintings,1000000,100,False,True,Genuine,Report #463
+PaintCollections,Paintings,1000000,100,False,True,Genuine,
+PaintCollections,Paintings,1000000,100,False,True,Fake,Report #464
+PaintCollections,Paintings,1000000,100,False,True,Fake,
+PaintCollections,Paintings,1000000,100,False,True,,Report #465
+PaintCollections,Paintings,1000000,100,False,True,,
+PaintCollections,Paintings,1000000,100,False,False,Genuine,Report #466
+PaintCollections,Paintings,1000000,100,False,False,Genuine,
+PaintCollections,Paintings,1000000,100,False,False,Fake,Report #467
+PaintCollections,Paintings,1000000,100,False,False,Fake,
+PaintCollections,Paintings,1000000,100,False,False,,Report #468
+PaintCollections,Paintings,1000000,100,False,False,,
+PaintCollections,Paintings,1000000,101,True,True,Genuine,Report #469
+PaintCollections,Paintings,1000000,101,True,True,Genuine,
+PaintCollections,Paintings,1000000,101,True,True,Fake,Report #470
+PaintCollections,Paintings,1000000,101,True,True,Fake,
+PaintCollections,Paintings,1000000,101,True,True,,Report #471
+PaintCollections,Paintings,1000000,101,True,True,,
+PaintCollections,Paintings,1000000,101,True,False,Genuine,Report #472
+PaintCollections,Paintings,1000000,101,True,False,Genuine,
+PaintCollections,Paintings,1000000,101,True,False,Fake,Report #473
+PaintCollections,Paintings,1000000,101,True,False,Fake,
+PaintCollections,Paintings,1000000,101,True,False,,Report #474
+PaintCollections,Paintings,1000000,101,True,False,,
+PaintCollections,Paintings,1000000,101,False,True,Genuine,Report #475
+PaintCollections,Paintings,1000000,101,False,True,Genuine,
+PaintCollections,Paintings,1000000,101,False,True,Fake,Report #476
+PaintCollections,Paintings,1000000,101,False,True,Fake,
+PaintCollections,Paintings,1000000,101,False,True,,Report #477
+PaintCollections,Paintings,1000000,101,False,True,,
+PaintCollections,Paintings,1000000,101,False,False,Genuine,Report #478
+PaintCollections,Paintings,1000000,101,False,False,Genuine,
+PaintCollections,Paintings,1000000,101,False,False,Fake,Report #479
+PaintCollections,Paintings,1000000,101,False,False,Fake,
+PaintCollections,Paintings,1000000,101,False,False,,Report #480
+PaintCollections,Paintings,1000000,101,False,False,,
+PaintCollections,Furniture,0,100,True,True,Genuine,Report #1513
+PaintCollections,Furniture,0,100,True,True,Genuine,
+PaintCollections,Furniture,0,100,True,True,Fake,Report #1514
+PaintCollections,Furniture,0,100,True,True,Fake,
+PaintCollections,Furniture,0,100,True,True,,Report #1515
+PaintCollections,Furniture,0,100,True,True,,
+PaintCollections,Furniture,0,100,True,False,Genuine,Report #1516
+PaintCollections,Furniture,0,100,True,False,Genuine,
+PaintCollections,Furniture,0,100,True,False,Fake,Report #1517
+PaintCollections,Furniture,0,100,True,False,Fake,
+PaintCollections,Furniture,0,100,True,False,,Report #1518
+PaintCollections,Furniture,0,100,True,False,,
+PaintCollections,Furniture,0,100,False,True,Genuine,Report #1519
+PaintCollections,Furniture,0,100,False,True,Genuine,
+PaintCollections,Furniture,0,100,False,True,Fake,Report #1520
+PaintCollections,Furniture,0,100,False,True,Fake,
+PaintCollections,Furniture,0,100,False,True,,Report #1521
+PaintCollections,Furniture,0,100,False,True,,
+PaintCollections,Furniture,0,100,False,False,Genuine,Report #1522
+PaintCollections,Furniture,0,100,False,False,Genuine,
+PaintCollections,Furniture,0,100,False,False,Fake,Report #1523
+PaintCollections,Furniture,0,100,False,False,Fake,
+PaintCollections,Furniture,0,100,False,False,,Report #1524
+PaintCollections,Furniture,0,100,False,False,,
+PaintCollections,Furniture,0,101,True,True,Genuine,Report #1525
+PaintCollections,Furniture,0,101,True,True,Genuine,
+PaintCollections,Furniture,0,101,True,True,Fake,Report #1526
+PaintCollections,Furniture,0,101,True,True,Fake,
+PaintCollections,Furniture,0,101,True,True,,Report #1527
+PaintCollections,Furniture,0,101,True,True,,
+PaintCollections,Furniture,0,101,True,False,Genuine,Report #1528
+PaintCollections,Furniture,0,101,True,False,Genuine,
+PaintCollections,Furniture,0,101,True,False,Fake,Report #1529
+PaintCollections,Furniture,0,101,True,False,Fake,
+PaintCollections,Furniture,0,101,True,False,,Report #1530
+PaintCollections,Furniture,0,101,True,False,,
+PaintCollections,Furniture,0,101,False,True,Genuine,Report #1531
+PaintCollections,Furniture,0,101,False,True,Genuine,
+PaintCollections,Furniture,0,101,False,True,Fake,Report #1532
+PaintCollections,Furniture,0,101,False,True,Fake,
+PaintCollections,Furniture,0,101,False,True,,Report #1533
+PaintCollections,Furniture,0,101,False,True,,
+PaintCollections,Furniture,0,101,False,False,Genuine,Report #1534
+PaintCollections,Furniture,0,101,False,False,Genuine,
+PaintCollections,Furniture,0,101,False,False,Fake,Report #1535
+PaintCollections,Furniture,0,101,False,False,Fake,
+PaintCollections,Furniture,0,101,False,False,,Report #1536
+PaintCollections,Furniture,0,101,False,False,,
+PaintCollections,Furniture,1,100,True,True,Genuine,Report #1609
+PaintCollections,Furniture,1,100,True,True,Genuine,
+PaintCollections,Furniture,1,100,True,True,Fake,Report #1610
+PaintCollections,Furniture,1,100,True,True,Fake,
+PaintCollections,Furniture,1,100,True,True,,Report #1611
+PaintCollections,Furniture,1,100,True,True,,
+PaintCollections,Furniture,1,100,True,False,Genuine,Report #1612
+PaintCollections,Furniture,1,100,True,False,Genuine,
+PaintCollections,Furniture,1,100,True,False,Fake,Report #1613
+PaintCollections,Furniture,1,100,True,False,Fake,
+PaintCollections,Furniture,1,100,True,False,,Report #1614
+PaintCollections,Furniture,1,100,True,False,,
+PaintCollections,Furniture,1,100,False,True,Genuine,Report #1615
+PaintCollections,Furniture,1,100,False,True,Genuine,
+PaintCollections,Furniture,1,100,False,True,Fake,Report #1616
+PaintCollections,Furniture,1,100,False,True,Fake,
+PaintCollections,Furniture,1,100,False,True,,Report #1617
+PaintCollections,Furniture,1,100,False,True,,
+PaintCollections,Furniture,1,100,False,False,Genuine,Report #1618
+PaintCollections,Furniture,1,100,False,False,Genuine,
+PaintCollections,Furniture,1,100,False,False,Fake,Report #1619
+PaintCollections,Furniture,1,100,False,False,Fake,
+PaintCollections,Furniture,1,100,False,False,,Report #1620
+PaintCollections,Furniture,1,100,False,False,,
+PaintCollections,Furniture,1,101,True,True,Genuine,Report #1621
+PaintCollections,Furniture,1,101,True,True,Genuine,
+PaintCollections,Furniture,1,101,True,True,Fake,Report #1622
+PaintCollections,Furniture,1,101,True,True,Fake,
+PaintCollections,Furniture,1,101,True,True,,Report #1623
+PaintCollections,Furniture,1,101,True,True,,
+PaintCollections,Furniture,1,101,True,False,Genuine,Report #1624
+PaintCollections,Furniture,1,101,True,False,Genuine,
+PaintCollections,Furniture,1,101,True,False,Fake,Report #1625
+PaintCollections,Furniture,1,101,True,False,Fake,
+PaintCollections,Furniture,1,101,True,False,,Report #1626
+PaintCollections,Furniture,1,101,True,False,,
+PaintCollections,Furniture,1,101,False,True,Genuine,Report #1627
+PaintCollections,Furniture,1,101,False,True,Genuine,
+PaintCollections,Furniture,1,101,False,True,Fake,Report #1628
+PaintCollections,Furniture,1,101,False,True,Fake,
+PaintCollections,Furniture,1,101,False,True,,Report #1629
+PaintCollections,Furniture,1,101,False,True,,
+PaintCollections,Furniture,1,101,False,False,Genuine,Report #1630
+PaintCollections,Furniture,1,101,False,False,Genuine,
+PaintCollections,Furniture,1,101,False,False,Fake,Report #1631
+PaintCollections,Furniture,1,101,False,False,Fake,
+PaintCollections,Furniture,1,101,False,False,,Report #1632
+PaintCollections,Furniture,1,101,False,False,,
+PaintCollections,Furniture,100,100,True,True,Genuine,Report #1705
+PaintCollections,Furniture,100,100,True,True,Genuine,
+PaintCollections,Furniture,100,100,True,True,Fake,Report #1706
+PaintCollections,Furniture,100,100,True,True,Fake,
+PaintCollections,Furniture,100,100,True,True,,Report #1707
+PaintCollections,Furniture,100,100,True,True,,
+PaintCollections,Furniture,100,100,True,False,Genuine,Report #1708
+PaintCollections,Furniture,100,100,True,False,Genuine,
+PaintCollections,Furniture,100,100,True,False,Fake,Report #1709
+PaintCollections,Furniture,100,100,True,False,Fake,
+PaintCollections,Furniture,100,100,True,False,,Report #1710
+PaintCollections,Furniture,100,100,True,False,,
+PaintCollections,Furniture,100,100,False,True,Genuine,Report #1711
+PaintCollections,Furniture,100,100,False,True,Genuine,
+PaintCollections,Furniture,100,100,False,True,Fake,Report #1712
+PaintCollections,Furniture,100,100,False,True,Fake,
+PaintCollections,Furniture,100,100,False,True,,Report #1713
+PaintCollections,Furniture,100,100,False,True,,
+PaintCollections,Furniture,100,100,False,False,Genuine,Report #1714
+PaintCollections,Furniture,100,100,False,False,Genuine,
+PaintCollections,Furniture,100,100,False,False,Fake,Report #1715
+PaintCollections,Furniture,100,100,False,False,Fake,
+PaintCollections,Furniture,100,100,False,False,,Report #1716
+PaintCollections,Furniture,100,100,False,False,,
+PaintCollections,Furniture,100,101,True,True,Genuine,Report #1717
+PaintCollections,Furniture,100,101,True,True,Genuine,
+PaintCollections,Furniture,100,101,True,True,Fake,Report #1718
+PaintCollections,Furniture,100,101,True,True,Fake,
+PaintCollections,Furniture,100,101,True,True,,Report #1719
+PaintCollections,Furniture,100,101,True,True,,
+PaintCollections,Furniture,100,101,True,False,Genuine,Report #1720
+PaintCollections,Furniture,100,101,True,False,Genuine,
+PaintCollections,Furniture,100,101,True,False,Fake,Report #1721
+PaintCollections,Furniture,100,101,True,False,Fake,
+PaintCollections,Furniture,100,101,True,False,,Report #1722
+PaintCollections,Furniture,100,101,True,False,,
+PaintCollections,Furniture,100,101,False,True,Genuine,Report #1723
+PaintCollections,Furniture,100,101,False,True,Genuine,
+PaintCollections,Furniture,100,101,False,True,Fake,Report #1724
+PaintCollections,Furniture,100,101,False,True,Fake,
+PaintCollections,Furniture,100,101,False,True,,Report #1725
+PaintCollections,Furniture,100,101,False,True,,
+PaintCollections,Furniture,100,101,False,False,Genuine,Report #1726
+PaintCollections,Furniture,100,101,False,False,Genuine,
+PaintCollections,Furniture,100,101,False,False,Fake,Report #1727
+PaintCollections,Furniture,100,101,False,False,Fake,
+PaintCollections,Furniture,100,101,False,False,,Report #1728
+PaintCollections,Furniture,100,101,False,False,,
+PaintCollections,Furniture,1000,100,True,True,Genuine,Report #1801
+PaintCollections,Furniture,1000,100,True,True,Genuine,
+PaintCollections,Furniture,1000,100,True,True,Fake,Report #1802
+PaintCollections,Furniture,1000,100,True,True,Fake,
+PaintCollections,Furniture,1000,100,True,True,,Report #1803
+PaintCollections,Furniture,1000,100,True,True,,
+PaintCollections,Furniture,1000,100,True,False,Genuine,Report #1804
+PaintCollections,Furniture,1000,100,True,False,Genuine,
+PaintCollections,Furniture,1000,100,True,False,Fake,Report #1805
+PaintCollections,Furniture,1000,100,True,False,Fake,
+PaintCollections,Furniture,1000,100,True,False,,Report #1806
+PaintCollections,Furniture,1000,100,True,False,,
+PaintCollections,Furniture,1000,100,False,True,Genuine,Report #1807
+PaintCollections,Furniture,1000,100,False,True,Genuine,
+PaintCollections,Furniture,1000,100,False,True,Fake,Report #1808
+PaintCollections,Furniture,1000,100,False,True,Fake,
+PaintCollections,Furniture,1000,100,False,True,,Report #1809
+PaintCollections,Furniture,1000,100,False,True,,
+PaintCollections,Furniture,1000,100,False,False,Genuine,Report #1810
+PaintCollections,Furniture,1000,100,False,False,Genuine,
+PaintCollections,Furniture,1000,100,False,False,Fake,Report #1811
+PaintCollections,Furniture,1000,100,False,False,Fake,
+PaintCollections,Furniture,1000,100,False,False,,Report #1812
+PaintCollections,Furniture,1000,100,False,False,,
+PaintCollections,Furniture,1000,101,True,True,Genuine,Report #1813
+PaintCollections,Furniture,1000,101,True,True,Genuine,
+PaintCollections,Furniture,1000,101,True,True,Fake,Report #1814
+PaintCollections,Furniture,1000,101,True,True,Fake,
+PaintCollections,Furniture,1000,101,True,True,,Report #1815
+PaintCollections,Furniture,1000,101,True,True,,
+PaintCollections,Furniture,1000,101,True,False,Genuine,Report #1816
+PaintCollections,Furniture,1000,101,True,False,Genuine,
+PaintCollections,Furniture,1000,101,True,False,Fake,Report #1817
+PaintCollections,Furniture,1000,101,True,False,Fake,
+PaintCollections,Furniture,1000,101,True,False,,Report #1818
+PaintCollections,Furniture,1000,101,True,False,,
+PaintCollections,Furniture,1000,101,False,True,Genuine,Report #1819
+PaintCollections,Furniture,1000,101,False,True,Genuine,
+PaintCollections,Furniture,1000,101,False,True,Fake,Report #1820
+PaintCollections,Furniture,1000,101,False,True,Fake,
+PaintCollections,Furniture,1000,101,False,True,,Report #1821
+PaintCollections,Furniture,1000,101,False,True,,
+PaintCollections,Furniture,1000,101,False,False,Genuine,Report #1822
+PaintCollections,Furniture,1000,101,False,False,Genuine,
+PaintCollections,Furniture,1000,101,False,False,Fake,Report #1823
+PaintCollections,Furniture,1000,101,False,False,Fake,
+PaintCollections,Furniture,1000,101,False,False,,Report #1824
+PaintCollections,Furniture,1000,101,False,False,,
+PaintCollections,Furniture,1000000,100,True,True,Genuine,Report #1897
+PaintCollections,Furniture,1000000,100,True,True,Genuine,
+PaintCollections,Furniture,1000000,100,True,True,Fake,Report #1898
+PaintCollections,Furniture,1000000,100,True,True,Fake,
+PaintCollections,Furniture,1000000,100,True,True,,Report #1899
+PaintCollections,Furniture,1000000,100,True,True,,
+PaintCollections,Furniture,1000000,100,True,False,Genuine,Report #1900
+PaintCollections,Furniture,1000000,100,True,False,Genuine,
+PaintCollections,Furniture,1000000,100,True,False,Fake,Report #1901
+PaintCollections,Furniture,1000000,100,True,False,Fake,
+PaintCollections,Furniture,1000000,100,True,False,,Report #1902
+PaintCollections,Furniture,1000000,100,True,False,,
+PaintCollections,Furniture,1000000,100,False,True,Genuine,Report #1903
+PaintCollections,Furniture,1000000,100,False,True,Genuine,
+PaintCollections,Furniture,1000000,100,False,True,Fake,Report #1904
+PaintCollections,Furniture,1000000,100,False,True,Fake,
+PaintCollections,Furniture,1000000,100,False,True,,Report #1905
+PaintCollections,Furniture,1000000,100,False,True,,
+PaintCollections,Furniture,1000000,100,False,False,Genuine,Report #1906
+PaintCollections,Furniture,1000000,100,False,False,Genuine,
+PaintCollections,Furniture,1000000,100,False,False,Fake,Report #1907
+PaintCollections,Furniture,1000000,100,False,False,Fake,
+PaintCollections,Furniture,1000000,100,False,False,,Report #1908
+PaintCollections,Furniture,1000000,100,False,False,,
+PaintCollections,Furniture,1000000,101,True,True,Genuine,Report #1909
+PaintCollections,Furniture,1000000,101,True,True,Genuine,
+PaintCollections,Furniture,1000000,101,True,True,Fake,Report #1910
+PaintCollections,Furniture,1000000,101,True,True,Fake,
+PaintCollections,Furniture,1000000,101,True,True,,Report #1911
+PaintCollections,Furniture,1000000,101,True,True,,
+PaintCollections,Furniture,1000000,101,True,False,Genuine,Report #1912
+PaintCollections,Furniture,1000000,101,True,False,Genuine,
+PaintCollections,Furniture,1000000,101,True,False,Fake,Report #1913
+PaintCollections,Furniture,1000000,101,True,False,Fake,
+PaintCollections,Furniture,1000000,101,True,False,,Report #1914
+PaintCollections,Furniture,1000000,101,True,False,,
+PaintCollections,Furniture,1000000,101,False,True,Genuine,Report #1915
+PaintCollections,Furniture,1000000,101,False,True,Genuine,
+PaintCollections,Furniture,1000000,101,False,True,Fake,Report #1916
+PaintCollections,Furniture,1000000,101,False,True,Fake,
+PaintCollections,Furniture,1000000,101,False,True,,Report #1917
+PaintCollections,Furniture,1000000,101,False,True,,
+PaintCollections,Furniture,1000000,101,False,False,Genuine,Report #1918
+PaintCollections,Furniture,1000000,101,False,False,Genuine,
+PaintCollections,Furniture,1000000,101,False,False,Fake,Report #1919
+PaintCollections,Furniture,1000000,101,False,False,Fake,
+PaintCollections,Furniture,1000000,101,False,False,,Report #1920
+PaintCollections,Furniture,1000000,101,False,False,,
+HouseHoldCollection,Paintings,0,100,True,True,Genuine,Report #2473
+HouseHoldCollection,Paintings,0,100,True,True,Genuine,
+HouseHoldCollection,Paintings,0,100,True,True,Fake,Report #2474
+HouseHoldCollection,Paintings,0,100,True,True,Fake,
+HouseHoldCollection,Paintings,0,100,True,True,,Report #2475
+HouseHoldCollection,Paintings,0,100,True,True,,
+HouseHoldCollection,Paintings,0,100,True,False,Genuine,Report #2476
+HouseHoldCollection,Paintings,0,100,True,False,Genuine,
+HouseHoldCollection,Paintings,0,100,True,False,Fake,Report #2477
+HouseHoldCollection,Paintings,0,100,True,False,Fake,
+HouseHoldCollection,Paintings,0,100,True,False,,Report #2478
+HouseHoldCollection,Paintings,0,100,True,False,,
+HouseHoldCollection,Paintings,0,100,False,True,Genuine,Report #2479
+HouseHoldCollection,Paintings,0,100,False,True,Genuine,
+HouseHoldCollection,Paintings,0,100,False,True,Fake,Report #2480
+HouseHoldCollection,Paintings,0,100,False,True,Fake,
+HouseHoldCollection,Paintings,0,100,False,True,,Report #2481
+HouseHoldCollection,Paintings,0,100,False,True,,
+HouseHoldCollection,Paintings,0,100,False,False,Genuine,Report #2482
+HouseHoldCollection,Paintings,0,100,False,False,Genuine,
+HouseHoldCollection,Paintings,0,100,False,False,Fake,Report #2483
+HouseHoldCollection,Paintings,0,100,False,False,Fake,
+HouseHoldCollection,Paintings,0,100,False,False,,Report #2484
+HouseHoldCollection,Paintings,0,100,False,False,,
+HouseHoldCollection,Paintings,0,101,True,True,Genuine,Report #2485
+HouseHoldCollection,Paintings,0,101,True,True,Genuine,
+HouseHoldCollection,Paintings,0,101,True,True,Fake,Report #2486
+HouseHoldCollection,Paintings,0,101,True,True,Fake,
+HouseHoldCollection,Paintings,0,101,True,True,,Report #2487
+HouseHoldCollection,Paintings,0,101,True,True,,
+HouseHoldCollection,Paintings,0,101,True,False,Genuine,Report #2488
+HouseHoldCollection,Paintings,0,101,True,False,Genuine,
+HouseHoldCollection,Paintings,0,101,True,False,Fake,Report #2489
+HouseHoldCollection,Paintings,0,101,True,False,Fake,
+HouseHoldCollection,Paintings,0,101,True,False,,Report #2490
+HouseHoldCollection,Paintings,0,101,True,False,,
+HouseHoldCollection,Paintings,0,101,False,True,Genuine,Report #2491
+HouseHoldCollection,Paintings,0,101,False,True,Genuine,
+HouseHoldCollection,Paintings,0,101,False,True,Fake,Report #2492
+HouseHoldCollection,Paintings,0,101,False,True,Fake,
+HouseHoldCollection,Paintings,0,101,False,True,,Report #2493
+HouseHoldCollection,Paintings,0,101,False,True,,
+HouseHoldCollection,Paintings,0,101,False,False,Genuine,Report #2494
+HouseHoldCollection,Paintings,0,101,False,False,Genuine,
+HouseHoldCollection,Paintings,0,101,False,False,Fake,Report #2495
+HouseHoldCollection,Paintings,0,101,False,False,Fake,
+HouseHoldCollection,Paintings,0,101,False,False,,Report #2496
+HouseHoldCollection,Paintings,0,101,False,False,,
+HouseHoldCollection,Paintings,1,100,True,True,Genuine,Report #2569
+HouseHoldCollection,Paintings,1,100,True,True,Genuine,
+HouseHoldCollection,Paintings,1,100,True,True,Fake,Report #2570
+HouseHoldCollection,Paintings,1,100,True,True,Fake,
+HouseHoldCollection,Paintings,1,100,True,True,,Report #2571
+HouseHoldCollection,Paintings,1,100,True,True,,
+HouseHoldCollection,Paintings,1,100,True,False,Genuine,Report #2572
+HouseHoldCollection,Paintings,1,100,True,False,Genuine,
+HouseHoldCollection,Paintings,1,100,True,False,Fake,Report #2573
+HouseHoldCollection,Paintings,1,100,True,False,Fake,
+HouseHoldCollection,Paintings,1,100,True,False,,Report #2574
+HouseHoldCollection,Paintings,1,100,True,False,,
+HouseHoldCollection,Paintings,1,100,False,True,Genuine,Report #2575
+HouseHoldCollection,Paintings,1,100,False,True,Genuine,
+HouseHoldCollection,Paintings,1,100,False,True,Fake,Report #2576
+HouseHoldCollection,Paintings,1,100,False,True,Fake,
+HouseHoldCollection,Paintings,1,100,False,True,,Report #2577
+HouseHoldCollection,Paintings,1,100,False,True,,
+HouseHoldCollection,Paintings,1,100,False,False,Genuine,Report #2578
+HouseHoldCollection,Paintings,1,100,False,False,Genuine,
+HouseHoldCollection,Paintings,1,100,False,False,Fake,Report #2579
+HouseHoldCollection,Paintings,1,100,False,False,Fake,
+HouseHoldCollection,Paintings,1,100,False,False,,Report #2580
+HouseHoldCollection,Paintings,1,100,False,False,,
+HouseHoldCollection,Paintings,1,101,True,True,Genuine,Report #2581
+HouseHoldCollection,Paintings,1,101,True,True,Genuine,
+HouseHoldCollection,Paintings,1,101,True,True,Fake,Report #2582
+HouseHoldCollection,Paintings,1,101,True,True,Fake,
+HouseHoldCollection,Paintings,1,101,True,True,,Report #2583
+HouseHoldCollection,Paintings,1,101,True,True,,
+HouseHoldCollection,Paintings,1,101,True,False,Genuine,Report #2584
+HouseHoldCollection,Paintings,1,101,True,False,Genuine,
+HouseHoldCollection,Paintings,1,101,True,False,Fake,Report #2585
+HouseHoldCollection,Paintings,1,101,True,False,Fake,
+HouseHoldCollection,Paintings,1,101,True,False,,Report #2586
+HouseHoldCollection,Paintings,1,101,True,False,,
+HouseHoldCollection,Paintings,1,101,False,True,Genuine,Report #2587
+HouseHoldCollection,Paintings,1,101,False,True,Genuine,
+HouseHoldCollection,Paintings,1,101,False,True,Fake,Report #2588
+HouseHoldCollection,Paintings,1,101,False,True,Fake,
+HouseHoldCollection,Paintings,1,101,False,True,,Report #2589
+HouseHoldCollection,Paintings,1,101,False,True,,
+HouseHoldCollection,Paintings,1,101,False,False,Genuine,Report #2590
+HouseHoldCollection,Paintings,1,101,False,False,Genuine,
+HouseHoldCollection,Paintings,1,101,False,False,Fake,Report #2591
+HouseHoldCollection,Paintings,1,101,False,False,Fake,
+HouseHoldCollection,Paintings,1,101,False,False,,Report #2592
+HouseHoldCollection,Paintings,1,101,False,False,,
+HouseHoldCollection,Paintings,100,100,True,True,Genuine,Report #2665
+HouseHoldCollection,Paintings,100,100,True,True,Genuine,
+HouseHoldCollection,Paintings,100,100,True,True,Fake,Report #2666
+HouseHoldCollection,Paintings,100,100,True,True,Fake,
+HouseHoldCollection,Paintings,100,100,True,True,,Report #2667
+HouseHoldCollection,Paintings,100,100,True,True,,
+HouseHoldCollection,Paintings,100,100,True,False,Genuine,Report #2668
+HouseHoldCollection,Paintings,100,100,True,False,Genuine,
+HouseHoldCollection,Paintings,100,100,True,False,Fake,Report #2669
+HouseHoldCollection,Paintings,100,100,True,False,Fake,
+HouseHoldCollection,Paintings,100,100,True,False,,Report #2670
+HouseHoldCollection,Paintings,100,100,True,False,,
+HouseHoldCollection,Paintings,100,100,False,True,Genuine,Report #2671
+HouseHoldCollection,Paintings,100,100,False,True,Genuine,
+HouseHoldCollection,Paintings,100,100,False,True,Fake,Report #2672
+HouseHoldCollection,Paintings,100,100,False,True,Fake,
+HouseHoldCollection,Paintings,100,100,False,True,,Report #2673
+HouseHoldCollection,Paintings,100,100,False,True,,
+HouseHoldCollection,Paintings,100,100,False,False,Genuine,Report #2674
+HouseHoldCollection,Paintings,100,100,False,False,Genuine,
+HouseHoldCollection,Paintings,100,100,False,False,Fake,Report #2675
+HouseHoldCollection,Paintings,100,100,False,False,Fake,
+HouseHoldCollection,Paintings,100,100,False,False,,Report #2676
+HouseHoldCollection,Paintings,100,100,False,False,,
+HouseHoldCollection,Paintings,100,101,True,True,Genuine,Report #2677
+HouseHoldCollection,Paintings,100,101,True,True,Genuine,
+HouseHoldCollection,Paintings,100,101,True,True,Fake,Report #2678
+HouseHoldCollection,Paintings,100,101,True,True,Fake,
+HouseHoldCollection,Paintings,100,101,True,True,,Report #2679
+HouseHoldCollection,Paintings,100,101,True,True,,
+HouseHoldCollection,Paintings,100,101,True,False,Genuine,Report #2680
+HouseHoldCollection,Paintings,100,101,True,False,Genuine,
+HouseHoldCollection,Paintings,100,101,True,False,Fake,Report #2681
+HouseHoldCollection,Paintings,100,101,True,False,Fake,
+HouseHoldCollection,Paintings,100,101,True,False,,Report #2682
+HouseHoldCollection,Paintings,100,101,True,False,,
+HouseHoldCollection,Paintings,100,101,False,True,Genuine,Report #2683
+HouseHoldCollection,Paintings,100,101,False,True,Genuine,
+HouseHoldCollection,Paintings,100,101,False,True,Fake,Report #2684
+HouseHoldCollection,Paintings,100,101,False,True,Fake,
+HouseHoldCollection,Paintings,100,101,False,True,,Report #2685
+HouseHoldCollection,Paintings,100,101,False,True,,
+HouseHoldCollection,Paintings,100,101,False,False,Genuine,Report #2686
+HouseHoldCollection,Paintings,100,101,False,False,Genuine,
+HouseHoldCollection,Paintings,100,101,False,False,Fake,Report #2687
+HouseHoldCollection,Paintings,100,101,False,False,Fake,
+HouseHoldCollection,Paintings,100,101,False,False,,Report #2688
+HouseHoldCollection,Paintings,100,101,False,False,,
+HouseHoldCollection,Paintings,1000,100,True,True,Genuine,Report #2761
+HouseHoldCollection,Paintings,1000,100,True,True,Genuine,
+HouseHoldCollection,Paintings,1000,100,True,True,Fake,Report #2762
+HouseHoldCollection,Paintings,1000,100,True,True,Fake,
+HouseHoldCollection,Paintings,1000,100,True,True,,Report #2763
+HouseHoldCollection,Paintings,1000,100,True,True,,
+HouseHoldCollection,Paintings,1000,100,True,False,Genuine,Report #2764
+HouseHoldCollection,Paintings,1000,100,True,False,Genuine,
+HouseHoldCollection,Paintings,1000,100,True,False,Fake,Report #2765
+HouseHoldCollection,Paintings,1000,100,True,False,Fake,
+HouseHoldCollection,Paintings,1000,100,True,False,,Report #2766
+HouseHoldCollection,Paintings,1000,100,True,False,,
+HouseHoldCollection,Paintings,1000,100,False,True,Genuine,Report #2767
+HouseHoldCollection,Paintings,1000,100,False,True,Genuine,
+HouseHoldCollection,Paintings,1000,100,False,True,Fake,Report #2768
+HouseHoldCollection,Paintings,1000,100,False,True,Fake,
+HouseHoldCollection,Paintings,1000,100,False,True,,Report #2769
+HouseHoldCollection,Paintings,1000,100,False,True,,
+HouseHoldCollection,Paintings,1000,100,False,False,Genuine,Report #2770
+HouseHoldCollection,Paintings,1000,100,False,False,Genuine,
+HouseHoldCollection,Paintings,1000,100,False,False,Fake,Report #2771
+HouseHoldCollection,Paintings,1000,100,False,False,Fake,
+HouseHoldCollection,Paintings,1000,100,False,False,,Report #2772
+HouseHoldCollection,Paintings,1000,100,False,False,,
+HouseHoldCollection,Paintings,1000,101,True,True,Genuine,Report #2773
+HouseHoldCollection,Paintings,1000,101,True,True,Genuine,
+HouseHoldCollection,Paintings,1000,101,True,True,Fake,Report #2774
+HouseHoldCollection,Paintings,1000,101,True,True,Fake,
+HouseHoldCollection,Paintings,1000,101,True,True,,Report #2775
+HouseHoldCollection,Paintings,1000,101,True,True,,
+HouseHoldCollection,Paintings,1000,101,True,False,Genuine,Report #2776
+HouseHoldCollection,Paintings,1000,101,True,False,Genuine,
+HouseHoldCollection,Paintings,1000,101,True,False,Fake,Report #2777
+HouseHoldCollection,Paintings,1000,101,True,False,Fake,
+HouseHoldCollection,Paintings,1000,101,True,False,,Report #2778
+HouseHoldCollection,Paintings,1000,101,True,False,,
+HouseHoldCollection,Paintings,1000,101,False,True,Genuine,Report #2779
+HouseHoldCollection,Paintings,1000,101,False,True,Genuine,
+HouseHoldCollection,Paintings,1000,101,False,True,Fake,Report #2780
+HouseHoldCollection,Paintings,1000,101,False,True,Fake,
+HouseHoldCollection,Paintings,1000,101,False,True,,Report #2781
+HouseHoldCollection,Paintings,1000,101,False,True,,
+HouseHoldCollection,Paintings,1000,101,False,False,Genuine,Report #2782
+HouseHoldCollection,Paintings,1000,101,False,False,Genuine,
+HouseHoldCollection,Paintings,1000,101,False,False,Fake,Report #2783
+HouseHoldCollection,Paintings,1000,101,False,False,Fake,
+HouseHoldCollection,Paintings,1000,101,False,False,,Report #2784
+HouseHoldCollection,Paintings,1000,101,False,False,,
+HouseHoldCollection,Paintings,1000000,100,True,True,Genuine,Report #2857
+HouseHoldCollection,Paintings,1000000,100,True,True,Genuine,
+HouseHoldCollection,Paintings,1000000,100,True,True,Fake,Report #2858
+HouseHoldCollection,Paintings,1000000,100,True,True,Fake,
+HouseHoldCollection,Paintings,1000000,100,True,True,,Report #2859
+HouseHoldCollection,Paintings,1000000,100,True,True,,
+HouseHoldCollection,Paintings,1000000,100,True,False,Genuine,Report #2860
+HouseHoldCollection,Paintings,1000000,100,True,False,Genuine,
+HouseHoldCollection,Paintings,1000000,100,True,False,Fake,Report #2861
+HouseHoldCollection,Paintings,1000000,100,True,False,Fake,
+HouseHoldCollection,Paintings,1000000,100,True,False,,Report #2862
+HouseHoldCollection,Paintings,1000000,100,True,False,,
+HouseHoldCollection,Paintings,1000000,100,False,True,Genuine,Report #2863
+HouseHoldCollection,Paintings,1000000,100,False,True,Genuine,
+HouseHoldCollection,Paintings,1000000,100,False,True,Fake,Report #2864
+HouseHoldCollection,Paintings,1000000,100,False,True,Fake,
+HouseHoldCollection,Paintings,1000000,100,False,True,,Report #2865
+HouseHoldCollection,Paintings,1000000,100,False,True,,
+HouseHoldCollection,Paintings,1000000,100,False,False,Genuine,Report #2866
+HouseHoldCollection,Paintings,1000000,100,False,False,Genuine,
+HouseHoldCollection,Paintings,1000000,100,False,False,Fake,Report #2867
+HouseHoldCollection,Paintings,1000000,100,False,False,Fake,
+HouseHoldCollection,Paintings,1000000,100,False,False,,Report #2868
+HouseHoldCollection,Paintings,1000000,100,False,False,,
+HouseHoldCollection,Paintings,1000000,101,True,True,Genuine,Report #2869
+HouseHoldCollection,Paintings,1000000,101,True,True,Genuine,
+HouseHoldCollection,Paintings,1000000,101,True,True,Fake,Report #2870
+HouseHoldCollection,Paintings,1000000,101,True,True,Fake,
+HouseHoldCollection,Paintings,1000000,101,True,True,,Report #2871
+HouseHoldCollection,Paintings,1000000,101,True,True,,
+HouseHoldCollection,Paintings,1000000,101,True,False,Genuine,Report #2872
+HouseHoldCollection,Paintings,1000000,101,True,False,Genuine,
+HouseHoldCollection,Paintings,1000000,101,True,False,Fake,Report #2873
+HouseHoldCollection,Paintings,1000000,101,True,False,Fake,
+HouseHoldCollection,Paintings,1000000,101,True,False,,Report #2874
+HouseHoldCollection,Paintings,1000000,101,True,False,,
+HouseHoldCollection,Paintings,1000000,101,False,True,Genuine,Report #2875
+HouseHoldCollection,Paintings,1000000,101,False,True,Genuine,
+HouseHoldCollection,Paintings,1000000,101,False,True,Fake,Report #2876
+HouseHoldCollection,Paintings,1000000,101,False,True,Fake,
+HouseHoldCollection,Paintings,1000000,101,False,True,,Report #2877
+HouseHoldCollection,Paintings,1000000,101,False,True,,
+HouseHoldCollection,Paintings,1000000,101,False,False,Genuine,Report #2878
+HouseHoldCollection,Paintings,1000000,101,False,False,Genuine,
+HouseHoldCollection,Paintings,1000000,101,False,False,Fake,Report #2879
+HouseHoldCollection,Paintings,1000000,101,False,False,Fake,
+HouseHoldCollection,Paintings,1000000,101,False,False,,Report #2880
+HouseHoldCollection,Paintings,1000000,101,False,False,,
+HouseHoldCollection,Furniture,0,100,True,True,Genuine,Report #3913
+HouseHoldCollection,Furniture,0,100,True,True,Genuine,
+HouseHoldCollection,Furniture,0,100,True,True,Fake,Report #3914
+HouseHoldCollection,Furniture,0,100,True,True,Fake,
+HouseHoldCollection,Furniture,0,100,True,True,,Report #3915
+HouseHoldCollection,Furniture,0,100,True,True,,
+HouseHoldCollection,Furniture,0,100,True,False,Genuine,Report #3916
+HouseHoldCollection,Furniture,0,100,True,False,Genuine,
+HouseHoldCollection,Furniture,0,100,True,False,Fake,Report #3917
+HouseHoldCollection,Furniture,0,100,True,False,Fake,
+HouseHoldCollection,Furniture,0,100,True,False,,Report #3918
+HouseHoldCollection,Furniture,0,100,True,False,,
+HouseHoldCollection,Furniture,0,100,False,True,Genuine,Report #3919
+HouseHoldCollection,Furniture,0,100,False,True,Genuine,
+HouseHoldCollection,Furniture,0,100,False,True,Fake,Report #3920
+HouseHoldCollection,Furniture,0,100,False,True,Fake,
+HouseHoldCollection,Furniture,0,100,False,True,,Report #3921
+HouseHoldCollection,Furniture,0,100,False,True,,
+HouseHoldCollection,Furniture,0,100,False,False,Genuine,Report #3922
+HouseHoldCollection,Furniture,0,100,False,False,Genuine,
+HouseHoldCollection,Furniture,0,100,False,False,Fake,Report #3923
+HouseHoldCollection,Furniture,0,100,False,False,Fake,
+HouseHoldCollection,Furniture,0,100,False,False,,Report #3924
+HouseHoldCollection,Furniture,0,100,False,False,,
+HouseHoldCollection,Furniture,0,101,True,True,Genuine,Report #3925
+HouseHoldCollection,Furniture,0,101,True,True,Genuine,
+HouseHoldCollection,Furniture,0,101,True,True,Fake,Report #3926
+HouseHoldCollection,Furniture,0,101,True,True,Fake,
+HouseHoldCollection,Furniture,0,101,True,True,,Report #3927
+HouseHoldCollection,Furniture,0,101,True,True,,
+HouseHoldCollection,Furniture,0,101,True,False,Genuine,Report #3928
+HouseHoldCollection,Furniture,0,101,True,False,Genuine,
+HouseHoldCollection,Furniture,0,101,True,False,Fake,Report #3929
+HouseHoldCollection,Furniture,0,101,True,False,Fake,
+HouseHoldCollection,Furniture,0,101,True,False,,Report #3930
+HouseHoldCollection,Furniture,0,101,True,False,,
+HouseHoldCollection,Furniture,0,101,False,True,Genuine,Report #3931
+HouseHoldCollection,Furniture,0,101,False,True,Genuine,
+HouseHoldCollection,Furniture,0,101,False,True,Fake,Report #3932
+HouseHoldCollection,Furniture,0,101,False,True,Fake,
+HouseHoldCollection,Furniture,0,101,False,True,,Report #3933
+HouseHoldCollection,Furniture,0,101,False,True,,
+HouseHoldCollection,Furniture,0,101,False,False,Genuine,Report #3934
+HouseHoldCollection,Furniture,0,101,False,False,Genuine,
+HouseHoldCollection,Furniture,0,101,False,False,Fake,Report #3935
+HouseHoldCollection,Furniture,0,101,False,False,Fake,
+HouseHoldCollection,Furniture,0,101,False,False,,Report #3936
+HouseHoldCollection,Furniture,0,101,False,False,,
+HouseHoldCollection,Furniture,1,100,True,True,Genuine,Report #4009
+HouseHoldCollection,Furniture,1,100,True,True,Genuine,
+HouseHoldCollection,Furniture,1,100,True,True,Fake,Report #4010
+HouseHoldCollection,Furniture,1,100,True,True,Fake,
+HouseHoldCollection,Furniture,1,100,True,True,,Report #4011
+HouseHoldCollection,Furniture,1,100,True,True,,
+HouseHoldCollection,Furniture,1,100,True,False,Genuine,Report #4012
+HouseHoldCollection,Furniture,1,100,True,False,Genuine,
+HouseHoldCollection,Furniture,1,100,True,False,Fake,Report #4013
+HouseHoldCollection,Furniture,1,100,True,False,Fake,
+HouseHoldCollection,Furniture,1,100,True,False,,Report #4014
+HouseHoldCollection,Furniture,1,100,True,False,,
+HouseHoldCollection,Furniture,1,100,False,True,Genuine,Report #4015
+HouseHoldCollection,Furniture,1,100,False,True,Genuine,
+HouseHoldCollection,Furniture,1,100,False,True,Fake,Report #4016
+HouseHoldCollection,Furniture,1,100,False,True,Fake,
+HouseHoldCollection,Furniture,1,100,False,True,,Report #4017
+HouseHoldCollection,Furniture,1,100,False,True,,
+HouseHoldCollection,Furniture,1,100,False,False,Genuine,Report #4018
+HouseHoldCollection,Furniture,1,100,False,False,Genuine,
+HouseHoldCollection,Furniture,1,100,False,False,Fake,Report #4019
+HouseHoldCollection,Furniture,1,100,False,False,Fake,
+HouseHoldCollection,Furniture,1,100,False,False,,Report #4020
+HouseHoldCollection,Furniture,1,100,False,False,,
+HouseHoldCollection,Furniture,1,101,True,True,Genuine,Report #4021
+HouseHoldCollection,Furniture,1,101,True,True,Genuine,
+HouseHoldCollection,Furniture,1,101,True,True,Fake,Report #4022
+HouseHoldCollection,Furniture,1,101,True,True,Fake,
+HouseHoldCollection,Furniture,1,101,True,True,,Report #4023
+HouseHoldCollection,Furniture,1,101,True,True,,
+HouseHoldCollection,Furniture,1,101,True,False,Genuine,Report #4024
+HouseHoldCollection,Furniture,1,101,True,False,Genuine,
+HouseHoldCollection,Furniture,1,101,True,False,Fake,Report #4025
+HouseHoldCollection,Furniture,1,101,True,False,Fake,
+HouseHoldCollection,Furniture,1,101,True,False,,Report #4026
+HouseHoldCollection,Furniture,1,101,True,False,,
+HouseHoldCollection,Furniture,1,101,False,True,Genuine,Report #4027
+HouseHoldCollection,Furniture,1,101,False,True,Genuine,
+HouseHoldCollection,Furniture,1,101,False,True,Fake,Report #4028
+HouseHoldCollection,Furniture,1,101,False,True,Fake,
+HouseHoldCollection,Furniture,1,101,False,True,,Report #4029
+HouseHoldCollection,Furniture,1,101,False,True,,
+HouseHoldCollection,Furniture,1,101,False,False,Genuine,Report #4030
+HouseHoldCollection,Furniture,1,101,False,False,Genuine,
+HouseHoldCollection,Furniture,1,101,False,False,Fake,Report #4031
+HouseHoldCollection,Furniture,1,101,False,False,Fake,
+HouseHoldCollection,Furniture,1,101,False,False,,Report #4032
+HouseHoldCollection,Furniture,1,101,False,False,,
+HouseHoldCollection,Furniture,100,100,True,True,Genuine,Report #4105
+HouseHoldCollection,Furniture,100,100,True,True,Genuine,
+HouseHoldCollection,Furniture,100,100,True,True,Fake,Report #4106
+HouseHoldCollection,Furniture,100,100,True,True,Fake,
+HouseHoldCollection,Furniture,100,100,True,True,,Report #4107
+HouseHoldCollection,Furniture,100,100,True,True,,
+HouseHoldCollection,Furniture,100,100,True,False,Genuine,Report #4108
+HouseHoldCollection,Furniture,100,100,True,False,Genuine,
+HouseHoldCollection,Furniture,100,100,True,False,Fake,Report #4109
+HouseHoldCollection,Furniture,100,100,True,False,Fake,
+HouseHoldCollection,Furniture,100,100,True,False,,Report #4110
+HouseHoldCollection,Furniture,100,100,True,False,,
+HouseHoldCollection,Furniture,100,100,False,True,Genuine,Report #4111
+HouseHoldCollection,Furniture,100,100,False,True,Genuine,
+HouseHoldCollection,Furniture,100,100,False,True,Fake,Report #4112
+HouseHoldCollection,Furniture,100,100,False,True,Fake,
+HouseHoldCollection,Furniture,100,100,False,True,,Report #4113
+HouseHoldCollection,Furniture,100,100,False,True,,
+HouseHoldCollection,Furniture,100,100,False,False,Genuine,Report #4114
+HouseHoldCollection,Furniture,100,100,False,False,Genuine,
+HouseHoldCollection,Furniture,100,100,False,False,Fake,Report #4115
+HouseHoldCollection,Furniture,100,100,False,False,Fake,
+HouseHoldCollection,Furniture,100,100,False,False,,Report #4116
+HouseHoldCollection,Furniture,100,100,False,False,,
+HouseHoldCollection,Furniture,100,101,True,True,Genuine,Report #4117
+HouseHoldCollection,Furniture,100,101,True,True,Genuine,
+HouseHoldCollection,Furniture,100,101,True,True,Fake,Report #4118
+HouseHoldCollection,Furniture,100,101,True,True,Fake,
+HouseHoldCollection,Furniture,100,101,True,True,,Report #4119
+HouseHoldCollection,Furniture,100,101,True,True,,
+HouseHoldCollection,Furniture,100,101,True,False,Genuine,Report #4120
+HouseHoldCollection,Furniture,100,101,True,False,Genuine,
+HouseHoldCollection,Furniture,100,101,True,False,Fake,Report #4121
+HouseHoldCollection,Furniture,100,101,True,False,Fake,
+HouseHoldCollection,Furniture,100,101,True,False,,Report #4122
+HouseHoldCollection,Furniture,100,101,True,False,,
+HouseHoldCollection,Furniture,100,101,False,True,Genuine,Report #4123
+HouseHoldCollection,Furniture,100,101,False,True,Genuine,
+HouseHoldCollection,Furniture,100,101,False,True,Fake,Report #4124
+HouseHoldCollection,Furniture,100,101,False,True,Fake,
+HouseHoldCollection,Furniture,100,101,False,True,,Report #4125
+HouseHoldCollection,Furniture,100,101,False,True,,
+HouseHoldCollection,Furniture,100,101,False,False,Genuine,Report #4126
+HouseHoldCollection,Furniture,100,101,False,False,Genuine,
+HouseHoldCollection,Furniture,100,101,False,False,Fake,Report #4127
+HouseHoldCollection,Furniture,100,101,False,False,Fake,
+HouseHoldCollection,Furniture,100,101,False,False,,Report #4128
+HouseHoldCollection,Furniture,100,101,False,False,,
+HouseHoldCollection,Furniture,1000,100,True,True,Genuine,Report #4201
+HouseHoldCollection,Furniture,1000,100,True,True,Genuine,
+HouseHoldCollection,Furniture,1000,100,True,True,Fake,Report #4202
+HouseHoldCollection,Furniture,1000,100,True,True,Fake,
+HouseHoldCollection,Furniture,1000,100,True,True,,Report #4203
+HouseHoldCollection,Furniture,1000,100,True,True,,
+HouseHoldCollection,Furniture,1000,100,True,False,Genuine,Report #4204
+HouseHoldCollection,Furniture,1000,100,True,False,Genuine,
+HouseHoldCollection,Furniture,1000,100,True,False,Fake,Report #4205
+HouseHoldCollection,Furniture,1000,100,True,False,Fake,
+HouseHoldCollection,Furniture,1000,100,True,False,,Report #4206
+HouseHoldCollection,Furniture,1000,100,True,False,,
+HouseHoldCollection,Furniture,1000,100,False,True,Genuine,Report #4207
+HouseHoldCollection,Furniture,1000,100,False,True,Genuine,
+HouseHoldCollection,Furniture,1000,100,False,True,Fake,Report #4208
+HouseHoldCollection,Furniture,1000,100,False,True,Fake,
+HouseHoldCollection,Furniture,1000,100,False,True,,Report #4209
+HouseHoldCollection,Furniture,1000,100,False,True,,
+HouseHoldCollection,Furniture,1000,100,False,False,Genuine,Report #4210
+HouseHoldCollection,Furniture,1000,100,False,False,Genuine,
+HouseHoldCollection,Furniture,1000,100,False,False,Fake,Report #4211
+HouseHoldCollection,Furniture,1000,100,False,False,Fake,
+HouseHoldCollection,Furniture,1000,100,False,False,,Report #4212
+HouseHoldCollection,Furniture,1000,100,False,False,,
+HouseHoldCollection,Furniture,1000,101,True,True,Genuine,Report #4213
+HouseHoldCollection,Furniture,1000,101,True,True,Genuine,
+HouseHoldCollection,Furniture,1000,101,True,True,Fake,Report #4214
+HouseHoldCollection,Furniture,1000,101,True,True,Fake,
+HouseHoldCollection,Furniture,1000,101,True,True,,Report #4215
+HouseHoldCollection,Furniture,1000,101,True,True,,
+HouseHoldCollection,Furniture,1000,101,True,False,Genuine,Report #4216
+HouseHoldCollection,Furniture,1000,101,True,False,Genuine,
+HouseHoldCollection,Furniture,1000,101,True,False,Fake,Report #4217
+HouseHoldCollection,Furniture,1000,101,True,False,Fake,
+HouseHoldCollection,Furniture,1000,101,True,False,,Report #4218
+HouseHoldCollection,Furniture,1000,101,True,False,,
+HouseHoldCollection,Furniture,1000,101,False,True,Genuine,Report #4219
+HouseHoldCollection,Furniture,1000,101,False,True,Genuine,
+HouseHoldCollection,Furniture,1000,101,False,True,Fake,Report #4220
+HouseHoldCollection,Furniture,1000,101,False,True,Fake,
+HouseHoldCollection,Furniture,1000,101,False,True,,Report #4221
+HouseHoldCollection,Furniture,1000,101,False,True,,
+HouseHoldCollection,Furniture,1000,101,False,False,Genuine,Report #4222
+HouseHoldCollection,Furniture,1000,101,False,False,Genuine,
+HouseHoldCollection,Furniture,1000,101,False,False,Fake,Report #4223
+HouseHoldCollection,Furniture,1000,101,False,False,Fake,
+HouseHoldCollection,Furniture,1000,101,False,False,,Report #4224
+HouseHoldCollection,Furniture,1000,101,False,False,,
+HouseHoldCollection,Furniture,1000000,100,True,True,Genuine,Report #4297
+HouseHoldCollection,Furniture,1000000,100,True,True,Genuine,
+HouseHoldCollection,Furniture,1000000,100,True,True,Fake,Report #4298
+HouseHoldCollection,Furniture,1000000,100,True,True,Fake,
+HouseHoldCollection,Furniture,1000000,100,True,True,,Report #4299
+HouseHoldCollection,Furniture,1000000,100,True,True,,
+HouseHoldCollection,Furniture,1000000,100,True,False,Genuine,Report #4300
+HouseHoldCollection,Furniture,1000000,100,True,False,Genuine,
+HouseHoldCollection,Furniture,1000000,100,True,False,Fake,Report #4301
+HouseHoldCollection,Furniture,1000000,100,True,False,Fake,
+HouseHoldCollection,Furniture,1000000,100,True,False,,Report #4302
+HouseHoldCollection,Furniture,1000000,100,True,False,,
+HouseHoldCollection,Furniture,1000000,100,False,True,Genuine,Report #4303
+HouseHoldCollection,Furniture,1000000,100,False,True,Genuine,
+HouseHoldCollection,Furniture,1000000,100,False,True,Fake,Report #4304
+HouseHoldCollection,Furniture,1000000,100,False,True,Fake,
+HouseHoldCollection,Furniture,1000000,100,False,True,,Report #4305
+HouseHoldCollection,Furniture,1000000,100,False,True,,
+HouseHoldCollection,Furniture,1000000,100,False,False,Genuine,Report #4306
+HouseHoldCollection,Furniture,1000000,100,False,False,Genuine,
+HouseHoldCollection,Furniture,1000000,100,False,False,Fake,Report #4307
+HouseHoldCollection,Furniture,1000000,100,False,False,Fake,
+HouseHoldCollection,Furniture,1000000,100,False,False,,Report #4308
+HouseHoldCollection,Furniture,1000000,100,False,False,,
+HouseHoldCollection,Furniture,1000000,101,True,True,Genuine,Report #4309
+HouseHoldCollection,Furniture,1000000,101,True,True,Genuine,
+HouseHoldCollection,Furniture,1000000,101,True,True,Fake,Report #4310
+HouseHoldCollection,Furniture,1000000,101,True,True,Fake,
+HouseHoldCollection,Furniture,1000000,101,True,True,,Report #4311
+HouseHoldCollection,Furniture,1000000,101,True,True,,
+HouseHoldCollection,Furniture,1000000,101,True,False,Genuine,Report #4312
+HouseHoldCollection,Furniture,1000000,101,True,False,Genuine,
+HouseHoldCollection,Furniture,1000000,101,True,False,Fake,Report #4313
+HouseHoldCollection,Furniture,1000000,101,True,False,Fake,
+HouseHoldCollection,Furniture,1000000,101,True,False,,Report #4314
+HouseHoldCollection,Furniture,1000000,101,True,False,,
+HouseHoldCollection,Furniture,1000000,101,False,True,Genuine,Report #4315
+HouseHoldCollection,Furniture,1000000,101,False,True,Genuine,
+HouseHoldCollection,Furniture,1000000,101,False,True,Fake,Report #4316
+HouseHoldCollection,Furniture,1000000,101,False,True,Fake,
+HouseHoldCollection,Furniture,1000000,101,False,True,,Report #4317
+HouseHoldCollection,Furniture,1000000,101,False,True,,
+HouseHoldCollection,Furniture,1000000,101,False,False,Genuine,Report #4318
+HouseHoldCollection,Furniture,1000000,101,False,False,Genuine,
+HouseHoldCollection,Furniture,1000000,101,False,False,Fake,Report #4319
+HouseHoldCollection,Furniture,1000000,101,False,False,Fake,
+HouseHoldCollection,Furniture,1000000,101,False,False,,Report #4320
+HouseHoldCollection,Furniture,1000000,101,False,False,,
+SimpleToolCollection,Paintings,0,100,True,True,Genuine,Report #4873
+SimpleToolCollection,Paintings,0,100,True,True,Genuine,
+SimpleToolCollection,Paintings,0,100,True,True,Fake,Report #4874
+SimpleToolCollection,Paintings,0,100,True,True,Fake,
+SimpleToolCollection,Paintings,0,100,True,True,,Report #4875
+SimpleToolCollection,Paintings,0,100,True,True,,
+SimpleToolCollection,Paintings,0,100,True,False,Genuine,Report #4876
+SimpleToolCollection,Paintings,0,100,True,False,Genuine,
+SimpleToolCollection,Paintings,0,100,True,False,Fake,Report #4877
+SimpleToolCollection,Paintings,0,100,True,False,Fake,
+SimpleToolCollection,Paintings,0,100,True,False,,Report #4878
+SimpleToolCollection,Paintings,0,100,True,False,,
+SimpleToolCollection,Paintings,0,100,False,True,Genuine,Report #4879
+SimpleToolCollection,Paintings,0,100,False,True,Genuine,
+SimpleToolCollection,Paintings,0,100,False,True,Fake,Report #4880
+SimpleToolCollection,Paintings,0,100,False,True,Fake,
+SimpleToolCollection,Paintings,0,100,False,True,,Report #4881
+SimpleToolCollection,Paintings,0,100,False,True,,
+SimpleToolCollection,Paintings,0,100,False,False,Genuine,Report #4882
+SimpleToolCollection,Paintings,0,100,False,False,Genuine,
+SimpleToolCollection,Paintings,0,100,False,False,Fake,Report #4883
+SimpleToolCollection,Paintings,0,100,False,False,Fake,
+SimpleToolCollection,Paintings,0,100,False,False,,Report #4884
+SimpleToolCollection,Paintings,0,100,False,False,,
+SimpleToolCollection,Paintings,0,101,True,True,Genuine,Report #4885
+SimpleToolCollection,Paintings,0,101,True,True,Genuine,
+SimpleToolCollection,Paintings,0,101,True,True,Fake,Report #4886
+SimpleToolCollection,Paintings,0,101,True,True,Fake,
+SimpleToolCollection,Paintings,0,101,True,True,,Report #4887
+SimpleToolCollection,Paintings,0,101,True,True,,
+SimpleToolCollection,Paintings,0,101,True,False,Genuine,Report #4888
+SimpleToolCollection,Paintings,0,101,True,False,Genuine,
+SimpleToolCollection,Paintings,0,101,True,False,Fake,Report #4889
+SimpleToolCollection,Paintings,0,101,True,False,Fake,
+SimpleToolCollection,Paintings,0,101,True,False,,Report #4890
+SimpleToolCollection,Paintings,0,101,True,False,,
+SimpleToolCollection,Paintings,0,101,False,True,Genuine,Report #4891
+SimpleToolCollection,Paintings,0,101,False,True,Genuine,
+SimpleToolCollection,Paintings,0,101,False,True,Fake,Report #4892
+SimpleToolCollection,Paintings,0,101,False,True,Fake,
+SimpleToolCollection,Paintings,0,101,False,True,,Report #4893
+SimpleToolCollection,Paintings,0,101,False,True,,
+SimpleToolCollection,Paintings,0,101,False,False,Genuine,Report #4894
+SimpleToolCollection,Paintings,0,101,False,False,Genuine,
+SimpleToolCollection,Paintings,0,101,False,False,Fake,Report #4895
+SimpleToolCollection,Paintings,0,101,False,False,Fake,
+SimpleToolCollection,Paintings,0,101,False,False,,Report #4896
+SimpleToolCollection,Paintings,0,101,False,False,,
+SimpleToolCollection,Paintings,1,100,True,True,Genuine,Report #4969
+SimpleToolCollection,Paintings,1,100,True,True,Genuine,
+SimpleToolCollection,Paintings,1,100,True,True,Fake,Report #4970
+SimpleToolCollection,Paintings,1,100,True,True,Fake,
+SimpleToolCollection,Paintings,1,100,True,True,,Report #4971
+SimpleToolCollection,Paintings,1,100,True,True,,
+SimpleToolCollection,Paintings,1,100,True,False,Genuine,Report #4972
+SimpleToolCollection,Paintings,1,100,True,False,Genuine,
+SimpleToolCollection,Paintings,1,100,True,False,Fake,Report #4973
+SimpleToolCollection,Paintings,1,100,True,False,Fake,
+SimpleToolCollection,Paintings,1,100,True,False,,Report #4974
+SimpleToolCollection,Paintings,1,100,True,False,,
+SimpleToolCollection,Paintings,1,100,False,True,Genuine,Report #4975
+SimpleToolCollection,Paintings,1,100,False,True,Genuine,
+SimpleToolCollection,Paintings,1,100,False,True,Fake,Report #4976
+SimpleToolCollection,Paintings,1,100,False,True,Fake,
+SimpleToolCollection,Paintings,1,100,False,True,,Report #4977
+SimpleToolCollection,Paintings,1,100,False,True,,
+SimpleToolCollection,Paintings,1,100,False,False,Genuine,Report #4978
+SimpleToolCollection,Paintings,1,100,False,False,Genuine,
+SimpleToolCollection,Paintings,1,100,False,False,Fake,Report #4979
+SimpleToolCollection,Paintings,1,100,False,False,Fake,
+SimpleToolCollection,Paintings,1,100,False,False,,Report #4980
+SimpleToolCollection,Paintings,1,100,False,False,,
+SimpleToolCollection,Paintings,1,101,True,True,Genuine,Report #4981
+SimpleToolCollection,Paintings,1,101,True,True,Genuine,
+SimpleToolCollection,Paintings,1,101,True,True,Fake,Report #4982
+SimpleToolCollection,Paintings,1,101,True,True,Fake,
+SimpleToolCollection,Paintings,1,101,True,True,,Report #4983
+SimpleToolCollection,Paintings,1,101,True,True,,
+SimpleToolCollection,Paintings,1,101,True,False,Genuine,Report #4984
+SimpleToolCollection,Paintings,1,101,True,False,Genuine,
+SimpleToolCollection,Paintings,1,101,True,False,Fake,Report #4985
+SimpleToolCollection,Paintings,1,101,True,False,Fake,
+SimpleToolCollection,Paintings,1,101,True,False,,Report #4986
+SimpleToolCollection,Paintings,1,101,True,False,,
+SimpleToolCollection,Paintings,1,101,False,True,Genuine,Report #4987
+SimpleToolCollection,Paintings,1,101,False,True,Genuine,
+SimpleToolCollection,Paintings,1,101,False,True,Fake,Report #4988
+SimpleToolCollection,Paintings,1,101,False,True,Fake,
+SimpleToolCollection,Paintings,1,101,False,True,,Report #4989
+SimpleToolCollection,Paintings,1,101,False,True,,
+SimpleToolCollection,Paintings,1,101,False,False,Genuine,Report #4990
+SimpleToolCollection,Paintings,1,101,False,False,Genuine,
+SimpleToolCollection,Paintings,1,101,False,False,Fake,Report #4991
+SimpleToolCollection,Paintings,1,101,False,False,Fake,
+SimpleToolCollection,Paintings,1,101,False,False,,Report #4992
+SimpleToolCollection,Paintings,1,101,False,False,,
+SimpleToolCollection,Paintings,100,100,True,True,Genuine,Report #5065
+SimpleToolCollection,Paintings,100,100,True,True,Genuine,
+SimpleToolCollection,Paintings,100,100,True,True,Fake,Report #5066
+SimpleToolCollection,Paintings,100,100,True,True,Fake,
+SimpleToolCollection,Paintings,100,100,True,True,,Report #5067
+SimpleToolCollection,Paintings,100,100,True,True,,
+SimpleToolCollection,Paintings,100,100,True,False,Genuine,Report #5068
+SimpleToolCollection,Paintings,100,100,True,False,Genuine,
+SimpleToolCollection,Paintings,100,100,True,False,Fake,Report #5069
+SimpleToolCollection,Paintings,100,100,True,False,Fake,
+SimpleToolCollection,Paintings,100,100,True,False,,Report #5070
+SimpleToolCollection,Paintings,100,100,True,False,,
+SimpleToolCollection,Paintings,100,100,False,True,Genuine,Report #5071
+SimpleToolCollection,Paintings,100,100,False,True,Genuine,
+SimpleToolCollection,Paintings,100,100,False,True,Fake,Report #5072
+SimpleToolCollection,Paintings,100,100,False,True,Fake,
+SimpleToolCollection,Paintings,100,100,False,True,,Report #5073
+SimpleToolCollection,Paintings,100,100,False,True,,
+SimpleToolCollection,Paintings,100,100,False,False,Genuine,Report #5074
+SimpleToolCollection,Paintings,100,100,False,False,Genuine,
+SimpleToolCollection,Paintings,100,100,False,False,Fake,Report #5075
+SimpleToolCollection,Paintings,100,100,False,False,Fake,
+SimpleToolCollection,Paintings,100,100,False,False,,Report #5076
+SimpleToolCollection,Paintings,100,100,False,False,,
+SimpleToolCollection,Paintings,100,101,True,True,Genuine,Report #5077
+SimpleToolCollection,Paintings,100,101,True,True,Genuine,
+SimpleToolCollection,Paintings,100,101,True,True,Fake,Report #5078
+SimpleToolCollection,Paintings,100,101,True,True,Fake,
+SimpleToolCollection,Paintings,100,101,True,True,,Report #5079
+SimpleToolCollection,Paintings,100,101,True,True,,
+SimpleToolCollection,Paintings,100,101,True,False,Genuine,Report #5080
+SimpleToolCollection,Paintings,100,101,True,False,Genuine,
+SimpleToolCollection,Paintings,100,101,True,False,Fake,Report #5081
+SimpleToolCollection,Paintings,100,101,True,False,Fake,
+SimpleToolCollection,Paintings,100,101,True,False,,Report #5082
+SimpleToolCollection,Paintings,100,101,True,False,,
+SimpleToolCollection,Paintings,100,101,False,True,Genuine,Report #5083
+SimpleToolCollection,Paintings,100,101,False,True,Genuine,
+SimpleToolCollection,Paintings,100,101,False,True,Fake,Report #5084
+SimpleToolCollection,Paintings,100,101,False,True,Fake,
+SimpleToolCollection,Paintings,100,101,False,True,,Report #5085
+SimpleToolCollection,Paintings,100,101,False,True,,
+SimpleToolCollection,Paintings,100,101,False,False,Genuine,Report #5086
+SimpleToolCollection,Paintings,100,101,False,False,Genuine,
+SimpleToolCollection,Paintings,100,101,False,False,Fake,Report #5087
+SimpleToolCollection,Paintings,100,101,False,False,Fake,
+SimpleToolCollection,Paintings,100,101,False,False,,Report #5088
+SimpleToolCollection,Paintings,100,101,False,False,,
+SimpleToolCollection,Paintings,1000,100,True,True,Genuine,Report #5161
+SimpleToolCollection,Paintings,1000,100,True,True,Genuine,
+SimpleToolCollection,Paintings,1000,100,True,True,Fake,Report #5162
+SimpleToolCollection,Paintings,1000,100,True,True,Fake,
+SimpleToolCollection,Paintings,1000,100,True,True,,Report #5163
+SimpleToolCollection,Paintings,1000,100,True,True,,
+SimpleToolCollection,Paintings,1000,100,True,False,Genuine,Report #5164
+SimpleToolCollection,Paintings,1000,100,True,False,Genuine,
+SimpleToolCollection,Paintings,1000,100,True,False,Fake,Report #5165
+SimpleToolCollection,Paintings,1000,100,True,False,Fake,
+SimpleToolCollection,Paintings,1000,100,True,False,,Report #5166
+SimpleToolCollection,Paintings,1000,100,True,False,,
+SimpleToolCollection,Paintings,1000,100,False,True,Genuine,Report #5167
+SimpleToolCollection,Paintings,1000,100,False,True,Genuine,
+SimpleToolCollection,Paintings,1000,100,False,True,Fake,Report #5168
+SimpleToolCollection,Paintings,1000,100,False,True,Fake,
+SimpleToolCollection,Paintings,1000,100,False,True,,Report #5169
+SimpleToolCollection,Paintings,1000,100,False,True,,
+SimpleToolCollection,Paintings,1000,100,False,False,Genuine,Report #5170
+SimpleToolCollection,Paintings,1000,100,False,False,Genuine,
+SimpleToolCollection,Paintings,1000,100,False,False,Fake,Report #5171
+SimpleToolCollection,Paintings,1000,100,False,False,Fake,
+SimpleToolCollection,Paintings,1000,100,False,False,,Report #5172
+SimpleToolCollection,Paintings,1000,100,False,False,,
+SimpleToolCollection,Paintings,1000,101,True,True,Genuine,Report #5173
+SimpleToolCollection,Paintings,1000,101,True,True,Genuine,
+SimpleToolCollection,Paintings,1000,101,True,True,Fake,Report #5174
+SimpleToolCollection,Paintings,1000,101,True,True,Fake,
+SimpleToolCollection,Paintings,1000,101,True,True,,Report #5175
+SimpleToolCollection,Paintings,1000,101,True,True,,
+SimpleToolCollection,Paintings,1000,101,True,False,Genuine,Report #5176
+SimpleToolCollection,Paintings,1000,101,True,False,Genuine,
+SimpleToolCollection,Paintings,1000,101,True,False,Fake,Report #5177
+SimpleToolCollection,Paintings,1000,101,True,False,Fake,
+SimpleToolCollection,Paintings,1000,101,True,False,,Report #5178
+SimpleToolCollection,Paintings,1000,101,True,False,,
+SimpleToolCollection,Paintings,1000,101,False,True,Genuine,Report #5179
+SimpleToolCollection,Paintings,1000,101,False,True,Genuine,
+SimpleToolCollection,Paintings,1000,101,False,True,Fake,Report #5180
+SimpleToolCollection,Paintings,1000,101,False,True,Fake,
+SimpleToolCollection,Paintings,1000,101,False,True,,Report #5181
+SimpleToolCollection,Paintings,1000,101,False,True,,
+SimpleToolCollection,Paintings,1000,101,False,False,Genuine,Report #5182
+SimpleToolCollection,Paintings,1000,101,False,False,Genuine,
+SimpleToolCollection,Paintings,1000,101,False,False,Fake,Report #5183
+SimpleToolCollection,Paintings,1000,101,False,False,Fake,
+SimpleToolCollection,Paintings,1000,101,False,False,,Report #5184
+SimpleToolCollection,Paintings,1000,101,False,False,,
+SimpleToolCollection,Paintings,1000000,100,True,True,Genuine,Report #5257
+SimpleToolCollection,Paintings,1000000,100,True,True,Genuine,
+SimpleToolCollection,Paintings,1000000,100,True,True,Fake,Report #5258
+SimpleToolCollection,Paintings,1000000,100,True,True,Fake,
+SimpleToolCollection,Paintings,1000000,100,True,True,,Report #5259
+SimpleToolCollection,Paintings,1000000,100,True,True,,
+SimpleToolCollection,Paintings,1000000,100,True,False,Genuine,Report #5260
+SimpleToolCollection,Paintings,1000000,100,True,False,Genuine,
+SimpleToolCollection,Paintings,1000000,100,True,False,Fake,Report #5261
+SimpleToolCollection,Paintings,1000000,100,True,False,Fake,
+SimpleToolCollection,Paintings,1000000,100,True,False,,Report #5262
+SimpleToolCollection,Paintings,1000000,100,True,False,,
+SimpleToolCollection,Paintings,1000000,100,False,True,Genuine,Report #5263
+SimpleToolCollection,Paintings,1000000,100,False,True,Genuine,
+SimpleToolCollection,Paintings,1000000,100,False,True,Fake,Report #5264
+SimpleToolCollection,Paintings,1000000,100,False,True,Fake,
+SimpleToolCollection,Paintings,1000000,100,False,True,,Report #5265
+SimpleToolCollection,Paintings,1000000,100,False,True,,
+SimpleToolCollection,Paintings,1000000,100,False,False,Genuine,Report #5266
+SimpleToolCollection,Paintings,1000000,100,False,False,Genuine,
+SimpleToolCollection,Paintings,1000000,100,False,False,Fake,Report #5267
+SimpleToolCollection,Paintings,1000000,100,False,False,Fake,
+SimpleToolCollection,Paintings,1000000,100,False,False,,Report #5268
+SimpleToolCollection,Paintings,1000000,100,False,False,,
+SimpleToolCollection,Paintings,1000000,101,True,True,Genuine,Report #5269
+SimpleToolCollection,Paintings,1000000,101,True,True,Genuine,
+SimpleToolCollection,Paintings,1000000,101,True,True,Fake,Report #5270
+SimpleToolCollection,Paintings,1000000,101,True,True,Fake,
+SimpleToolCollection,Paintings,1000000,101,True,True,,Report #5271
+SimpleToolCollection,Paintings,1000000,101,True,True,,
+SimpleToolCollection,Paintings,1000000,101,True,False,Genuine,Report #5272
+SimpleToolCollection,Paintings,1000000,101,True,False,Genuine,
+SimpleToolCollection,Paintings,1000000,101,True,False,Fake,Report #5273
+SimpleToolCollection,Paintings,1000000,101,True,False,Fake,
+SimpleToolCollection,Paintings,1000000,101,True,False,,Report #5274
+SimpleToolCollection,Paintings,1000000,101,True,False,,
+SimpleToolCollection,Paintings,1000000,101,False,True,Genuine,Report #5275
+SimpleToolCollection,Paintings,1000000,101,False,True,Genuine,
+SimpleToolCollection,Paintings,1000000,101,False,True,Fake,Report #5276
+SimpleToolCollection,Paintings,1000000,101,False,True,Fake,
+SimpleToolCollection,Paintings,1000000,101,False,True,,Report #5277
+SimpleToolCollection,Paintings,1000000,101,False,True,,
+SimpleToolCollection,Paintings,1000000,101,False,False,Genuine,Report #5278
+SimpleToolCollection,Paintings,1000000,101,False,False,Genuine,
+SimpleToolCollection,Paintings,1000000,101,False,False,Fake,Report #5279
+SimpleToolCollection,Paintings,1000000,101,False,False,Fake,
+SimpleToolCollection,Paintings,1000000,101,False,False,,Report #5280
+SimpleToolCollection,Paintings,1000000,101,False,False,,
+SimpleToolCollection,Furniture,0,100,True,True,Genuine,Report #6313
+SimpleToolCollection,Furniture,0,100,True,True,Genuine,
+SimpleToolCollection,Furniture,0,100,True,True,Fake,Report #6314
+SimpleToolCollection,Furniture,0,100,True,True,Fake,
+SimpleToolCollection,Furniture,0,100,True,True,,Report #6315
+SimpleToolCollection,Furniture,0,100,True,True,,
+SimpleToolCollection,Furniture,0,100,True,False,Genuine,Report #6316
+SimpleToolCollection,Furniture,0,100,True,False,Genuine,
+SimpleToolCollection,Furniture,0,100,True,False,Fake,Report #6317
+SimpleToolCollection,Furniture,0,100,True,False,Fake,
+SimpleToolCollection,Furniture,0,100,True,False,,Report #6318
+SimpleToolCollection,Furniture,0,100,True,False,,
+SimpleToolCollection,Furniture,0,100,False,True,Genuine,Report #6319
+SimpleToolCollection,Furniture,0,100,False,True,Genuine,
+SimpleToolCollection,Furniture,0,100,False,True,Fake,Report #6320
+SimpleToolCollection,Furniture,0,100,False,True,Fake,
+SimpleToolCollection,Furniture,0,100,False,True,,Report #6321
+SimpleToolCollection,Furniture,0,100,False,True,,
+SimpleToolCollection,Furniture,0,100,False,False,Genuine,Report #6322
+SimpleToolCollection,Furniture,0,100,False,False,Genuine,
+SimpleToolCollection,Furniture,0,100,False,False,Fake,Report #6323
+SimpleToolCollection,Furniture,0,100,False,False,Fake,
+SimpleToolCollection,Furniture,0,100,False,False,,Report #6324
+SimpleToolCollection,Furniture,0,100,False,False,,
+SimpleToolCollection,Furniture,0,101,True,True,Genuine,Report #6325
+SimpleToolCollection,Furniture,0,101,True,True,Genuine,
+SimpleToolCollection,Furniture,0,101,True,True,Fake,Report #6326
+SimpleToolCollection,Furniture,0,101,True,True,Fake,
+SimpleToolCollection,Furniture,0,101,True,True,,Report #6327
+SimpleToolCollection,Furniture,0,101,True,True,,
+SimpleToolCollection,Furniture,0,101,True,False,Genuine,Report #6328
+SimpleToolCollection,Furniture,0,101,True,False,Genuine,
+SimpleToolCollection,Furniture,0,101,True,False,Fake,Report #6329
+SimpleToolCollection,Furniture,0,101,True,False,Fake,
+SimpleToolCollection,Furniture,0,101,True,False,,Report #6330
+SimpleToolCollection,Furniture,0,101,True,False,,
+SimpleToolCollection,Furniture,0,101,False,True,Genuine,Report #6331
+SimpleToolCollection,Furniture,0,101,False,True,Genuine,
+SimpleToolCollection,Furniture,0,101,False,True,Fake,Report #6332
+SimpleToolCollection,Furniture,0,101,False,True,Fake,
+SimpleToolCollection,Furniture,0,101,False,True,,Report #6333
+SimpleToolCollection,Furniture,0,101,False,True,,
+SimpleToolCollection,Furniture,0,101,False,False,Genuine,Report #6334
+SimpleToolCollection,Furniture,0,101,False,False,Genuine,
+SimpleToolCollection,Furniture,0,101,False,False,Fake,Report #6335
+SimpleToolCollection,Furniture,0,101,False,False,Fake,
+SimpleToolCollection,Furniture,0,101,False,False,,Report #6336
+SimpleToolCollection,Furniture,0,101,False,False,,
+SimpleToolCollection,Furniture,1,100,True,True,Genuine,Report #6409
+SimpleToolCollection,Furniture,1,100,True,True,Genuine,
+SimpleToolCollection,Furniture,1,100,True,True,Fake,Report #6410
+SimpleToolCollection,Furniture,1,100,True,True,Fake,
+SimpleToolCollection,Furniture,1,100,True,True,,Report #6411
+SimpleToolCollection,Furniture,1,100,True,True,,
+SimpleToolCollection,Furniture,1,100,True,False,Genuine,Report #6412
+SimpleToolCollection,Furniture,1,100,True,False,Genuine,
+SimpleToolCollection,Furniture,1,100,True,False,Fake,Report #6413
+SimpleToolCollection,Furniture,1,100,True,False,Fake,
+SimpleToolCollection,Furniture,1,100,True,False,,Report #6414
+SimpleToolCollection,Furniture,1,100,True,False,,
+SimpleToolCollection,Furniture,1,100,False,True,Genuine,Report #6415
+SimpleToolCollection,Furniture,1,100,False,True,Genuine,
+SimpleToolCollection,Furniture,1,100,False,True,Fake,Report #6416
+SimpleToolCollection,Furniture,1,100,False,True,Fake,
+SimpleToolCollection,Furniture,1,100,False,True,,Report #6417
+SimpleToolCollection,Furniture,1,100,False,True,,
+SimpleToolCollection,Furniture,1,100,False,False,Genuine,Report #6418
+SimpleToolCollection,Furniture,1,100,False,False,Genuine,
+SimpleToolCollection,Furniture,1,100,False,False,Fake,Report #6419
+SimpleToolCollection,Furniture,1,100,False,False,Fake,
+SimpleToolCollection,Furniture,1,100,False,False,,Report #6420
+SimpleToolCollection,Furniture,1,100,False,False,,
+SimpleToolCollection,Furniture,1,101,True,True,Genuine,Report #6421
+SimpleToolCollection,Furniture,1,101,True,True,Genuine,
+SimpleToolCollection,Furniture,1,101,True,True,Fake,Report #6422
+SimpleToolCollection,Furniture,1,101,True,True,Fake,
+SimpleToolCollection,Furniture,1,101,True,True,,Report #6423
+SimpleToolCollection,Furniture,1,101,True,True,,
+SimpleToolCollection,Furniture,1,101,True,False,Genuine,Report #6424
+SimpleToolCollection,Furniture,1,101,True,False,Genuine,
+SimpleToolCollection,Furniture,1,101,True,False,Fake,Report #6425
+SimpleToolCollection,Furniture,1,101,True,False,Fake,
+SimpleToolCollection,Furniture,1,101,True,False,,Report #6426
+SimpleToolCollection,Furniture,1,101,True,False,,
+SimpleToolCollection,Furniture,1,101,False,True,Genuine,Report #6427
+SimpleToolCollection,Furniture,1,101,False,True,Genuine,
+SimpleToolCollection,Furniture,1,101,False,True,Fake,Report #6428
+SimpleToolCollection,Furniture,1,101,False,True,Fake,
+SimpleToolCollection,Furniture,1,101,False,True,,Report #6429
+SimpleToolCollection,Furniture,1,101,False,True,,
+SimpleToolCollection,Furniture,1,101,False,False,Genuine,Report #6430
+SimpleToolCollection,Furniture,1,101,False,False,Genuine,
+SimpleToolCollection,Furniture,1,101,False,False,Fake,Report #6431
+SimpleToolCollection,Furniture,1,101,False,False,Fake,
+SimpleToolCollection,Furniture,1,101,False,False,,Report #6432
+SimpleToolCollection,Furniture,1,101,False,False,,
+SimpleToolCollection,Furniture,100,100,True,True,Genuine,Report #6505
+SimpleToolCollection,Furniture,100,100,True,True,Genuine,
+SimpleToolCollection,Furniture,100,100,True,True,Fake,Report #6506
+SimpleToolCollection,Furniture,100,100,True,True,Fake,
+SimpleToolCollection,Furniture,100,100,True,True,,Report #6507
+SimpleToolCollection,Furniture,100,100,True,True,,
+SimpleToolCollection,Furniture,100,100,True,False,Genuine,Report #6508
+SimpleToolCollection,Furniture,100,100,True,False,Genuine,
+SimpleToolCollection,Furniture,100,100,True,False,Fake,Report #6509
+SimpleToolCollection,Furniture,100,100,True,False,Fake,
+SimpleToolCollection,Furniture,100,100,True,False,,Report #6510
+SimpleToolCollection,Furniture,100,100,True,False,,
+SimpleToolCollection,Furniture,100,100,False,True,Genuine,Report #6511
+SimpleToolCollection,Furniture,100,100,False,True,Genuine,
+SimpleToolCollection,Furniture,100,100,False,True,Fake,Report #6512
+SimpleToolCollection,Furniture,100,100,False,True,Fake,
+SimpleToolCollection,Furniture,100,100,False,True,,Report #6513
+SimpleToolCollection,Furniture,100,100,False,True,,
+SimpleToolCollection,Furniture,100,100,False,False,Genuine,Report #6514
+SimpleToolCollection,Furniture,100,100,False,False,Genuine,
+SimpleToolCollection,Furniture,100,100,False,False,Fake,Report #6515
+SimpleToolCollection,Furniture,100,100,False,False,Fake,
+SimpleToolCollection,Furniture,100,100,False,False,,Report #6516
+SimpleToolCollection,Furniture,100,100,False,False,,
+SimpleToolCollection,Furniture,100,101,True,True,Genuine,Report #6517
+SimpleToolCollection,Furniture,100,101,True,True,Genuine,
+SimpleToolCollection,Furniture,100,101,True,True,Fake,Report #6518
+SimpleToolCollection,Furniture,100,101,True,True,Fake,
+SimpleToolCollection,Furniture,100,101,True,True,,Report #6519
+SimpleToolCollection,Furniture,100,101,True,True,,
+SimpleToolCollection,Furniture,100,101,True,False,Genuine,Report #6520
+SimpleToolCollection,Furniture,100,101,True,False,Genuine,
+SimpleToolCollection,Furniture,100,101,True,False,Fake,Report #6521
+SimpleToolCollection,Furniture,100,101,True,False,Fake,
+SimpleToolCollection,Furniture,100,101,True,False,,Report #6522
+SimpleToolCollection,Furniture,100,101,True,False,,
+SimpleToolCollection,Furniture,100,101,False,True,Genuine,Report #6523
+SimpleToolCollection,Furniture,100,101,False,True,Genuine,
+SimpleToolCollection,Furniture,100,101,False,True,Fake,Report #6524
+SimpleToolCollection,Furniture,100,101,False,True,Fake,
+SimpleToolCollection,Furniture,100,101,False,True,,Report #6525
+SimpleToolCollection,Furniture,100,101,False,True,,
+SimpleToolCollection,Furniture,100,101,False,False,Genuine,Report #6526
+SimpleToolCollection,Furniture,100,101,False,False,Genuine,
+SimpleToolCollection,Furniture,100,101,False,False,Fake,Report #6527
+SimpleToolCollection,Furniture,100,101,False,False,Fake,
+SimpleToolCollection,Furniture,100,101,False,False,,Report #6528
+SimpleToolCollection,Furniture,100,101,False,False,,
+SimpleToolCollection,Furniture,1000,100,True,True,Genuine,Report #6601
+SimpleToolCollection,Furniture,1000,100,True,True,Genuine,
+SimpleToolCollection,Furniture,1000,100,True,True,Fake,Report #6602
+SimpleToolCollection,Furniture,1000,100,True,True,Fake,
+SimpleToolCollection,Furniture,1000,100,True,True,,Report #6603
+SimpleToolCollection,Furniture,1000,100,True,True,,
+SimpleToolCollection,Furniture,1000,100,True,False,Genuine,Report #6604
+SimpleToolCollection,Furniture,1000,100,True,False,Genuine,
+SimpleToolCollection,Furniture,1000,100,True,False,Fake,Report #6605
+SimpleToolCollection,Furniture,1000,100,True,False,Fake,
+SimpleToolCollection,Furniture,1000,100,True,False,,Report #6606
+SimpleToolCollection,Furniture,1000,100,True,False,,
+SimpleToolCollection,Furniture,1000,100,False,True,Genuine,Report #6607
+SimpleToolCollection,Furniture,1000,100,False,True,Genuine,
+SimpleToolCollection,Furniture,1000,100,False,True,Fake,Report #6608
+SimpleToolCollection,Furniture,1000,100,False,True,Fake,
+SimpleToolCollection,Furniture,1000,100,False,True,,Report #6609
+SimpleToolCollection,Furniture,1000,100,False,True,,
+SimpleToolCollection,Furniture,1000,100,False,False,Genuine,Report #6610
+SimpleToolCollection,Furniture,1000,100,False,False,Genuine,
+SimpleToolCollection,Furniture,1000,100,False,False,Fake,Report #6611
+SimpleToolCollection,Furniture,1000,100,False,False,Fake,
+SimpleToolCollection,Furniture,1000,100,False,False,,Report #6612
+SimpleToolCollection,Furniture,1000,100,False,False,,
+SimpleToolCollection,Furniture,1000,101,True,True,Genuine,Report #6613
+SimpleToolCollection,Furniture,1000,101,True,True,Genuine,
+SimpleToolCollection,Furniture,1000,101,True,True,Fake,Report #6614
+SimpleToolCollection,Furniture,1000,101,True,True,Fake,
+SimpleToolCollection,Furniture,1000,101,True,True,,Report #6615
+SimpleToolCollection,Furniture,1000,101,True,True,,
+SimpleToolCollection,Furniture,1000,101,True,False,Genuine,Report #6616
+SimpleToolCollection,Furniture,1000,101,True,False,Genuine,
+SimpleToolCollection,Furniture,1000,101,True,False,Fake,Report #6617
+SimpleToolCollection,Furniture,1000,101,True,False,Fake,
+SimpleToolCollection,Furniture,1000,101,True,False,,Report #6618
+SimpleToolCollection,Furniture,1000,101,True,False,,
+SimpleToolCollection,Furniture,1000,101,False,True,Genuine,Report #6619
+SimpleToolCollection,Furniture,1000,101,False,True,Genuine,
+SimpleToolCollection,Furniture,1000,101,False,True,Fake,Report #6620
+SimpleToolCollection,Furniture,1000,101,False,True,Fake,
+SimpleToolCollection,Furniture,1000,101,False,True,,Report #6621
+SimpleToolCollection,Furniture,1000,101,False,True,,
+SimpleToolCollection,Furniture,1000,101,False,False,Genuine,Report #6622
+SimpleToolCollection,Furniture,1000,101,False,False,Genuine,
+SimpleToolCollection,Furniture,1000,101,False,False,Fake,Report #6623
+SimpleToolCollection,Furniture,1000,101,False,False,Fake,
+SimpleToolCollection,Furniture,1000,101,False,False,,Report #6624
+SimpleToolCollection,Furniture,1000,101,False,False,,
+SimpleToolCollection,Furniture,1000000,100,True,True,Genuine,Report #6697
+SimpleToolCollection,Furniture,1000000,100,True,True,Genuine,
+SimpleToolCollection,Furniture,1000000,100,True,True,Fake,Report #6698
+SimpleToolCollection,Furniture,1000000,100,True,True,Fake,
+SimpleToolCollection,Furniture,1000000,100,True,True,,Report #6699
+SimpleToolCollection,Furniture,1000000,100,True,True,,
+SimpleToolCollection,Furniture,1000000,100,True,False,Genuine,Report #6700
+SimpleToolCollection,Furniture,1000000,100,True,False,Genuine,
+SimpleToolCollection,Furniture,1000000,100,True,False,Fake,Report #6701
+SimpleToolCollection,Furniture,1000000,100,True,False,Fake,
+SimpleToolCollection,Furniture,1000000,100,True,False,,Report #6702
+SimpleToolCollection,Furniture,1000000,100,True,False,,
+SimpleToolCollection,Furniture,1000000,100,False,True,Genuine,Report #6703
+SimpleToolCollection,Furniture,1000000,100,False,True,Genuine,
+SimpleToolCollection,Furniture,1000000,100,False,True,Fake,Report #6704
+SimpleToolCollection,Furniture,1000000,100,False,True,Fake,
+SimpleToolCollection,Furniture,1000000,100,False,True,,Report #6705
+SimpleToolCollection,Furniture,1000000,100,False,True,,
+SimpleToolCollection,Furniture,1000000,100,False,False,Genuine,Report #6706
+SimpleToolCollection,Furniture,1000000,100,False,False,Genuine,
+SimpleToolCollection,Furniture,1000000,100,False,False,Fake,Report #6707
+SimpleToolCollection,Furniture,1000000,100,False,False,Fake,
+SimpleToolCollection,Furniture,1000000,100,False,False,,Report #6708
+SimpleToolCollection,Furniture,1000000,100,False,False,,
+SimpleToolCollection,Furniture,1000000,101,True,True,Genuine,Report #6709
+SimpleToolCollection,Furniture,1000000,101,True,True,Genuine,
+SimpleToolCollection,Furniture,1000000,101,True,True,Fake,Report #6710
+SimpleToolCollection,Furniture,1000000,101,True,True,Fake,
+SimpleToolCollection,Furniture,1000000,101,True,True,,Report #6711
+SimpleToolCollection,Furniture,1000000,101,True,True,,
+SimpleToolCollection,Furniture,1000000,101,True,False,Genuine,Report #6712
+SimpleToolCollection,Furniture,1000000,101,True,False,Genuine,
+SimpleToolCollection,Furniture,1000000,101,True,False,Fake,Report #6713
+SimpleToolCollection,Furniture,1000000,101,True,False,Fake,
+SimpleToolCollection,Furniture,1000000,101,True,False,,Report #6714
+SimpleToolCollection,Furniture,1000000,101,True,False,,
+SimpleToolCollection,Furniture,1000000,101,False,True,Genuine,Report #6715
+SimpleToolCollection,Furniture,1000000,101,False,True,Genuine,
+SimpleToolCollection,Furniture,1000000,101,False,True,Fake,Report #6716
+SimpleToolCollection,Furniture,1000000,101,False,True,Fake,
+SimpleToolCollection,Furniture,1000000,101,False,True,,Report #6717
+SimpleToolCollection,Furniture,1000000,101,False,True,,
+SimpleToolCollection,Furniture,1000000,101,False,False,Genuine,Report #6718
+SimpleToolCollection,Furniture,1000000,101,False,False,Genuine,
+SimpleToolCollection,Furniture,1000000,101,False,False,Fake,Report #6719
+SimpleToolCollection,Furniture,1000000,101,False,False,Fake,
+SimpleToolCollection,Furniture,1000000,101,False,False,,Report #6720
+SimpleToolCollection,Furniture,1000000,101,False,False,,
+Diary,Paintings,0,100,True,True,Genuine,Report #7273
+Diary,Paintings,0,100,True,True,Genuine,
+Diary,Paintings,0,100,True,True,Fake,Report #7274
+Diary,Paintings,0,100,True,True,Fake,
+Diary,Paintings,0,100,True,True,,Report #7275
+Diary,Paintings,0,100,True,True,,
+Diary,Paintings,0,100,True,False,Genuine,Report #7276
+Diary,Paintings,0,100,True,False,Genuine,
+Diary,Paintings,0,100,True,False,Fake,Report #7277
+Diary,Paintings,0,100,True,False,Fake,
+Diary,Paintings,0,100,True,False,,Report #7278
+Diary,Paintings,0,100,True,False,,
+Diary,Paintings,0,100,False,True,Genuine,Report #7279
+Diary,Paintings,0,100,False,True,Genuine,
+Diary,Paintings,0,100,False,True,Fake,Report #7280
+Diary,Paintings,0,100,False,True,Fake,
+Diary,Paintings,0,100,False,True,,Report #7281
+Diary,Paintings,0,100,False,True,,
+Diary,Paintings,0,100,False,False,Genuine,Report #7282
+Diary,Paintings,0,100,False,False,Genuine,
+Diary,Paintings,0,100,False,False,Fake,Report #7283
+Diary,Paintings,0,100,False,False,Fake,
+Diary,Paintings,0,100,False,False,,Report #7284
+Diary,Paintings,0,100,False,False,,
+Diary,Paintings,0,101,True,True,Genuine,Report #7285
+Diary,Paintings,0,101,True,True,Genuine,
+Diary,Paintings,0,101,True,True,Fake,Report #7286
+Diary,Paintings,0,101,True,True,Fake,
+Diary,Paintings,0,101,True,True,,Report #7287
+Diary,Paintings,0,101,True,True,,
+Diary,Paintings,0,101,True,False,Genuine,Report #7288
+Diary,Paintings,0,101,True,False,Genuine,
+Diary,Paintings,0,101,True,False,Fake,Report #7289
+Diary,Paintings,0,101,True,False,Fake,
+Diary,Paintings,0,101,True,False,,Report #7290
+Diary,Paintings,0,101,True,False,,
+Diary,Paintings,0,101,False,True,Genuine,Report #7291
+Diary,Paintings,0,101,False,True,Genuine,
+Diary,Paintings,0,101,False,True,Fake,Report #7292
+Diary,Paintings,0,101,False,True,Fake,
+Diary,Paintings,0,101,False,True,,Report #7293
+Diary,Paintings,0,101,False,True,,
+Diary,Paintings,0,101,False,False,Genuine,Report #7294
+Diary,Paintings,0,101,False,False,Genuine,
+Diary,Paintings,0,101,False,False,Fake,Report #7295
+Diary,Paintings,0,101,False,False,Fake,
+Diary,Paintings,0,101,False,False,,Report #7296
+Diary,Paintings,0,101,False,False,,
+Diary,Paintings,1,100,True,True,Genuine,Report #7369
+Diary,Paintings,1,100,True,True,Genuine,
+Diary,Paintings,1,100,True,True,Fake,Report #7370
+Diary,Paintings,1,100,True,True,Fake,
+Diary,Paintings,1,100,True,True,,Report #7371
+Diary,Paintings,1,100,True,True,,
+Diary,Paintings,1,100,True,False,Genuine,Report #7372
+Diary,Paintings,1,100,True,False,Genuine,
+Diary,Paintings,1,100,True,False,Fake,Report #7373
+Diary,Paintings,1,100,True,False,Fake,
+Diary,Paintings,1,100,True,False,,Report #7374
+Diary,Paintings,1,100,True,False,,
+Diary,Paintings,1,100,False,True,Genuine,Report #7375
+Diary,Paintings,1,100,False,True,Genuine,
+Diary,Paintings,1,100,False,True,Fake,Report #7376
+Diary,Paintings,1,100,False,True,Fake,
+Diary,Paintings,1,100,False,True,,Report #7377
+Diary,Paintings,1,100,False,True,,
+Diary,Paintings,1,100,False,False,Genuine,Report #7378
+Diary,Paintings,1,100,False,False,Genuine,
+Diary,Paintings,1,100,False,False,Fake,Report #7379
+Diary,Paintings,1,100,False,False,Fake,
+Diary,Paintings,1,100,False,False,,Report #7380
+Diary,Paintings,1,100,False,False,,
+Diary,Paintings,1,101,True,True,Genuine,Report #7381
+Diary,Paintings,1,101,True,True,Genuine,
+Diary,Paintings,1,101,True,True,Fake,Report #7382
+Diary,Paintings,1,101,True,True,Fake,
+Diary,Paintings,1,101,True,True,,Report #7383
+Diary,Paintings,1,101,True,True,,
+Diary,Paintings,1,101,True,False,Genuine,Report #7384
+Diary,Paintings,1,101,True,False,Genuine,
+Diary,Paintings,1,101,True,False,Fake,Report #7385
+Diary,Paintings,1,101,True,False,Fake,
+Diary,Paintings,1,101,True,False,,Report #7386
+Diary,Paintings,1,101,True,False,,
+Diary,Paintings,1,101,False,True,Genuine,Report #7387
+Diary,Paintings,1,101,False,True,Genuine,
+Diary,Paintings,1,101,False,True,Fake,Report #7388
+Diary,Paintings,1,101,False,True,Fake,
+Diary,Paintings,1,101,False,True,,Report #7389
+Diary,Paintings,1,101,False,True,,
+Diary,Paintings,1,101,False,False,Genuine,Report #7390
+Diary,Paintings,1,101,False,False,Genuine,
+Diary,Paintings,1,101,False,False,Fake,Report #7391
+Diary,Paintings,1,101,False,False,Fake,
+Diary,Paintings,1,101,False,False,,Report #7392
+Diary,Paintings,1,101,False,False,,
+Diary,Paintings,100,100,True,True,Genuine,Report #7465
+Diary,Paintings,100,100,True,True,Genuine,
+Diary,Paintings,100,100,True,True,Fake,Report #7466
+Diary,Paintings,100,100,True,True,Fake,
+Diary,Paintings,100,100,True,True,,Report #7467
+Diary,Paintings,100,100,True,True,,
+Diary,Paintings,100,100,True,False,Genuine,Report #7468
+Diary,Paintings,100,100,True,False,Genuine,
+Diary,Paintings,100,100,True,False,Fake,Report #7469
+Diary,Paintings,100,100,True,False,Fake,
+Diary,Paintings,100,100,True,False,,Report #7470
+Diary,Paintings,100,100,True,False,,
+Diary,Paintings,100,100,False,True,Genuine,Report #7471
+Diary,Paintings,100,100,False,True,Genuine,
+Diary,Paintings,100,100,False,True,Fake,Report #7472
+Diary,Paintings,100,100,False,True,Fake,
+Diary,Paintings,100,100,False,True,,Report #7473
+Diary,Paintings,100,100,False,True,,
+Diary,Paintings,100,100,False,False,Genuine,Report #7474
+Diary,Paintings,100,100,False,False,Genuine,
+Diary,Paintings,100,100,False,False,Fake,Report #7475
+Diary,Paintings,100,100,False,False,Fake,
+Diary,Paintings,100,100,False,False,,Report #7476
+Diary,Paintings,100,100,False,False,,
+Diary,Paintings,100,101,True,True,Genuine,Report #7477
+Diary,Paintings,100,101,True,True,Genuine,
+Diary,Paintings,100,101,True,True,Fake,Report #7478
+Diary,Paintings,100,101,True,True,Fake,
+Diary,Paintings,100,101,True,True,,Report #7479
+Diary,Paintings,100,101,True,True,,
+Diary,Paintings,100,101,True,False,Genuine,Report #7480
+Diary,Paintings,100,101,True,False,Genuine,
+Diary,Paintings,100,101,True,False,Fake,Report #7481
+Diary,Paintings,100,101,True,False,Fake,
+Diary,Paintings,100,101,True,False,,Report #7482
+Diary,Paintings,100,101,True,False,,
+Diary,Paintings,100,101,False,True,Genuine,Report #7483
+Diary,Paintings,100,101,False,True,Genuine,
+Diary,Paintings,100,101,False,True,Fake,Report #7484
+Diary,Paintings,100,101,False,True,Fake,
+Diary,Paintings,100,101,False,True,,Report #7485
+Diary,Paintings,100,101,False,True,,
+Diary,Paintings,100,101,False,False,Genuine,Report #7486
+Diary,Paintings,100,101,False,False,Genuine,
+Diary,Paintings,100,101,False,False,Fake,Report #7487
+Diary,Paintings,100,101,False,False,Fake,
+Diary,Paintings,100,101,False,False,,Report #7488
+Diary,Paintings,100,101,False,False,,
+Diary,Paintings,1000,100,True,True,Genuine,Report #7561
+Diary,Paintings,1000,100,True,True,Genuine,
+Diary,Paintings,1000,100,True,True,Fake,Report #7562
+Diary,Paintings,1000,100,True,True,Fake,
+Diary,Paintings,1000,100,True,True,,Report #7563
+Diary,Paintings,1000,100,True,True,,
+Diary,Paintings,1000,100,True,False,Genuine,Report #7564
+Diary,Paintings,1000,100,True,False,Genuine,
+Diary,Paintings,1000,100,True,False,Fake,Report #7565
+Diary,Paintings,1000,100,True,False,Fake,
+Diary,Paintings,1000,100,True,False,,Report #7566
+Diary,Paintings,1000,100,True,False,,
+Diary,Paintings,1000,100,False,True,Genuine,Report #7567
+Diary,Paintings,1000,100,False,True,Genuine,
+Diary,Paintings,1000,100,False,True,Fake,Report #7568
+Diary,Paintings,1000,100,False,True,Fake,
+Diary,Paintings,1000,100,False,True,,Report #7569
+Diary,Paintings,1000,100,False,True,,
+Diary,Paintings,1000,100,False,False,Genuine,Report #7570
+Diary,Paintings,1000,100,False,False,Genuine,
+Diary,Paintings,1000,100,False,False,Fake,Report #7571
+Diary,Paintings,1000,100,False,False,Fake,
+Diary,Paintings,1000,100,False,False,,Report #7572
+Diary,Paintings,1000,100,False,False,,
+Diary,Paintings,1000,101,True,True,Genuine,Report #7573
+Diary,Paintings,1000,101,True,True,Genuine,
+Diary,Paintings,1000,101,True,True,Fake,Report #7574
+Diary,Paintings,1000,101,True,True,Fake,
+Diary,Paintings,1000,101,True,True,,Report #7575
+Diary,Paintings,1000,101,True,True,,
+Diary,Paintings,1000,101,True,False,Genuine,Report #7576
+Diary,Paintings,1000,101,True,False,Genuine,
+Diary,Paintings,1000,101,True,False,Fake,Report #7577
+Diary,Paintings,1000,101,True,False,Fake,
+Diary,Paintings,1000,101,True,False,,Report #7578
+Diary,Paintings,1000,101,True,False,,
+Diary,Paintings,1000,101,False,True,Genuine,Report #7579
+Diary,Paintings,1000,101,False,True,Genuine,
+Diary,Paintings,1000,101,False,True,Fake,Report #7580
+Diary,Paintings,1000,101,False,True,Fake,
+Diary,Paintings,1000,101,False,True,,Report #7581
+Diary,Paintings,1000,101,False,True,,
+Diary,Paintings,1000,101,False,False,Genuine,Report #7582
+Diary,Paintings,1000,101,False,False,Genuine,
+Diary,Paintings,1000,101,False,False,Fake,Report #7583
+Diary,Paintings,1000,101,False,False,Fake,
+Diary,Paintings,1000,101,False,False,,Report #7584
+Diary,Paintings,1000,101,False,False,,
+Diary,Paintings,1000000,100,True,True,Genuine,Report #7657
+Diary,Paintings,1000000,100,True,True,Genuine,
+Diary,Paintings,1000000,100,True,True,Fake,Report #7658
+Diary,Paintings,1000000,100,True,True,Fake,
+Diary,Paintings,1000000,100,True,True,,Report #7659
+Diary,Paintings,1000000,100,True,True,,
+Diary,Paintings,1000000,100,True,False,Genuine,Report #7660
+Diary,Paintings,1000000,100,True,False,Genuine,
+Diary,Paintings,1000000,100,True,False,Fake,Report #7661
+Diary,Paintings,1000000,100,True,False,Fake,
+Diary,Paintings,1000000,100,True,False,,Report #7662
+Diary,Paintings,1000000,100,True,False,,
+Diary,Paintings,1000000,100,False,True,Genuine,Report #7663
+Diary,Paintings,1000000,100,False,True,Genuine,
+Diary,Paintings,1000000,100,False,True,Fake,Report #7664
+Diary,Paintings,1000000,100,False,True,Fake,
+Diary,Paintings,1000000,100,False,True,,Report #7665
+Diary,Paintings,1000000,100,False,True,,
+Diary,Paintings,1000000,100,False,False,Genuine,Report #7666
+Diary,Paintings,1000000,100,False,False,Genuine,
+Diary,Paintings,1000000,100,False,False,Fake,Report #7667
+Diary,Paintings,1000000,100,False,False,Fake,
+Diary,Paintings,1000000,100,False,False,,Report #7668
+Diary,Paintings,1000000,100,False,False,,
+Diary,Paintings,1000000,101,True,True,Genuine,Report #7669
+Diary,Paintings,1000000,101,True,True,Genuine,
+Diary,Paintings,1000000,101,True,True,Fake,Report #7670
+Diary,Paintings,1000000,101,True,True,Fake,
+Diary,Paintings,1000000,101,True,True,,Report #7671
+Diary,Paintings,1000000,101,True,True,,
+Diary,Paintings,1000000,101,True,False,Genuine,Report #7672
+Diary,Paintings,1000000,101,True,False,Genuine,
+Diary,Paintings,1000000,101,True,False,Fake,Report #7673
+Diary,Paintings,1000000,101,True,False,Fake,
+Diary,Paintings,1000000,101,True,False,,Report #7674
+Diary,Paintings,1000000,101,True,False,,
+Diary,Paintings,1000000,101,False,True,Genuine,Report #7675
+Diary,Paintings,1000000,101,False,True,Genuine,
+Diary,Paintings,1000000,101,False,True,Fake,Report #7676
+Diary,Paintings,1000000,101,False,True,Fake,
+Diary,Paintings,1000000,101,False,True,,Report #7677
+Diary,Paintings,1000000,101,False,True,,
+Diary,Paintings,1000000,101,False,False,Genuine,Report #7678
+Diary,Paintings,1000000,101,False,False,Genuine,
+Diary,Paintings,1000000,101,False,False,Fake,Report #7679
+Diary,Paintings,1000000,101,False,False,Fake,
+Diary,Paintings,1000000,101,False,False,,Report #7680
+Diary,Paintings,1000000,101,False,False,,
+Diary,Furniture,0,100,True,True,Genuine,Report #8713
+Diary,Furniture,0,100,True,True,Genuine,
+Diary,Furniture,0,100,True,True,Fake,Report #8714
+Diary,Furniture,0,100,True,True,Fake,
+Diary,Furniture,0,100,True,True,,Report #8715
+Diary,Furniture,0,100,True,True,,
+Diary,Furniture,0,100,True,False,Genuine,Report #8716
+Diary,Furniture,0,100,True,False,Genuine,
+Diary,Furniture,0,100,True,False,Fake,Report #8717
+Diary,Furniture,0,100,True,False,Fake,
+Diary,Furniture,0,100,True,False,,Report #8718
+Diary,Furniture,0,100,True,False,,
+Diary,Furniture,0,100,False,True,Genuine,Report #8719
+Diary,Furniture,0,100,False,True,Genuine,
+Diary,Furniture,0,100,False,True,Fake,Report #8720
+Diary,Furniture,0,100,False,True,Fake,
+Diary,Furniture,0,100,False,True,,Report #8721
+Diary,Furniture,0,100,False,True,,
+Diary,Furniture,0,100,False,False,Genuine,Report #8722
+Diary,Furniture,0,100,False,False,Genuine,
+Diary,Furniture,0,100,False,False,Fake,Report #8723
+Diary,Furniture,0,100,False,False,Fake,
+Diary,Furniture,0,100,False,False,,Report #8724
+Diary,Furniture,0,100,False,False,,
+Diary,Furniture,0,101,True,True,Genuine,Report #8725
+Diary,Furniture,0,101,True,True,Genuine,
+Diary,Furniture,0,101,True,True,Fake,Report #8726
+Diary,Furniture,0,101,True,True,Fake,
+Diary,Furniture,0,101,True,True,,Report #8727
+Diary,Furniture,0,101,True,True,,
+Diary,Furniture,0,101,True,False,Genuine,Report #8728
+Diary,Furniture,0,101,True,False,Genuine,
+Diary,Furniture,0,101,True,False,Fake,Report #8729
+Diary,Furniture,0,101,True,False,Fake,
+Diary,Furniture,0,101,True,False,,Report #8730
+Diary,Furniture,0,101,True,False,,
+Diary,Furniture,0,101,False,True,Genuine,Report #8731
+Diary,Furniture,0,101,False,True,Genuine,
+Diary,Furniture,0,101,False,True,Fake,Report #8732
+Diary,Furniture,0,101,False,True,Fake,
+Diary,Furniture,0,101,False,True,,Report #8733
+Diary,Furniture,0,101,False,True,,
+Diary,Furniture,0,101,False,False,Genuine,Report #8734
+Diary,Furniture,0,101,False,False,Genuine,
+Diary,Furniture,0,101,False,False,Fake,Report #8735
+Diary,Furniture,0,101,False,False,Fake,
+Diary,Furniture,0,101,False,False,,Report #8736
+Diary,Furniture,0,101,False,False,,
+Diary,Furniture,1,100,True,True,Genuine,Report #8809
+Diary,Furniture,1,100,True,True,Genuine,
+Diary,Furniture,1,100,True,True,Fake,Report #8810
+Diary,Furniture,1,100,True,True,Fake,
+Diary,Furniture,1,100,True,True,,Report #8811
+Diary,Furniture,1,100,True,True,,
+Diary,Furniture,1,100,True,False,Genuine,Report #8812
+Diary,Furniture,1,100,True,False,Genuine,
+Diary,Furniture,1,100,True,False,Fake,Report #8813
+Diary,Furniture,1,100,True,False,Fake,
+Diary,Furniture,1,100,True,False,,Report #8814
+Diary,Furniture,1,100,True,False,,
+Diary,Furniture,1,100,False,True,Genuine,Report #8815
+Diary,Furniture,1,100,False,True,Genuine,
+Diary,Furniture,1,100,False,True,Fake,Report #8816
+Diary,Furniture,1,100,False,True,Fake,
+Diary,Furniture,1,100,False,True,,Report #8817
+Diary,Furniture,1,100,False,True,,
+Diary,Furniture,1,100,False,False,Genuine,Report #8818
+Diary,Furniture,1,100,False,False,Genuine,
+Diary,Furniture,1,100,False,False,Fake,Report #8819
+Diary,Furniture,1,100,False,False,Fake,
+Diary,Furniture,1,100,False,False,,Report #8820
+Diary,Furniture,1,100,False,False,,
+Diary,Furniture,1,101,True,True,Genuine,Report #8821
+Diary,Furniture,1,101,True,True,Genuine,
+Diary,Furniture,1,101,True,True,Fake,Report #8822
+Diary,Furniture,1,101,True,True,Fake,
+Diary,Furniture,1,101,True,True,,Report #8823
+Diary,Furniture,1,101,True,True,,
+Diary,Furniture,1,101,True,False,Genuine,Report #8824
+Diary,Furniture,1,101,True,False,Genuine,
+Diary,Furniture,1,101,True,False,Fake,Report #8825
+Diary,Furniture,1,101,True,False,Fake,
+Diary,Furniture,1,101,True,False,,Report #8826
+Diary,Furniture,1,101,True,False,,
+Diary,Furniture,1,101,False,True,Genuine,Report #8827
+Diary,Furniture,1,101,False,True,Genuine,
+Diary,Furniture,1,101,False,True,Fake,Report #8828
+Diary,Furniture,1,101,False,True,Fake,
+Diary,Furniture,1,101,False,True,,Report #8829
+Diary,Furniture,1,101,False,True,,
+Diary,Furniture,1,101,False,False,Genuine,Report #8830
+Diary,Furniture,1,101,False,False,Genuine,
+Diary,Furniture,1,101,False,False,Fake,Report #8831
+Diary,Furniture,1,101,False,False,Fake,
+Diary,Furniture,1,101,False,False,,Report #8832
+Diary,Furniture,1,101,False,False,,
+Diary,Furniture,100,100,True,True,Genuine,Report #8905
+Diary,Furniture,100,100,True,True,Genuine,
+Diary,Furniture,100,100,True,True,Fake,Report #8906
+Diary,Furniture,100,100,True,True,Fake,
+Diary,Furniture,100,100,True,True,,Report #8907
+Diary,Furniture,100,100,True,True,,
+Diary,Furniture,100,100,True,False,Genuine,Report #8908
+Diary,Furniture,100,100,True,False,Genuine,
+Diary,Furniture,100,100,True,False,Fake,Report #8909
+Diary,Furniture,100,100,True,False,Fake,
+Diary,Furniture,100,100,True,False,,Report #8910
+Diary,Furniture,100,100,True,False,,
+Diary,Furniture,100,100,False,True,Genuine,Report #8911
+Diary,Furniture,100,100,False,True,Genuine,
+Diary,Furniture,100,100,False,True,Fake,Report #8912
+Diary,Furniture,100,100,False,True,Fake,
+Diary,Furniture,100,100,False,True,,Report #8913
+Diary,Furniture,100,100,False,True,,
+Diary,Furniture,100,100,False,False,Genuine,Report #8914
+Diary,Furniture,100,100,False,False,Genuine,
+Diary,Furniture,100,100,False,False,Fake,Report #8915
+Diary,Furniture,100,100,False,False,Fake,
+Diary,Furniture,100,100,False,False,,Report #8916
+Diary,Furniture,100,100,False,False,,
+Diary,Furniture,100,101,True,True,Genuine,Report #8917
+Diary,Furniture,100,101,True,True,Genuine,
+Diary,Furniture,100,101,True,True,Fake,Report #8918
+Diary,Furniture,100,101,True,True,Fake,
+Diary,Furniture,100,101,True,True,,Report #8919
+Diary,Furniture,100,101,True,True,,
+Diary,Furniture,100,101,True,False,Genuine,Report #8920
+Diary,Furniture,100,101,True,False,Genuine,
+Diary,Furniture,100,101,True,False,Fake,Report #8921
+Diary,Furniture,100,101,True,False,Fake,
+Diary,Furniture,100,101,True,False,,Report #8922
+Diary,Furniture,100,101,True,False,,
+Diary,Furniture,100,101,False,True,Genuine,Report #8923
+Diary,Furniture,100,101,False,True,Genuine,
+Diary,Furniture,100,101,False,True,Fake,Report #8924
+Diary,Furniture,100,101,False,True,Fake,
+Diary,Furniture,100,101,False,True,,Report #8925
+Diary,Furniture,100,101,False,True,,
+Diary,Furniture,100,101,False,False,Genuine,Report #8926
+Diary,Furniture,100,101,False,False,Genuine,
+Diary,Furniture,100,101,False,False,Fake,Report #8927
+Diary,Furniture,100,101,False,False,Fake,
+Diary,Furniture,100,101,False,False,,Report #8928
+Diary,Furniture,100,101,False,False,,
+Diary,Furniture,1000,100,True,True,Genuine,Report #9001
+Diary,Furniture,1000,100,True,True,Genuine,
+Diary,Furniture,1000,100,True,True,Fake,Report #9002
+Diary,Furniture,1000,100,True,True,Fake,
+Diary,Furniture,1000,100,True,True,,Report #9003
+Diary,Furniture,1000,100,True,True,,
+Diary,Furniture,1000,100,True,False,Genuine,Report #9004
+Diary,Furniture,1000,100,True,False,Genuine,
+Diary,Furniture,1000,100,True,False,Fake,Report #9005
+Diary,Furniture,1000,100,True,False,Fake,
+Diary,Furniture,1000,100,True,False,,Report #9006
+Diary,Furniture,1000,100,True,False,,
+Diary,Furniture,1000,100,False,True,Genuine,Report #9007
+Diary,Furniture,1000,100,False,True,Genuine,
+Diary,Furniture,1000,100,False,True,Fake,Report #9008
+Diary,Furniture,1000,100,False,True,Fake,
+Diary,Furniture,1000,100,False,True,,Report #9009
+Diary,Furniture,1000,100,False,True,,
+Diary,Furniture,1000,100,False,False,Genuine,Report #9010
+Diary,Furniture,1000,100,False,False,Genuine,
+Diary,Furniture,1000,100,False,False,Fake,Report #9011
+Diary,Furniture,1000,100,False,False,Fake,
+Diary,Furniture,1000,100,False,False,,Report #9012
+Diary,Furniture,1000,100,False,False,,
+Diary,Furniture,1000,101,True,True,Genuine,Report #9013
+Diary,Furniture,1000,101,True,True,Genuine,
+Diary,Furniture,1000,101,True,True,Fake,Report #9014
+Diary,Furniture,1000,101,True,True,Fake,
+Diary,Furniture,1000,101,True,True,,Report #9015
+Diary,Furniture,1000,101,True,True,,
+Diary,Furniture,1000,101,True,False,Genuine,Report #9016
+Diary,Furniture,1000,101,True,False,Genuine,
+Diary,Furniture,1000,101,True,False,Fake,Report #9017
+Diary,Furniture,1000,101,True,False,Fake,
+Diary,Furniture,1000,101,True,False,,Report #9018
+Diary,Furniture,1000,101,True,False,,
+Diary,Furniture,1000,101,False,True,Genuine,Report #9019
+Diary,Furniture,1000,101,False,True,Genuine,
+Diary,Furniture,1000,101,False,True,Fake,Report #9020
+Diary,Furniture,1000,101,False,True,Fake,
+Diary,Furniture,1000,101,False,True,,Report #9021
+Diary,Furniture,1000,101,False,True,,
+Diary,Furniture,1000,101,False,False,Genuine,Report #9022
+Diary,Furniture,1000,101,False,False,Genuine,
+Diary,Furniture,1000,101,False,False,Fake,Report #9023
+Diary,Furniture,1000,101,False,False,Fake,
+Diary,Furniture,1000,101,False,False,,Report #9024
+Diary,Furniture,1000,101,False,False,,
+Diary,Furniture,1000000,100,True,True,Genuine,Report #9097
+Diary,Furniture,1000000,100,True,True,Genuine,
+Diary,Furniture,1000000,100,True,True,Fake,Report #9098
+Diary,Furniture,1000000,100,True,True,Fake,
+Diary,Furniture,1000000,100,True,True,,Report #9099
+Diary,Furniture,1000000,100,True,True,,
+Diary,Furniture,1000000,100,True,False,Genuine,Report #9100
+Diary,Furniture,1000000,100,True,False,Genuine,
+Diary,Furniture,1000000,100,True,False,Fake,Report #9101
+Diary,Furniture,1000000,100,True,False,Fake,
+Diary,Furniture,1000000,100,True,False,,Report #9102
+Diary,Furniture,1000000,100,True,False,,
+Diary,Furniture,1000000,100,False,True,Genuine,Report #9103
+Diary,Furniture,1000000,100,False,True,Genuine,
+Diary,Furniture,1000000,100,False,True,Fake,Report #9104
+Diary,Furniture,1000000,100,False,True,Fake,
+Diary,Furniture,1000000,100,False,True,,Report #9105
+Diary,Furniture,1000000,100,False,True,,
+Diary,Furniture,1000000,100,False,False,Genuine,Report #9106
+Diary,Furniture,1000000,100,False,False,Genuine,
+Diary,Furniture,1000000,100,False,False,Fake,Report #9107
+Diary,Furniture,1000000,100,False,False,Fake,
+Diary,Furniture,1000000,100,False,False,,Report #9108
+Diary,Furniture,1000000,100,False,False,,
+Diary,Furniture,1000000,101,True,True,Genuine,Report #9109
+Diary,Furniture,1000000,101,True,True,Genuine,
+Diary,Furniture,1000000,101,True,True,Fake,Report #9110
+Diary,Furniture,1000000,101,True,True,Fake,
+Diary,Furniture,1000000,101,True,True,,Report #9111
+Diary,Furniture,1000000,101,True,True,,
+Diary,Furniture,1000000,101,True,False,Genuine,Report #9112
+Diary,Furniture,1000000,101,True,False,Genuine,
+Diary,Furniture,1000000,101,True,False,Fake,Report #9113
+Diary,Furniture,1000000,101,True,False,Fake,
+Diary,Furniture,1000000,101,True,False,,Report #9114
+Diary,Furniture,1000000,101,True,False,,
+Diary,Furniture,1000000,101,False,True,Genuine,Report #9115
+Diary,Furniture,1000000,101,False,True,Genuine,
+Diary,Furniture,1000000,101,False,True,Fake,Report #9116
+Diary,Furniture,1000000,101,False,True,Fake,
+Diary,Furniture,1000000,101,False,True,,Report #9117
+Diary,Furniture,1000000,101,False,True,,
+Diary,Furniture,1000000,101,False,False,Genuine,Report #9118
+Diary,Furniture,1000000,101,False,False,Genuine,
+Diary,Furniture,1000000,101,False,False,Fake,Report #9119
+Diary,Furniture,1000000,101,False,False,Fake,
+Diary,Furniture,1000000,101,False,False,,Report #9120
+Diary,Furniture,1000000,101,False,False,,
+,Paintings,0,100,True,True,Genuine,Report #9673
+,Paintings,0,100,True,True,Genuine,
+,Paintings,0,100,True,True,Fake,Report #9674
+,Paintings,0,100,True,True,Fake,
+,Paintings,0,100,True,True,,Report #9675
+,Paintings,0,100,True,True,,
+,Paintings,0,100,True,False,Genuine,Report #9676
+,Paintings,0,100,True,False,Genuine,
+,Paintings,0,100,True,False,Fake,Report #9677
+,Paintings,0,100,True,False,Fake,
+,Paintings,0,100,True,False,,Report #9678
+,Paintings,0,100,True,False,,
+,Paintings,0,100,False,True,Genuine,Report #9679
+,Paintings,0,100,False,True,Genuine,
+,Paintings,0,100,False,True,Fake,Report #9680
+,Paintings,0,100,False,True,Fake,
+,Paintings,0,100,False,True,,Report #9681
+,Paintings,0,100,False,True,,
+,Paintings,0,100,False,False,Genuine,Report #9682
+,Paintings,0,100,False,False,Genuine,
+,Paintings,0,100,False,False,Fake,Report #9683
+,Paintings,0,100,False,False,Fake,
+,Paintings,0,100,False,False,,Report #9684
+,Paintings,0,100,False,False,,
+,Paintings,0,101,True,True,Genuine,Report #9685
+,Paintings,0,101,True,True,Genuine,
+,Paintings,0,101,True,True,Fake,Report #9686
+,Paintings,0,101,True,True,Fake,
+,Paintings,0,101,True,True,,Report #9687
+,Paintings,0,101,True,True,,
+,Paintings,0,101,True,False,Genuine,Report #9688
+,Paintings,0,101,True,False,Genuine,
+,Paintings,0,101,True,False,Fake,Report #9689
+,Paintings,0,101,True,False,Fake,
+,Paintings,0,101,True,False,,Report #9690
+,Paintings,0,101,True,False,,
+,Paintings,0,101,False,True,Genuine,Report #9691
+,Paintings,0,101,False,True,Genuine,
+,Paintings,0,101,False,True,Fake,Report #9692
+,Paintings,0,101,False,True,Fake,
+,Paintings,0,101,False,True,,Report #9693
+,Paintings,0,101,False,True,,
+,Paintings,0,101,False,False,Genuine,Report #9694
+,Paintings,0,101,False,False,Genuine,
+,Paintings,0,101,False,False,Fake,Report #9695
+,Paintings,0,101,False,False,Fake,
+,Paintings,0,101,False,False,,Report #9696
+,Paintings,0,101,False,False,,
+,Paintings,1,100,True,True,Genuine,Report #9769
+,Paintings,1,100,True,True,Genuine,
+,Paintings,1,100,True,True,Fake,Report #9770
+,Paintings,1,100,True,True,Fake,
+,Paintings,1,100,True,True,,Report #9771
+,Paintings,1,100,True,True,,
+,Paintings,1,100,True,False,Genuine,Report #9772
+,Paintings,1,100,True,False,Genuine,
+,Paintings,1,100,True,False,Fake,Report #9773
+,Paintings,1,100,True,False,Fake,
+,Paintings,1,100,True,False,,Report #9774
+,Paintings,1,100,True,False,,
+,Paintings,1,100,False,True,Genuine,Report #9775
+,Paintings,1,100,False,True,Genuine,
+,Paintings,1,100,False,True,Fake,Report #9776
+,Paintings,1,100,False,True,Fake,
+,Paintings,1,100,False,True,,Report #9777
+,Paintings,1,100,False,True,,
+,Paintings,1,100,False,False,Genuine,Report #9778
+,Paintings,1,100,False,False,Genuine,
+,Paintings,1,100,False,False,Fake,Report #9779
+,Paintings,1,100,False,False,Fake,
+,Paintings,1,100,False,False,,Report #9780
+,Paintings,1,100,False,False,,
+,Paintings,1,101,True,True,Genuine,Report #9781
+,Paintings,1,101,True,True,Genuine,
+,Paintings,1,101,True,True,Fake,Report #9782
+,Paintings,1,101,True,True,Fake,
+,Paintings,1,101,True,True,,Report #9783
+,Paintings,1,101,True,True,,
+,Paintings,1,101,True,False,Genuine,Report #9784
+,Paintings,1,101,True,False,Genuine,
+,Paintings,1,101,True,False,Fake,Report #9785
+,Paintings,1,101,True,False,Fake,
+,Paintings,1,101,True,False,,Report #9786
+,Paintings,1,101,True,False,,
+,Paintings,1,101,False,True,Genuine,Report #9787
+,Paintings,1,101,False,True,Genuine,
+,Paintings,1,101,False,True,Fake,Report #9788
+,Paintings,1,101,False,True,Fake,
+,Paintings,1,101,False,True,,Report #9789
+,Paintings,1,101,False,True,,
+,Paintings,1,101,False,False,Genuine,Report #9790
+,Paintings,1,101,False,False,Genuine,
+,Paintings,1,101,False,False,Fake,Report #9791
+,Paintings,1,101,False,False,Fake,
+,Paintings,1,101,False,False,,Report #9792
+,Paintings,1,101,False,False,,
+,Paintings,100,100,True,True,Genuine,Report #9865
+,Paintings,100,100,True,True,Genuine,
+,Paintings,100,100,True,True,Fake,Report #9866
+,Paintings,100,100,True,True,Fake,
+,Paintings,100,100,True,True,,Report #9867
+,Paintings,100,100,True,True,,
+,Paintings,100,100,True,False,Genuine,Report #9868
+,Paintings,100,100,True,False,Genuine,
+,Paintings,100,100,True,False,Fake,Report #9869
+,Paintings,100,100,True,False,Fake,
+,Paintings,100,100,True,False,,Report #9870
+,Paintings,100,100,True,False,,
+,Paintings,100,100,False,True,Genuine,Report #9871
+,Paintings,100,100,False,True,Genuine,
+,Paintings,100,100,False,True,Fake,Report #9872
+,Paintings,100,100,False,True,Fake,
+,Paintings,100,100,False,True,,Report #9873
+,Paintings,100,100,False,True,,
+,Paintings,100,100,False,False,Genuine,Report #9874
+,Paintings,100,100,False,False,Genuine,
+,Paintings,100,100,False,False,Fake,Report #9875
+,Paintings,100,100,False,False,Fake,
+,Paintings,100,100,False,False,,Report #9876
+,Paintings,100,100,False,False,,
+,Paintings,100,101,True,True,Genuine,Report #9877
+,Paintings,100,101,True,True,Genuine,
+,Paintings,100,101,True,True,Fake,Report #9878
+,Paintings,100,101,True,True,Fake,
+,Paintings,100,101,True,True,,Report #9879
+,Paintings,100,101,True,True,,
+,Paintings,100,101,True,False,Genuine,Report #9880
+,Paintings,100,101,True,False,Genuine,
+,Paintings,100,101,True,False,Fake,Report #9881
+,Paintings,100,101,True,False,Fake,
+,Paintings,100,101,True,False,,Report #9882
+,Paintings,100,101,True,False,,
+,Paintings,100,101,False,True,Genuine,Report #9883
+,Paintings,100,101,False,True,Genuine,
+,Paintings,100,101,False,True,Fake,Report #9884
+,Paintings,100,101,False,True,Fake,
+,Paintings,100,101,False,True,,Report #9885
+,Paintings,100,101,False,True,,
+,Paintings,100,101,False,False,Genuine,Report #9886
+,Paintings,100,101,False,False,Genuine,
+,Paintings,100,101,False,False,Fake,Report #9887
+,Paintings,100,101,False,False,Fake,
+,Paintings,100,101,False,False,,Report #9888
+,Paintings,100,101,False,False,,
+,Paintings,1000,100,True,True,Genuine,Report #9961
+,Paintings,1000,100,True,True,Genuine,
+,Paintings,1000,100,True,True,Fake,Report #9962
+,Paintings,1000,100,True,True,Fake,
+,Paintings,1000,100,True,True,,Report #9963
+,Paintings,1000,100,True,True,,
+,Paintings,1000,100,True,False,Genuine,Report #9964
+,Paintings,1000,100,True,False,Genuine,
+,Paintings,1000,100,True,False,Fake,Report #9965
+,Paintings,1000,100,True,False,Fake,
+,Paintings,1000,100,True,False,,Report #9966
+,Paintings,1000,100,True,False,,
+,Paintings,1000,100,False,True,Genuine,Report #9967
+,Paintings,1000,100,False,True,Genuine,
+,Paintings,1000,100,False,True,Fake,Report #9968
+,Paintings,1000,100,False,True,Fake,
+,Paintings,1000,100,False,True,,Report #9969
+,Paintings,1000,100,False,True,,
+,Paintings,1000,100,False,False,Genuine,Report #9970
+,Paintings,1000,100,False,False,Genuine,
+,Paintings,1000,100,False,False,Fake,Report #9971
+,Paintings,1000,100,False,False,Fake,
+,Paintings,1000,100,False,False,,Report #9972
+,Paintings,1000,100,False,False,,
+,Paintings,1000,101,True,True,Genuine,Report #9973
+,Paintings,1000,101,True,True,Genuine,
+,Paintings,1000,101,True,True,Fake,Report #9974
+,Paintings,1000,101,True,True,Fake,
+,Paintings,1000,101,True,True,,Report #9975
+,Paintings,1000,101,True,True,,
+,Paintings,1000,101,True,False,Genuine,Report #9976
+,Paintings,1000,101,True,False,Genuine,
+,Paintings,1000,101,True,False,Fake,Report #9977
+,Paintings,1000,101,True,False,Fake,
+,Paintings,1000,101,True,False,,Report #9978
+,Paintings,1000,101,True,False,,
+,Paintings,1000,101,False,True,Genuine,Report #9979
+,Paintings,1000,101,False,True,Genuine,
+,Paintings,1000,101,False,True,Fake,Report #9980
+,Paintings,1000,101,False,True,Fake,
+,Paintings,1000,101,False,True,,Report #9981
+,Paintings,1000,101,False,True,,
+,Paintings,1000,101,False,False,Genuine,Report #9982
+,Paintings,1000,101,False,False,Genuine,
+,Paintings,1000,101,False,False,Fake,Report #9983
+,Paintings,1000,101,False,False,Fake,
+,Paintings,1000,101,False,False,,Report #9984
+,Paintings,1000,101,False,False,,
+,Paintings,1000000,100,True,True,Genuine,Report #10057
+,Paintings,1000000,100,True,True,Genuine,
+,Paintings,1000000,100,True,True,Fake,Report #10058
+,Paintings,1000000,100,True,True,Fake,
+,Paintings,1000000,100,True,True,,Report #10059
+,Paintings,1000000,100,True,True,,
+,Paintings,1000000,100,True,False,Genuine,Report #10060
+,Paintings,1000000,100,True,False,Genuine,
+,Paintings,1000000,100,True,False,Fake,Report #10061
+,Paintings,1000000,100,True,False,Fake,
+,Paintings,1000000,100,True,False,,Report #10062
+,Paintings,1000000,100,True,False,,
+,Paintings,1000000,100,False,True,Genuine,Report #10063
+,Paintings,1000000,100,False,True,Genuine,
+,Paintings,1000000,100,False,True,Fake,Report #10064
+,Paintings,1000000,100,False,True,Fake,
+,Paintings,1000000,100,False,True,,Report #10065
+,Paintings,1000000,100,False,True,,
+,Paintings,1000000,100,False,False,Genuine,Report #10066
+,Paintings,1000000,100,False,False,Genuine,
+,Paintings,1000000,100,False,False,Fake,Report #10067
+,Paintings,1000000,100,False,False,Fake,
+,Paintings,1000000,100,False,False,,Report #10068
+,Paintings,1000000,100,False,False,,
+,Paintings,1000000,101,True,True,Genuine,Report #10069
+,Paintings,1000000,101,True,True,Genuine,
+,Paintings,1000000,101,True,True,Fake,Report #10070
+,Paintings,1000000,101,True,True,Fake,
+,Paintings,1000000,101,True,True,,Report #10071
+,Paintings,1000000,101,True,True,,
+,Paintings,1000000,101,True,False,Genuine,Report #10072
+,Paintings,1000000,101,True,False,Genuine,
+,Paintings,1000000,101,True,False,Fake,Report #10073
+,Paintings,1000000,101,True,False,Fake,
+,Paintings,1000000,101,True,False,,Report #10074
+,Paintings,1000000,101,True,False,,
+,Paintings,1000000,101,False,True,Genuine,Report #10075
+,Paintings,1000000,101,False,True,Genuine,
+,Paintings,1000000,101,False,True,Fake,Report #10076
+,Paintings,1000000,101,False,True,Fake,
+,Paintings,1000000,101,False,True,,Report #10077
+,Paintings,1000000,101,False,True,,
+,Paintings,1000000,101,False,False,Genuine,Report #10078
+,Paintings,1000000,101,False,False,Genuine,
+,Paintings,1000000,101,False,False,Fake,Report #10079
+,Paintings,1000000,101,False,False,Fake,
+,Paintings,1000000,101,False,False,,Report #10080
+,Paintings,1000000,101,False,False,,
+,Furniture,0,100,True,True,Genuine,Report #11113
+,Furniture,0,100,True,True,Genuine,
+,Furniture,0,100,True,True,Fake,Report #11114
+,Furniture,0,100,True,True,Fake,
+,Furniture,0,100,True,True,,Report #11115
+,Furniture,0,100,True,True,,
+,Furniture,0,100,True,False,Genuine,Report #11116
+,Furniture,0,100,True,False,Genuine,
+,Furniture,0,100,True,False,Fake,Report #11117
+,Furniture,0,100,True,False,Fake,
+,Furniture,0,100,True,False,,Report #11118
+,Furniture,0,100,True,False,,
+,Furniture,0,100,False,True,Genuine,Report #11119
+,Furniture,0,100,False,True,Genuine,
+,Furniture,0,100,False,True,Fake,Report #11120
+,Furniture,0,100,False,True,Fake,
+,Furniture,0,100,False,True,,Report #11121
+,Furniture,0,100,False,True,,
+,Furniture,0,100,False,False,Genuine,Report #11122
+,Furniture,0,100,False,False,Genuine,
+,Furniture,0,100,False,False,Fake,Report #11123
+,Furniture,0,100,False,False,Fake,
+,Furniture,0,100,False,False,,Report #11124
+,Furniture,0,100,False,False,,
+,Furniture,0,101,True,True,Genuine,Report #11125
+,Furniture,0,101,True,True,Genuine,
+,Furniture,0,101,True,True,Fake,Report #11126
+,Furniture,0,101,True,True,Fake,
+,Furniture,0,101,True,True,,Report #11127
+,Furniture,0,101,True,True,,
+,Furniture,0,101,True,False,Genuine,Report #11128
+,Furniture,0,101,True,False,Genuine,
+,Furniture,0,101,True,False,Fake,Report #11129
+,Furniture,0,101,True,False,Fake,
+,Furniture,0,101,True,False,,Report #11130
+,Furniture,0,101,True,False,,
+,Furniture,0,101,False,True,Genuine,Report #11131
+,Furniture,0,101,False,True,Genuine,
+,Furniture,0,101,False,True,Fake,Report #11132
+,Furniture,0,101,False,True,Fake,
+,Furniture,0,101,False,True,,Report #11133
+,Furniture,0,101,False,True,,
+,Furniture,0,101,False,False,Genuine,Report #11134
+,Furniture,0,101,False,False,Genuine,
+,Furniture,0,101,False,False,Fake,Report #11135
+,Furniture,0,101,False,False,Fake,
+,Furniture,0,101,False,False,,Report #11136
+,Furniture,0,101,False,False,,
+,Furniture,1,100,True,True,Genuine,Report #11209
+,Furniture,1,100,True,True,Genuine,
+,Furniture,1,100,True,True,Fake,Report #11210
+,Furniture,1,100,True,True,Fake,
+,Furniture,1,100,True,True,,Report #11211
+,Furniture,1,100,True,True,,
+,Furniture,1,100,True,False,Genuine,Report #11212
+,Furniture,1,100,True,False,Genuine,
+,Furniture,1,100,True,False,Fake,Report #11213
+,Furniture,1,100,True,False,Fake,
+,Furniture,1,100,True,False,,Report #11214
+,Furniture,1,100,True,False,,
+,Furniture,1,100,False,True,Genuine,Report #11215
+,Furniture,1,100,False,True,Genuine,
+,Furniture,1,100,False,True,Fake,Report #11216
+,Furniture,1,100,False,True,Fake,
+,Furniture,1,100,False,True,,Report #11217
+,Furniture,1,100,False,True,,
+,Furniture,1,100,False,False,Genuine,Report #11218
+,Furniture,1,100,False,False,Genuine,
+,Furniture,1,100,False,False,Fake,Report #11219
+,Furniture,1,100,False,False,Fake,
+,Furniture,1,100,False,False,,Report #11220
+,Furniture,1,100,False,False,,
+,Furniture,1,101,True,True,Genuine,Report #11221
+,Furniture,1,101,True,True,Genuine,
+,Furniture,1,101,True,True,Fake,Report #11222
+,Furniture,1,101,True,True,Fake,
+,Furniture,1,101,True,True,,Report #11223
+,Furniture,1,101,True,True,,
+,Furniture,1,101,True,False,Genuine,Report #11224
+,Furniture,1,101,True,False,Genuine,
+,Furniture,1,101,True,False,Fake,Report #11225
+,Furniture,1,101,True,False,Fake,
+,Furniture,1,101,True,False,,Report #11226
+,Furniture,1,101,True,False,,
+,Furniture,1,101,False,True,Genuine,Report #11227
+,Furniture,1,101,False,True,Genuine,
+,Furniture,1,101,False,True,Fake,Report #11228
+,Furniture,1,101,False,True,Fake,
+,Furniture,1,101,False,True,,Report #11229
+,Furniture,1,101,False,True,,
+,Furniture,1,101,False,False,Genuine,Report #11230
+,Furniture,1,101,False,False,Genuine,
+,Furniture,1,101,False,False,Fake,Report #11231
+,Furniture,1,101,False,False,Fake,
+,Furniture,1,101,False,False,,Report #11232
+,Furniture,1,101,False,False,,
+,Furniture,100,100,True,True,Genuine,Report #11305
+,Furniture,100,100,True,True,Genuine,
+,Furniture,100,100,True,True,Fake,Report #11306
+,Furniture,100,100,True,True,Fake,
+,Furniture,100,100,True,True,,Report #11307
+,Furniture,100,100,True,True,,
+,Furniture,100,100,True,False,Genuine,Report #11308
+,Furniture,100,100,True,False,Genuine,
+,Furniture,100,100,True,False,Fake,Report #11309
+,Furniture,100,100,True,False,Fake,
+,Furniture,100,100,True,False,,Report #11310
+,Furniture,100,100,True,False,,
+,Furniture,100,100,False,True,Genuine,Report #11311
+,Furniture,100,100,False,True,Genuine,
+,Furniture,100,100,False,True,Fake,Report #11312
+,Furniture,100,100,False,True,Fake,
+,Furniture,100,100,False,True,,Report #11313
+,Furniture,100,100,False,True,,
+,Furniture,100,100,False,False,Genuine,Report #11314
+,Furniture,100,100,False,False,Genuine,
+,Furniture,100,100,False,False,Fake,Report #11315
+,Furniture,100,100,False,False,Fake,
+,Furniture,100,100,False,False,,Report #11316
+,Furniture,100,100,False,False,,
+,Furniture,100,101,True,True,Genuine,Report #11317
+,Furniture,100,101,True,True,Genuine,
+,Furniture,100,101,True,True,Fake,Report #11318
+,Furniture,100,101,True,True,Fake,
+,Furniture,100,101,True,True,,Report #11319
+,Furniture,100,101,True,True,,
+,Furniture,100,101,True,False,Genuine,Report #11320
+,Furniture,100,101,True,False,Genuine,
+,Furniture,100,101,True,False,Fake,Report #11321
+,Furniture,100,101,True,False,Fake,
+,Furniture,100,101,True,False,,Report #11322
+,Furniture,100,101,True,False,,
+,Furniture,100,101,False,True,Genuine,Report #11323
+,Furniture,100,101,False,True,Genuine,
+,Furniture,100,101,False,True,Fake,Report #11324
+,Furniture,100,101,False,True,Fake,
+,Furniture,100,101,False,True,,Report #11325
+,Furniture,100,101,False,True,,
+,Furniture,100,101,False,False,Genuine,Report #11326
+,Furniture,100,101,False,False,Genuine,
+,Furniture,100,101,False,False,Fake,Report #11327
+,Furniture,100,101,False,False,Fake,
+,Furniture,100,101,False,False,,Report #11328
+,Furniture,100,101,False,False,,
+,Furniture,1000,100,True,True,Genuine,Report #11401
+,Furniture,1000,100,True,True,Genuine,
+,Furniture,1000,100,True,True,Fake,Report #11402
+,Furniture,1000,100,True,True,Fake,
+,Furniture,1000,100,True,True,,Report #11403
+,Furniture,1000,100,True,True,,
+,Furniture,1000,100,True,False,Genuine,Report #11404
+,Furniture,1000,100,True,False,Genuine,
+,Furniture,1000,100,True,False,Fake,Report #11405
+,Furniture,1000,100,True,False,Fake,
+,Furniture,1000,100,True,False,,Report #11406
+,Furniture,1000,100,True,False,,
+,Furniture,1000,100,False,True,Genuine,Report #11407
+,Furniture,1000,100,False,True,Genuine,
+,Furniture,1000,100,False,True,Fake,Report #11408
+,Furniture,1000,100,False,True,Fake,
+,Furniture,1000,100,False,True,,Report #11409
+,Furniture,1000,100,False,True,,
+,Furniture,1000,100,False,False,Genuine,Report #11410
+,Furniture,1000,100,False,False,Genuine,
+,Furniture,1000,100,False,False,Fake,Report #11411
+,Furniture,1000,100,False,False,Fake,
+,Furniture,1000,100,False,False,,Report #11412
+,Furniture,1000,100,False,False,,
+,Furniture,1000,101,True,True,Genuine,Report #11413
+,Furniture,1000,101,True,True,Genuine,
+,Furniture,1000,101,True,True,Fake,Report #11414
+,Furniture,1000,101,True,True,Fake,
+,Furniture,1000,101,True,True,,Report #11415
+,Furniture,1000,101,True,True,,
+,Furniture,1000,101,True,False,Genuine,Report #11416
+,Furniture,1000,101,True,False,Genuine,
+,Furniture,1000,101,True,False,Fake,Report #11417
+,Furniture,1000,101,True,False,Fake,
+,Furniture,1000,101,True,False,,Report #11418
+,Furniture,1000,101,True,False,,
+,Furniture,1000,101,False,True,Genuine,Report #11419
+,Furniture,1000,101,False,True,Genuine,
+,Furniture,1000,101,False,True,Fake,Report #11420
+,Furniture,1000,101,False,True,Fake,
+,Furniture,1000,101,False,True,,Report #11421
+,Furniture,1000,101,False,True,,
+,Furniture,1000,101,False,False,Genuine,Report #11422
+,Furniture,1000,101,False,False,Genuine,
+,Furniture,1000,101,False,False,Fake,Report #11423
+,Furniture,1000,101,False,False,Fake,
+,Furniture,1000,101,False,False,,Report #11424
+,Furniture,1000,101,False,False,,
+,Furniture,1000000,100,True,True,Genuine,Report #11497
+,Furniture,1000000,100,True,True,Genuine,
+,Furniture,1000000,100,True,True,Fake,Report #11498
+,Furniture,1000000,100,True,True,Fake,
+,Furniture,1000000,100,True,True,,Report #11499
+,Furniture,1000000,100,True,True,,
+,Furniture,1000000,100,True,False,Genuine,Report #11500
+,Furniture,1000000,100,True,False,Genuine,
+,Furniture,1000000,100,True,False,Fake,Report #11501
+,Furniture,1000000,100,True,False,Fake,
+,Furniture,1000000,100,True,False,,Report #11502
+,Furniture,1000000,100,True,False,,
+,Furniture,1000000,100,False,True,Genuine,Report #11503
+,Furniture,1000000,100,False,True,Genuine,
+,Furniture,1000000,100,False,True,Fake,Report #11504
+,Furniture,1000000,100,False,True,Fake,
+,Furniture,1000000,100,False,True,,Report #11505
+,Furniture,1000000,100,False,True,,
+,Furniture,1000000,100,False,False,Genuine,Report #11506
+,Furniture,1000000,100,False,False,Genuine,
+,Furniture,1000000,100,False,False,Fake,Report #11507
+,Furniture,1000000,100,False,False,Fake,
+,Furniture,1000000,100,False,False,,Report #11508
+,Furniture,1000000,100,False,False,,
+,Furniture,1000000,101,True,True,Genuine,Report #11509
+,Furniture,1000000,101,True,True,Genuine,
+,Furniture,1000000,101,True,True,Fake,Report #11510
+,Furniture,1000000,101,True,True,Fake,
+,Furniture,1000000,101,True,True,,Report #11511
+,Furniture,1000000,101,True,True,,
+,Furniture,1000000,101,True,False,Genuine,Report #11512
+,Furniture,1000000,101,True,False,Genuine,
+,Furniture,1000000,101,True,False,Fake,Report #11513
+,Furniture,1000000,101,True,False,Fake,
+,Furniture,1000000,101,True,False,,Report #11514
+,Furniture,1000000,101,True,False,,
+,Furniture,1000000,101,False,True,Genuine,Report #11515
+,Furniture,1000000,101,False,True,Genuine,
+,Furniture,1000000,101,False,True,Fake,Report #11516
+,Furniture,1000000,101,False,True,Fake,
+,Furniture,1000000,101,False,True,,Report #11517
+,Furniture,1000000,101,False,True,,
+,Furniture,1000000,101,False,False,Genuine,Report #11518
+,Furniture,1000000,101,False,False,Genuine,
+,Furniture,1000000,101,False,False,Fake,Report #11519
+,Furniture,1000000,101,False,False,Fake,
+,Furniture,1000000,101,False,False,,Report #11520
+,Furniture,1000000,101,False,False,,

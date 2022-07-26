@@ -653,7 +653,7 @@ view ir valueType updateEditorState editorState =
                 , if editorState.defaultValue.show then
                     Input.checkbox [center]
                         { icon = Input.defaultCheckbox
-                        , label = Input.labelRight (labelStyle ++ [Background.color <| rgba 0 0 0 0]) (text "empty string")
+                        , label = Input.labelRight (labelStyle ++ [Background.color <| rgba 0 0 0 0]) (text "empty (\"\")")
                         , checked = editorState.defaultValue.checked
                         , onChange =
                             \updatedIsChecked ->

@@ -294,14 +294,21 @@ insertModule moduleName moduleDef access (Repo repo) =
 
         dependenciesCollectedFromTypesAndValues : Set ModuleName
         dependenciesCollectedFromTypesAndValues =
-            List.map2
-                (\( _, modName, _ ) ( _, modName2, _ ) ->
-                    [ modName, modName2 ]
-                )
-                (allTypesInModule |> List.map (Tuple.second >> Set.toList) |> List.concat)
-                (allValuesInModule |> List.map (Tuple.second >> Set.toList) |> List.concat)
-                |> List.concat
-                |> Set.fromList
+            let
+                filter ( _, modName, _ ) =
+                    if moduleName == modName then
+                        Nothing
+
+                    else
+                        Just modName
+
+                depsFrom target =
+                    target
+                        |> List.map (Tuple.second >> Set.toList)
+                        |> List.concat
+                        |> List.filterMap filter
+            in
+            depsFrom allValuesInModule |> List.append (depsFrom allTypesInModule) |> Set.fromList
     in
     validationErrors
         |> Maybe.map Err

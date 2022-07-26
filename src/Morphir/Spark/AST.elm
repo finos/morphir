@@ -37,7 +37,7 @@ generator uses.
 -}
 
 import Array exposing (Array)
-import Dict
+import Dict exposing (Dict)
 import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -95,7 +95,10 @@ These are the supported Expressions:
       - Represent a `when(expression, result).otherwise(expression, result)` in spark.
       - It maps directly to an IfElse statement and can be chained.
       - The three arguments are: the condition, the Then expression evaluated if the condition passes, and the Else expression.
-  - **Apply**
+  - **Method**
+      - Applies a list of arguments on a method to a target instance.
+      - The three arguments are: An expression denoting the target instance, the name of the method to invoke, and a list of arguments to invoke the method with
+  - **Function**
       - Applies a list of arguments on a function.
       - The two arguments are: The fully qualified name of the function to invoke, and a list of arguments to invoke the function with
 
@@ -106,6 +109,7 @@ type Expression
     | Variable String
     | BinaryOperation String Expression Expression
     | WhenOtherwise Expression Expression Expression
+    | Method Expression String (List Expression)
     | Function String (List Expression)
 
 
@@ -141,6 +145,8 @@ type Error
     | UnsupportedSDKFunction FQName
     | EmptyPatternMatch
     | UnhandledPatternMatch ( Pattern (Type.Type ()), TypedValue )
+    | UnhandledNamedExpressions NamedExpressions
+    | UnhandledObjectExpression ObjectExpression
 
 
 {-| provides a way to create ObjectExpressions from a Morphir Value.
@@ -152,6 +158,28 @@ objectExpressionFromValue ir morphirValue =
     case morphirValue of
         Value.Variable _ varName ->
             From varName |> Ok
+
+        Value.Apply _ ((Value.Lambda _ _ (Value.List _ [ Value.Record _ _ ])) as lambda) sourceRelation ->
+            -- e.g. source |> List.map .fieldName |> (\a -> [{min = List.minimum(a)}])
+            objectExpressionFromValue ir sourceRelation
+                |> Result.andThen
+                    (\sourceExpression ->
+                        namedExpressionsFromValue ir lambda
+                            |> Result.andThen
+                                (\lambdaExpressions ->
+                                    case sourceExpression of
+                                        Select (( _, subExpression ) :: []) oldSourceExpression ->
+                                            case lambdaExpressions of
+                                                ( lamName, Function fname [ a ] ) :: [] ->
+                                                    Select [ ( lamName, Function fname [ subExpression ] ) ] oldSourceExpression |> Ok
+
+                                                other ->
+                                                    Err (UnhandledNamedExpressions other)
+
+                                        other ->
+                                            Err (UnhandledObjectExpression other)
+                                )
+                    )
 
         Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter" ] )) predicate) sourceRelation ->
             objectExpressionFromValue ir sourceRelation
@@ -181,20 +209,28 @@ objectExpressionFromValue ir morphirValue =
             Err (UnhandledValue other)
 
 
+namedExpressionsFromFields : IR -> Dict Name TypedValue -> Result Error NamedExpressions
+namedExpressionsFromFields ir fields =
+    fields
+        |> Dict.toList
+        |> List.map
+            (\( name, value ) ->
+                expressionFromValue ir value
+                    |> Result.map (Tuple.pair name)
+            )
+        |> ResultList.keepFirstError
+
+
 {-| Provides a way to create NamedExpressions from a Morphir Value.
 -}
 namedExpressionsFromValue : IR -> TypedValue -> Result Error NamedExpressions
 namedExpressionsFromValue ir typedValue =
     case typedValue of
+        Value.Lambda _ _ (Value.List _ [ Value.Record _ fields ]) ->
+            namedExpressionsFromFields ir fields
+
         Value.Lambda _ _ (Value.Record _ fields) ->
-            fields
-                |> Dict.toList
-                |> List.map
-                    (\( name, value ) ->
-                        expressionFromValue ir value
-                            |> Result.map (Tuple.pair name)
-                    )
-                |> ResultList.keepFirstError
+            namedExpressionsFromFields ir fields
 
         Value.FieldFunction _ name ->
             expressionFromValue ir typedValue
@@ -231,6 +267,20 @@ replaceLambdaArg replacementValue lam =
             UnhandledValue other |> Err
 
 
+constructWhenEqualsOtherwise : IR -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> TypedValue -> Expression -> Result Error Expression
+constructWhenEqualsOtherwise ir thenValue remainingCases leftValue rightExpr =
+    Result.map3
+        (\leftExpr thenExpr otherwiseExpr ->
+            WhenOtherwise
+                (BinaryOperation "===" leftExpr rightExpr)
+                thenExpr
+                otherwiseExpr
+        )
+        (expressionFromValue ir leftValue)
+        (expressionFromValue ir thenValue)
+        (mapPatterns ir leftValue remainingCases)
+
+
 {-| Transforms a list of pattern,value tuples into Expressions
 -}
 mapPatterns : IR -> TypedValue -> List ( Pattern (Type.Type ()), TypedValue ) -> Result Error Expression
@@ -240,16 +290,17 @@ mapPatterns ir onValue cases =
             EmptyPatternMatch |> Err
 
         ( LiteralPattern _ lit, thenValue ) :: remainingCases ->
-            Result.map3
-                (\onExpr thenExpr otherwiseExpr ->
-                    WhenOtherwise
-                        (BinaryOperation "===" onExpr (Literal lit))
-                        thenExpr
-                        otherwiseExpr
-                )
-                (expressionFromValue ir onValue)
-                (expressionFromValue ir thenValue)
-                (mapPatterns ir onValue remainingCases)
+            Literal lit
+                |> constructWhenEqualsOtherwise ir thenValue remainingCases onValue
+
+        ( ConstructorPattern va fqn [], thenValue ) :: remainingCases ->
+            -- e.g. 'Bar'. Note, 'Just Bar' would require the third arg to not be an empty list.
+            fqn
+                |> FQName.getLocalName
+                |> Name.toTitleCase
+                |> StringLiteral
+                |> Literal
+                |> constructWhenEqualsOtherwise ir thenValue remainingCases onValue
 
         [ ( WildcardPattern _, thenValue ) ] ->
             expressionFromValue ir thenValue
@@ -308,6 +359,25 @@ expressionFromValue ir morphirValue =
                     -- `arg == Nothing` becomes `isnull(arg)` if `Nothing` was a Maybe.
                     expressionFromValue ir arg
                         |> Result.map (\expr -> Function "isnull" [ expr ])
+
+                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "member" ] )) item) (Value.List _ list) ->
+                    Result.map2
+                        (\itemExpr args ->
+                            Method itemExpr "isin" args
+                        )
+                        (expressionFromValue ir item)
+                        (list
+                            |> List.map (\val -> expressionFromValue ir val)
+                            |> ResultList.keepFirstError
+                        )
+
+                Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "minimum" ] )) arg ->
+                    expressionFromValue ir arg
+                        |> Result.map (\expr -> Function "min" [ expr ])
+
+                Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "maximum" ] )) arg ->
+                    expressionFromValue ir arg
+                        |> Result.map (\expr -> Function "max" [ expr ])
 
                 Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
                     case ( package, modName ) of
