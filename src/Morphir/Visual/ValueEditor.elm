@@ -42,6 +42,7 @@ import Element
         , column
         , el
         , fill
+        , fillPortion
         , height
         , html
         , inFront
@@ -78,17 +79,18 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.SDK.Char as Basics
+import Morphir.IR.SDK.Decimal as Decimal
 import Morphir.IR.SDK.Dict as SDKDict
 import Morphir.IR.SDK.String as Basics
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.Decimal as Decimal
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Svg
 import Svg.Attributes
-import Morphir.IR.SDK.Decimal as Decimal
-import Morphir.SDK.Decimal as Decimal
+import Element exposing (rgba)
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -114,6 +116,13 @@ type alias EditorState =
     { componentState : ComponentState
     , lastValidValue : Maybe RawValue
     , errorState : Maybe Error
+    , defaultValue : DefaultValue
+    }
+
+
+type alias DefaultValue =
+    { show : Bool
+    , checked : Bool
     }
 
 
@@ -197,10 +206,18 @@ initEditorState ir valueType maybeInitialValue =
 
         ( maybeError, componentState ) =
             initComponentState ir valueType adjustedInitialValue
+
+        defaultValue =
+            if valueType == Basics.stringType () then
+                { show = True, checked = False }
+
+            else
+                { show = False, checked = False }
     in
     { componentState = componentState
     , lastValidValue = adjustedInitialValue
     , errorState = maybeError
+    , defaultValue = defaultValue
     }
 
 
@@ -494,7 +511,7 @@ view ir valueType updateEditorState editorState =
     let
         baseStyle : List (Element.Attribute msg)
         baseStyle =
-            [ width (fill |> minimum 80)
+            [ width <| Element.fillPortion 3
             , height fill
             , paddingXY 10 3
             , Events.onLoseFocus
@@ -552,85 +569,106 @@ view ir valueType updateEditorState editorState =
 
                     else if tpe == Decimal.decimalType () then
                         "decimal"
-                    
+
                     else
                         "?"
             in
-            Input.text (baseStyle ++ errorBorderStyle ++ errorMessageStyle)
-                { onChange =
-                    \updatedText ->
-                        let
-                            valueResult : Type () -> Result String RawValue
-                            valueResult tpe =
-                                if tpe == Basics.stringType () then
-                                    Ok (Value.Literal () (StringLiteral updatedText))
+            row [ width fill, spacing 5 ]
+                [ Input.text (baseStyle ++ errorBorderStyle ++ errorMessageStyle)
+                    { onChange =
+                        \updatedText ->
+                            let
+                                valueResult : Type () -> Result String RawValue
+                                valueResult tpe =
+                                    if tpe == Basics.stringType () then
+                                        Ok (Value.Literal () (StringLiteral updatedText))
 
-                                else if tpe == Basics.charType () then
-                                    String.uncons updatedText
-                                        |> Result.fromMaybe "Expecting at least one character"
-                                        |> Result.andThen
-                                            (\( char, rest ) ->
-                                                if String.isEmpty rest then
-                                                    Ok (Value.Literal () (CharLiteral char))
+                                    else if tpe == Basics.charType () then
+                                        String.uncons updatedText
+                                            |> Result.fromMaybe "Expecting at least one character"
+                                            |> Result.andThen
+                                                (\( char, rest ) ->
+                                                    if String.isEmpty rest then
+                                                        Ok (Value.Literal () (CharLiteral char))
 
-                                                else
-                                                    Err "Expecting a single character only"
-                                            )
+                                                    else
+                                                        Err "Expecting a single character only"
+                                                )
 
-                                else if tpe == Basics.intType () then
-                                    String.toInt updatedText
-                                        |> Maybe.map (\int -> Value.Literal () (WholeNumberLiteral int))
-                                        |> Result.fromMaybe "Expecting a whole number like 5 or -958"
+                                    else if tpe == Basics.intType () then
+                                        String.toInt updatedText
+                                            |> Maybe.map (\int -> Value.Literal () (WholeNumberLiteral int))
+                                            |> Result.fromMaybe "Expecting a whole number like 5 or -958"
 
-                                else if tpe == Basics.floatType () then
-                                    String.toFloat updatedText
-                                        |> Maybe.map (\float -> Value.Literal () (FloatLiteral float))
-                                        |> Result.fromMaybe "Expecting a number like 1, -3.14 or 100.56"
+                                    else if tpe == Basics.floatType () then
+                                        String.toFloat updatedText
+                                            |> Maybe.map (\float -> Value.Literal () (FloatLiteral float))
+                                            |> Result.fromMaybe "Expecting a number like 1, -3.14 or 100.56"
 
-                                else if tpe == Decimal.decimalType () then
-                                    Decimal.fromString updatedText
-                                        |> Maybe.map (\dec -> Value.Literal () (DecimalLiteral dec))
-                                        |> Result.fromMaybe "Expecting a decimal number"
+                                    else if tpe == Decimal.decimalType () then
+                                        Decimal.fromString updatedText
+                                            |> Maybe.map (\dec -> Value.Literal () (DecimalLiteral dec))
+                                            |> Result.fromMaybe "Expecting a decimal number"
 
-                                else
-                                    updatedText
-                                        |> Frontend.mapValueToFile ir tpe
-                                        |> Result.andThen
-                                            (\sourceFileIR ->
-                                                let
-                                                    packageName =
-                                                        Path.fromString "My.Package"
+                                    else
+                                        updatedText
+                                            |> Frontend.mapValueToFile ir tpe
+                                            |> Result.andThen
+                                                (\sourceFileIR ->
+                                                    let
+                                                        packageName =
+                                                            Path.fromString "My.Package"
 
-                                                    moduleName =
-                                                        Path.fromString "A"
+                                                        moduleName =
+                                                            Path.fromString "A"
 
-                                                    localName =
-                                                        Name.fromString "fooFunction"
-                                                in
-                                                case sourceFileIR |> IR.lookupValueDefinition ( packageName, moduleName, localName ) of
-                                                    Just valDef ->
-                                                        Ok (valDef.body |> Value.toRawValue)
+                                                        localName =
+                                                            Name.fromString "fooFunction"
+                                                    in
+                                                    case sourceFileIR |> IR.lookupValueDefinition ( packageName, moduleName, localName ) of
+                                                        Just valDef ->
+                                                            Ok (valDef.body |> Value.toRawValue)
 
-                                                    Nothing ->
-                                                        Err "Function name Not found"
-                                            )
-                        in
-                        if updatedText == "" then
-                            updateEditorState
-                                (initEditorState ir valueType Nothing)
+                                                        Nothing ->
+                                                            Err "Function name Not found"
+                                                )
+                            in
+                            if updatedText == "" then
+                                updateEditorState
+                                    (initEditorState ir valueType Nothing)
 
-                        else
-                            updateEditorState
-                                (applyResult (valueResult (IR.resolveType valueType ir))
-                                    { editorState
-                                        | componentState = TextEditor updatedText
-                                    }
-                                )
-                , text = currentText
-                , placeholder =
-                    Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
-                , label = Input.labelLeft labelStyle (text <| iconLabel (IR.resolveType valueType ir))
-                }
+                            else
+                                updateEditorState
+                                    (applyResult (valueResult (IR.resolveType valueType ir))
+                                        { editorState
+                                            | componentState = TextEditor updatedText
+                                            , defaultValue = { show = editorState.defaultValue.show, checked = False }
+                                        }
+                                    )
+                    , text = currentText
+                    , placeholder =
+                        Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
+                    , label = Input.labelLeft labelStyle (text <| iconLabel (IR.resolveType valueType ir))
+                    }
+                , if editorState.defaultValue.show then
+                    Input.checkbox [center]
+                        { icon = Input.defaultCheckbox
+                        , label = Input.labelRight (labelStyle ++ [Background.color <| rgba 0 0 0 0]) (text "empty string")
+                        , checked = editorState.defaultValue.checked
+                        , onChange =
+                            \updatedIsChecked ->
+                                updateEditorState
+                                    (applyResult ((\_ -> Ok (Value.Literal () (StringLiteral ""))) (IR.resolveType valueType ir))
+                                        { editorState
+                                            | componentState = TextEditor ""
+                                            , defaultValue = { show = True, checked = updatedIsChecked }
+                                        }
+                                    )
+                        }
+
+                  else
+                    none
+                ]
 
         BoolEditor isChecked ->
             Input.radioRow
@@ -742,6 +780,7 @@ view ir valueType updateEditorState editorState =
                                                             { componentState = CustomEditor packageName moduleName typeName constructors (Name.fromString "") Dict.empty
                                                             , lastValidValue = Nothing
                                                             , errorState = Nothing
+                                                            , defaultValue = { show = False, checked = False }
                                                             }
 
                                                     else
