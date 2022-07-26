@@ -1,3 +1,15 @@
+# v2.65.6 (Tue Jul 26 2022)
+
+#### 🐛 Bug Fix
+
+- publishing error fixes [#825](https://github.com/finos/morphir-elm/pull/825) ([@osborneMs](https://github.com/osborneMs))
+
+#### Authors: 1
+
+- Sapaty Osborne ([@osborneMs](https://github.com/osborneMs))
+
+---
+
 # v2.65.5 (Mon Jul 25 2022)
 
 #### 🐛 Bug Fix
