@@ -24,6 +24,7 @@ import Element
         , image
         , layout
         , link
+        , maximum
         , mouseOver
         , moveDown
         , none
@@ -38,6 +39,7 @@ import Element
         , rotate
         , row
         , scrollbars
+        , shrink
         , spacing
         , text
         , width
@@ -287,7 +289,17 @@ update msg model =
 
         toStoredTestSuite : Dict FQName (Array TestCase) -> Dict FQName (List TestCase)
         toStoredTestSuite testSuite =
-            Dict.fromList (List.map (\( k, v ) -> ( k, Array.toList v )) (Dict.toList testSuite))
+            Dict.fromList
+                (List.map
+                    (\( k, v ) ->
+                        ( k
+                        , Array.toList v
+                            -- the interpreter and insightViewState needs Unit in places where no input is given, but we can't encode a value that does not match the parameter type
+                            |> List.map (\testCase -> { testCase | inputs = List.map (\i -> ifThenElse (i == Just (Value.Unit ())) Nothing i) testCase.inputs })
+                        )
+                    )
+                    (Dict.toList testSuite)
+                )
     in
     case msg of
         Navigate navigationMsg ->
@@ -460,7 +472,7 @@ update msg model =
                                 model.testSuite
                     in
                     ( { model | testSuite = newTestSuite }
-                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite)
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
                 LoadTestCase inputTypes values ->
@@ -506,7 +518,7 @@ update msg model =
                                 model.testSuite
                     in
                     ( { model | testSuite = newTestSuite, argStates = Dict.empty, insightViewState = emptyVisualState }
-                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite)
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
 
@@ -1194,14 +1206,41 @@ viewHome model packageName packageDef =
                 )
 
         -- A path to the currently selected module in an easily readable format
-        pathToSelectedModule : String
         pathToSelectedModule =
+            let
+                subPaths : Path -> List Path
+                subPaths path =
+                    let
+                        helper s xs =
+                            case xs of
+                                [] ->
+                                    []
+
+                                n :: ns ->
+                                    helper (s ++ [ n ]) ns ++ [ s ]
+                    in
+                    (List.drop 1 <| List.reverse <| helper [] path) ++ [ path ]
+            in
             case model.homeState.selectedModule |> Maybe.map Tuple.second of
                 Just moduleName ->
-                    "> " ++ pathToDisplayString moduleName
+                    subPaths moduleName
+                        |> List.map
+                            (\m ->
+                                link
+                                    [ pointer
+                                    , onClick <| handleModuleClick m
+                                    , width (maximum 100 shrink)
+                                    , Border.color model.theme.colors.gray
+                                    , Border.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
+                                    , mouseOver [ Border.color model.theme.colors.darkest ]
+                                    ]
+                                    { label = Theme.ellipseText <| " > " ++ (m |> List.reverse |> List.head |> Maybe.withDefault [ "" ] |> nameToTitleText)
+                                    , url = pathToFullUrl [ packageName, m ] ++ filterStateToQueryParams model.homeState.filterState
+                                    }
+                            )
 
                 _ ->
-                    ">"
+                    [ text ">" ]
 
         -- Second column on the UI, the list of definitions in a module
         definitionList : Element Msg
@@ -1219,7 +1258,8 @@ viewHome model packageName packageDef =
                     , height <| fillPortion 1
                     ]
                     [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
-                , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ] [ Theme.ellipseText pathToSelectedModule ]
+                , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ]
+                    pathToSelectedModule
                 , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
                 ]
     in
@@ -1593,16 +1633,21 @@ httpTestModel ir =
         }
 
 
-httpSaveTestSuite : IR -> TestSuite -> Cmd Msg
-httpSaveTestSuite ir testSuite =
+httpSaveTestSuite : IR -> TestSuite -> TestSuite -> Cmd Msg
+httpSaveTestSuite ir newTestSuite oldTestSuite =
     let
         encodedTestSuite =
-            case encodeTestSuite ir testSuite of
+            case encodeTestSuite ir newTestSuite of
                 Ok encodedValue ->
                     jsonBody encodedValue
 
                 Err _ ->
-                    emptyBody
+                    case encodeTestSuite ir oldTestSuite of
+                        Ok fallBackEncoded ->
+                            jsonBody fallBackEncoded
+
+                        Err _ ->
+                            emptyBody
     in
     Http.post
         { url = "/server/morphir-tests.json"
@@ -1645,22 +1690,18 @@ viewModuleNames model packageName parentModule allModuleNames =
                     )
                 |> Set.fromList
                 |> Set.toList
-
-        handleClick : Path -> Msg
-        handleClick path =
-            Filter (ModuleClicked <| Path.toString Name.toTitleCase "." path)
     in
     TreeLayout.Node
         (\_ ->
             case currentModuleName of
                 Just name ->
-                    link [ pointer, onClick (handleClick parentModule) ]
+                    link [ pointer, onClick (handleModuleClick parentModule) ]
                         { label = text (name |> nameToTitleText)
                         , url = pathToFullUrl [ packageName, parentModule ] ++ filterStateToQueryParams model.homeState.filterState
                         }
 
                 Nothing ->
-                    link [ pointer, onClick (handleClick packageName) ] { label = text (pathToUrl packageName), url = pathToFullUrl [ packageName ] ++ filterStateToQueryParams model.homeState.filterState }
+                    link [ pointer, onClick (handleModuleClick packageName) ] { label = text (pathToUrl packageName), url = pathToFullUrl [ packageName ] ++ filterStateToQueryParams model.homeState.filterState }
         )
         Array.empty
         (childModuleNames
@@ -1674,6 +1715,13 @@ viewModuleNames model packageName parentModule allModuleNames =
                 )
             |> Dict.fromList
         )
+
+
+{-| Note which module we last clicked on
+-}
+handleModuleClick : Path -> Msg
+handleModuleClick path =
+    Filter (ModuleClicked <| Path.toString Name.toTitleCase "." path)
 
 
 {-| Given a definition, return its name
@@ -1788,9 +1836,9 @@ viewDefinitionDetails model =
                 listOfTestcases =
                     Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty
 
-                displayValue : Maybe RawValue -> Element Msg
+                displayValue : RawValue -> Element Msg
                 displayValue t =
-                    viewRawValue (insightViewConfig ir) ir (Maybe.withDefault (Value.Unit ()) t)
+                    viewRawValue (insightViewConfig ir) ir t
 
                 inputNameList : List ( Int, String )
                 inputNameList =
@@ -1845,21 +1893,23 @@ viewDefinitionDetails model =
                                     , pointer
                                     , onClick loadTestCaseMsg
                                     ]
+
+                                rowCell : Element Msg
+                                rowCell =
+                                    (Array.get columnIndex <| Array.fromList test.inputs) |> Maybe.withDefault Nothing |> Maybe.withDefault (Value.Unit ()) |> displayValue
                             in
                             -- first cell's left border should be rounded
                             if columnIndex == 0 then
-                                el (styles ++ [ Border.roundEach { topLeft = 6, bottomLeft = 6, topRight = 0, bottomRight = 0 } ])
-                                    ((Array.get columnIndex <| Array.fromList test.inputs) |> Maybe.withDefault (Just <| Value.Unit ()) |> displayValue)
+                                el (styles ++ [ Border.roundEach { topLeft = 6, bottomLeft = 6, topRight = 0, bottomRight = 0 } ]) rowCell
 
                             else if columnIndex < maxIndex then
-                                el styles
-                                    ((Array.get columnIndex <| Array.fromList test.inputs) |> Maybe.withDefault (Just <| Value.Unit ()) |> displayValue)
+                                el styles rowCell
                                 -- last cell's right border should be rounded, and should have the delete button
 
                             else
                                 row [ width fill, height fill ]
                                     [ el (styles ++ [ paddingEach { right = model.theme |> Theme.scaled 7, left = 0, top = 0, bottom = 0 } ])
-                                        (Just test.expectedOutput |> displayValue)
+                                        (test.expectedOutput |> displayValue)
                                     , deleteButton selfIndex
                                     ]
 

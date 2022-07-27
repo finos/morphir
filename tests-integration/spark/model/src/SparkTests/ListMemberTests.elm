@@ -1,6 +1,6 @@
 module SparkTests.ListMemberTests exposing (..)
 
-import SparkTests.Types exposing (..)
+import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (..)
 
 
 testEnumListMember : List { product : Product } -> List { product : Product }

@@ -63,7 +63,8 @@ jobs:
           path: ./*.tgz
           if-no-files-found: error
           retention-days: 0
-  # publish package 
+
+  # publish package
   publish:
     name: Publish NPM Package
     needs: [ build ]
@@ -92,12 +93,15 @@ jobs:
           mkdir -p ~/artifact-download/morphir-elm-artifact
           tar -zxvf $(ls ~/artifact-download/*.tgz)  -C ~/artifact-download/morphir-elm-artifact
           ls -l ~/artifact-download/morphir-elm-artifact
-      - name: Install
-        run: npm install
 
-      - name: Publish NPM (as needed)
-        uses: JS-DevTools/npm-publish@v1
-        if: env.NPM_TOKEN != 0
-        with:
-          token: ${{ env.NPM_TOKEN }}
-          package: /home/runner/artifact-download/morphir-elm-artifact/package/package.json
+      - name: Auto release
+        if: "env.NPM_TOKEN != 0 && !contains(github.event.head_commit.message, 'ci skip') && !contains(github.event.head_commit.message, 'ci skip')"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm install --frozen-lockfile
+          npm run build 
+          git fetch --tags
+          npx auto shipit

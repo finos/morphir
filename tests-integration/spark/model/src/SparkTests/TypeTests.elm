@@ -1,6 +1,7 @@
 module SparkTests.TypeTests exposing (..)
 
-import SparkTests.Types exposing (..)
+import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (..)
+
 
 testBool : List { foo : Bool } -> List { foo : Bool }
 testBool source =
@@ -10,6 +11,7 @@ testBool source =
                 a.foo == False
             )
 
+
 testFloat : List { foo : Float } -> List { foo : Float }
 testFloat source =
     source
@@ -17,6 +19,7 @@ testFloat source =
             (\a ->
                 a.foo == 9.99
             )
+
 
 testInt : List { foo : Int } -> List { foo : Int }
 testInt source =
@@ -26,13 +29,15 @@ testInt source =
                 a.foo == 13
             )
 
-testMaybeBoolConditional : List { foo: Maybe Bool } -> List { foo : Maybe Bool }
+
+testMaybeBoolConditional : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
 testMaybeBoolConditional source =
     source
         |> List.filter
             (\a ->
                 a.foo == Just True
             )
+
 
 testMaybeBoolConditionalNull : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
 testMaybeBoolConditionalNull source =
@@ -41,6 +46,7 @@ testMaybeBoolConditionalNull source =
             (\a ->
                 a.foo == Nothing
             )
+
 
 testMaybeBoolConditionalNotNull : List { foo : Maybe Bool } -> List { foo : Maybe Bool }
 testMaybeBoolConditionalNotNull source =
@@ -58,8 +64,10 @@ testMaybeFloat source =
             (\a ->
                 if a.foo == Just 9.99 then
                     True
+
                 else if a.foo /= Nothing then
                     True
+
                 else
                     False
             )
@@ -72,8 +80,10 @@ testMaybeInt source =
             (\a ->
                 if a.foo == Just 13 then
                     True
+
                 else if a.foo /= Nothing then
                     True
+
                 else
                     False
             )
@@ -89,6 +99,7 @@ testMaybeMapDefault source =
                         (\a ->
                             if a == False then
                                 True
+
                             else
                                 False
                         )
@@ -103,8 +114,10 @@ testMaybeString source =
             (\a ->
                 if a.foo == Just "bar" then
                     True
+
                 else if a.foo /= Nothing then
                     True
+
                 else
                     False
             )
@@ -118,6 +131,7 @@ testString source =
                 a.foo == "bar"
             )
 
+
 testEnum : List { product : Product } -> List { product : Product }
 testEnum source =
     source
@@ -125,4 +139,3 @@ testEnum source =
             (\a ->
                 a.product == Plates
             )
-
