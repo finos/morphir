@@ -79,7 +79,11 @@ Now we have minimal model to run commands on. Run the following commands to veri
 - Run ```Run morphir-elm make``` to verify that an IR(```morphir-ir.json```) is created.
 - Create ```morphir-tests.json``` in the same directory as ```morphir-ir.json```. This would contain tests generated from the Morphir Develop UI.
 - Run ```morphir-elm develop -o localhost``` and in your browser navigate to ```http://localhost:3000``` to access the UI
-- Run ```morphir-elm gen``` to generate target code
+- Create and save tests using the Morphir develop UI
+- Run ```morphir-elm test``` tests in your terminal to validate that all tests pass.
+
+- Run ```morphir-elm gen``` to generate target code. Default code generated is Scala. To change the target language generated use the ```-t``` option. Eg. ```morhir-elm gen -t TypeScript```. 
+- Run ```morphir-elm gen -c true``` to copy the dependencies used by the generated code to the output path
 
 
 
