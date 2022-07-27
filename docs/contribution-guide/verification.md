@@ -12,13 +12,76 @@ The purpose of this document is to provide a detailed explanation of how to veri
 
 ### Verifying a ```morphir-elm``` release 
 
-After upgrade run the following commands to verify a release. The model to use as input can be found at ```morphir-elm\tests-integration\reference-model```.
+After upgrade, a series of command must be run on a model to verify the release, below are steps to create a minimal model.
+
+#### Creating a Model
+This is to create a sample model to  validate the relase. The sample model is called ```schedule```
+
+Create a directory:
+```
+mkdir schedule
+cd schedule    
+```
+
+Next setup the Morphir project and configuration file, morphir.json
+```
+mkdir src
+echo '{ "name": "Morphir.Example.App", "sourceDirectory": "src", "exposedModules": [ ] }' > morphir.json
+```
+
+Let's create the Elm file we would be working with
+```
+mkdir src/Morphir
+mkdir src/Morphir/Example
+touch src/Morphir/Example/Schedule.elm
+```
+
+Next update the ```morphir.json```  to reflect the current module.
+
+```
+{
+    "name": "Morphir.Example",
+    "sourceDirectory": "src",
+    "exposedModules": [
+        "Schedule"
+    ]
+}
+```
+
+Finally, to finish up the model paste the following logic in Schedule.elm
+
+```
+module Morphir.Example.Schedule exposing (..)
+
+
+type Days
+    = Friday
+    | Saturday
+    | Sunday
+
+
+plan : Days -> String
+plan days =
+    case days of
+        Friday ->
+            "Practice for all drivers"
+
+        Saturday ->
+            "Qualifying day"
+
+        Sunday ->
+            "Race day!"      
+
+```
+
+Now we have minimal model to run commands on. Run the following commands to verify a release. 
 
 - Run ```Run morphir-elm make``` to verify that an IR(```morphir-ir.json```) is created.
-- Read instructions from  [Testing Framework](https://github.com/klahnunya/morphir-elm/blob/main/docs/developers-guide/files/TestingFramework-README.md) to run tests on the model.
+- Create ```morphir-tests.json``` in the same directory as ```morphir-ir.json```. This would contain tests generated from the Morphir Develop UI.
+- Run ```morphir-elm develop -o localhost``` and in your browser navigate to ```http://localhost:3000``` to access the UI
 - Run ```morphir-elm gen``` to generate target code
 
-Read the following documentation [Morphir Elm Commands](https://github.com/klahnunya/morphir-elm/blob/main/docs/developers-guide/files/morphir-elm-commands-processing.md) to know options available on above-mentioned commands.
+
 
 
 ## Rollback Instructions
