@@ -1,6 +1,6 @@
 {
   "name": "morphir-elm",
-  "version": "2.63.0",
+  "version": "2.65.7",
   "description": "Elm bindings for Morphir",
   "scripts": {
     "clean": "gulp clean",
@@ -46,7 +46,8 @@
     "cli2/lib/morphir-scala-gen.js",
     "cli2/lib/morphir-stats.js",
     "cli2/lib/FileChanges.js",
-    "cli2/Morphir.Elm.CLI.js"
+    "cli2/Morphir.Elm.CLI.js",
+    "cli2/lib/cliAPI.js"
   ],
   "keywords": [
     "morphir",
@@ -62,6 +63,7 @@
     "@types/jest": "^27.4.0",
     "@types/mocha": "^9.0.0",
     "@vercel/ncc": "^0.24.1",
+    "auto": "^10.37.3",
     "del-cli": "3.0.1",
     "elm": "^0.19.1-5",
     "elm-doc-preview": "^3.0.4",

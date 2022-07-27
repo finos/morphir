@@ -192,7 +192,6 @@ ellipseText str =
     Element.html <|
         div
             [ style "text-overflow" "ellipsis"
-            , style "white-space" "nowrap"
             , style "overflow" "hidden"
             , style "width" "100%"
             , style "flex-basis" "auto"

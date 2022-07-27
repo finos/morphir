@@ -1,6 +1,8 @@
 module SparkTests.FunctionTests exposing (..)
 
+import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (..)
 import SparkTests.Types exposing (..)
+
 
 testCaseBool : List { foo : Bool } -> List { foo : Bool }
 testCaseBool source =
@@ -10,6 +12,7 @@ testCaseBool source =
                 case a.foo of
                     False ->
                         True
+
                     _ ->
                         False
             )
@@ -23,12 +26,13 @@ testCaseFloat source =
                 case a.foo of
                     9.99 ->
                         True
+
                     _ ->
                         False
             )
 
 
-testCaseInt : List Antique -> List Antique
+testCaseInt : List AntiqueSubset -> List AntiqueSubset
 testCaseInt source =
     source
         |> List.filter
@@ -36,14 +40,16 @@ testCaseInt source =
                 case a.ageOfItem of
                     20 ->
                         True
-                    5->
+
+                    5 ->
                         False
+
                     _ ->
                         False
             )
 
 
-testCaseString : List Antique -> List Antique
+testCaseString : List AntiqueSubset -> List AntiqueSubset
 testCaseString source =
     source
         |> List.filter
@@ -51,12 +57,13 @@ testCaseString source =
                 case a.name of
                     "Wooden Chair" ->
                         False
+
                     _ ->
                         True
             )
 
 
-testCaseEnum : List Antique -> List Antique
+testCaseEnum : List AntiqueSubset -> List AntiqueSubset
 testCaseEnum source =
     source
         |> List.filter
@@ -64,25 +71,27 @@ testCaseEnum source =
                 case a.product of
                     Paintings ->
                         True
+
                     Furniture ->
                         True
+
                     _ ->
                         False
             )
 
 
-testFrom : List Antique -> List Antique
+testFrom : List AntiqueSubset -> List AntiqueSubset
 testFrom source =
     source
 
 
-testWhere1 : List Antique -> List Antique
+testWhere1 : List AntiqueSubset -> List AntiqueSubset
 testWhere1 source =
     source
         |> List.filter (\a -> a.ageOfItem == 20)
 
 
-testWhere2 : List Antique -> List Antique
+testWhere2 : List AntiqueSubset -> List AntiqueSubset
 testWhere2 source =
     source
         |> List.filter
@@ -95,7 +104,7 @@ testWhere2 source =
             )
 
 
-testWhere3 : List Antique -> List Antique
+testWhere3 : List AntiqueSubset -> List AntiqueSubset
 testWhere3 source =
     source
         |> List.filter
@@ -111,7 +120,7 @@ testWhere3 source =
             )
 
 
-testSelect1 : List Antique -> List { newName : String, newReport : String, foo : String, product : Product }
+testSelect1 : List AntiqueSubset -> List { newName : String, newReport : String, foo : String, product : Product }
 testSelect1 source =
     source
         |> List.map
@@ -129,29 +138,53 @@ testSelect1 source =
             )
 
 
-testSelect3 : List Antique -> List { ageOfItem : Int }
+testSelect3 : List AntiqueSubset -> List { ageOfItem : Int }
 testSelect3 source =
     source
         |> List.map (\record -> { ageOfItem = record.ageOfItem })
 
 
-testSelect4 : List Antique -> List Int
+testSelect4 : List AntiqueSubset -> List Int
 testSelect4 source =
     source
         |> List.map .ageOfItem
 
 
-testFilter : List Antique -> List Antique
+testFilter : List AntiqueSubset -> List AntiqueSubset
 testFilter source =
     source |> List.filter filterFn
 
 
-testFilter2 : List Antique -> List Antique
+testFilter2 : List AntiqueSubset -> List AntiqueSubset
 testFilter2 source =
     source |> List.filter (filterFnWithVar 17)
 
 
-testMapAndFilter : List Antique -> List Antique
+testListMinimum : List AntiqueSubset -> List { min : Maybe Int }
+testListMinimum source =
+    source
+        |> List.map .ageOfItem
+        |> (\ages ->
+                [ { min =
+                        List.minimum ages
+                  }
+                ]
+           )
+
+
+testListMaximum : List AntiqueSubset -> List { max : Maybe Int }
+testListMaximum source =
+    source
+        |> List.map .ageOfItem
+        |> (\ages ->
+                [ { max =
+                        List.maximum ages
+                  }
+                ]
+           )
+
+
+testMapAndFilter : List AntiqueSubset -> List AntiqueSubset
 testMapAndFilter source =
     source
         |> List.map
@@ -165,7 +198,7 @@ testMapAndFilter source =
         |> List.filter filterFn
 
 
-testMapAndFilter2 : List Antique -> List Antique
+testMapAndFilter2 : List AntiqueSubset -> List AntiqueSubset
 testMapAndFilter2 source =
     source
         |> List.map
@@ -179,7 +212,7 @@ testMapAndFilter2 source =
         |> List.filter filterFn
 
 
-testMapAndFilter3 : List Antique -> List Antique
+testMapAndFilter3 : List AntiqueSubset -> List AntiqueSubset
 testMapAndFilter3 source =
     source
         |> List.map
@@ -193,7 +226,7 @@ testMapAndFilter3 source =
         |> List.filter filterFn
 
 
-testBadAnnotation : List Antique -> List Product
+testBadAnnotation : List AntiqueSubset -> List Product
 testBadAnnotation source =
     source
         |> List.map
@@ -202,29 +235,29 @@ testBadAnnotation source =
             )
 
 
-item_filter : Antique -> Bool
+item_filter : AntiqueSubset -> Bool
 item_filter record =
     let
-        qualifiedYearsToBeCalledAntique =
+        qualifiedYearsToBeCalledAntiqueSubset =
             20
     in
     record.ageOfItem
-        >= qualifiedYearsToBeCalledAntique
+        >= qualifiedYearsToBeCalledAntiqueSubset
         && (record.name == "Bowie Knife")
 
 
-testLetBinding : List Antique -> List Antique
+testLetBinding : List AntiqueSubset -> List AntiqueSubset
 testLetBinding source =
     source
         |> List.filter item_filter
 
 
-filterFn : Antique -> Bool
+filterFn : AntiqueSubset -> Bool
 filterFn record1 =
     modBy record1.ageOfItem 2 <= 3
 
 
-filterFnWithVar : Int -> Antique -> Bool
+filterFnWithVar : Int -> AntiqueSubset -> Bool
 filterFnWithVar max record =
     max
         |> (\ageOfItem maximumAllowedAge ->
