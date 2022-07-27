@@ -47,11 +47,3 @@ jobs:
       
       - name: Running Test
         run: npm test
-      
-      - name: Upload Artifact for Verification
-        uses: actions/upload-artifact@v3
-        with:
-          name: morphir-elm-artifact
-          path: ./*.tgz
-          if-no-files-found: error
-          retention-days: 1
