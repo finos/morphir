@@ -38,70 +38,20 @@ jobs:
           key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
           restore-keys: |
             ${{ runner.os }}-elm- 
+      
       - name: Download dependencies
         run: npm ci
       
       - name: Build
         run: npm run build --if-present
-
-      - name: Zip Package For Test
-        run: npm pack 
-      - name: Install Zip Package
-        run: npm install $(ls *.tgz)
-      - name: Link To Local Package 
-        run: npm link 
+      
       - name: Running Test
         run: npm test
-      - name: Check Morphir Cmd 
-        run: |
-          cd tests-integration/reference-model
-          morphir -v 
-      - name: Upload to Artifact for Easier Publish 
+      
+      - name: Upload Artifact for Verification
         uses: actions/upload-artifact@v3
         with:
           name: morphir-elm-artifact
           path: ./*.tgz
           if-no-files-found: error
-          retention-days: 0
-
-  # publish package
-  publish:
-    name: Publish NPM Package
-    needs: [ build ]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        node-version: [16.x]
-        os: [ ubuntu-latest ]
-
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: morphir-elm-artifact
-          path: ~/artifact-download/
-      - name: UnZipping Tar File 
-        run: | 
-          mkdir -p ~/artifact-download/morphir-elm-artifact
-          tar -zxvf $(ls ~/artifact-download/*.tgz)  -C ~/artifact-download/morphir-elm-artifact
-          ls -l ~/artifact-download/morphir-elm-artifact
-
-      - name: Auto release
-        if: "env.NPM_TOKEN != 0 && !contains(github.event.head_commit.message, 'ci skip') && !contains(github.event.head_commit.message, 'ci skip')"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          npm install --frozen-lockfile
-          npm run build 
-          git fetch --tags
-          npx auto shipit
+          retention-days: 1
