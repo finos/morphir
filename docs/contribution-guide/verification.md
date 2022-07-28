@@ -79,8 +79,11 @@ Now we have minimal model to run commands on. Run the following commands to veri
 
 In the case where an invalid version is published , the developer has to rollback to a previous working version on npm. This involves changing the ```latest``` tag on npm to point to a previous working version.
 
-- Run the command ```npm dist-tag add <packag name>@<version> latest```
 
- This command makes the version specified the ```latest```
+- Go to [Morphir Elm](https://www.npmjs.com/package/morphir-elm) , click on the versions tab. The last working version is usually a version behind the latest version released. You can find version numbers under ```Version History```
+
+- Run the command ```npm dist-tag add morphir-elm@<version> latest```
+
+ This command tags the version specified as the ```latest```
 
 
