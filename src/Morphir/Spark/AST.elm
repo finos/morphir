@@ -141,7 +141,6 @@ type Error
     | FunctionNotFound FQName
     | UnsupportedOperatorReference FQName
     | LambdaExpected TypedValue
-    | ReferenceExpected
     | UnsupportedSDKFunction FQName
     | EmptyPatternMatch
     | UnhandledPatternMatch ( Pattern (Type.Type ()), TypedValue )
@@ -577,12 +576,12 @@ mapSDKFunctions ir args fQName =
                     |> ResultList.keepFirstError
                 )
 
-        ( "Morphir.SDK:List:max", item :: [] ) ->
+        ( "Morphir.SDK:List:maximum", item :: [] ) ->
             expressionFromValue ir item
                 |> Result.map List.singleton
                 |> Result.map (Function "max")
 
-        ( "Morphir.SDK:List:min", item :: [] ) ->
+        ( "Morphir.SDK:List:minimum", item :: [] ) ->
             expressionFromValue ir item
                 |> Result.map List.singleton
                 |> Result.map (Function "min")
