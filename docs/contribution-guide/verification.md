@@ -86,15 +86,15 @@ Now we have minimal model to run commands on. Run the following commands to veri
 
 - Run ```morphir-elm gen``` to generate target code. Default code generated is Scala. To change the target language generated use the ```-t``` option. Eg. ```morhir-elm gen -t TypeScript```. 
 - Run ```morphir-elm gen -c true``` to copy the dependencies used by the generated code to the output path
+- Run ```morphir-stats``` to generate feature statistics. This command generates a folder ```stats``` which contains information about features available in the IR 
 
 
 ## Rollback Instructions
 
 In the case where an invalid version is published , the developer has to rollback to a previous working version on npm. This involves changing the ```latest``` tag on npm to point to a previous version.
 
-Below are steps to perform a rollback.
+- Run the command ```npm dist-tag add <packag name>@<version> latest```
 
-1. 
-
+ This command makes the version specified the ```latest```
 
 
