@@ -165,7 +165,7 @@ getCaseFromIndex config head viewValue highlightState rule =
                     in
                     case pattern of
                         Value.WildcardPattern _ ->
-                            el [ Background.color result, mediumPadding config.state.theme |> padding ] (text "_")
+                            el [ Background.color result, mediumPadding config.state.theme |> padding ] (text "anything else")
 
                         Value.LiteralPattern va literal ->
                             let
