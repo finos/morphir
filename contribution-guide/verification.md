@@ -12,10 +12,10 @@ The purpose of this document is to provide a detailed explanation of how to veri
 
 ### Verifying a ```morphir-elm``` release 
 
-After upgrade, a series of command must be run on a model to verify the release, below are steps to create a minimal model.
+After upgrade, a series of commands must be run on a model to verify the release, below are steps to create a minimal model.
 
 #### Creating a Model
-This is to create a sample model to  validate the relase. The sample model is called ```schedule```
+This is to create a sample model to  validate the release. The sample model is called ```schedule```
 
 Create a directory:
 ```
@@ -29,7 +29,7 @@ mkdir src
 echo '{ "name": "Morphir.Example.App", "sourceDirectory": "src", "exposedModules": [ ] }' > morphir.json
 ```
 
-Let's create the Elm file we would be working with
+Next create the Elm file we would be working with
 ```
 mkdir src/Morphir
 mkdir src/Morphir/Example
@@ -54,24 +54,10 @@ Finally, to finish up the model paste the following logic in Schedule.elm
 module Morphir.Example.Schedule exposing (..)
 
 
-type Days
-    = Friday
-    | Saturday
-    | Sunday
-
-
-plan : Days -> String
-plan days =
-    case days of
-        Friday ->
-            "Practice for all drivers"
-
-        Saturday ->
-            "Qualifying day"
-
-        Sunday ->
-            "Race day!"      
-
+plan : String -> String
+plan day =
+    "Work Day"
+    
 ```
 
 Now we have minimal model to run commands on. Run the following commands to verify a release. 
@@ -91,7 +77,7 @@ Now we have minimal model to run commands on. Run the following commands to veri
 
 ## Rollback Instructions
 
-In the case where an invalid version is published , the developer has to rollback to a previous working version on npm. This involves changing the ```latest``` tag on npm to point to a previous version.
+In the case where an invalid version is published , the developer has to rollback to a previous working version on npm. This involves changing the ```latest``` tag on npm to point to a previous working version.
 
 - Run the command ```npm dist-tag add <packag name>@<version> latest```
 
