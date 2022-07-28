@@ -116,11 +116,11 @@ type alias EditorState =
     { componentState : ComponentState
     , lastValidValue : Maybe RawValue
     , errorState : Maybe Error
-    , defaultValue : DefaultValue
+    , defaultValueCheckbox : DefaultValueCheckbox
     }
 
 
-type alias DefaultValue =
+type alias DefaultValueCheckbox =
     { show : Bool
     , checked : Bool
     }
@@ -207,7 +207,7 @@ initEditorState ir valueType maybeInitialValue =
         ( maybeError, componentState ) =
             initComponentState ir valueType adjustedInitialValue
 
-        defaultValue =
+        defaultValueCheckbox =
             if valueType == Basics.stringType () then
                 { show = True, checked = False }
 
@@ -217,7 +217,7 @@ initEditorState ir valueType maybeInitialValue =
     { componentState = componentState
     , lastValidValue = adjustedInitialValue
     , errorState = maybeError
-    , defaultValue = defaultValue
+    , defaultValueCheckbox = defaultValueCheckbox
     }
 
 
@@ -390,13 +390,13 @@ initMaybeEditor ir itemType maybeInitialValue =
                     ( Nothing, MaybeEditor itemType (Just (initEditorState ir itemType (Just value))) )
 
                 Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
-                    ( Nothing, MaybeEditor itemType Nothing )
+                    ( Nothing, MaybeEditor itemType (Just (initEditorState ir itemType Nothing)) )
 
                 _ ->
                     ( Just ("Cannot initialize editor with value: " ++ Debug.toString initialValue), MaybeEditor itemType Nothing )
 
         Nothing ->
-            ( Nothing, MaybeEditor itemType Nothing )
+            ( Nothing, MaybeEditor itemType (Just (initEditorState ir itemType Nothing)) )
 
 
 {-| Creates a component state for a list values.
@@ -642,7 +642,7 @@ view ir valueType updateEditorState editorState =
                                     (applyResult (valueResult (IR.resolveType valueType ir))
                                         { editorState
                                             | componentState = TextEditor updatedText
-                                            , defaultValue = { show = editorState.defaultValue.show, checked = False }
+                                            , defaultValueCheckbox = { show = editorState.defaultValueCheckbox.show, checked = False }
                                         }
                                     )
                     , text = currentText
@@ -650,18 +650,18 @@ view ir valueType updateEditorState editorState =
                         Just (placeholder [ center, paddingXY 0 1 ] (text "not set"))
                     , label = Input.labelLeft labelStyle (text <| iconLabel (IR.resolveType valueType ir))
                     }
-                , if editorState.defaultValue.show then
+                , if editorState.defaultValueCheckbox.show then
                     Input.checkbox [center]
                         { icon = Input.defaultCheckbox
                         , label = Input.labelRight (labelStyle ++ [Background.color <| rgba 0 0 0 0]) (text "empty (\"\")")
-                        , checked = editorState.defaultValue.checked
+                        , checked = editorState.defaultValueCheckbox.checked
                         , onChange =
                             \updatedIsChecked ->
                                 updateEditorState
                                     (applyResult ((\_ -> Ok (Value.Literal () (StringLiteral ""))) (IR.resolveType valueType ir))
                                         { editorState
                                             | componentState = TextEditor ""
-                                            , defaultValue = { show = True, checked = updatedIsChecked }
+                                            , defaultValueCheckbox = { show = True, checked = updatedIsChecked }
                                         }
                                     )
                         }
@@ -780,7 +780,7 @@ view ir valueType updateEditorState editorState =
                                                             { componentState = CustomEditor packageName moduleName typeName constructors (Name.fromString "") Dict.empty
                                                             , lastValidValue = Nothing
                                                             , errorState = Nothing
-                                                            , defaultValue = { show = False, checked = False }
+                                                            , defaultValueCheckbox = { show = False, checked = False }
                                                             }
 
                                                     else
