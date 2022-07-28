@@ -77,6 +77,8 @@ plan days =
 Now we have minimal model to run commands on. Run the following commands to verify a release. 
 
 - Run ```Run morphir-elm make``` to verify that an IR(```morphir-ir.json```) is created.
+  - Use the ```-o,--output``` flag to specify the location where the Morphir IR will be saved (default: ```morphir-ir.json```)
+  - Use ```-p,--project-dir``` flag to specify the root directory where the ```morphir.json``` is located.
 - Create ```morphir-tests.json``` in the same directory as ```morphir-ir.json```. This would contain tests generated from the Morphir Develop UI.
 - Run ```morphir-elm develop -o localhost``` and in your browser navigate to ```http://localhost:3000``` to access the UI
 - Create and save tests using the Morphir develop UI
@@ -86,9 +88,13 @@ Now we have minimal model to run commands on. Run the following commands to veri
 - Run ```morphir-elm gen -c true``` to copy the dependencies used by the generated code to the output path
 
 
-
-
 ## Rollback Instructions
+
+In the case where an invalid version is published , the developer has to rollback to a previous working version on npm. This involves changing the ```latest``` tag on npm to point to a previous version.
+
+Below are steps to perform a rollback.
+
+1. 
 
 
 
