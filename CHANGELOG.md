@@ -1,3 +1,15 @@
+# v2.65.8 (Wed Jul 27 2022)
+
+#### 🐛 Bug Fix
+
+- Updated docs link for Jonathan's Spark documentation [#827](https://github.com/finos/morphir-elm/pull/827) ([@KindsonTheGenius](https://github.com/KindsonTheGenius))
+
+#### Authors: 1
+
+- Kindson The Genius ([@KindsonTheGenius](https://github.com/KindsonTheGenius))
+
+---
+
 # v2.65.6 (Tue Jul 26 2022)
 
 #### 🐛 Bug Fix
