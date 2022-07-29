@@ -63,33 +63,49 @@ generator values input =
         |> flatten
 
 
-testDataGeneration : Test
-testDataGeneration =
+columnNames : String
+columnNames =
+    "category,product,priceValue,ageOfItem,handMade,requiresExpert,expertFeedBack,report"
+
+
+generateCategory : List String -> List String
+generateCategory =
+    generator [ "PaintCollections", "HouseHoldCollection", "SimpleToolCollection", "Diary", "" ]
+
+
+generateProduct : List String -> List String
+generateProduct =
+    generator [ "Paintings", "Knife", "Plates", "Furniture", "HistoryWritings" ]
+
+
+generatePriceValue : List String -> List String
+generatePriceValue =
+    generator [ "0.0", "1.0", "100.0", "1000.0", "1000000.0" ]
+
+
+generateAgeOfItem : List String -> List String
+generateAgeOfItem =
+    generator [ "-1.0", "0.0", "19.0", "20.0", "21.0", "99.0", "100.0", "101.0" ]
+
+
+generateHandMade : List String -> List String
+generateHandMade =
+    generator [ "True", "False" ]
+
+
+generateRequiresExpert : List String -> List String
+generateRequiresExpert =
+    generator [ "True", "False" ]
+
+
+generateExpertFeedBack : List String -> List String
+generateExpertFeedBack =
+    generator [ "Genuine", "Fake", "" ]
+
+
+testAntiqueDataGeneration : Test
+testAntiqueDataGeneration =
     let
-        columnNames =
-            "category,product,priceValue,ageOfItem,handMade,requiresExpert,expertFeedBack,report"
-
-        generateCategory =
-            generator [ "PaintCollections", "HouseHoldCollection", "SimpleToolCollection", "Diary", "" ]
-
-        generateProduct =
-            generator [ "Paintings", "Knife", "Plates", "Furniture", "HistoryWritings" ]
-
-        generatePriceValue =
-            generator [ "0.0", "1.0", "100.0", "1000.0", "1000000.0" ]
-
-        generateAgeOfItem =
-            generator [ "-1.0", "0.0", "19.0", "20.0", "21.0", "99.0", "100.0", "101.0" ]
-
-        generateHandMade =
-            generator [ "True", "False" ]
-
-        generateRequiresExpert =
-            generator [ "True", "False" ]
-
-        generateExpertFeedBack =
-            generator [ "Genuine", "Fake", "" ]
-
         dataList =
             generateCategory [ "" ]
                 |> generateProduct

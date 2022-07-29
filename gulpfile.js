@@ -278,16 +278,13 @@ function testIntegrationTestTypeScript(cb) {
 
 
 async function testCreateCSV(cb) {
-    const cwd = process.cwd();
     if (!shell.which('sh')){
         console.log("Automatically creating CSV files is not available on this platform");
     } else {
-        try {
-            process.chdir('./tests-integration/spark/elm-tests/tests',);
-            shell.exec('sh ./create_csv_files.sh');
-            process.chdir(cwd);
-        } catch (err) {
-            console.log("Automatically creating CSV files is not available on this platform");
+        code_no = shell.exec('sh ./create_csv_files.sh', {cwd : './tests-integration/spark/elm-tests/tests'}).code
+        if (code_no != 0){
+            console.log('ERROR: CSV files cannot be created')
+            return false;
         }
     }
 }

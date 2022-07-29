@@ -43,8 +43,6 @@ class antiqueRulesTest extends FunSuite {
     .schema(schema)
     .load("spark/test/src/spark_test_data/antiques_data.csv")
 
-  df_test_data.printSchema()
-  df_test_data.show(false)
 
   test("antiqueItems") {
     val df_expected_results = localTestSession.read.format("csv")

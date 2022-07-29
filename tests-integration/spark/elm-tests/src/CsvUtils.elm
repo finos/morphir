@@ -19,10 +19,10 @@ module CsvUtils exposing (..)
 
 import Csv.Decode as Decode exposing (..)
 import Csv.Encode as Encode exposing (..)
-
 import SparkTests.DataDefinition.Field.Category exposing (Category(..), categoryFromString, categoryToString)
-import SparkTests.DataDefinition.Field.Report exposing (FeedBack(..), feedBackToString, feedBackFromString)
+import SparkTests.DataDefinition.Field.Report exposing (FeedBack(..), feedBackFromString, feedBackToString)
 import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique, Product(..), productFromString, productToString)
+import SparkTests.Types exposing (AntiqueSubset)
 
 
 boolFromString : String -> Result String Bool
@@ -109,3 +109,310 @@ antiqueEncoder antiques =
                     )
             , fieldSeparator = ','
             }
+
+
+antiqueSSDecoder : Decoder AntiqueSubset
+antiqueSSDecoder =
+    Decode.into AntiqueSubset
+        |> Decode.pipeline (Decode.field "name" Decode.string)
+        |> Decode.pipeline (Decode.field "ageOfItem" Decode.float)
+        |> Decode.pipeline (Decode.field "product" decodeProduct)
+        |> Decode.pipeline (Decode.field "report" (Decode.blank Decode.string))
+
+
+antiqueSSEncoder : List AntiqueSubset -> String
+antiqueSSEncoder antiqueSubsets =
+    antiqueSubsets
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\antiqueSubset ->
+                        [ ( "name", antiqueSubset.name )
+                        , ( "ageOfItem", String.fromFloat antiqueSubset.ageOfItem )
+                        , ( "product", productToString antiqueSubset.product )
+                        , ( "report", antiqueSubset.report |> Maybe.withDefault "" )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias AgeRecord =
+    { ageOfItem : Float }
+
+
+antiqueAgeDecoder : Decoder AgeRecord
+antiqueAgeDecoder =
+    Decode.into AgeRecord
+        |> Decode.pipeline (Decode.field "ageOfItem" Decode.float)
+
+
+antiqueAgeEncoder : List AgeRecord -> String
+antiqueAgeEncoder ages =
+    ages
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\age ->
+                        [ ( "ageOfItem", String.fromFloat age.ageOfItem )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias NameRecord =
+    { name : String }
+
+
+antiqueNameDecoder : Decoder NameRecord
+antiqueNameDecoder =
+    Decode.into NameRecord
+        |> Decode.pipeline (Decode.field "name" Decode.string)
+
+
+antiqueNameEncoder : List NameRecord -> String
+antiqueNameEncoder names =
+    names
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\name1 ->
+                        [ ( "name", name1.name )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias ProductRecord =
+    { product : Product }
+
+
+antiqueProductDecoder : Decoder ProductRecord
+antiqueProductDecoder =
+    Decode.into ProductRecord
+        |> Decode.pipeline (Decode.field "product" decodeProduct)
+
+
+antiqueProductEncoder : List ProductRecord -> String
+antiqueProductEncoder products =
+    products
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\product1 ->
+                        [ ( "product", productToString product1.product )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias FooString =
+    { foo : String }
+
+
+fooStringDecoder : Decoder FooString
+fooStringDecoder =
+    Decode.into FooString
+        |> Decode.pipeline (Decode.field "foo" Decode.string)
+
+
+fooStringEncoder : List FooString -> String
+fooStringEncoder strings =
+    strings
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\string ->
+                        [ ( "foo", string.foo )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias FooBool =
+    { foo : Bool }
+
+
+fooBoolDecoder : Decoder FooBool
+fooBoolDecoder =
+    Decode.into FooBool
+        |> Decode.pipeline (Decode.field "foo" decodeBool)
+
+
+fooBoolEncoder : List FooBool -> String
+fooBoolEncoder bools =
+    bools
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\bool ->
+                        [ ( "foo", boolToString bool.foo )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias FooInt =
+    { foo : Int }
+
+
+fooIntDecoder : Decoder FooInt
+fooIntDecoder =
+    Decode.into FooInt
+        |> Decode.pipeline (Decode.field "foo" Decode.int)
+
+
+fooIntEncoder : List FooInt -> String
+fooIntEncoder ints =
+    ints
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\int ->
+                        [ ( "foo", String.fromInt int.foo )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias FooFloat =
+    { foo : Float }
+
+
+fooFloatDecoder : Decoder FooFloat
+fooFloatDecoder =
+    Decode.into FooFloat
+        |> Decode.pipeline (Decode.field "foo" Decode.float)
+
+
+fooFloatEncoder : List FooFloat -> String
+fooFloatEncoder floats =
+    floats
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\float ->
+                        [ ( "foo", String.fromFloat float.foo )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias FooMaybeBool =
+    { foo : Maybe Bool }
+
+
+fooBoolMaybeDecoder : Decoder FooMaybeBool
+fooBoolMaybeDecoder =
+    Decode.into FooMaybeBool
+        |> Decode.pipeline (Decode.field "foo" (Decode.blank decodeBool))
+
+
+fooBoolMaybeEncoder : List FooMaybeBool -> String
+fooBoolMaybeEncoder bools =
+    bools
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\bool ->
+                        [ ( "foo", bool.foo |> Maybe.map boolToString |> Maybe.withDefault "" )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias FooMaybeString =
+    { foo : Maybe String }
+
+
+fooStringMaybeDecoder : Decoder FooMaybeString
+fooStringMaybeDecoder =
+    Decode.into FooMaybeString
+        |> Decode.pipeline (Decode.field "foo" (Decode.blank Decode.string))
+
+
+fooStringMaybeEncoder : List FooMaybeString -> String
+fooStringMaybeEncoder strings =
+    strings
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\string ->
+                        [ ( "foo", string.foo |> Maybe.withDefault "" )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias FooMaybeInt =
+    { foo : Maybe Int }
+
+
+fooIntMaybeDecoder : Decoder FooMaybeInt
+fooIntMaybeDecoder =
+    Decode.into FooMaybeInt
+        |> Decode.pipeline (Decode.field "foo" (Decode.blank Decode.int))
+
+
+fooIntMaybeEncoder : List FooMaybeInt -> String
+fooIntMaybeEncoder ints =
+    ints
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\int ->
+                        [ ( "foo", int.foo |> Maybe.map String.fromInt |> Maybe.withDefault "" )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+type alias FooMaybeFloat =
+    { foo : Maybe Float }
+
+
+fooFloatMaybeDecoder : Decoder FooMaybeFloat
+fooFloatMaybeDecoder =
+    Decode.into FooMaybeFloat
+        |> Decode.pipeline (Decode.field "foo" (Decode.blank Decode.float))
+
+
+fooFloatMaybeEncoder : List FooMaybeFloat -> String
+fooFloatMaybeEncoder floats =
+    floats
+        |> Encode.encode
+            { encoder =
+                Encode.withFieldNames
+                    (\float ->
+                        [ ( "foo", float.foo |> Maybe.map String.fromFloat |> Maybe.withDefault "" )
+                        ]
+                    )
+            , fieldSeparator = ','
+            }
+
+
+
+encodeProductList : List Product -> String
+encodeProductList result =
+    result
+        |> List.map productToString
+        |> (::) "product"
+        |> String.join "\u{000D}\n"
+
+
+encodeFloatList : List Float -> String
+encodeFloatList result =
+    result
+        |> List.map String.fromFloat
+        |> (::) "float"
+        |> String.join "\u{000D}\n"
