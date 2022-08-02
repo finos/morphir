@@ -79,7 +79,7 @@ testDataGeneration =
             generator [ "0.0", "1.0", "100.0", "1000.0", "1000000.0" ]
 
         generateAgeOfItem =
-            generator [ "-1", "0", "19", "20", "21", "99", "100", "101" ]
+            generator [ "-1.0", "0.0", "19.0", "20.0", "21.0", "99.0", "100.0", "101.0" ]
 
         generateHandMade =
             generator [ "True", "False" ]

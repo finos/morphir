@@ -10,7 +10,7 @@ class test1 extends FunSuite {
   import localTestSession.implicits._
 
   val columns = Seq("name","report", "ageOfItem", "product")
-  val data = Seq(("Bowie Knife", "Rusty blade", 20, "Knife"), ("Wooden Chair", "Chipped legs", 19, "Furniture"))
+  val data = Seq(("Bowie Knife", "Rusty blade", 20.0, "Knife"), ("Wooden Chair", "Chipped legs", 19.0, "Furniture"))
   val rdd = localTestSession.sparkContext.parallelize(data)
 
   test("testCaseBool") {
@@ -31,30 +31,30 @@ class test1 extends FunSuite {
       assert(res.count() == 1)
       assert(rows(0)(0) == "Wooden Chair")
       assert(rows(0)(1) == "Chipped legs")
-      assert(rows(0)(2) == 19)
+      assert(rows(0)(2) == 19.0)
       assert(rows(0)(3) == "Furniture")
   }
 
   test("testCaseFloat") {
-    val df = localTestSession.sparkContext.parallelize(Seq(
-      (9.99),
-      (5.55),
-    )).toDF("foo")
-    val res = SparkJobs.testCaseFloat(df)
+    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
+    val res = SparkJobs.testCaseFloat(dfFromRDD)
     val rows = res.collect()
     assert(res.count() == 1)
-    assert(rows(0)(0) == 9.99)
+    assert(rows(0)(0) == "Bowie Knife")
+    assert(rows(0)(1) == "Rusty blade")
+    assert(rows(0)(2) == 20.0)
+    assert(rows(0)(3) == "Knife")
   }
 
   test("testCaseInt") {
-      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-      val res = SparkJobs.testCaseInt(dfFromRDD)
-      val rows = res.collect()
-      assert(res.count() == 1)
-      assert(rows(0)(0) == "Bowie Knife")
-      assert(rows(0)(1) == "Rusty blade")
-      assert(rows(0)(2) == 20)
-      assert(rows(0)(3) == "Knife")
+    val df = localTestSession.sparkContext.parallelize(Seq(
+      (20.0),
+      (5.0),
+    )).toDF("foo")
+    val res = SparkJobs.testCaseInt(df)
+    val rows = res.collect()
+    assert(res.count() == 1)
+    assert(rows(0)(0) == 20)
   }
 
   test("testCaseString") {
@@ -64,7 +64,7 @@ class test1 extends FunSuite {
       assert(res.count() == 1)
       assert(rows(0)(0) == "Bowie Knife")
       assert(rows(0)(1) == "Rusty blade")
-      assert(rows(0)(2) == 20)
+      assert(rows(0)(2) == 20.0)
       assert(rows(0)(3) == "Knife")
   }
 
@@ -81,13 +81,13 @@ class test1 extends FunSuite {
       val row0 = rows(0)
       assert(row0(0) == "Bowie Knife")
       assert(row0(1) == "Rusty blade")
-      assert(row0(2) == 20)
+      assert(row0(2) == 20.0)
       assert(row0(3) == "Knife")
 
       val row1 = rows(1)
       assert(row1(0) == "Wooden Chair")
       assert(row1(1) == "Chipped legs")
-      assert(row1(2) == 19)
+      assert(row1(2) == 19.0)
     }
 
   test("testListMinimum") {
@@ -95,7 +95,7 @@ class test1 extends FunSuite {
     val res = SparkJobs.testListMinimum(dfFromRDD)
     assert(res.count() == 1)
     assert(res.columns(0) == "min")
-    assert(res.collect()(0)(0) == 19)
+    assert(res.collect()(0)(0) == 19.0)
   }
 
   test("testListMaximum") {
@@ -103,7 +103,7 @@ class test1 extends FunSuite {
     val res = SparkJobs.testListMaximum(dfFromRDD)
     assert(res.count() == 1)
     assert(res.columns(0) == "max")
-    assert(res.collect()(0)(0) == 20)
+    assert(res.collect()(0)(0) == 20.0)
   }
 
   test("testSelect1") {
@@ -143,7 +143,7 @@ class test1 extends FunSuite {
       val row0 = rows(0)
       assert(row0(0) == "Bowie Knife")
       assert(row0(1) == "Rusty blade")
-      assert(row0(2) == 20)
+      assert(row0(2) == 20.0)
       assert(row0(3) == "Knife")
     }
 
@@ -160,7 +160,7 @@ class test1 extends FunSuite {
       val row0 = rows(0)
       assert(row0(0) == "Wooden Chair")
       assert(row0(1) == "Chipped legs")
-      assert(row0(2) == 19)
+      assert(row0(2) == 19.0)
       assert(row0(3) == "Furniture")
     }
 }
