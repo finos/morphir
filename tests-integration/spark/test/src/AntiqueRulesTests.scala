@@ -32,7 +32,7 @@ class antiqueRulesTest extends FunSuite {
     .add("category", StringType, true)
     .add("product", StringType, false)
     .add("priceValue", FloatType, false)
-    .add("ageOfItem", StringType, false)
+    .add("ageOfItem", FloatType, false)
     .add("handMade", BooleanType, false)
     .add("requiresExpert", BooleanType, false)
     .add("expertFeedBack", StringType, true)

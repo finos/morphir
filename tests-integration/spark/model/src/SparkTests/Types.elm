@@ -7,7 +7,7 @@ import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Produc
 -}
 type alias AntiqueSubset =
     { name : String
-    , ageOfItem : Int
+    , ageOfItem : Float
     , product : Product
     , report : String
     }
