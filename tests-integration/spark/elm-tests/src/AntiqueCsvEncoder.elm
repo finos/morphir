@@ -99,7 +99,7 @@ antiqueEncoder antiques =
                         [ ( "category", categoryToString antique.category )
                         , ( "product", productToString antique.product )
                         , ( "priceValue", String.fromFloat antique.priceValue )
-                        , ( "ageOfItem", String.fromInt antique.ageOfItem )
+                        , ( "ageOfItem", String.fromFloat antique.ageOfItem )
                         , ( "handMade", boolToString antique.handMade )
                         , ( "requiresExpert", boolToString antique.requiresExpert )
                         , ( "expertFeedback", feedBackToString antique.expertFeedback )

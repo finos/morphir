@@ -141,7 +141,7 @@ antiqueDecoder =
         |> Decode.pipeline (Decode.field "category" (Decode.blank toCategory))
         |> Decode.pipeline (Decode.field "product" toProduct)
         |> Decode.pipeline (Decode.field "priceValue" Decode.float)
-        |> Decode.pipeline (Decode.field "ageOfItem" Decode.int)
+        |> Decode.pipeline (Decode.field "ageOfItem" Decode.float)
         |> Decode.pipeline (Decode.field "handMade" toBool)
         |> Decode.pipeline (Decode.field "requiresExpert" toBool)
         |> Decode.pipeline (Decode.field "expertFeedBack" (Decode.blank toFeedBack))
