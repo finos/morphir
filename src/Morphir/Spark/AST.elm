@@ -141,7 +141,6 @@ type Error
     | FunctionNotFound FQName
     | UnsupportedOperatorReference FQName
     | LambdaExpected TypedValue
-    | ReferenceExpected
     | UnsupportedSDKFunction FQName
     | EmptyPatternMatch
     | UnhandledPatternMatch ( Pattern (Type.Type ()), TypedValue )
@@ -360,44 +359,12 @@ expressionFromValue ir morphirValue =
                     expressionFromValue ir arg
                         |> Result.map (\expr -> Function "isnull" [ expr ])
 
-                Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "member" ] )) item) (Value.List _ list) ->
-                    Result.map2
-                        (\itemExpr args ->
-                            Method itemExpr "isin" args
-                        )
-                        (expressionFromValue ir item)
-                        (list
-                            |> List.map (\val -> expressionFromValue ir val)
-                            |> ResultList.keepFirstError
-                        )
-
-                Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "minimum" ] )) arg ->
-                    expressionFromValue ir arg
-                        |> Result.map (\expr -> Function "min" [ expr ])
-
-                Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "maximum" ] )) arg ->
-                    expressionFromValue ir arg
-                        |> Result.map (\expr -> Function "max" [ expr ])
-
-                Value.Apply _ (Value.Apply _ (Value.Reference _ (( package, modName, _ ) as ref)) arg) argValue ->
-                    case ( package, modName ) of
-                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ) ->
-                            Result.map3
-                                BinaryOperation
-                                (binaryOpString ref)
-                                (expressionFromValue ir arg)
-                                (expressionFromValue ir argValue)
-
-                        _ ->
-                            collectArgValues morphirValue []
-                                |> (\( args, applyTarget ) -> inlineValue ir args applyTarget)
-
                 _ ->
                     collectArgValues morphirValue []
-                        |> (\( args, applyTarget ) -> inlineValue ir args applyTarget)
+                        |> (\( args, applyTarget ) -> mapApply ir args applyTarget)
 
         Value.Reference _ _ ->
-            inlineValue ir [] morphirValue
+            mapApply ir [] morphirValue
 
         Value.IfThenElse _ cond thenBranch elseBranch ->
             Result.map3
@@ -487,16 +454,17 @@ collectLambdaParams value paramsCollected =
             paramsCollected
 
 
-{-| A utility function that does a complete inlining of a value.
-If the `target` to is a `Reference` it looks up the function and replaces all references to its
+{-| Creates Expression from a function application.
+The input to this function include the list of arguments and the target of the apply.
+If the `target` is a `Reference` it looks up the function and replaces all references to its
 param variables with the arguments. If the `target` is a lambda, it first attempts to look into
-the lambda body and rewrite and reference to enclosed variables and then repeats the process for
+the lambda body and rewrite any enclosed variables and then repeats the process for
 the lambda's params.
 -}
-inlineValue : IR -> List TypedValue -> TypedValue -> Result Error Expression
-inlineValue ir args target =
+mapApply : IR -> List TypedValue -> TypedValue -> Result Error Expression
+mapApply ir args target =
     case target of
-        Value.Reference _ fqn ->
+        Value.Reference _ (( pkgName, modName, _ ) as fqn) ->
             case IR.lookupValueDefinition fqn ir of
                 Just def ->
                     inlineArguments
@@ -506,10 +474,16 @@ inlineValue ir args target =
                         |> expressionFromValue ir
 
                 Nothing ->
-                    args
-                        |> List.map (expressionFromValue ir)
-                        |> ResultList.keepFirstError
-                        |> Result.andThen (mapSDKFunctions fqn)
+                    case ( ( pkgName, modName ), args ) of
+                        ( ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ] ), left :: right :: [] ) ->
+                            Result.map3
+                                BinaryOperation
+                                (binaryOpString fqn)
+                                (expressionFromValue ir left)
+                                (expressionFromValue ir right)
+
+                        _ ->
+                            mapSDKFunctions ir args fqn
 
         Value.Lambda _ _ body ->
             inlineArguments
@@ -565,23 +539,52 @@ inlineArguments paramList argList fnBody =
             fnBody
 
 
-mapSDKFunctions : FQName -> List Expression -> Result Error Expression
-mapSDKFunctions fQName expressions =
-    case ( FQName.toString fQName, expressions ) of
+mapSDKFunctions : IR -> List TypedValue -> FQName -> Result Error Expression
+mapSDKFunctions ir args fQName =
+    case ( FQName.toString fQName, args ) of
+        -- HANDLE STRING FUNCTIONS
         ( "Morphir.SDK:String:replace", pattern :: replacement :: target :: [] ) ->
-            Function "regexp_replace" [ target, pattern, replacement ]
-                |> Ok
+            [ target, pattern, replacement ]
+                |> List.map (expressionFromValue ir)
+                |> ResultList.keepFirstError
+                |> Result.map (Function "regexp_replace")
 
         ( "Morphir.SDK:String:reverse", _ ) ->
-            Function "reverse" expressions
-                |> Ok
+            args
+                |> List.map (expressionFromValue ir)
+                |> ResultList.keepFirstError
+                |> Result.map (Function "reverse")
 
         ( "Morphir.SDK:String:toUpper", _ ) ->
-            Function "upper" expressions
-                |> Ok
+            args
+                |> List.map (expressionFromValue ir)
+                |> ResultList.keepFirstError
+                |> Result.map (Function "upper")
 
         ( "Morphir.SDK:String:concat", _ ) ->
             UnsupportedSDKFunction fQName |> Err
+
+        -- HANDLE LIST FUNCTIONS
+        ( "Morphir.SDK:List:member", item :: (Value.List _ list) :: [] ) ->
+            Result.map2
+                (\itemExpr listExpr ->
+                    Method itemExpr "isin" listExpr
+                )
+                (expressionFromValue ir item)
+                (list
+                    |> List.map (expressionFromValue ir)
+                    |> ResultList.keepFirstError
+                )
+
+        ( "Morphir.SDK:List:maximum", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "max")
+
+        ( "Morphir.SDK:List:minimum", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "min")
 
         _ ->
             FunctionNotFound fQName |> Err
