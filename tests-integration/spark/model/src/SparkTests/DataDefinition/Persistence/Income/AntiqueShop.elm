@@ -48,6 +48,51 @@ productFromID id =
             Nothing
 
 
+productFromString : String -> Result String Product
+productFromString str =
+    if String.isEmpty str then
+        Err "Empty strings are not valid Antique Product strings."
+
+    else
+        case str of
+            "Paintings" ->
+                Paintings |> Ok
+
+            "Knife" ->
+                Knife |> Ok
+
+            "Plates" ->
+                Plates |> Ok
+
+            "Furniture" ->
+                Furniture |> Ok
+
+            "HistoryWritings" ->
+                HistoryWritings |> Ok
+
+            _ ->
+                Err "Invalid Antique Product string."
+
+
+productToString : Product -> String
+productToString product =
+    case product of
+        Paintings ->
+            "Paintings"
+
+        Knife ->
+            "Knife"
+
+        Plates ->
+            "Plates"
+
+        Furniture ->
+            "Furniture"
+
+        HistoryWritings ->
+            "HistoryWritings"
+
+
 antiqueItem1 : Product
 antiqueItem1 =
     Paintings

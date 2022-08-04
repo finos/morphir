@@ -50,7 +50,7 @@ class antiqueRulesTest extends FunSuite {
     val df_expected_results = localTestSession.read.format("csv")
       .option("header", "true")
       .schema(schema)
-      .load("spark/test/src/spark_test_data/antiques_expected_results_is_item_antique.csv")
+      .load("spark/test/src/spark_test_data/expected_results_is_item_antique.csv")
 
     val df_actual_results = SparkJobs.antiqueItems(df_test_data)
 
@@ -63,7 +63,7 @@ class antiqueRulesTest extends FunSuite {
     val df_expected_results = localTestSession.read.format("csv")
       .option("header", "true")
       .schema(schema)
-      .load("spark/test/src/spark_test_data/antiques_expected_results_is_item_vintage.csv")
+      .load("spark/test/src/spark_test_data/expected_results_is_item_vintage.csv")
 
     val df_actual_results = SparkJobs.vintageItems(df_test_data)
 
@@ -76,7 +76,7 @@ class antiqueRulesTest extends FunSuite {
     val df_expected_results = localTestSession.read.format("csv")
       .option("header", "true")
       .schema(schema)
-      .load("spark/test/src/spark_test_data/antiques_expected_results_is_item_worth_thousands.csv")
+      .load("spark/test/src/spark_test_data/expected_results_is_item_worth_thousands.csv")
 
     val df_actual_results = SparkJobs.worthThousandsItems(df_test_data)
 
@@ -89,7 +89,7 @@ class antiqueRulesTest extends FunSuite {
     val df_expected_results = localTestSession.read.format("csv")
       .option("header", "true")
       .schema(schema)
-      .load("spark/test/src/spark_test_data/antiques_expected_results_is_item_worth_millions.csv")
+      .load("spark/test/src/spark_test_data/expected_results_is_item_worth_millions.csv")
 
     val df_actual_results = SparkJobs.worthMillionsItems(df_test_data)
 
@@ -102,7 +102,7 @@ class antiqueRulesTest extends FunSuite {
     val df_expected_results = localTestSession.read.format("csv")
       .option("header", "true")
       .schema(schema)
-      .load("spark/test/src/spark_test_data/antiques_expected_results_seize_item.csv")
+      .load("spark/test/src/spark_test_data/expected_results_seize_item.csv")
 
     val df_actual_results = SparkJobs.seizedItems(df_test_data)
 

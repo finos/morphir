@@ -15,14 +15,14 @@
 -}
 
 
-module TestIsItemVintage exposing (..)
+module TestIsItemAntique exposing (..)
 
 import CsvUtils exposing (antiqueEncoder)
 import AntiquesDataSource exposing (antiquesDataSource)
-import SparkTests.Rules.Income.Antique exposing (is_item_vintage)
+import SparkTests.Rules.Income.Antique exposing (is_item_antique)
 import TestUtils exposing (executeTest)
 import Test exposing (Test)
 
-testIsItemVintage : Test
-testIsItemVintage = executeTest "is_item_vintage" antiquesDataSource (List.filter is_item_vintage) antiqueEncoder
+testIsItemAntique : Test
+testIsItemAntique = executeTest "is_item_antique" antiquesDataSource (List.filter is_item_antique) antiqueEncoder
 
