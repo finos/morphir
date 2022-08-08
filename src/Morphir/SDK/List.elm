@@ -15,7 +15,14 @@
 -}
 
 
-module Morphir.SDK.List exposing (..)
+module Morphir.SDK.List exposing (innerJoin, leftJoin, rightJoin)
+
+{-| Extra utilities on lists.
+
+@docs innerJoin, leftJoin, rightJoin
+
+-}
+
 
 {-| Returns all elements of a list except for the last.
 
@@ -24,8 +31,6 @@ module Morphir.SDK.List exposing (..)
     init [] == Nothing
 
 -}
-
-
 init : List a -> Maybe (List a)
 init list =
     list
