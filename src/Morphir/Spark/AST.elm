@@ -586,6 +586,16 @@ mapSDKFunctions ir args fQName =
                 |> Result.map List.singleton
                 |> Result.map (Function "min")
 
+        ( "Morphir.SDK:List:length", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "count")
+
+        ( "Morphir.SDK:List:sum", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "sum")
+
         _ ->
             FunctionNotFound fQName |> Err
 
