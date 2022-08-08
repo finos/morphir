@@ -9,17 +9,18 @@ import Element
         , height
         , html
         , rgb
+        , scrollbars
         , width
         )
 import Element.Border as Border
 import Morphir.Dependency.DAG as DAG
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Web.Graph.Graph as Graph exposing (Edge, Graph, Node)
 import Set exposing (Set)
-import Element exposing (scrollbars)
 
 
 type alias SelectedModule =
@@ -37,26 +38,19 @@ dependencyGraph selectedModule repo =
         gray =
             rgb 0.9 0.9 0.9
 
-        filterDepsBySelectedModule : DAG.DAG ( comparable, ModuleName, Name ) -> List ( String, List String )
+        filterDepsBySelectedModule : DAG.DAG FQName -> List ( String, List String )
         filterDepsBySelectedModule deps =
             deps
                 |> DAG.toList
                 |> List.filterMap
-                    (\( ( _, moduleName, localName ), fqNameSet ) ->
+                    (\( ( _, moduleName, _ ) as fqName, fqNameSet ) ->
                         case selectedModule of
                             Just ( _, selectedModName ) ->
                                 if selectedModName == moduleName then
                                     Just
-                                        ( localName
-                                            |> Name.toHumanWords
-                                            |> String.join " "
-                                        , Set.toList fqNameSet
-                                            |> List.map
-                                                (\( _, _, lName ) ->
-                                                    lName
-                                                        |> Name.toHumanWords
-                                                        |> String.join " "
-                                                )
+                                        ( FQName.toString fqName
+                                        , Set.map FQName.toString fqNameSet
+                                            |> Set.toList
                                         )
 
                                 else
@@ -64,16 +58,9 @@ dependencyGraph selectedModule repo =
 
                             Nothing ->
                                 Just
-                                    ( localName
-                                        |> Name.toHumanWords
-                                        |> String.join " "
-                                    , Set.toList fqNameSet
-                                        |> List.map
-                                            (\( _, _, lName ) ->
-                                                lName
-                                                    |> Name.toHumanWords
-                                                    |> String.join " "
-                                            )
+                                    ( FQName.toString fqName
+                                    , Set.map FQName.toString fqNameSet
+                                        |> Set.toList
                                     )
                     )
 
@@ -83,7 +70,7 @@ dependencyGraph selectedModule repo =
         filterValueDeps =
             filterDepsBySelectedModule (Repo.valueDependencies repo)
     in
-    column [ width fill, height (fillPortion 3), Border.widthXY 0 8, Border.color gray, scrollbars]
+    column [ width fill, height (fillPortion 3), Border.widthXY 0 8, Border.color gray, scrollbars ]
         [ viewGraph (Graph.dagListAsGraph filterTypeDeps)
         , viewGraph (Graph.dagListAsGraph filterValueDeps)
         ]
