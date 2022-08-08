@@ -1,6 +1,5 @@
 module SparkTests.FunctionTests exposing (..)
 
-import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (..)
 import SparkTests.Types exposing (..)
 
 
@@ -183,6 +182,16 @@ testListMaximum source =
                 ]
            )
 
+testNameMaximum : List AntiqueSubset -> List { max : Maybe String }
+testNameMaximum source =
+    source
+        |> List.map .name
+        |> (\names ->
+                [ { max =
+                        List.maximum names
+                  }
+                ]
+           )
 
 testMapAndFilter : List AntiqueSubset -> List AntiqueSubset
 testMapAndFilter source =
@@ -264,3 +273,26 @@ filterFnWithVar max record =
                 ageOfItem <= (maximumAllowedAge + max)
            )
             record.ageOfItem
+
+testListSum : List AntiqueSubset -> List { agesum : Int }
+testListSum source =
+    source
+        |> List.map .ageOfItem
+        |> (\ages ->
+                [ { agesum =
+                        List.sum ages
+                  }
+                ]
+           )
+
+
+testListLength : List AntiqueSubset -> List { listlength : Int }
+testListLength source =
+    source
+        |> List.map .name
+        |> (\names ->
+                [ { listlength =
+                        List.length names
+                  }
+                ]
+           )

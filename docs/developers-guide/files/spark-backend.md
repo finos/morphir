@@ -217,7 +217,8 @@ And 'label' can be any alias for the returned column.
 And 'aggregationFunction' is one of:
 * List.minimum
 * List.maximum
-
+* List.sum
+* List.length
 
 Such code would generate Spark of the form
 ```
