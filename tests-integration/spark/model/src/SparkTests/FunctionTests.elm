@@ -182,6 +182,7 @@ testListMaximum source =
                 ]
            )
 
+
 testNameMaximum : List AntiqueSubset -> List { max : Maybe String }
 testNameMaximum source =
     source
@@ -192,6 +193,7 @@ testNameMaximum source =
                   }
                 ]
            )
+
 
 testMapAndFilter : List AntiqueSubset -> List AntiqueSubset
 testMapAndFilter source =
@@ -274,7 +276,8 @@ filterFnWithVar max record =
            )
             record.ageOfItem
 
-testListSum : List AntiqueSubset -> List { agesum : Int }
+
+testListSum : List AntiqueSubset -> List { agesum : Float }
 testListSum source =
     source
         |> List.map .ageOfItem
