@@ -1,14 +1,13 @@
 FROM node:16.1-alpine3.11
 
-ENV MORPHIR_USER = morphirUser
-# Add Non Root User
-RUN adduser -S -H $MORPHIR_USER
-
 LABEL author="Piyush Gupta"
 
 ENV  NODE_ENV=production
-
 ENV PORT=3000
+ENV MORPHIR_USER = morphir
+
+# Add Non Root User
+RUN adduser --system --uid=7357 --no-create-home ${MORPHIR_USER}
 
 #Directory of Docker Container
 WORKDIR /var/morphir_home
