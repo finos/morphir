@@ -250,6 +250,47 @@ type Error
     | AggregationError ConstructAggregationError
 
 
+appendFunctionToSelect : FQName -> ObjectExpression -> Result Error ObjectExpression
+appendFunctionToSelect funcName sourceExpression =
+    case sourceExpression of
+        Select (( sourceName, sourceArgs ) :: []) sourceSource ->
+            fQNameToPartialSparkFunction funcName
+                |> Result.map
+                    (\partialFunc ->
+                        Select [ ( sourceName, partialFunc [ sourceArgs ] ) ] sourceSource
+                    )
+
+        other ->
+            Err (UnhandledObjectExpression other)
+
+
+isBasicType : FQName -> List (Type.Type ta) -> Bool
+isBasicType funcName funcArgs =
+    case funcName of
+        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) ->
+            True
+
+        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) ->
+            True
+
+        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) ->
+            True
+
+        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "string" ] ) ->
+            True
+
+        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) ->
+            case funcArgs of
+                [ Type.Reference _ fqn [] ] ->
+                    isBasicType fqn []
+
+                _ ->
+                    False
+
+        _ ->
+            False
+
+
 {-| provides a way to create ObjectExpressions from a Morphir Value.
 This is where support for various top level expression is added. This function fails to produce an ObjectExpression
 when it encounters a value that is not supported.
@@ -312,6 +353,19 @@ objectExpressionFromValue ir morphirValue =
         Value.LetDefinition _ _ _ _ ->
             inlineLetDef [] [] morphirValue
                 |> objectExpressionFromValue ir
+
+        Value.Apply (Type.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) as returnFQN) returnArgs) (Value.Reference _ applyFuncName) sourceRelation ->
+            case isBasicType returnFQN returnArgs of
+                True ->
+                    objectExpressionFromValue ir sourceRelation
+                        |> Result.andThen (appendFunctionToSelect applyFuncName)
+
+                False ->
+                    let
+                        _ =
+                            Debug.log "not a basic type" ( returnFQN, returnArgs )
+                    in
+                    Err (UnhandledValue morphirValue)
 
         other ->
             let
@@ -688,24 +742,30 @@ inlineArguments paramList argList fnBody =
 fQNameToPartialSparkFunction : FQName -> Result Error (List Expression -> Expression)
 fQNameToPartialSparkFunction fQName =
     -- doesn't cover every call in mapSDKFunctions because some functions need special treatment
-    case (FQName.toString fQName) of
+    case FQName.toString fQName of
         -- String Functions
         "Morphir.SDK:String:replace" ->
             Function "regexp_replace" |> Ok
+
         "Morphir.SDK:String:reverse" ->
             Function "reverse" |> Ok
+
         "Morphir.SDK:String:toUpper" ->
             Function "upper" |> Ok
+
         "Morphir.SDK:String:concat" ->
             UnsupportedSDKFunction fQName |> Err
 
         -- List Functions
         "Morphir.SDK:List:maximum" ->
             Function "max" |> Ok
+
         "Morphir.SDK:List:minimum" ->
             Function "min" |> Ok
+
         "Morphir.SDK:List:length" ->
             Function "count" |> Ok
+
         "Morphir.SDK:List:sum" ->
             Function "sum" |> Ok
 
@@ -733,7 +793,7 @@ mapSDKFunctions ir args fQName =
             Result.map2
                 (\partialFunc exprArgs -> partialFunc exprArgs)
                 (fQNameToPartialSparkFunction fQName)
-                ( [ target, pattern, replacement ]
+                ([ target, pattern, replacement ]
                     |> List.map (expressionFromValue ir)
                     |> ResultList.keepFirstError
                 )
