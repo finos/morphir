@@ -1783,6 +1783,7 @@ viewDefinitionDetails model =
                 , onHoverOver = hoverOver
                 , onHoverLeave = Insight << ShrinkVariable
                 }
+                False
 
         viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
         viewArgumentEditors ir argState inputTypes =
@@ -1819,24 +1820,26 @@ viewDefinitionDetails model =
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
-            row [ spacing (model.theme |> Theme.scaled 2) ]
-                <| ifThenElse (List.isEmpty testCase.inputs) [] [ row [ Border.rounded 5, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
-                    (case evaluateOutput ir testCase.inputs fQName of
-                        Ok rawValue ->
-                            case rawValue of
-                                Value.Unit () ->
-                                    [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
+            row [ spacing (model.theme |> Theme.scaled 2) ] <|
+                ifThenElse (List.isEmpty testCase.inputs)
+                    []
+                    [ row [ Border.rounded 5, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
+                        (case evaluateOutput ir testCase.inputs fQName of
+                            Ok rawValue ->
+                                case rawValue of
+                                    Value.Unit () ->
+                                        [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
 
-                                expectedOutput ->
-                                    [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value:")
-                                    , el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
-                                    , ifThenElse (Dict.isEmpty model.argStates) none (saveTestcaseButton fQName { testCase | expectedOutput = expectedOutput })
-                                    ]
+                                    expectedOutput ->
+                                        [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value:")
+                                        , el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
+                                        , ifThenElse (Dict.isEmpty model.argStates) none (saveTestcaseButton fQName { testCase | expectedOutput = expectedOutput })
+                                        ]
 
-                        Err _ ->
-                            [ text "Invalid or missing inputs" ]
-                    )
-                ]
+                            Err _ ->
+                                [ text "Invalid or missing inputs" ]
+                        )
+                    ]
 
         evaluateOutput : IR -> List (Maybe RawValue) -> FQName -> Result Error RawValue
         evaluateOutput ir inputs fQName =
