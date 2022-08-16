@@ -11,12 +11,11 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Value(..))
-import Morphir.Visual.Common exposing (nameToText)
+import Morphir.Visual.Common exposing (nameToText, pathToFullUrl)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
-import Morphir.Visual.Common exposing (pathToFullUrl)
 
 
 view : Config msg -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
@@ -31,14 +30,19 @@ view config viewValue functionValue argValues =
                     el [ Background.color <| config.state.theme.colors.selectionColor, padding 2 ] <| viewValue functionValue
             in
             case functionValue of
-                Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) -> --we are not able to display SDK functions yet
+                Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
+                    --we are not able to display SDK functions yet
                     notClickable
 
                 Reference _ ( packageName, moduleName, name ) ->
-                    link [ Background.color <| config.state.theme.colors.selectionColor, padding 2, pointer ]
-                        { url = pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase name
-                        , label = viewValue functionValue
-                        }
+                    if config.standalone == False then
+                        link [ Background.color <| config.state.theme.colors.selectionColor, padding 2, pointer ]
+                            { url = pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase name
+                            , label = viewValue functionValue
+                            }
+
+                    else
+                        notClickable
 
                 _ ->
                     notClickable

@@ -31,10 +31,10 @@
     });
 
     //Sending Function Name threw port
-    app.ports.receiveFunctionName.send("Insight.UseCase1:limitTracking");
+    app.ports.receiveFunctionName.send("Issues.Issue401:bar");
 
     //Sending Arguments List threw port
-    var argsList = [10 ,13 ,-16 ,15 ,-10];
+    var argsList = [{field:"1"}];
     app.ports.receiveFunctionArguments.send(argsList);
 
 </script>

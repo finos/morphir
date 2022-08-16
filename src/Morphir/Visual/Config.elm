@@ -18,6 +18,7 @@ type alias Config msg =
     , nativeFunctions : Dict FQName Native.Function
     , state : VisualState
     , handlers : EventHandlers msg
+    , standalone : Bool
     }
 
 
@@ -49,12 +50,13 @@ type HighlightState
     | Default
 
 
-fromIR : IR -> VisualState -> EventHandlers msg -> Config msg
-fromIR ir visualState eventHandlers =
+fromIR : IR -> VisualState -> EventHandlers msg -> Bool -> Config msg
+fromIR ir visualState eventHandlers isStandAlone =
     { ir = ir
     , nativeFunctions = SDK.nativeFunctions
     , state = visualState
     , handlers = eventHandlers
+    , standalone = isStandAlone
     }
 
 
