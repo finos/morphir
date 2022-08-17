@@ -17,10 +17,10 @@
 
 module Morphir.IR.Literal.Codec exposing (..)
 
-import Morphir.SDK.Decimal as Decimal
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.SDK.Decimal as Decimal
 
 
 encodeLiteral : Literal -> Encode.Value
@@ -100,14 +100,19 @@ decodeLiteral =
                             (Decode.index 1 Decode.float)
 
                     "DecimalLiteral" ->
-                        let
-                            dec v =
-                                Decimal.fromString v |> Maybe.withDefault (Decimal.fromInt 0)
-                        in
                         Decode.map DecimalLiteral
                             (Decode.index 1 Decode.string
                                 |> Decode.andThen
-                                    (\str -> Decode.succeed <| dec str)
+                                    (\str ->
+                                        case Decimal.fromString str of
+                                            Just decimal ->
+                                                Decode.succeed decimal
+
+                                            Nothing ->
+                                                "Failed to create decimal value from string: "
+                                                    ++ str
+                                                    |> Decode.fail
+                                    )
                             )
 
                     other ->

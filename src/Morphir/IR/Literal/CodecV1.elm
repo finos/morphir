@@ -100,14 +100,19 @@ decodeLiteral =
                             (Decode.index 1 Decode.float)
 
                     "decimal_literal" ->
-                        let
-                            dec v =
-                                Decimal.fromString v |> Maybe.withDefault (Decimal.fromInt 0)
-                        in
                         Decode.map DecimalLiteral
                             (Decode.index 1 Decode.string
                                 |> Decode.andThen
-                                    (\str -> Decode.succeed <| dec str)
+                                    (\str ->
+                                        case Decimal.fromString str of
+                                            Just decimal ->
+                                                Decode.succeed decimal
+
+                                            Nothing ->
+                                                "Failed to create decimal value from string: "
+                                                    ++ str
+                                                    |> Decode.fail
+                                    )
                             )
 
                     other ->

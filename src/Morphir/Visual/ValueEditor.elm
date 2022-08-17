@@ -56,6 +56,7 @@ import Element
         , paddingEach
         , paddingXY
         , rgb
+        , rgba
         , row
         , spacing
         , table
@@ -90,7 +91,6 @@ import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Svg
 import Svg.Attributes
-import Element exposing (rgba)
 
 
 {-| Type that represents the state of the value editor. It's made up of the following pieces of information:
@@ -271,6 +271,9 @@ initComponentState ir valueType maybeInitialValue =
 
                                     Type.CustomTypeSpecification _ constructors ->
                                         initCustomEditor ir fQName constructors maybeInitialValue
+
+                                    Type.DerivedTypeSpecification _ config ->
+                                        initComponentState ir config.baseType maybeInitialValue
 
                             Nothing ->
                                 initGenericEditor maybeInitialValue
@@ -651,9 +654,9 @@ view ir valueType updateEditorState editorState =
                     , label = Input.labelLeft labelStyle (text <| iconLabel (IR.resolveType valueType ir))
                     }
                 , if editorState.defaultValueCheckbox.show then
-                    Input.checkbox [center]
+                    Input.checkbox [ center ]
                         { icon = Input.defaultCheckbox
-                        , label = Input.labelRight (labelStyle ++ [Background.color <| rgba 0 0 0 0]) (text "empty (\"\")")
+                        , label = Input.labelRight (labelStyle ++ [ Background.color <| rgba 0 0 0 0 ]) (text "empty (\"\")")
                         , checked = editorState.defaultValueCheckbox.checked
                         , onChange =
                             \updatedIsChecked ->

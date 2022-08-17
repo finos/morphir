@@ -321,6 +321,16 @@ sdkMaybeValues =
     ]
 
 
+simpleJustMaybe : Maybe String
+simpleJustMaybe =
+    Just "value"
+
+
+simpleNothing : Maybe String
+simpleNothing =
+    Nothing
+
+
 fieldFunctionAsArg : List FooBarBazRecord -> List String
 fieldFunctionAsArg list =
     list
