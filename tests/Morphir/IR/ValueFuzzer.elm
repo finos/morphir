@@ -84,6 +84,9 @@ fromType ir tpe =
                                             )
                                         )
                                     |> customFuzzer typePackageName typeModuleName
+
+                            Type.DerivedTypeSpecification _ _ ->
+                                Debug.todo "implement"
                     )
 
         Type.Record _ fieldTypes ->
