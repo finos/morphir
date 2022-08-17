@@ -7,11 +7,13 @@ import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Maybe exposing (just, nothing)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Decimal as Decimal
+import Morphir.Value.Interpreter as Interpreter
 
 
 encodeData : IR -> Type () -> Result String (RawValue -> Result String Encode.Value)
@@ -210,6 +212,39 @@ encodeData ir tpe =
 
                                             _ ->
                                                 Err (String.concat [ "Expected constructor but found: ", Debug.toString value ])
+                                in
+                                Ok encode
+
+                            Type.DerivedTypeSpecification typeArgNames config ->
+                                let
+                                    argVariables : Dict Name (Type ())
+                                    argVariables =
+                                        List.map2 Tuple.pair typeArgNames typeArgs
+                                            |> Dict.fromList
+
+                                    encode : RawValue -> Result String Encode.Value
+                                    encode rawValue =
+                                        let
+                                            valueAsBaseType : Value () ()
+                                            valueAsBaseType =
+                                                Value.Apply () (Value.Reference () config.toBaseType) rawValue
+                                        in
+                                        Result.map2
+                                            (\fn evaluatedValue ->
+                                                fn evaluatedValue
+                                            )
+                                            (Type.substituteTypeVariables argVariables config.baseType
+                                                |> encodeData ir
+                                            )
+                                            (Interpreter.evaluate SDK.nativeFunctions ir valueAsBaseType
+                                                |> Result.mapError
+                                                    (always
+                                                        ("Interpreter Error: Failed to evaluate Value "
+                                                            ++ FQName.toString config.toBaseType
+                                                        )
+                                                    )
+                                            )
+                                            |> Result.andThen identity
                                 in
                                 Ok encode
                     )
@@ -414,6 +449,73 @@ decodeData ir tpe =
                                                     Decode.fail error
                                         )
                                     |> Ok
+
+                            Type.DerivedTypeSpecification typeArgsNames config ->
+                                let
+                                    fnName =
+                                        FQName.toString config.fromBaseType
+
+                                    apply : Value () () -> Value () ()
+                                    apply =
+                                        Value.Apply () (Value.Reference () config.fromBaseType)
+
+                                    argVariables : Dict Name (Type ())
+                                    argVariables =
+                                        List.map2 Tuple.pair typeArgsNames typeArgs
+                                            |> Dict.fromList
+
+                                    createType v =
+                                        apply v
+                                            |> Interpreter.evaluate SDK.nativeFunctions ir
+                                            |> (\evaluatedResult ->
+                                                    case evaluatedResult of
+                                                        Ok val ->
+                                                            -- if the val is of the result or maybe type,
+                                                            -- we need to extract the value
+                                                            case val of
+                                                                -- if the evaluated value is "Just value"
+                                                                Value.Apply _ (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) value ->
+                                                                    Decode.succeed value
+
+                                                                -- if the evaluated value "Nothing"
+                                                                Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
+                                                                    fnName
+                                                                        ++ " returned Nothing"
+                                                                        |> Decode.fail
+
+                                                                -- if the evaluated value is "Ok value"
+                                                                Value.Apply _ (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value ->
+                                                                    Decode.succeed value
+
+                                                                -- if the evaluated value "Err err"
+                                                                Value.Apply _ (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) err ->
+                                                                    let
+                                                                        _ =
+                                                                            Debug.log "Could not derive value" err
+                                                                    in
+                                                                    fnName
+                                                                        ++ " returned Err"
+                                                                        |> Decode.fail
+
+                                                                -- only Maybe and Result types are expected, we can fail
+                                                                _ ->
+                                                                    "Invalid Return Type for "
+                                                                        ++ fnName
+                                                                        |> Decode.fail
+
+                                                        --Decode.succeed val
+                                                        Err error ->
+                                                            let
+                                                                _ =
+                                                                    Debug.log "Interpreter Evaluation Error: " error
+                                                            in
+                                                            Decode.fail "Interpreter Evaluation Error"
+                                               )
+                                in
+                                config.baseType
+                                    |> Type.substituteTypeVariables argVariables
+                                    |> decodeData ir
+                                    |> Result.map (Decode.andThen createType)
                     )
 
         Type.Record _ fields ->

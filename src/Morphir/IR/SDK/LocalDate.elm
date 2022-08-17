@@ -35,15 +35,23 @@ moduleName =
     Path.fromString "LocalDate"
 
 
+config =
+    { baseType = stringType ()
+    , toBaseType = toFQName moduleName "toIsoString"
+    , fromBaseType = toFQName moduleName "fromISO"
+    }
+
+
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "LocalDate", OpaqueTypeSpecification [] |> Documented "Type that represents a date concept." )
+            [ ( Name.fromString "LocalDate", DerivedTypeSpecification [] config |> Documented "Type that represents a date concept." )
             ]
     , values =
         Dict.fromList
-            [ vSpec "fromISO" [ ( "iso", stringType () ) ] (maybeType () (localDateType ()))
+            [ vSpec "toIsoString" [ ( "date", localDateType () ) ] (stringType ())
+            , vSpec "fromISO" [ ( "iso", stringType () ) ] (maybeType () (localDateType ()))
             , vSpec "fromParts" [ ( "year", intType () ), ( "month", intType () ), ( "day", intType () ) ] (maybeType () (localDateType ()))
             , vSpec "diffInDays" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
             , vSpec "diffInWeeks" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
