@@ -190,7 +190,7 @@ encodeSpecification encodeAttributes spec =
                 [ Encode.string "DerivedTypeSpecification"
                 , Encode.list encodeName params
                 , Encode.object
-                    [ ( "basicType", encodeType encodeAttributes config.baseType )
+                    [ ( "baseType", encodeType encodeAttributes config.baseType )
                     , ( "fromBaseType", encodeFQName config.fromBaseType )
                     , ( "toBaseType", encodeFQName config.toBaseType )
                     ]
