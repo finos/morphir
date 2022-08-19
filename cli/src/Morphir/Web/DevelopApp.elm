@@ -385,23 +385,34 @@ update msg model =
             in
             case insightMsg of
                 ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
-                    if model.expandedValues |> Dict.member ( fQName, localName ) then
-                        if isFunctionPresent then
-                            ( { model | expandedValues = model.expandedValues |> Dict.remove ( fQName, localName ) }, Cmd.none )
+                    if isFunctionPresent then
+                        case msg of
+                            Navigate navigateToReference ->
+                                case navigateToReference of
+                                    LinkClicked urlRequest ->
+                                        case urlRequest of
+                                            Browser.Internal url ->
+                                                ( model, Nav.pushUrl model.key (Url.toString url) )
 
-                        else
-                            ( model, Cmd.none )
+                                            Browser.External href ->
+                                                ( model, Nav.load href )
+
+                                    UrlChanged url ->
+                                        ( toRoute url model, Cmd.none )
+
+                            HttpError httpError ->
+                                case model.irState of
+                                    IRLoaded _ ->
+                                        ( model, Cmd.none )
+
+                                    _ ->
+                                        ( { model | serverState = ServerHttpError httpError }, Cmd.none )
+
+                            _ ->
+                                ( model, Cmd.none )
 
                     else
-                        ( { model
-                            | expandedValues =
-                                Distribution.lookupValueDefinition (QName moduleName localName)
-                                    getDistribution
-                                    |> Maybe.map (\valueDef -> model.expandedValues |> Dict.insert ( fQName, localName ) valueDef)
-                                    |> Maybe.withDefault model.expandedValues
-                          }
-                        , Cmd.none
-                        )
+                        ( model, Cmd.none )
 
                 ExpandVariable varIndex maybeRawValue ->
                     ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue } }, Cmd.none )
@@ -437,6 +448,23 @@ update msg model =
                     , Cmd.none
                     )
 
+        --if model.expandedValues |> Dict.member ( fQName, localName ) then
+        --    if isFunctionPresent then
+        --        ( { model | expandedValues = model.expandedValues |> Dict.remove ( fQName, localName ) }, Cmd.none )
+        --
+        --    else
+        --        ( model, Cmd.none )
+        --
+        --else
+        --    ( { model
+        --        | expandedValues =
+        --            Distribution.lookupValueDefinition (QName moduleName localName)
+        --                getDistribution
+        --                |> Maybe.map (\valueDef -> model.expandedValues |> Dict.insert ( fQName, localName ) valueDef)
+        --                |> Maybe.withDefault model.expandedValues
+        --      }
+        --    , Cmd.none
+        --    )
         Filter filterMsg ->
             let
                 homeState : HomeState
@@ -1783,8 +1811,8 @@ viewDefinitionDetails model =
                 , onHoverOver = hoverOver
                 , onHoverLeave = Insight << ShrinkVariable
                 }
-                False
 
+        --False
         viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
         viewArgumentEditors ir argState inputTypes =
             inputTypes

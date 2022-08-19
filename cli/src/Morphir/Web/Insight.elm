@@ -317,8 +317,8 @@ view model =
                         , onHoverOver = ExpandVariable
                         , onHoverLeave = ShrinkVariable
                         }
-                        True
 
+                --True
                 valueFQName : FQName
                 valueFQName =
                     case ( visualizationState.distribution, visualizationState.selectedFunction ) of

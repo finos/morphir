@@ -35,14 +35,10 @@ view config viewValue functionValue argValues =
                     notClickable
 
                 Reference _ ( packageName, moduleName, name ) ->
-                    if config.standalone == False then
-                        link [ Background.color <| config.state.theme.colors.selectionColor, padding 2, pointer ]
-                            { url = pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase name
-                            , label = viewValue functionValue
-                            }
-
-                    else
-                        notClickable
+                    link [ Background.color <| config.state.theme.colors.selectionColor, padding 2, pointer ]
+                        { url = pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase name
+                        , label = viewValue functionValue
+                        }
 
                 _ ->
                     notClickable
