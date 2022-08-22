@@ -66,9 +66,9 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Repo as Repo exposing (Repo)
-import Morphir.IR.SDK as SDK
+import Morphir.IR.SDK as SDK exposing (packageName)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
@@ -385,34 +385,16 @@ update msg model =
             in
             case insightMsg of
                 ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
-                    if isFunctionPresent then
-                        case msg of
-                            Navigate navigateToReference ->
-                                case navigateToReference of
-                                    LinkClicked urlRequest ->
-                                        case urlRequest of
-                                            Browser.Internal url ->
-                                                ( model, Nav.pushUrl model.key (Url.toString url) )
+                    let
+                        url =
+                            pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase localName
+                    in
+                    case fQName of
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
+                            ( model, Cmd.none )
 
-                                            Browser.External href ->
-                                                ( model, Nav.load href )
-
-                                    UrlChanged url ->
-                                        ( toRoute url model, Cmd.none )
-
-                            HttpError httpError ->
-                                case model.irState of
-                                    IRLoaded _ ->
-                                        ( model, Cmd.none )
-
-                                    _ ->
-                                        ( { model | serverState = ServerHttpError httpError }, Cmd.none )
-
-                            _ ->
-                                ( model, Cmd.none )
-
-                    else
-                        ( model, Cmd.none )
+                        _ ->
+                            ( model, Nav.pushUrl model.key url )
 
                 ExpandVariable varIndex maybeRawValue ->
                     ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue } }, Cmd.none )

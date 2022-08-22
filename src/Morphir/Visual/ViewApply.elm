@@ -30,16 +30,6 @@ view config viewValue functionValue argValues =
                     el [ Background.color <| config.state.theme.colors.selectionColor, padding 2 ] <| viewValue functionValue
             in
             case functionValue of
-                Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
-                    --we are not able to display SDK functions yet
-                    notClickable
-
-                Reference _ ( packageName, moduleName, name ) ->
-                    link [ Background.color <| config.state.theme.colors.selectionColor, padding 2, pointer ]
-                        { url = pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase name
-                        , label = viewValue functionValue
-                        }
-
                 _ ->
                     notClickable
     in
