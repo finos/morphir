@@ -23,12 +23,14 @@ type Error
     | ExpectedDecimalLiteral RawValue
     | ExpectedMaybe RawValue
     | ExpectedResult RawValue
+    | ExpectedDerivedType FQName RawValue
     | IfThenElseConditionShouldEvaluateToBool RawValue RawValue
     | FieldNotFound RawValue Name
     | RecordExpected RawValue RawValue
     | NoPatternsMatch RawValue (List (Pattern ()))
     | ExactlyOneArgumentExpected (List RawValue)
     | ErrorWhileEvaluatingReference FQName Error
+    | ErrorWhileEvaluatingDerivedType String
     | ErrorWhileEvaluatingVariable Name Error
     | TupleLengthNotMatchException (List RawValue) (List RawValue)
     | TupleExpected
