@@ -203,7 +203,8 @@ For example, the three Elm snippets above are translated into this Spark code:
 ## Aggregations
 The current Spark API recognizes the following patterns as aggregations:
 
-## Morphir SDK Aggregation
+
+### Morphir SDK Aggregation
 Morphir SDK provides functions to perform multiple aggregations on a list of
 records simultaneously.
 The functions described and used here come from `Morphir.SDK.Aggregate`.
@@ -243,7 +244,8 @@ source.groupBy("fieldName").agg(
 )
 ```
 
-## Pedantic Elm aggregation
+### Pedantic Elm aggregation
+i.e. aggregations that produce a singleton list of one Record containing a single field.
 ```
 source
     |> List.map mappingFunction
@@ -266,6 +268,21 @@ Such code would generate Spark of the form
 source.select(aggregationFunction(org.apache.spark.sql.col("fieldName")).alias("label"))
 ```
 
+### Idiomatic Elm Aggregation
+i.e. aggregations that produce a single value
+```
+source
+    |> List.map mappingFunction
+    |> aggregationFunction
+```
+
+Where 'mappingFunction' and 'aggregationFunction' hold the same meaning as in Pedantic Aggregation.
+'label' is inferred to be the same as the 'fieldName' inferred from mappingFunction.
+
+Such code would generate Spark of the form
+```
+source.select(aggregationFunction(org.apache.spark.sql.col("fieldName")).alias("fieldName"))
+```
 
 ## Types
 The current Spark API processes the following types:
