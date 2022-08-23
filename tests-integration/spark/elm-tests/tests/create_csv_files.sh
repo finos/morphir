@@ -281,5 +281,7 @@ elmTestOutputToCsv "TestMaybeBoolConditionalNotNull.elm" "testMaybeBoolCondition
 
 elmTestOutputToCsv "TestMaybeMapDefault.elm" "testMaybeMapDefault"
 
-
-
+elmTestOutputToCsv "TestReturnListRecords.elm" "testReturnListRecords"
+elmTestOutputToCsv "TestReturnValue1.elm" "testReturnValue1"
+elmTestOutputToCsv "TestReturnValue2.elm" "testReturnValue2"
+elmTestOutputToCsv "TestReturnMaybe.elm" "testReturnMaybe"
