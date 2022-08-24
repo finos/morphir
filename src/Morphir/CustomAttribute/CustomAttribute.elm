@@ -1,13 +1,19 @@
 module Morphir.CustomAttribute.CustomAttribute exposing (..)
 import Morphir.Compiler exposing (FilePath)
-import Morphir.IR.Type exposing (Type)
+import Dict exposing (Dict)
+import Json.Encode as Encode
+import Morphir.IR.NodeId exposing (NodeID)
 
 
-type alias AttributeName 
+type alias CustomAttributeId 
 	= String
 
 type alias CustomAttributeConfig =
-	{ attributeName : AttributeName
-	, filePath : FilePath
-	, type : Type ()
+	{ filePath : FilePath
 	}
+
+type alias CustomAttributeConfigs =
+	Dict CustomAttributeId CustomAttributeConfig
+
+type alias CustomAttributeValues =
+	Dict NodeID Encode.Value
