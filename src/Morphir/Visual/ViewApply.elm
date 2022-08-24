@@ -11,7 +11,7 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Value(..))
-import Morphir.Visual.Common exposing (nameToText, pathToFullUrl)
+import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
@@ -25,13 +25,7 @@ view config viewValue functionValue argValues =
             [ smallSpacing config.state.theme |> spacing, Element.centerY ]
 
         viewFunctionValue =
-            let
-                notClickable =
-                    el [ Background.color <| config.state.theme.colors.selectionColor, padding 2 ] <| viewValue functionValue
-            in
-            case functionValue of
-                _ ->
-                    notClickable
+            el [ Background.color <| config.state.theme.colors.selectionColor, padding 2 ] <| viewValue functionValue
     in
     case ( functionValue, argValues ) of
         ( (Value.Constructor _ fQName) as constr, _ ) ->

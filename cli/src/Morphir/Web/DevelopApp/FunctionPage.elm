@@ -171,8 +171,6 @@ viewScenarios theme handlers distribution model =
                 , onHoverOver = handlers.expandVariable index
                 , onHoverLeave = handlers.shrinkVariable index
                 }
-
-        --False
     in
     Array.toList model.testCaseStates
         |> List.indexedMap

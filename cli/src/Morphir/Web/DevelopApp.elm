@@ -430,23 +430,6 @@ update msg model =
                     , Cmd.none
                     )
 
-        --if model.expandedValues |> Dict.member ( fQName, localName ) then
-        --    if isFunctionPresent then
-        --        ( { model | expandedValues = model.expandedValues |> Dict.remove ( fQName, localName ) }, Cmd.none )
-        --
-        --    else
-        --        ( model, Cmd.none )
-        --
-        --else
-        --    ( { model
-        --        | expandedValues =
-        --            Distribution.lookupValueDefinition (QName moduleName localName)
-        --                getDistribution
-        --                |> Maybe.map (\valueDef -> model.expandedValues |> Dict.insert ( fQName, localName ) valueDef)
-        --                |> Maybe.withDefault model.expandedValues
-        --      }
-        --    , Cmd.none
-        --    )
         Filter filterMsg ->
             let
                 homeState : HomeState
@@ -1794,7 +1777,6 @@ viewDefinitionDetails model =
                 , onHoverLeave = Insight << ShrinkVariable
                 }
 
-        --False
         viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
         viewArgumentEditors ir argState inputTypes =
             inputTypes
