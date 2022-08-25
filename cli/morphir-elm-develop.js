@@ -9,6 +9,9 @@ const readFile = util.promisify(fs.readFile)
 const writeFile = util.promisify(fs.writeFile)
 const commander = require('commander')
 const express = require('express')
+const csrf = require('csurf')
+const cookieParser = require('cookie-parser')
+const csrfProtection = csrf({ cookie: true})
 
 // Set up Commander
 const program = new commander.Command()
@@ -38,6 +41,8 @@ const createSimpleGetJsonApi = (filePath) => {
 
 app.use(express.static(webDir))
 app.use(express.json());
+app.use(cookieParser())
+app.use(csrfProtection)
 
 app.get('/', (req, res) => {
   res.sendFile(indexHtml)

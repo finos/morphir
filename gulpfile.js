@@ -108,6 +108,15 @@ function morphirElmMake(projectDir, outputPath, options = {}) {
     return execa('node', args, { stdio })
 }
 
+function morphirElmMakeRunOldCli(projectDir, outputPath, options = {}) {
+    args = ['./cli/morphir-elm.js', 'make', '-f', '-p', projectDir, '-o', outputPath]
+    if (options.typesOnly) {
+        args.push('--types-only')
+    }
+    console.log("Running: " + args.join(' '));
+    return execa('node', args, { stdio })
+}
+
 function morphirElmMake2(projectDir, outputPath, options = {}) {
     args = ['./cli2/lib/morphir.js', 'make', '-p', projectDir, '-o', outputPath]
     if (options.typesOnly) {
@@ -144,6 +153,10 @@ function testIntegrationClean() {
 
 async function testIntegrationMake(cb) {
     await morphirElmMake(
+        './tests-integration/reference-model',
+        './tests-integration/generated/refModel/morphir-ir.json')
+
+    await morphirElmMakeRunOldCli(
         './tests-integration/reference-model',
         './tests-integration/generated/refModel/morphir-ir.json')
 }

@@ -14,29 +14,26 @@ import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 view : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> EnrichedValue -> List ( Pattern ( Int, Type () ), EnrichedValue ) -> Element msg
 view config viewValue subject matches =
     let
-        typedSubject : TypedValue
-        typedSubject =
-            toTypedValue subject
 
-        typedMatches : List ( TypedPattern, TypedValue )
+        typedMatches : List ( TypedPattern, EnrichedValue )
         typedMatches =
-            List.map (\( a, b ) -> ( toTypedPattern a, toTypedValue b )) matches
+            List.map (\( a, b ) -> ( toTypedPattern a, b )) matches
 
         decisionTable : DecisionTable
         decisionTable =
-            toDecisionTable config typedSubject typedMatches
+            toDecisionTable config subject typedMatches
     in
     DecisionTable.displayTable config viewValue decisionTable
 
 
-toDecisionTable : Config msg -> TypedValue -> List ( TypedPattern, TypedValue ) -> DecisionTable
+toDecisionTable : Config msg -> EnrichedValue -> List ( TypedPattern, EnrichedValue ) -> DecisionTable
 toDecisionTable config subject matches =
     let
-        decomposedInput : List TypedValue
+        decomposedInput : List EnrichedValue
         decomposedInput =
             decomposeInput subject
 
-        rules : List ( List Match, TypedValue )
+        rules : List ( List Match, EnrichedValue )
         rules =
             getRules decomposedInput matches
 
@@ -49,7 +46,7 @@ toDecisionTable config subject matches =
     }
 
 
-decomposeInput : TypedValue -> List TypedValue
+decomposeInput : EnrichedValue -> List EnrichedValue
 decomposeInput subject =
     case subject of
         Value.Tuple _ elems ->
@@ -59,12 +56,12 @@ decomposeInput subject =
             [ subject ]
 
 
-getRules : List TypedValue -> List ( TypedPattern, TypedValue ) -> List ( List Match, TypedValue )
+getRules : List EnrichedValue -> List ( TypedPattern, EnrichedValue ) -> List ( List Match, EnrichedValue )
 getRules subject matches =
     matches |> List.concatMap (decomposePattern subject)
 
 
-decomposePattern : List TypedValue -> ( TypedPattern, TypedValue ) -> List ( List Match, TypedValue )
+decomposePattern : List EnrichedValue -> ( TypedPattern, EnrichedValue ) -> List ( List Match, EnrichedValue )
 decomposePattern subject match =
     case match of
         ( Value.WildcardPattern _, _ ) ->
@@ -111,14 +108,14 @@ decomposePattern subject match =
             []
 
 
-getHighlightStates : Config msg -> List TypedValue -> List ( List Match, TypedValue ) -> List (List HighlightState)
+getHighlightStates : Config msg -> List EnrichedValue -> List ( List Match, EnrichedValue ) -> List (List HighlightState)
 getHighlightStates config subject matches =
     let
         patterns : List (List Match)
         patterns =
             List.map (\x -> Tuple.first x) matches
 
-        referencedPatterns : List (List ( TypedValue, Match ))
+        referencedPatterns : List (List ( EnrichedValue, Match ))
         referencedPatterns =
             List.map (List.map2 Tuple.pair subject) patterns
     in
@@ -135,7 +132,7 @@ getHighlightStates config subject matches =
                     List.map (\x -> List.repeat (List.length x) Default) patterns
 
 
-comparePreviousHighlightStates : Config msg -> List ( TypedValue, Match ) -> List (List HighlightState) -> List (List HighlightState)
+comparePreviousHighlightStates : Config msg -> List ( EnrichedValue, Match ) -> List (List HighlightState) -> List (List HighlightState)
 comparePreviousHighlightStates config matches previousStates =
     let
         mostRecentRow : List HighlightState
@@ -203,7 +200,7 @@ isFullyDefaultRow highlightStates =
     List.length (List.filter isNotDefaultHighlightState highlightStates) == 0
 
 
-getNextHighlightState : Config msg -> ( TypedValue, Match ) -> List HighlightState -> List HighlightState
+getNextHighlightState : Config msg -> ( EnrichedValue, Match ) -> List HighlightState -> List HighlightState
 getNextHighlightState config currentMatch previousStates =
     let
         lastState : HighlightState

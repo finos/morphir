@@ -1,6 +1,5 @@
 module SparkTests.FunctionTests exposing (..)
 
-import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (..)
 import SparkTests.Types exposing (..)
 
 
@@ -18,13 +17,13 @@ testCaseBool source =
             )
 
 
-testCaseFloat : List { foo : Float } -> List { foo : Float }
-testCaseFloat source =
+testCaseInt : List { foo : Int } -> List { foo : Int }
+testCaseInt source =
     source
         |> List.filter
             (\a ->
                 case a.foo of
-                    9.99 ->
+                    20 ->
                         True
 
                     _ ->
@@ -32,16 +31,16 @@ testCaseFloat source =
             )
 
 
-testCaseInt : List AntiqueSubset -> List AntiqueSubset
-testCaseInt source =
+testCaseFloat : List AntiqueSubset -> List AntiqueSubset
+testCaseFloat source =
     source
         |> List.filter
             (\a ->
                 case a.ageOfItem of
-                    20 ->
+                    20.0 ->
                         True
 
-                    5 ->
+                    5.0 ->
                         False
 
                     _ ->
@@ -88,7 +87,7 @@ testFrom source =
 testWhere1 : List AntiqueSubset -> List AntiqueSubset
 testWhere1 source =
     source
-        |> List.filter (\a -> a.ageOfItem == 20)
+        |> List.filter (\a -> a.ageOfItem == 20.0)
 
 
 testWhere2 : List AntiqueSubset -> List AntiqueSubset
@@ -96,7 +95,7 @@ testWhere2 source =
     source
         |> List.filter
             (\a ->
-                if a.ageOfItem == 20 then
+                if a.ageOfItem == 20.0 then
                     False
 
                 else
@@ -109,10 +108,10 @@ testWhere3 source =
     source
         |> List.filter
             (\a ->
-                if a.ageOfItem <= 20 then
+                if a.ageOfItem <= 20.0 then
                     False
 
-                else if a.ageOfItem > 20 && a.ageOfItem < 23 then
+                else if a.ageOfItem > 20.0 && a.ageOfItem < 23.0 then
                     False
 
                 else
@@ -128,7 +127,7 @@ testSelect1 source =
                 { newName = a.name
                 , newReport = a.report
                 , foo =
-                    if a.ageOfItem >= 20 then
+                    if a.ageOfItem >= 20.0 then
                         "old"
 
                     else
@@ -138,13 +137,13 @@ testSelect1 source =
             )
 
 
-testSelect3 : List AntiqueSubset -> List { ageOfItem : Int }
+testSelect3 : List AntiqueSubset -> List { ageOfItem : Float }
 testSelect3 source =
     source
         |> List.map (\record -> { ageOfItem = record.ageOfItem })
 
 
-testSelect4 : List AntiqueSubset -> List Int
+testSelect4 : List AntiqueSubset -> List Float
 testSelect4 source =
     source
         |> List.map .ageOfItem
@@ -157,10 +156,10 @@ testFilter source =
 
 testFilter2 : List AntiqueSubset -> List AntiqueSubset
 testFilter2 source =
-    source |> List.filter (filterFnWithVar 17)
+    source |> List.filter (filterFnWithVar 17.0)
 
 
-testListMinimum : List AntiqueSubset -> List { min : Maybe Int }
+testListMinimum : List AntiqueSubset -> List { min : Maybe Float }
 testListMinimum source =
     source
         |> List.map .ageOfItem
@@ -172,13 +171,25 @@ testListMinimum source =
            )
 
 
-testListMaximum : List AntiqueSubset -> List { max : Maybe Int }
+testListMaximum : List AntiqueSubset -> List { max : Maybe Float }
 testListMaximum source =
     source
         |> List.map .ageOfItem
         |> (\ages ->
                 [ { max =
                         List.maximum ages
+                  }
+                ]
+           )
+
+
+testNameMaximum : List AntiqueSubset -> List { max : Maybe String }
+testNameMaximum source =
+    source
+        |> List.map .name
+        |> (\names ->
+                [ { max =
+                        List.maximum names
                   }
                 ]
            )
@@ -239,7 +250,7 @@ item_filter : AntiqueSubset -> Bool
 item_filter record =
     let
         qualifiedYearsToBeCalledAntiqueSubset =
-            20
+            20.0
     in
     record.ageOfItem
         >= qualifiedYearsToBeCalledAntiqueSubset
@@ -254,13 +265,37 @@ testLetBinding source =
 
 filterFn : AntiqueSubset -> Bool
 filterFn record1 =
-    modBy record1.ageOfItem 2 <= 3
+    modBy (floor record1.ageOfItem) 2 <= 3
 
 
-filterFnWithVar : Int -> AntiqueSubset -> Bool
+filterFnWithVar : Float -> AntiqueSubset -> Bool
 filterFnWithVar max record =
     max
         |> (\ageOfItem maximumAllowedAge ->
                 ageOfItem <= (maximumAllowedAge + max)
            )
             record.ageOfItem
+
+
+testListSum : List AntiqueSubset -> List { agesum : Float }
+testListSum source =
+    source
+        |> List.map .ageOfItem
+        |> (\ages ->
+                [ { agesum =
+                        List.sum ages
+                  }
+                ]
+           )
+
+
+testListLength : List AntiqueSubset -> List { listlength : Int }
+testListLength source =
+    source
+        |> List.map .name
+        |> (\names ->
+                [ { listlength =
+                        List.length names
+                  }
+                ]
+           )

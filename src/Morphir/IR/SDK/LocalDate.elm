@@ -19,6 +19,7 @@ module Morphir.IR.SDK.LocalDate exposing (..)
 
 import Dict
 import Morphir.IR.Documented exposing (Documented)
+import Morphir.IR.Literal as Literal
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
@@ -26,8 +27,9 @@ import Morphir.IR.SDK.Basics exposing (intType)
 import Morphir.IR.SDK.Common exposing (toFQName, vSpec)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.SDK.String exposing (stringType)
-import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
+import Morphir.IR.Type exposing (Specification(..), Type(..))
+import Morphir.SDK.LocalDate as LocalDate
+import Morphir.Value.Native as Native
 
 
 moduleName : ModuleName
@@ -35,15 +37,23 @@ moduleName =
     Path.fromString "LocalDate"
 
 
+config =
+    { baseType = stringType ()
+    , toBaseType = toFQName moduleName "toISOString"
+    , fromBaseType = toFQName moduleName "fromISO"
+    }
+
+
 moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "LocalDate", OpaqueTypeSpecification [] |> Documented "Type that represents a date concept." )
+            [ ( Name.fromString "LocalDate", DerivedTypeSpecification [] config |> Documented "Type that represents a date concept." )
             ]
     , values =
         Dict.fromList
-            [ vSpec "fromISO" [ ( "iso", stringType () ) ] (maybeType () (localDateType ()))
+            [ vSpec "toISOString" [ ( "date", localDateType () ) ] (stringType ())
+            , vSpec "fromISO" [ ( "iso", stringType () ) ] (maybeType () (localDateType ()))
             , vSpec "fromParts" [ ( "year", intType () ), ( "month", intType () ), ( "day", intType () ) ] (maybeType () (localDateType ()))
             , vSpec "diffInDays" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
             , vSpec "diffInWeeks" [ ( "date1", localDateType () ), ( "date2", localDateType () ) ] (intType ())
@@ -60,3 +70,14 @@ moduleSpec =
 localDateType : a -> Type a
 localDateType attributes =
     Reference attributes (toFQName moduleName "LocalDate") []
+
+
+nativeFunctions : List ( String, Native.Function )
+nativeFunctions =
+    [ ( "fromISO"
+      , Native.eval1 LocalDate.fromISO (Native.decodeLiteral Native.stringLiteral) (Native.encodeMaybe Native.encodeLocalDate)
+      )
+    , ( "toISOString"
+      , Native.eval1 LocalDate.toISOString Native.decodeLocalDate (Native.encodeLiteral Literal.StringLiteral)
+      )
+    ]

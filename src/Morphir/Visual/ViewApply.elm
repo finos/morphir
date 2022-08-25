@@ -16,7 +16,6 @@ import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (smallPadding, smallSpacing)
-import Morphir.Visual.Common exposing (pathToFullUrl)
 
 
 view : Config msg -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
@@ -26,22 +25,7 @@ view config viewValue functionValue argValues =
             [ smallSpacing config.state.theme |> spacing, Element.centerY ]
 
         viewFunctionValue =
-            let
-                notClickable =
-                    el [ Background.color <| config.state.theme.colors.selectionColor, padding 2 ] <| viewValue functionValue
-            in
-            case functionValue of
-                Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) -> --we are not able to display SDK functions yet
-                    notClickable
-
-                Reference _ ( packageName, moduleName, name ) ->
-                    link [ Background.color <| config.state.theme.colors.selectionColor, padding 2, pointer ]
-                        { url = pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase name
-                        , label = viewValue functionValue
-                        }
-
-                _ ->
-                    notClickable
+            el [ Background.color <| config.state.theme.colors.selectionColor, padding 2 ] <| viewValue functionValue
     in
     case ( functionValue, argValues ) of
         ( (Value.Constructor _ fQName) as constr, _ ) ->

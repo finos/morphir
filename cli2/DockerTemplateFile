@@ -1,8 +1,8 @@
 FROM node:16.1-alpine3.11
 
-LABEL author="Piyush Gupta"
+LABEL author="morphir-dockerize"
 
-ENV  NODE_ENV=production
+ENV NODE_ENV=production
 ENV PORT=3000
 ENV MORPHIR_USER = morphir
 
@@ -10,9 +10,9 @@ ENV MORPHIR_USER = morphir
 RUN adduser --system --uid=7357 --no-create-home ${MORPHIR_USER}
 
 #Directory of Docker Container
-WORKDIR /var/morphir_home
+WORKDIR /var/morphir
 
-COPY ./tests-integration/reference-model ./
+COPY PROJECT_MODEL_DIR ./
 
 RUN npm install -g morphir-elm && morphir-elm make
 

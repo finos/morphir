@@ -10,7 +10,7 @@ class listMemberTest extends FunSuite {
   import localTestSession.implicits._
 
   val columns = Seq("name","ageOfItem", "product", "report")
-  val data = Seq(("Bowie Knife", 20, "Knife", "Rusty blade"), ("Upright Chair", 19, "Furniture", "Chipped legs"))
+  val data = Seq(("Bowie Knife", 20.0, "Knife", "Rusty blade"), ("Upright Chair", 19.0, "Furniture", "Chipped legs"))
   val rdd = localTestSession.sparkContext.parallelize(data)
 
     test("testEnumListMember") {
@@ -25,7 +25,7 @@ class listMemberTest extends FunSuite {
 
       val row0 = rows(0)
       assert(row0(0) == "Bowie Knife")
-      assert(row0(1) == 20)
+      assert(row0(1) == 20.0)
       assert(row0(2) == "Knife")
       assert(row0(3) == "Rusty blade")
     }
@@ -42,7 +42,7 @@ class listMemberTest extends FunSuite {
 
       val row0 = rows(0)
       assert(row0(0) == "Upright Chair")
-      assert(row0(1) == 19)
+      assert(row0(1) == 19.0)
       assert(row0(2) == "Furniture")
       assert(row0(3) == "Chipped legs")
     }
@@ -59,13 +59,13 @@ class listMemberTest extends FunSuite {
 
       val row0 = rows(0)
       assert(row0(0) == "Bowie Knife")
-      assert(row0(1) == 20)
+      assert(row0(1) == 20.0)
       assert(row0(2) == "Knife")
       assert(row0(3) == "Rusty blade")
 
       val row1 = rows(1)
       assert(row1(0) == "Upright Chair")
-      assert(row1(1) == 19)
+      assert(row1(1) == 19.0)
       assert(row1(2) == "Furniture")
       assert(row1(3) == "Chipped legs")
     }

@@ -209,11 +209,18 @@ type alias Field a =
     , tpe : Type a
     }
 
+
 {-| -}
 type Specification a
     = TypeAliasSpecification (List Name) (Type a)
     | OpaqueTypeSpecification (List Name)
     | CustomTypeSpecification (List Name) (Constructors a)
+    | DerivedTypeSpecification
+        (List Name)
+        { baseType : Type a
+        , fromBaseType : FQName
+        , toBaseType : FQName
+        }
 
 
 {-| This syntax represents a type definition. For example:
@@ -274,6 +281,13 @@ mapSpecificationAttributes f spec =
                                     )
                         )
                 )
+
+        DerivedTypeSpecification params config ->
+            DerivedTypeSpecification params
+                { baseType = mapTypeAttributes f config.baseType
+                , fromBaseType = config.fromBaseType
+                , toBaseType = config.toBaseType
+                }
 
 
 {-| -}
