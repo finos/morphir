@@ -7,18 +7,20 @@ import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Maybe exposing (just, nothing)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Decimal as Decimal
+import Morphir.Value.Interpreter as Interpreter
 
 
 encodeData : IR -> Type () -> Result String (RawValue -> Result String Encode.Value)
 encodeData ir tpe =
     case tpe of
-        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
-            case ( moduleName, localName, args ) of
+        Type.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], typeModuleName, localName ) as fQName) typeArgs ->
+            case ( typeModuleName, localName, typeArgs ) of
                 ( [ [ "basics" ] ], [ "bool" ], [] ) ->
                     Ok
                         (\value ->
@@ -115,104 +117,19 @@ encodeData ir tpe =
                                         Err (String.concat [ "Expected Just or Nothing but found: ", Debug.toString value ])
                             )
 
-                --( [ [ "result" ] ], [ "result" ], [ itemType ] ) ->
-                --    encodeData ir itemType
-                --        |> Result.map
-                --            (\encodeItem value ->
-                --                case value of
-                --                    Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) v ->
-                --                        encodeItem v
-                --
-                --                    Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) error ->
-                --                        encodeItem error
-                --
-                --                    _ ->
-                --                        Err (String.concat [ "Expected Ok or Error but found: ", Debug.toString value ])
-                --            )
                 _ ->
-                    Debug.todo "implement"
+                    -- Handle references that are not part of the SDK
+                    ir
+                        |> IR.lookupTypeSpecification fQName
+                        |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
+                        |> Result.andThen (encodeTypeSpecification ir fQName typeArgs)
 
-        Type.Reference _ (( typePackageName, typeModuleName, _ ) as fQName) typeArgs ->
+        Type.Reference _ fQName typeArgs ->
             -- Handle references that are not part of the SDK
             ir
                 |> IR.lookupTypeSpecification fQName
                 |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
-                |> Result.andThen
-                    (\typeSpec ->
-                        case typeSpec of
-                            Type.TypeAliasSpecification typeArgNames typeExp ->
-                                -- For type aliases we extract the type expression, substitute the type variables and recursively
-                                -- call this function
-                                let
-                                    argVariables : Dict Name (Type ())
-                                    argVariables =
-                                        List.map2 Tuple.pair typeArgNames typeArgs
-                                            |> Dict.fromList
-                                in
-                                typeExp
-                                    |> Type.substituteTypeVariables argVariables
-                                    |> encodeData ir
-
-                            Type.OpaqueTypeSpecification _ ->
-                                Err (String.concat [ "Cannot serialize opaque type: ", FQName.toString fQName ])
-
-                            Type.CustomTypeSpecification typeArgNames constructors ->
-                                let
-                                    argVariables : Dict Name (Type ())
-                                    argVariables =
-                                        List.map2 Tuple.pair typeArgNames typeArgs
-                                            |> Dict.fromList
-
-                                    encode : RawValue -> Result String Encode.Value
-                                    encode value =
-                                        let
-                                            encodeConstructor : RawValue -> List RawValue -> Result String Encode.Value
-                                            encodeConstructor bottomFun constructorArgs =
-                                                case bottomFun of
-                                                    Value.Constructor _ ( constructorPackageName, constructorModuleName, constructorLocalName ) ->
-                                                        if ( constructorPackageName, constructorModuleName ) == ( typePackageName, typeModuleName ) then
-                                                            constructors
-                                                                |> Dict.get constructorLocalName
-                                                                |> Result.fromMaybe (String.concat [ "Constructor '", Name.toTitleCase constructorLocalName, "' in type '", FQName.toString fQName, "' not found." ])
-                                                                |> Result.andThen
-                                                                    (\constructorArgTypes ->
-                                                                        constructorArgTypes
-                                                                            |> List.map (Tuple.second >> Type.substituteTypeVariables argVariables >> encodeData ir)
-                                                                            |> ListOfResults.liftFirstError
-                                                                            |> Result.andThen
-                                                                                (\constructorArgEncoders ->
-                                                                                    List.map2 identity constructorArgEncoders constructorArgs
-                                                                                        |> ListOfResults.liftFirstError
-                                                                                        |> Result.map
-                                                                                            (\encodedArgs ->
-                                                                                                Encode.list identity
-                                                                                                    (Encode.string (Name.toCamelCase constructorLocalName) :: encodedArgs)
-                                                                                            )
-                                                                                )
-                                                                    )
-
-                                                        else
-                                                            Err (String.concat [ "Expected constructor for type '", FQName.toString fQName, "' but found: ", Debug.toString value ])
-
-                                                    _ ->
-                                                        Err (String.concat [ "Expected constructor but found: ", Debug.toString value ])
-                                        in
-                                        case value of
-                                            Value.Constructor _ _ ->
-                                                encodeConstructor value []
-
-                                            Value.Apply _ fun arg ->
-                                                let
-                                                    ( bottomFun, args ) =
-                                                        Value.uncurryApply fun arg
-                                                in
-                                                encodeConstructor bottomFun args
-
-                                            _ ->
-                                                Err (String.concat [ "Expected constructor but found: ", Debug.toString value ])
-                                in
-                                Ok encode
-                    )
+                |> Result.andThen (encodeTypeSpecification ir fQName typeArgs)
 
         Type.Record _ fieldTypes ->
             fieldTypes
@@ -265,12 +182,12 @@ encodeData ir tpe =
 decodeData : IR -> Type () -> Result String (Decode.Decoder RawValue)
 decodeData ir tpe =
     case tpe of
-        Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], moduleName, localName ) args ->
+        Type.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], typeModuleName, localName ) as fQName) typeArgs ->
             let
                 decodeToDecimal value =
                     Decimal.fromString value |> Maybe.withDefault (Decimal.fromInt 0)
             in
-            case ( moduleName, localName, args ) of
+            case ( typeModuleName, localName, typeArgs ) of
                 ( [ [ "basics" ] ], [ "bool" ], [] ) ->
                     Ok (Decode.map (\value -> Value.Literal () (BoolLiteral value)) Decode.bool)
 
@@ -331,90 +248,18 @@ decodeData ir tpe =
                             )
 
                 _ ->
-                    Debug.todo "Todo Custom Type"
+                    -- Handle references that are not part of the SDK
+                    ir
+                        |> IR.lookupTypeSpecification fQName
+                        |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
+                        |> Result.andThen (decodeTypeSpecification ir fQName typeArgs)
 
-        Type.Reference _ (( typePackageName, typeModuleName, _ ) as fQName) typeArgs ->
+        Type.Reference _ fQName typeArgs ->
             -- Handle references that are not part of the SDK
             ir
                 |> IR.lookupTypeSpecification fQName
                 |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
-                |> Result.andThen
-                    (\typeSpec ->
-                        case typeSpec of
-                            Type.TypeAliasSpecification typeArgNames typeExp ->
-                                -- For type aliases we extract the type expression, substitute the type variables and recursively
-                                -- call this function
-                                let
-                                    argVariables : Dict Name (Type ())
-                                    argVariables =
-                                        List.map2 Tuple.pair typeArgNames typeArgs
-                                            |> Dict.fromList
-                                in
-                                typeExp
-                                    |> Type.substituteTypeVariables argVariables
-                                    |> decodeData ir
-
-                            Type.OpaqueTypeSpecification _ ->
-                                Err (String.concat [ "Cannot serialize opaque type: ", FQName.toString fQName ])
-
-                            Type.CustomTypeSpecification typeArgNames constructors ->
-                                let
-                                    argVariables : Dict Name (Type ())
-                                    argVariables =
-                                        List.map2 Tuple.pair typeArgNames typeArgs
-                                            |> Dict.fromList
-                                in
-                                Decode.index 0 Decode.string
-                                    |> Decode.andThen
-                                        (\tag ->
-                                            let
-                                                constructorLocalName : Name
-                                                constructorLocalName =
-                                                    Name.fromString tag
-
-                                                decoderResult : Result String (Decode.Decoder RawValue)
-                                                decoderResult =
-                                                    constructors
-                                                        |> Dict.get constructorLocalName
-                                                        |> Result.fromMaybe (String.concat [ "Constructor '", Name.toTitleCase constructorLocalName, "' in type '", FQName.toString fQName, "' not found." ])
-                                                        |> Result.andThen
-                                                            (\constructorArgTypes ->
-                                                                constructorArgTypes
-                                                                    |> List.foldl
-                                                                        (\( _, argType ) ( index, resultSoFar ) ->
-                                                                            ( index + 1
-                                                                            , resultSoFar
-                                                                                |> Result.andThen
-                                                                                    (\decoderSoFar ->
-                                                                                        decodeData ir (argType |> Type.substituteTypeVariables argVariables)
-                                                                                            |> Result.map
-                                                                                                (\argDecoder ->
-                                                                                                    decoderSoFar
-                                                                                                        |> Decode.andThen
-                                                                                                            (\constructorSoFar ->
-                                                                                                                Decode.index index argDecoder
-                                                                                                                    |> Decode.map
-                                                                                                                        (\argValue ->
-                                                                                                                            Value.Apply () constructorSoFar argValue
-                                                                                                                        )
-                                                                                                            )
-                                                                                                )
-                                                                                    )
-                                                                            )
-                                                                        )
-                                                                        ( 1, Ok (Decode.succeed (Value.Constructor () ( typePackageName, typeModuleName, constructorLocalName ))) )
-                                                                    |> Tuple.second
-                                                            )
-                                            in
-                                            case decoderResult of
-                                                Ok d ->
-                                                    d
-
-                                                Err error ->
-                                                    Decode.fail error
-                                        )
-                                    |> Ok
-                    )
+                |> Result.andThen (decodeTypeSpecification ir fQName typeArgs)
 
         Type.Record _ fields ->
             fields
@@ -473,3 +318,252 @@ decodeData ir tpe =
 
         _ ->
             Err "Cannot Decode this type"
+
+
+encodeTypeSpecification : IR -> FQName -> List (Type ()) -> Type.Specification () -> Result String (RawValue -> Result String Encode.Value)
+encodeTypeSpecification ir (( typePackageName, typeModuleName, _ ) as fQName) typeArgs typeSpec =
+    case typeSpec of
+        Type.TypeAliasSpecification typeArgNames typeExp ->
+            -- For type aliases we extract the type expression, substitute the type variables and recursively
+            -- call this function
+            let
+                argVariables : Dict Name (Type ())
+                argVariables =
+                    List.map2 Tuple.pair typeArgNames typeArgs
+                        |> Dict.fromList
+            in
+            typeExp
+                |> Type.substituteTypeVariables argVariables
+                |> encodeData ir
+
+        Type.OpaqueTypeSpecification _ ->
+            Err (String.concat [ "Cannot serialize opaque type: ", FQName.toString fQName ])
+
+        Type.CustomTypeSpecification typeArgNames constructors ->
+            let
+                argVariables : Dict Name (Type ())
+                argVariables =
+                    List.map2 Tuple.pair typeArgNames typeArgs
+                        |> Dict.fromList
+
+                encode : RawValue -> Result String Encode.Value
+                encode value =
+                    let
+                        encodeConstructor : RawValue -> List RawValue -> Result String Encode.Value
+                        encodeConstructor bottomFun constructorArgs =
+                            case bottomFun of
+                                Value.Constructor _ ( constructorPackageName, constructorModuleName, constructorLocalName ) ->
+                                    if ( constructorPackageName, constructorModuleName ) == ( typePackageName, typeModuleName ) then
+                                        constructors
+                                            |> Dict.get constructorLocalName
+                                            |> Result.fromMaybe (String.concat [ "Constructor '", Name.toTitleCase constructorLocalName, "' in type '", FQName.toString fQName, "' not found." ])
+                                            |> Result.andThen
+                                                (\constructorArgTypes ->
+                                                    constructorArgTypes
+                                                        |> List.map (Tuple.second >> Type.substituteTypeVariables argVariables >> encodeData ir)
+                                                        |> ListOfResults.liftFirstError
+                                                        |> Result.andThen
+                                                            (\constructorArgEncoders ->
+                                                                List.map2 identity constructorArgEncoders constructorArgs
+                                                                    |> ListOfResults.liftFirstError
+                                                                    |> Result.map
+                                                                        (\encodedArgs ->
+                                                                            Encode.list identity
+                                                                                (Encode.string (Name.toCamelCase constructorLocalName) :: encodedArgs)
+                                                                        )
+                                                            )
+                                                )
+
+                                    else
+                                        Err (String.concat [ "Expected constructor for type '", FQName.toString fQName, "' but found: ", Debug.toString value ])
+
+                                _ ->
+                                    Err (String.concat [ "Expected constructor but found: ", Debug.toString value ])
+                    in
+                    case value of
+                        Value.Constructor _ _ ->
+                            encodeConstructor value []
+
+                        Value.Apply _ fun arg ->
+                            let
+                                ( bottomFun, args ) =
+                                    Value.uncurryApply fun arg
+                            in
+                            encodeConstructor bottomFun args
+
+                        _ ->
+                            Err (String.concat [ "Expected constructor but found: ", Debug.toString value ])
+            in
+            Ok encode
+
+        Type.DerivedTypeSpecification typeArgNames config ->
+            let
+                argVariables : Dict Name (Type ())
+                argVariables =
+                    List.map2 Tuple.pair typeArgNames typeArgs
+                        |> Dict.fromList
+
+                encode : RawValue -> Result String Encode.Value
+                encode rawValue =
+                    let
+                        valueAsBaseType : Value () ()
+                        valueAsBaseType =
+                            Value.Apply () (Value.Reference () config.toBaseType) rawValue
+                    in
+                    Result.map2
+                        (\fn evaluatedValue ->
+                            fn evaluatedValue
+                        )
+                        (Type.substituteTypeVariables argVariables config.baseType
+                            |> encodeData ir
+                        )
+                        (Interpreter.evaluate SDK.nativeFunctions ir valueAsBaseType
+                            |> Result.mapError
+                                (always
+                                    ("Interpreter Error: Failed to evaluate Value "
+                                        ++ FQName.toString config.toBaseType
+                                    )
+                                )
+                        )
+                        |> Result.andThen identity
+            in
+            Ok encode
+
+
+decodeTypeSpecification : IR -> FQName -> List (Type ()) -> Type.Specification () -> Result String (Decode.Decoder RawValue)
+decodeTypeSpecification ir (( typePackageName, typeModuleName, _ ) as fQName) typeArgs typeSpec =
+    case typeSpec of
+        Type.TypeAliasSpecification typeArgNames typeExp ->
+            -- For type aliases we extract the type expression, substitute the type variables and recursively
+            -- call this function
+            let
+                argVariables : Dict Name (Type ())
+                argVariables =
+                    List.map2 Tuple.pair typeArgNames typeArgs
+                        |> Dict.fromList
+            in
+            typeExp
+                |> Type.substituteTypeVariables argVariables
+                |> decodeData ir
+
+        Type.OpaqueTypeSpecification _ ->
+            Err (String.concat [ "Cannot serialize opaque type: ", FQName.toString fQName ])
+
+        Type.CustomTypeSpecification typeArgNames constructors ->
+            let
+                argVariables : Dict Name (Type ())
+                argVariables =
+                    List.map2 Tuple.pair typeArgNames typeArgs
+                        |> Dict.fromList
+            in
+            Decode.index 0 Decode.string
+                |> Decode.andThen
+                    (\tag ->
+                        let
+                            constructorLocalName : Name
+                            constructorLocalName =
+                                Name.fromString tag
+
+                            decoderResult : Result String (Decode.Decoder RawValue)
+                            decoderResult =
+                                constructors
+                                    |> Dict.get constructorLocalName
+                                    |> Result.fromMaybe (String.concat [ "Constructor '", Name.toTitleCase constructorLocalName, "' in type '", FQName.toString fQName, "' not found." ])
+                                    |> Result.andThen
+                                        (\constructorArgTypes ->
+                                            constructorArgTypes
+                                                |> List.foldl
+                                                    (\( _, argType ) ( index, resultSoFar ) ->
+                                                        ( index + 1
+                                                        , resultSoFar
+                                                            |> Result.andThen
+                                                                (\decoderSoFar ->
+                                                                    decodeData ir (argType |> Type.substituteTypeVariables argVariables)
+                                                                        |> Result.map
+                                                                            (\argDecoder ->
+                                                                                decoderSoFar
+                                                                                    |> Decode.andThen
+                                                                                        (\constructorSoFar ->
+                                                                                            Decode.index index argDecoder
+                                                                                                |> Decode.map
+                                                                                                    (\argValue ->
+                                                                                                        Value.Apply () constructorSoFar argValue
+                                                                                                    )
+                                                                                        )
+                                                                            )
+                                                                )
+                                                        )
+                                                    )
+                                                    ( 1, Ok (Decode.succeed (Value.Constructor () ( typePackageName, typeModuleName, constructorLocalName ))) )
+                                                |> Tuple.second
+                                        )
+                        in
+                        case decoderResult of
+                            Ok d ->
+                                d
+
+                            Err error ->
+                                Decode.fail error
+                    )
+                |> Ok
+
+        Type.DerivedTypeSpecification typeArgsNames config ->
+            let
+                fnName =
+                    FQName.toString config.fromBaseType
+
+                apply : Value () () -> Value () ()
+                apply =
+                    Value.Apply () (Value.Reference () config.fromBaseType)
+
+                argVariables : Dict Name (Type ())
+                argVariables =
+                    List.map2 Tuple.pair typeArgsNames typeArgs
+                        |> Dict.fromList
+
+                createType v =
+                    apply v
+                        |> Interpreter.evaluate SDK.nativeFunctions ir
+                        |> (\evaluatedResult ->
+                                case evaluatedResult of
+                                    Ok val ->
+                                        -- if the val is of the result or maybe type,
+                                        -- we need to extract the value
+                                        case val of
+                                            -- if the evaluated value is "Just value"
+                                            Value.Apply _ (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) value ->
+                                                Decode.succeed value
+
+                                            -- if the evaluated value "Nothing"
+                                            Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
+                                                fnName
+                                                    ++ " returned Nothing"
+                                                    |> Decode.fail
+
+                                            -- if the evaluated value is "Ok value"
+                                            Value.Apply _ (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "ok" ] )) value ->
+                                                Decode.succeed value
+
+                                            -- if the evaluated value "Err err"
+                                            Value.Apply _ (Value.Constructor _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], [ "err" ] )) err ->
+                                                fnName
+                                                    ++ " returned Err: "
+                                                    ++ Debug.toString err
+                                                    |> Decode.fail
+
+                                            -- only Maybe and Result types are expected, we can fail
+                                            _ ->
+                                                "Invalid Return Type for "
+                                                    ++ fnName
+                                                    |> Decode.fail
+
+                                    Err error ->
+                                        "Interpreter Evaluation Error: "
+                                            ++ Debug.toString error
+                                            |> Decode.fail
+                           )
+            in
+            config.baseType
+                |> Type.substituteTypeVariables argVariables
+                |> decodeData ir
+                |> Result.map (Decode.andThen createType)

@@ -52,9 +52,9 @@ createSimpleGetJsonApi('morphir.json')
 createSimpleGetJsonApi('morphir-ir.json')
 createSimpleGetJsonApi('morphir-tests.json')
 
-app.get('/server/attributeconfs/:attributename', wrap(async (req, res, next) => {
+app.get('/server/attributesconf', wrap(async (req, res, next) => {
   const attributeName = req.params.attributename.toString()
-  const configPath = path.join(program.opts().projectDir, attributeName + '-attribute.conf.json')
+  const configPath = path.join(program.opts().projectDir, attributeName + 'attributes.conf.json')
   const fileContent = await readFile(configPath)
   const jsonContent = JSON.parse(fileContent.toString())
   res.send(jsonContent)
@@ -66,6 +66,16 @@ app.get('/server/attributefiles/:attribute', wrap(async (req, res, next) => {
   res.send(JSON.parse(jsonContent.toString()))
 }))
 
+app.post('/server/updateattribute', wrap(async (req, res, next) => {
+  const attributeFilePath = path.join(program.opts().projectDir, req.params.attributename + '-attribute.json')
+  const jsonContent = await readFile(attributeFilePath)
+
+  jsonContent[req.body.nodeId.toString()] = req.body.newAttribute.toString()
+  await writeFile(attributeFilePath, jsonContent)
+
+  const updatedJson = await readFile(morphirTestsJsonPath)
+  res.send(JSON.parse(updatedJson.toString()))
+}))
 
 app.post('/server/morphir-tests.json', wrap(async (req, res, next) => {
   const morphirTestsJsonPath = path.join(program.opts().projectDir, 'morphir-tests.json')

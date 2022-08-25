@@ -149,8 +149,8 @@ decodeType decodeAttributes =
 encodeField : (a -> Encode.Value) -> Field a -> Encode.Value
 encodeField encodeAttributes field =
     Encode.object
-        [ ("name", encodeName field.name)
-        , ("tpe", encodeType encodeAttributes field.tpe)
+        [ ( "name", encodeName field.name )
+        , ( "tpe", encodeType encodeAttributes field.tpe )
         ]
 
 
@@ -185,9 +185,33 @@ encodeSpecification encodeAttributes spec =
                 , encodeConstructors encodeAttributes ctors
                 ]
 
+        DerivedTypeSpecification params config ->
+            Encode.list identity
+                [ Encode.string "DerivedTypeSpecification"
+                , Encode.list encodeName params
+                , Encode.object
+                    [ ( "baseType", encodeType encodeAttributes config.baseType )
+                    , ( "fromBaseType", encodeFQName config.fromBaseType )
+                    , ( "toBaseType", encodeFQName config.toBaseType )
+                    ]
+                ]
+
 
 decodeSpecification : Decode.Decoder a -> Decode.Decoder (Specification a)
 decodeSpecification decodeAttributes =
+    let
+        decodeDerivedTypeConfig =
+            Decode.map3
+                (\baseType fromBaseType toBaseType ->
+                    { baseType = baseType
+                    , fromBaseType = fromBaseType
+                    , toBaseType = toBaseType
+                    }
+                )
+                (Decode.field "baseType" (decodeType decodeAttributes))
+                (Decode.field "fromBaseType" decodeFQName)
+                (Decode.field "toBaseType" decodeFQName)
+    in
     Decode.index 0 Decode.string
         |> Decode.andThen
             (\kind ->
@@ -205,6 +229,11 @@ decodeSpecification decodeAttributes =
                         Decode.map2 CustomTypeSpecification
                             (Decode.index 1 (Decode.list decodeName))
                             (Decode.index 2 (decodeConstructors decodeAttributes))
+
+                    "DerivedTypeSpecification" ->
+                        Decode.map2 DerivedTypeSpecification
+                            (Decode.index 1 (Decode.list decodeName))
+                            (Decode.index 2 decodeDerivedTypeConfig)
 
                     _ ->
                         Decode.fail ("Unknown kind: " ++ kind)

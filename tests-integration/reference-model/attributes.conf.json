@@ -1,0 +1,8 @@
+{
+	"foo":  {
+		"filePath" : "foo-attribute.json"
+	},
+	"bar":  {
+		"filePath" : "bar-attribute.json"
+	}
+}
