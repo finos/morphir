@@ -160,6 +160,9 @@ collectFeaturesFromType ir tpe featureCollection =
                                         |> List.map (Tuple.second >> Type.mapTypeAttributes (always (Type.typeAttributes tpe)))
                                         |> List.append types
 
+                                Type.DerivedTypeSpecification _ config ->
+                                    Type.mapTypeAttributes (always (Type.typeAttributes tpe)) config.baseType :: types
+
                         Nothing ->
                             types
             in

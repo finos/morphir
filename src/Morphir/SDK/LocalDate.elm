@@ -19,7 +19,7 @@ module Morphir.SDK.LocalDate exposing
     ( LocalDate
     , diffInDays, diffInWeeks, diffInMonths, diffInYears
     , addDays, addWeeks, addMonths, addYears
-    , fromISO, fromParts
+    , toISOString, fromISO, fromParts
     )
 
 {-| This module adds the definition of a date without time zones. Useful in business modeling.
@@ -38,7 +38,7 @@ module Morphir.SDK.LocalDate exposing
 
 # Constructors
 
-@docs fromISO, fromParts
+@docs toISOString, fromISO, fromParts
 
 -}
 
@@ -112,6 +112,13 @@ addYears count date =
 fromISO : String -> Maybe LocalDate
 fromISO iso =
     Date.fromIsoString iso |> Result.toMaybe
+
+
+{-| Convert a LocalDate to a string in ISO format.
+-}
+toISOString : LocalDate -> String
+toISOString localDate =
+    Date.toIsoString localDate
 
 
 {-| Construct a LocalDate based on Year, Month, Day. Opportunity for error denoted by Maybe return type.
