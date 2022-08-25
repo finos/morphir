@@ -1,3 +1,9 @@
+---
+sidebar_position: 6
+id: morphir-community
+title: Morphir Community
+---
+
 # Morphir Community
 
 **Morphir's success will depend on its community.**
