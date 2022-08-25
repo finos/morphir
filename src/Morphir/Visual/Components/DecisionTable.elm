@@ -12,6 +12,7 @@ module Morphir.Visual.Components.DecisionTable exposing
 import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Font as Font
 import Morphir.IR.FQName exposing (getLocalName)
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value, indexedMapValue)
@@ -46,9 +47,10 @@ type alias TypedPattern =
 
 -}
 type alias DecisionTable =
-    { decomposeInput : List TypedValue
+    { decomposeInput : List EnrichedValue
     , rules : List Rule
     }
+
 
 {-| Represents a match which is visualized as a cell in the decision table. It could either be a pattern or a guard
 which is a function that takes some input and returns a boolean.
@@ -60,7 +62,7 @@ type Match
 
 type alias Rule =
     { matches : List Match
-    , result : TypedValue
+    , result : EnrichedValue
     , highlightStates : List HighlightState
     }
 
@@ -70,10 +72,11 @@ displayTable config viewValue table =
     tableHelp config viewValue table.decomposeInput table.rules
 
 
-tableHelp : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> List TypedValue -> List Rule -> Element msg
+tableHelp : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> List EnrichedValue -> List Rule -> Element msg
 tableHelp config viewValue headerFunctions rows =
     let
-        whiteBg = Background.color <| rgb255 255 255 255
+        whiteBg =
+            Background.color <| rgb255 255 255 255
     in
     table [ Border.solid, Border.width 1, whiteBg ]
         { data = rows
@@ -95,13 +98,13 @@ tableHelp config viewValue headerFunctions rows =
                             , Border.width 5
                             , mediumPadding config.state.theme |> padding
                             ]
-                            (viewValue (updateConfig config (List.head (List.reverse rules.highlightStates))) (toVisualTypedValue rules.result))
+                            (viewValue (updateConfig config (List.head (List.reverse rules.highlightStates))) rules.result)
                     )
                 ]
         }
 
 
-getColumnFromHeader : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> Int -> List TypedValue -> List (Column Rule msg)
+getColumnFromHeader : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> Int -> List EnrichedValue -> List (Column Rule msg)
 getColumnFromHeader config viewValue index decomposeInput =
     case decomposeInput of
         inputHead :: [] ->
@@ -114,23 +117,18 @@ getColumnFromHeader config viewValue index decomposeInput =
             []
 
 
-columnHelper : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> TypedValue -> Int -> List (Column Rule msg)
+columnHelper : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> EnrichedValue -> Int -> List (Column Rule msg)
 columnHelper config viewValue header index =
-    let
-        head : EnrichedValue
-        head =
-            toVisualTypedValue header
-    in
     [ Column
         (el
             [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
             , mediumPadding config.state.theme |> padding
             , height fill
             ]
-            (viewValue config head)
+            (viewValue config header)
         )
         fill
-        (\rules -> getCaseFromIndex config head viewValue (rules.highlightStates |> List.drop index |> List.head) (rules.matches |> List.drop index |> List.head))
+        (\rules -> getCaseFromIndex config header viewValue (rules.highlightStates |> List.drop index |> List.head) (rules.matches |> List.drop index |> List.head))
     ]
 
 
@@ -165,7 +163,7 @@ getCaseFromIndex config head viewValue highlightState rule =
                     in
                     case pattern of
                         Value.WildcardPattern _ ->
-                            el [ Background.color result, mediumPadding config.state.theme |> padding ] (text "anything else")
+                            el [ Background.color result, mediumPadding config.state.theme |> padding, Font.italic ] (text "anything else")
 
                         Value.LiteralPattern va literal ->
                             let
