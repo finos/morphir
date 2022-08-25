@@ -11,20 +11,23 @@ The contents of this document detail how to structure and load optional "sidecar
 
 
 ## File format, and naming convention
-To define a custom attribute, we need two JSON files. 
+To define a custom attribute, we need at least two JSON files. 
 
- 1. A config file named like `foo-attribute.conf.json` that describes the attribute, and provides a path to the file where the attribute values are stored.
- 2. An attributes file named `foo-attribute.json` where the attributes are stored in a flat key-value format.
+ 1. A config file named `attribute.conf.json` that describes the attributes, and provides a path to the files where the attribute values are stored.
+ 2. At least one attribute file named like `foo-attribute.json` where the attributes are stored in a flat key-value format.
  
 ### Config file
 ```
 {
 	"foo":  {
 		"filePath" : "foo-attribute.json"
+	},
+	"bar":  {
+		"filePath" : "bar-attribute.json"
 	}
 }
 ```
-The above example is a sample config file structure. The config file should contain a key-value pair in a JSON format, where the key is the attribute name, and the value is the attribute description.
+The above example is a sample config file structure. The config file should contain key-value pairs in a JSON format, where the key is the attribute name, and the value is the attribute description.
 
 ### Attribute file
 ```
@@ -43,7 +46,7 @@ The above example is a sample attribute file structure. The attribute file shoul
 ## Loading and updating the attribute files
 We currently provide the following APIs.
 
-***GET /server/attributeconfs/\<yourattributename>***
+***GET /server/attributesconfs/***
 Returns the contents of the `yourattributename-attribute.conf.json` file.
 
 ***GET /server/attributefiles/\<yourattributename>***
