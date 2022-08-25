@@ -476,4 +476,30 @@ async function writeFile(filePath: string, content: string) {
   return await fsWriteFile(filePath, content);
 }
 
-export = { make, writeFile, gen, stats };
+
+async function writeDockerfile(
+  projectDir: string,
+  programOpts: any
+): Promise<void> {
+  // read docker template file
+  let filePath = "./cli2/DockerTemplateFile"
+  let fileContent = await fsReadFile(filePath, 'utf-8')  
+
+  // replace specific characteres with the required 
+  let newContent = fileContent.replace("PROJECT_MODEL_DIR", projectDir)
+
+  // controlling ending slash in path
+  let removeTrailingSlash = (str: string) => { return str.endsWith('/') ? str.slice(0, -1).trim() : str.trim() };
+  let dockerfilePath = removeTrailingSlash(projectDir + "/Dockerfile")
+
+
+  // check if there is an existing Dockerfile in projectDir
+  if (await fsExists(dockerfilePath) && programOpts.force == false) {
+    throw new Error("Dockerfile already exist. To overwrite please use the `-f` flag");
+  }
+  else  {
+    await fsWriteFile(dockerfilePath, newContent)
+  }
+}
+
+export = { make, writeFile, gen, stats, writeDockerfile };
