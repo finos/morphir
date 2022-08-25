@@ -66,9 +66,9 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Repo as Repo exposing (Repo)
-import Morphir.IR.SDK as SDK
+import Morphir.IR.SDK as SDK exposing (packageName)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
@@ -385,23 +385,16 @@ update msg model =
             in
             case insightMsg of
                 ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
-                    if model.expandedValues |> Dict.member ( fQName, localName ) then
-                        if isFunctionPresent then
-                            ( { model | expandedValues = model.expandedValues |> Dict.remove ( fQName, localName ) }, Cmd.none )
-
-                        else
+                    let
+                        url =
+                            pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase localName
+                    in
+                    case fQName of
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
                             ( model, Cmd.none )
 
-                    else
-                        ( { model
-                            | expandedValues =
-                                Distribution.lookupValueDefinition (QName moduleName localName)
-                                    getDistribution
-                                    |> Maybe.map (\valueDef -> model.expandedValues |> Dict.insert ( fQName, localName ) valueDef)
-                                    |> Maybe.withDefault model.expandedValues
-                          }
-                        , Cmd.none
-                        )
+                        _ ->
+                            ( model, Nav.pushUrl model.key url )
 
                 ExpandVariable varIndex maybeRawValue ->
                     ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue } }, Cmd.none )
@@ -1819,24 +1812,26 @@ viewDefinitionDetails model =
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
-            row [ spacing (model.theme |> Theme.scaled 2) ]
-                <| ifThenElse (List.isEmpty testCase.inputs) [] [ row [ Border.rounded 5, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
-                    (case evaluateOutput ir testCase.inputs fQName of
-                        Ok rawValue ->
-                            case rawValue of
-                                Value.Unit () ->
-                                    [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
+            row [ spacing (model.theme |> Theme.scaled 2) ] <|
+                ifThenElse (List.isEmpty testCase.inputs)
+                    []
+                    [ row [ Border.rounded 5, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
+                        (case evaluateOutput ir testCase.inputs fQName of
+                            Ok rawValue ->
+                                case rawValue of
+                                    Value.Unit () ->
+                                        [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
 
-                                expectedOutput ->
-                                    [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value:")
-                                    , el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
-                                    , ifThenElse (Dict.isEmpty model.argStates) none (saveTestcaseButton fQName { testCase | expectedOutput = expectedOutput })
-                                    ]
+                                    expectedOutput ->
+                                        [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value:")
+                                        , el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
+                                        , ifThenElse (Dict.isEmpty model.argStates) none (saveTestcaseButton fQName { testCase | expectedOutput = expectedOutput })
+                                        ]
 
-                        Err _ ->
-                            [ text "Invalid or missing inputs" ]
-                    )
-                ]
+                            Err _ ->
+                                [ text "Invalid or missing inputs" ]
+                        )
+                    ]
 
         evaluateOutput : IR -> List (Maybe RawValue) -> FQName -> Result Error RawValue
         evaluateOutput ir inputs fQName =

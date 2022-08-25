@@ -22,8 +22,6 @@ import Morphir.Visual.Config as Config exposing (Config, PopupScreenRecord)
 import Morphir.Visual.Theme as Theme exposing (Theme, ThemeConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Theme.Codec exposing (decodeThemeConfig)
 import Morphir.Visual.ViewValue as ViewValue
-import Morphir.IR as IR exposing (IR)
-
 
 
 
@@ -329,7 +327,8 @@ view model =
             case model.ir of
                 Just ir ->
                     ViewValue.viewDefinition config valueFQName visualizationState.functionDefinition
-                    |> Element.layout [ Font.size model.theme.fontSize, smallPadding model.theme |> padding, smallSpacing model.theme |> spacing ]
+                        |> Element.layout [ Font.size model.theme.fontSize, smallPadding model.theme |> padding, smallSpacing model.theme |> spacing ]
+
                 Nothing ->
                     Html.div [] []
 
