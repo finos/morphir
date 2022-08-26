@@ -21,6 +21,7 @@ const config = {
 const stdio = 'inherit';
 
 async function clean() {
+    del(['./tests-integration/reference-model/Dockerfile'])
     return del(['dist'])
 }
 
@@ -132,6 +133,22 @@ function morphirElmGen(inputPath, outputDir, target) {
     return execa('node', args, { stdio })
 }
 
+function morphirDockerize(projectDir, options = {}) {
+    let command = 'dockerize'
+    let funcLocation = './cli2/lib/morphir-dockerize.js'
+    let projectDirFlag = '-p'
+    let overwriteDockerfileFlag = '-f'
+    let projectDirArgs = [ projectDirFlag, projectDir ]
+    args = [
+        funcLocation, 
+        command, 
+        projectDirArgs.join(' '), 
+        overwriteDockerfileFlag
+    ]
+    console.log("Running: "+ args.join);
+    return execa('node', args, {stdio})
+}
+
 
 
 
@@ -159,6 +176,12 @@ async function testIntegrationMake(cb) {
     await morphirElmMakeRunOldCli(
         './tests-integration/reference-model',
         './tests-integration/generated/refModel/morphir-ir.json')
+}
+
+async function testIntegrationDockerize() {
+    await morphirDockerize(
+        './tests-integration/reference-model',
+    )
 }
 
 async function testIntegrationMorphirTest(cb) {
@@ -271,7 +294,8 @@ const testIntegration = series(
             testIntegrationGenTypeScript,
             testIntegrationTestTypeScript,
         ),
-    )
+    ),
+    testIntegrationDockerize
 )
 
 
