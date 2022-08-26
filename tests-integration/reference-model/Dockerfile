@@ -12,7 +12,7 @@ RUN adduser --system --uid=7357 --no-create-home $MORPHIR_USER
 #Directory of Docker Container
 WORKDIR /var/morphir
 
-COPY PROJECT_MODEL_DIR ./
+COPY ./tests-integration/reference-model/ ./
 
 RUN npm install -g morphir-elm && morphir-elm make
 
