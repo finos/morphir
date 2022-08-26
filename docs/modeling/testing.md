@@ -1,3 +1,8 @@
+---
+id: morphir-setup
+title: Setup
+---
+
 # Setup
 
 Elm's standard testing library is elm-test. You can install it by running the following command \
@@ -7,14 +12,14 @@ in your project. It will ask questions, just say yes to everything:
 elm install elm-explorations/test
 ```
 
-The next thing you need to do is set up a test framework. We have [Lobo](https://github.com/benansell/lobo) 
+The next thing you need to do is set up a test framework. We have [Lobo](https://github.com/benansell/lobo)
 available internally. This is how you install it for your project:
 
 ```
 npm install lobo --save
 ```
 
-Now make sure you have a `tests` directory in the root of the project and that in your `elm.json` 
+Now make sure you have a `tests` directory in the root of the project and that in your `elm.json`
 it is listed in `source-directories`.
 
 Now you are ready to run the tests:
@@ -23,7 +28,7 @@ Now you are ready to run the tests:
 npx lobo --framework=elm-test
 ```
 
-This will also ask a lot of questions, just say yes to everything (you only need to do this once). In the end 
+This will also ask a lot of questions, just say yes to everything (you only need to do this once). In the end
 it will show something like this:
 
 ```
