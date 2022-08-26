@@ -486,7 +486,8 @@ async function writeDockerfile(
   let fileContent = await fsReadFile(filePath, 'utf-8')  
 
   // replace specific characteres with the required 
-  let newContent = fileContent.replace("PROJECT_MODEL_DIR", projectDir)
+  let newContent = fileContent.replace("PROJECT_MODEL_DIR", projectDir.replace(/\\/g, '/'))
+
 
   // controlling ending slash in path
   let removeTrailingSlash = (str: string) => { return str.endsWith('/') ? str.slice(0, -1).trim() : str.trim() };
