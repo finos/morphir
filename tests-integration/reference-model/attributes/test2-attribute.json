@@ -1,0 +1,8 @@
+{
+	"Morphir.Reference.Model.Issues.Issue401:bar": {
+		"PII": true
+	},
+	 "Morphir.Reference.Model.Issues.Issue401:foo": {
+		"PII": true
+	}
+}

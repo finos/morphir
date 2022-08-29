@@ -39,6 +39,12 @@ const createSimpleGetJsonApi = (filePath) => {
   }))
 }
 
+async function getAttributeConfigJson() {
+  const configPath = path.join(program.opts().projectDir,'attributes.conf.json')
+  const fileContent = await readFile(configPath)
+  return JSON.parse(fileContent.toString())
+}
+
 app.use(express.static(webDir))
 app.use(express.json());
 app.use(cookieParser())
@@ -52,23 +58,30 @@ createSimpleGetJsonApi('morphir.json')
 createSimpleGetJsonApi('morphir-ir.json')
 createSimpleGetJsonApi('morphir-tests.json')
 
-app.get('/server/attributesconf', wrap(async (req, res, next) => {
-  const attributeName = req.params.attributename.toString()
-  const configPath = path.join(program.opts().projectDir, attributeName + 'attributes.conf.json')
-  const fileContent = await readFile(configPath)
-  const jsonContent = JSON.parse(fileContent.toString())
-  res.send(jsonContent)
+app.get('/server/csrf', csrfProtection, function(req, res) {
+  // Generate a tocken and send it to the view
+  res.send({ csrfToken: req.csrfToken() })
+})
+
+app.get('/server/attributes', wrap(async (req, res, next) => {
+  const configJsonContent = await getAttributeConfigJson()
+
+  const attributeNames = Object.keys(configJsonContent)
+  let responseJson = {}
+
+  for (const attrName of attributeNames){
+    const attrFilePath = path.normalize(configJsonContent[attrName].filePath)
+    const attrFileContent = await readFile(attrFilePath)
+    responseJson[attrName] = JSON.parse(attrFileContent.toString())
+  };
+  res.send(responseJson)
 }))
 
-app.get('/server/attributefiles/:attribute', wrap(async (req, res, next) => {
-  const attributeFilePath = path.join(program.opts().projectDir, req.params.attributename + '-attribute.json')
-  const jsonContent = await readFile(attributeFilePath)
-  res.send(JSON.parse(jsonContent.toString()))
-}))
 
 app.post('/server/updateattribute', wrap(async (req, res, next) => {
-  const attributeFilePath = path.join(program.opts().projectDir, req.params.attributename + '-attribute.json')
-  const jsonContent = await readFile(attributeFilePath)
+  const configJsonContent = await getAttributeConfigJson()
+  const attrFilePath = path.normalize(configJsonContent[req.params.attributename].filePath)
+  const jsonContent = await readFile(attrFilePath)
 
   jsonContent[req.body.nodeId.toString()] = req.body.newAttribute.toString()
   await writeFile(attributeFilePath, jsonContent)
