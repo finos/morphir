@@ -285,6 +285,28 @@ mapObjectExpressionToScala objectExpression =
                         )
                     )
 
+        Join joinType baseRelation joinedRelation onClause ->
+            let
+                joinTypeName : String
+                joinTypeName =
+                    case joinType of
+                        Inner ->
+                            "inner"
+
+                        Left ->
+                            "left"
+            in
+            Result.map2
+                (\baseDataFrame joinedDataFrame ->
+                    Spark.join
+                        baseDataFrame
+                        (mapExpression onClause)
+                        joinTypeName
+                        joinedDataFrame
+                )
+                (mapObjectExpressionToScala baseRelation)
+                (mapObjectExpressionToScala joinedRelation)
+
 
 {-| Maps Spark Expressions to scala values.
 Expressions are defined as part of the SparkIR.
