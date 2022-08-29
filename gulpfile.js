@@ -21,7 +21,7 @@ const config = {
 const stdio = 'inherit';
 
 async function clean() {
-    del(['./tests-integration/reference-model/Dockerfile'])
+    del(['tests-integration/reference-model/Dockerfile'])
     return del(['dist'])
 }
 
