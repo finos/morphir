@@ -1,8 +1,8 @@
 {
-	"foo":  {
-		"filePath" : "foo-attribute.json"
+	"test":  {
+		"filePath" : "attributes/test-attribute.json"
 	},
-	"bar":  {
-		"filePath" : "bar-attribute.json"
+	"test2":  {
+		"filePath" : "attributes/test2-attribute.json"
 	}
 }
