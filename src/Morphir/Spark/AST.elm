@@ -44,6 +44,7 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Pattern(..), TypedValue)
+import Morphir.SDK.Aggregate exposing (AggregateValue(..), AggregationCall(..), ConstructAggregationError, constructAggregationCall)
 import Morphir.SDK.ResultList as ResultList
 
 
@@ -75,6 +76,12 @@ These are the supported Transformations:
           - The relation to join as an ObjectExpression.
           - The "on" clause of the join. This is a boolean expression that should compare fields of the base and the
             joined relation.
+  - **Aggregate**
+      - Represents a `df.groupBy(...).agg(...)` transformation.
+      - The arguments are:
+          - A String, which represents the column to group aggregations by.
+          - A list of named expressions, which represent the aggregation methods being used on this dataset.
+          - The ObjectExpression to aggregate the results of.
 
 -}
 type ObjectExpression
@@ -82,6 +89,7 @@ type ObjectExpression
     | Filter Expression ObjectExpression
     | Select NamedExpressions ObjectExpression
     | Join JoinType ObjectExpression ObjectExpression Expression
+    | Aggregate String NamedExpressions ObjectExpression
 
 
 {-| Specifies which type of join to use. For now we only support inner and left-outer joins since that covers the
@@ -222,6 +230,10 @@ type alias FieldName =
     Name
 
 
+type alias Description =
+    String
+
+
 type Error
     = UnhandledValue TypedValue
     | FunctionNotFound FQName
@@ -232,6 +244,7 @@ type Error
     | UnhandledPatternMatch ( Pattern (Type.Type ()), TypedValue )
     | UnhandledNamedExpressions NamedExpressions
     | UnhandledObjectExpression ObjectExpression
+    | AggregationError ConstructAggregationError
 
 
 {-| provides a way to create ObjectExpressions from a Morphir Value.
@@ -265,6 +278,11 @@ objectExpressionFromValue ir morphirValue =
                                             Err (UnhandledObjectExpression other)
                                 )
                     )
+
+        Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "aggregate" ] ], [ "aggregate" ] )) aggregateBody) (Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "aggregate" ] ], [ "group", "by" ] )) groupKey) sourceRelation) ->
+            constructAggregationCall aggregateBody groupKey sourceRelation
+                |> Result.mapError AggregationError
+                |> Result.andThen (objectExpressionFromAggregationCall ir)
 
         Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter" ] )) predicate) sourceRelation ->
             objectExpressionFromValue ir sourceRelation
@@ -318,6 +336,31 @@ namedExpressionsFromFields ir fields =
                     |> Result.map (Tuple.pair name)
             )
         |> ResultList.keepFirstError
+
+
+objectExpressionFromAggregationCall : IR -> AggregationCall -> Result Error ObjectExpression
+objectExpressionFromAggregationCall ir aggregationCall =
+    case aggregationCall of
+        AggregationCall groupKey _ aggValues sourceRelation ->
+            -- not using returned group key yet
+            Result.map3
+                Aggregate
+                (groupKey |> Name.toTitleCase |> Ok)
+                (aggValues
+                    |> List.map
+                        (\aggValue ->
+                            case aggValue of
+                                AggregateValue fieldName _ aggName (Just aggArg) ->
+                                    mapSDKFunctions ir [ aggArg ] aggName
+                                        |> Result.andThen (\expr -> Tuple.pair fieldName expr |> Ok)
+
+                                AggregateValue fieldName _ aggName Nothing ->
+                                    mapSDKFunctions ir [] aggName
+                                        |> Result.andThen (\expr -> Tuple.pair fieldName expr |> Ok)
+                        )
+                    |> ResultList.keepFirstError
+                )
+                (objectExpressionFromValue ir sourceRelation)
 
 
 {-| Provides a way to create NamedExpressions from a Morphir Value.
@@ -695,6 +738,35 @@ mapSDKFunctions ir args fQName =
             expressionFromValue ir item
                 |> Result.map List.singleton
                 |> Result.map (Function "sum")
+
+        -- HANDLE AGGREGATION FUNCTIONS
+        ( "Morphir.SDK:Aggregate:count", [] ) ->
+            -- morphir's count takes no arguments, but Spark's does
+            Function "count" [ Function "lit" [ Literal (WholeNumberLiteral 1) ] ] |> Ok
+
+        ( "Morphir.SDK:Aggregate:sumOf", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "sum")
+
+        ( "Morphir.SDK:Aggregate:averageOf", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "avg")
+
+        ( "Morphir.SDK:Aggregate:minimumOf", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "min")
+
+        ( "Morphir.SDK:Aggregate:maximumOf", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "max")
+
+        ( "Morphir.SDK:Aggregate:weightedAverageOf", _ ) ->
+            -- XXX: I can't see a Spark equivalent
+            UnsupportedSDKFunction fQName |> Err
 
         _ ->
             FunctionNotFound fQName |> Err

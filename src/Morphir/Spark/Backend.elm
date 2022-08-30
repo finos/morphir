@@ -285,6 +285,14 @@ mapObjectExpressionToScala objectExpression =
                         )
                     )
 
+        Aggregate groupfield fieldExpressions sourceRelation ->
+            mapObjectExpressionToScala sourceRelation
+                |> Result.map
+                    (Spark.aggregate
+                        groupfield
+                        (mapNamedExpressions fieldExpressions)
+                    )
+
         Join joinType baseRelation joinedRelation onClause ->
             let
                 joinTypeName : String

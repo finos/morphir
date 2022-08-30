@@ -21,6 +21,7 @@ module Morphir.SDK.Aggregate exposing
     , aggregateMap, aggregateMap2, aggregateMap3
     , count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
     , byKey, withFilter
+    , constructAggregationCall, AggregationCall(..), AggregateValue(..), ConstructAggregationError
     )
 
 {-| This module contains functions specifically designed to work with large data sets.
@@ -38,10 +39,20 @@ module Morphir.SDK.Aggregate exposing
 @docs count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
 @docs byKey, withFilter
 
+## Utilities
+
+@docs constructAggregationCall, AggregationCall, AggregateValue, ConstructAggregationError
+
 -}
 
+import Dict as CoreDict exposing (Dict)
 import AssocList as Dict exposing (Dict)
+import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.SDK.Key exposing (Key0, key0)
+import Morphir.SDK.ResultList as ResultList
+
 
 
 type Operator a
@@ -531,3 +542,160 @@ aggregate f dict =
                             |> Maybe.withDefault 0
                     )
             )
+
+
+{-| An AggregationCall represents a call to Morphir.SDK.Aggregate.aggregate
+
+Its values are:
+
+  - **Group Key**
+      - i.e. the name of the column results are grouped by.
+  - **Returned Group Key**
+      - Optionally, the name to give the group column in the results.
+  - **Aggregate Values**
+      - i.e. the expressions that define columns in the output of aggregate.
+  - **Source Value**
+      - i.e. the Value that is being aggregated
+
+-}
+type AggregationCall
+    = AggregationCall Name (Maybe Name) (List AggregateValue) TypedValue
+
+
+{-| An AggregateValue represents a single aggregation used within the overall Aggregation call
+
+Its values are:
+
+  - **Field Name**
+      - i.e. The column name in the output.
+  - **Filter**
+      - A Maybe Value of a filter expression, if it exists.
+  - **Aggregation Name**
+      - The Name of the aggregation function used (e.g. "sumOf")
+  - **Aggregation Arg**
+      - Any argument passed to the aggregation (e.g. ".ageOfItem" in "sumOf .AgeOfItem")
+
+-}
+type AggregateValue
+    = AggregateValue Name (Maybe TypedValue) FQName (Maybe TypedValue)
+
+{-| A ConstructAggregationError represents the ways constructAggregationCall may fail
+
+Its values are:
+  - **TooManyKeyFields**
+      - i.e. in `aggregate`, 'key' was used to create multiple columns of the
+        field(s) the data is grouped by, which can't be represented in Spark.
+  - * UnhandledValue**
+      - i.e. the 'aggregateBody' or 'groupKey' Values passed into
+        constructAggregationCall could not be recognised as an aggregation.
+
+-}
+type ConstructAggregationError
+    = TooManyKeyFields TypedValue
+    | UnhandledValue String TypedValue
+
+
+{-| constructAggregationCall transforms a Morphir.SDK.Aggregate groupBy and agggregate call into a single data structure
+-}
+constructAggregationCall : TypedValue -> TypedValue -> TypedValue -> Result ConstructAggregationError AggregationCall
+constructAggregationCall aggregateBody groupKey sourceRelation =
+    let
+        getKeyField : TypedValue -> Result ConstructAggregationError (Maybe Name)
+        getKeyField body =
+            case body of
+                -- extract any field name that "key" is used for to check if the groupBy column is renamed
+                Value.Lambda _ (Value.AsPattern _ _ keyName) (Value.Lambda _ (Value.AsPattern _ _ inputsName) (Value.Record _ fields)) ->
+                    let
+                        keyFields =
+                            fields
+                                |> CoreDict.toList
+                                |> List.filter
+                                    (\( name, value ) ->
+                                        case value of
+                                            Value.Variable _ varName ->
+                                                varName == keyName
+
+                                            _ ->
+                                                False
+                                    )
+                    in
+                    case keyFields of
+                        -- expect only one field that uses "key"
+                        ( name, _ ) :: [] ->
+                            Just name |> Ok
+
+                        [] ->
+                            Nothing |> Ok
+
+                        _ :: _ :: _ ->
+                            -- i.e. a list with at least two entries
+                            Err (TooManyKeyFields body)
+
+                other ->
+                    Err (UnhandledValue "When matching function body for keyFields" body)
+
+        getAggFunc : TypedValue -> Result ConstructAggregationError ( FQName, Maybe TypedValue )
+        getAggFunc val =
+            case val of
+                Value.Reference _ funcName ->
+                    ( funcName, Nothing ) |> Ok
+
+                Value.Apply _ (Value.Reference _ funcName) funcArg ->
+                    ( funcName, Just funcArg ) |> Ok
+
+                other ->
+                    Err (UnhandledValue "When matching for aggregation function" other)
+
+        getAggregateValues : TypedValue -> Result ConstructAggregationError (List AggregateValue)
+        getAggregateValues body =
+            case body of
+                Value.Lambda _ (Value.AsPattern _ _ keyName) (Value.Lambda _ (Value.AsPattern _ _ inputsName) (Value.Record _ fields)) ->
+                    fields
+                        |> CoreDict.toList
+                        |> List.filter
+                            (\( name, value ) ->
+                                -- Only operate on lines that use "input"
+                                case value of
+                                    Value.Apply _ (Value.Variable _ varName) _ ->
+                                        True
+
+                                    _ ->
+                                        False
+                            )
+                        |> List.map
+                            (\( name, value ) ->
+                                case value of
+                                    Value.Apply _ _ (Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "aggregate" ] ], [ "with", "filter" ] )) filterFunc) aggFunc) ->
+                                        getAggFunc aggFunc
+                                            |> Result.map
+                                                (\( funcName, funcArg ) ->
+                                                    AggregateValue name (Just filterFunc) funcName funcArg
+                                                )
+
+                                    Value.Apply _ _ aggFunc ->
+                                        getAggFunc aggFunc
+                                            |> Result.map
+                                                (\( funcName, funcArg ) ->
+                                                    AggregateValue name Nothing funcName funcArg
+                                                )
+
+                                    other ->
+                                        Err (UnhandledValue "When matching for aggregate values" other)
+                            )
+                        |> ResultList.keepFirstError
+
+                other ->
+                    Err (UnhandledValue "When matching function body for aggregate values" aggregateBody)
+    in
+    Result.map4
+        AggregationCall
+        (case groupKey of
+            Value.FieldFunction _ fieldName ->
+                Ok fieldName
+
+            _ ->
+                Err (UnhandledValue "When extracting aggregation's groupBy key" groupKey)
+        )
+        (getKeyField aggregateBody)
+        (getAggregateValues aggregateBody)
+        (Ok sourceRelation)

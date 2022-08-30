@@ -17,27 +17,11 @@
 
 module TestChristmasBonanza exposing (..)
 
-import AntiqueCsvEncoder exposing (antiqueEncoder)
 import AntiquesDataSource exposing (antiquesDataSource)
-import Csv.Decode as Decode exposing (..)
-import Expect exposing (Expectation)
-import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique, Product(..))
-import SparkTests.Rules.Income.Antique exposing (..)
-import Test exposing (..)
+import SparkTests.Rules.Income.Antique exposing (christmas_bonanza_15percent_priceRange)
+import TestUtils exposing (executeTest)
+import Test exposing (Test)
 
-
+-- lazy csv export - We know the output's a single tuple so we mangle it into a csv using sed later.
 testChristmasBonanza : Test
-testChristmasBonanza =
-    let
-        priceRange : Result Error PriceRange
-        priceRange =
-            antiquesDataSource
-                |> Result.map
-                    (\itemsList ->
-                        christmas_bonanza_15percent_priceRange itemsList
-                    )
-
-        _ =
-            Debug.log "antiques_expected_results_christmas_bonanza_15percent_priceRange.csv" priceRange
-    in
-    test "Testing christmas_bonanza_15percent_priceRange antique shop rule" (\_ -> Expect.equal priceRange (( 0.0, 150000.0 ) |> Ok))
+testChristmasBonanza = executeTest "christmas_bonanza_15percent_priceRange" antiquesDataSource christmas_bonanza_15percent_priceRange (\a -> a)
