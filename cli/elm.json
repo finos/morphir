@@ -28,6 +28,7 @@
             "justinmimbs/date": "4.0.1",
             "matthewsj/elm-ordering": "2.0.0",
             "mdgriffith/elm-ui": "1.1.8",
+            "pzp1997/assoc-list": "1.0.0",
             "rundis/elm-bootstrap": "5.2.0",
             "stil4m/elm-syntax": "7.2.0"
         },

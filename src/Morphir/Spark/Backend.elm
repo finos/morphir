@@ -285,6 +285,14 @@ mapObjectExpressionToScala objectExpression =
                         )
                     )
 
+        Aggregate groupfield fieldExpressions sourceRelation ->
+            mapObjectExpressionToScala sourceRelation
+                |> Result.map
+                    (Spark.aggregate
+                        groupfield
+                        (mapNamedExpressions fieldExpressions)
+                    )
+
 
 {-| Maps Spark Expressions to scala values.
 Expressions are defined as part of the SparkIR.

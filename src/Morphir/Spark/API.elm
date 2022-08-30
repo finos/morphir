@@ -84,3 +84,18 @@ join rightRelation predicate joinTypeLabel leftRelation =
                 (Scala.StringLit joinTypeLabel)
             )
         ]
+
+
+aggregate : String -> List Scala.Value -> Scala.Value -> Scala.Value
+aggregate groupField aggregations from =
+    Scala.Apply
+        (Scala.Select
+            (Scala.Apply
+                (Scala.Select from "groupBy")
+                [ Scala.ArgValue Nothing (Scala.Literal (Scala.StringLit groupField)) ]
+            )
+            "agg"
+        )
+        (aggregations
+            |> List.map (Scala.ArgValue Nothing)
+        )

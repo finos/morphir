@@ -15,14 +15,27 @@
 -}
 
 
-module TestSeizeItem exposing (..)
+module TestUtils exposing (..)
 
-import CsvUtils exposing (antiqueEncoder)
-import AntiquesDataSource exposing (antiquesDataSource)
-import SparkTests.Rules.Income.Antique exposing (seize_item)
-import TestUtils exposing (executeTest)
+
+import Expect exposing (Expectation)
 import Test exposing (..)
 
 
-testSeizeItem : Test
-testSeizeItem = executeTest "seize_item" antiquesDataSource (List.filter seize_item) antiqueEncoder
+executeTest : String -> Result x a -> (a -> b) -> (b -> s) -> Test
+executeTest testName inputData testFunction outputToString =
+    let
+        testOutput : Result x b
+        testOutput =
+            inputData
+                |> Result.map testFunction
+
+        outputText =
+            testOutput
+                |> Result.map outputToString
+        _ =
+            Debug.log ("expected_results_" ++ testName ++ ".csv") outputText
+    in
+    test
+        ("Testing " ++ testName)
+        (\_ -> Expect.ok outputText)
