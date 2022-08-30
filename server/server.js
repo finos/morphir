@@ -2,9 +2,6 @@
 
 const express = require('express');
 var path = require('path');
-const csrf = require('csurf')
-const cookieParser = require('cookie-parser')
-const csrfProtection = csrf({ cookie: true})
 
 // Constants
 const PORT = 8080;
@@ -18,8 +15,6 @@ const transp = require('morphir-bsq-transpiler');
 
 const app = express();
 app.use(express.json({limit: '50mb'}));
-app.use(cookieParser())
-app.use(csrfProtection)
 
 // Endpoints
 app.get('/', (req, res) => {
