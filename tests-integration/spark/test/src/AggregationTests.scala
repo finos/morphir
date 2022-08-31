@@ -19,9 +19,9 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.explode
 import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
-import sparktests.antiquerulestests.SparkJobs
+import sparktests.aggregationtests.SparkJobs
 
-class antiqueRulesTest extends FunSuite {
+class aggregationTest extends FunSuite {
 
   val localTestSession =
     SparkSession.builder().master("local").appName("ReadCsv").getOrCreate()
@@ -43,73 +43,104 @@ class antiqueRulesTest extends FunSuite {
     .schema(schema)
     .load("spark/test/src/spark_test_data/antiques_data.csv")
 
-  df_test_data.printSchema()
-  df_test_data.show(false)
-
-  test("antiqueItems") {
+  test("aggregateAverage") {
+    val out_schema = new StructType()
+      .add("product", StringType, false)
+      .add("average", FloatType, false)
     val df_expected_results = localTestSession.read.format("csv")
       .option("header", "true")
-      .schema(schema)
-      .load("spark/test/src/spark_test_data/expected_results_is_item_antique.csv")
+      .schema(out_schema)
+      .load("spark/test/src/spark_test_data/expected_results_aggregateAverage.csv")
 
-    val df_actual_results = SparkJobs.antiqueItems(df_test_data)
+    df_expected_results.show(false)
+    val df_actual_results = SparkJobs.testAggregateAverage(df_test_data)
 
+    df_actual_results.show(false)
     assert(df_actual_results.columns.length == df_expected_results.columns.length)
-    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.count == df_expected_results.count)
     assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 
-  test("vintageItems") {
+  test("aggregateCount") {
+    val out_schema = new StructType()
+      .add("product", StringType, false)
+      .add("count", FloatType, false)
     val df_expected_results = localTestSession.read.format("csv")
       .option("header", "true")
-      .schema(schema)
-      .load("spark/test/src/spark_test_data/expected_results_is_item_vintage.csv")
+      .schema(out_schema)
+      .load("spark/test/src/spark_test_data/expected_results_aggregateCount.csv")
 
-    val df_actual_results = SparkJobs.vintageItems(df_test_data)
+    val df_actual_results = SparkJobs.testAggregateCount(df_test_data)
 
     assert(df_actual_results.columns.length == df_expected_results.columns.length)
-    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.count == df_expected_results.count)
     assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 
-  test("worthThousandsItems") {
+  test("aggregateFilterAll") {
+    val out_schema = new StructType()
+      .add("product", StringType, false)
+      .add("count", FloatType, false)
     val df_expected_results = localTestSession.read.format("csv")
       .option("header", "true")
-      .schema(schema)
-      .load("spark/test/src/spark_test_data/expected_results_is_item_worth_thousands.csv")
+      .schema(out_schema)
+      .load("spark/test/src/spark_test_data/expected_results_aggregateFilterAll.csv")
 
-    val df_actual_results = SparkJobs.worthThousandsItems(df_test_data)
+    val df_actual_results = SparkJobs.testAggregateFilterAll(df_test_data)
 
     assert(df_actual_results.columns.length == df_expected_results.columns.length)
-    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.count == df_expected_results.count)
     assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 
-  test("worthMillionsItems") {
+  test("aggregateSum") {
+    val out_schema = new StructType()
+      .add("product", StringType, false)
+      .add("sum", FloatType, false)
     val df_expected_results = localTestSession.read.format("csv")
       .option("header", "true")
-      .schema(schema)
-      .load("spark/test/src/spark_test_data/expected_results_is_item_worth_millions.csv")
+      .schema(out_schema)
+      .load("spark/test/src/spark_test_data/expected_results_aggregateSum.csv")
 
-    val df_actual_results = SparkJobs.worthMillionsItems(df_test_data)
+    val df_actual_results = SparkJobs.testAggregateSum(df_test_data)
 
     assert(df_actual_results.columns.length == df_expected_results.columns.length)
-    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.count == df_expected_results.count)
     assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 
-  test("seizedItems") {
+  test("aggregateMaximum") {
+    val out_schema = new StructType()
+      .add("product", StringType, false)
+      .add("maximum", FloatType, false)
     val df_expected_results = localTestSession.read.format("csv")
       .option("header", "true")
-      .schema(schema)
-      .load("spark/test/src/spark_test_data/expected_results_seize_item.csv")
+      .schema(out_schema)
+      .load("spark/test/src/spark_test_data/expected_results_aggregateMaximum.csv")
 
-    val df_actual_results = SparkJobs.seizedItems(df_test_data)
+    val df_actual_results = SparkJobs.testAggregateMaximum(df_test_data)
 
     assert(df_actual_results.columns.length == df_expected_results.columns.length)
-    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.count == df_expected_results.count)
     assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
+
+  test("aggregateMinimum") {
+    val out_schema = new StructType()
+      .add("product", StringType, false)
+      .add("minimum", FloatType, false)
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(out_schema)
+      .load("spark/test/src/spark_test_data/expected_results_aggregateMinimum.csv")
+
+    val df_actual_results = SparkJobs.testAggregateMinimum(df_test_data)
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert(df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
 }
 
 
