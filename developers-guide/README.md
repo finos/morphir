@@ -19,6 +19,7 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
     4. [morphir-elm develop](#) <br>
 6. [Interoperability With JavaScript](#) <br>
 7. [Testing Framework](#) <br>
+    1. [CSV testing guide ](files/spark-testing-framework.md)
 8. [The Morphir IR](#) <br>
     1. [Overview of the Morphir IR](#) <br>
     2. [Distribution](#) <br>
