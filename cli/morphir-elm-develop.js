@@ -9,9 +9,6 @@ const readFile = util.promisify(fs.readFile)
 const writeFile = util.promisify(fs.writeFile)
 const commander = require('commander')
 const express = require('express')
-const csrf = require('csurf')
-const cookieParser = require('cookie-parser')
-const csrfProtection = csrf({ cookie: true})
 
 // Set up Commander
 const program = new commander.Command()
@@ -47,8 +44,6 @@ async function getAttributeConfigJson() {
 
 app.use(express.static(webDir))
 app.use(express.json());
-app.use(cookieParser())
-app.use(csrfProtection)
 
 app.get('/', (req, res) => {
   res.sendFile(indexHtml)
@@ -57,11 +52,6 @@ app.get('/', (req, res) => {
 createSimpleGetJsonApi('morphir.json')
 createSimpleGetJsonApi('morphir-ir.json')
 createSimpleGetJsonApi('morphir-tests.json')
-
-app.get('/server/csrf', csrfProtection, function(req, res) {
-  // Generate a tocken and send it to the view
-  res.send({ csrfToken: req.csrfToken() })
-})
 
 app.get('/server/attributes', wrap(async (req, res, next) => {
   const configJsonContent = await getAttributeConfigJson()
@@ -78,16 +68,14 @@ app.get('/server/attributes', wrap(async (req, res, next) => {
 }))
 
 
-app.post('/server/updateattribute', wrap(async (req, res, next) => {
+app.post('/server/updateattribute/:attributename', wrap(async (req, res, next) => {
   const configJsonContent = await getAttributeConfigJson()
-  const attrFilePath = path.normalize(configJsonContent[req.params.attributename].filePath)
-  const jsonContent = await readFile(attrFilePath)
+  const attrFilePath = path.normalize(configJsonContent[req.params.attributename.toString()].filePath)
 
-  jsonContent[req.body.nodeId.toString()] = req.body.newAttribute.toString()
-  await writeFile(attributeFilePath, jsonContent)
+  await writeFile(attrFilePath, JSON.stringify(req.body, null, 4))
 
-  const updatedJson = await readFile(morphirTestsJsonPath)
-  res.send(JSON.parse(updatedJson.toString()))
+  const updatedJson = await readFile(attrFilePath)
+  res.send(updatedJson)
 }))
 
 app.post('/server/morphir-tests.json', wrap(async (req, res, next) => {
