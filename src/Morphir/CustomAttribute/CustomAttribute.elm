@@ -6,8 +6,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.NodeId exposing (NodeID)
 
 
-type alias CustomAttributeId 
-	= String
+type alias CustomAttributeId = String
 
 type alias CustomAttributeConfig =
 	{ filePath : FilePath
