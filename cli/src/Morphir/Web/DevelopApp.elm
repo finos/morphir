@@ -57,6 +57,8 @@ import Markdown.Parser as Markdown
 import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
+import Morphir.CustomAttribute.Codec exposing (decodeAttributes)
+import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttribute)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -175,10 +177,6 @@ type ServerState
     | ServerHttpError Http.Error
 
 
-type alias Attribute =
-    Dict FQName { attributeName : String, value : Dict String Bool }
-
-
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
     let
@@ -236,7 +234,7 @@ type Msg
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
-    | ServerGetAttributeResponse Attribute
+    | ServerGetAttributeResponse CustomAttribute
     | Filter FilterMsg
     | UI UIMsg
     | Insight InsightMsg
@@ -1657,29 +1655,6 @@ httpTestModel ir =
                 )
                 (decodeTestSuite ir)
         }
-
-
-decodeAttributes : Decode.Decoder Attribute
-decodeAttributes =
-    let
-        flattenNestedStructure : Dict String (Dict String (Dict String Bool)) -> Attribute
-        flattenNestedStructure nestedDict =
-            Dict.foldl
-                (\attrName fQNameDict flat ->
-                    Dict.toList fQNameDict
-                        |> List.map
-                            (\( fQNString, valueDict ) ->
-                                ( FQName.fromString "." fQNString
-                                , { attributeName = attrName, value = valueDict }
-                                )
-                            )
-                        |> Dict.fromList
-                        |> Dict.union flat
-                )
-                Dict.empty
-                nestedDict
-    in
-    Decode.map flattenNestedStructure (Decode.dict (Decode.dict (Decode.dict Decode.bool)))
 
 
 httpAttributes =
