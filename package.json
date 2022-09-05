@@ -90,6 +90,7 @@
     "get-stdin": "^8.0.0",
     "log-timestamp": "^0.3.0",
     "prettier": "^2.4.1",
+    "shelljs": "^0.8.5",
     "vis-network": "^9.1.2"
   }
 }

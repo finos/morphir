@@ -17,38 +17,11 @@
 
 module TestIsItemWorthThousands exposing (..)
 
-import AntiqueCsvEncoder exposing (antiqueEncoder)
+import CsvUtils exposing (antiqueEncoder)
 import AntiquesDataSource exposing (antiquesDataSource)
-import Csv.Decode as Decode exposing (..)
-import Expect exposing (Expectation)
-import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique, Product(..))
-import SparkTests.Rules.Income.Antique exposing (..)
-import Test exposing (..)
-
+import SparkTests.Rules.Income.Antique exposing (is_item_worth_thousands)
+import TestUtils exposing (executeTest)
+import Test exposing (Test)
 
 testIsItemWorthThousands : Test
-testIsItemWorthThousands =
-    let
-        matchingAntiques : Result Error (List Antique)
-        matchingAntiques =
-            antiquesDataSource
-                |> Result.map
-                    (\itemsList ->
-                        itemsList
-                            |> List.filter
-                                (\item ->
-                                    is_item_worth_thousands item
-                                )
-                    )
-
-        csvResults =
-            matchingAntiques
-                |> Result.map
-                    (\result ->
-                        result |> antiqueEncoder
-                    )
-
-        _ =
-            Debug.log "antiques_expected_results_is_item_worth_thousands.csv" csvResults
-    in
-    test "Testing is_item_worth_thousands antique shop rule" (\_ -> Expect.equal (matchingAntiques |> Result.map (\list -> List.length list)) (2160 |> Ok))
+testIsItemWorthThousands = executeTest "is_item_worth_thousands" antiquesDataSource (List.filter is_item_worth_thousands) antiqueEncoder

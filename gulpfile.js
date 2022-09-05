@@ -9,6 +9,7 @@ const http = require('isomorphic-git/http/node')
 const del = require('del')
 const elmMake = require('node-elm-compiler').compile
 const execa = require('execa');
+const shell = require('shelljs')
 const mocha = require('gulp-mocha');
 const ts = require('gulp-typescript');
 const tsProject = ts.createProject('./cli2/tsconfig.json')
@@ -169,6 +170,7 @@ function testIntegrationClean() {
 
 
 async function testIntegrationMake(cb) {
+
     await morphirElmMake(
         './tests-integration/reference-model',
         './tests-integration/generated/refModel/morphir-ir.json')
@@ -271,6 +273,23 @@ async function testIntegrationGenTypeScript(cb) {
 function testIntegrationTestTypeScript(cb) {
     return src('tests-integration/typescript/TypesTest-refModel.ts')
         .pipe(mocha({ require: 'ts-node/register' }));
+        
+}
+
+
+async function testCreateCSV(cb) {
+    const cwd = process.cwd();
+    if (!shell.which('sh')){
+        console.log("Automatically creating CSV files is not available on this platform");
+    } else {
+        try {
+            process.chdir('./tests-integration/spark/elm-tests/tests',);
+            shell.exec('sh ./create_csv_files.sh');
+            process.chdir(cwd);
+        } catch (err) {
+            console.log("Automatically creating CSV files is not available on this platform");
+        }
+    }
 }
 
 testIntegrationSpark = series(
@@ -283,6 +302,7 @@ testIntegrationSpark = series(
 const testIntegration = series(
     testIntegrationClean,
     testIntegrationMake,
+    testCreateCSV,
     parallel(
         testIntegrationMorphirTest,
 	testIntegrationSpark,
@@ -332,12 +352,17 @@ const test =
         // testMorphirIR,
     )
 
+const csvfiles=series(
+        testCreateCSV,
+)
+
 exports.clean = clean;
 exports.makeCLI = makeCLI;
 exports.makeDevCLI = makeDevCLI;
 exports.buildCLI2 = buildCLI2;
 exports.build = build;
 exports.test = test;
+exports.csvfiles=csvfiles;
 exports.testIntegration = testIntegration;
 exports.testIntegrationSpark = testIntegrationSpark;
 exports.testMorphirIR = testMorphirIR;
