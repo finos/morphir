@@ -1,73 +1,86 @@
+import sparktests.listmembertests.SparkJobs
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.explode
+import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
-import sparktests.listmembertests.SparkJobs
+
 
 class listMemberTest extends FunSuite {
 
   val localTestSession =
-  SparkSession.builder().master("local").appName("ListMemberTest").getOrCreate()
+    SparkSession.builder().master("local").appName("ReadCsv").getOrCreate()
+
   import localTestSession.implicits._
 
-  val columns = Seq("name","ageOfItem", "product", "report")
-  val data = Seq(("Bowie Knife", 20.0, "Knife", "Rusty blade"), ("Upright Chair", 19.0, "Furniture", "Chipped legs"))
-  val rdd = localTestSession.sparkContext.parallelize(data)
+  val antique_product_schema = new StructType()
+    .add("product", StringType, false)
 
-    test("testEnumListMember") {
-      val dfFromRDD = rdd.toDF("name","ageOfItem", "product", "report")
-      val res = SparkJobs.testEnumListMember(dfFromRDD)
-      assert(res.count() == 1)
-      assert(res.columns(0) == "name")
-      assert(res.columns(1) == "ageOfItem")
-      assert(res.columns(2) == "product")
-      assert(res.columns(3) == "report")
-      val rows = res.collect()
+  val antique_product_test_data = localTestSession.read.format("csv")
+    .option("header", "true")
+    .schema(antique_product_schema)
+    .load("spark/test/src/spark_test_data/antique_product_data.csv")
 
-      val row0 = rows(0)
-      assert(row0(0) == "Bowie Knife")
-      assert(row0(1) == 20.0)
-      assert(row0(2) == "Knife")
-      assert(row0(3) == "Rusty blade")
-    }
+
+  test("testEnumListMember") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antique_product_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testEnumListMember.csv")
     
-    test("testStringListMember") {
-      val dfFromRDD = rdd.toDF("name","ageOfItem", "product", "report")
-      val res = SparkJobs.testStringListMember(dfFromRDD)
-      assert(res.count() == 1)
-      assert(res.columns(0) == "name")
-      assert(res.columns(1) == "ageOfItem")
-      assert(res.columns(2) == "product")
-      assert(res.columns(3) == "report")
-      val rows = res.collect()
+    val df_actual_results = SparkJobs.testEnumListMember(antique_product_test_data)
 
-      val row0 = rows(0)
-      assert(row0(0) == "Upright Chair")
-      assert(row0(1) == 19.0)
-      assert(row0(2) == "Furniture")
-      assert(row0(3) == "Chipped legs")
-    }
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+
+  val antique_age_schema = new StructType()
+    .add("ageOfItem", FloatType, false)
+
+  val antique_age_test_data = localTestSession.read.format("csv")
+    .option("header", "true")
+    .schema(antique_age_schema)
+    .load("spark/test/src/spark_test_data/antique_age_data.csv")
+
+
+  test("testIntListMember") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antique_age_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testIntListMember.csv")
     
-    test("testIntListMember") {
-      val dfFromRDD = rdd.toDF("name","ageOfItem", "product", "report")
-      val res = SparkJobs.testIntListMember(dfFromRDD)
-      assert(res.count() == 2)
-      assert(res.columns(0) == "name")
-      assert(res.columns(1) == "ageOfItem")
-      assert(res.columns(2) == "product")
-      assert(res.columns(3) == "report")
-      val rows = res.collect()
+    val df_actual_results = SparkJobs.testIntListMember(antique_age_test_data)
 
-      val row0 = rows(0)
-      assert(row0(0) == "Bowie Knife")
-      assert(row0(1) == 20.0)
-      assert(row0(2) == "Knife")
-      assert(row0(3) == "Rusty blade")
 
-      val row1 = rows(1)
-      assert(row1(0) == "Upright Chair")
-      assert(row1(1) == 19.0)
-      assert(row1(2) == "Furniture")
-      assert(row1(3) == "Chipped legs")
-    }
-}
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+  val antique_name_schema = new StructType()
+    .add("name", StringType, false)
+
+  val antique_name_test_data = localTestSession.read.format("csv")
+    .option("header", "true")
+    .schema(antique_name_schema)
+    .load("spark/test/src/spark_test_data/antique_name_data.csv")
+
+
+  test("testStringListMember") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antique_name_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testStringListMember.csv")
+    
+    val df_actual_results = SparkJobs.testStringListMember(antique_name_test_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+ }
 

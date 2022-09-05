@@ -1,7 +1,8 @@
+import sparktests.functiontests.SparkJobs
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.explode
+import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
-import sparktests.functiontests.SparkJobs
 
 class test1 extends FunSuite {
 
@@ -9,183 +10,316 @@ class test1 extends FunSuite {
     SparkSession.builder().master("local").appName("Example").getOrCreate()
   import localTestSession.implicits._
 
-  val columns = Seq("name","report", "ageOfItem", "product")
-  val data = Seq(("Bowie Knife", "Rusty blade", 20.0, "Knife"), ("Wooden Chair", "Chipped legs", 19.0, "Furniture"))
-  val rdd = localTestSession.sparkContext.parallelize(data)
 
-  test("testCaseBool") {
-    val df = localTestSession.sparkContext.parallelize(Seq(
-      (true),
-      (false),
-    )).toDF("foo")
-    val res = SparkJobs.testCaseBool(df)
-    val rows = res.collect()
-    assert(res.count() == 1)
-    assert(rows(0)(0) == false)
-  }
+  val foo_float_schema = new StructType()
+    .add("foo", FloatType, false)
 
-  test("testCaseEnum") {
-      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-      val res = SparkJobs.testCaseEnum(dfFromRDD)
-      val rows = res.collect()
-      assert(res.count() == 1)
-      assert(rows(0)(0) == "Wooden Chair")
-      assert(rows(0)(1) == "Chipped legs")
-      assert(rows(0)(2) == 19.0)
-      assert(rows(0)(3) == "Furniture")
-  }
+  val foo_int_data = localTestSession.read.format("csv")
+    .option("header", "true")
+    .schema(foo_float_schema)
+    .load("spark/test/src/spark_test_data/foo_int_data.csv")
 
-  test("testCaseFloat") {
-    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-    val res = SparkJobs.testCaseFloat(dfFromRDD)
-    val rows = res.collect()
-    assert(res.count() == 1)
-    assert(rows(0)(0) == "Bowie Knife")
-    assert(rows(0)(1) == "Rusty blade")
-    assert(rows(0)(2) == 20.0)
-    assert(rows(0)(3) == "Knife")
-  }
+
+  val foo_bool_schema = new StructType()
+    .add("foo", BooleanType, false)
+
+  val foo_bool_data = localTestSession.read.format("csv")
+    .option("header", "true")
+    .schema(foo_bool_schema)
+    .load("spark/test/src/spark_test_data/foo_bool_data.csv")
+
+
+  val antiqueSS_schema = new StructType()
+    .add("name", StringType, false)
+    .add("ageOfItem", FloatType, false)
+    .add("product", StringType, false)
+    .add("report", StringType, false)
+
+  val antiqueSS_data = localTestSession.read.format("csv")
+    .option("header", "true")
+    .schema(antiqueSS_schema)
+    .load("spark/test/src/spark_test_data/antique_subset_data.csv")
+
+
+  val antiqueSS_select1_schema = new StructType()
+    .add("newName", StringType, false)
+    .add("newReport", StringType, false)
+    .add("foo", StringType, false)
+    .add("product", StringType, false)
+  
+  val antiqueSS_select3_schema = new StructType()
+    .add("ageOfItem", FloatType, false)
+
+  val antiqueSS_select4_schema = new StructType()
+    .add("float", FloatType, false)
+  
+  val foo_string_schema = new StructType()
+    .add("foo", StringType, false)
+  
+  val foo_int_schema = new StructType()
+    .add("foo", IntegerType, false)
+  
+  val product_schema = new StructType()
+    .add("product", StringType, false)
+
+  //////////////////////////////////////////////////////////////////
 
   test("testCaseInt") {
-    val df = localTestSession.sparkContext.parallelize(Seq(
-      (20.0),
-      (5.0),
-    )).toDF("foo")
-    val res = SparkJobs.testCaseInt(df)
-    val rows = res.collect()
-    assert(res.count() == 1)
-    assert(rows(0)(0) == 20)
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(foo_int_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testCaseInt.csv")
+    
+    val df_actual_results = SparkJobs.testCaseInt(foo_int_data)
+
+ 
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 
   test("testCaseString") {
-      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-      val res = SparkJobs.testCaseString(dfFromRDD)
-      val rows = res.collect()
-      assert(res.count() == 1)
-      assert(rows(0)(0) == "Bowie Knife")
-      assert(rows(0)(1) == "Rusty blade")
-      assert(rows(0)(2) == 20.0)
-      assert(rows(0)(3) == "Knife")
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testCaseString.csv")
+    
+    val df_actual_results = SparkJobs.testCaseString(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+  test("testCaseEnum") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testCaseEnum.csv")
+    
+    val df_actual_results = SparkJobs.testCaseEnum(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 
   test("testFrom") {
-      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-      val res = SparkJobs.testFrom(dfFromRDD)
-      assert(res.count() == 2)
-      assert(res.columns(0) == "name")
-      assert(res.columns(1) == "report")
-      assert(res.columns(2) == "ageOfItem")
-      assert(res.columns(3) == "product")
-      val rows = res.collect()
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testFrom.csv")
+    
+    val df_actual_results = SparkJobs.testFrom(antiqueSS_data)
 
-      val row0 = rows(0)
-      assert(row0(0) == "Bowie Knife")
-      assert(row0(1) == "Rusty blade")
-      assert(row0(2) == 20.0)
-      assert(row0(3) == "Knife")
 
-      val row1 = rows(1)
-      assert(row1(0) == "Wooden Chair")
-      assert(row1(1) == "Chipped legs")
-      assert(row1(2) == 19.0)
-    }
-
-  test("testListMinimum") {
-    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-    val res = SparkJobs.testListMinimum(dfFromRDD)
-    assert(res.count() == 1)
-    assert(res.columns(0) == "min")
-    assert(res.collect()(0)(0) == 19.0)
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 
-  test("testListMaximum") {
-    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-    val res = SparkJobs.testListMaximum(dfFromRDD)
-    assert(res.count() == 1)
-    assert(res.columns(0) == "max")
-    assert(res.collect()(0)(0) == 20.0)
+
+  test("testWhere1") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testWhere1.csv")
+    
+    val df_actual_results = SparkJobs.testWhere1(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 
-  test("testNameMaximum") {
-    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-    val res = SparkJobs.testNameMaximum(dfFromRDD)
-    assert(res.count() == 1)
-    assert(res.columns(0) == "max")
-    assert(res.collect()(0)(0) == "Wooden Chair")
+
+  test("testWhere2") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testWhere2.csv")
+    
+    val df_actual_results = SparkJobs.testWhere2(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+
+  test("testWhere3") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testWhere3.csv")
+    
+    val df_actual_results = SparkJobs.testWhere3(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 
   test("testSelect1") {
-      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-      val res = SparkJobs.testSelect1(dfFromRDD)
-      assert(res.count() == 2)
-      assert(res.columns(0) == "foo")
-      assert(res.columns(1) == "newName")
-      assert(res.columns(2) == "newReport")
-      assert(res.columns(3) == "product")
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_select1_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testSelect1.csv")
+    
+    val df_actual_results = SparkJobs.testSelect1(antiqueSS_data)
 
-      val rows = res.collect()
 
-      val row0 = rows(0)
-      assert(row0(0) == "old")
-      assert(row0(1) == "Bowie Knife")
-      assert(row0(2) == "Rusty blade")
-      assert(row0(3) == "Knife")
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
 
-      val row1 = rows(1)
-      assert(row1(0) == "new")
-      assert(row1(1) == "Wooden Chair")
-      assert(row1(2) == "Chipped legs")
-      assert(row1(3) == "Furniture")
-    }
+  test("testSelect3") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_select3_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testSelect3.csv")
+    
+    val df_actual_results = SparkJobs.testSelect3(antiqueSS_data)
 
-  test("testWhere1") {
-      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-      val res = SparkJobs.testWhere1(dfFromRDD)
-      assert(res.count() == 1)
-      assert(res.columns(0) == "name")
-      assert(res.columns(1) == "report")
-      assert(res.columns(2) == "ageOfItem")
-      assert(res.columns(3) == "product")
-      val rows = res.collect()
 
-      val row0 = rows(0)
-      assert(row0(0) == "Bowie Knife")
-      assert(row0(1) == "Rusty blade")
-      assert(row0(2) == 20.0)
-      assert(row0(3) == "Knife")
-    }
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
 
-  test("testWhere2") {
-      val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-      val res = SparkJobs.testWhere2(dfFromRDD)
-      assert(res.count() == 1)
-      assert(res.columns(0) == "name")
-      assert(res.columns(1) == "report")
-      assert(res.columns(2) == "ageOfItem")
-      assert(res.columns(3) == "product")
-      val rows = res.collect()
+  test("testSelect4") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_select4_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testSelect4.csv")
+    
+    val df_actual_results = SparkJobs.testSelect4(antiqueSS_data)
 
-      val row0 = rows(0)
-      assert(row0(0) == "Wooden Chair")
-      assert(row0(1) == "Chipped legs")
-      assert(row0(2) == 19.0)
-      assert(row0(3) == "Furniture")
-    }
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+  test("testFilter2") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testFilter2.csv")
+    
+    val df_actual_results = SparkJobs.testFilter2(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+  test("testListMinimum") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(foo_float_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testListMinimum.csv")
+    
+    val df_actual_results = SparkJobs.testListMinimum(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+  test("testListMaximum") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(foo_float_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testListMaximum.csv")
+    
+    val df_actual_results = SparkJobs.testListMaximum(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+  test("testNameMaximum") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(foo_string_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testNameMaximum.csv")
+    
+    val df_actual_results = SparkJobs.testNameMaximum(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+ /// NOT CURRENTLY TRNASPILED IN TO SPARK CODE 
+  // test("testBadAnnotation") {
+  //   val df_expected_results = localTestSession.read.format("csv")
+  //     .option("header", "true")
+  //     .schema(product_schema)
+  //     .load("spark/test/src/spark_test_data/expected_results_testBadAnnotation.csv")
+    
+  //   val df_actual_results = SparkJobs.testBadAnnotation(antiqueSS_data)
+
+  //   df_expected_results.show(false)
+  //   df_actual_results.show(false)
+  //   assert(df_actual_results.columns.length == df_expected_results.columns.length)
+  //   assert (df_actual_results.count == df_expected_results.count)
+  //   assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  
+  // }
+
+  test("testLetBinding") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(antiqueSS_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testLetBinding.csv")
+    
+    val df_actual_results = SparkJobs.testLetBinding(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
 
   test("testListSum") {
-    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-    val res = SparkJobs.testListSum(dfFromRDD)
-    assert(res.count() == 1)
-    assert(res.columns(0) == "agesum")
-    assert(res.collect()(0)(0) == 39)
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(foo_float_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testListSum.csv")
+    
+    val df_actual_results = SparkJobs.testListSum(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 
   test("testListLength") {
-    val dfFromRDD = rdd.toDF("name", "report", "ageOfItem", "product")
-    val res = SparkJobs.testListLength(dfFromRDD)
-    assert(res.count() == 1)
-    assert(res.columns(0) == "listlength")
-    assert(res.collect()(0)(0) == 2)
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(foo_int_schema)
+      .load("spark/test/src/spark_test_data/expected_results_testListLength.csv")
+    
+    val df_actual_results = SparkJobs.testListLength(antiqueSS_data)
+
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 }
 

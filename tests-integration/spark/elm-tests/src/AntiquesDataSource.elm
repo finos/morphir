@@ -17,9 +17,10 @@
 
 module AntiquesDataSource exposing (antiquesDataSource)
 
-import CsvUtils exposing (..)
 import Csv.Decode as Decode exposing (..)
+import CsvUtils exposing (..)
 import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique)
+import SparkTests.Types exposing (..)
 
 
 csvData : String
