@@ -12,6 +12,7 @@ import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing
 import Svg
 import Svg.Attributes
 import Morphir.Visual.Config exposing (HighlightState(..))
+import Morphir.Visual.Theme exposing (smallPadding)
 
 
 type Node
@@ -161,13 +162,13 @@ layoutHelp config highlightState viewValue rootNode =
                             NotHighlighted
             in
             -- TODO: choose vertical/horizontal left/right layout based on some heuristics
-            horizontalLayout
+            verticalLayout
                 config
                 (el
                     [ conditionState |> highlightStateToBorderWidth |> Border.width
                     , Border.rounded 6
                     , Border.color (conditionState |> highlightStateToColor |> toElementColor)
-                    , mediumPadding config.state.theme |> padding
+                    , smallPadding config.state.theme |> padding
                     ]
                     (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight conditionState } } branch.condition)
                 )
@@ -193,7 +194,7 @@ layoutHelp config highlightState viewValue rootNode =
                 [ highlightState |> highlightStateToBorderWidth |> Border.width
                 , Border.rounded 6
                 , Border.color (highlightState |> highlightStateToColor |> toElementColor)
-                , mediumPadding config.state.theme |> padding
+                , smallPadding config.state.theme |> padding
                 ]
                 (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight highlightState } } value)
 
