@@ -43,4 +43,4 @@ encodeResult results =
 
 testAggregate : Test
 testAggregate =
-    executeTest "aggregateFilterAll" antiquesDataSource testAggregateFilterAll encodeResult
+    executeTest "testAggregateFilterAll" antiquesDataSource testAggregateFilterAll encodeResult

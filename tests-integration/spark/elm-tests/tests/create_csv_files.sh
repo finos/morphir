@@ -204,6 +204,14 @@ elm-test "TestChristmasBonanza.elm" > "$TEST_OUTPUT_DIR/christmas_bonanza_15perc
 grep -m1 "expected_results_christmas_bonanza_15percent_priceRange.csv" "$TEST_OUTPUT_DIR/christmas_bonanza_15percent_priceRange.txt" | sed -e "s?expected_results_christmas_bonanza_15percent_priceRange.csv: Ok (??" -e 's?)??g' -e 'i minimum,maximum' \
 > "$SPARK_TEST_DATA_DIR/expected_results_christmas_bonanza_15percent_priceRange.csv"
 
+elmTestOutputToCsv "TestAggregateAverage.elm" "testAggregateAverage"
+elmTestOutputToCsv "TestAggregateCount.elm" "testAggregateCount"
+elmTestOutputToCsv "TestAggregateFilterAll.elm" "testAggregateFilterAll"
+elmTestOutputToCsv "TestAggregateFilterOneCount.elm" "testAggregateFilterOneCount"
+elmTestOutputToCsv "TestAggregateFilterOneMin.elm" "testAggregateFilterOneMin"
+elmTestOutputToCsv "TestAggregateMaximum.elm" "testAggregateMaximum"
+elmTestOutputToCsv "TestAggregateMinimum.elm" "testAggregateMinimum"
+elmTestOutputToCsv "TestAggregateSum.elm" "testAggregateSum"
 
 elmTestOutputToCsv "TestAntiqueSSCaseString.elm" "testCaseString"
 

@@ -43,4 +43,4 @@ encodeResult results =
 
 testAggregate : Test
 testAggregate =
-    executeTest "aggregateCount" antiquesDataSource testAggregateCount encodeResult
+    executeTest "testAggregateCount" antiquesDataSource testAggregateCount encodeResult

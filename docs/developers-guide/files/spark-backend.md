@@ -232,14 +232,16 @@ Additional limitations to Aggregation support are:
 * The name of the column the aggregation was grouped by cannot be renamed.
   i.e. `fieldName` in the above example. The expression `fieldName = key`
   will be successfully parsed, but ignored.
-* Calls to `withFilter filterFunc` will be parsed but ignored.
 
-In Spark, the above example would be translated into:
+In Spark, (assuming filterFunc is `(\a -> a.otherFieldName >= 10.0)`) the above example would be translated into:
 ```
 source.groupBy("fieldName").agg(
     org.apache.spark.sql.functions.count(org.apache.spark.sql.functions.lit(1)).alias("aggregated1"),
     org.apache.spark.sql.functions.avg(org.apache.spark.sql.functions.col("otherFieldName")).alias("aggregated2"),
-    org.apache.spark.sql.functions.avg(org.apache.spark.sql.functions.col("otherFieldName")).alias("aggregated3"),
+    org.apache.spark.sql.functions.avg(org.apache.spark.sql.functions.when(
+        (org.apache.spark.sql.functions.col("otherFieldName")) >= (20),
+        org.apache.spark.sql.functions.col("otherFieldName")
+    ).alias("aggregated3")
 )
 ```
 
