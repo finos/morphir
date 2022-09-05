@@ -143,6 +143,9 @@ objectExpressionJoinHierarchy objectExpression =
         Join _ baseExpression joinedExpression _ ->
             JoinedObjects (objectExpressionJoinHierarchy baseExpression) (objectExpressionJoinHierarchy joinedExpression)
 
+        Aggregate _ _ baseExpression ->
+            objectExpressionJoinHierarchy baseExpression
+
 
 {-| Given an argument pattern and a join hierarchy return a dictionary that correlates variable names to object names.
 The algorithm recursively traverses both hierarchies at the same time and builds a dictionary along the way. The
