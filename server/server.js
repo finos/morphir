@@ -13,7 +13,7 @@ const fs = require('fs');
 const transp = require('morphir-bsq-transpiler');
 
 
-const app = express();
+const app = express(); // nosemgrep : express-check-csurf-middleware-usage
 app.use(express.json({limit: '50mb'}));
 
 // Endpoints
