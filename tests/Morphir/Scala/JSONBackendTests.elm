@@ -35,7 +35,7 @@ mapTypeDefinitionToEncoderTests =
                     ]
                 )
             )
-            [ "val encodeEmployee: io.circe.Encoder[test.pack.test.Mod.Employee] = (a: test.pack.test.Mod.Employee) =>\n  io.circe.Json.obj(\n    (\"name\", morphir.sdk.basics.Codec.encodeString(a.name)),\n    (\"age\", morphir.sdk.basics.Codec.encodeInt(a.age))\n  )"
+            [ "val encodeEmployee: io.circe.Encoder[test.pack.test.Mod.Employee] = ((a: test.pack.test.Mod.Employee) =>\n  io.circe.Json.obj(\n    (\"name\", morphir.sdk.basics.Codec.encodeString(a.name)),\n    (\"age\", morphir.sdk.basics.Codec.encodeInt(a.age))\n  ))"
             ]
         , positiveTest "Record type with 3 fields (String, Int, String)"
             ( [ [ "test" ], [ "pack" ] ], [ [ "test" ], [ "mod" ] ], [ "Employee" ] )
@@ -47,7 +47,7 @@ mapTypeDefinitionToEncoderTests =
                     ]
                 )
             )
-            [ "val encodeEmployee: io.circe.Encoder[test.pack.test.Mod.Employee] = (a: test.pack.test.Mod.Employee) =>\n  io.circe.Json.obj(\n    (\"name\", morphir.sdk.basics.Codec.encodeString(a.name)),\n    (\"age\", morphir.sdk.basics.Codec.encodeInt(a.age)),\n    (\"department\", morphir.sdk.basics.Codec.encodeString(a.department))\n  )" ]
+            [ "val encodeEmployee: io.circe.Encoder[test.pack.test.Mod.Employee] = ((a: test.pack.test.Mod.Employee) =>\n  io.circe.Json.obj(\n    (\"name\", morphir.sdk.basics.Codec.encodeString(a.name)),\n    (\"age\", morphir.sdk.basics.Codec.encodeInt(a.age)),\n    (\"department\", morphir.sdk.basics.Codec.encodeString(a.department))\n  ))" ]
         ]
 
 
@@ -77,7 +77,7 @@ mapTypeDefinitionToDecoderTests =
                     ]
                 )
             )
-            [ "val decodeFoo: io.circe.Decoder[test.pack.test.Mod.Foo] = (c: io.circe.HCursor) =>\n  for {\n    rate <- c.downField(\"rate\").as(morphir.sdk.Codec.decodeString)\n    age <- c.downField(\"age\").as(morphir.sdk.Codec.decodeInt)\n  }  yield test.pack.test.Mod.Foo(\n    rate,\n    age\n  )" ]
+            [ "val decodeFoo: io.circe.Decoder[test.pack.test.Mod.Foo] = ((c: io.circe.HCursor) =>\n  for {\n    rate <- c.downField(\"rate\").as(morphir.sdk.Codec.decodeString)\n    age <- c.downField(\"age\").as(morphir.sdk.Codec.decodeInt)\n  }  yield test.pack.test.Mod.Foo(\n    rate,\n    age\n  ))" ]
         ]
 
 
