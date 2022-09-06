@@ -31,6 +31,7 @@ import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewRecord as ViewRecord
 import Morphir.Visual.XRayView as XRayView
+import Morphir.IR.Value exposing (Pattern(..))
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
@@ -107,6 +108,13 @@ viewValueByLanguageFeature config value =
         valueElem : Element msg
         valueElem =
             case value of
+
+                Value.PatternMatch _ _ [(Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ]) [_]  , _), (Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ]) []  , _)] ->
+                    ViewIfThenElse.view config viewValue value
+
+                Value.PatternMatch _ _ [(Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ]) []  , _), (Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ]) [_]  , _)] ->
+                    ViewIfThenElse.view config viewValue value
+
                 Value.Literal _ literal ->
                     ViewLiteral.view config literal
 
