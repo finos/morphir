@@ -1,6 +1,6 @@
 {
   "name": "morphir-elm",
-  "version": "2.65.8",
+  "version": "2.66.0",
   "description": "Elm bindings for Morphir",
   "scripts": {
     "clean": "gulp clean",
@@ -67,7 +67,9 @@
     "elm": "^0.19.1-5",
     "elm-doc-preview": "^3.0.4",
     "elm-test": "^0.19.1-revision6",
+    "elm-format": "^0.8.5",
     "execa": "^5.1.1",
+    "shelljs": "^0.8.5",
     "gulp": "^4.0.2",
     "gulp-mocha": "^8.0.0",
     "gulp-typescript": "^6.0.0-alpha.1",
@@ -76,6 +78,7 @@
     "mocha": "^9.1.3",
     "node-elm-compiler": "^5.0.5",
     "tmp": "^0.2.1",
+    "json-schema": "^0.4.0",
     "ts-jest": "^27.1.3",
     "ts-node": "^10.3.0",
     "typescript": "^4.4.3"
@@ -90,7 +93,6 @@
     "get-stdin": "^8.0.0",
     "log-timestamp": "^0.3.0",
     "prettier": "^2.4.1",
-    "shelljs": "^0.8.5",
     "vis-network": "^9.1.2"
   }
 }
