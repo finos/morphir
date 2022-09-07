@@ -56,21 +56,24 @@ createSimpleGetJsonApi('morphir-tests.json')
 app.get('/server/attributes', wrap(async (req, res, next) => {
   const configJsonContent = await getAttributeConfigJson()
 
-  const attributeNames = Object.keys(configJsonContent)
+  const attributeIds = Object.keys(configJsonContent)
   let responseJson = {}
 
-  for (const attrName of attributeNames){
-    const attrFilePath = path.normalize(configJsonContent[attrName].filePath)
+  for (const attrId of attributeIds){
+    const attrFilePath = path.join(program.opts().projectDir, 'attributes', attrId + '.json')
     const attrFileContent = await readFile(attrFilePath)
-    responseJson[attrName] = JSON.parse(attrFileContent.toString())
+    const attributeName = configJsonContent[attrId].displayName
+    responseJson[attrId] = {
+        data: JSON.parse(attrFileContent.toString()),
+        displayName : attributeName
+      }
   };
   res.send(responseJson)
 }))
 
 
-app.post('/server/updateattribute/:attributename', wrap(async (req, res, next) => {
-  const configJsonContent = await getAttributeConfigJson()
-  const attrFilePath = path.normalize(configJsonContent[req.params.attributename.toString()].filePath)
+app.post('/server/updateattribute/:attrId', wrap(async (req, res, next) => {
+  const attrFilePath = path.join(program.opts().projectDir, 'attributes', attrId + '.json')
 
   await writeFile(attrFilePath, JSON.stringify(req.body, null, 4))
 

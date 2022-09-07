@@ -1,8 +1,8 @@
 {
-	"test":  {
-		"filePath" : "attributes/test-attribute.json"
+	"test-id-1":  {
+		"displayName" : "test Name"
 	},
-	"test2":  {
-		"filePath" : "attributes/test2-attribute.json"
+	"test-id-2":  {
+		"displayName" : "Second Test Name"
 	}
 }
