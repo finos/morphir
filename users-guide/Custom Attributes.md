@@ -13,17 +13,17 @@ The contents of this document detail how to structure and load optional "sidecar
 ## File format, and naming convention
 To define a custom attribute, we need at least two JSON files. 
 
- 1. A config file named `attribute.conf.json` that describes the attributes, and provides a path to the files where the attribute values are stored.
- 2. At least one attribute file reachable on a path specified in the above config.
+ 1. A config file named `attribute.conf.json` that lists the attribute ID's, and maps them to display names.
+ 2. At least one attribute file named `<someAttributeId>.json` in the `attributes` folder next to where the IR is located.
  
 ### Config file
 ```
 {
-	"foo":  {
-		"filePath" : "foo-attribute.json"
+	"test-id-1":  {
+		"displayName" : "test Name"
 	},
-	"bar":  {
-		"filePath" : "bar-attribute.json"
+	"test-id-2":  {
+		"displayName" : "Second Test Name"
 	}
 }
 ```
@@ -47,7 +47,7 @@ The above example is a sample attribute file structure. The attribute file shoul
 We currently provide the following APIs.
 
 ***GET /server/attributes/***
-Returns the a JSON file with key-value pairs of attribute names, and the contents of the corresponding attribute file.
+Returns the a JSON file with key-value pairs of attribute display names, and the contents of the corresponding attribute file.
 
 
 ***POST /server/updateattribute/\<yourattributename>***
