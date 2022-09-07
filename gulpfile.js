@@ -12,7 +12,6 @@ const execa = require('execa');
 const shell = require('shelljs')
 const mocha = require('gulp-mocha');
 const ts = require('gulp-typescript');
-const { exit } = require('process');
 const tsProject = ts.createProject('./cli2/tsconfig.json')
 const readFile = util.promisify(fs.readFile)
 
