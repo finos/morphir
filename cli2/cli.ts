@@ -24,9 +24,9 @@ async function make(
   options: any
 ): Promise<string | undefined> {
   // Morphir specific files expected to be in the project directory
-  const morphirJsonPath: string = path.join(projectDir, "morphir.json"); // nosemgrep : path-join-resolve-traversal
-  const hashFilePath: string = path.join(projectDir, "morphir-hashes.json");  // nosemgrep : path-join-resolve-traversal
-  const morphirIrPath: string = path.join(projectDir, "morphir-ir.json"); // nosemgrep : path-join-resolve-traversal
+  const morphirJsonPath: string = path.join(projectDir, "morphir.json"); 
+  const hashFilePath: string = path.join(projectDir, "morphir-hashes.json");  
+  const morphirIrPath: string = path.join(projectDir, "morphir-ir.json"); 
 
   // Load the `morphir.json` file that describes the project
   const morphirJson: MorphirJson = JSON.parse(
@@ -38,7 +38,7 @@ async function make(
     // We invoke file change detection but pass in no hashes which will generate inserts only
     const fileChanges = await FileChanges.detectChanges(
       new Map(),
-      path.join(projectDir, morphirJson.sourceDirectory) // nosemgrep : path-join-resolve-traversal
+      path.join(projectDir, morphirJson.sourceDirectory) 
     );
     const fileSnapshot = FileChanges.toFileSnapshotJson(fileChanges);
     const newIR: string = await buildFromScratch(
@@ -56,7 +56,7 @@ async function make(
       const oldContentHashes = await readContentHashes(hashFilePath);
       const fileChanges = await FileChanges.detectChanges(
         oldContentHashes,
-        path.join(projectDir, morphirJson.sourceDirectory) // nosemgrep : path-join-resolve-traversal
+        path.join(projectDir, morphirJson.sourceDirectory) 
       );
       if (reportFileChangeStats(fileChanges)) {
         console.log(
@@ -84,7 +84,7 @@ async function make(
       // We invoke file change detection but pass in no hashes which will generate inserts only
       const fileChanges = await FileChanges.detectChanges(
         new Map(),
-        path.join(projectDir, morphirJson.sourceDirectory) // nosemgrep : path-join-resolve-traversal
+        path.join(projectDir, morphirJson.sourceDirectory) 
       );
       const fileSnapshot = FileChanges.toFileSnapshotJson(fileChanges);
       const newIR: string = await buildFromScratch(
@@ -225,7 +225,7 @@ async function writeContentHashes(
   for (let [path, hash] of hashes) {
     jsonObject[path] = hash;
   }
-  await writeFile(filePath, JSON.stringify(jsonObject, null, 4)); // nosemgrep : detect-non-literal-fs-filename
+  await writeFile(filePath, JSON.stringify(jsonObject, null, 4)); 
 }
 
 function reportFileChangeStats(fileChanges: FileChanges.FileChanges): boolean {
@@ -268,7 +268,7 @@ const gen = async (
   await fsMakeDir(outputPath, {
     recursive: true,
   });
-  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input)); // nosemgrep : path-join-resolve-traversal
+  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input)); 
   const workerOptions: WorkerOptions = mapCommandToWorkerOptions(options);
   // opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(',') : undefined
   const generatedFiles: string[] = await generate(
@@ -279,10 +279,10 @@ const gen = async (
   const writePromises = generatedFiles.map(
     async ([[dirPath, fileName], content]: any) => {
       const fileDir: string = dirPath.reduce(
-        (accum: string, next: string) => path.join(accum, next), // nosemgrep : path-join-resolve-traversal
+        (accum: string, next: string) => path.join(accum, next), 
         outputPath
       );
-      const filePath: string = path.join(fileDir, fileName); // nosemgrep : path-join-resolve-traversal
+      const filePath: string = path.join(fileDir, fileName); 
 
       if (await fileExist(filePath)) {
         const existingContent: Buffer = await fsReadFile(filePath);
@@ -303,7 +303,7 @@ const gen = async (
   const filesToDelete = await findFilesToDelete(outputPath, generatedFiles);
   const deletePromises = filesToDelete.map(async (fileToDelete: string) => {
     console.log(`DELETE - ${fileToDelete}`);
-    return fs.unlinkSync(fileToDelete); // nosemgrep : detect-non-literal-fs-filename
+    return fs.unlinkSync(fileToDelete); 
   });
   copyRedistributables(options, outputPath);
   return Promise.all(writePromises.concat(deletePromises));
@@ -335,7 +335,7 @@ const stats = async (
     });
   };
 
-  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input)); // nosemgrep : path-join-resolve-traversal
+  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input)); 
 
   const stats: string[] = await collectStats(
     JSON.parse(morphirIrJson.toString())
@@ -344,10 +344,10 @@ const stats = async (
   const writePromises = stats.map(
     async ([[dirPath, fileName], content]: any) => {
       const fileDir: string = dirPath.reduce(
-        (accum: string, next: string) => path.join(accum, next), // nosemgrep : path-join-resolve-traversal
+        (accum: string, next: string) => path.join(accum, next), 
         outputPath
       );
-      const filePath: string = path.join(fileDir, fileName); // nosemgrep : path-join-resolve-traversal
+      const filePath: string = path.join(fileDir, fileName); 
 
       if (await fileExist(filePath)) {
         const existingContent: Buffer = await fsReadFile(filePath);
@@ -390,7 +390,7 @@ const generate = async (
 
 const fileExist = async (filePath: string) => {
   return new Promise((resolve, reject) => {
-    fs.access(filePath, fs.constants.F_OK, (err) => { // nosemgrep : detect-non-literal-fs-filename
+    fs.access(filePath, fs.constants.F_OK, (err) => { 
       if (err) {
         resolve(false);
       } else {
@@ -405,19 +405,19 @@ const findFilesToDelete = async (outputPath: string, fileMap: string[]) => {
     currentDir: string,
     generatedFiles: string[]
   ) {
-    const entries: fs.Dirent[] = await readdir(currentDir, { // nosemgrep : detect-non-literal-fs-filename
+    const entries: fs.Dirent[] = await readdir(currentDir, { 
       withFileTypes: true,
     });
     const filesToDelete = entries
       .filter((entry) => {
-        const entryPath: string = path.join(currentDir, entry.name); // nosemgrep : path-join-resolve-traversal
+        const entryPath: string = path.join(currentDir, entry.name); 
         return entry.isFile() && !generatedFiles.includes(entryPath);
       })
-      .map((entry) => path.join(currentDir, entry.name)); // nosemgrep : path-join-resolve-traversal
+      .map((entry) => path.join(currentDir, entry.name)); 
     const subDirFilesToDelete: Promise<string[]> = entries
       .filter((entry) => entry.isDirectory())
       .map((entry) =>
-        readDir(path.join(currentDir, entry.name), generatedFiles) // nosemgrep : path-join-resolve-traversal
+        readDir(path.join(currentDir, entry.name), generatedFiles) 
       )
       .reduce(async (soFarPromise, nextPromise) => {
         const soFar = await soFarPromise;
@@ -428,10 +428,10 @@ const findFilesToDelete = async (outputPath: string, fileMap: string[]) => {
   };
   const files = fileMap.map(([[dirPath, fileName], content]: any) => {
     const fileDir = dirPath.reduce(
-      (accum: string, next: string) => path.join(accum, next), // nosemgrep : path-join-resolve-traversal
+      (accum: string, next: string) => path.join(accum, next), 
       outputPath
     );
-    return path.resolve(fileDir, fileName); // nosemgrep : path-join-resolve-traversal
+    return path.resolve(fileDir, fileName); 
   });
   return Promise.all(await readDir(outputPath, files));
 };
@@ -441,7 +441,7 @@ function copyRedistributables(options: CommandOptions, outputPath: string) {
     const sourceDirectory: string = path.join(
       path.dirname(__dirname),
       "redistributable",
-      src // nosemgrep : path-join-resolve-traversal
+      src 
     );
     copyRecursiveSync(sourceDirectory, outputPath);
   };
@@ -450,20 +450,20 @@ function copyRedistributables(options: CommandOptions, outputPath: string) {
 }
 
 function copyRecursiveSync(src: string, dest: string) {
-  const exists = fs.existsSync(src); // nosemgrep : detect-non-literal-fs-filename
+  const exists = fs.existsSync(src); 
   if (exists) {
-    const stats = exists && fs.statSync(src); // nosemgrep : detect-non-literal-fs-filename
+    const stats = exists && fs.statSync(src); 
     const isDirectory = exists && stats.isDirectory();
     if (isDirectory) {
-      if (!fs.existsSync(dest)) fs.mkdirSync(dest); // nosemgrep : detect-non-literal-fs-filename
-      fs.readdirSync(src).forEach(function (childItemName) { // nosemgrep : detect-non-literal-fs-filename
+      if (!fs.existsSync(dest)) fs.mkdirSync(dest); 
+      fs.readdirSync(src).forEach(function (childItemName) { 
         copyRecursiveSync(
-          path.join(src, childItemName), // nosemgrep : path-join-resolve-traversal
-          path.join(dest, childItemName) // nosemgrep : path-join-resolve-traversal
+          path.join(src, childItemName), 
+          path.join(dest, childItemName) 
         );
       });
     } else {
-      fs.copyFileSync(src, dest); // nosemgrep : detect-non-literal-fs-filename
+      fs.copyFileSync(src, dest); 
       console.log(`COPY - ${dest}`);
     }
   }
