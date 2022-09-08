@@ -48,11 +48,12 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
-import Element.Input
+import Element.Input exposing (labelHidden)
 import Element.Keyed
 import Html.Attributes exposing (name)
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Markdown.Parser as Markdown
 import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
@@ -130,6 +131,7 @@ type alias Model =
     , definitionDisplayType : DisplayType
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
+    , customAttributes : CustomAttribute
     }
 
 
@@ -205,6 +207,7 @@ init _ url key =
             , definitionDisplayType = InsightView
             , argStates = Dict.empty
             , expandedValues = Dict.empty
+            , customAttributes = Dict.empty
             }
     in
     ( toRoute url initModel
@@ -532,8 +535,10 @@ update msg model =
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
-        ServerGetAttributeResponse attribute ->
-            Debug.todo "Soon to be done"
+        ServerGetAttributeResponse attributes ->
+            ( { model | customAttributes = attributes }
+            , httpAttributes
+            )
 
 
 
@@ -1799,6 +1804,34 @@ viewDefinitionDetails model =
                 { onReferenceClicked = referenceClicked
                 , onHoverOver = hoverOver
                 , onHoverLeave = Insight << ShrinkVariable
+                }
+
+        viewCustomAttributes : FQName -> String -> (String -> msg) -> Element msg
+        viewCustomAttributes fQName attributeGroupName attributeValue =
+            let
+                getAttributes =
+                    model.customAttributes
+                        |> Dict.get fQName
+                        |> Maybe.andThen
+                            (\attributeGrouping ->
+                                attributeGrouping
+                                    |> Dict.get attributeGroupName
+                                    |> Maybe.map
+                                        (\value ->
+                                            Encode.encode 0 value
+                                        )
+                            )
+                        |> Maybe.withDefault " "
+            in
+            Element.Input.text
+                [ padding 3
+                , Font.bold
+                , Font.size (model.theme |> Theme.scaled 2)
+                ]
+                { onChange = attributeValue
+                , label = labelHidden "Save as testcase"
+                , text = getAttributes
+                , placeholder = Just (Element.Input.placeholder [] (text "start typing to filter values ..."))
                 }
 
         viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
