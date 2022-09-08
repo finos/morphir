@@ -52,7 +52,7 @@ function checkElmDocs() {
 }
 
 function make(rootDir, source, target) {
-    return elmMake([source], { cwd: path.join(process.cwd(), rootDir), output: target })
+    return elmMake([source], { cwd: path.join(process.cwd(), rootDir), output: target }) // // nosemgrep : path-join-resolve-traversal
 }
 
 function makeCLI() {
