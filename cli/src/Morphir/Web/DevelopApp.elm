@@ -1829,9 +1829,9 @@ viewDefinitionDetails model =
                 , Font.size (model.theme |> Theme.scaled 2)
                 ]
                 { onChange = attributeValue
-                , label = labelHidden "Save as testcase"
+                , label = labelHidden attributeGroupName
                 , text = getAttributes
-                , placeholder = Just (Element.Input.placeholder [] (text "start typing to filter values ..."))
+                , placeholder = Just (Element.Input.placeholder [] (text " Add Attributes .."))
                 }
 
         viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
