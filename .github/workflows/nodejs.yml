@@ -64,3 +64,19 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
       - run: npx --yes auditjs ossi --whitelist allow-list.json
+
+  # Semgrep static code analysis
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    needs: [ cvescan ]
+    container:
+      # A Docker image with Semgrep installed. Don't change this.
+      image: returntocorp/semgrep
+    # Skip any PR created by dependabot to avoid permission issues
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - uses: actions/checkout@v3
+      - run: semgrep scan --config auto --severity ERROR
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
