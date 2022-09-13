@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Morgan-Stanley/morphir-elm.git"
+    "url": "git+https://github.com/finos/morphir-elm.git"
   },
   "bin": {
     "morphir-elm": "cli/morphir-elm.js",
