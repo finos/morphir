@@ -9,18 +9,15 @@ module Morphir.Visual.Components.DecisionTable exposing
 
 -}
 
-import Dict
-import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, spacing, table, text, width)
+import Element exposing (Color, Column, Element, el, fill, height, padding, rgb255, row, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Morphir.IR.FQName exposing (getLocalName)
-import Morphir.IR.Name as Name exposing (Name)
-import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value, indexedMapValue)
-import Morphir.Value.Interpreter exposing (matchPattern)
 import Morphir.Visual.Common exposing (nameToText)
-import Morphir.Visual.Config as Config exposing (Config, HighlightState(..), VisualState)
+import Morphir.Visual.Config exposing (Config, HighlightState(..), VisualState)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (mediumPadding)
 
@@ -50,7 +47,7 @@ type alias TypedPattern =
 
 -}
 type alias DecisionTable =
-    { decomposeInput : List TypedValue
+    { decomposeInput : List EnrichedValue
     , rules : List Rule
     }
 
@@ -65,7 +62,7 @@ type Match
 
 type alias Rule =
     { matches : List Match
-    , result : TypedValue
+    , result : EnrichedValue
     , highlightStates : List HighlightState
     }
 
@@ -75,9 +72,13 @@ displayTable config viewValue table =
     tableHelp config viewValue table.decomposeInput table.rules
 
 
-tableHelp : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> List TypedValue -> List Rule -> Element msg
+tableHelp : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> List EnrichedValue -> List Rule -> Element msg
 tableHelp config viewValue headerFunctions rows =
-    table [ Border.solid, Border.width 1 ]
+    let
+        whiteBg =
+            Background.color <| rgb255 255 255 255
+    in
+    table [ Border.solid, Border.width 1, whiteBg ]
         { data = rows
         , columns =
             List.append (headerFunctions |> getColumnFromHeader config viewValue 0)
@@ -86,22 +87,24 @@ tableHelp config viewValue headerFunctions rows =
                         [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
                         , mediumPadding config.state.theme |> padding
                         , height fill
+                        , whiteBg
                         ]
                         (text "Result")
                     )
                     fill
                     (\rules ->
                         el
-                            [ Background.color (highlightStateToColor (List.head (List.reverse rules.highlightStates)))
+                            [ Border.color (highlightStateToColor (List.head (List.reverse rules.highlightStates)))
+                            , Border.width 5
                             , mediumPadding config.state.theme |> padding
                             ]
-                            (viewValue (updateConfig config (List.head (List.reverse rules.highlightStates))) (toVisualTypedValue rules.result))
+                            (viewValue (updateConfig config (List.head (List.reverse rules.highlightStates))) rules.result)
                     )
                 ]
         }
 
 
-getColumnFromHeader : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> Int -> List TypedValue -> List (Column Rule msg)
+getColumnFromHeader : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> Int -> List EnrichedValue -> List (Column Rule msg)
 getColumnFromHeader config viewValue index decomposeInput =
     case decomposeInput of
         inputHead :: [] ->
@@ -114,23 +117,18 @@ getColumnFromHeader config viewValue index decomposeInput =
             []
 
 
-columnHelper : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> TypedValue -> Int -> List (Column Rule msg)
+columnHelper : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> EnrichedValue -> Int -> List (Column Rule msg)
 columnHelper config viewValue header index =
-    let
-        head : EnrichedValue
-        head =
-            toVisualTypedValue header
-    in
     [ Column
         (el
             [ Border.widthEach { bottom = 1, top = 0, right = 0, left = 0 }
             , mediumPadding config.state.theme |> padding
             , height fill
             ]
-            (viewValue config head)
+            (viewValue config header)
         )
         fill
-        (\rules -> getCaseFromIndex config head viewValue (rules.highlightStates |> List.drop index |> List.head) (rules.matches |> List.drop index |> List.head))
+        (\rules -> getCaseFromIndex config header viewValue (rules.highlightStates |> List.drop index |> List.head) (rules.matches |> List.drop index |> List.head))
     ]
 
 
@@ -165,7 +163,7 @@ getCaseFromIndex config head viewValue highlightState rule =
                     in
                     case pattern of
                         Value.WildcardPattern _ ->
-                            el [ Background.color result, mediumPadding config.state.theme |> padding ] (text "_")
+                            el [ Background.color result, mediumPadding config.state.theme |> padding, Font.italic ] (text "anything else")
 
                         Value.LiteralPattern va literal ->
                             let
@@ -175,7 +173,7 @@ getCaseFromIndex config head viewValue highlightState rule =
                             in
                             el [ Background.color result, mediumPadding config.state.theme |> padding ] (viewValue updatedConfig value)
 
-                        Value.ConstructorPattern tpe fQName matches ->
+                        Value.ConstructorPattern _ fQName matches ->
                             let
                                 parsedMatches : List (Element msg)
                                 parsedMatches =
@@ -185,10 +183,10 @@ getCaseFromIndex config head viewValue highlightState rule =
                             in
                             row [ width fill, Background.color result, mediumPadding config.state.theme |> padding ] (List.concat [ [ text "(", text (nameToText (getLocalName fQName)) ], List.intersperse (text ",") parsedMatches, [ text ")" ] ])
 
-                        Value.AsPattern tpe (Value.WildcardPattern _) name ->
+                        Value.AsPattern _ (Value.WildcardPattern _) name ->
                             el [ Background.color result, mediumPadding config.state.theme |> padding ] (text (nameToText name))
 
-                        Value.AsPattern tpe asPattern name ->
+                        Value.AsPattern _ asPattern _ ->
                             getCaseFromIndex config head viewValue highlightState (Just (patternToMatch asPattern))
 
                         _ ->
@@ -236,6 +234,7 @@ highlightStateToColor highlightState =
             highlightColor.default
 
 
+highlightColor : { true : Color, false : Color, default : Color }
 highlightColor =
     { true = rgb255 100 180 100
     , false = rgb255 180 100 100

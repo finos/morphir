@@ -40,6 +40,10 @@ export function findValueByName(module: any[], valueName: string): any[] | undef
 	return module?.[1].value.values.find(value => toCamelCaseString(value[0]) === valueName)
 }
 
+export function findTypeByName(module: any[], typeName: string): any[] | undefined {
+	return module?.[1].value.types.find(tpe => toTitleCaseString(tpe[0]) === typeName)
+}
+
 export function getModuleTypesFromIR(moduleName: string, ir): Array<any> {
 	return findModuleByName(moduleName, ir)[1].value.types
 }
@@ -71,4 +75,12 @@ export function getModuleAccess(mod: any[]): string {
 export function getValueAccess(mod: any[], valueName: string): string | undefined {
 	if (!mod || mod.length < 2) return undefined
 	return findValueByName(mod, valueName)?.[1]?.access
+}
+
+export function getValueDoc(value: any[]): string {
+    return value[1].value.doc
+}
+
+export function getTypeDoc(tpe: any[]): string {
+    return tpe[1].value.doc
 }

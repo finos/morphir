@@ -1,5 +1,6 @@
 module Morphir.IR.ValueFuzzer exposing (boolFuzzer, charFuzzer, floatFuzzer, fromType, intFuzzer, listFuzzer, maybeFuzzer, recordFuzzer, stringFuzzer, tupleFuzzer)
 
+import Date
 import Dict exposing (Dict)
 import Fuzz exposing (Fuzzer)
 import Morphir.IR as IR exposing (IR)
@@ -37,6 +38,9 @@ fromType ir tpe =
 
                 ( [ [ "maybe" ] ], [ "maybe" ], [ itemType ] ) ->
                     maybeFuzzer (fromType ir itemType)
+
+                ( [ [ "local", "date" ] ], [ "local", "date" ], _ ) ->
+                    localDateFuzzer
 
                 _ ->
                     Debug.todo "implement"
@@ -84,6 +88,9 @@ fromType ir tpe =
                                             )
                                         )
                                     |> customFuzzer typePackageName typeModuleName
+
+                            Type.DerivedTypeSpecification _ _ ->
+                                Debug.todo "implement"
                     )
 
         Type.Record _ fieldTypes ->
@@ -146,6 +153,19 @@ maybeFuzzer itemFuzzer =
             )
 
 
+localDateFuzzer : Fuzzer RawValue
+localDateFuzzer =
+    Fuzz.map
+        (\int ->
+            Date.fromRataDie int
+                |> Date.toIsoString
+                |> StringLiteral
+                |> Value.Literal ()
+                |> Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ] ))
+        )
+        (Fuzz.intRange 100000 2000000)
+
+
 tupleFuzzer : List (Fuzzer RawValue) -> Fuzzer RawValue
 tupleFuzzer elemFuzzers =
     elemFuzzers
@@ -175,7 +195,7 @@ recordFuzzer fieldFuzzers =
                     fieldFuzzer
             )
             (Fuzz.constant [])
-        |> Fuzz.map (Value.Record ())
+        |> Fuzz.map (Dict.fromList >> Value.Record ())
 
 
 customFuzzer : Path -> Path -> List ( Name, List (Fuzzer RawValue) ) -> Fuzzer RawValue

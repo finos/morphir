@@ -2,8 +2,8 @@ module Morphir.Value.Native exposing
     ( Function
     , Eval
     , unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
-    , floatLiteral, intLiteral, oneOf, stringLiteral
-    , decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
+    , floatLiteral, intLiteral, oneOf, stringLiteral, decimalLiteral
+    , decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeLocalDate, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeLocalDate, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
     , trinaryLazy, trinaryStrict
     )
 
@@ -38,8 +38,8 @@ example the predicate in a `filter` will need to be evaluated on each item in th
 Various utilities to help with implementing native functions.
 
 @docs unaryLazy, unaryStrict, binaryLazy, binaryStrict, boolLiteral, charLiteral, eval0, eval1, eval2, eval3
-@docs floatLiteral, intLiteral, oneOf, stringLiteral
-@docs decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
+@docs floatLiteral, intLiteral, oneOf, stringLiteral, decimalLiteral
+@docs decodeFun1, decodeList, decodeLiteral, decodeMaybe, decodeLocalDate, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeLocalDate, encodeMaybeResult, encodeRaw, encodeResultList, encodeTuple2
 @docs trinaryLazy, trinaryStrict
 
 -}
@@ -47,6 +47,8 @@ Various utilities to help with implementing native functions.
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.Decimal exposing (Decimal)
+import Morphir.SDK.LocalDate as LocalDate exposing (LocalDate)
 import Morphir.Value.Error exposing (Error(..))
 
 
@@ -329,6 +331,17 @@ stringLiteral lit =
 
 
 {-| -}
+decimalLiteral : Literal -> Result Error Decimal
+decimalLiteral lit =
+    case lit of
+        DecimalLiteral v ->
+            Ok v
+
+        _ ->
+            Err (ExpectedDecimalLiteral (Value.Literal () lit))
+
+
+{-| -}
 encodeLiteral : (a -> Literal) -> a -> Result Error RawValue
 encodeLiteral toLit a =
     Ok (Value.Literal () (toLit a))
@@ -393,6 +406,32 @@ decodeMaybe decodeItem eval value =
 
         Err error ->
             Err error
+
+
+{-| -}
+encodeLocalDate : LocalDate -> Result Error RawValue
+encodeLocalDate localDate =
+    LocalDate.toISOString localDate
+        |> StringLiteral
+        |> Value.Literal ()
+        |> Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ] ))
+        |> Ok
+
+
+{-| -}
+decodeLocalDate : Decoder LocalDate
+decodeLocalDate _ value =
+    case value of
+        Value.Apply () (Value.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "from", "i", "s", "o" ] )) (Value.Literal () (StringLiteral str)) ->
+            case LocalDate.fromISO str of
+                Just localDate ->
+                    Ok localDate
+
+                Nothing ->
+                    Err <| ErrorWhileEvaluatingDerivedType ("Invalid ISO format: " ++ str)
+
+        _ ->
+            Err (ExpectedDerivedType ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] ) value)
 
 
 {-| -}

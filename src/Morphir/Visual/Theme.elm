@@ -28,6 +28,7 @@ type alias Colors =
     , backgroundColor : Color
     , selectionColor : Color
     , secondaryInformation : Color
+    , gray : Color
     }
 
 
@@ -50,6 +51,7 @@ defaultColors =
     , backgroundColor = rgb 0.9529 0.9176 0.8078
     , selectionColor = rgb 0.8 0.9 0.9
     , secondaryInformation = rgb 0.5 0.5 0.5
+    , gray = rgb 0.9 0.9 0.9
     }
 
 labelStyles : Theme -> List (Attribute msg)
@@ -190,7 +192,6 @@ ellipseText str =
     Element.html <|
         div
             [ style "text-overflow" "ellipsis"
-            , style "white-space" "nowrap"
             , style "overflow" "hidden"
             , style "width" "100%"
             , style "flex-basis" "auto"

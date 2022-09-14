@@ -26,6 +26,8 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType, orderType)
 import Morphir.IR.SDK.Common exposing (tFun, tVar, toFQName, vSpec)
+import Morphir.IR.SDK.Dict exposing (dictType)
+import Morphir.IR.SDK.Key exposing (key0Type)
 import Morphir.IR.SDK.List exposing (listType)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
@@ -45,36 +47,37 @@ moduleSpec =
     { types =
         Dict.fromList
             [ ( Name.fromString "Aggregation", OpaqueTypeSpecification [ [ "a" ], [ "key" ] ] |> Documented "" )
+            , ( Name.fromString "Aggregator", TypeAliasSpecification [ [ "a" ], [ "key" ] ] (tFun [ aggregationType () (tVar "a") (tVar "key") ] (floatType ())) |> Documented "" )
             ]
     , values =
         Dict.fromList
             [ vSpec "count"
                 []
-                (aggregationType () (tVar "a") (Type.Unit ()))
+                (aggregationType () (tVar "a") (key0Type ()))
             , vSpec "sumOf"
                 [ ( "getValue", tFun [ tVar "a" ] (floatType ()) )
                 ]
-                (aggregationType () (tVar "a") (Type.Unit ()))
+                (aggregationType () (tVar "a") (key0Type ()))
             , vSpec "averageOf"
                 [ ( "getValue", tFun [ tVar "a" ] (floatType ()) )
                 ]
-                (aggregationType () (tVar "a") (Type.Unit ()))
+                (aggregationType () (tVar "a") (key0Type ()))
             , vSpec "minimumOf"
                 [ ( "getValue", tFun [ tVar "a" ] (floatType ()) )
                 ]
-                (aggregationType () (tVar "a") (Type.Unit ()))
+                (aggregationType () (tVar "a") (key0Type ()))
             , vSpec "maximumOf"
                 [ ( "getValue", tFun [ tVar "a" ] (floatType ()) )
                 ]
-                (aggregationType () (tVar "a") (Type.Unit ()))
+                (aggregationType () (tVar "a") (key0Type ()))
             , vSpec "weightedAverageOf"
                 [ ( "getWeight", tFun [ tVar "a" ] (floatType ()) )
                 , ( "getValue", tFun [ tVar "a" ] (floatType ()) )
                 ]
-                (aggregationType () (tVar "a") (Type.Unit ()))
+                (aggregationType () (tVar "a") (key0Type ()))
             , vSpec "byKey"
                 [ ( "key", tFun [ tVar "a" ] (tVar "key") )
-                , ( "agg", aggregationType () (tVar "a") (Type.Unit ()) )
+                , ( "agg", aggregationType () (tVar "a") (key0Type ()) )
                 ]
                 (aggregationType () (tVar "a") (tVar "key"))
             , vSpec "withFilter"
@@ -103,6 +106,16 @@ moduleSpec =
                 , ( "list", listType () (tVar "a") )
                 ]
                 (listType () (tVar "b"))
+            , vSpec "groupBy"
+                [ ( "getKey", tFun [ tVar "a" ] (tVar "key") )
+                , ( "list", listType () (tVar "a") )
+                ]
+                (dictType () (tVar "key") (listType () (tVar "a")))
+            , vSpec "aggregate"
+                [ ( "f", tFun [ tVar "key", aggregatorType () (tVar "a") (key0Type ()) ] (tVar "b") )
+                , ( "dict", dictType () (tVar "key") (listType () (tVar "a")) )
+                ]
+                (listType () (tVar "b"))
             ]
     }
 
@@ -110,3 +123,13 @@ moduleSpec =
 aggregationType : a -> Type a -> Type a -> Type a
 aggregationType attributes aType keyType =
     Type.Reference attributes (toFQName moduleName "Aggregation") [ aType, keyType ]
+
+
+aggregatorType : a -> Type a -> Type a -> Type a
+aggregatorType attributes aType keyType =
+    Type.Reference attributes (toFQName moduleName "Aggregator") [ aType, keyType ]
+
+
+nativeFunctions : List ( String, Native.Function )
+nativeFunctions =
+    []

@@ -15,7 +15,7 @@ import Morphir.Dependency.DAG as DAG exposing (CycleDetected(..), DAG)
 import Morphir.Elm.Frontend as Frontend
 import Morphir.Elm.IncrementalFrontend.Mapper as Mapper
 import Morphir.Elm.IncrementalResolve as IncrementalResolve
-import Morphir.Elm.ModuleName as ElmModuleName
+import Morphir.Elm.ModuleName as ElmModuleName exposing (toIRModuleName)
 import Morphir.Elm.ParsedModule as ParsedModule exposing (ParsedModule)
 import Morphir.File.FileChanges as FileChanges exposing (Change(..), FileChanges)
 import Morphir.File.Path as FilePath
@@ -49,7 +49,6 @@ type Error
     | MappingError Mapper.Errors
     | ResolveError ModuleName IncrementalResolve.Error
     | InvalidSourceFilePath FilePath.Path String
-    | NoExposedModulesFound
 
 
 type alias OrderedFileChanges =
@@ -68,8 +67,8 @@ type alias SignatureAndValue =
     ( Maybe (Type ()), Value () () )
 
 
-orderFileChanges : PackageName -> FileChanges -> Result Errors OrderedFileChanges
-orderFileChanges packageName fileChanges =
+orderFileChanges : PackageName -> Repo -> FileChanges -> Result Errors (List ModuleChange)
+orderFileChanges packageName repo fileChanges =
     let
         fileChangesByType : FileChanges.FileChangesByType
         fileChangesByType =
@@ -96,14 +95,19 @@ orderFileChanges packageName fileChanges =
                 |> List.map (filePathToModuleName packageName)
                 |> ResultList.keepAllErrors
                 |> Result.map Set.fromList
+
+        orderedFileChanges : Result Errors OrderedFileChanges
+        orderedFileChanges =
+            Result.map2 OrderedFileChanges
+                (parsedInsertsAndUpdates
+                    |> Result.andThen (orderElmModulesByDependency packageName)
+                )
+                (fileChangesByType.deletes
+                    |> filePathsToModuleNames
+                )
     in
-    Result.map2 OrderedFileChanges
-        (parsedInsertsAndUpdates
-            |> Result.andThen (orderElmModulesByDependency packageName)
-        )
-        (fileChangesByType.deletes
-            |> filePathsToModuleNames
-        )
+    orderedFileChanges
+        |> Result.map (reOrderChanges repo)
 
 
 filePathToModuleName : PackageName -> FilePath.Path -> Result Error ModuleName
@@ -153,8 +157,8 @@ filePathToModuleName packageName filePath =
             Err (InvalidSourceFilePath filePath "A valid file path must have at least one directory and one file.")
 
 
-applyFileChanges : OrderedFileChanges -> Frontend.Options -> Maybe (Set Path) -> Repo -> Result Errors Repo
-applyFileChanges fileChanges opts maybeExposedModules repo =
+applyFileChanges : PackageName -> List ModuleChange -> Frontend.Options -> Maybe (Set Path) -> Repo -> Result Errors Repo
+applyFileChanges packageName fileChanges opts maybeExposedModules repo =
     case maybeExposedModules of
         Just exposedModules ->
             if Set.isEmpty exposedModules then
@@ -164,15 +168,110 @@ applyFileChanges fileChanges opts maybeExposedModules repo =
                 Ok repo
 
             else
-                applyChangesByOrder fileChanges opts exposedModules repo
+                let
+                    updateRepoModDep : ( ModuleName, Set ModuleName ) -> Result Errors (DAG ModuleName) -> Result Errors (DAG ModuleName)
+                    updateRepoModDep ( modName, modDeps ) moduleDepDAGRes =
+                        moduleDepDAGRes
+                            |> Result.andThen
+                                (DAG.insertNode modName modDeps >> Result.mapError (\(DAG.CycleDetected from to) -> [ ModuleCycleDetected from to ]))
+
+                    insertsAndUpdates =
+                        fileChanges
+                            |> List.filterMap
+                                (\change ->
+                                    case change of
+                                        ModuleInsert modName parsedMod ->
+                                            Just ( modName, parsedMod )
+
+                                        ModuleUpdate modName parsedMod ->
+                                            Just ( modName, parsedMod )
+
+                                        _ ->
+                                            Nothing
+                                )
+
+                    updatedModuleDep : Result Errors (DAG ModuleName)
+                    updatedModuleDep =
+                        insertsAndUpdates
+                            |> List.map
+                                (\( modName, parsedModule ) ->
+                                    ParsedModule.imports parsedModule
+                                        |> List.filterMap
+                                            (\imp ->
+                                                let
+                                                    importedModuleName =
+                                                        imp.moduleName |> Node.value
+                                                in
+                                                importedModuleName |> toIRModuleName packageName
+                                            )
+                                        |> Set.fromList
+                                        |> Tuple.pair modName
+                                )
+                            |> List.foldl updateRepoModDep (Repo.moduleDependencies repo |> Ok)
+
+                    usedModules : DAG ModuleName -> Set ModuleName
+                    usedModules modulesDeps =
+                        exposedModules
+                            |> Set.foldl
+                                (\exposedModule usedModulesSoFar ->
+                                    DAG.collectForwardReachableNodes exposedModule modulesDeps
+                                        |> Debug.log "DAG.collectForwardReachableNodes exposedModule"
+                                        |> Set.union usedModulesSoFar
+                                )
+                                exposedModules
+
+                    modulesToProcess : Set ModuleName -> List ModuleChange
+                    modulesToProcess usedModuleSet =
+                        let
+                            _ =
+                                Debug.log "Used Modules:" usedModuleSet
+                        in
+                        fileChanges
+                            |> List.filter
+                                (\fileChange ->
+                                    case fileChange of
+                                        ModuleInsert moduleName _ ->
+                                            Set.member moduleName usedModuleSet
+
+                                        ModuleUpdate moduleName _ ->
+                                            Set.member moduleName usedModuleSet
+
+                                        ModuleDelete moduleName ->
+                                            Set.member moduleName usedModuleSet
+                                )
+                in
+                updatedModuleDep
+                    |> Result.map (usedModules >> modulesToProcess)
+                    |> Result.andThen (\filteredFileChanges -> applyChangesByOrder filteredFileChanges opts exposedModules repo)
 
         Nothing ->
             -- make everything public when exposedModules not defined
-            applyChangesByOrder fileChanges opts (List.map Tuple.first fileChanges.insertsAndUpdates |> Set.fromList) repo
+            -- create the list of exposedModules from insertsAndUpdates and the modules already in the repo
+            let
+                insertsAndUpdateChanges =
+                    fileChanges
+                        |> List.filterMap
+                            (\modChange ->
+                                case modChange of
+                                    ModuleInsert modName _ ->
+                                        Just modName
+
+                                    ModuleUpdate modName _ ->
+                                        Just modName
+
+                                    ModuleDelete _ ->
+                                        Nothing
+                            )
+            in
+            Repo.modules repo
+                |> Dict.keys
+                |> List.append insertsAndUpdateChanges
+                |> Set.fromList
+                |> (\exposedMods -> applyChangesByOrder fileChanges opts exposedMods repo)
 
 
-applyChangesByOrder : OrderedFileChanges -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
-applyChangesByOrder orderedFileChanges opts exposedModules repo =
+reOrderChanges : Repo -> OrderedFileChanges -> List ModuleChange
+reOrderChanges repo orderedFileChanges =
     let
         updateAndInsertsAsDict : Dict ModuleName ParsedModule
         updateAndInsertsAsDict =
@@ -277,6 +376,11 @@ applyChangesByOrder orderedFileChanges opts exposedModules repo =
                     insertsAndUpdatesChanges
     in
     allChangesMerged
+
+
+applyChangesByOrder : List ModuleChange -> Frontend.Options -> Set Path -> Repo -> Result Errors Repo
+applyChangesByOrder orderedChanges opts exposedModules repo =
+    orderedChanges
         |> List.foldl
             (\modChange repoResultSoFar ->
                 case modChange of
@@ -294,7 +398,8 @@ applyChangesByOrder orderedFileChanges opts exposedModules repo =
             (Ok repo)
         |> Result.andThen
             (\updatedRepo ->
-                List.reverse allChangesMerged
+                orderedChanges
+                    |> List.reverse
                     |> List.foldl
                         (\modChange repoResultSoFar ->
                             case modChange of
@@ -495,14 +600,16 @@ processModule moduleName parsedModule opts exposedModules repo =
             , constructors = Set.fromList constructorNames
             , values = Set.fromList valueNames
             }
-
-        resolveName : List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName
-        resolveName modName localName kindOfName =
-            parsedModule
-                |> ParsedModule.imports
-                |> IncrementalResolve.resolveImports repoWithModuleInserted
-                |> Result.andThen
-                    (\resolvedImports ->
+    in
+    parsedModule
+        |> ParsedModule.imports
+        |> IncrementalResolve.resolveImports repoWithModuleInserted
+        |> Result.mapError (ResolveError moduleName >> List.singleton)
+        |> Result.andThen
+            (\resolvedImports ->
+                let
+                    resolveName : List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName
+                    resolveName modName localName kindOfName =
                         IncrementalResolve.resolveLocalName
                             repoWithModuleInserted
                             moduleName
@@ -511,33 +618,33 @@ processModule moduleName parsedModule opts exposedModules repo =
                             modName
                             kindOfName
                             localName
-                    )
-    in
-    extractTypes resolveName accessOf parsedModule
-        |> Result.andThen (orderTypesByDependency (Repo.getPackageName repoWithModuleInserted) moduleName)
-        |> Result.andThen
-            (List.foldl
-                (\( typeName, typeDef ) repoResultForType ->
-                    repoResultForType
-                        |> Result.andThen (processType moduleName typeName typeDef (accessOf Type typeName))
-                )
-                (Ok repoWithModuleInserted)
-            )
-        |> Result.andThen
-            (\repoWithTypesInserted ->
-                if opts.typesOnly then
-                    Ok repoWithTypesInserted
-
-                else
-                    extractValues resolveName parsedModule
-                        |> Result.andThen
-                            (List.foldl
-                                (\( valueName, valueDef ) repoResultSoFar ->
-                                    repoResultSoFar
-                                        |> Result.andThen (processValue (accessOf Value valueName) moduleName valueName valueDef)
-                                )
-                                (Ok repoWithTypesInserted)
+                in
+                extractTypes resolveName accessOf parsedModule
+                    |> Result.andThen (orderTypesByDependency (Repo.getPackageName repoWithModuleInserted) moduleName)
+                    |> Result.andThen
+                        (List.foldl
+                            (\( typeName, typeDoc, typeDef ) repoResultForType ->
+                                repoResultForType
+                                    |> Result.andThen (processType moduleName typeName typeDef (accessOf Type typeName) typeDoc)
                             )
+                            (Ok repoWithModuleInserted)
+                        )
+                    |> Result.andThen
+                        (\repoWithTypesInserted ->
+                            if opts.typesOnly then
+                                Ok repoWithTypesInserted
+
+                            else
+                                extractValues resolveName parsedModule
+                                    |> Result.andThen
+                                        (List.foldl
+                                            (\( valueName, valueDoc, valueDef ) repoResultSoFar ->
+                                                repoResultSoFar
+                                                    |> Result.andThen (processValue (accessOf Value valueName) moduleName valueName valueDef valueDoc)
+                                            )
+                                            (Ok repoWithTypesInserted)
+                                        )
+                        )
             )
 
 
@@ -545,29 +652,20 @@ processModule moduleName parsedModule opts exposedModules repo =
 -- TODO track noChanges. not tracking no changes
 
 
-processType : ModuleName -> Name -> Type.Definition () -> Access -> Repo -> Result (List Error) Repo
-processType moduleName typeName typeDef access repo =
-    let
-        updateType r =
-            r
-                |> Repo.updateType moduleName
-                    typeName
-                    (Maybe.map
-                        (\( _, existingDoc, _ ) ->
-                            ( access, existingDoc, typeDef )
-                        )
-                    )
-    in
+processType : ModuleName -> Name -> Type.Definition () -> Access -> String -> Repo -> Result (List Error) Repo
+processType moduleName typeName typeDef access doc repo =
     case repo |> Repo.modules |> Dict.get moduleName of
         Just existingModDef ->
             case Dict.member typeName existingModDef.value.types of
                 True ->
-                    updateType repo
+                    -- TODO update a type using an update function
+                    repo
+                        |> Repo.updateType moduleName typeName typeDef access doc
                         |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
                 False ->
                     repo
-                        |> Repo.insertType moduleName typeName typeDef access
+                        |> Repo.insertType moduleName typeName typeDef access doc
                         |> Result.mapError (RepoError "Cannot process type" >> List.singleton)
 
         Nothing ->
@@ -576,8 +674,8 @@ processType moduleName typeName typeDef access repo =
             Ok repo
 
 
-processValue : Access -> ModuleName -> Name -> SignatureAndValue -> Repo -> Result (List Error) Repo
-processValue access moduleName valueName ( maybeValueType, body ) repo =
+processValue : Access -> ModuleName -> Name -> SignatureAndValue -> String -> Repo -> Result (List Error) Repo
+processValue access moduleName valueName ( maybeValueType, body ) valueDoc repo =
     let
         _ =
             Debug.log "processing value" (String.concat [ Path.toString Name.toTitleCase "." moduleName, ".", Name.toCamelCase valueName ])
@@ -587,12 +685,12 @@ processValue access moduleName valueName ( maybeValueType, body ) repo =
             case Dict.member valueName existingModDef.value.values of
                 True ->
                     repo
-                        |> Repo.updateValue moduleName valueName maybeValueType body access
+                        |> Repo.updateValue moduleName valueName maybeValueType body access valueDoc
                         |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
                 False ->
                     repo
-                        |> Repo.insertValue moduleName valueName maybeValueType body access
+                        |> Repo.insertValue moduleName valueName maybeValueType body access valueDoc
                         |> Result.mapError (RepoError "Cannot process value" >> List.singleton)
 
         Nothing ->
@@ -667,17 +765,16 @@ orderElmModulesByDependency packageName parsedModules =
                 elmModuleName =
                     ParsedModule.moduleName parsedModule
             in
-            elmModuleName
-                |> ElmModuleName.toIRModuleName packageName
-                |> Result.fromMaybe [ InvalidModuleName elmModuleName ]
-                |> Result.andThen
-                    (\fromModuleName ->
-                        graph
-                            |> Result.andThen
-                                (DAG.insertNode fromModuleName moduleDependencies
-                                    >> Result.mapError (\(DAG.CycleDetected from to) -> [ ModuleCycleDetected from to ])
-                                )
-                    )
+            case elmModuleName |> ElmModuleName.toIRModuleName packageName of
+                Nothing ->
+                    graph
+
+                Just fromModuleName ->
+                    graph
+                        |> Result.andThen
+                            (DAG.insertNode fromModuleName moduleDependencies
+                                >> Result.mapError (\(DAG.CycleDetected from to) -> [ ModuleCycleDetected from to ])
+                            )
     in
     parsedModules
         |> List.foldl foldFunction (Ok DAG.empty)
@@ -751,7 +848,7 @@ extractConstructorNames parsedModule =
         |> extractConstructorNamesFromFile
 
 
-extractTypes : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> (KindOfName -> Name -> Access) -> ParsedModule -> Result Errors (List ( Name, Type.Definition () ))
+extractTypes : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> (KindOfName -> Name -> Access) -> ParsedModule -> Result Errors (List ( Name, String, Type.Definition () ))
 extractTypes resolveTypeName accessOf parsedModule =
     let
         declarationsInParsedModule : List Declaration
@@ -760,14 +857,14 @@ extractTypes resolveTypeName accessOf parsedModule =
                 |> ParsedModule.declarations
                 |> List.map Node.value
 
-        typeNameWithDefinition : Result Errors (List ( Name, Type.Definition () ))
+        typeNameWithDefinition : Result Errors (List ( Name, String, Type.Definition () ))
         typeNameWithDefinition =
             declarationsInParsedModule
                 |> List.filterMap typeDeclarationToDefinition
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
 
-        typeDeclarationToDefinition : Declaration -> Maybe (Result Errors ( Name, Type.Definition () ))
+        typeDeclarationToDefinition : Declaration -> Maybe (Result Errors ( Name, String, Type.Definition () ))
         typeDeclarationToDefinition declaration =
             case declaration of
                 CustomTypeDeclaration customType ->
@@ -776,6 +873,12 @@ extractTypes resolveTypeName accessOf parsedModule =
                         typeParams =
                             customType.generics
                                 |> List.map (Node.value >> Name.fromString)
+
+                        typeDoc : String
+                        typeDoc =
+                            customType.documentation
+                                |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
+                                |> Maybe.withDefault ""
 
                         constructorsResult : Result Errors (Type.Constructors ())
                         constructorsResult =
@@ -819,6 +922,7 @@ extractTypes resolveTypeName accessOf parsedModule =
                         |> Result.map
                             (\constructors ->
                                 ( typeName
+                                , typeDoc
                                 , Type.customTypeDefinition typeParams
                                     (AccessControlled.AccessControlled (accessOf Constructor typeName) constructors)
                                 )
@@ -827,6 +931,12 @@ extractTypes resolveTypeName accessOf parsedModule =
 
                 AliasDeclaration typeAlias ->
                     let
+                        typeDoc : String
+                        typeDoc =
+                            typeAlias.documentation
+                                |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
+                                |> Maybe.withDefault ""
+
                         typeParams : List Name
                         typeParams =
                             typeAlias.generics
@@ -840,6 +950,7 @@ extractTypes resolveTypeName accessOf parsedModule =
                                 ( typeAlias.name
                                     |> Node.value
                                     |> Name.fromString
+                                , typeDoc
                                 , Type.TypeAliasDefinition typeParams (tpe |> Type.mapTypeAttributes (always ()))
                                 )
                             )
@@ -854,13 +965,14 @@ extractTypes resolveTypeName accessOf parsedModule =
 {-| Order types topologically by their dependencies. The purpose of this function is to allow us to insert the types
 into the repo in the right order without causing dependency errors.
 -}
-orderTypesByDependency : PackageName -> ModuleName -> List ( Name, Type.Definition () ) -> Result Errors (List ( Name, Type.Definition () ))
+orderTypesByDependency : PackageName -> ModuleName -> List ( Name, String, Type.Definition () ) -> Result Errors (List ( Name, String, Type.Definition () ))
 orderTypesByDependency thisPackageName thisModuleName unorderedTypeDefinitions =
     let
         -- This dictionary will allow us to correlate back each type definition to their names after we ordered the names
-        typeDefinitionsByName : Dict Name (Type.Definition ())
+        typeDefinitionsByName : Dict Name ( Type.Definition (), String )
         typeDefinitionsByName =
             unorderedTypeDefinitions
+                |> List.map (\( name, doc, def ) -> ( name, ( def, doc ) ))
                 |> Dict.fromList
 
         -- Helper function to collect all references of a type definition
@@ -892,7 +1004,7 @@ orderTypesByDependency thisPackageName thisModuleName unorderedTypeDefinitions =
         buildDependencyGraph =
             unorderedTypeDefinitions
                 |> List.foldl
-                    (\( nextTypeName, typeDef ) dagResultSoFar ->
+                    (\( nextTypeName, _, typeDef ) dagResultSoFar ->
                         dagResultSoFar
                             |> Result.andThen
                                 (\dagSoFar ->
@@ -917,7 +1029,7 @@ orderTypesByDependency thisPackageName thisModuleName unorderedTypeDefinitions =
                         (\typeName ->
                             typeDefinitionsByName
                                 |> Dict.get typeName
-                                |> Maybe.map (Tuple.pair typeName)
+                                |> Maybe.map (\( def, doc ) -> ( typeName, doc, def ))
                         )
             )
 
@@ -946,13 +1058,13 @@ extractValueNames parsedModule =
 
 {-| Extract value definitions
 -}
-extractValues : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, SignatureAndValue ))
+extractValues : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> Result Errors (List ( Name, String, SignatureAndValue ))
 extractValues resolveValueName parsedModule =
     let
         -- get function name
         -- get function implementation
         -- get function expression
-        declarationsAsDefintionsResult : Result Errors (Dict FQName SignatureAndValue)
+        declarationsAsDefintionsResult : Result Errors (Dict FQName ( SignatureAndValue, String ))
         declarationsAsDefintionsResult =
             ParsedModule.declarations parsedModule
                 |> Mapper.mapDeclarationsToValue resolveValueName parsedModule
@@ -966,7 +1078,7 @@ extractValues resolveValueName parsedModule =
                 |> Result.andThen
                     (Dict.toList
                         >> List.foldl
-                            (\( fQName, ( _, body ) ) dagResultSoFar ->
+                            (\( fQName, ( ( _, body ), _ ) ) dagResultSoFar ->
                                 let
                                     refs =
                                         Value.collectReferences body
@@ -983,7 +1095,7 @@ extractValues resolveValueName parsedModule =
                         >> Result.map List.concat
                     )
 
-        orderedDeclarationAsDefinitions : Result Errors (List ( Name, SignatureAndValue ))
+        orderedDeclarationAsDefinitions : Result Errors (List ( Name, String, SignatureAndValue ))
         orderedDeclarationAsDefinitions =
             orderedValueNameResult
                 |> Result.andThen
@@ -996,12 +1108,12 @@ extractValues resolveValueName parsedModule =
                         List.foldl
                             (\fqName listSoFar ->
                                 case Dict.get fqName defs of
-                                    Just def ->
+                                    Just ( def, doc ) ->
                                         let
                                             ( _, _, name ) =
                                                 fqName
                                         in
-                                        List.append listSoFar [ ( name, def ) ]
+                                        List.append listSoFar [ ( name, doc, def ) ]
 
                                     Nothing ->
                                         listSoFar

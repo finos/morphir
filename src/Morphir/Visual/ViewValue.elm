@@ -1,17 +1,18 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
-import Dict exposing (Dict)
+import Dict
 import Element exposing (Element, column, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
-import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Name exposing (Name)
+import Morphir.IR.FQName exposing (FQName, getLocalName)
+import Morphir.IR.Name exposing (Name, toCamelCase)
+import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, TypedValue, Value(..))
+import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (definition, nameToText)
@@ -22,17 +23,19 @@ import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
+import Morphir.Visual.ViewDestructure as ViewDestructure
 import Morphir.Visual.ViewIfThenElse as ViewIfThenElse
+import Morphir.Visual.ViewLambda as ViewLambda
 import Morphir.Visual.ViewList as ViewList
 import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewRecord as ViewRecord
 import Morphir.Visual.XRayView as XRayView
-import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.Value exposing (Pattern(..))
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
-viewDefinition config ( _, _, valueName ) valueDef =
+viewDefinition config ( packageName, moduleName, valueName ) valueDef =
     let
         definitionElem =
             definition config
@@ -73,12 +76,7 @@ viewDefinition config ( _, _, valueName ) valueDef =
 
 
 viewValue : Config msg -> EnrichedValue -> Element msg
-viewValue config value =
-    viewValueByValueType config value
-
-
-viewValueByValueType : Config msg -> EnrichedValue -> Element msg
-viewValueByValueType config typedValue =
+viewValue config typedValue =
     let
         valueType : Type ()
         valueType =
@@ -110,20 +108,34 @@ viewValueByLanguageFeature config value =
         valueElem : Element msg
         valueElem =
             case value of
+
+                Value.PatternMatch _ _ [(Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ]) [_]  , _), (Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ]) []  , _)] ->
+                    ViewIfThenElse.view config viewValue value
+
+                Value.PatternMatch _ _ [(Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ]) []  , _), (Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ]) [_]  , _)] ->
+                    ViewIfThenElse.view config viewValue value
+
                 Value.Literal _ literal ->
                     ViewLiteral.view config literal
 
-                Value.Constructor _ (( packageName, moduleName, localName ) as fQName) ->
-                    Element.row
-                        [ smallPadding config.state.theme |> padding
-                        , smallSpacing config.state.theme |> spacing
-                        , onClick (config.handlers.onReferenceClicked fQName False)
-                        ]
-                        [ Element.el []
-                            (text
-                                (nameToText localName)
-                            )
-                        ]
+                Value.Constructor _ (( _, _, localName ) as fQName) ->
+                    case fQName of
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], _ ) ->
+                            Element.none
+
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) ->
+                            Element.none
+
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
+                            el [Element.centerY ] (text " - ")
+
+                        _ ->
+                            Element.row
+                                [ smallPadding config.state.theme |> padding
+                                , smallSpacing config.state.theme |> spacing
+                                , onClick (config.handlers.onReferenceClicked fQName False)
+                                ]
+                                [ text (nameToText localName) ]
 
                 Value.Tuple _ elems ->
                     column
@@ -142,13 +154,13 @@ viewValueByLanguageFeature config value =
                             ]
                         ]
 
-                Value.List ( index, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
+                Value.List ( _, Type.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "list" ] ) [ itemType ] ) items ->
                     ViewList.view config (viewValue config) itemType items
 
                 Value.Record _ items ->
                     ViewRecord.view config (viewValue config) items
 
-                Value.Variable ( index, tpe ) name ->
+                Value.Variable ( index, _ ) name ->
                     let
                         variableValue : Maybe RawValue
                         variableValue =
@@ -164,30 +176,26 @@ viewValueByLanguageFeature config value =
                              else
                                 Element.none
                             )
-                        , width fill
                         , center
                         ]
                         (text (nameToText name))
 
-                Value.Reference _ (( packageName, moduleName, localName ) as fQName) ->
+                Value.Reference _ (( _, _, localName ) as fQName) ->
                     Element.row
                         [ smallPadding config.state.theme |> padding
                         , smallSpacing config.state.theme |> spacing
                         , onClick (config.handlers.onReferenceClicked fQName False)
                         ]
-                        [ Element.el []
-                            (text
-                                (nameToText localName)
-                            )
-                        ]
+                        [ text (nameToText localName) ]
 
-                Value.Field ( index1, tpe ) subjectValue fieldName ->
+                Value.Field ( _, _ ) subjectValue fieldName ->
                     let
                         defaultValue =
                             Element.row
-                                [ spacing 10 ]
+                                [ smallPadding config.state.theme |> padding, spacing 1, alignLeft ]
                                 [ viewValue config subjectValue
-                                , text (nameToText fieldName)
+                                , el [ Font.bold ] (text ".")
+                                , text (toCamelCase fieldName)
                                 ]
                     in
                     case Config.evaluate (subjectValue |> Value.toRawValue) config of
@@ -209,7 +217,6 @@ viewValueByLanguageFeature config value =
                                              else
                                                 Element.text "Not Found"
                                             )
-                                        , width fill
                                         , center
                                         ]
                                         (String.concat
@@ -224,7 +231,7 @@ viewValueByLanguageFeature config value =
                                 _ ->
                                     defaultValue
 
-                        Err error ->
+                        Err _ ->
                             defaultValue
 
                 Value.Apply _ fun arg ->
@@ -288,33 +295,63 @@ viewValueByLanguageFeature config value =
                         ]
 
                 Value.IfThenElse _ _ _ _ ->
-                    ViewIfThenElse.view config (viewValue config) value
+                    ViewIfThenElse.view config viewValue value
 
-                Value.PatternMatch tpe param patterns ->
+                Value.PatternMatch _ param patterns ->
                     ViewPatternMatch.view config viewValue param patterns
 
-                Value.Unit _ ->
-                    el [] (text "not set")
+                Value.Lambda _ pattern param ->
+                    ViewLambda.view config viewValue pattern param
 
-                other ->
-                    Element.column
-                        [ Background.color (rgb 1 0.6 0.6)
-                        , smallPadding config.state.theme |> padding
-                        , Border.rounded 6
+                Value.FieldFunction _ name ->
+                    text <| "." ++ toCamelCase name
+
+                Value.Unit _ ->
+                    el [ Element.centerX, Element.centerY, smallPadding config.state.theme |> padding ] (text "not set")
+
+                Value.UpdateRecord _ record newFields ->
+                    Element.column [ Element.height fill ]
+                        [ Element.row [ smallPadding config.state.theme |> padding ] [ text "updating ", viewValue config record, text " with" ]
+                        , ViewRecord.view config (viewValue config) newFields
                         ]
-                        [ Element.el
-                            [ smallPadding config.state.theme |> padding
-                            , Font.bold
-                            ]
-                            (Element.text "No visual mapping found for:")
-                        , Element.el
-                            [ Background.color (rgb 1 1 1)
-                            , smallPadding config.state.theme |> padding
-                            , Border.rounded 6
-                            , width fill
-                            ]
-                            (XRayView.viewValue (XRayView.viewType moduleNameToPathString) (other |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
-                        ]
+
+                Value.Destructure _ pattern val1 val2 ->
+                    ViewDestructure.view config viewValue pattern val1 val2
+
+                Value.LetRecursion tpe definitionDict val ->
+                    Element.column [] (Dict.map (\k v -> Value.LetDefinition tpe k v val) definitionDict |> Dict.values |> List.map (viewValue config))
+
+                other   ->
+                    let
+                        unableToVisualize = 
+                            Element.column
+                                [ Background.color (rgb 1 0.6 0.6)
+                                , smallPadding config.state.theme |> padding
+                                , Border.rounded 6
+                                ]
+                                [ Element.el
+                                    [ smallPadding config.state.theme |> padding
+                                    , Font.bold
+                                    ]
+                                    (Element.text "No visual mapping found for:")
+                                , Element.el
+                                    [ Background.color (rgb 1 1 1)
+                                    , smallPadding config.state.theme |> padding
+                                    , Border.rounded 6
+                                    , width fill
+                                    ]
+                                    (XRayView.viewValue (XRayView.viewType moduleNameToPathString) ((other |> Debug.log "unable to visualize: ") |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
+                                ]
+                        in
+                    case Config.evaluate (other |> Value.toRawValue) config of
+                        Ok valueType ->
+                                case fromRawValue config.ir valueType of
+                                    Ok enrichedValue ->
+                                        viewValue config enrichedValue
+                                    Err _ ->
+                                        unableToVisualize
+                        Err _ ->
+                            unableToVisualize
     in
     valueElem
 
@@ -322,6 +359,7 @@ viewValueByLanguageFeature config value =
 moduleNameToPathString : Path -> String
 moduleNameToPathString moduleName =
     pathToStringWithSeparator "/" moduleName
+
 
 pathToStringWithSeparator : String -> Path -> String
 pathToStringWithSeparator =

@@ -1238,6 +1238,7 @@ mapExpression sourceFile (Node range exp) =
                     )
                 |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
+                |> Result.map Dict.fromList
                 |> Result.map (Value.Record sourceLocation)
 
         Expression.ListExpr itemNodes ->
@@ -1267,6 +1268,7 @@ mapExpression sourceFile (Node range exp) =
                     )
                 |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
+                |> Result.map Dict.fromList
                 |> Result.map
                     (Value.UpdateRecord sourceLocation (targetVarNameNode |> Node.value |> Name.fromString |> Value.Variable sourceLocation))
 
@@ -1969,6 +1971,7 @@ resolveVariablesAndReferences variables moduleResolver value =
 
         Value.Record a fields ->
             fields
+                |> Dict.toList
                 |> List.map
                     (\( fieldName, fieldValue ) ->
                         resolveVariablesAndReferences variables moduleResolver fieldValue
@@ -1976,7 +1979,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                     )
                 |> ListOfResults.liftAllErrors
                 |> Result.mapError List.concat
-                |> Result.map (Value.Record a)
+                |> Result.map (Dict.fromList >> Value.Record a)
 
         Value.Field a subjectValue fieldName ->
             resolveVariablesAndReferences variables moduleResolver subjectValue
@@ -1997,6 +2000,7 @@ resolveVariablesAndReferences variables moduleResolver value =
             Result.map2 (Value.UpdateRecord a)
                 (resolveVariablesAndReferences variables moduleResolver subjectValue)
                 (newFieldValues
+                    |> Dict.toList
                     |> List.map
                         (\( fieldName, fieldValue ) ->
                             resolveVariablesAndReferences variables moduleResolver fieldValue
@@ -2004,6 +2008,7 @@ resolveVariablesAndReferences variables moduleResolver value =
                         )
                     |> ListOfResults.liftAllErrors
                     |> Result.mapError List.concat
+                    |> Result.map Dict.fromList
                 )
 
         _ ->

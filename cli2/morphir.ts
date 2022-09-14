@@ -12,4 +12,6 @@ program
     .version(packageJson.version, '-v, --version')
     .command('make', 'Translate Elm sources to Morphir IR')
     .command('scala-gen','Generate scala code from Morphir IR')
+    .command('stats', 'Collect morphir features used in a model into a document')
+    .command('dockerize', 'Creates a docker image of a Morphir IR and Morphir Develop')
     .parse(process.argv)

@@ -4,9 +4,15 @@ import Dict
 import Expect exposing (Expectation)
 import Json.Decode as Decode
 import Morphir.IR as IR exposing (IR)
+import Morphir.IR.AccessControlled as Access
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR.Package as Package
+import Morphir.IR.Path as Path
+import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Basics exposing (boolType, floatType, intType)
 import Morphir.IR.SDK.Char exposing (charType)
 import Morphir.IR.SDK.List exposing (listType)
+import Morphir.IR.SDK.LocalDate exposing (localDateType)
 import Morphir.IR.SDK.Maybe exposing (maybeType)
 import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as Type exposing (Type)
@@ -15,43 +21,60 @@ import Morphir.IR.ValueFuzzer as ValueFuzzer
 import Test exposing (Test, describe, fuzz)
 
 
-ir : IR
-ir =
-    Dict.fromList
-        [ ( [ [ "my" ] ]
-          , { modules =
-                Dict.fromList
-                    [ ( [ [ "mod" ] ]
-                      , { types =
-                            Dict.fromList
-                                [ ( [ "alias", "1" ]
-                                  , { doc = ""
+packageDefinition : Package.Definition () (Type ())
+packageDefinition =
+    { modules =
+        Dict.fromList
+            [ ( [ [ "mod" ] ]
+              , { access = Access.Private
+                , value =
+                    { types =
+                        Dict.fromList
+                            [ ( [ "alias", "1" ]
+                              , { access = Access.Public
+                                , value =
+                                    { doc = ""
                                     , value =
-                                        Type.TypeAliasSpecification [ [ "a" ] ]
+                                        Type.TypeAliasDefinition [ [ "a" ] ]
                                             (Type.Variable () [ "a" ])
                                     }
-                                  )
-                                , ( [ "custom" ]
-                                  , { doc = ""
+                                }
+                              )
+                            , ( [ "custom" ]
+                              , { access = Access.Public
+                                , value =
+                                    { doc = ""
                                     , value =
-                                        Type.CustomTypeSpecification [ [ "a" ] ]
-                                            (Dict.fromList
-                                                [ ( [ "custom", "zero" ], [] )
-                                                , ( [ "custom", "one" ], [ ( [ "one" ], intType () ) ] )
-                                                , ( [ "custom", "two" ], [ ( [ "one" ], Type.Variable () [ "a" ] ), ( [ "two" ], boolType () ) ] )
-                                                ]
-                                            )
+                                        Type.CustomTypeDefinition [ [ "a" ] ]
+                                            { access = Access.Public
+                                            , value =
+                                                Dict.fromList
+                                                    [ ( [ "custom", "zero" ], [] )
+                                                    , ( [ "custom", "one" ], [ ( [ "one" ], intType () ) ] )
+                                                    , ( [ "custom", "two" ], [ ( [ "one" ], Type.Variable () [ "a" ] ), ( [ "two" ], boolType () ) ] )
+                                                    ]
+                                            }
                                     }
-                                  )
-                                ]
-                        , values = Dict.empty
-                        }
-                      )
-                    ]
-            }
-          )
-        ]
-        |> IR.fromPackageSpecifications
+                                }
+                              )
+                            ]
+                    , values = Dict.empty
+                    }
+                }
+              )
+            ]
+    }
+
+
+distribution : Distribution
+distribution =
+    Library (Path.fromString "My") Dict.empty packageDefinition
+        |> Distribution.insertDependency SDK.packageName SDK.packageSpec
+
+
+ir : IR
+ir =
+    IR.fromDistribution distribution
 
 
 decodeDataTest : Test
@@ -74,6 +97,7 @@ decodeDataTest =
         , encodeDecodeTest (Type.Tuple () [ intType (), boolType () ])
         , encodeDecodeTest (Type.Reference () ( [ [ "my" ] ], [ [ "mod" ] ], [ "alias", "1" ] ) [ intType () ])
         , encodeDecodeTest (Type.Reference () ( [ [ "my" ] ], [ [ "mod" ] ], [ "custom" ] ) [ charType () ])
+        , encodeDecodeTest (Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "local", "date" ] ], [ "local", "date" ] ) [ localDateType () ])
         ]
 
 
