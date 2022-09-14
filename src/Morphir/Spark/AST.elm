@@ -636,7 +636,7 @@ inlineLetDef names letValues v =
                     inlineArguments names letValues def.body
             in
             inlineLetDef
-                (List.append [ name ] names)
+                (List.append names [ name ])
                 ({ def | body = inlined }
                     |> lambdaFromDefinition
                     |> List.singleton
