@@ -3,8 +3,8 @@ module Morphir.CustomAttribute.CustomAttribute exposing (..)
 import Dict exposing (Dict)
 import Json.Encode as Encode
 import Morphir.Compiler exposing (FilePath)
-import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.NodeId exposing (NodeID)
+import Morphir.SDK.Dict as SDKDict
 
 
 type alias CustomAttributeId =
@@ -19,9 +19,9 @@ type alias CustomAttributeConfigs =
     Dict CustomAttributeId CustomAttributeConfig
 
 
-type alias CustomAttributeValues =
-    Dict NodeID Encode.Value
+type alias CustomAttributeValueByNodeID =
+    SDKDict.Dict NodeID Encode.Value
 
 
-type alias CustomAttribute =
-    Dict FQName (Dict String Encode.Value)
+type alias CustomAttributeValuesByNodeID =
+    SDKDict.Dict NodeID (Dict CustomAttributeId Encode.Value)
