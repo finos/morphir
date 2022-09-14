@@ -13,9 +13,10 @@ const shell = require('shelljs')
 const mocha = require('gulp-mocha');
 const ts = require('gulp-typescript');
 const tsProject = ts.createProject('./cli2/tsconfig.json')
+const readFile = util.promisify(fs.readFile)
 
 const config = {
-    morphirJvmVersion: '0.9.1',
+    morphirJvmVersion: '0.10.0',
     morphirJvmCloneDir: tmp.dirSync()
 }
 
@@ -51,7 +52,7 @@ function checkElmDocs() {
 }
 
 function make(rootDir, source, target) {
-    return elmMake([source], { cwd: path.join(process.cwd(), rootDir), output: target })
+    return elmMake([source], { cwd: path.join(process.cwd(), rootDir), output: target }) // // nosemgrep : path-join-resolve-traversal
 }
 
 function makeCLI() {
@@ -278,16 +279,13 @@ function testIntegrationTestTypeScript(cb) {
 
 
 async function testCreateCSV(cb) {
-    const cwd = process.cwd();
     if (!shell.which('sh')){
         console.log("Automatically creating CSV files is not available on this platform");
     } else {
-        try {
-            process.chdir('./tests-integration/spark/elm-tests/tests',);
-            shell.exec('sh ./create_csv_files.sh');
-            process.chdir(cwd);
-        } catch (err) {
-            console.log("Automatically creating CSV files is not available on this platform");
+        code_no = shell.exec('sh ./create_csv_files.sh', {cwd : './tests-integration/spark/elm-tests/tests'}).code
+        if (code_no != 0){
+            console.log('ERROR: CSV files cannot be created')
+            return false;
         }
     }
 }
@@ -338,6 +336,25 @@ function testMorphirIRTestTypeScript(cb) {
         .pipe(mocha({ require: 'ts-node/register' }));
 }
 
+// Make sure all dependencies are permitted in highly-restricted environments as well
+async function checkPackageLockJson() {
+    const packageLockJson = JSON.parse((await readFile('package-lock.json')).toString())
+    const hasRuntimeDependencyOnPackage = (packageName) => {
+        const runtimeDependencyInPackages = 
+            packageLockJson.packages 
+            && packageLockJson.packages[`node_modules/${packageName}`]
+            && !packageLockJson.packages[`node_modules/${packageName}`].dev
+        const runtimeDependencyInDependencies = 
+            packageLockJson.dependencies 
+            && packageLockJson.dependencies[packageName]
+            && !packageLockJson.dependencies[packageName].dev
+        return runtimeDependencyInPackages || runtimeDependencyInDependencies    
+    }
+    if (hasRuntimeDependencyOnPackage('binwrap')) {
+        throw Error('Runtime dependency on binwrap was detected!')
+    }
+}
+
 testMorphirIR = series(
     testMorphirIRMake,
     testMorphirIRGenTypeScript,
@@ -367,9 +384,11 @@ exports.testIntegration = testIntegration;
 exports.testIntegrationSpark = testIntegrationSpark;
 exports.testMorphirIR = testMorphirIR;
 exports.testMorphirIRTypeScript = testMorphirIR;
+exports.checkPackageLockJson = checkPackageLockJson;
 exports.default =
     series(
         clean,
+        checkPackageLockJson,
         series(
             cloneMorphirJVM,
             copyMorphirJVMAssets,

@@ -14,7 +14,7 @@ const STATE_STORE_NAME = 'statestore'
 const stateStoreUrl = `http://localhost:${DAPR_HTTP_PORT}/v1.0/state/${STATE_STORE_NAME}`
 const eventPublishUrl = `http://localhost:${DAPR_HTTP_PORT}/v1.0/publish/${OUTPUT_TOPIC}`
 
-const app = express()
+const app = express() // nosemgrep 
 
 app.use(bodyParser.json({ type: 'application/*+json' }))
 

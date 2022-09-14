@@ -20,7 +20,7 @@ program
   .option('-i, --project-dir <path>', 'Root directory of the project where morphir.json is located.', '.')
   .parse(process.argv)
 
-const app = express()
+const app = express() 
 const port = program.opts().port
 
 const wrap = fn => (...args) => fn(...args).catch(args[2])

@@ -1,5 +1,6 @@
 module SparkTests.FunctionTests exposing (..)
 
+import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Product(..))
 import SparkTests.Types exposing (..)
 
 
@@ -25,23 +26,6 @@ testCaseInt source =
                 case a.foo of
                     20 ->
                         True
-
-                    _ ->
-                        False
-            )
-
-
-testCaseFloat : List AntiqueSubset -> List AntiqueSubset
-testCaseFloat source =
-    source
-        |> List.filter
-            (\a ->
-                case a.ageOfItem of
-                    20.0 ->
-                        True
-
-                    5.0 ->
-                        False
 
                     _ ->
                         False
@@ -119,19 +103,19 @@ testWhere3 source =
             )
 
 
-testSelect1 : List AntiqueSubset -> List { newName : String, newReport : String, foo : String, product : Product }
+testSelect1 : List AntiqueSubset -> List { foo : String, newName : String, newReport : Maybe String, product : Product }
 testSelect1 source =
     source
         |> List.map
             (\a ->
-                { newName = a.name
-                , newReport = a.report
-                , foo =
+                { foo =
                     if a.ageOfItem >= 20.0 then
                         "old"
 
                     else
                         "new"
+                , newName = a.name
+                , newReport = a.report
                 , product = a.product
                 }
             )
@@ -159,36 +143,36 @@ testFilter2 source =
     source |> List.filter (filterFnWithVar 17.0)
 
 
-testListMinimum : List AntiqueSubset -> List { min : Maybe Float }
+testListMinimum : List AntiqueSubset -> List { foo : Maybe Float }
 testListMinimum source =
     source
         |> List.map .ageOfItem
         |> (\ages ->
-                [ { min =
+                [ { foo =
                         List.minimum ages
                   }
                 ]
            )
 
 
-testListMaximum : List AntiqueSubset -> List { max : Maybe Float }
+testListMaximum : List AntiqueSubset -> List { foo : Maybe Float }
 testListMaximum source =
     source
         |> List.map .ageOfItem
         |> (\ages ->
-                [ { max =
+                [ { foo =
                         List.maximum ages
                   }
                 ]
            )
 
 
-testNameMaximum : List AntiqueSubset -> List { max : Maybe String }
+testNameMaximum : List AntiqueSubset -> List { foo : Maybe String }
 testNameMaximum source =
     source
         |> List.map .name
         |> (\names ->
-                [ { max =
+                [ { foo =
                         List.maximum names
                   }
                 ]
@@ -201,7 +185,7 @@ testMapAndFilter source =
         |> List.map
             (\a ->
                 { name = String.concat [ a.name, " very old" ]
-                , report = String.toUpper a.report
+                , report = Maybe.map String.toUpper a.report
                 , ageOfItem = a.ageOfItem
                 , product = a.product
                 }
@@ -215,7 +199,7 @@ testMapAndFilter2 source =
         |> List.map
             (\a ->
                 { name = String.reverse a.name
-                , report = String.toUpper a.report
+                , report = Maybe.map String.toUpper a.report
                 , ageOfItem = a.ageOfItem
                 , product = a.product
                 }
@@ -229,7 +213,7 @@ testMapAndFilter3 source =
         |> List.map
             (\a ->
                 { name = String.replace "." " " a.name
-                , report = String.toUpper a.report
+                , report = Maybe.map String.toUpper a.report
                 , ageOfItem = a.ageOfItem
                 , product = a.product
                 }
@@ -277,24 +261,24 @@ filterFnWithVar max record =
             record.ageOfItem
 
 
-testListSum : List AntiqueSubset -> List { agesum : Float }
+testListSum : List AntiqueSubset -> List { foo : Float }
 testListSum source =
     source
         |> List.map .ageOfItem
         |> (\ages ->
-                [ { agesum =
+                [ { foo =
                         List.sum ages
                   }
                 ]
            )
 
 
-testListLength : List AntiqueSubset -> List { listlength : Int }
+testListLength : List AntiqueSubset -> List { foo : Int }
 testListLength source =
     source
         |> List.map .name
         |> (\names ->
-                [ { listlength =
+                [ { foo =
                         List.length names
                   }
                 ]

@@ -95,7 +95,7 @@ async function detectChangesWithinDirectory(oldContentHashes: Map<Path, Hash>, d
                 dirEntries
                     .filter((entry: fs.Dirent) => entry.isFile())
                     .map(async (fileEntry: fs.Dirent) => {
-                        const filePath = path.join(dirPath, fileEntry.name)
+                        const filePath = path.join(dirPath, fileEntry.name) // nosemgrep : path-join-resolve-traversal
                         const maybeFileChange = await detectChangeOfSingleFile(oldContentHashes.get(filePath), filePath)
                         const fileChangeEntry: [Path, FileChange] = [filePath, maybeFileChange]
                         return fileChangeEntry
@@ -108,7 +108,7 @@ async function detectChangesWithinDirectory(oldContentHashes: Map<Path, Hash>, d
         await Promise.all(
             dirEntries
                 .filter((entry: fs.Dirent) => entry.isDirectory())
-                .map(async (dirEntry: fs.Dirent) => detectChangesWithinDirectory(oldContentHashes, path.join(dirPath, dirEntry.name)))
+                .map(async (dirEntry: fs.Dirent) => detectChangesWithinDirectory(oldContentHashes, path.join(dirPath, dirEntry.name))) // nosemgrep : path-join-resolve-traversal
         )
     // Merge changes in current directory with changes in subdirectories    
     return fileChangesInSubDirs

@@ -23,10 +23,10 @@ module Morphir.Scala.PrettyPrinter exposing (Options, mapCompilationUnit, mapMem
 
 -}
 
+import Decimal
 import Morphir.File.SourceCode exposing (Doc, concat, dot, dotSep, empty, indent, indentLines, newLine, parens, space)
 import Morphir.IR.Name as Name
 import Morphir.Scala.AST exposing (..)
-import Decimal
 
 
 {-| -}
@@ -442,10 +442,12 @@ mapValue opt value =
                 argsDoc =
                     parens (args |> List.map argDoc |> String.join ", ")
             in
-            argsDoc
-                ++ " =>"
-                ++ newLine
-                ++ indent opt.indentDepth (mapValue opt bodyValue)
+            parens
+                (argsDoc
+                    ++ " =>"
+                    ++ newLine
+                    ++ indent opt.indentDepth (mapValue opt bodyValue)
+                )
 
         Block decls returnValue ->
             let
@@ -625,7 +627,7 @@ mapLit lit =
         FloatLit float ->
             String.fromFloat float
 
-        DecimalLit decimal->
+        DecimalLit decimal ->
             Decimal.toString decimal
 
 

@@ -42,7 +42,7 @@ gen(program.opts().projectDir, program.opts().output, program.opts().debug, prog
     })
 
 async function gen(projectDir, output, debug, deleteBuildDir) {
-    const morphirJsonPath = path.join(projectDir, 'morphir-dapr.json')
+    const morphirJsonPath = path.join(projectDir, 'morphir-dapr.json') // nosemgrep : path-join-resolve-traversal
     const morphirJsonContent = await readFile(morphirJsonPath)
     const morphirJson = JSON.parse(morphirJsonContent.toString())
     const sourceFiles = await readElmSources(morphirJson.sourceDirectories)
@@ -78,9 +78,10 @@ async function gen(projectDir, output, debug, deleteBuildDir) {
     childProc.execSync(`cd ${buildDir} && elm make Main.elm --output=Main.js`)
 
     console.log(`Copying files to output directory...`)
-
+    
+    // nosemgrep : detect-non-literal-fs-filename
     if (!fs.existsSync(output)) {
-        fs.mkdirSync(output)
+        fs.mkdirSync(output) // nosemgrep : detect-non-literal-fs-filename
     }
 
     fsExtra.copySync(`${buildDir}/DaprAppShell.js`, `${output}/DaprAppShell.js`)
@@ -125,12 +126,12 @@ async function readElmSources(dirs) {
         const entries = await readdir(currentDir, { withFileTypes: true })
         const elmSources =
             entries
-                .filter(entry => entry.isFile() && entry.name.endsWith('.elm'))
-                .map(entry => readElmSource(path.join(currentDir, entry.name)))
+                .filter(entry => entry.isFile() && entry.name.endsWith('.elm')) // nosemgrep : path-join-resolve-traversal
+                .map(entry => readElmSource(path.join(currentDir, entry.name))) // nosemgrep : path-join-resolve-traversal
         const subDirSources =
             entries
-                .filter(entry => entry.isDirectory())
-                .map(entry => readDir(path.join(currentDir, entry.name)))
+                .filter(entry => entry.isDirectory()) // nosemgrep : path-join-resolve-traversal
+                .map(entry => readDir(path.join(currentDir, entry.name))) // nosemgrep : path-join-resolve-traversal
                 .reduce(async (soFarPromise, nextPromise) => {
                     const soFar = await soFarPromise
                     const next = await nextPromise

@@ -1,4 +1,4 @@
-module Morphir.Visual.Components.DecisionTree exposing (BranchNode, LeftOrRight(..), Node(..), downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
+module Morphir.Visual.Components.DecisionTree exposing (BranchNode, Node(..), downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
 
 import Element exposing (Attribute, Color, Element, alignLeft, alignTop, centerX, centerY, column, el, fill, height, html, padding, paddingEach, paddingXY, rgb255, row, shrink, spacing, text, width)
 import Element.Border as Border
@@ -12,6 +12,8 @@ import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing
 import Svg
 import Svg.Attributes
 import Morphir.Visual.Config exposing (HighlightState(..))
+import Morphir.Visual.Theme exposing (smallPadding)
+import Element exposing (explain)
 
 
 type Node
@@ -21,15 +23,13 @@ type Node
 
 type alias BranchNode =
     { condition : EnrichedValue
-    , conditionValue : Maybe Bool
+    , isThenBranchSelected : Maybe Bool
     , thenBranch : Node
     , elseBranch : Node
+    , thenLabel : String
+    , elseLabel : String
     }
 
-
-type LeftOrRight
-    = Left
-    | Right
 
 
 highlightColor : { true : Color, false : Color, default : Color }
@@ -127,7 +127,7 @@ layoutHelp config highlightState viewValue rootNode =
             let
                 conditionState : HighlightState
                 conditionState =
-                    case branch.conditionValue of
+                    case branch.isThenBranchSelected of
                         Just v ->
                             Highlighted v
 
@@ -136,7 +136,7 @@ layoutHelp config highlightState viewValue rootNode =
 
                 thenState : HighlightState
                 thenState =
-                    case branch.conditionValue of
+                    case branch.isThenBranchSelected of
                         Just v ->
                             if v then
                                 Highlighted True
@@ -149,7 +149,7 @@ layoutHelp config highlightState viewValue rootNode =
 
                 elseState : HighlightState
                 elseState =
-                    case branch.conditionValue of
+                    case branch.isThenBranchSelected of
                         Just v ->
                             if v then
                                 NotHighlighted
@@ -161,21 +161,22 @@ layoutHelp config highlightState viewValue rootNode =
                             NotHighlighted
             in
             -- TODO: choose vertical/horizontal left/right layout based on some heuristics
-            horizontalLayout
+            verticalLayout
                 config
                 (el
                     [ conditionState |> highlightStateToBorderWidth |> Border.width
                     , Border.rounded 6
                     , Border.color (conditionState |> highlightStateToColor |> toElementColor)
-                    , mediumPadding config.state.theme |> padding
+                    , smallPadding config.state.theme |> padding
+                    , width fill
                     ]
-                    (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight conditionState } } branch.condition)
+                    (el [centerX, centerY] (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight conditionState } } branch.condition))
                 )
                 (el
                     [ Font.color (thenState |> highlightStateToColor |> toElementColor)
                     , thenState |> highlightStateToFontWeight
                     ]
-                    (text "Yes")
+                    (text branch.thenLabel)
                 )
                 thenState
                 (layoutHelp {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight thenState } } thenState viewValue branch.thenBranch)
@@ -183,7 +184,7 @@ layoutHelp config highlightState viewValue rootNode =
                     [ Font.color (elseState |> highlightStateToColor |> toElementColor)
                     , elseState |> highlightStateToFontWeight
                     ]
-                    (text "No")
+                    (text branch.elseLabel)
                 )
                 elseState
                 (layoutHelp {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight elseState } } elseState viewValue branch.elseBranch)
@@ -193,7 +194,7 @@ layoutHelp config highlightState viewValue rootNode =
                 [ highlightState |> highlightStateToBorderWidth |> Border.width
                 , Border.rounded 6
                 , Border.color (highlightState |> highlightStateToColor |> toElementColor)
-                , mediumPadding config.state.theme |> padding
+                , smallPadding config.state.theme |> padding
                 ]
                 (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight highlightState } } value)
 
@@ -297,7 +298,7 @@ verticalLayout config condition branch1Label branch1State branch1 branch2Label b
                 , el [ centerX, paddingXY (mediumPadding config.state.theme) 0 ]
                     branch2Label
                 ]
-            , el [ alignTop, paddingEach { noPadding | bottom = mediumPadding config.state.theme } ] branch2
+            , el [ alignTop, paddingEach { noPadding | bottom = mediumPadding config.state.theme }] branch2
             ]
         , branch1
         ]
