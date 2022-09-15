@@ -23,7 +23,22 @@ decodeCustomAttributeConfig =
 decodeNodeIDByValuePairs : Decode.Decoder (List ( NodeID, Decode.Value ))
 decodeNodeIDByValuePairs =
     Decode.keyValuePairs Decode.value
-        |> Decode.map (List.map (Tuple.mapFirst nodeIdFromString))
+        |> Decode.andThen
+            (List.foldl
+                (\( nodeIdString, decodedValue ) decodedSoFar ->
+                    decodedSoFar
+                        |> Decode.andThen
+                            (\nodeIdList ->
+                                case nodeIdFromString nodeIdString of
+                                    Ok nodeID ->
+                                        Decode.succeed <| ( nodeID, decodedValue ) :: nodeIdList
+
+                                    Err message ->
+                                        Decode.fail message
+                            )
+                )
+                (Decode.succeed [])
+            )
 
 
 decodeAttributes : Decode.Decoder CustomAttributes

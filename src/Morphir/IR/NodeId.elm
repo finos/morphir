@@ -8,7 +8,7 @@ type NodeID
     | ValueID FQName
 
 
-nodeIdFromString : String -> NodeID
+nodeIdFromString : String -> Result String NodeID
 nodeIdFromString str =
     case String.split ":" str of
         nodeType :: packageName :: moduleName :: localName :: [] ->
@@ -19,7 +19,13 @@ nodeIdFromString str =
             in
             case nodeType of
                 "Type" ->
-                    TypeID fqn
+                    Ok <| TypeID fqn
 
                 "Value" ->
-                    ValueID fqn
+                    Ok <| ValueID fqn
+
+                _ ->
+                    Err <| "Unknown Node type: " ++ nodeType
+
+        _ ->
+            Err <| "Invalid NodeId: " ++ str
