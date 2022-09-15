@@ -1,1 +1,0 @@
-[Visualization examples](index.html)
