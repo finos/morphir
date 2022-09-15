@@ -59,7 +59,7 @@ import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.CustomAttribute.Codec exposing (decodeAttributes)
-import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttribute)
+import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeValuesByNodeID, CustomAttributes)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -73,6 +73,7 @@ import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
+import Morphir.SDK.Dict as SDKDict
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
@@ -131,7 +132,7 @@ type alias Model =
     , definitionDisplayType : DisplayType
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
-    , customAttributes : CustomAttribute
+    , customAttributes : CustomAttributes
     }
 
 
@@ -237,7 +238,7 @@ type Msg
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
-    | ServerGetAttributeResponse CustomAttribute
+    | ServerGetAttributeResponse CustomAttributes
     | Filter FilterMsg
     | UI UIMsg
     | Insight InsightMsg
@@ -1804,34 +1805,6 @@ viewDefinitionDetails model =
                 { onReferenceClicked = referenceClicked
                 , onHoverOver = hoverOver
                 , onHoverLeave = Insight << ShrinkVariable
-                }
-
-        viewCustomAttributes : FQName -> String -> (String -> msg) -> Element msg
-        viewCustomAttributes fQName attributeGroupName attributeValue =
-            let
-                getAttributes =
-                    model.customAttributes
-                        |> Dict.get fQName
-                        |> Maybe.andThen
-                            (\attributeGrouping ->
-                                attributeGrouping
-                                    |> Dict.get attributeGroupName
-                                    |> Maybe.map
-                                        (\value ->
-                                            Encode.encode 0 value
-                                        )
-                            )
-                        |> Maybe.withDefault " "
-            in
-            Element.Input.text
-                [ padding 3
-                , Font.bold
-                , Font.size (model.theme |> Theme.scaled 2)
-                ]
-                { onChange = attributeValue
-                , label = labelHidden attributeGroupName
-                , text = getAttributes
-                , placeholder = Just (Element.Input.placeholder [] (text " Add Attributes .."))
                 }
 
         viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
