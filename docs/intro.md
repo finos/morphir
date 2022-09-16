@@ -87,23 +87,15 @@ In Morphir's data format this would translate into something like this:
 <!--
 # Further reading
 
-## Introduction and Background
 
--   [Background](background)
--   [Community](morphir_community)
--   [What's it all about?](whats_it_about)
--   [Working Across Technologies](work_across_languages_and_platforms)
--   [Why we use Functional Programming?](why_functional_programming)
+# Getting Started 
+* [Morphir Users](using/installation_and_usage/)
+* [Contributing to the Morphir Ecosystem](contributing/)
 
-## Using Morphir
+# Getting Help
 
--   [What Makes a Good Model](what-makes-a-good-domain-model)
--   [Development Automation (Dev Bots)](dev_bots)
--   [Modeling an Application](application_modeling)
--   [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules)
--   [Modeling for database developers](modeling/modeling-for-database-developers.md)
+# Reporting Bugs
 
-## Applicability
+# Security
 
--   [Sharing Business Logic Across Application Boundaries](shared_logic_modeling)
--   [Regulatory Technology](regtech_modeling) -->
+# License
