@@ -6,7 +6,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaAlias, metaFun, metaRecord, metaRef, metaTuple, metaUnit, metaVar)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar)
 import Morphir.Type.Solve as SolutionMap exposing (SolutionMap)
 import Set exposing (Set)
 
@@ -73,30 +73,29 @@ metaTypeToConcreteType solutionMap metaType =
                     |> List.map (metaTypeToConcreteType solutionMap)
                 )
 
-        MetaRecord _ extends metaFields ->
-            case extends of
-                Nothing ->
-                    Type.Record ()
-                        (metaFields
-                            |> Dict.toList
-                            |> List.map
-                                (\( fieldName, fieldType ) ->
-                                    Type.Field fieldName
-                                        (metaTypeToConcreteType solutionMap fieldType)
-                                )
-                        )
+        MetaRecord _ recordVar isOpen metaFields ->
+            if not isOpen then
+                Type.Record ()
+                    (metaFields
+                        |> Dict.toList
+                        |> List.map
+                            (\( fieldName, fieldType ) ->
+                                Type.Field fieldName
+                                    (metaTypeToConcreteType solutionMap fieldType)
+                            )
+                    )
 
-                Just baseType ->
-                    Type.ExtensibleRecord ()
-                        (baseType |> MetaType.toName)
-                        (metaFields
-                            |> Dict.toList
-                            |> List.map
-                                (\( fieldName, fieldType ) ->
-                                    Type.Field fieldName
-                                        (metaTypeToConcreteType solutionMap fieldType)
-                                )
-                        )
+            else
+                Type.ExtensibleRecord ()
+                    (recordVar |> MetaType.toName)
+                    (metaFields
+                        |> Dict.toList
+                        |> List.map
+                            (\( fieldName, fieldType ) ->
+                                Type.Field fieldName
+                                    (metaTypeToConcreteType solutionMap fieldType)
+                            )
+                    )
 
         MetaFun _ argType returnType ->
             Type.Function ()
@@ -141,7 +140,7 @@ concreteTypeToMetaType baseVar ir varToMeta tpe =
                 )
 
         Type.Record _ fieldTypes ->
-            metaRecord Nothing
+            metaClosedRecord (baseVar |> MetaType.subVariable)
                 (fieldTypes
                     |> List.map
                         (\field ->
@@ -151,9 +150,10 @@ concreteTypeToMetaType baseVar ir varToMeta tpe =
                 )
 
         Type.ExtensibleRecord _ subjectName fieldTypes ->
-            metaRecord
+            metaOpenRecord
                 (varToMeta
                     |> Dict.get subjectName
+                    |> Maybe.withDefault baseVar
                 )
                 (fieldTypes
                     |> List.map

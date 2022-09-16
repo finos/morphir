@@ -9,7 +9,7 @@ import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Basics exposing (boolType, intType)
 import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as Type
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), metaAlias, metaRecord, variableByIndex)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), metaAlias, metaClosedRecord, metaRecord, variableByIndex)
 import Morphir.Type.MetaTypeMapping exposing (concreteTypeToMetaType)
 import Set
 import Test exposing (Test, describe, test)
@@ -24,7 +24,7 @@ concreteTypeToMetaTypeTests =
                     |> Expect.equal
                         (metaAlias (fqn "Test" "Test" "FooBarBazRecord")
                             []
-                            (metaRecord Nothing
+                            (metaClosedRecord ( [], 0, 1 )
                                 (Dict.fromList
                                     [ ( [ "foo" ], MetaType.stringType )
                                     , ( [ "bar" ], MetaType.boolType )

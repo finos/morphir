@@ -28,15 +28,11 @@ encodeMetaType metaType =
                 , Encode.list encodeMetaType metaTypes
                 ]
 
-        MetaRecord _ maybeVar dict ->
+        MetaRecord _ recordVar isOpen dict ->
             Encode.list identity
                 [ Encode.string "meta_record"
-                , case maybeVar of
-                    Just var ->
-                        encodeVariable var
-
-                    Nothing ->
-                        Encode.null
+                , encodeVariable recordVar
+                , Encode.bool isOpen
                 , dict
                     |> Dict.toList
                     |> Encode.list

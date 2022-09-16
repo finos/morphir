@@ -15,14 +15,14 @@ import Morphir.IR.SDK.Basics exposing (floatType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.Decimal exposing (Decimal)
 import Morphir.Type.Class as Class exposing (Class)
 import Morphir.Type.Constraint as Constraint exposing (Constraint(..), class, equality, isRecursive)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaTuple, metaUnit, metaVar, variableByName)
-import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
+import Morphir.Type.MetaTypeMapping as MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.Solve as Solve exposing (SolutionMap(..), UnificationError(..), UnificationErrorType(..))
 import Set exposing (Set)
-import Morphir.SDK.Decimal exposing (Decimal)
 
 
 type alias TypedValue va =
@@ -160,6 +160,35 @@ typeErrorToMessage typeError =
 inferValueDefinition : IR -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
 inferValueDefinition ir def =
     let
+        --recordAliases : List ( MetaType, FQName )
+        --recordAliases =
+        --    let
+        --        -- Gather all the types in the function signature
+        --        typesInSignature : List (Type ())
+        --        typesInSignature =
+        --            def.inputTypes
+        --                |> List.map (\( _, _, tpe ) -> tpe)
+        --                |> (::) def.outputType
+        --
+        --        -- Gather all the references
+        --        referencesInSignature : Set FQName
+        --        referencesInSignature =
+        --            typesInSignature
+        --                |> List.map Type.collectReferences
+        --                |> List.foldl Set.union Set.empty
+        --    in
+        --    -- collect references that refer to records
+        --    referencesInSignature
+        --        |> Set.toList
+        --        |> List.filterMap
+        --            (\typeRef ->
+        --                case IR.lookupTypeSpecification (IR.resolveAliases typeRef ir) ir of
+        --                    Just (Type.TypeAliasSpecification _ ((Type.Record _ _) as recordType)) ->
+        --                        Just ( MetaTypeMapping.concreteTypeToMetaType (MetaType.variableByIndex 0) ir Dict.empty recordType, typeRef )
+        --
+        --                    _ ->
+        --                        Nothing
+        --            )
         ( annotatedDef, lastVarIndex ) =
             annotateDefinition 1 def
 
@@ -376,7 +405,7 @@ constrainValue ir vars annotatedValue =
                             (\_ fieldValue ->
                                 metaTypeVarForValue fieldValue
                             )
-                        |> metaRecord Nothing
+                        |> metaRecord (thisTypeVar |> MetaType.subVariable) False
 
                 recordConstraints : ConstraintSet
                 recordConstraints =
@@ -418,7 +447,8 @@ constrainValue ir vars annotatedValue =
 
                 extensibleRecordType : MetaType
                 extensibleRecordType =
-                    metaRecord (Just extendsVar)
+                    metaRecord extendsVar
+                        True
                         (Dict.singleton fieldName fieldType)
 
                 fieldConstraints : ConstraintSet
@@ -448,7 +478,8 @@ constrainValue ir vars annotatedValue =
 
                 extensibleRecordType : MetaType
                 extensibleRecordType =
-                    metaRecord (Just extendsVar)
+                    metaRecord extendsVar
+                        True
                         (Dict.singleton fieldName fieldType)
             in
             ConstraintSet.singleton
@@ -719,7 +750,8 @@ constrainValue ir vars annotatedValue =
 
                 extensibleRecordType : MetaType
                 extensibleRecordType =
-                    metaRecord (Just extendsVar)
+                    metaRecord extendsVar
+                        True
                         (fieldValues
                             |> Dict.map
                                 (\_ fieldValue ->
