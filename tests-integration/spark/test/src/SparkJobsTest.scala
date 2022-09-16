@@ -321,6 +321,19 @@ class test1 extends FunSuite {
     assert (df_actual_results.count == df_expected_results.count)
     assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
+  test("testForLetDef") {
+     val df_expected_results = localTestSession.read.format("csv")
+        .option("header", "true")
+        .schema(antiqueSS_schema)
+        .load("spark/test/src/spark_test_data/expected_results_testLetDef.csv")
+            
+     val df_actual_results = SparkJobs.testLetDef(antiqueSS_data)
+
+     assert(df_actual_results.columns.length == df_expected_results.columns.length)
+     assert(df_actual_results.count == df_expected_results.count)
+     assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)   
+
+  }
 }
 
 
