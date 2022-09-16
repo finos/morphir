@@ -19,7 +19,8 @@ import Morphir.SDK.Decimal exposing (Decimal)
 import Morphir.Type.Class as Class exposing (Class)
 import Morphir.Type.Constraint as Constraint exposing (Constraint(..), class, equality, isRecursive)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaTuple, metaUnit, metaVar, variableByName)
+import Morphir.Type.Counter as Counter exposing (Counter)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaClosedRecord, metaFun, metaOpenRecord, metaTuple, metaUnit, metaVar, variableByName)
 import Morphir.Type.MetaTypeMapping as MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.Solve as Solve exposing (SolutionMap(..), UnificationError(..), UnificationErrorType(..))
 import Set exposing (Set)
@@ -269,8 +270,8 @@ annotateValue baseIndex untypedValue =
         |> Value.indexedMapValue (\index va -> ( va, MetaType.variableByIndex index )) baseIndex
 
 
-constrainDefinition : Variable -> IR -> Dict Name Variable -> Value.Definition () ( va, Variable ) -> ConstraintSet
-constrainDefinition baseVar ir vars def =
+constrainDefinition : IR -> Dict Name Variable -> Value.Definition () ( va, Variable ) -> Counter ConstraintSet
+constrainDefinition ir vars def =
     let
         inputTypeVars : Set Name
         inputTypeVars =
@@ -295,23 +296,24 @@ constrainDefinition baseVar ir vars def =
                     )
                 |> Dict.fromList
 
-        inputConstraints : ConstraintSet
+        inputConstraints : Counter ConstraintSet
         inputConstraints =
             def.inputTypes
                 |> List.map
                     (\( _, ( _, thisTypeVar ), declaredType ) ->
-                        equality
-                            (metaVar thisTypeVar)
-                            (concreteTypeToMetaType thisTypeVar ir varToMeta declaredType)
+                        Counter.map2 equality
+                            (Counter.ignore (metaVar thisTypeVar))
+                            (concreteTypeToMetaType ir varToMeta declaredType)
                     )
-                |> ConstraintSet.fromList
+                |> Counter.concat
+                |> Counter.map ConstraintSet.fromList
 
-        outputConstraints : ConstraintSet
+        outputConstraints : Counter ConstraintSet
         outputConstraints =
-            ConstraintSet.singleton
-                (equality
-                    (metaTypeVarForValue def.body)
-                    (concreteTypeToMetaType baseVar ir varToMeta def.outputType)
+            Counter.map ConstraintSet.singleton
+                (Counter.map2 equality
+                    (Counter.ignore (metaTypeVarForValue def.body))
+                    (concreteTypeToMetaType ir varToMeta def.outputType)
                 )
 
         inputVars : Dict Name Variable
@@ -323,28 +325,33 @@ constrainDefinition baseVar ir vars def =
                     )
                 |> Dict.fromList
 
-        bodyConstraints : ConstraintSet
+        bodyConstraints : Counter ConstraintSet
         bodyConstraints =
             constrainValue ir (vars |> Dict.union inputVars) def.body
     in
-    ConstraintSet.concat
-        [ inputConstraints
-        , outputConstraints
-        , bodyConstraints
-        ]
+    Counter.map ConstraintSet.concat
+        (Counter.concat
+            [ inputConstraints
+            , outputConstraints
+            , bodyConstraints
+            ]
+        )
 
 
-constrainValue : IR -> Dict Name Variable -> Value () ( va, Variable ) -> ConstraintSet
+constrainValue : IR -> Dict Name Variable -> Value () ( va, Variable ) -> Counter ConstraintSet
 constrainValue ir vars annotatedValue =
     case annotatedValue of
         Value.Literal ( _, thisTypeVar ) literalValue ->
             constrainLiteral thisTypeVar literalValue
 
         Value.Constructor ( _, thisTypeVar ) fQName ->
-            lookupConstructor thisTypeVar ir fQName
-                |> Result.map (equality (metaVar thisTypeVar))
-                |> Result.map ConstraintSet.singleton
-                |> Result.withDefault ConstraintSet.empty
+            lookupConstructor ir fQName
+                |> Result.map
+                    (\ctor ->
+                        ctor
+                            |> Counter.map (ConstraintSet.singleton (equality (metaVar thisTypeVar)))
+                    )
+                |> Result.withDefault (Counter.ignore ConstraintSet.empty)
 
         Value.Tuple ( _, thisTypeVar ) elems ->
             let
@@ -405,7 +412,7 @@ constrainValue ir vars annotatedValue =
                             (\_ fieldValue ->
                                 metaTypeVarForValue fieldValue
                             )
-                        |> metaRecord (thisTypeVar |> MetaType.subVariable) False
+                        |> metaClosedRecord (thisTypeVar |> MetaType.subVariable)
 
                 recordConstraints : ConstraintSet
                 recordConstraints =
@@ -447,8 +454,7 @@ constrainValue ir vars annotatedValue =
 
                 extensibleRecordType : MetaType
                 extensibleRecordType =
-                    metaRecord extendsVar
-                        True
+                    metaOpenRecord extendsVar
                         (Dict.singleton fieldName fieldType)
 
                 fieldConstraints : ConstraintSet
@@ -478,8 +484,7 @@ constrainValue ir vars annotatedValue =
 
                 extensibleRecordType : MetaType
                 extensibleRecordType =
-                    metaRecord extendsVar
-                        True
+                    metaOpenRecord extendsVar
                         (Dict.singleton fieldName fieldType)
             in
             ConstraintSet.singleton
@@ -750,8 +755,7 @@ constrainValue ir vars annotatedValue =
 
                 extensibleRecordType : MetaType
                 extensibleRecordType =
-                    metaRecord extendsVar
-                        True
+                    metaOpenRecord extendsVar
                         (fieldValues
                             |> Dict.map
                                 (\_ fieldValue ->
@@ -947,15 +951,18 @@ constrainPattern ir pattern =
             )
 
 
-constrainLiteral : Variable -> Literal -> ConstraintSet
-constrainLiteral thisTypeVar literalValue =
+constrainLiteral : Literal -> Counter ConstraintSet
+constrainLiteral literalValue =
     let
-        expectExactType : MetaType -> ConstraintSet
+        expectExactType : MetaType -> Counter ConstraintSet
         expectExactType expectedType =
-            ConstraintSet.singleton
-                (equality
-                    (metaVar thisTypeVar)
-                    expectedType
+            Counter.next
+                (\counter ->
+                    ConstraintSet.singleton
+                        (equality
+                            (metaVar (MetaType.variableByIndex counter))
+                            expectedType
+                        )
                 )
     in
     case literalValue of
@@ -969,15 +976,21 @@ constrainLiteral thisTypeVar literalValue =
             expectExactType MetaType.stringType
 
         WholeNumberLiteral _ ->
-            ConstraintSet.singleton
-                (class (metaVar thisTypeVar) Class.Number)
+            Counter.next
+                (\counter ->
+                    ConstraintSet.singleton
+                        (class (metaVar (MetaType.variableByIndex counter)) Class.Number)
+                )
 
         FloatLiteral _ ->
             expectExactType MetaType.floatType
 
         DecimalLiteral _ ->
-            ConstraintSet.singleton
-                (class (metaVar thisTypeVar) Class.Number)
+            Counter.next
+                (\counter ->
+                    ConstraintSet.singleton
+                        (class (metaVar (MetaType.variableByIndex counter)) Class.Number)
+                )
 
 
 solve : IR -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )

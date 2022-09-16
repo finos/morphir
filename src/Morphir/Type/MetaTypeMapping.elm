@@ -6,6 +6,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
+import Morphir.Type.Counter as Counter exposing (Counter)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar)
 import Morphir.Type.Solve as SolutionMap exposing (SolutionMap)
 import Set exposing (Set)
@@ -18,22 +19,22 @@ type LookupError
     | ExpectedAlias FQName
 
 
-lookupConstructor : Variable -> IR -> FQName -> Result LookupError MetaType
-lookupConstructor baseVar ir ctorFQN =
+lookupConstructor : IR -> FQName -> Result LookupError (Counter MetaType)
+lookupConstructor ir ctorFQN =
     ir
         |> IR.lookupTypeConstructor ctorFQN
         |> Maybe.map
             (\( typeFQN, paramNames, ctorArgs ) ->
-                ctorToMetaType baseVar ir typeFQN paramNames (ctorArgs |> List.map Tuple.second)
+                ctorToMetaType ir typeFQN paramNames (ctorArgs |> List.map Tuple.second)
             )
         |> Result.fromMaybe (CouldNotFindConstructor ctorFQN)
 
 
-lookupValue : Variable -> IR -> FQName -> Result LookupError MetaType
-lookupValue baseVar ir valueFQN =
+lookupValue : IR -> FQName -> Result LookupError (Counter MetaType)
+lookupValue ir valueFQN =
     ir
         |> IR.lookupValueSpecification valueFQN
-        |> Maybe.map (valueSpecToMetaType baseVar ir)
+        |> Maybe.map (valueSpecToMetaType ir)
         |> Result.fromMaybe (CouldNotFindValue valueFQN)
 
 
@@ -109,71 +110,84 @@ metaTypeToConcreteType solutionMap metaType =
             Type.Unit ()
 
 
-concreteTypeToMetaType : Variable -> IR -> Dict Name Variable -> Type () -> MetaType
-concreteTypeToMetaType baseVar ir varToMeta tpe =
+concreteTypeToMetaType : IR -> Dict Name Variable -> Type () -> Counter MetaType
+concreteTypeToMetaType ir varToMeta tpe =
     case tpe of
         Type.Variable _ varName ->
-            varToMeta
-                |> Dict.get varName
-                -- this should never happen
-                |> Maybe.withDefault baseVar
-                |> metaVar
-
-        Type.Reference _ fQName args ->
-            let
-                resolveAliases : FQName -> List (Type ()) -> MetaType
-                resolveAliases fqn ars =
-                    let
-                        metaArgs =
-                            ars |> List.map (concreteTypeToMetaType baseVar ir varToMeta)
-                    in
-                    lookupAliasedType ir fqn ars
-                        |> Result.map (concreteTypeToMetaType baseVar ir varToMeta >> metaAlias fqn metaArgs)
-                        |> Result.withDefault (metaRef fqn metaArgs)
-            in
-            resolveAliases fQName args
-
-        Type.Tuple _ elemTypes ->
-            metaTuple
-                (elemTypes
-                    |> List.map (concreteTypeToMetaType baseVar ir varToMeta)
+            Counter.next
+                (\counter ->
+                    varToMeta
+                        |> Dict.get varName
+                        -- this should never happen
+                        |> Maybe.withDefault (MetaType.variableByIndex counter)
+                        |> metaVar
                 )
 
+        Type.Reference _ fQName args ->
+            args
+                |> List.map (concreteTypeToMetaType ir varToMeta)
+                |> Counter.concat
+                |> Counter.andThen
+                    (\metaArgs ->
+                        lookupAliasedType ir fQName args
+                            |> Result.map
+                                (\aliasedType ->
+                                    concreteTypeToMetaType ir varToMeta aliasedType
+                                        |> Counter.map (metaAlias fQName metaArgs)
+                                )
+                            |> Result.withDefault
+                                (Counter.ignore (metaRef fQName metaArgs))
+                    )
+
+        Type.Tuple _ elemTypes ->
+            elemTypes
+                |> List.map (concreteTypeToMetaType ir varToMeta)
+                |> Counter.concat
+                |> Counter.map metaTuple
+
         Type.Record _ fieldTypes ->
-            metaClosedRecord (baseVar |> MetaType.subVariable)
+            Counter.map2 metaClosedRecord
+                (Counter.next MetaType.variableByIndex)
                 (fieldTypes
                     |> List.map
                         (\field ->
-                            ( field.name, concreteTypeToMetaType baseVar ir varToMeta field.tpe )
+                            concreteTypeToMetaType ir varToMeta field.tpe
+                                |> Counter.map (Tuple.pair field.name)
                         )
-                    |> Dict.fromList
+                    |> Counter.concat
+                    |> Counter.map Dict.fromList
                 )
 
         Type.ExtensibleRecord _ subjectName fieldTypes ->
-            metaOpenRecord
-                (varToMeta
-                    |> Dict.get subjectName
-                    |> Maybe.withDefault baseVar
+            Counter.map2 metaOpenRecord
+                (Counter.next
+                    (\counter ->
+                        varToMeta
+                            |> Dict.get subjectName
+                            |> Maybe.withDefault (MetaType.variableByIndex counter)
+                    )
                 )
                 (fieldTypes
                     |> List.map
                         (\field ->
-                            ( field.name, concreteTypeToMetaType baseVar ir varToMeta field.tpe )
+                            concreteTypeToMetaType ir varToMeta field.tpe
+                                |> Counter.map (Tuple.pair field.name)
                         )
-                    |> Dict.fromList
+                    |> Counter.concat
+                    |> Counter.map Dict.fromList
                 )
 
         Type.Function _ argType returnType ->
-            metaFun
-                (concreteTypeToMetaType baseVar ir varToMeta argType)
-                (concreteTypeToMetaType baseVar ir varToMeta returnType)
+            Counter.map2 metaFun
+                (concreteTypeToMetaType ir varToMeta argType)
+                (concreteTypeToMetaType ir varToMeta returnType)
 
         Type.Unit _ ->
-            metaUnit
+            Counter.ignore metaUnit
 
 
-ctorToMetaType : Variable -> IR -> FQName -> List Name -> List (Type ()) -> MetaType
-ctorToMetaType baseVar ir ctorFQName paramNames ctorArgs =
+ctorToMetaType : IR -> FQName -> List Name -> List (Type ()) -> Counter MetaType
+ctorToMetaType ir ctorFQName paramNames ctorArgs =
     let
         argVariables : Set Name
         argVariables =
@@ -186,37 +200,42 @@ ctorToMetaType baseVar ir ctorFQName paramNames ctorArgs =
             paramNames
                 |> Set.fromList
                 |> Set.union argVariables
-
-        varToMeta : Dict Name Variable
-        varToMeta =
-            allVariables
-                |> concreteVarsToMetaVars baseVar
-
-        recurse cargs =
-            case cargs of
-                [] ->
-                    metaRef ctorFQName
-                        (paramNames
-                            |> List.map
-                                (\paramName ->
-                                    varToMeta
-                                        |> Dict.get paramName
-                                        -- this should never happen
-                                        |> Maybe.withDefault baseVar
-                                        |> metaVar
-                                )
-                        )
-
-                firstCtorArg :: restOfCtorArgs ->
-                    metaFun
-                        (concreteTypeToMetaType baseVar ir varToMeta firstCtorArg)
-                        (recurse restOfCtorArgs)
     in
-    recurse ctorArgs
+    allVariables
+        |> concreteVarsToMetaVars
+        |> Counter.andThen
+            (\varToMeta ->
+                let
+                    recurse : List (Type ()) -> Counter MetaType
+                    recurse cargs =
+                        case cargs of
+                            [] ->
+                                Counter.next
+                                    (\counter ->
+                                        metaRef ctorFQName
+                                            (paramNames
+                                                |> List.map
+                                                    (\paramName ->
+                                                        varToMeta
+                                                            |> Dict.get paramName
+                                                            -- this should never happen
+                                                            |> Maybe.withDefault (MetaType.variableByIndex counter)
+                                                            |> metaVar
+                                                    )
+                                            )
+                                    )
+
+                            firstCtorArg :: restOfCtorArgs ->
+                                Counter.map2 metaFun
+                                    (concreteTypeToMetaType ir varToMeta firstCtorArg)
+                                    (recurse restOfCtorArgs)
+                in
+                recurse ctorArgs
+            )
 
 
-valueSpecToMetaType : Variable -> IR -> Value.Specification () -> MetaType
-valueSpecToMetaType baseVar ir valueSpec =
+valueSpecToMetaType : IR -> Value.Specification () -> Counter MetaType
+valueSpecToMetaType ir valueSpec =
     let
         specToFunctionType : List (Type ()) -> Type () -> Type ()
         specToFunctionType argTypes returnType =
@@ -230,30 +249,23 @@ valueSpecToMetaType baseVar ir valueSpec =
         functionType : Type ()
         functionType =
             specToFunctionType (valueSpec.inputs |> List.map Tuple.second) valueSpec.output
-
-        varToMeta : Dict Name Variable
-        varToMeta =
-            functionType
-                |> Type.collectVariables
-                |> concreteVarsToMetaVars baseVar
     in
-    concreteTypeToMetaType baseVar ir varToMeta functionType
+    functionType
+        |> Type.collectVariables
+        |> concreteVarsToMetaVars
+        |> Counter.andThen (\varToMeta -> concreteTypeToMetaType ir varToMeta functionType)
 
 
-concreteVarsToMetaVars : Variable -> Set Name -> Dict Name Variable
-concreteVarsToMetaVars baseVar variables =
+concreteVarsToMetaVars : Set Name -> Counter (Dict Name Variable)
+concreteVarsToMetaVars variables =
     variables
         |> Set.toList
-        |> List.foldl
-            (\varName ( metaVarSoFar, varToMetaSoFar ) ->
-                let
-                    nextVar =
-                        metaVarSoFar |> MetaType.subVariable
-                in
-                ( nextVar
-                , varToMetaSoFar
-                    |> Dict.insert varName nextVar
-                )
+        |> List.map
+            (\varName ->
+                Counter.next
+                    (\counter ->
+                        ( varName, MetaType.variableByIndex counter )
+                    )
             )
-            ( baseVar, Dict.empty )
-        |> Tuple.second
+        |> Counter.concat
+        |> Counter.map Dict.fromList

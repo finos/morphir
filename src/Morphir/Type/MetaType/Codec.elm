@@ -16,10 +16,17 @@ encodeMetaType metaType =
                 , encodeVariable variable
                 ]
 
-        MetaRef _ fQName _ _ ->
+        MetaRef _ fQName args maybeAliasedType ->
             Encode.list identity
                 [ Encode.string "meta_ref"
                 , encodeFQName fQName
+                , Encode.list encodeMetaType args
+                , case maybeAliasedType of
+                    Just aliasedType ->
+                        encodeMetaType aliasedType
+
+                    Nothing ->
+                        Encode.null
                 ]
 
         MetaTuple _ metaTypes ->
