@@ -13,7 +13,7 @@ import Morphir.Relational.Backend as RelationalBackend
 import Morphir.Relational.IR exposing (JoinType(..), OuterJoinType(..), Relation(..))
 import Morphir.SDK.ResultList as ResultList
 import Morphir.Scala.AST as Scala
-import Morphir.Scala.Backend as ScalaBackend
+import Morphir.Scala.Feature.Core exposing (mapValue)
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Morphir.Spark.API as Spark
 import Set
@@ -203,7 +203,7 @@ mapColumnExpression : TypedValue -> Scala.Value
 mapColumnExpression value =
     let
         default v =
-            ScalaBackend.mapValue Set.empty v
+            mapValue Set.empty v
 
         mapLiteral : Literal -> Scala.Lit
         mapLiteral l =

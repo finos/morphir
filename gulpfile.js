@@ -152,8 +152,6 @@ function morphirDockerize(projectDir, options = {}) {
 }
 
 
-
-
 async function testUnit(cb) {
     await execa('elm-test');
 }
