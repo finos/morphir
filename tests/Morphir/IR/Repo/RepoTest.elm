@@ -122,7 +122,7 @@ insertTypeTest =
                 |> List.foldl
                     (\( typeName, typeDef ) repoResultSoFar ->
                         repoResultSoFar
-                            |> Result.andThen (Repo.insertType moduleName typeName typeDef Public)
+                            |> Result.andThen (Repo.insertType moduleName typeName typeDef Public "")
                     )
                     (Ok repo)
 
@@ -192,7 +192,7 @@ insertTypeTest =
                             |> List.foldl
                                 (\( name, def, modname ) repoSoFar ->
                                     repoSoFar
-                                        |> Result.andThen (Repo.insertType modname name def Public)
+                                        |> Result.andThen (Repo.insertType modname name def Public "")
                                 )
                                 updatedRepo
                 in
@@ -289,7 +289,7 @@ insertValueTest =
                 |> List.foldl
                     (\( valueName, valueDef ) repoResultSoFar ->
                         repoResultSoFar
-                            |> Result.andThen (Repo.insertTypedValue moduleName valueName valueDef)
+                            |> Result.andThen (Repo.insertTypedValue moduleName valueName valueDef Public "")
                     )
                     (Ok currentRepo)
     in
@@ -361,7 +361,7 @@ insertValueTest =
                             |> List.foldl
                                 (\( name, def, modname ) repoSoFar ->
                                     repoSoFar
-                                        |> Result.andThen (Repo.insertTypedValue modname name def)
+                                        |> Result.andThen (Repo.insertTypedValue modname name def Public "")
                                 )
                                 updatedRepo
                 in
@@ -400,9 +400,9 @@ toDistributionTest =
         |> Repo.empty
         |> Repo.insertModule moduleName Module.emptyDefinition Public
         |> Result.andThen
-            (Repo.insertType moduleName typeName typeDef Public)
+            (Repo.insertType moduleName typeName typeDef Public "")
         |> Result.andThen
-            (Repo.insertTypedValue moduleName valueName valueDef)
+            (Repo.insertTypedValue moduleName valueName valueDef Public "")
         |> (\validRepo ->
                 case validRepo of
                     Ok r ->

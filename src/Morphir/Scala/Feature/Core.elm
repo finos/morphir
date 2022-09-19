@@ -458,6 +458,9 @@ mapValue inScopeVars value =
                 FloatLiteral v ->
                     wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
 
+                DecimalLiteral _ ->
+                    Debug.todo "branch 'DecimalLiteral _' not implemented"
+
         Constructor constructorType fQName ->
             curryConstructorArgs inScopeVars constructorType fQName []
 
@@ -482,6 +485,7 @@ mapValue inScopeVars value =
                     in
                     Scala.Apply (Scala.Ref path (name |> Name.toTitleCase))
                         (fieldValues
+                            |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     Scala.ArgValue (Just (mapValueName fieldName)) (mapValue inScopeVars fieldValue)
@@ -491,6 +495,7 @@ mapValue inScopeVars value =
                 _ ->
                     Scala.StructuralValue
                         (fieldValues
+                            |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     ( mapValueName fieldName, mapValue inScopeVars fieldValue )
@@ -695,12 +700,13 @@ mapValue inScopeVars value =
             Scala.Apply
                 (Scala.Select (mapValue inScopeVars subjectValue) "copy")
                 (fieldUpdates
-                    |> List.map
-                        (\( fieldName, fieldValue ) ->
+                    |> Dict.map
+                        (\fieldName fieldValue ->
                             Scala.ArgValue
                                 (Just (mapValueName fieldName))
                                 (mapValue inScopeVars fieldValue)
                         )
+                    |> Dict.values
                 )
 
         Unit a ->
@@ -759,6 +765,9 @@ mapPattern pattern =
 
                         FloatLiteral v ->
                             Scala.FloatLit v
+
+                        DecimalLiteral v ->
+                            Scala.DecimalLit v
             in
             Scala.LiteralMatch (map literal)
 

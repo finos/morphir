@@ -28,6 +28,9 @@ referenceFuzzer ir depth =
                 Type.CustomTypeSpecification args _ ->
                     args
 
+                Type.DerivedTypeSpecification args _ ->
+                    args
+
         fuzzerForType : ( FQName, Type.Specification () ) -> Fuzzer (Type ())
         fuzzerForType ( fQName, typeSpec ) =
             typeSpec

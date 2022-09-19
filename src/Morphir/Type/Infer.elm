@@ -22,6 +22,7 @@ import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaF
 import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.Solve as Solve exposing (SolutionMap(..), UnificationError(..), UnificationErrorType(..))
 import Set exposing (Set)
+import Morphir.SDK.Decimal exposing (Decimal)
 
 
 type alias TypedValue va =
@@ -364,17 +365,17 @@ constrainValue ir vars annotatedValue =
                 fieldConstraints : ConstraintSet
                 fieldConstraints =
                     fieldValues
-                        |> List.map (Tuple.second >> constrainValue ir vars)
+                        |> Dict.values
+                        |> List.map (constrainValue ir vars)
                         |> ConstraintSet.concat
 
                 recordType : MetaType
                 recordType =
                     fieldValues
-                        |> List.map
-                            (\( fieldName, fieldValue ) ->
-                                ( fieldName, metaTypeVarForValue fieldValue )
+                        |> Dict.map
+                            (\_ fieldValue ->
+                                metaTypeVarForValue fieldValue
                             )
-                        |> Dict.fromList
                         |> metaRecord Nothing
 
                 recordConstraints : ConstraintSet
@@ -720,16 +721,16 @@ constrainValue ir vars annotatedValue =
                 extensibleRecordType =
                     metaRecord (Just extendsVar)
                         (fieldValues
-                            |> List.map
-                                (\( fieldName, fieldValue ) ->
-                                    ( fieldName, metaTypeVarForValue fieldValue )
+                            |> Dict.map
+                                (\_ fieldValue ->
+                                    metaTypeVarForValue fieldValue
                                 )
-                            |> Dict.fromList
                         )
 
                 fieldValueConstraints : ConstraintSet
                 fieldValueConstraints =
                     fieldValues
+                        |> Dict.toList
                         |> List.map
                             (\( _, fieldValue ) ->
                                 constrainValue ir vars fieldValue
@@ -941,6 +942,10 @@ constrainLiteral thisTypeVar literalValue =
 
         FloatLiteral _ ->
             expectExactType MetaType.floatType
+
+        DecimalLiteral _ ->
+            ConstraintSet.singleton
+                (class (metaVar thisTypeVar) Class.Number)
 
 
 solve : IR -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )

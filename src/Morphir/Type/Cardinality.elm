@@ -65,6 +65,9 @@ cardinality ir vars tpe =
                                     )
                                 |> List.foldl sum null
 
+                        Type.DerivedTypeSpecification _ config ->
+                            cardinality ir vars config.baseType
+
                 Nothing ->
                     Unbound
 

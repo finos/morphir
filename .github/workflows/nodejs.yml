@@ -1,14 +1,11 @@
 # This workflow will do a clean install of node dependencies, build the source code and run tests across different versions of node
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
-
 name: Node.js CI
-
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
 jobs:
   # building project
   build:
@@ -18,7 +15,6 @@ jobs:
       matrix:
         node-version: [16.x]
         os: [ ubuntu-latest ]
-
     steps:
       - uses: actions/checkout@v2
       
@@ -42,83 +38,45 @@ jobs:
           key: ${{ runner.os }}-elm-${{ hashFiles('**/elm.json') }}
           restore-keys: |
             ${{ runner.os }}-elm- 
-
+      
       - name: Download dependencies
         run: npm ci
       
       - name: Build
         run: npm run build --if-present
-
-      - name: Zip Package For Test
-        run: npm pack 
-
-      - name: Install Zip Package
-        run: npm install $(ls *.tgz)
-
-      - name: Link To Local Package 
-        run: npm link 
-
+      
       - name: Running Test
         run: npm test
 
-      - name: Check Morphir Cmd 
-        run: |
-          cd tests-integration/reference-model
-          morphir -v 
-
-      - name: Upload to Artifact for Easier Publish 
-        uses: actions/upload-artifact@v3
-        with:
-          name: morphir-elm-artifact
-          path: ./*.tgz
-          if-no-files-found: error
-          retention-days: 0
-
-  # publish package 
-  publish:
-    name: Publish NPM Package
+  # CVE scanning 
+  cvescan:
+    name: CVE Scanning
+    runs-on: ubuntu-latest
     needs: [ build ]
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         node-version: [16.x]
-        os: [ ubuntu-latest ]
-
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: npx --yes auditjs ossi --whitelist allow-list.json
 
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: morphir-elm-artifact
-          path: ~/artifact-download/
-
-      - name: UnZipping Tar File 
-        run: | 
-          mkdir -p ~/artifact-download/morphir-elm-artifact
-          tar -zxvf $(ls ~/artifact-download/*.tgz)  -C ~/artifact-download/morphir-elm-artifact
-          ls -l ~/artifact-download/morphir-elm-artifact
-
-      - name: Install
-        run: npm install
-        
-      - name: Publish Elm (as needed)
-        uses: dillonkearns/elm-publish-action@1.1.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-elm: ./node_modules/.bin/elm 
-
-      - name: Publish (as needed)
-        uses: JS-DevTools/npm-publish@v1
-        if: env.NPM_TOKEN != 0
-        with:
-          token: ${{ env.NPM_TOKEN }}
-          package: ~/artifact-download/morphir-elm-artifact/package
+  # Semgrep static code analysis
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    needs: [ cvescan ]
+    container:
+      # A Docker image with Semgrep installed. Don't change this.
+      image: returntocorp/semgrep
+    # Skip any PR created by dependabot to avoid permission issues
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - uses: actions/checkout@v3
+      - run: semgrep scan --config auto --severity ERROR
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}

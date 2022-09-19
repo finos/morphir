@@ -16,9 +16,12 @@
 
 
 module Morphir.SDK.Aggregate exposing
-    ( Aggregation, aggregateMap, aggregateMap2, aggregateMap3
+    ( Aggregation
+    , groupBy, aggregate
+    , aggregateMap, aggregateMap2, aggregateMap3
     , count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
     , byKey, withFilter
+    , constructAggregationCall, AggregationCall(..), AggregateValue(..), ConstructAggregationError
     )
 
 {-| This module contains functions specifically designed to work with large data sets.
@@ -26,7 +29,9 @@ module Morphir.SDK.Aggregate exposing
 
 # Aggregations
 
-@docs Aggregation, aggregateMap, aggregateMap2, aggregateMap3
+@docs Aggregation
+@docs groupBy, aggregate
+@docs aggregateMap, aggregateMap2, aggregateMap3
 
 
 ## Operators
@@ -34,10 +39,20 @@ module Morphir.SDK.Aggregate exposing
 @docs count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
 @docs byKey, withFilter
 
+## Utilities
+
+@docs constructAggregationCall, AggregationCall, AggregateValue, ConstructAggregationError
+
 -}
 
+import Dict as CoreDict exposing (Dict)
 import AssocList as Dict exposing (Dict)
+import Morphir.IR.FQName as FQName exposing (FQName)
+import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.SDK.Key exposing (Key0, key0)
+import Morphir.SDK.ResultList as ResultList
+
 
 
 type Operator a
@@ -104,6 +119,10 @@ type alias Aggregation a key =
     , filter : a -> Bool
     , operator : Operator a
     }
+
+
+type alias Aggregator a key =
+    Aggregation a key -> Float
 
 
 operatorToAggregation : Operator a -> Aggregation a Key0
@@ -330,8 +349,8 @@ aggregateMap3 agg1 agg2 agg3 f list =
 aggregateHelp : (a -> key) -> Operator a -> List a -> Dict key Float
 aggregateHelp getKey op list =
     let
-        aggregate : (a -> Float) -> (Float -> Float -> Float) -> List a -> Dict key Float
-        aggregate getValue o sourceList =
+        agg : (a -> Float) -> (Float -> Float -> Float) -> List a -> Dict key Float
+        agg getValue o sourceList =
             sourceList
                 |> List.foldl
                     (\a dict ->
@@ -361,7 +380,7 @@ aggregateHelp getKey op list =
 
         sum : (a -> Float) -> List a -> Dict key Float
         sum getValue sourceList =
-            aggregate getValue (+) sourceList
+            agg getValue (+) sourceList
     in
     case op of
         Count ->
@@ -376,12 +395,307 @@ aggregateHelp getKey op list =
                 (sum (always 1) list)
 
         Min getValue ->
-            aggregate getValue min list
+            agg getValue min list
 
         Max getValue ->
-            aggregate getValue max list
+            agg getValue max list
 
         WAvg getWeight getValue ->
             combine (/)
                 (sum (\a -> getWeight a * getValue a) list)
                 (sum getWeight list)
+
+
+{-| Group a list of items into a dictionary. Grouping is done using a function that returns a key for each item.
+The resulting dictionary will use those keys as the key of each entry in the dictionary and values will be lists of
+items for each key.
+
+    testDataSet =
+        [ TestInput1 "k1_1" "k2_1" 1
+        , TestInput1 "k1_1" "k2_1" 2
+        , TestInput1 "k1_1" "k2_2" 3
+        , TestInput1 "k1_1" "k2_2" 4
+        , TestInput1 "k1_2" "k2_1" 5
+        , TestInput1 "k1_2" "k2_1" 6
+        , TestInput1 "k1_2" "k2_2" 7
+        , TestInput1 "k1_2" "k2_2" 8
+        ]
+
+    testDataSet
+        |> groupBy .key1
+            {- == Dict.fromList
+                        [ ( "k1_1"
+                          , [ TestInput1 "k1_1" "k2_1" 1
+                            , TestInput1 "k1_1" "k2_1" 2
+                            , TestInput1 "k1_1" "k2_2" 3
+                            , TestInput1 "k1_1" "k2_2" 4
+                            ]
+                        , ( "k1_2",
+                          , [ TestInput1 "k1_2" "k2_1" 5
+                            , TestInput1 "k1_2" "k2_1" 6
+                            , TestInput1 "k1_2" "k2_2" 7
+                            , TestInput1 "k1_2" "k2_2" 8
+                            ]
+                        ]
+            -}
+
+-}
+groupBy : (a -> key) -> List a -> Dict key (List a)
+groupBy getKey list =
+    list
+        |> List.foldl
+            (\a dictSoFar ->
+                dictSoFar
+                    |> Dict.update (getKey a)
+                        (\maybeListOfValues ->
+                            case maybeListOfValues of
+                                Just listOfValues ->
+                                    Just (a :: listOfValues)
+
+                                Nothing ->
+                                    Just [ a ]
+                        )
+            )
+            Dict.empty
+
+
+{-| Aggregates a dictionary that contains lists of items as values into a list that contains exactly one item per key.
+The first argument is a function that takes a key and an aggregator and it should return a single item in the resulting
+list. The aggregator is a function that takes one of the aggregation functions in this module (`count`, `sumOf`,
+`minimumOf`, ...) and returns the aggregated value for the list of values in the input dictionary.
+
+    grouped =
+        Dict.fromList
+            [ ( "k1_1"
+              , [ TestInput1 "k1_1" "k2_1" 1
+                , TestInput1 "k1_1" "k2_1" 2
+                , TestInput1 "k1_1" "k2_2" 3
+                , TestInput1 "k1_1" "k2_2" 4
+                ]
+            , ( "k1_2",
+              , [ TestInput1 "k1_2" "k2_1" 5
+                , TestInput1 "k1_2" "k2_1" 6
+                , TestInput1 "k1_2" "k2_2" 7
+                , TestInput1 "k1_2" "k2_2" 8
+                ]
+            ]
+
+    grouped
+        |> aggregate
+            (\key inputs ->
+                { key = key
+                , count = inputs (count |> withFilter (\a -> a.value < 7))
+                , sum = inputs (sumOf .value)
+                , max = inputs (maximumOf .value)
+                , min = inputs (minimumOf .value)
+                }
+            )
+            {- ==
+                [ { key = "k1_1", count = 4, sum = 10, max = 4, min = 1 }
+                , { key = "k1_2", count = 2, sum = 26, max = 8, min = 5 }
+                ]
+            -}
+
+This function is designed to be used in combination with `groupBy`.
+
+    testDataSet =
+            [ TestInput1 "k1_1" "k2_1" 1
+            , TestInput1 "k1_1" "k2_1" 2
+            , TestInput1 "k1_1" "k2_2" 3
+            , TestInput1 "k1_1" "k2_2" 4
+            , TestInput1 "k1_2" "k2_1" 5
+            , TestInput1 "k1_2" "k2_1" 6
+            , TestInput1 "k1_2" "k2_2" 7
+            , TestInput1 "k1_2" "k2_2" 8
+            ]
+
+        testDataSet
+            |> groupBy .key1
+            |> aggregate
+                (\key inputs ->
+                    { key = key
+                    , count = inputs (count |> withFilter (\a -> a.value < 7))
+                    , sum = inputs (sumOf .value)
+                    , max = inputs (maximumOf .value)
+                    , min = inputs (minimumOf .value)
+                    }
+                )
+                { ==
+                    [ { key = "k1_1", count = 4, sum = 10, max = 4, min = 1 }
+                    , { key = "k1_2", count = 2, sum = 26, max = 8, min = 5 }
+                    ]
+                }
+
+-}
+aggregate : (key -> Aggregator a Key0 -> b) -> Dict key (List a) -> List b
+aggregate f dict =
+    dict
+        |> Dict.toList
+        |> List.map
+            (\( key, items ) ->
+                f key
+                    (\agg ->
+                        items
+                            |> List.filter agg.filter
+                            |> aggregateHelp agg.key agg.operator
+                            |> Dict.get (key0 ())
+                            |> Maybe.withDefault 0
+                    )
+            )
+
+
+{-| An AggregationCall represents a call to Morphir.SDK.Aggregate.aggregate
+
+Its values are:
+
+  - **Group Key**
+      - i.e. the name of the column results are grouped by.
+  - **Returned Group Key**
+      - Optionally, the name to give the group column in the results.
+  - **Aggregate Values**
+      - i.e. the expressions that define columns in the output of aggregate.
+  - **Source Value**
+      - i.e. the Value that is being aggregated
+
+-}
+type AggregationCall
+    = AggregationCall Name (Maybe Name) (List AggregateValue) TypedValue
+
+
+{-| An AggregateValue represents a single aggregation used within the overall Aggregation call
+
+Its values are:
+
+  - **Field Name**
+      - i.e. The column name in the output.
+  - **Filter**
+      - A Maybe Value of a filter expression, if it exists.
+  - **Aggregation Name**
+      - The Name of the aggregation function used (e.g. "sumOf")
+  - **Aggregation Arg**
+      - Any argument passed to the aggregation (e.g. ".ageOfItem" in "sumOf .AgeOfItem")
+
+-}
+type AggregateValue
+    = AggregateValue Name (Maybe TypedValue) FQName (Maybe TypedValue)
+
+{-| A ConstructAggregationError represents the ways constructAggregationCall may fail
+
+Its values are:
+  - **TooManyKeyFields**
+      - i.e. in `aggregate`, 'key' was used to create multiple columns of the
+        field(s) the data is grouped by, which can't be represented in Spark.
+  - * UnhandledValue**
+      - i.e. the 'aggregateBody' or 'groupKey' Values passed into
+        constructAggregationCall could not be recognised as an aggregation.
+
+-}
+type ConstructAggregationError
+    = TooManyKeyFields TypedValue
+    | UnhandledValue String TypedValue
+
+
+{-| constructAggregationCall transforms a Morphir.SDK.Aggregate groupBy and agggregate call into a single data structure
+-}
+constructAggregationCall : TypedValue -> TypedValue -> TypedValue -> Result ConstructAggregationError AggregationCall
+constructAggregationCall aggregateBody groupKey sourceRelation =
+    let
+        getKeyField : TypedValue -> Result ConstructAggregationError (Maybe Name)
+        getKeyField body =
+            case body of
+                -- extract any field name that "key" is used for to check if the groupBy column is renamed
+                Value.Lambda _ (Value.AsPattern _ _ keyName) (Value.Lambda _ (Value.AsPattern _ _ inputsName) (Value.Record _ fields)) ->
+                    let
+                        keyFields =
+                            fields
+                                |> CoreDict.toList
+                                |> List.filter
+                                    (\( name, value ) ->
+                                        case value of
+                                            Value.Variable _ varName ->
+                                                varName == keyName
+
+                                            _ ->
+                                                False
+                                    )
+                    in
+                    case keyFields of
+                        -- expect only one field that uses "key"
+                        ( name, _ ) :: [] ->
+                            Just name |> Ok
+
+                        [] ->
+                            Nothing |> Ok
+
+                        _ :: _ :: _ ->
+                            -- i.e. a list with at least two entries
+                            Err (TooManyKeyFields body)
+
+                other ->
+                    Err (UnhandledValue "When matching function body for keyFields" body)
+
+        getAggFunc : TypedValue -> Result ConstructAggregationError ( FQName, Maybe TypedValue )
+        getAggFunc val =
+            case val of
+                Value.Reference _ funcName ->
+                    ( funcName, Nothing ) |> Ok
+
+                Value.Apply _ (Value.Reference _ funcName) funcArg ->
+                    ( funcName, Just funcArg ) |> Ok
+
+                other ->
+                    Err (UnhandledValue "When matching for aggregation function" other)
+
+        getAggregateValues : TypedValue -> Result ConstructAggregationError (List AggregateValue)
+        getAggregateValues body =
+            case body of
+                Value.Lambda _ (Value.AsPattern _ _ keyName) (Value.Lambda _ (Value.AsPattern _ _ inputsName) (Value.Record _ fields)) ->
+                    fields
+                        |> CoreDict.toList
+                        |> List.filter
+                            (\( name, value ) ->
+                                -- Only operate on lines that use "input"
+                                case value of
+                                    Value.Apply _ (Value.Variable _ varName) _ ->
+                                        True
+
+                                    _ ->
+                                        False
+                            )
+                        |> List.map
+                            (\( name, value ) ->
+                                case value of
+                                    Value.Apply _ _ (Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "aggregate" ] ], [ "with", "filter" ] )) filterFunc) aggFunc) ->
+                                        getAggFunc aggFunc
+                                            |> Result.map
+                                                (\( funcName, funcArg ) ->
+                                                    AggregateValue name (Just filterFunc) funcName funcArg
+                                                )
+
+                                    Value.Apply _ _ aggFunc ->
+                                        getAggFunc aggFunc
+                                            |> Result.map
+                                                (\( funcName, funcArg ) ->
+                                                    AggregateValue name Nothing funcName funcArg
+                                                )
+
+                                    other ->
+                                        Err (UnhandledValue "When matching for aggregate values" other)
+                            )
+                        |> ResultList.keepFirstError
+
+                other ->
+                    Err (UnhandledValue "When matching function body for aggregate values" aggregateBody)
+    in
+    Result.map4
+        AggregationCall
+        (case groupKey of
+            Value.FieldFunction _ fieldName ->
+                Ok fieldName
+
+            _ ->
+                Err (UnhandledValue "When extracting aggregation's groupBy key" groupKey)
+        )
+        (getKeyField aggregateBody)
+        (getAggregateValues aggregateBody)
+        (Ok sourceRelation)

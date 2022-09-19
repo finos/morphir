@@ -144,7 +144,7 @@ mapTypeAnnotation resolveTypeName (Node _ typeAnnotation) =
 -- Value Mappings
 
 
-mapDeclarationsToValue : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> List (Node Declaration) -> Result Errors (List ( FQName, ( Maybe (Type ()), Value () () ) ))
+mapDeclarationsToValue : (List String -> String -> KindOfName -> Result IncrementalResolve.Error FQName) -> ParsedModule -> List (Node Declaration) -> Result Errors (List ( FQName, ( ( Maybe (Type ()), Value () () ), String ) ))
 mapDeclarationsToValue resolveName parsedModule decls =
     let
         moduleName : Elm.ModuleName
@@ -187,9 +187,15 @@ mapDeclarationsToValue resolveName parsedModule decls =
                                             in
                                             ( maybeValueType, maybeTypedValueDef.body |> Value.mapValueAttributes (always ()) identity )
                                         )
+
+                            valueDoc : String
+                            valueDoc =
+                                function.documentation
+                                    |> Maybe.map (Node.value >> String.dropLeft 3 >> String.dropRight 2)
+                                    |> Maybe.withDefault ""
                         in
                         valueDef
-                            |> Result.map2 Tuple.pair valueName
+                            |> Result.map2 (\valName valDef -> ( valName, ( valDef, valueDoc ) )) valueName
                             |> Just
 
                     _ ->
@@ -375,6 +381,7 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
                     )
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
+                |> Result.map Dict.fromList
                 |> Result.map (Value.Record defaultValueAttribute)
 
         Expression.ListExpr itemNodes ->
@@ -397,24 +404,32 @@ mapExpression resolveReferenceName moduleName variables (Node range expr) =
             Ok (Value.FieldFunction defaultValueAttribute (fieldName |> Name.fromString))
 
         Expression.RecordUpdateExpression (Node targetVarRange targetVarName) fieldNodes ->
+            let
+                wrapInUpdateRecord : Value TypeAttribute ValueAttribute -> Result (List Error) (Value TypeAttribute ValueAttribute)
+                wrapInUpdateRecord targetValue =
+                    fieldNodes
+                        |> List.map Node.value
+                        |> List.map
+                            (\( Node _ fieldName, fieldValue ) ->
+                                mapExpression resolveReferenceName moduleName variables fieldValue
+                                    |> Result.map (Tuple.pair (fieldName |> Name.fromString))
+                            )
+                        |> ResultList.keepAllErrors
+                        |> Result.mapError List.concat
+                        |> Result.map Dict.fromList
+                        |> Result.map
+                            (Value.UpdateRecord
+                                defaultValueAttribute
+                                targetValue
+                            )
+            in
             if variables |> Set.member targetVarName then
-                fieldNodes
-                    |> List.map Node.value
-                    |> List.map
-                        (\( Node _ fieldName, fieldValue ) ->
-                            mapExpression resolveReferenceName moduleName variables fieldValue
-                                |> Result.map (Tuple.pair (fieldName |> Name.fromString))
-                        )
-                    |> ResultList.keepAllErrors
-                    |> Result.mapError List.concat
-                    |> Result.map
-                        (Value.UpdateRecord
-                            defaultValueAttribute
-                            (targetVarName |> Name.fromString |> Value.Variable defaultValueAttribute)
-                        )
+                wrapInUpdateRecord (targetVarName |> Name.fromString |> Value.Variable defaultValueAttribute)
 
             else
-                Err [ UnresolvedVariable (SourceLocation moduleName targetVarRange) targetVarName ]
+                resolveReferenceName [] targetVarName Value
+                    |> Result.mapError (ResolveError (SourceLocation moduleName targetVarRange) >> List.singleton)
+                    |> Result.andThen (Value.Reference defaultValueAttribute >> wrapInUpdateRecord)
 
         Expression.GLSLExpression _ ->
             Err

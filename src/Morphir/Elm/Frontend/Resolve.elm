@@ -285,7 +285,6 @@ moduleMapping =
         , ( [ [ "char" ] ], sdkModule [ "char" ] )
         , ( [ [ "tuple" ] ], sdkModule [ "tuple" ] )
         , ( [ [ "regex" ] ], sdkModule [ "regex" ] )
-        , ( [ [ "decimal" ] ], sdkModule [ "decimal" ] )
         ]
 
 

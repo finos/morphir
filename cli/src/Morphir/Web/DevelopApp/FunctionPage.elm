@@ -368,5 +368,3 @@ evaluateOutput theme config ir testCase fQName =
 
         Err error ->
             text (Debug.toString error)
-
-

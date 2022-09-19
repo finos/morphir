@@ -38,7 +38,7 @@ import List
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.SourceCode exposing (Doc)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
-import Morphir.IR.Module exposing (ModuleName)
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Package as Package
 import Morphir.IR.Type exposing (Type)
 import Morphir.Scala.Feature.Codec exposing (mapModuleDefinitionToCodecs)

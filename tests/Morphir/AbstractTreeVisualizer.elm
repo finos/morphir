@@ -10,6 +10,8 @@ import Morphir.IR.Value exposing (Value(..))
 import Morphir.Visual.Components.AritmeticExpressions exposing (ArithmeticOperator(..), ArithmeticOperatorTree(..))
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import Morphir.SDK.Decimal exposing (Decimal)
+import Decimal
 
 
 
@@ -324,6 +326,9 @@ helperFunctionValue value1 =
 
                 FloatLiteral float ->
                     "AVL (Float) = " ++ String.fromFloat float
+
+                DecimalLiteral decimal ->
+                    "AVL (Decimal) = " ++ Decimal.toString decimal
 
         Variable _ name ->
             "AVL (Variable) -> " ++ Name.toTitleCase name

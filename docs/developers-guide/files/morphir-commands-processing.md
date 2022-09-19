@@ -12,7 +12,7 @@ All morphir-elm commands are processed in NodeJS. This is because Elm is not bui
 work outside a browser and has no way to interact with the terminal.
 Morphir-elm uses the elm [javascript-interop](https://guide.elm-lang.org/interop) (i.e. ports) feature to foster communication between the
 NodeJS environment and the Elm platform. Code validation and the generation of the IR happens
-withing Elm.
+within Elm.
 Here's a list of the commands along with the supported options for each command and what they mean.
 <br /> <br /> The following commands are described in this document: <br />
 [1. morphir-elm make](#morphir-elm-make) <br />
@@ -131,7 +131,7 @@ command is specified in the [morphir-elm-develop.js]([CLI.elm](https://github.co
 
 ### Command Execution Process
 Here's a description of the processes involved with running the `morphir-elm develop` command <br />
-The web pages is located inside the sever/web folder of the project directory.
+The web pages are located inside the sever/web folder of the project directory.
 The following endpoints are exposed by the after by the `morphir-elm develop` command
 '/' <br />
 '/server/morphir.json - serves the content of the morphir.json file' <br />

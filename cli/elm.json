@@ -7,6 +7,7 @@
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {
+            "chain-partners/elm-bignum": "1.0.1",
             "cuducos/elm-format-number": "8.1.4",
             "dillonkearns/elm-markdown": "7.0.0",
             "dosarf/elm-tree-view": "3.0.0",
@@ -24,8 +25,10 @@
             "elm-community/list-extra": "8.2.3",
             "elm-community/maybe-extra": "5.2.0",
             "elm-explorations/markdown": "1.0.0",
+            "justinmimbs/date": "4.0.1",
             "matthewsj/elm-ordering": "2.0.0",
             "mdgriffith/elm-ui": "1.1.8",
+            "pzp1997/assoc-list": "1.0.0",
             "rundis/elm-bootstrap": "5.2.0",
             "stil4m/elm-syntax": "7.2.0"
         },

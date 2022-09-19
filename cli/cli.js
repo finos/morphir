@@ -15,10 +15,10 @@ const worker = require('./Morphir.Elm.CLI').Elm.Morphir.Elm.CLI.init()
 
 
 async function make(projectDir, options) {
-    const morphirJsonPath = path.join(projectDir, 'morphir.json')
+    const morphirJsonPath = path.join(projectDir, 'morphir.json')  
     const morphirJsonContent = await readFile(morphirJsonPath)
     const morphirJson = JSON.parse(morphirJsonContent.toString())
-    const sourceFiles = await readElmSources(path.join(projectDir, morphirJson.sourceDirectory))
+    const sourceFiles = await readElmSources(path.join(projectDir, morphirJson.sourceDirectory))  
     return packageDefinitionFromSource(morphirJson, sourceFiles, options)
 }
 
@@ -59,11 +59,11 @@ async function readElmSources(dir) {
         const elmSources =
             entries
                 .filter(entry => entry.isFile() && entry.name.endsWith('.elm'))
-                .map(entry => readElmSource(path.join(currentDir, entry.name)))
+                .map(entry => readElmSource(path.join(currentDir, entry.name)))  
         const subDirSources =
             entries
                 .filter(entry => entry.isDirectory())
-                .map(entry => readDir(path.join(currentDir, entry.name)))
+                .map(entry => readDir(path.join(currentDir, entry.name)))  
                 .reduce(async (soFarPromise, nextPromise) => {
                     const soFar = await soFarPromise
                     const next = await nextPromise
@@ -79,7 +79,7 @@ async function gen(input, outputPath, options) {
     await mkdir(outputPath, {
         recursive: true
     })
-    const morphirIrJson = await readFile(path.resolve(input))
+    const morphirIrJson = await readFile(path.resolve(input))  
     const opts = options
     opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(',') : null
     opts.includeCodecs = options.includeCodecs ? true : false
@@ -90,8 +90,8 @@ async function gen(input, outputPath, options) {
         fileMap.map(async ([
             [dirPath, fileName], content
         ]) => {
-            const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)
-            const filePath = path.join(fileDir, fileName)
+            const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)  
+            const filePath = path.join(fileDir, fileName)  
             if (await fileExist(filePath)) {
                 console.log(`UPDATE - ${filePath}`)
             } else {
@@ -110,7 +110,7 @@ async function gen(input, outputPath, options) {
     const deletePromises =
         filesToDelete.map(async (fileToDelete) => {
             console.log(`DELETE - ${fileToDelete}`)
-            return fs.unlinkSync(fileToDelete)
+            return fs.unlinkSync(fileToDelete)  
         })
     copyRedistributables(options, outputPath)
     return Promise.all(writePromises.concat(deletePromises))
@@ -118,7 +118,7 @@ async function gen(input, outputPath, options) {
 
 function copyRedistributables(options, outputPath) {
     const copyFiles = (src, dest) => {
-        const sourceDirectory = path.join(path.dirname(__dirname), 'redistributable', src)
+        const sourceDirectory = path.join(path.dirname(__dirname), 'redistributable', src)  
         copyRecursiveSync(sourceDirectory, outputPath)
     }
     if (options.target == 'SpringBoot') {
@@ -132,19 +132,19 @@ function copyRedistributables(options, outputPath) {
 }
 
 function copyRecursiveSync(src, dest) {
-    const exists = fs.existsSync(src);
+    const exists = fs.existsSync(src);  
     if (exists) {
-        const stats = exists && fs.statSync(src);
+        const stats = exists && fs.statSync(src);  
         const isDirectory = exists && stats.isDirectory();
         if (isDirectory) {
-            if (!fs.existsSync(dest))
-                fs.mkdirSync(dest);
-            fs.readdirSync(src).forEach(function (childItemName) {
-                copyRecursiveSync(path.join(src, childItemName),
-                    path.join(dest, childItemName));
+            if (!fs.existsSync(dest))  
+                fs.mkdirSync(dest);  
+            fs.readdirSync(src).forEach(function (childItemName) {  
+                copyRecursiveSync(path.join(src, childItemName),  
+                    path.join(dest, childItemName));  
             });
         } else {
-            fs.copyFileSync(src, dest);
+            fs.copyFileSync(src, dest);  
             console.log(`COPY - ${dest}`)
         }
     }
@@ -170,7 +170,7 @@ async function generate(options, ir) {
 
 async function fileExist(filePath) {
     return new Promise((resolve, reject) => {
-        fs.access(filePath, fs.F_OK, (err) => {
+        fs.access(filePath, fs.F_OK, (err) => {  
             if (err) {
                 resolve(false)
             } else {
@@ -188,14 +188,14 @@ async function findFilesToDelete(outputPath, fileMap) {
         const filesToDelete =
             entries
                 .filter(entry => {
-                    const entryPath = path.join(currentDir, entry.name)
+                    const entryPath = path.join(currentDir, entry.name)  
                     return entry.isFile() && !generatedFiles.includes(entryPath)
                 })
-                .map(entry => path.join(currentDir, entry.name))
+                .map(entry => path.join(currentDir, entry.name))  
         const subDirFilesToDelete =
             entries
                 .filter(entry => entry.isDirectory())
-                .map(entry => readDir(path.join(currentDir, entry.name), generatedFiles))
+                .map(entry => readDir(path.join(currentDir, entry.name), generatedFiles))  
                 .reduce(async (soFarPromise, nextPromise) => {
                     const soFar = await soFarPromise
                     const next = await nextPromise
@@ -208,8 +208,8 @@ async function findFilesToDelete(outputPath, fileMap) {
         fileMap.map(([
             [dirPath, fileName], content
         ]) => {
-            const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)
-            return path.resolve(fileDir, fileName)
+            const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)  
+            return path.resolve(fileDir, fileName)  
         })
     return Promise.all(await readDir(outputPath, files))
 }
@@ -221,10 +221,10 @@ async function writeFile(filePath, content) {
     return await fsWriteFile(filePath, content)
 }
 async function test(projectDir) {
-    const morphirIRJsonPath = path.join(projectDir, 'morphir-ir.json')
+    const morphirIRJsonPath = path.join(projectDir, 'morphir-ir.json') 
     const morphirIRJsonContent = await readFile(morphirIRJsonPath)
     const morphirIRJson = JSON.parse(morphirIRJsonContent.toString())
-    const morphirTestsJsonPath = path.join(projectDir, 'morphir-tests.json')
+    const morphirTestsJsonPath = path.join(projectDir, 'morphir-tests.json')  
     const morphirTestsJsonContent = await readFile(morphirTestsJsonPath)
     const morphirTestsJson = JSON.parse(morphirTestsJsonContent.toString())
     return testResult(morphirIRJson, morphirTestsJson)

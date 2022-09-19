@@ -11,7 +11,7 @@ const writeFile = util.promisify(fs.writeFile)
 // utility function for joining strings with newlines
 const concat = (...rest: string[]): string => rest.join('\n')
 
-describe('Testing Morphir-elm make command', () => {
+describe('Testing Morphir make command', () => {
 	const PATH_TO_PROJECT: string = path.join(__dirname, 'temp/project')
 	const CLI_OPTIONS = { typesOnly: false }
 	const morphirJSON = {
@@ -263,7 +263,58 @@ describe('Testing Morphir-elm make command', () => {
 		expect(irUtils.moduleHasValue(rentalsModule, 'level')).toBe(false)
 	})
 
-	test('should fail to update type', async () => {
+    test('should add type documentation', async () => {
+        // add a type documentation
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (..)',
+				'',
+				'{-| documentation for Type -}',
+				'type alias Type = String'
+			)
+		)
+        let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+        const rentalModule = irUtils.findModuleByName('Rentals', JSON.parse(IR))
+        const typ = irUtils.findTypeByName(rentalModule, 'Type')
+        const doc: string = irUtils.getTypeDoc(typ)
+		expect(doc).toMatch(/.*documentation for Type.*/)
+    })
+
+    test('should update type documentation', async () => {
+        // add a type documentation
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (..)',
+				'',
+				'{-| documentation for Type -}',
+				'type alias Type = String'
+			)
+		)
+        let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+        
+        // write the IR to disk
+        await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR)))
+
+        // update a value documentation
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (..)',
+				'',
+				'{-| documentation for Type updated -}',
+				'type alias Type = String'
+			)
+		)
+        IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+        const rentalModule = irUtils.findModuleByName('Rentals', JSON.parse(IR))
+        const typ = irUtils.findTypeByName(rentalModule, 'Type')
+        const doc: string = irUtils.getTypeDoc(typ)
+		expect(doc).toMatch(/.*documentation for Type updated.*/)
+    })
+
+	test.skip('should fail to update type', async () => {
 		await writeFile(
 			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
 			concat(
@@ -286,7 +337,8 @@ describe('Testing Morphir-elm make command', () => {
 		const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 
 		await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR)))
-		// make type private
+		
+        // make type private
 		await writeFile(
 			path.join(PATH_TO_PROJECT, 'src/Package', 'RentalTypes.elm'),
 			concat(
@@ -301,7 +353,7 @@ describe('Testing Morphir-elm make command', () => {
 		await expect(cli.make(PATH_TO_PROJECT, CLI_OPTIONS)).rejects.toBeInstanceOf(Array)
 	})
 
-    test.skip('should make value private', async () => {
+    test('should make value private', async () => {
 		await writeFile(
 			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
 			concat(
@@ -316,5 +368,57 @@ describe('Testing Morphir-elm make command', () => {
         const IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
 		const rentalModule = irUtils.findModuleByName('Rentals', JSON.parse(IR))
 		expect(irUtils.getValueAccess(rentalModule, "privateValue")).toMatch(/[Pp]rivate/)
+	})
+
+    test('should add value documentation correctly', async () => {
+		// add a value documentation
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (..)',
+				'',
+				'{-| documentation for foo -}',
+				'foo = 1'
+			)
+		)
+        let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+        const rentalModule = irUtils.findModuleByName('Rentals', JSON.parse(IR))
+        const foo = irUtils.findValueByName(rentalModule, 'foo')
+        const doc: string = irUtils.getValueDoc(foo)
+		expect(doc).toMatch(/.*documentation for foo.*/)
+
+	})
+
+     test('should update value documentation correctly', async () => {
+		// add a value documentation
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (..)',
+				'',
+				'{-| documentation for foo -}',
+				'foo = 1'
+			)
+		)
+        let IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+        
+        // write the IR to disk
+        await writeFile(path.join(PATH_TO_PROJECT, 'morphir-ir.json'), JSON.stringify(JSON.parse(IR)))
+
+        // update a value documentation
+		await writeFile(
+			path.join(PATH_TO_PROJECT, 'src/Package', 'Rentals.elm'),
+			concat(
+				'module Package.Rentals exposing (..)',
+				'',
+				'{-| foo documentation -}',
+				'foo = 1'
+			)
+		)
+        IR = await cli.make(PATH_TO_PROJECT, CLI_OPTIONS)
+        const rentalModule = irUtils.findModuleByName('Rentals', JSON.parse(IR))
+        const foo = irUtils.findValueByName(rentalModule, 'foo')
+        const doc: string = irUtils.getValueDoc(foo)
+		expect(doc).toMatch(/.*foo documentation.*/)
 	})
 })

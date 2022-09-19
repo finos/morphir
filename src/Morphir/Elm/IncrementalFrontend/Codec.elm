@@ -124,7 +124,10 @@ encodeError error =
                 ]
 
         IncrementalFrontend.MappingError errors ->
-            Encode.list MapperCodec.encodeError errors
+            Encode.list identity
+                [ Encode.string "MappingError"
+                , Encode.list MapperCodec.encodeError errors
+                ]
 
         IncrementalFrontend.InvalidSourceFilePath path message ->
             Encode.list identity
@@ -132,10 +135,6 @@ encodeError error =
                 , Encode.string path
                 , Encode.string message
                 ]
-
-        IncrementalFrontend.NoExposedModulesFound ->
-            Encode.list identity
-                [ Encode.string "NoExposedModulesFound" ]
 
         IncrementalFrontend.TypeNotFound fQName ->
             Encode.list identity
