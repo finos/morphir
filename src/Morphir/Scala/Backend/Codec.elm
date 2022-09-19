@@ -36,7 +36,7 @@ import Set
 -}
 decodeOptions : Decode.Decoder Options
 decodeOptions =
-    Decode.map Options
+    Decode.map2 Options
         (Decode.field "limitToModules"
             (Decode.maybe
                 (Decode.list
@@ -46,4 +46,7 @@ decodeOptions =
                     |> Decode.map Set.fromList
                 )
             )
+        )
+        (Decode.field "includeCodecs"
+            Decode.bool
         )
