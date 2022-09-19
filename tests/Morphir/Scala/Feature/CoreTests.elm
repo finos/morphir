@@ -1,4 +1,4 @@
-module Morphir.Scala.BackendTests exposing (..)
+module Morphir.Scala.Feature.CoreTests exposing (..)
 
 import Expect
 import Morphir.IR.FQName as FQName
@@ -6,7 +6,7 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Path as IRPath
 import Morphir.IR.Type as IRType
 import Morphir.Scala.AST as Scala
-import Morphir.Scala.Backend as Backend
+import Morphir.Scala.Feature.Core as Core
 import Test exposing (Test, describe, test)
 
 
@@ -17,7 +17,7 @@ mapValueNameTests =
             test ("Genarated Scala name " ++ outString) <|
                 \_ ->
                     Name.fromList inList
-                        |> Backend.mapValueName
+                        |> Core.mapValueName
                         |> Expect.equal outString
     in
     describe "toScalaName"
@@ -33,7 +33,7 @@ mapFQNameToPathAndNameTests =
             test ("Generate Path and Name " ++ FQName.toString inFQName) <|
                 \_ ->
                     inFQName
-                        |> Backend.mapFQNameToPathAndName
+                        |> Core.mapFQNameToPathAndName
                         |> Expect.equal outTuple
     in
     describe "toPathAndName"
@@ -51,7 +51,7 @@ mapFQNameToTypeRefTests =
             test "Generated Type Reference" <|
                 \_ ->
                     inFQName
-                        |> Backend.mapFQNameToTypeRef
+                        |> Core.mapFQNameToTypeRef
                         |> Expect.equal outTypeRef
     in
     describe "toTypeRef"
@@ -64,7 +64,7 @@ mapTypeTests_Variable : Test
 mapTypeTests_Variable =
     let
         scalaVariableType =
-            Backend.mapType (IRType.Variable () [ "foo" ])
+            Core.mapType (IRType.Variable () [ "foo" ])
     in
     describe "Map Morphir IR Variable to Scala Type Variable"
         [ test "Map IR String to Scala String" <|
@@ -78,7 +78,7 @@ mapTypeTests_Reference =
     describe "Map IR Reference to Scala Reference"
         [ test "Map IR String to Scala String" <|
             \_ ->
-                Backend.mapType (IRType.Reference () (FQName.fqn "Morphir.sdk" "string" "string") [])
+                Core.mapType (IRType.Reference () (FQName.fqn "Morphir.sdk" "string" "string") [])
                     |> Expect.equal (Scala.TypeRef [ "morphir", "sdk", "String" ] "String")
         , test "Map IR List String to Scala List String" <|
             \_ ->
@@ -86,7 +86,7 @@ mapTypeTests_Reference =
                     type1 =
                         IRType.Reference () (FQName.fqn "Morphir.sdk" "string" "string")
                 in
-                Backend.mapType (IRType.Reference () (FQName.fqn "Morphir.sdk" "string" "string") [])
+                Core.mapType (IRType.Reference () (FQName.fqn "Morphir.sdk" "string" "string") [])
                     |> Expect.equal (Scala.TypeRef [ "morphir", "sdk", "String" ] "String")
         ]
 
@@ -98,7 +98,7 @@ mapTypeTest_Tuple =
             test "Generated Tuple Variable" <|
                 \_ ->
                     inIRTuple
-                        |> Backend.mapType
+                        |> Core.mapType
                         |> Expect.equal outScalaTuple
     in
     describe "Map Morphir IR Tuple type to Scala Tuple"
@@ -122,18 +122,18 @@ mapTypeTests_Record =
         scalafield1 =
             Scala.FunctionDecl
                 { modifiers = []
-                , name = Backend.mapValueName [ "bar" ]
+                , name = Core.mapValueName [ "bar" ]
                 , typeArgs = []
                 , args = []
-                , returnType = Just (Backend.mapType (IRType.Reference () (FQName.fqn "Morphir.SDK" "Basics" "String") []))
+                , returnType = Just (Core.mapType (IRType.Reference () (FQName.fqn "Morphir.SDK" "Basics" "String") []))
                 , body = Nothing
                 }
     in
     describe "Record Mapping Test"
         [ test "Test for record with empty field" <|
-            \_ -> Backend.mapType (IRType.Record () []) |> Expect.equal (Scala.StructuralType [])
+            \_ -> Core.mapType (IRType.Record () []) |> Expect.equal (Scala.StructuralType [])
         , test "Test for record with a single field" <|
-            \_ -> Backend.mapType (IRType.Record () [ field2 ]) |> Expect.equal (Scala.StructuralType [ scalafield1 ])
+            \_ -> Core.mapType (IRType.Record () [ field2 ]) |> Expect.equal (Scala.StructuralType [ scalafield1 ])
         ]
 
 
@@ -148,18 +148,18 @@ mapTypeTests_ExtensibleRecord =
         scalafield1 =
             Scala.FunctionDecl
                 { modifiers = []
-                , name = Backend.mapValueName [ "foo" ]
+                , name = Core.mapValueName [ "foo" ]
                 , typeArgs = []
                 , args = []
-                , returnType = Just (Backend.mapType (IRType.Reference () (FQName.fromString "Morphir.SDK.Basics.String" ".") []))
+                , returnType = Just (Core.mapType (IRType.Reference () (FQName.fromString "Morphir.SDK.Basics.String" ".") []))
                 , body = Nothing
                 }
     in
     describe "Extensible Record Mapping"
         [ test "Test for empty extensible record" <|
-            \_ -> Backend.mapType (IRType.ExtensibleRecord () [ "foo" ] []) |> Expect.equal (Scala.StructuralType [])
+            \_ -> Core.mapType (IRType.ExtensibleRecord () [ "foo" ] []) |> Expect.equal (Scala.StructuralType [])
         , test "Test for extensible record with single field" <|
-            \_ -> Backend.mapType (IRType.ExtensibleRecord () [ "bar" ] [ iRField1 ]) |> Expect.notEqual (Scala.StructuralType [ scalafield1 ])
+            \_ -> Core.mapType (IRType.ExtensibleRecord () [ "bar" ] [ iRField1 ]) |> Expect.notEqual (Scala.StructuralType [ scalafield1 ])
         ]
 
 
@@ -172,6 +172,6 @@ matTypeTests_Function =
     describe "Map function test"
         [ test "Test for function of string and string" <|
             \_ ->
-                Backend.mapType (IRType.Function () (IRType.Reference () (FQName.fqn "Morphir.sdk" "Basics" "String") []) (IRType.Reference () (FQName.fqn "Morphir.SDK" "Basics" "String") []))
+                Core.mapType (IRType.Function () (IRType.Reference () (FQName.fqn "Morphir.sdk" "Basics" "String") []) (IRType.Reference () (FQName.fqn "Morphir.SDK" "Basics" "String") []))
                     |> Expect.equal (Scala.FunctionType (Scala.TypeRef [ "morphir", "sdk", "Basics" ] "String") (Scala.TypeRef [ "morphir", "sdk", "Basics" ] "String"))
         ]
