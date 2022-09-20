@@ -19,7 +19,7 @@ import Morphir.SDK.Decimal exposing (Decimal)
 import Morphir.Type.Class as Class exposing (Class)
 import Morphir.Type.Constraint as Constraint exposing (Constraint(..), class, equality, isRecursive)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
-import Morphir.Type.Counter as Counter exposing (Counter)
+import Morphir.Type.Count as Count exposing (Count)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaClosedRecord, metaFun, metaOpenRecord, metaTuple, metaUnit, metaVar, variableByName)
 import Morphir.Type.MetaTypeMapping as MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.Solve as Solve exposing (SolutionMap(..), UnificationError(..), UnificationErrorType(..))
@@ -161,59 +161,13 @@ typeErrorToMessage typeError =
 inferValueDefinition : IR -> Value.Definition () va -> Result TypeError (Value.Definition () ( va, Type () ))
 inferValueDefinition ir def =
     let
-        --recordAliases : List ( MetaType, FQName )
-        --recordAliases =
-        --    let
-        --        -- Gather all the types in the function signature
-        --        typesInSignature : List (Type ())
-        --        typesInSignature =
-        --            def.inputTypes
-        --                |> List.map (\( _, _, tpe ) -> tpe)
-        --                |> (::) def.outputType
-        --
-        --        -- Gather all the references
-        --        referencesInSignature : Set FQName
-        --        referencesInSignature =
-        --            typesInSignature
-        --                |> List.map Type.collectReferences
-        --                |> List.foldl Set.union Set.empty
-        --    in
-        --    -- collect references that refer to records
-        --    referencesInSignature
-        --        |> Set.toList
-        --        |> List.filterMap
-        --            (\typeRef ->
-        --                case IR.lookupTypeSpecification (IR.resolveAliases typeRef ir) ir of
-        --                    Just (Type.TypeAliasSpecification _ ((Type.Record _ _) as recordType)) ->
-        --                        Just ( MetaTypeMapping.concreteTypeToMetaType (MetaType.variableByIndex 0) ir Dict.empty recordType, typeRef )
-        --
-        --                    _ ->
-        --                        Nothing
-        --            )
-        ( annotatedDef, lastVarIndex ) =
-            annotateDefinition 1 def
-
-        constraints : ConstraintSet
-        constraints =
-            let
-                cs =
-                    constrainDefinition
-                        (MetaType.variableByIndex 0)
-                        ir
-                        Dict.empty
-                        annotatedDef
-
-                --_ =
-                --    Debug.log "Generated constraints" (cs |> ConstraintSet.toList |> List.length)
-            in
-            cs
+        ( count, ( defVar, annotatedDef, constraints ) ) =
+            constrainDefinition ir Dict.empty def
+                |> Count.apply 0
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
         solution =
             solve ir constraints
-
-        --_ =
-        --    Debug.log "Generated solutions" (solution |> Result.map (Tuple.second >> Solve.toList) |> Result.withDefault [] |> List.length)
     in
     solution
         |> Result.map (applySolutionToAnnotatedDefinition ir annotatedDef)
@@ -222,14 +176,9 @@ inferValueDefinition ir def =
 inferValue : IR -> Value () va -> Result TypeError (TypedValue va)
 inferValue ir untypedValue =
     let
-        ( annotatedValue, lastVarIndex ) =
-            annotateValue 0 untypedValue
-
-        constraints : ConstraintSet
-        constraints =
-            constrainValue ir
-                Dict.empty
-                annotatedValue
+        ( count, ( annotatedValue, constraints ) ) =
+            constrainValue ir Dict.empty untypedValue
+                |> Count.apply 0
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
         solution =
@@ -239,40 +188,28 @@ inferValue ir untypedValue =
         |> Result.map (applySolutionToAnnotatedValue ir annotatedValue)
 
 
-annotateDefinition : Int -> Value.Definition ta va -> ( Value.Definition ta ( va, Variable ), Int )
-annotateDefinition baseIndex def =
-    let
-        annotatedInputTypes : List ( Name, ( va, Variable ), Type ta )
-        annotatedInputTypes =
-            def.inputTypes
-                |> List.indexedMap
-                    (\index ( name, va, tpe ) ->
-                        ( name, ( va, MetaType.variableByIndex (baseIndex + index) ), tpe )
-                    )
+{-| Takes an untyped value definition as an input and returns the same value definition annotated with meta type
+variables and a set of type constraints that refer to those variables.
 
-        ( annotatedBody, lastVarIndex ) =
-            annotateValue (baseIndex + List.length def.inputTypes) def.body
-    in
-    ( { inputTypes =
-            annotatedInputTypes
-      , outputType =
-            def.outputType
-      , body =
-            annotatedBody
-      }
-    , lastVarIndex
-    )
+Detailed description of inputs and outputs:
 
+    - Input
+        - `IR` - used to resolve references to other types and values
+        - `Dict Name Variable` - dictionary that assigns a meta type variable to each variable in the scope
+        - `Value.Definition () va` - untyped value definition with an arbitrary attribute that will be retained
+    - Output
+        - `Count` - utility to allow generating a unique id for (counting) specific value nodes
+        - `Variable` - meta type variable that refers to this definition. This is required because a value definition
+        does not have it's own annotations so it cannot be returned as part of the value definition.
+        - `Value.Definition () ( va, Variable )` - value definition that retains the attribute that was passed in and
+        adds a meta type variable to each value node
+        - `ConstraintSet` - set of type constraints that use the meta type variables that were added to each value node
 
-annotateValue : Int -> Value ta va -> ( Value ta ( va, Variable ), Int )
-annotateValue baseIndex untypedValue =
-    untypedValue
-        |> Value.indexedMapValue (\index va -> ( va, MetaType.variableByIndex index )) baseIndex
-
-
-constrainDefinition : IR -> Dict Name Variable -> Value.Definition () va -> Counter ( Variable, Value.Definition () ( va, Variable ), ConstraintSet )
+-}
+constrainDefinition : IR -> Dict Name Variable -> Value.Definition () va -> Count ( Variable, Value.Definition () ( va, Variable ), ConstraintSet )
 constrainDefinition ir vars def =
     let
+        -- collect the names of all the type variables in all the input types
         inputTypeVars : Set Name
         inputTypeVars =
             def.inputTypes
@@ -282,38 +219,44 @@ constrainDefinition ir vars def =
                     )
                 |> List.foldl Set.union Set.empty
 
+        -- collect the names of all the type variables in the output type
         outputTypeVars : Set Name
         outputTypeVars =
             Type.collectVariables def.outputType
 
-        varToMeta : Dict Name Variable
-        varToMeta =
+        -- assign a meta type variable to each type variable
+        typeVarToMetaTypeVar : Count (Dict Name Variable)
+        typeVarToMetaTypeVar =
             Set.union inputTypeVars outputTypeVars
                 |> Set.toList
                 |> List.map
                     (\varName ->
-                        ( varName, variableByName varName )
+                        Count.one
+                            (\varIndex ->
+                                ( varName, MetaType.variableByIndex varIndex )
+                            )
                     )
-                |> Dict.fromList
+                |> Count.all
+                |> Count.map Dict.fromList
 
-        inputConstraints : Counter ConstraintSet
+        inputConstraints : Count ConstraintSet
         inputConstraints =
             def.inputTypes
                 |> List.map
-                    (\( _, ( _, thisTypeVar ), declaredType ) ->
-                        Counter.map2 equality
-                            (Counter.ignore (metaVar thisTypeVar))
-                            (concreteTypeToMetaType ir varToMeta declaredType)
+                    (\( _, va, declaredType ) ->
+                        Count.map2 equality
+                            (Count.none (metaVar thisTypeVar))
+                            (concreteTypeToMetaType ir typeVarToMetaTypeVar declaredType)
                     )
-                |> Counter.concat
-                |> Counter.map ConstraintSet.fromList
+                |> Count.all
+                |> Count.map ConstraintSet.fromList
 
-        outputConstraints : Counter ConstraintSet
+        outputConstraints : Count ConstraintSet
         outputConstraints =
-            Counter.map ConstraintSet.singleton
-                (Counter.map2 equality
-                    (Counter.ignore (metaTypeVarForValue def.body))
-                    (concreteTypeToMetaType ir varToMeta def.outputType)
+            Count.map ConstraintSet.singleton
+                (Count.map2 equality
+                    (Count.none (metaTypeVarForValue def.body))
+                    (concreteTypeToMetaType ir typeVarToMetaTypeVar def.outputType)
                 )
 
         inputVars : Dict Name Variable
@@ -325,7 +268,7 @@ constrainDefinition ir vars def =
                     )
                 |> Dict.fromList
 
-        bodyConstraints : Counter ConstraintSet
+        bodyConstraints : Count ConstraintSet
         bodyConstraints =
             constrainValue ir (vars |> Dict.union inputVars) def.body
 
@@ -349,8 +292,8 @@ constrainDefinition ir vars def =
                     )
                 ]
     in
-    Counter.map ConstraintSet.concat
-        (Counter.concat
+    Count.map ConstraintSet.concat
+        (Count.all
             [ inputConstraints
             , outputConstraints
             , bodyConstraints
@@ -359,63 +302,152 @@ constrainDefinition ir vars def =
         )
 
 
-constrainValue : IR -> Dict Name Variable -> Value () va -> Counter ( Value () ( va, Variable ), ConstraintSet )
+{-| Takes an untyped value as an input and returns the same value annotated with meta type variables and a set of type
+constraints that refer to those variables.
+
+Detailed description of inputs and outputs:
+
+    - Input
+        - `IR` - used to resolve references to other types and values
+        - `Dict Name Variable` - dictionary that assigns a meta type variable to each variable in the scope
+        - `Value () va` - untyped value with an arbitrary attribute that will be retained
+    - Output
+        - `Count` - utility to allow generating a unique id for (counting) specific value nodes
+        - `Value () ( va, Variable )` - value that retains the attribute that was passed in and adds a meta type
+        variable to each value node
+        - `ConstraintSet` - set of type constraints that use the meta type variables that were added to each value node
+
+-}
+constrainValue : IR -> Dict Name Variable -> Value () va -> Count ( Value () ( va, Variable ), ConstraintSet )
 constrainValue ir vars annotatedValue =
     case annotatedValue of
-        Value.Literal ( _, thisTypeVar ) literalValue ->
-            constrainLiteral thisTypeVar literalValue
-
-        Value.Constructor ( _, thisTypeVar ) fQName ->
-            lookupConstructor ir fQName
-                |> Result.map
-                    (\ctor ->
-                        ctor
-                            |> Counter.map (ConstraintSet.singleton (equality (metaVar thisTypeVar)))
+        Value.Literal va literalValue ->
+            Count.one
+                (\thisIndex ->
+                    let
+                        thisTypeVar : Variable
+                        thisTypeVar =
+                            MetaType.variableByIndex thisIndex
+                    in
+                    ( Value.Literal ( va, thisTypeVar ) literalValue
+                    , constrainLiteral thisTypeVar literalValue
                     )
-                |> Result.withDefault (Counter.ignore ConstraintSet.empty)
+                )
 
-        Value.Tuple ( _, thisTypeVar ) elems ->
-            let
-                elemsConstraints : List ConstraintSet
-                elemsConstraints =
-                    elems
-                        |> List.map (constrainValue ir vars)
+        Value.Constructor va fQName ->
+            case lookupConstructor ir fQName of
+                Ok countedConstructorType ->
+                    countedConstructorType
+                        |> Count.andThen
+                            (\referenceType ->
+                                Count.one
+                                    (\thisIndex ->
+                                        let
+                                            thisTypeVar : Variable
+                                            thisTypeVar =
+                                                MetaType.variableByIndex thisIndex
+                                        in
+                                        ( Value.Constructor ( va, thisTypeVar ) fQName
+                                        , ConstraintSet.singleton (equality (metaVar thisTypeVar) referenceType)
+                                        )
+                                    )
+                            )
 
-                tupleConstraint : ConstraintSet
-                tupleConstraint =
-                    ConstraintSet.singleton
-                        (equality
-                            (metaVar thisTypeVar)
-                            (elems
-                                |> List.map metaTypeVarForValue
-                                |> metaTuple
+                Err _ ->
+                    Count.one
+                        (\thisIndex ->
+                            let
+                                thisTypeVar : Variable
+                                thisTypeVar =
+                                    MetaType.variableByIndex thisIndex
+                            in
+                            ( Value.Constructor ( va, thisTypeVar ) fQName
+                            , ConstraintSet.empty
                             )
                         )
-            in
-            ConstraintSet.concat (tupleConstraint :: elemsConstraints)
 
-        Value.List ( _, thisTypeVar ) items ->
-            let
-                itemType : MetaType
-                itemType =
-                    metaVar (thisTypeVar |> MetaType.subVariable)
+        Value.Tuple va elems ->
+            elems
+                |> List.map (constrainValue ir vars)
+                |> Count.all
+                |> Count.andThen
+                    (\elemResults ->
+                        Count.one
+                            (\thisIndex ->
+                                let
+                                    thisTypeVar : Variable
+                                    thisTypeVar =
+                                        MetaType.variableByIndex thisIndex
 
-                listConstraint : Constraint
-                listConstraint =
-                    equality (metaVar thisTypeVar) (MetaType.listType itemType)
+                                    annotatedElems : List (Value () ( va, Variable ))
+                                    annotatedElems =
+                                        elemResults
+                                            |> List.map (\( annotatedElem, _ ) -> annotatedElem)
 
-                itemConstraints : ConstraintSet
-                itemConstraints =
-                    items
-                        |> List.map
-                            (\item ->
-                                constrainValue ir vars item
-                                    |> ConstraintSet.insert (equality itemType (metaTypeVarForValue item))
+                                    elemsConstraints : List ConstraintSet
+                                    elemsConstraints =
+                                        elemResults
+                                            |> List.map (\( _, elemConstraints ) -> elemConstraints)
+
+                                    tupleConstraint : ConstraintSet
+                                    tupleConstraint =
+                                        ConstraintSet.singleton
+                                            (equality
+                                                (metaVar thisTypeVar)
+                                                (annotatedElems
+                                                    |> List.map metaTypeVarForValue
+                                                    |> metaTuple
+                                                )
+                                            )
+                                in
+                                ( Value.Tuple ( va, thisTypeVar ) annotatedElems
+                                , ConstraintSet.concat (tupleConstraint :: elemsConstraints)
+                                )
                             )
-                        |> ConstraintSet.concat
-            in
-            itemConstraints
-                |> ConstraintSet.insert listConstraint
+                    )
+
+        Value.List va items ->
+            items
+                |> List.map (constrainValue ir vars)
+                |> Count.all
+                |> Count.andThen
+                    (\itemResults ->
+                        Count.two
+                            (\thisIndex itemIndex ->
+                                let
+                                    thisTypeVar : Variable
+                                    thisTypeVar =
+                                        MetaType.variableByIndex thisIndex
+
+                                    itemType : MetaType
+                                    itemType =
+                                        metaVar (MetaType.variableByIndex itemIndex)
+
+                                    listConstraint : Constraint
+                                    listConstraint =
+                                        equality (metaVar thisTypeVar) (MetaType.listType itemType)
+
+                                    annotatedItems : List (Value () ( va, Variable ))
+                                    annotatedItems =
+                                        itemResults
+                                            |> List.map (\( annotatedItem, _ ) -> annotatedItem)
+
+                                    itemsConstraints : ConstraintSet
+                                    itemsConstraints =
+                                        itemResults
+                                            |> List.map
+                                                (\( annotatedItem, itemConstraints ) ->
+                                                    itemConstraints
+                                                        |> ConstraintSet.insert (equality itemType (metaTypeVarForValue annotatedItem))
+                                                )
+                                            |> ConstraintSet.concat
+                                in
+                                ( Value.List ( va, thisTypeVar ) annotatedItems
+                                , itemsConstraints
+                                    |> ConstraintSet.insert listConstraint
+                                )
+                            )
+                    )
 
         Value.Record va fieldValues ->
             fieldValues
@@ -423,12 +455,12 @@ constrainValue ir vars annotatedValue =
                 |> List.map
                     (\( fieldName, fieldValue ) ->
                         constrainValue ir vars fieldValue
-                            |> Counter.map (Tuple.pair fieldName)
+                            |> Count.map (Tuple.pair fieldName)
                     )
-                |> Counter.concat
-                |> Counter.andThen
+                |> Count.all
+                |> Count.andThen
                     (\fieldResults ->
-                        Counter.next
+                        Count.one
                             (\thisIndex ->
                                 let
                                     thisTypeVar : Variable
@@ -471,14 +503,14 @@ constrainValue ir vars annotatedValue =
         Value.Variable va varName ->
             case vars |> Dict.get varName of
                 Just varDecl ->
-                    Counter.ignore
+                    Count.none
                         ( Value.Variable ( va, varDecl ) varName
                         , ConstraintSet.empty
                         )
 
                 Nothing ->
                     -- this should never happen if variables were validated earlier
-                    Counter.next
+                    Count.one
                         (\thisIndex ->
                             let
                                 thisTypeVar : Variable
@@ -494,9 +526,9 @@ constrainValue ir vars annotatedValue =
             case lookupValue ir fQName of
                 Ok countedReferenceType ->
                     countedReferenceType
-                        |> Counter.andThen
+                        |> Count.andThen
                             (\referenceType ->
-                                Counter.next
+                                Count.one
                                     (\thisIndex ->
                                         let
                                             thisTypeVar : Variable
@@ -510,7 +542,7 @@ constrainValue ir vars annotatedValue =
                             )
 
                 Err _ ->
-                    Counter.next
+                    Count.one
                         (\thisIndex ->
                             let
                                 thisTypeVar : Variable
@@ -524,9 +556,9 @@ constrainValue ir vars annotatedValue =
 
         Value.Field va subjectValue fieldName ->
             constrainValue ir vars subjectValue
-                |> Counter.andThen
+                |> Count.andThen
                     (\( annotatedSubjectValue, subjectValueConstraints ) ->
-                        Counter.next2
+                        Count.two
                             (\thisIndex extendsIndex ->
                                 let
                                     thisTypeVar : Variable
@@ -565,7 +597,7 @@ constrainValue ir vars annotatedValue =
                     )
 
         Value.FieldFunction va fieldName ->
-            Counter.next2
+            Count.two
                 (\thisIndex extendsIndex ->
                     let
                         thisTypeVar : Variable
@@ -598,12 +630,12 @@ constrainValue ir vars annotatedValue =
 
         Value.Apply va funValue argValue ->
             constrainValue ir vars funValue
-                |> Counter.andThen
+                |> Count.andThen
                     (\( annotatedFunValue, funValueConstraints ) ->
                         constrainValue ir vars argValue
-                            |> Counter.andThen
+                            |> Count.andThen
                                 (\( annotatedArgValue, argValueConstraints ) ->
-                                    Counter.next
+                                    Count.one
                                         (\thisIndex ->
                                             let
                                                 thisTypeVar : Variable
@@ -634,12 +666,12 @@ constrainValue ir vars annotatedValue =
 
         Value.Lambda va argPattern bodyValue ->
             constrainPattern ir argPattern
-                |> Counter.andThen
+                |> Count.andThen
                     (\( argPatternVariables, annotatedArgPattern, argPatternConstraints ) ->
                         constrainValue ir (Dict.union argPatternVariables vars) bodyValue
-                            |> Counter.andThen
+                            |> Count.andThen
                                 (\( annotatedBodyValue, bodyValueConstraints ) ->
-                                    Counter.next
+                                    Count.one
                                         (\thisIndex ->
                                             let
                                                 thisTypeVar : Variable
@@ -670,12 +702,12 @@ constrainValue ir vars annotatedValue =
 
         Value.LetDefinition va defName def inValue ->
             constrainDefinition ir vars def
-                |> Counter.andThen
+                |> Count.andThen
                     (\( defVar, annotatedDef, defConstraints ) ->
                         constrainValue ir (vars |> Dict.insert defName defVar) inValue
-                            |> Counter.andThen
+                            |> Count.andThen
                                 (\( annotatedInValue, inValueConstraints ) ->
-                                    Counter.next
+                                    Count.one
                                         (\thisIndex ->
                                             let
                                                 thisTypeVar =
@@ -715,10 +747,10 @@ constrainValue ir vars annotatedValue =
                 |> List.map
                     (\( defName, def ) ->
                         constrainDefinition ir vars def
-                            |> Counter.map (Tuple.pair defName)
+                            |> Count.map (Tuple.pair defName)
                     )
-                |> Counter.concat
-                |> Counter.andThen
+                |> Count.all
+                |> Count.andThen
                     (\defResults ->
                         let
                             defVariables : Dict Name Variable
@@ -728,9 +760,9 @@ constrainValue ir vars annotatedValue =
                                     |> Dict.fromList
                         in
                         constrainValue ir (vars |> Dict.union defVariables) inValue
-                            |> Counter.andThen
+                            |> Count.andThen
                                 (\( annotatedInValue, inValueConstraints ) ->
-                                    Counter.next
+                                    Count.one
                                         (\thisIndex ->
                                             let
                                                 thisTypeVar : Variable
@@ -768,15 +800,15 @@ constrainValue ir vars annotatedValue =
 
         Value.Destructure va bindPattern bindValue inValue ->
             constrainPattern ir bindPattern
-                |> Counter.andThen
+                |> Count.andThen
                     (\( bindPatternVariables, annotatedBindPattern, bindPatternConstraints ) ->
                         constrainValue ir vars bindValue
-                            |> Counter.andThen
+                            |> Count.andThen
                                 (\( annotatedBindValue, bindValueConstraints ) ->
                                     constrainValue ir (Dict.union bindPatternVariables vars) inValue
-                                        |> Counter.andThen
+                                        |> Count.andThen
                                             (\( annotatedInValue, inValueConstraints ) ->
-                                                Counter.next
+                                                Count.one
                                                     (\thisIndex ->
                                                         let
                                                             thisTypeVar : Variable
@@ -805,15 +837,15 @@ constrainValue ir vars annotatedValue =
 
         Value.IfThenElse va condition thenBranch elseBranch ->
             constrainValue ir vars condition
-                |> Counter.andThen
+                |> Count.andThen
                     (\( annotatedCondition, conditionConstraints ) ->
                         constrainValue ir vars thenBranch
-                            |> Counter.andThen
+                            |> Count.andThen
                                 (\( annotatedThenBranch, thenBranchConstraints ) ->
                                     constrainValue ir vars elseBranch
-                                        |> Counter.andThen
+                                        |> Count.andThen
                                             (\( annotatedElseBranch, elseBranchConstraints ) ->
-                                                Counter.next
+                                                Count.one
                                                     (\thisIndex ->
                                                         let
                                                             thisTypeVar : Variable
@@ -850,25 +882,25 @@ constrainValue ir vars annotatedValue =
 
         Value.PatternMatch va subjectValue cases ->
             constrainValue ir vars subjectValue
-                |> Counter.andThen
+                |> Count.andThen
                     (\( annotatedSubjectValue, subjectValueConstraints ) ->
                         cases
                             |> List.map
                                 (\( casePattern, caseValue ) ->
                                     constrainPattern ir casePattern
-                                        |> Counter.andThen
+                                        |> Count.andThen
                                             (\( casePatternVariables, annotatedCasePattern, casePatternConstraints ) ->
                                                 constrainValue ir (Dict.union casePatternVariables vars) caseValue
-                                                    |> Counter.map
+                                                    |> Count.map
                                                         (\( annotatedCaseValue, caseValueConstraints ) ->
                                                             ( ( annotatedCasePattern, casePatternConstraints ), ( annotatedCaseValue, caseValueConstraints ) )
                                                         )
                                             )
                                 )
-                            |> Counter.concat
-                            |> Counter.andThen
+                            |> Count.all
+                            |> Count.andThen
                                 (\caseResults ->
-                                    Counter.next
+                                    Count.one
                                         (\subjectIndex ->
                                             let
                                                 thisTypeVar : Variable
@@ -920,19 +952,19 @@ constrainValue ir vars annotatedValue =
 
         Value.UpdateRecord va subjectValue fieldValues ->
             constrainValue ir vars subjectValue
-                |> Counter.andThen
+                |> Count.andThen
                     (\( annotatedSubjectValue, subjectValueConstraints ) ->
                         fieldValues
                             |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     constrainValue ir vars fieldValue
-                                        |> Counter.map (Tuple.pair fieldName)
+                                        |> Count.map (Tuple.pair fieldName)
                                 )
-                            |> Counter.concat
-                            |> Counter.andThen
+                            |> Count.all
+                            |> Count.andThen
                                 (\fieldValueResults ->
-                                    Counter.next2
+                                    Count.two
                                         (\thisIndex extendsIndex ->
                                             let
                                                 thisTypeVar : Variable
@@ -990,7 +1022,7 @@ constrainValue ir vars annotatedValue =
                     )
 
         Value.Unit va ->
-            Counter.next
+            Count.one
                 (\thisIndex ->
                     let
                         thisTypeVar : Variable
@@ -1006,11 +1038,11 @@ constrainValue ir vars annotatedValue =
 
 {-| Function that extracts variables and generates constraints for a pattern.
 -}
-constrainPattern : IR -> Pattern va -> Counter ( Dict Name Variable, Pattern ( va, Variable ), ConstraintSet )
+constrainPattern : IR -> Pattern va -> Count ( Dict Name Variable, Pattern ( va, Variable ), ConstraintSet )
 constrainPattern ir pattern =
     case pattern of
         Value.WildcardPattern va ->
-            Counter.next
+            Count.one
                 (\index ->
                     ( Dict.empty
                     , Value.WildcardPattern ( va, MetaType.variableByIndex index )
@@ -1020,7 +1052,7 @@ constrainPattern ir pattern =
 
         Value.AsPattern va nestedPattern alias ->
             constrainPattern ir nestedPattern
-                |> Counter.map
+                |> Count.map
                     (\( nestedVariables, nestedAnnotatedPattern, nestedConstraints ) ->
                         ( nestedVariables
                         , Value.AsPattern ( va, patternVariable nestedAnnotatedPattern ) nestedAnnotatedPattern alias
@@ -1031,10 +1063,10 @@ constrainPattern ir pattern =
         Value.TuplePattern va elemPatterns ->
             elemPatterns
                 |> List.map (constrainPattern ir)
-                |> Counter.concat
-                |> Counter.andThen
+                |> Count.all
+                |> Count.andThen
                     (\elemResults ->
-                        Counter.next
+                        Count.one
                             (\index ->
                                 let
                                     thisTypeVar =
@@ -1076,10 +1108,10 @@ constrainPattern ir pattern =
         Value.ConstructorPattern va fQName argPatterns ->
             argPatterns
                 |> List.map (constrainPattern ir)
-                |> Counter.concat
-                |> Counter.andThen
+                |> Count.all
+                |> Count.andThen
                     (\argPatternResults ->
-                        Counter.next2
+                        Count.two
                             (\thisIndex ctorIndex ->
                                 let
                                     thisTypeVar : Variable
@@ -1125,13 +1157,13 @@ constrainPattern ir pattern =
                                             _ ->
                                                 t
 
-                                    customTypeConstraintCounter : Counter ConstraintSet
+                                    customTypeConstraintCounter : Count ConstraintSet
                                     customTypeConstraintCounter =
                                         lookupConstructor ir fQName
                                             |> Result.map
                                                 (\ctorFunTypeCounter ->
                                                     ctorFunTypeCounter
-                                                        |> Counter.map
+                                                        |> Count.map
                                                             (\ctorFunType ->
                                                                 ConstraintSet.fromList
                                                                     [ equality (metaVar ctorTypeVar) ctorFunType
@@ -1139,7 +1171,7 @@ constrainPattern ir pattern =
                                                                     ]
                                                             )
                                                 )
-                                            |> Result.withDefault (Counter.ignore ConstraintSet.empty)
+                                            |> Result.withDefault (Count.none ConstraintSet.empty)
 
                                     ctorFunConstraint : ConstraintSet
                                     ctorFunConstraint =
@@ -1154,7 +1186,7 @@ constrainPattern ir pattern =
                                             )
                                 in
                                 customTypeConstraintCounter
-                                    |> Counter.map
+                                    |> Count.map
                                         (\customTypeConstraint ->
                                             ( List.foldl Dict.union Dict.empty argVariables
                                             , Value.ConstructorPattern ( va, thisTypeVar ) fQName argAnnotatedPatterns
@@ -1162,11 +1194,11 @@ constrainPattern ir pattern =
                                             )
                                         )
                             )
-                            |> Counter.andThen identity
+                            |> Count.andThen identity
                     )
 
         Value.EmptyListPattern va ->
-            Counter.next2
+            Count.two
                 (\listIndex itemIndex ->
                     let
                         thisTypeVar : Variable
@@ -1190,12 +1222,12 @@ constrainPattern ir pattern =
 
         Value.HeadTailPattern va headPattern tailPattern ->
             constrainPattern ir headPattern
-                |> Counter.andThen
+                |> Count.andThen
                     (\( headVariables, headAnnotatedPattern, headConstraints ) ->
                         constrainPattern ir tailPattern
-                            |> Counter.andThen
+                            |> Count.andThen
                                 (\( tailVariables, tailAnnotatedPattern, tailConstraints ) ->
-                                    Counter.next
+                                    Count.one
                                         (\thisIndex ->
                                             let
                                                 thisTypeVar : Variable
@@ -1227,25 +1259,21 @@ constrainPattern ir pattern =
                     )
 
         Value.LiteralPattern va literalValue ->
-            constrainLiteral literalValue
-                |> Counter.andThen
-                    (\literalConstraints ->
-                        Counter.next
-                            (\thisIndex ->
-                                let
-                                    thisTypeVar : Variable
-                                    thisTypeVar =
-                                        MetaType.variableByIndex thisIndex
-                                in
-                                ( Dict.empty
-                                , Value.LiteralPattern ( va, thisTypeVar ) literalValue
-                                , literalConstraints
-                                )
-                            )
+            Count.one
+                (\thisIndex ->
+                    let
+                        thisTypeVar : Variable
+                        thisTypeVar =
+                            MetaType.variableByIndex thisIndex
+                    in
+                    ( Dict.empty
+                    , Value.LiteralPattern ( va, thisTypeVar ) literalValue
+                    , constrainLiteral thisTypeVar literalValue
                     )
+                )
 
         Value.UnitPattern va ->
-            Counter.next
+            Count.one
                 (\thisIndex ->
                     let
                         thisTypeVar : Variable
@@ -1260,18 +1288,15 @@ constrainPattern ir pattern =
                 )
 
 
-constrainLiteral : Literal -> Counter ConstraintSet
-constrainLiteral literalValue =
+constrainLiteral : Variable -> Literal -> ConstraintSet
+constrainLiteral thisTypeVar literalValue =
     let
-        expectExactType : MetaType -> Counter ConstraintSet
+        expectExactType : MetaType -> ConstraintSet
         expectExactType expectedType =
-            Counter.next
-                (\counter ->
-                    ConstraintSet.singleton
-                        (equality
-                            (metaVar (MetaType.variableByIndex counter))
-                            expectedType
-                        )
+            ConstraintSet.singleton
+                (equality
+                    (metaVar thisTypeVar)
+                    expectedType
                 )
     in
     case literalValue of
@@ -1285,21 +1310,15 @@ constrainLiteral literalValue =
             expectExactType MetaType.stringType
 
         WholeNumberLiteral _ ->
-            Counter.next
-                (\counter ->
-                    ConstraintSet.singleton
-                        (class (metaVar (MetaType.variableByIndex counter)) Class.Number)
-                )
+            ConstraintSet.singleton
+                (class (metaVar thisTypeVar) Class.Number)
 
         FloatLiteral _ ->
             expectExactType MetaType.floatType
 
         DecimalLiteral _ ->
-            Counter.next
-                (\counter ->
-                    ConstraintSet.singleton
-                        (class (metaVar (MetaType.variableByIndex counter)) Class.Number)
-                )
+            ConstraintSet.singleton
+                (class (metaVar thisTypeVar) Class.Number)
 
 
 solve : IR -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )

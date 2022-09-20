@@ -1,42 +1,42 @@
-module Morphir.Type.Counter exposing (..)
+module Morphir.Type.Count exposing (..)
 
 
-type Counter a
-    = Counter (Int -> ( Int, a ))
+type Count a
+    = Count (Int -> ( Int, a ))
 
 
-apply : Int -> Counter a -> ( Int, a )
-apply seed (Counter counter) =
+apply : Int -> Count a -> ( Int, a )
+apply seed (Count counter) =
     counter seed
 
 
-next : (Int -> a) -> Counter a
-next f =
-    Counter
+one : (Int -> a) -> Count a
+one f =
+    Count
         (\counter ->
             ( counter + 1, f counter )
         )
 
 
-next2 : (Int -> Int -> a) -> Counter a
-next2 f =
-    Counter
+two : (Int -> Int -> a) -> Count a
+two f =
+    Count
         (\counter ->
             ( counter + 2, f counter (counter + 1) )
         )
 
 
-ignore : a -> Counter a
-ignore a =
-    Counter
+none : a -> Count a
+none a =
+    Count
         (\counter ->
             ( counter, a )
         )
 
 
-map : (a -> b) -> Counter a -> Counter b
-map f (Counter indexerA) =
-    Counter
+map : (a -> b) -> Count a -> Count b
+map f (Count indexerA) =
+    Count
         (\index ->
             let
                 ( indexA, a ) =
@@ -46,9 +46,9 @@ map f (Counter indexerA) =
         )
 
 
-map2 : (a -> b -> c) -> Counter a -> Counter b -> Counter c
-map2 f (Counter indexerA) (Counter indexerB) =
-    Counter
+map2 : (a -> b -> c) -> Count a -> Count b -> Count c
+map2 f (Count indexerA) (Count indexerB) =
+    Count
         (\index ->
             let
                 ( indexA, a ) =
@@ -61,9 +61,9 @@ map2 f (Counter indexerA) (Counter indexerB) =
         )
 
 
-map3 : (a -> b -> c -> d) -> Counter a -> Counter b -> Counter c -> Counter d
-map3 f (Counter indexerA) (Counter indexerB) (Counter indexerC) =
-    Counter
+map3 : (a -> b -> c -> d) -> Count a -> Count b -> Count c -> Count d
+map3 f (Count indexerA) (Count indexerB) (Count indexerC) =
+    Count
         (\index ->
             let
                 ( indexA, a ) =
@@ -79,13 +79,13 @@ map3 f (Counter indexerA) (Counter indexerB) (Counter indexerC) =
         )
 
 
-concat : List (Counter a) -> Counter (List a)
-concat counters =
-    Counter
+all : List (Count a) -> Count (List a)
+all counters =
+    Count
         (\counter ->
             counters
                 |> List.foldr
-                    (\(Counter nextCounter) ( counterSoFar, itemsSoFar ) ->
+                    (\(Count nextCounter) ( counterSoFar, itemsSoFar ) ->
                         let
                             ( nextCount, nextItem ) =
                                 nextCounter counterSoFar
@@ -96,15 +96,15 @@ concat counters =
         )
 
 
-andThen : (a -> Counter b) -> Counter a -> Counter b
-andThen f (Counter counterA) =
-    Counter
+andThen : (a -> Count b) -> Count a -> Count b
+andThen f (Count counterA) =
+    Count
         (\counter ->
             let
                 ( nextCount, a ) =
                     counterA counter
 
-                (Counter counterB) =
+                (Count counterB) =
                     f a
             in
             counterB nextCount
