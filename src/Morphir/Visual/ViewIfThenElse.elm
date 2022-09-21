@@ -30,7 +30,7 @@ valueToTree config doEval value =
                 eval : Value ta va -> Maybe RawValue
                 eval expr =
                     if pathTaken && doEval then
-                        case config |> Config.evaluate (Value.toRawValue (expr |> Debug.log "")) of
+                        case config |> Config.evaluate (Value.toRawValue expr) of
                             Ok v ->
                                 Just v
 
@@ -40,7 +40,7 @@ valueToTree config doEval value =
                     else
                         Nothing
 
-                maybeCaseOfValue : Maybe (RawValue)
+                maybeCaseOfValue : Maybe RawValue
                 maybeCaseOfValue =
                     eval caseOf
 
@@ -74,6 +74,7 @@ valueToTree config doEval value =
                     case maybeCaseOfValue of
                         Just _ ->
                             Just isSet
+
                         _ ->
                             Nothing
             in
@@ -82,7 +83,7 @@ valueToTree config doEval value =
                 , isThenBranchSelected = isThenBranchSelected
                 , thenBranch = valueToTree justBranchConfig isSet justBody
                 , elseBranch = valueToTree config (not isSet) nothingBody
-                , thenLabel  = "set"
+                , thenLabel = "set"
                 , elseLabel = "not set"
                 }
     in
@@ -150,4 +151,4 @@ valueToTree config doEval value =
                 inValue
 
         _ ->
-            DecisionTree.Leaf value
+            DecisionTree.Leaf config.state.variables value

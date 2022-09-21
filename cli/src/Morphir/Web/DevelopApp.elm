@@ -1954,18 +1954,22 @@ viewDefinitionDetails model =
                                 }
 
                         myTooltip : String -> Element msg
-                        myTooltip str =
-                            el
-                                [ Background.color (rgb 1 1 1)
-                                , Font.color (rgb 0 0 0)
-                                , padding 4
-                                , Theme.borderRounded
-                                , Font.size (model.theme |> Theme.scaled 2)
-                                , Font.bold
-                                , Border.shadow
-                                    { offset = ( 0, 3 ), blur = 6, size = 0, color = rgba 0 0 0 0.32 }
-                                ]
-                                (text str)
+                        myTooltip tooltipText =
+                            if tooltipText == "" then
+                                none
+
+                            else
+                                el
+                                    [ Background.color model.theme.colors.darkest
+                                    , Font.color model.theme.colors.lightest
+                                    , padding (model.theme |> Theme.scaled -2)
+                                    , Theme.borderRounded
+                                    , Font.size (model.theme |> Theme.scaled 2)
+                                    , Font.bold
+                                    , Border.shadow
+                                        { offset = ( 0, 3 ), blur = 6, size = 0, color = rgba 0 0 0 0.32 }
+                                    ]
+                                    (text tooltipText)
 
                         testRow : Int -> Int -> Int -> TestCase -> Element Msg
                         testRow columnIndex selfIndex maxIndex test =
