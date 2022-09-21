@@ -6,7 +6,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
-import Morphir.Type.Counter as Counter exposing (Counter)
+import Morphir.Type.Count as Count exposing (Count)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar)
 import Morphir.Type.Solve as SolutionMap exposing (SolutionMap)
 import Set exposing (Set)
@@ -19,7 +19,7 @@ type LookupError
     | ExpectedAlias FQName
 
 
-lookupConstructor : IR -> FQName -> Result LookupError (Counter MetaType)
+lookupConstructor : IR -> FQName -> Result LookupError (Count MetaType)
 lookupConstructor ir ctorFQN =
     ir
         |> IR.lookupTypeConstructor ctorFQN
@@ -30,7 +30,7 @@ lookupConstructor ir ctorFQN =
         |> Result.fromMaybe (CouldNotFindConstructor ctorFQN)
 
 
-lookupValue : IR -> FQName -> Result LookupError (Counter MetaType)
+lookupValue : IR -> FQName -> Result LookupError (Count MetaType)
 lookupValue ir valueFQN =
     ir
         |> IR.lookupValueSpecification valueFQN
@@ -110,11 +110,11 @@ metaTypeToConcreteType solutionMap metaType =
             Type.Unit ()
 
 
-concreteTypeToMetaType : IR -> Dict Name Variable -> Type () -> Counter MetaType
+concreteTypeToMetaType : IR -> Dict Name Variable -> Type () -> Count MetaType
 concreteTypeToMetaType ir varToMeta tpe =
     case tpe of
         Type.Variable _ varName ->
-            Counter.next
+            Count.one
                 (\counter ->
                     varToMeta
                         |> Dict.get varName
@@ -126,41 +126,41 @@ concreteTypeToMetaType ir varToMeta tpe =
         Type.Reference _ fQName args ->
             args
                 |> List.map (concreteTypeToMetaType ir varToMeta)
-                |> Counter.concat
-                |> Counter.andThen
+                |> Count.all
+                |> Count.andThen
                     (\metaArgs ->
                         lookupAliasedType ir fQName args
                             |> Result.map
                                 (\aliasedType ->
                                     concreteTypeToMetaType ir varToMeta aliasedType
-                                        |> Counter.map (metaAlias fQName metaArgs)
+                                        |> Count.map (metaAlias fQName metaArgs)
                                 )
                             |> Result.withDefault
-                                (Counter.ignore (metaRef fQName metaArgs))
+                                (Count.none (metaRef fQName metaArgs))
                     )
 
         Type.Tuple _ elemTypes ->
             elemTypes
                 |> List.map (concreteTypeToMetaType ir varToMeta)
-                |> Counter.concat
-                |> Counter.map metaTuple
+                |> Count.all
+                |> Count.map metaTuple
 
         Type.Record _ fieldTypes ->
-            Counter.map2 metaClosedRecord
-                (Counter.next MetaType.variableByIndex)
+            Count.map2 metaClosedRecord
+                (Count.one MetaType.variableByIndex)
                 (fieldTypes
                     |> List.map
                         (\field ->
                             concreteTypeToMetaType ir varToMeta field.tpe
-                                |> Counter.map (Tuple.pair field.name)
+                                |> Count.map (Tuple.pair field.name)
                         )
-                    |> Counter.concat
-                    |> Counter.map Dict.fromList
+                    |> Count.all
+                    |> Count.map Dict.fromList
                 )
 
         Type.ExtensibleRecord _ subjectName fieldTypes ->
-            Counter.map2 metaOpenRecord
-                (Counter.next
+            Count.map2 metaOpenRecord
+                (Count.one
                     (\counter ->
                         varToMeta
                             |> Dict.get subjectName
@@ -171,22 +171,22 @@ concreteTypeToMetaType ir varToMeta tpe =
                     |> List.map
                         (\field ->
                             concreteTypeToMetaType ir varToMeta field.tpe
-                                |> Counter.map (Tuple.pair field.name)
+                                |> Count.map (Tuple.pair field.name)
                         )
-                    |> Counter.concat
-                    |> Counter.map Dict.fromList
+                    |> Count.all
+                    |> Count.map Dict.fromList
                 )
 
         Type.Function _ argType returnType ->
-            Counter.map2 metaFun
+            Count.map2 metaFun
                 (concreteTypeToMetaType ir varToMeta argType)
                 (concreteTypeToMetaType ir varToMeta returnType)
 
         Type.Unit _ ->
-            Counter.ignore metaUnit
+            Count.none metaUnit
 
 
-ctorToMetaType : IR -> FQName -> List Name -> List (Type ()) -> Counter MetaType
+ctorToMetaType : IR -> FQName -> List Name -> List (Type ()) -> Count MetaType
 ctorToMetaType ir ctorFQName paramNames ctorArgs =
     let
         argVariables : Set Name
@@ -203,14 +203,14 @@ ctorToMetaType ir ctorFQName paramNames ctorArgs =
     in
     allVariables
         |> concreteVarsToMetaVars
-        |> Counter.andThen
+        |> Count.andThen
             (\varToMeta ->
                 let
-                    recurse : List (Type ()) -> Counter MetaType
+                    recurse : List (Type ()) -> Count MetaType
                     recurse cargs =
                         case cargs of
                             [] ->
-                                Counter.next
+                                Count.one
                                     (\counter ->
                                         metaRef ctorFQName
                                             (paramNames
@@ -226,7 +226,7 @@ ctorToMetaType ir ctorFQName paramNames ctorArgs =
                                     )
 
                             firstCtorArg :: restOfCtorArgs ->
-                                Counter.map2 metaFun
+                                Count.map2 metaFun
                                     (concreteTypeToMetaType ir varToMeta firstCtorArg)
                                     (recurse restOfCtorArgs)
                 in
@@ -234,7 +234,7 @@ ctorToMetaType ir ctorFQName paramNames ctorArgs =
             )
 
 
-valueSpecToMetaType : IR -> Value.Specification () -> Counter MetaType
+valueSpecToMetaType : IR -> Value.Specification () -> Count MetaType
 valueSpecToMetaType ir valueSpec =
     let
         specToFunctionType : List (Type ()) -> Type () -> Type ()
@@ -253,19 +253,19 @@ valueSpecToMetaType ir valueSpec =
     functionType
         |> Type.collectVariables
         |> concreteVarsToMetaVars
-        |> Counter.andThen (\varToMeta -> concreteTypeToMetaType ir varToMeta functionType)
+        |> Count.andThen (\varToMeta -> concreteTypeToMetaType ir varToMeta functionType)
 
 
-concreteVarsToMetaVars : Set Name -> Counter (Dict Name Variable)
+concreteVarsToMetaVars : Set Name -> Count (Dict Name Variable)
 concreteVarsToMetaVars variables =
     variables
         |> Set.toList
         |> List.map
             (\varName ->
-                Counter.next
+                Count.one
                     (\counter ->
                         ( varName, MetaType.variableByIndex counter )
                     )
             )
-        |> Counter.concat
-        |> Counter.map Dict.fromList
+        |> Count.all
+        |> Count.map Dict.fromList
