@@ -8,6 +8,7 @@ import Dict exposing (Dict)
 import Element
     exposing
         ( Element
+        , above
         , alignLeft
         , alignRight
         , alignTop
@@ -50,6 +51,7 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
+import Element.Region exposing (description)
 import Html.Attributes exposing (name)
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Markdown.Parser as Markdown
@@ -72,7 +74,7 @@ import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
-import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl)
+import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (PopupScreenRecord)
@@ -127,6 +129,8 @@ type alias Model =
     , definitionDisplayType : DisplayType
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
+    , selectedTestcaseIndex : Int
+    , testDescription : String
     }
 
 
@@ -202,6 +206,8 @@ init _ url key =
             , definitionDisplayType = InsightView
             , argStates = Dict.empty
             , expandedValues = Dict.empty
+            , selectedTestcaseIndex = -1
+            , testDescription = ""
             }
     in
     ( toRoute url initModel
@@ -238,10 +244,11 @@ type Msg
 
 
 type TestingMsg
-    = DescriptionUpdated Int String
-    | DeleteTestCase FQName Int
+    = DeleteTestCase FQName Int
     | SaveTestSuite FQName TestCase
-    | LoadTestCase (List ( Name, Type () )) (List (Maybe RawValue))
+    | LoadTestCase (List ( Name, Type () )) (List (Maybe RawValue)) String Int
+    | UpdateTestCase FQName TestCase
+    | UpdateDescription String
 
 
 type NavigationMsg
@@ -384,7 +391,7 @@ update msg model =
                     model.insightViewState
             in
             case insightMsg of
-                ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
+                ExpandReference (( _, moduleName, localName ) as fQName) _ ->
                     let
                         url =
                             pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase localName
@@ -462,12 +469,33 @@ update msg model =
                     )
 
         Testing testingMsg ->
+            let
+                initalArgState : InsightArgumentState
+                initalArgState =
+                    initArgumentStates model.irState model.homeState.selectedDefinition
+            in
             case testingMsg of
-                DescriptionUpdated _ _ ->
-                    Debug.todo "branch 'FunctionDescriptionUpdated _ _' not implemented"
+                UpdateDescription description ->
+                    ( { model | testDescription = description }, Cmd.none )
+
+                UpdateTestCase fQName testCase ->
+                    let
+                        newTestCase =
+                            { testCase | description = model.testDescription }
+
+                        newTestSuite : Dict FQName (Array TestCase)
+                        newTestSuite =
+                            Dict.insert fQName
+                                (Array.Extra.update model.selectedTestcaseIndex (always newTestCase) (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
+                                model.testSuite
+                    in
+                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
+                    )
 
                 DeleteTestCase fQName index ->
                     let
+                        newTestSuite : Dict FQName (Array TestCase)
                         newTestSuite =
                             Dict.insert fQName
                                 (Array.Extra.removeAt index (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
@@ -477,7 +505,7 @@ update msg model =
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
-                LoadTestCase inputTypes values ->
+                LoadTestCase inputTypes values description index ->
                     let
                         insightViewState : Morphir.Visual.Config.VisualState
                         insightViewState =
@@ -508,23 +536,24 @@ update msg model =
                     ( { model
                         | argStates = newArgStates
                         , insightViewState = { insightViewState | variables = newVariables }
+                        , selectedTestcaseIndex = index
+                        , testDescription = description
                       }
                     , Cmd.none
                     )
 
                 SaveTestSuite fQName testCase ->
                     let
+                        newTestCase =
+                            { testCase | description = model.testDescription }
+
                         newTestSuite : Dict FQName (Array TestCase)
                         newTestSuite =
                             Dict.insert fQName
-                                (Array.push testCase (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
+                                (Array.push newTestCase (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
-
-                        initalArgState : InsightArgumentState
-                        initalArgState =
-                            initArgumentStates model.irState model.homeState.selectedDefinition
                     in
-                    ( { model | testSuite = newTestSuite, argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
+                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
@@ -590,7 +619,7 @@ updateHomeState pack mod def filterState =
                 initialArgState =
                     initArgumentStates model.irState maybeSelectedDefinition
             in
-            { model | homeState = newState, insightViewState = initInsightViewState initialArgState, argStates = initialArgState }
+            { model | homeState = newState, insightViewState = initInsightViewState initialArgState, argStates = initialArgState, selectedTestcaseIndex = -1, testDescription = "" }
 
         -- When selecting a definition, we should not change the selected module, once the user explicitly selected one
         keepOrChangeSelectedModule : ( List Path, List Name )
@@ -936,7 +965,7 @@ viewHome model packageName packageDef =
         listStyles =
             [ width fill
             , Background.color model.theme.colors.lightest
-            , Border.rounded 3
+            , Theme.borderRounded
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
             ]
 
@@ -958,7 +987,7 @@ viewHome model packageName packageDef =
                     Element.Input.button
                         [ padding 7
                         , Background.color <| xrayOrInsight lightMorphIrBlue lightMorphIrOrange
-                        , Border.rounded 3
+                        , Theme.borderRounded
                         , Font.color model.theme.colors.lightest
                         , Font.bold
                         , Font.size (model.theme |> Theme.scaled 2)
@@ -1175,7 +1204,7 @@ viewHome model packageName packageDef =
             Element.Input.button
                 [ padding 7
                 , Background.color <| ifThenElse model.showModules lightMorphIrBlue lightMorphIrOrange
-                , Border.rounded 3
+                , Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
                 , Font.size (model.theme |> Theme.scaled 2)
@@ -1191,7 +1220,7 @@ viewHome model packageName packageDef =
             Element.Input.button
                 [ padding 7
                 , Background.color <| ifThenElse model.showDefinitions lightMorphIrBlue lightMorphIrOrange
-                , Border.rounded 3
+                , Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
                 , Font.size (model.theme |> Theme.scaled 2)
@@ -1526,7 +1555,7 @@ viewAsCard theme header class backgroundColor docs content =
             ]
         , el
             [ Background.color white
-            , Border.rounded 3
+            , Theme.borderRounded
             , width fill
             , height fill
             ]
@@ -1791,6 +1820,16 @@ viewDefinitionDetails model =
                     )
                 |> FieldList.view
 
+        buttonStyles : List (Element.Attribute msg)
+        buttonStyles =
+            [ padding 7
+            , Theme.borderRounded
+            , Background.color model.theme.colors.darkest
+            , Font.color model.theme.colors.lightest
+            , Font.bold
+            , Font.size (model.theme |> Theme.scaled 2)
+            ]
+
         saveTestcaseButton : FQName -> TestCase -> Element Msg
         saveTestcaseButton fqName testCase =
             let
@@ -1799,15 +1838,35 @@ viewDefinitionDetails model =
                     Testing (SaveTestSuite fqName testCase)
             in
             Element.Input.button
-                [ padding 7
-                , Border.rounded 3
-                , Background.color model.theme.colors.darkest
-                , Font.color model.theme.colors.lightest
-                , Font.bold
-                , Font.size (model.theme |> Theme.scaled 2)
-                ]
+                buttonStyles
                 { onPress = Just saveMsg
-                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save as testcase" ]
+                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save as new testcase" ]
+                }
+
+        updateTestCaseButton : FQName -> TestCase -> Element Msg
+        updateTestCaseButton fqName testCase =
+            let
+                updateMsg : Msg
+                updateMsg =
+                    Testing (UpdateTestCase fqName testCase)
+            in
+            Element.Input.button
+                buttonStyles
+                { onPress = Just updateMsg
+                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text <| "Update testcase #" ++ String.fromInt (model.selectedTestcaseIndex + 1) ]
+                }
+
+        descriptionInput : Element Msg
+        descriptionInput =
+            Element.Input.text
+                [ Font.size (model.theme |> Theme.scaled 2)
+                , padding (model.theme |> Theme.scaled -2)
+                , width (fillPortion 7)
+                ]
+                { onChange = Testing << UpdateDescription
+                , text = model.testDescription
+                , placeholder = Just (Element.Input.placeholder [] (text "Write a test description here..."))
+                , label = Element.Input.labelHidden "Description"
                 }
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
@@ -1815,7 +1874,7 @@ viewDefinitionDetails model =
             row [ spacing (model.theme |> Theme.scaled 2) ] <|
                 ifThenElse (List.isEmpty testCase.inputs)
                     []
-                    [ row [ Border.rounded 5, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
+                    [ row [ Theme.borderRounded, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
                         (case evaluateOutput ir testCase.inputs fQName of
                             Ok rawValue ->
                                 case rawValue of
@@ -1826,6 +1885,7 @@ viewDefinitionDetails model =
                                         [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value:")
                                         , el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
                                         , ifThenElse (Dict.isEmpty model.argStates) none (saveTestcaseButton fQName { testCase | expectedOutput = expectedOutput })
+                                        , ifThenElse (model.selectedTestcaseIndex < 0) none (updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         ]
 
                             Err _ ->
@@ -1893,12 +1953,26 @@ viewDefinitionDetails model =
                                 , label = el [ centerX, centerY ] (text " 🗑 ")
                                 }
 
+                        myTooltip : String -> Element msg
+                        myTooltip str =
+                            el
+                                [ Background.color (rgb 1 1 1)
+                                , Font.color (rgb 0 0 0)
+                                , padding 4
+                                , Theme.borderRounded
+                                , Font.size (model.theme |> Theme.scaled 2)
+                                , Font.bold
+                                , Border.shadow
+                                    { offset = ( 0, 3 ), blur = 6, size = 0, color = rgba 0 0 0 0.32 }
+                                ]
+                                (text str)
+
                         testRow : Int -> Int -> Int -> TestCase -> Element Msg
                         testRow columnIndex selfIndex maxIndex test =
                             let
                                 loadTestCaseMsg : Msg
                                 loadTestCaseMsg =
-                                    Testing (LoadTestCase (List.map (\( name, _, tpe ) -> ( name, tpe )) inputTypes) test.inputs)
+                                    Testing (LoadTestCase (List.map (\( name, _, tpe ) -> ( name, tpe )) inputTypes) test.inputs test.description selfIndex)
 
                                 styles : List (Element.Attr () Msg)
                                 styles =
@@ -1909,6 +1983,7 @@ viewDefinitionDetails model =
                                     , Border.color model.theme.colors.lightest
                                     , pointer
                                     , onClick loadTestCaseMsg
+                                    , tooltip above (myTooltip test.description)
                                     ]
 
                                 rowCell : Element Msg
@@ -2012,6 +2087,7 @@ viewDefinitionDetails model =
                                                                         ir
                                                                         { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
                                                                         fullyQualifiedName
+                                                                    , descriptionInput
                                                                     ]
                                                                 , scenarios fullyQualifiedName ir valueDef.inputTypes
                                                                 ]
