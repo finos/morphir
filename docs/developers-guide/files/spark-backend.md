@@ -203,6 +203,47 @@ For example, the three Elm snippets above are translated into this Spark code:
 ## Aggregations
 The current Spark API recognizes the following patterns as aggregations:
 
+## Morphir SDK Aggregation
+Morphir SDK provides functions to perform multiple aggregations on a list of
+records simultaneously.
+The functions described and used here come from `Morphir.SDK.Aggregate`.
+
+The following pattern is recognised:
+```
+source
+    |> groupBy .fieldName
+    |> aggregate (\key inputs ->
+        { fieldName = key,
+        , aggregated1 = inputs (count),
+        , aggregated2 = inputs (averageOf .otherFieldName),
+        , aggregated3 = inputs (averageOf .otherFieldName |> withFilter filterFunc)
+        }
+    )
+```
+
+The following aggregation functions are supported:
+* count
+* sumOf
+* averageOf
+* minimumOf
+* maximumOf
+
+Additional limitations to Aggregation support are:
+* The name of the column the aggregation was grouped by cannot be renamed.
+  i.e. `fieldName` in the above example. The expression `fieldName = key`
+  will be successfully parsed, but ignored.
+* Calls to `withFilter filterFunc` will be parsed but ignored.
+
+In Spark, the above example would be translated into:
+```
+source.groupBy("fieldName").agg(
+    org.apache.spark.sql.functions.count(org.apache.spark.sql.functions.lit(1)).alias("aggregated1"),
+    org.apache.spark.sql.functions.avg(org.apache.spark.sql.functions.col("otherFieldName")).alias("aggregated2"),
+    org.apache.spark.sql.functions.avg(org.apache.spark.sql.functions.col("otherFieldName")).alias("aggregated3"),
+)
+```
+
+## Pedantic Elm aggregation
 ```
 source
     |> List.map mappingFunction

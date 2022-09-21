@@ -6,6 +6,8 @@ import Morphir.Graph.Backend.Codec
 import Morphir.Graph.CypherBackend as Cypher
 import Morphir.Graph.SemanticBackend as SemanticBackend
 import Morphir.IR.Distribution exposing (Distribution)
+import Morphir.IR.Package as Package
+import Morphir.JsonSchema.Backend
 import Morphir.Scala.Backend
 import Morphir.Scala.Backend.Codec
 import Morphir.Scala.Spark.Backend
@@ -26,6 +28,7 @@ type BackendOptions
     | CypherOptions Cypher.Options
     | TypeScriptOptions Morphir.TypeScript.Backend.Options
     | SparkOptions Morphir.Scala.Spark.Backend.Options
+    | JsonSchemaOptions Morphir.JsonSchema.Backend.Options
 
 
 decodeOptions : Result Error String -> Decode.Decoder BackendOptions
@@ -45,6 +48,9 @@ decodeOptions gen =
 
         Ok "Spark" ->
             Decode.map SparkOptions (Decode.succeed Morphir.Scala.Spark.Backend.Options)
+
+        Ok "JsonSchema" ->
+            Decode.map JsonSchemaOptions (Decode.succeed Morphir.JsonSchema.Backend.Options)
 
         _ ->
             Decode.map (\options -> ScalaOptions options) Morphir.Scala.Backend.Codec.decodeOptions
@@ -70,3 +76,6 @@ mapDistribution back dist =
 
         SparkOptions options ->
             Morphir.Spark.Backend.mapDistribution options dist
+
+        JsonSchemaOptions options ->
+            Morphir.JsonSchema.Backend.mapDistribution options dist

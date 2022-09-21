@@ -16,3 +16,4 @@ lib
 Morphir.Elm.CLI.js
 docs.json
 /.coverage/
+tests-integration/reference-model/Dockerfile

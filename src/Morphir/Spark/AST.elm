@@ -16,7 +16,7 @@
 
 
 module Morphir.Spark.AST exposing
-    ( ObjectExpression(..), Expression(..), DataFrame
+    ( ObjectExpression(..), JoinType(..), Expression(..), DataFrame
     , objectExpressionFromValue
     , Error, NamedExpressions
     )
@@ -27,7 +27,7 @@ generator uses.
 
 # Abstract Syntax Tree
 
-@docs ObjectExpression, Expression, NamedExpression, DataFrame
+@docs ObjectExpression, JoinType, Expression, NamedExpression, DataFrame
 
 
 # Create
@@ -44,6 +44,7 @@ import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (Pattern(..), TypedValue)
+import Morphir.SDK.Aggregate exposing (AggregateValue(..), AggregationCall(..), ConstructAggregationError, constructAggregationCall)
 import Morphir.SDK.ResultList as ResultList
 
 
@@ -67,12 +68,108 @@ These are the supported Transformations:
           - A List of (Name, Expression) which represent a alias for a column expression and a column expression
             like `col(name)` within spark.
           - A target ObjectExpression from which to select.
+  - **Join**
+      - Represents a `df.join(...)` transformation.
+      - The four arguments are:
+          - The type of join to apply (inner or left-outer). Corresponds to the last string argument in the Spark API.
+          - The base relation as an ObjectExpression.
+          - The relation to join as an ObjectExpression.
+          - The "on" clause of the join. This is a boolean expression that should compare fields of the base and the
+            joined relation.
+  - **Aggregate**
+      - Represents a `df.groupBy(...).agg(...)` transformation.
+      - The arguments are:
+          - A String, which represents the column to group aggregations by.
+          - A list of named expressions, which represent the aggregation methods being used on this dataset.
+          - The ObjectExpression to aggregate the results of.
 
 -}
 type ObjectExpression
     = From ObjectName
     | Filter Expression ObjectExpression
     | Select NamedExpressions ObjectExpression
+    | Join JoinType ObjectExpression ObjectExpression Expression
+    | Aggregate String NamedExpressions ObjectExpression
+
+
+{-| Specifies which type of join to use. For now we only support inner and left-outer joins since that covers the
+majority of real-world use-cases and we want to minimize complexity.
+
+  - **Inner**
+      - Represents an inner join.
+  - **Left**
+      - Represents a left-outer join.
+
+-}
+type JoinType
+    = Inner
+    | Left
+
+
+{-| Most object expressions work with a single object/relation/data set but when joins are involved the resulting data
+structure includes multiple data sets. Since each join combines 2 relations the resulting structure can always be
+described as a binary tree where the leaves are individual relations. The Morphir model keeps track of this structure
+implicitly by mapping joins to tuples but this information is not available for the Spark API so we need to keep track
+of it explicitly.
+-}
+type JoinHierarchy
+    = SingleObject ObjectName
+    | JoinedObjects JoinHierarchy JoinHierarchy
+
+
+{-| Utility to extract all object names in a potentially joined relation. The order and nesting of object names is
+relevant and follows the order in which relations appear in the joins.
+
+
+# Important Note
+
+It is possible to get the same object name back multiple times if the same relation is joined multiple times (which is
+a valid real-world use-case). When this happens we should rewrite the object expression and add aliasing (which is not
+supported at the time of writing).
+
+-}
+objectExpressionJoinHierarchy : ObjectExpression -> JoinHierarchy
+objectExpressionJoinHierarchy objectExpression =
+    case objectExpression of
+        From objectName ->
+            SingleObject objectName
+
+        Filter _ baseExpression ->
+            objectExpressionJoinHierarchy baseExpression
+
+        Select _ baseExpression ->
+            objectExpressionJoinHierarchy baseExpression
+
+        Join _ baseExpression joinedExpression _ ->
+            JoinedObjects (objectExpressionJoinHierarchy baseExpression) (objectExpressionJoinHierarchy joinedExpression)
+
+        Aggregate _ _ baseExpression ->
+            objectExpressionJoinHierarchy baseExpression
+
+
+{-| Given an argument pattern and a join hierarchy return a dictionary that correlates variable names to object names.
+The algorithm recursively traverses both hierarchies at the same time and builds a dictionary along the way. The
+traversal only considers tuple patterns and variables during traversal and as soon as it runs into a mismatch between
+the two hierarchies it returns an empty dictionary.
+
+Given the argument pattern: `( ( a, b ), c )` and join hierarchy
+`JoinedObjects (JoinedObject (SingleObject "rel1") (SingleObject "rel2")) (SingleObject "rel3")` the dictionary will be
+`Dict.fromList [ ("a", "rel1"), ("b", "rel2"), ("c", "rel3") ]`.
+
+-}
+correlateVariableToObjectName : Value.Pattern va -> JoinHierarchy -> Dict Name ObjectName
+correlateVariableToObjectName argPattern joinHierarchy =
+    case ( argPattern, joinHierarchy ) of
+        ( Value.TuplePattern _ [ leftValue, rightValue ], JoinedObjects leftHierarchy rightHierarchy ) ->
+            Dict.union
+                (correlateVariableToObjectName leftValue leftHierarchy)
+                (correlateVariableToObjectName rightValue rightHierarchy)
+
+        ( Value.AsPattern _ (Value.WildcardPattern _) varName, SingleObject objectName ) ->
+            Dict.singleton varName objectName
+
+        _ ->
+            Dict.empty
 
 
 {-| An Expression represents an column expression.
@@ -136,6 +233,10 @@ type alias FieldName =
     Name
 
 
+type alias Description =
+    String
+
+
 type Error
     = UnhandledValue TypedValue
     | FunctionNotFound FQName
@@ -146,6 +247,7 @@ type Error
     | UnhandledPatternMatch ( Pattern (Type.Type ()), TypedValue )
     | UnhandledNamedExpressions NamedExpressions
     | UnhandledObjectExpression ObjectExpression
+    | AggregationError ConstructAggregationError
 
 
 {-| provides a way to create ObjectExpressions from a Morphir Value.
@@ -180,6 +282,11 @@ objectExpressionFromValue ir morphirValue =
                                 )
                     )
 
+        Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "aggregate" ] ], [ "aggregate" ] )) aggregateBody) (Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "aggregate" ] ], [ "group", "by" ] )) groupKey) sourceRelation) ->
+            constructAggregationCall aggregateBody groupKey sourceRelation
+                |> Result.mapError AggregationError
+                |> Result.andThen (objectExpressionFromAggregationCall ir)
+
         Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "filter" ] )) predicate) sourceRelation ->
             objectExpressionFromValue ir sourceRelation
                 |> Result.andThen
@@ -196,6 +303,12 @@ objectExpressionFromValue ir morphirValue =
                             |> Result.map (\expr -> Select expr source)
                     )
 
+        Value.Apply _ (Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "innerJoin" ] )) joinedRelation) onClause) baseRelation ->
+            buildJoin ir Inner baseRelation joinedRelation onClause
+
+        Value.Apply _ (Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "list" ] ], [ "leftJoin" ] )) joinedRelation) onClause) baseRelation ->
+            buildJoin ir Left baseRelation joinedRelation onClause
+
         Value.LetDefinition _ _ _ _ ->
             inlineLetDef [] [] morphirValue
                 |> objectExpressionFromValue ir
@@ -208,6 +321,14 @@ objectExpressionFromValue ir morphirValue =
             Err (UnhandledValue other)
 
 
+buildJoin : IR -> JoinType -> TypedValue -> TypedValue -> TypedValue -> Result Error ObjectExpression
+buildJoin ir joinType baseRelation joinedRelation onClause =
+    Result.map3 (Join joinType)
+        (objectExpressionFromValue ir baseRelation)
+        (objectExpressionFromValue ir joinedRelation)
+        (expressionFromValue ir onClause)
+
+
 namedExpressionsFromFields : IR -> Dict Name TypedValue -> Result Error NamedExpressions
 namedExpressionsFromFields ir fields =
     fields
@@ -218,6 +339,31 @@ namedExpressionsFromFields ir fields =
                     |> Result.map (Tuple.pair name)
             )
         |> ResultList.keepFirstError
+
+
+objectExpressionFromAggregationCall : IR -> AggregationCall -> Result Error ObjectExpression
+objectExpressionFromAggregationCall ir aggregationCall =
+    case aggregationCall of
+        AggregationCall groupKey _ aggValues sourceRelation ->
+            -- not using returned group key yet
+            Result.map3
+                Aggregate
+                (groupKey |> Name.toTitleCase |> Ok)
+                (aggValues
+                    |> List.map
+                        (\aggValue ->
+                            case aggValue of
+                                AggregateValue fieldName _ aggName (Just aggArg) ->
+                                    mapSDKFunctions ir [ aggArg ] aggName
+                                        |> Result.andThen (\expr -> Tuple.pair fieldName expr |> Ok)
+
+                                AggregateValue fieldName _ aggName Nothing ->
+                                    mapSDKFunctions ir [] aggName
+                                        |> Result.andThen (\expr -> Tuple.pair fieldName expr |> Ok)
+                        )
+                    |> ResultList.keepFirstError
+                )
+                (objectExpressionFromValue ir sourceRelation)
 
 
 {-| Provides a way to create NamedExpressions from a Morphir Value.
@@ -595,6 +741,35 @@ mapSDKFunctions ir args fQName =
             expressionFromValue ir item
                 |> Result.map List.singleton
                 |> Result.map (Function "sum")
+
+        -- HANDLE AGGREGATION FUNCTIONS
+        ( "Morphir.SDK:Aggregate:count", [] ) ->
+            -- morphir's count takes no arguments, but Spark's does
+            Function "count" [ Function "lit" [ Literal (WholeNumberLiteral 1) ] ] |> Ok
+
+        ( "Morphir.SDK:Aggregate:sumOf", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "sum")
+
+        ( "Morphir.SDK:Aggregate:averageOf", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "avg")
+
+        ( "Morphir.SDK:Aggregate:minimumOf", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "min")
+
+        ( "Morphir.SDK:Aggregate:maximumOf", item :: [] ) ->
+            expressionFromValue ir item
+                |> Result.map List.singleton
+                |> Result.map (Function "max")
+
+        ( "Morphir.SDK:Aggregate:weightedAverageOf", _ ) ->
+            -- XXX: I can't see a Spark equivalent
+            UnsupportedSDKFunction fQName |> Err
 
         _ ->
             FunctionNotFound fQName |> Err

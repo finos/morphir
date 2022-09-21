@@ -44,7 +44,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (TypedValue, Value)
 import Morphir.SDK.ResultList as ResultList
 import Morphir.Scala.AST as Scala
-import Morphir.Scala.Backend as ScalaBackend
+import Morphir.Scala.Feature.Core as ScalaBackend
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Morphir.Spark.API as Spark
 import Morphir.Spark.AST as SparkAST exposing (..)
@@ -284,6 +284,36 @@ mapObjectExpressionToScala objectExpression =
                             |> mapNamedExpressions
                         )
                     )
+
+        Aggregate groupfield fieldExpressions sourceRelation ->
+            mapObjectExpressionToScala sourceRelation
+                |> Result.map
+                    (Spark.aggregate
+                        groupfield
+                        (mapNamedExpressions fieldExpressions)
+                    )
+
+        Join joinType baseRelation joinedRelation onClause ->
+            let
+                joinTypeName : String
+                joinTypeName =
+                    case joinType of
+                        Inner ->
+                            "inner"
+
+                        Left ->
+                            "left"
+            in
+            Result.map2
+                (\baseDataFrame joinedDataFrame ->
+                    Spark.join
+                        baseDataFrame
+                        (mapExpression onClause)
+                        joinTypeName
+                        joinedDataFrame
+                )
+                (mapObjectExpressionToScala baseRelation)
+                (mapObjectExpressionToScala joinedRelation)
 
 
 {-| Maps Spark Expressions to scala values.

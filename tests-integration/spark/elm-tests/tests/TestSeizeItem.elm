@@ -17,38 +17,12 @@
 
 module TestSeizeItem exposing (..)
 
-import AntiqueCsvEncoder exposing (antiqueEncoder)
+import CsvUtils exposing (antiqueEncoder)
 import AntiquesDataSource exposing (antiquesDataSource)
-import Csv.Decode as Decode exposing (..)
-import Expect exposing (Expectation)
-import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique, Product(..))
-import SparkTests.Rules.Income.Antique exposing (..)
+import SparkTests.Rules.Income.Antique exposing (seize_item)
+import TestUtils exposing (executeTest)
 import Test exposing (..)
 
 
 testSeizeItem : Test
-testSeizeItem =
-    let
-        matchingAntiques : Result Error (List Antique)
-        matchingAntiques =
-            antiquesDataSource
-                |> Result.map
-                    (\itemsList ->
-                        itemsList
-                            |> List.filter
-                                (\item ->
-                                    seize_item item
-                                )
-                    )
-
-        csvResults =
-            matchingAntiques
-                |> Result.map
-                    (\result ->
-                        result |> antiqueEncoder
-                    )
-
-        _ =
-            Debug.log "antiques_expected_results_seize_item.csv" csvResults
-    in
-    test "Testing seize_item antique shop rule" (\_ -> Expect.equal (matchingAntiques |> Result.map (\list -> List.length list)) (12200 |> Ok))
+testSeizeItem = executeTest "seize_item" antiquesDataSource (List.filter seize_item) antiqueEncoder

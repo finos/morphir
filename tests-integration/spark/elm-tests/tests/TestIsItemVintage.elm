@@ -17,38 +17,12 @@
 
 module TestIsItemVintage exposing (..)
 
-import AntiqueCsvEncoder exposing (antiqueEncoder)
+import CsvUtils exposing (antiqueEncoder)
 import AntiquesDataSource exposing (antiquesDataSource)
-import Csv.Decode as Decode exposing (..)
-import Expect exposing (Expectation)
-import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Antique, Product(..))
-import SparkTests.Rules.Income.Antique exposing (..)
-import Test exposing (..)
-
+import SparkTests.Rules.Income.Antique exposing (is_item_vintage)
+import TestUtils exposing (executeTest)
+import Test exposing (Test)
 
 testIsItemVintage : Test
-testIsItemVintage =
-    let
-        matchingAntiques : Result Error (List Antique)
-        matchingAntiques =
-            antiquesDataSource
-                |> Result.map
-                    (\itemsList ->
-                        itemsList
-                            |> List.filter
-                                (\item ->
-                                    is_item_vintage item
-                                )
-                    )
+testIsItemVintage = executeTest "is_item_vintage" antiquesDataSource (List.filter is_item_vintage) antiqueEncoder
 
-        csvResults =
-            matchingAntiques
-                |> Result.map
-                    (\result ->
-                        result |> antiqueEncoder
-                    )
-
-        _ =
-            Debug.log "antiques_expected_results_is_item_vintage.csv" csvResults
-    in
-    test "Testing is_item_vintage antique shop rule" (\_ -> Expect.equal (matchingAntiques |> Result.map (\list -> List.length list)) (1200 |> Ok))

@@ -2,9 +2,6 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const calc = require('./Main').Elm.Main.init({})
 require('isomorphic-fetch')
-const csrf = require('csurf')
-const cookieParser = require('cookie-parser')
-const csrfProtection = csrf({ cookie: true})
 
 //Config 
 const APP_PORT = 3000
@@ -17,11 +14,9 @@ const STATE_STORE_NAME = 'statestore'
 const stateStoreUrl = `http://localhost:${DAPR_HTTP_PORT}/v1.0/state/${STATE_STORE_NAME}`
 const eventPublishUrl = `http://localhost:${DAPR_HTTP_PORT}/v1.0/publish/${OUTPUT_TOPIC}`
 
-const app = express()
+const app = express() // nosemgrep 
 
 app.use(bodyParser.json({ type: 'application/*+json' }))
-app.use(cookieParser())
-app.use(csrfProtection)
 
 app.listen(APP_PORT, () => { console.log("Server running on port 3000") })
 
