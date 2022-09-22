@@ -11,32 +11,38 @@ The contents of this document detail how to structure and load optional "sidecar
 
 
 ## File format, and naming convention
-To define a custom attribute, we need at least two JSON files. 
+To define a custom attribute, we need at least three JSON files. 
 
  1. A config file named `attribute.conf.json` that lists the attribute ID's, and maps them to display names.
- 2. At least one attribute file named `<someAttributeId>.json` in the `attributes` folder next to where the IR is located.
+ 2. At least one attribute file named `<someAttributeId>.json` in the `attributes`.
+ 3. An IR containing a type definitions 
  
 ### Config file
 ```
 {
 	"test-id-1":  {
-		"displayName" : "test Name"
-	},
+		"displayName" : "MS.Sensitivity"
+		, "entryPoint" : "Morphir.Attribute.Model.Sensitivity.Sensitivity"
+		, "ir" : "attributes/sensitivity.ir.json"
+	}
 	"test-id-2":  {
-		"displayName" : "Second Test Name"
+		...
 	}
 }
 ```
-The above example is a sample config file structure. The config file should contain key-value pairs in a JSON format, where the key is the attribute name, and the value is the attribute description.
+The above example is a sample config file structure. The config file should contain key-value pairs in a JSON format, where the key is the attribute name, and the value is the attribute description. 
+The attribute description should include an entrypoint in the form of an [FQName](https://package.elm-lang.org/packages/finos/morphir-elm/latest/Morphir.IR.FQName) (this is the type describing your custom attribute), a display name, and a path to the IR file containing your type model
 
 ### Attribute file
 ```
 {
 	"Morphir.Reference.Model.Issues.Issue401:bar": {
-		"MMPI": false
+		"MMPI": false,
+		"PI": true
 	},
 	 "Morphir.Reference.Model.Issues.Issue401:foo": {
-		"MMPI": false
+		"MMPI": false,
+		"PI": false
 	}
 }
 ```
@@ -47,8 +53,21 @@ The above example is a sample attribute file structure. The attribute file shoul
 We currently provide the following APIs.
 
 ***GET /server/attributes/***
-Returns the a JSON file with key-value pairs of attribute display names, and the contents of the corresponding attribute file.
+Returns the a JSON file with a very similar structure to the config file, but amended with `data` fields containing the actual custom attribute values, and the `ir` field containing the actual IR instead of a path pointing to it
 
+```
+{
+	"test-id-1":  {
+		"displayName" : <displayName>
+		, "entryPoint" : <FQName>
+		, "ir" : "<a Morphir IR>"
+		, "data" : <custom attribute dictionary>
+	}
+	"test-id-2":  {
+		...
+	}
+}
+```
 
 ***POST /server/updateattribute/\<yourattributename>***
 ```

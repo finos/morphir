@@ -1,8 +1,7 @@
 {
 	"test-id-1":  {
-		"displayName" : "test Name"
-	},
-	"test-id-2":  {
-		"displayName" : "Second Test Name"
+		"displayName" : "MS.Sensitivity"
+		, "entryPoint" : "Morphir.Attribute.Model.Sensitivity.Sensitivity"
+		, "ir" : "attributes/sensitivity.ir.json"
 	}
 }

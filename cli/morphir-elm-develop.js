@@ -61,11 +61,16 @@ app.get('/server/attributes', wrap(async (req, res, next) => {
 
   for (const attrId of attributeIds){
     const attrFilePath = path.join(program.opts().projectDir, 'attributes', attrId + '.json')
+    const irFilePath = path.join(program.opts().projectDir, configJsonContent[attrId].ir)
+
     const attrFileContent = await readFile(attrFilePath)
-    const attributeName = configJsonContent[attrId].displayName
+    const irFileContent = await readFile(irFilePath)
+
     responseJson[attrId] = {
         data: JSON.parse(attrFileContent.toString()),
-        displayName : attributeName
+        displayName : configJsonContent[attrId].displayName,
+        entryPoint : configJsonContent[attrId].entryPoint,
+        ir : JSON.parse(irFileContent.toString())
       }
   };
   res.send(responseJson)
