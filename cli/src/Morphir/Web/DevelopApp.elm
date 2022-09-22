@@ -51,7 +51,6 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import Element.Region exposing (description)
 import Html.Attributes exposing (name)
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Markdown.Parser as Markdown
@@ -59,7 +58,7 @@ import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
@@ -473,6 +472,8 @@ update msg model =
                 initalArgState : InsightArgumentState
                 initalArgState =
                     initArgumentStates model.irState model.homeState.selectedDefinition
+
+                    
             in
             case testingMsg of
                 UpdateDescription description ->
@@ -501,7 +502,7 @@ update msg model =
                                 (Array.Extra.removeAt index (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
                     in
-                    ( { model | testSuite = newTestSuite }
+                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = ifThenElse (model.selectedTestcaseIndex == index) -1 model.selectedTestcaseIndex }
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
@@ -1861,7 +1862,6 @@ viewDefinitionDetails model =
             Element.Input.text
                 [ Font.size (model.theme |> Theme.scaled 2)
                 , padding (model.theme |> Theme.scaled -2)
-                , width (fillPortion 7)
                 ]
                 { onChange = Testing << UpdateDescription
                 , text = model.testDescription
@@ -2091,7 +2091,7 @@ viewDefinitionDetails model =
                                                                         ir
                                                                         { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
                                                                         fullyQualifiedName
-                                                                    , descriptionInput
+                                                                    , ifThenElse (Dict.isEmpty model.argStates) none descriptionInput
                                                                     ]
                                                                 , scenarios fullyQualifiedName ir valueDef.inputTypes
                                                                 ]
