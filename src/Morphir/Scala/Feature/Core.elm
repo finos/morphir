@@ -929,15 +929,22 @@ curryConstructorArgs inScopeVars constructorType constructorFQName constructorAr
     in
     case ( constructorArgTypes, unspecifiedArgs ) of
         ( [], _ ) ->
-            Scala.Ref path (name |> Name.toTitleCase)
+            Scala.TypeAscripted
+                (Scala.Ref path (name |> Name.toTitleCase))
+                (mapType constructorType)
 
         ( [ _ ], [ _ ] ) ->
-            Scala.Ref path (name |> Name.toTitleCase)
+            Scala.TypeAscripted
+                (Scala.Ref path (name |> Name.toTitleCase))
+                (mapType constructorType)
 
         _ ->
             curryUnspecifiedArgs
                 unspecifiedArgs
-                (Scala.Ref path (name |> Name.toTitleCase))
+                (Scala.TypeAscripted
+                    (Scala.Ref path (name |> Name.toTitleCase))
+                    (mapType constructorType)
+                )
                 (constructorArgs
                     |> List.map
                         (\arg ->

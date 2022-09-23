@@ -554,6 +554,13 @@ mapValue opt value =
                 , mapValue opt yieldValue
                 ]
 
+        TypeAscripted nestedValue tpe ->
+            concat
+                [ mapValue opt nestedValue
+                , " : "
+                , mapType opt tpe
+                ]
+
 
 mapPattern : Pattern -> Doc
 mapPattern pattern =
