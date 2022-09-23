@@ -1,5 +1,6 @@
 module Morphir.CustomAttribute.Codec exposing (..)
 
+import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeConfig, CustomAttributeId, CustomAttributeValueByNodeID, CustomAttributes)
@@ -20,7 +21,7 @@ decodeCustomAttributeConfig =
         (Decode.field "filePath" Decode.string)
 
 
-decodeNodeIDByValuePairs : Decode.Decoder (List ( NodeID, Decode.Value ))
+decodeNodeIDByValuePairs : Decode.Decoder (SDKDict.Dict NodeID Decode.Value)
 decodeNodeIDByValuePairs =
     Decode.keyValuePairs Decode.value
         |> Decode.andThen
@@ -39,11 +40,9 @@ decodeNodeIDByValuePairs =
                 )
                 (Decode.succeed [])
             )
+        |> Decode.map SDKDict.fromList
 
 
 decodeAttributes : Decode.Decoder CustomAttributes
 decodeAttributes =
-    Decode.dict
-        (decodeNodeIDByValuePairs
-            |> Decode.map SDKDict.fromList
-        )
+    Decode.dict decodeNodeIDByValuePairs

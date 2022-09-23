@@ -48,8 +48,9 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
-import Element.Input exposing (labelHidden)
+import Element.Input exposing (labelAbove, labelHidden, placeholder)
 import Element.Keyed
+import Html exposing (input)
 import Html.Attributes exposing (name)
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Json.Decode as Decode
@@ -59,13 +60,14 @@ import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.CustomAttribute.Codec exposing (decodeAttributes)
-import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeValuesByNodeID, CustomAttributes)
+import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeId, CustomAttributeValuesByNodeID, CustomAttributes, toAttributeValueByNodeId)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.NodeId exposing (NodeID(..))
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.QName exposing (QName(..))
@@ -132,7 +134,8 @@ type alias Model =
     , definitionDisplayType : DisplayType
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
-    , customAttributes : CustomAttributes
+    , customAttributes : CustomAttributeValuesByNodeID
+    , updateAttr : String
     }
 
 
@@ -208,11 +211,12 @@ init _ url key =
             , definitionDisplayType = InsightView
             , argStates = Dict.empty
             , expandedValues = Dict.empty
-            , customAttributes = Dict.empty
+            , customAttributes = SDKDict.empty
+            , updateAttr = ""
             }
     in
     ( toRoute url initModel
-    , Cmd.batch [ httpMakeModel ]
+    , Cmd.batch [ httpMakeModel, httpAttributes ]
     )
 
 
@@ -243,6 +247,7 @@ type Msg
     | UI UIMsg
     | Insight InsightMsg
     | Testing TestingMsg
+    | UpdateAttribute String
 
 
 type TestingMsg
@@ -537,8 +542,18 @@ update msg model =
                     )
 
         ServerGetAttributeResponse attributes ->
-            ( { model | customAttributes = attributes }
-            , httpAttributes
+            let
+                newCustomAttributeStructure : CustomAttributeValuesByNodeID
+                newCustomAttributeStructure =
+                    toAttributeValueByNodeId attributes
+            in
+            ( { model | customAttributes = newCustomAttributeStructure }
+            , Cmd.none
+            )
+
+        UpdateAttribute string ->
+            ( { model | updateAttr = string }
+            , Cmd.none
             )
 
 
@@ -953,6 +968,42 @@ viewHome model packageName packageDef =
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
             ]
 
+        getAttributeValue node =
+            let
+                attributeValue nodeId =
+                    model.customAttributes
+                        |> SDKDict.foldl
+                            (\nodeID jsonValueDict jsonValueList ->
+                                if nodeID == nodeId then
+                                    jsonValueDict
+                                        |> Dict.map
+                                            (\_ jsonValue ->
+                                                let
+                                                    jsonValueString =
+                                                        Encode.encode 0 jsonValue
+                                                in
+                                                jsonValueString
+                                            )
+                                        |> Dict.toList
+
+                                else
+                                    jsonValueList
+                            )
+                            []
+            in
+            attributeValue node
+                |> List.map
+                    (\( attrId, jsonValueStr ) ->
+                        Element.Input.multiline
+                            [ Border.width 1 ]
+                            { text = jsonValueStr
+                            , placeholder = Just (placeholder [] (text "Add a new value"))
+                            , onChange = \new -> UpdateAttribute new
+                            , label = labelAbove [] (text attrId)
+                            , spellcheck = False
+                            }
+                    )
+
         -- Display a single selected definition on the ui
         viewDefinition : Maybe Definition -> Element Msg
         viewDefinition maybeSelectedDefinition =
@@ -993,8 +1044,16 @@ viewHome model packageName packageDef =
                                             |> Dict.get valueName
                                             |> Maybe.map
                                                 (\valueDef ->
+                                                    let
+                                                        fullyQualifiedName : ( PackageName, ModuleName, Name )
+                                                        fullyQualifiedName =
+                                                            ( packageName, moduleName, valueName )
+                                                    in
                                                     column []
-                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc, toggleDisplayType ]
+                                                        [ row [ width fill, padding 10, spacing 20 ] (getAttributeValue (ValueID fullyQualifiedName))
+                                                        , viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
+                                                        , toggleDisplayType
+                                                        ]
                                                 )
                                     )
                                 |> Maybe.withDefault none
@@ -1663,6 +1722,7 @@ httpTestModel ir =
         }
 
 
+httpAttributes : Cmd Msg
 httpAttributes =
     Http.get
         { url = "/server/attributes"
