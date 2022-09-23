@@ -1100,7 +1100,7 @@ constrainPattern ir pattern =
             constrainPattern ir nestedPattern
                 |> Count.map
                     (\( nestedVariables, nestedAnnotatedPattern, nestedConstraints ) ->
-                        ( nestedVariables
+                        ( nestedVariables |> Dict.insert alias (patternVariable nestedAnnotatedPattern)
                         , Value.AsPattern ( va, patternVariable nestedAnnotatedPattern ) nestedAnnotatedPattern alias
                         , nestedConstraints
                         )
