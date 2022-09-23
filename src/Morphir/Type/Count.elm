@@ -26,6 +26,14 @@ two f =
         )
 
 
+three : (Int -> Int -> Int -> a) -> Count a
+three f =
+    Count
+        (\counter ->
+            ( counter + 3, f counter (counter + 1) (counter + 2) )
+        )
+
+
 none : a -> Count a
 none a =
     Count

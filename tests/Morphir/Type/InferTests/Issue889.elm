@@ -9,7 +9,8 @@ import Morphir.IR.SDK.Basics exposing (boolType, floatType)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value
 import Morphir.Type.Constraint exposing (Constraint(..))
-import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
+import Morphir.Type.ConstraintSet exposing (ConstraintSet(..))
+import Morphir.Type.Count as Count
 import Morphir.Type.Infer as Infer
 import Morphir.Type.InferTests.Common exposing (checkValueDefinitionTypes)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..))
@@ -81,21 +82,20 @@ testDefinition =
 
 constraintTest : Test
 constraintTest =
-    let
-        ( annotated, _ ) =
-            Infer.annotateDefinition 1 testDefinition
-    in
     test "constraints"
         (\_ ->
-            Infer.constrainDefinition (MetaType.variableByIndex 0) testIR Dict.empty annotated
+            Infer.constrainDefinition testIR Dict.empty testDefinition
+                |> Count.apply 0
+                |> (\( _, ( _, _, cs ) ) -> cs)
                 |> Expect.equal
                     (ConstraintSet
-                        [ Equality (Set.fromList [ ( [], 0, 1 ), ( [], 1, 0 ) ]) (MetaVar ( [], 1, 0 )) (MetaRef (Set.fromList [ ( [], 0, 1 ) ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ ( [], 0, 1 ) ]) ( [], 0, 1 ) False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))))
-                        , Equality (Set.fromList [ ( [], 3, 0 ), ( [], 3, 1 ), ( [], 4, 0 ) ]) (MetaVar ( [], 3, 0 )) (MetaRecord (Set.fromList [ ( [], 3, 1 ), ( [], 4, 0 ) ]) ( [], 3, 1 ) False (Dict.fromList [ ( [ "bar" ], MetaVar ( [], 4, 0 ) ) ]))
-                        , Equality (Set.fromList [ ( [], 4, 0 ) ]) (MetaVar ( [], 4, 0 )) (MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing)
-                        , Equality (Set.fromList [ ( [], 2, 0 ) ]) (MetaVar ( [], 2, 0 )) (MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] Nothing)
-                        , Equality (Set.fromList [ ( [], 1, 1 ), ( [], 2, 0 ) ]) (MetaVar ( [], 1, 1 )) (MetaVar ( [], 2, 0 ))
-                        , Equality (Set.fromList [ ( [], 1, 0 ), ( [], 3, 0 ) ]) (MetaVar ( [], 1, 0 )) (MetaVar ( [], 3, 0 ))
+                        [ Equality (Set.fromList [ 0, 6 ]) (MetaVar 6) (MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))))
+                        , Equality (Set.fromList [ 4, 6 ]) (MetaVar 6) (MetaVar 4)
+                        , Equality (Set.fromList [ 1, 2 ]) (MetaVar 2) (MetaVar 1)
+                        , Equality (Set.fromList [ 1 ]) (MetaVar 1) (MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] Nothing)
+                        , Equality (Set.fromList [ 3 ]) (MetaVar 3) (MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing)
+                        , Equality (Set.fromList [ 3, 4, 5 ]) (MetaVar 4) (MetaRecord (Set.fromList [ 3, 5 ]) 5 False (Dict.fromList [ ( [ "bar" ], MetaVar 3 ) ]))
+                        , Equality (Set.fromList [ 6, 7 ]) (MetaVar 7) (MetaVar 6)
                         ]
                     )
         )
@@ -107,12 +107,13 @@ solveTest =
         (\_ ->
             Infer.solve testIR
                 (ConstraintSet
-                    [ Equality (Set.fromList [ ( [], 0, 1 ), ( [], 1, 0 ) ]) (MetaVar ( [], 1, 0 )) (MetaRef (Set.fromList [ ( [], 0, 1 ) ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ ( [], 0, 1 ) ]) ( [], 0, 1 ) False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))))
-                    , Equality (Set.fromList [ ( [], 3, 0 ), ( [], 3, 1 ), ( [], 4, 0 ) ]) (MetaVar ( [], 3, 0 )) (MetaRecord (Set.fromList [ ( [], 3, 1 ), ( [], 4, 0 ) ]) ( [], 3, 1 ) False (Dict.fromList [ ( [ "bar" ], MetaVar ( [], 4, 0 ) ) ]))
-                    , Equality (Set.fromList [ ( [], 4, 0 ) ]) (MetaVar ( [], 4, 0 )) (MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing)
-                    , Equality (Set.fromList [ ( [], 2, 0 ) ]) (MetaVar ( [], 2, 0 )) (MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] Nothing)
-                    , Equality (Set.fromList [ ( [], 1, 1 ), ( [], 2, 0 ) ]) (MetaVar ( [], 1, 1 )) (MetaVar ( [], 2, 0 ))
-                    , Equality (Set.fromList [ ( [], 1, 0 ), ( [], 3, 0 ) ]) (MetaVar ( [], 1, 0 )) (MetaVar ( [], 3, 0 ))
+                    [ Equality (Set.fromList [ 0, 6 ]) (MetaVar 6) (MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))))
+                    , Equality (Set.fromList [ 4, 6 ]) (MetaVar 6) (MetaVar 4)
+                    , Equality (Set.fromList [ 1, 2 ]) (MetaVar 2) (MetaVar 1)
+                    , Equality (Set.fromList [ 1 ]) (MetaVar 1) (MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] Nothing)
+                    , Equality (Set.fromList [ 3 ]) (MetaVar 3) (MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing)
+                    , Equality (Set.fromList [ 3, 4, 5 ]) (MetaVar 4) (MetaRecord (Set.fromList [ 3, 5 ]) 5 False (Dict.fromList [ ( [ "bar" ], MetaVar 3 ) ]))
+                    , Equality (Set.fromList [ 6, 7 ]) (MetaVar 7) (MetaVar 6)
                     ]
                 )
                 |> Expect.equal
@@ -120,12 +121,13 @@ solveTest =
                         ( ConstraintSet []
                         , SolutionMap
                             (Dict.fromList
-                                [ ( ( [], 1, 0 ), MetaRef (Set.fromList [ ( [], 0, 1 ) ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ ( [], 0, 1 ) ]) ( [], 0, 1 ) False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
-                                , ( ( [], 1, 1 ), MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] Nothing )
-                                , ( ( [], 2, 0 ), MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] Nothing )
-                                , ( ( [], 3, 0 ), MetaRef (Set.fromList [ ( [], 0, 1 ) ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ ( [], 0, 1 ) ]) ( [], 0, 1 ) False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
-                                , ( ( [], 3, 1 ), MetaRef (Set.fromList [ ( [], 0, 1 ) ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ ( [], 0, 1 ) ]) ( [], 0, 1 ) False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
-                                , ( ( [], 4, 0 ), MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing )
+                                [ ( 1, MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] Nothing )
+                                , ( 2, MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] Nothing )
+                                , ( 3, MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing )
+                                , ( 4, MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
+                                , ( 5, MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
+                                , ( 6, MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
+                                , ( 7, MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
                                 ]
                             )
                         )

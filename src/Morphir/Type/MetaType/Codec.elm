@@ -65,5 +65,5 @@ encodeMetaType metaType =
 
 
 encodeVariable : Variable -> Encode.Value
-encodeVariable ( n, i, s ) =
-    Encode.list identity [ encodeName n, Encode.int i, Encode.int s ]
+encodeVariable i =
+    Encode.int i

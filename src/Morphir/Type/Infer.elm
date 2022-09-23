@@ -4,7 +4,7 @@ import Dict exposing (Dict)
 import Morphir.Compiler as Compiler
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
-import Morphir.IR.Documented as Documented exposing (Documented)
+import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
@@ -15,13 +15,12 @@ import Morphir.IR.SDK.Basics exposing (floatType)
 import Morphir.IR.Type as Type exposing (Specification(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.ListOfResults as ListOfResults
-import Morphir.SDK.Decimal exposing (Decimal)
 import Morphir.Type.Class as Class exposing (Class)
-import Morphir.Type.Constraint as Constraint exposing (Constraint(..), class, equality, isRecursive)
+import Morphir.Type.Constraint exposing (Constraint(..), class, equality, isRecursive)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.Count as Count exposing (Count)
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaClosedRecord, metaFun, metaOpenRecord, metaTuple, metaUnit, metaVar, variableByName)
-import Morphir.Type.MetaTypeMapping as MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, concreteVarsToMetaVars, lookupConstructor, lookupValue, metaTypeToConcreteType)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaClosedRecord, metaFun, metaOpenRecord, metaTuple, metaUnit, metaVar)
+import Morphir.Type.MetaTypeMapping exposing (LookupError(..), concreteTypeToMetaType, lookupConstructor, lookupValue, metaTypeToConcreteType)
 import Morphir.Type.Solve as Solve exposing (SolutionMap(..), UnificationError(..), UnificationErrorType(..))
 import Set exposing (Set)
 
@@ -260,76 +259,88 @@ constrainDefinition ir vars def =
                     |> Count.all
                     |> Count.andThen
                         (\argResults ->
-                            let
-                                inputVars : Dict Name Variable
-                                inputVars =
-                                    argResults
-                                        |> List.map
-                                            (\( name, ( _, argTypeVar ), _ ) ->
-                                                ( name, argTypeVar )
-                                            )
-                                        |> Dict.fromList
-                            in
-                            constrainValue ir (vars |> Dict.union inputVars) def.body
+                            concreteTypeToMetaType ir typeVarToMetaTypeVar def.outputType
                                 |> Count.andThen
-                                    (\( annotatedBody, bodyConstraints ) ->
-                                        Count.one
-                                            (\defIndex ->
-                                                let
-                                                    defTypeVar : Variable
-                                                    defTypeVar =
-                                                        MetaType.variableByIndex defIndex
+                                    (\outputMetaType ->
+                                        let
+                                            inputVars : Dict Name Variable
+                                            inputVars =
+                                                argResults
+                                                    |> List.map
+                                                        (\( name, ( _, argTypeVar ), _ ) ->
+                                                            ( name, argTypeVar )
+                                                        )
+                                                    |> Dict.fromList
+                                        in
+                                        constrainValue ir (vars |> Dict.union inputVars) def.body
+                                            |> Count.andThen
+                                                (\( annotatedBody, bodyConstraints ) ->
+                                                    Count.one
+                                                        (\defIndex ->
+                                                            let
+                                                                annotatedInputTypes : List ( Name, ( va, Variable ), Type () )
+                                                                annotatedInputTypes =
+                                                                    argResults
+                                                                        |> List.map
+                                                                            (\( argName, ( va, argTypeVar ), ( declaredArgType, _ ) ) ->
+                                                                                ( argName, ( va, argTypeVar ), declaredArgType )
+                                                                            )
 
-                                                    inputConstraints : ConstraintSet
-                                                    inputConstraints =
-                                                        argResults
-                                                            |> List.map
-                                                                (\( name, _, ( _, argConstraints ) ) ->
-                                                                    argConstraints
-                                                                )
-                                                            |> ConstraintSet.concat
+                                                                defTypeVar : Variable
+                                                                defTypeVar =
+                                                                    MetaType.variableByIndex defIndex
 
-                                                    outputConstraints : Count ConstraintSet
-                                                    outputConstraints =
-                                                        Count.map ConstraintSet.singleton
-                                                            (Count.map2 equality
-                                                                (Count.none (metaTypeVarForValue def.body))
-                                                                (concreteTypeToMetaType ir typeVarToMetaTypeVar def.outputType)
+                                                                inputConstraints : ConstraintSet
+                                                                inputConstraints =
+                                                                    argResults
+                                                                        |> List.map
+                                                                            (\( _, _, ( _, argConstraints ) ) ->
+                                                                                argConstraints
+                                                                            )
+                                                                        |> ConstraintSet.concat
+
+                                                                outputConstraint : ConstraintSet
+                                                                outputConstraint =
+                                                                    ConstraintSet.singleton
+                                                                        (equality
+                                                                            (metaTypeVarForValue annotatedBody)
+                                                                            outputMetaType
+                                                                        )
+
+                                                                defType : List MetaType -> MetaType -> MetaType
+                                                                defType argTypes returnType =
+                                                                    case argTypes of
+                                                                        [] ->
+                                                                            returnType
+
+                                                                        firstArg :: restOfArgs ->
+                                                                            metaFun firstArg (defType restOfArgs returnType)
+
+                                                                defConstraints : ConstraintSet
+                                                                defConstraints =
+                                                                    ConstraintSet.fromList
+                                                                        [ equality
+                                                                            (metaVar defTypeVar)
+                                                                            (defType
+                                                                                (annotatedInputTypes |> List.map (\( _, ( _, argTypeVar ), _ ) -> metaVar argTypeVar))
+                                                                                (metaTypeVarForValue annotatedBody)
+                                                                            )
+                                                                        ]
+                                                            in
+                                                            ( defTypeVar
+                                                            , { inputTypes = annotatedInputTypes
+                                                              , outputType = def.outputType
+                                                              , body = annotatedBody
+                                                              }
+                                                            , ConstraintSet.concat
+                                                                [ bodyConstraints
+                                                                , inputConstraints
+                                                                , outputConstraint
+                                                                , defConstraints
+                                                                ]
                                                             )
-
-                                                    defType : List MetaType -> MetaType -> MetaType
-                                                    defType argTypes returnType =
-                                                        case argTypes of
-                                                            [] ->
-                                                                returnType
-
-                                                            firstArg :: restOfArgs ->
-                                                                metaFun firstArg (defType restOfArgs returnType)
-
-                                                    defConstraints : ConstraintSet
-                                                    defConstraints =
-                                                        ConstraintSet.fromList
-                                                            [ equality
-                                                                (metaVar defVariable)
-                                                                (defType
-                                                                    (annotatedDef.inputTypes |> List.map (\( _, ( _, argTypeVar ), _ ) -> metaVar argTypeVar))
-                                                                    (metaTypeVarForValue annotatedDef.body)
-                                                                )
-                                                            ]
-                                                in
-                                                ( defTypeVar
-                                                , { inputTypes = annotatedInputTypes
-                                                  , outputType = def.outputType
-                                                  , body = annotatedBody
-                                                  }
-                                                , ConstraintSet.concat
-                                                    [ bodyConstraints
-                                                    , inputConstraints
-                                                    , outputConstraints
-                                                    , defConstraints
-                                                    ]
+                                                        )
                                                 )
-                                            )
                                     )
                         )
             )
@@ -493,8 +504,8 @@ constrainValue ir vars annotatedValue =
                 |> Count.all
                 |> Count.andThen
                     (\fieldResults ->
-                        Count.one
-                            (\thisIndex ->
+                        Count.two
+                            (\thisIndex recordIndex ->
                                 let
                                     thisTypeVar : Variable
                                     thisTypeVar =
@@ -517,7 +528,7 @@ constrainValue ir vars annotatedValue =
                                         fieldResults
                                             |> List.map (\( fieldName, ( annotatedFieldValue, _ ) ) -> ( fieldName, metaTypeVarForValue annotatedFieldValue ))
                                             |> Dict.fromList
-                                            |> metaClosedRecord (thisTypeVar |> MetaType.subVariable)
+                                            |> metaClosedRecord (MetaType.variableByIndex recordIndex)
 
                                     recordConstraints : ConstraintSet
                                     recordConstraints =
@@ -591,8 +602,8 @@ constrainValue ir vars annotatedValue =
             constrainValue ir vars subjectValue
                 |> Count.andThen
                     (\( annotatedSubjectValue, subjectValueConstraints ) ->
-                        Count.two
-                            (\thisIndex extendsIndex ->
+                        Count.three
+                            (\thisIndex extendsIndex fieldIndex ->
                                 let
                                     thisTypeVar : Variable
                                     thisTypeVar =
@@ -604,14 +615,17 @@ constrainValue ir vars annotatedValue =
 
                                     fieldType : MetaType
                                     fieldType =
-                                        extendsVar
-                                            |> MetaType.subVariable
-                                            |> metaVar
+                                        metaVar (MetaType.variableByIndex fieldIndex)
 
                                     extensibleRecordType : MetaType
                                     extensibleRecordType =
                                         metaOpenRecord extendsVar
                                             (Dict.singleton fieldName fieldType)
+
+                                    subjectConstraint : ConstraintSet
+                                    subjectConstraint =
+                                        ConstraintSet.singleton
+                                            (equality (metaTypeVarForValue annotatedSubjectValue) (metaVar extendsVar))
 
                                     fieldConstraints : ConstraintSet
                                     fieldConstraints =
@@ -623,6 +637,7 @@ constrainValue ir vars annotatedValue =
                                 ( Value.Field ( va, thisTypeVar ) annotatedSubjectValue fieldName
                                 , ConstraintSet.concat
                                     [ subjectValueConstraints
+                                    , subjectConstraint
                                     , fieldConstraints
                                     ]
                                 )
@@ -630,8 +645,8 @@ constrainValue ir vars annotatedValue =
                     )
 
         Value.FieldFunction va fieldName ->
-            Count.two
-                (\thisIndex extendsIndex ->
+            Count.three
+                (\thisIndex extendsIndex fieldIndex ->
                     let
                         thisTypeVar : Variable
                         thisTypeVar =
@@ -643,9 +658,7 @@ constrainValue ir vars annotatedValue =
 
                         fieldType : MetaType
                         fieldType =
-                            extendsVar
-                                |> MetaType.subVariable
-                                |> metaVar
+                            metaVar (MetaType.variableByIndex fieldIndex)
 
                         extensibleRecordType : MetaType
                         extensibleRecordType =
@@ -1031,8 +1044,8 @@ constrainValue ir vars annotatedValue =
                                                 fieldValueConstraints =
                                                     fieldValueResults
                                                         |> List.map
-                                                            (\( _, ( _, fieldConstraints ) ) ->
-                                                                fieldConstraints
+                                                            (\( _, ( _, fc ) ) ->
+                                                                fc
                                                             )
                                                         |> ConstraintSet.concat
 

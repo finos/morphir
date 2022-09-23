@@ -146,6 +146,20 @@ positiveOutcomes =
             )
             (Value.Literal (floatType ()) (FloatLiteral 2))
         )
+    , Value.Lambda
+        (Type.Function ()
+            (Type.Variable () [ "t", "0" ])
+            (Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [])
+        )
+        (Value.AsPattern (Type.Variable () [ "t", "0" ]) (Value.WildcardPattern (Type.Variable () [ "t", "0" ])) [ "rec" ])
+        (Value.IfThenElse (Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [])
+            (Value.Literal (Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) []) (BoolLiteral False))
+            (Value.Field (Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [])
+                (Value.Variable (Type.ExtensibleRecord () [ "t", "4" ] [ { name = [ "bar" ], tpe = Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] } ]) [ "rec" ])
+                [ "bar" ]
+            )
+            (Value.Literal (Type.Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) []) (FloatLiteral 2))
+        )
     , Value.Lambda (Type.Function () (barRecordType "t6_1") (floatType ()))
         (Value.AsPattern (barRecordType "t6_1") (Value.WildcardPattern (barRecordType "t6_1")) [ "rec" ])
         (Value.IfThenElse (floatType ())
@@ -156,6 +170,8 @@ positiveOutcomes =
             )
             (Value.Literal (floatType ()) (FloatLiteral 2))
         )
+
+    -- TODO: remove
     , Value.Lambda (Type.Function () (fooBarRecordType "t5_1") (floatType ()))
         (Value.AsPattern (fooBarRecordType "t5_1") (Value.WildcardPattern (fooBarRecordType "t5_1")) [ "rec" ])
         (Value.IfThenElse (floatType ())

@@ -1,4 +1,4 @@
-module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, contains, floatType, intType, isNamedVariable, listType, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, subVariable, substituteVariable, substituteVariables, toName, toString, variableByIndex, variableByName, variables, wrapInAliases)
+module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, contains, floatType, intType, isNamedVariable, listType, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, substituteVariable, substituteVariables, toName, toString, variableByIndex, variables, wrapInAliases)
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName, fqn)
@@ -152,39 +152,22 @@ toString metaType =
 
 
 type alias Variable =
-    ( Name, Int, Int )
+    Int
 
 
 variableByIndex : Int -> Variable
 variableByIndex i =
-    ( [], i, 0 )
-
-
-variableByName : Name -> Variable
-variableByName name =
-    ( name, 0, 0 )
+    i
 
 
 isNamedVariable : Variable -> Bool
-isNamedVariable ( name, _, _ ) =
-    not (List.isEmpty name)
-
-
-subVariable : Variable -> Variable
-subVariable ( n, i, s ) =
-    ( n, i, s + 1 )
+isNamedVariable _ =
+    False
 
 
 toName : Variable -> Name
-toName ( n, i, s ) =
-    if List.isEmpty n then
-        [ "t", String.fromInt i, String.fromInt s ]
-
-    else if i > 0 || s > 0 then
-        n ++ [ String.fromInt i, String.fromInt s ]
-
-    else
-        n
+toName i =
+    [ "t", String.fromInt i ]
 
 
 variables : MetaType -> Set Variable
