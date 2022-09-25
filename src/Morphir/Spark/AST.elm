@@ -250,6 +250,47 @@ type Error
     | AggregationError ConstructAggregationError
 
 
+appendFunctionToSelect : FQName -> ObjectExpression -> Result Error ObjectExpression
+appendFunctionToSelect funcName sourceExpression =
+    case sourceExpression of
+        Select (( sourceName, sourceArgs ) :: []) sourceSource ->
+            fQNameToPartialSparkFunction funcName
+                |> Result.map
+                    (\partialFunc ->
+                        Select [ ( sourceName, partialFunc [ sourceArgs ] ) ] sourceSource
+                    )
+
+        other ->
+            Err (UnhandledObjectExpression other)
+
+
+isBasicType : FQName -> List (Type.Type ta) -> Bool
+isBasicType funcName funcArgs =
+    case funcName of
+        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) ->
+            True
+
+        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) ->
+            True
+
+        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) ->
+            True
+
+        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "string" ] ) ->
+            True
+
+        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) ->
+            case funcArgs of
+                [ Type.Reference _ fqn [] ] ->
+                    isBasicType fqn []
+
+                _ ->
+                    False
+
+        _ ->
+            False
+
+
 {-| provides a way to create ObjectExpressions from a Morphir Value.
 This is where support for various top level expression is added. This function fails to produce an ObjectExpression
 when it encounters a value that is not supported.
@@ -312,6 +353,19 @@ objectExpressionFromValue ir morphirValue =
         Value.LetDefinition _ _ _ _ ->
             inlineLetDef [] [] morphirValue
                 |> objectExpressionFromValue ir
+
+        Value.Apply (Type.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) as returnFQN) returnArgs) (Value.Reference _ applyFuncName) sourceRelation ->
+            case isBasicType returnFQN returnArgs of
+                True ->
+                    objectExpressionFromValue ir sourceRelation
+                        |> Result.andThen (appendFunctionToSelect applyFuncName)
+
+                False ->
+                    let
+                        _ =
+                            Debug.log "not a basic type" ( returnFQN, returnArgs )
+                    in
+                    Err (UnhandledValue morphirValue)
 
         other ->
             let
@@ -685,32 +739,65 @@ inlineArguments paramList argList fnBody =
             fnBody
 
 
+fQNameToPartialSparkFunction : FQName -> Result Error (List Expression -> Expression)
+fQNameToPartialSparkFunction fQName =
+    -- doesn't cover every call in mapSDKFunctions because some functions need special treatment
+    case FQName.toString fQName of
+        -- String Functions
+        "Morphir.SDK:String:replace" ->
+            Function "regexp_replace" |> Ok
+
+        "Morphir.SDK:String:reverse" ->
+            Function "reverse" |> Ok
+
+        "Morphir.SDK:String:toUpper" ->
+            Function "upper" |> Ok
+
+        "Morphir.SDK:String:concat" ->
+            UnsupportedSDKFunction fQName |> Err
+
+        -- List Functions
+        "Morphir.SDK:List:maximum" ->
+            Function "max" |> Ok
+
+        "Morphir.SDK:List:minimum" ->
+            Function "min" |> Ok
+
+        "Morphir.SDK:List:length" ->
+            Function "count" |> Ok
+
+        "Morphir.SDK:List:sum" ->
+            Function "sum" |> Ok
+
+        -- Aggregation Functions
+        "Morphir.SDK:Aggregate:sumOf" ->
+            Function "sum" |> Ok
+        "Morphir.SDK:Aggregate:averageOf" ->
+            Function "avg" |> Ok
+        "Morphir.SDK:Aggregate:minimumOf" ->
+            Function "min" |> Ok
+        "Morphir.SDK:Aggregate:maximumOf" ->
+            Function "max" |> Ok
+        "Morphir.SDK:Aggregate:weightedAverageOf" ->
+          -- XXX: I can't see a Spark equivalent
+          UnsupportedSDKFunction fQName |> Err
+
+        _ ->
+            FunctionNotFound fQName |> Err
+
+
 mapSDKFunctions : IR -> List TypedValue -> FQName -> Result Error Expression
 mapSDKFunctions ir args fQName =
     case ( FQName.toString fQName, args ) of
-        -- HANDLE STRING FUNCTIONS
         ( "Morphir.SDK:String:replace", pattern :: replacement :: target :: [] ) ->
-            [ target, pattern, replacement ]
-                |> List.map (expressionFromValue ir)
-                |> ResultList.keepFirstError
-                |> Result.map (Function "regexp_replace")
+            Result.map2
+                (\partialFunc exprArgs -> partialFunc exprArgs)
+                (fQNameToPartialSparkFunction fQName)
+                ([ target, pattern, replacement ]
+                    |> List.map (expressionFromValue ir)
+                    |> ResultList.keepFirstError
+                )
 
-        ( "Morphir.SDK:String:reverse", _ ) ->
-            args
-                |> List.map (expressionFromValue ir)
-                |> ResultList.keepFirstError
-                |> Result.map (Function "reverse")
-
-        ( "Morphir.SDK:String:toUpper", _ ) ->
-            args
-                |> List.map (expressionFromValue ir)
-                |> ResultList.keepFirstError
-                |> Result.map (Function "upper")
-
-        ( "Morphir.SDK:String:concat", _ ) ->
-            UnsupportedSDKFunction fQName |> Err
-
-        -- HANDLE LIST FUNCTIONS
         ( "Morphir.SDK:List:member", item :: (Value.List _ list) :: [] ) ->
             Result.map2
                 (\itemExpr listExpr ->
@@ -722,57 +809,18 @@ mapSDKFunctions ir args fQName =
                     |> ResultList.keepFirstError
                 )
 
-        ( "Morphir.SDK:List:maximum", item :: [] ) ->
-            expressionFromValue ir item
-                |> Result.map List.singleton
-                |> Result.map (Function "max")
-
-        ( "Morphir.SDK:List:minimum", item :: [] ) ->
-            expressionFromValue ir item
-                |> Result.map List.singleton
-                |> Result.map (Function "min")
-
-        ( "Morphir.SDK:List:length", item :: [] ) ->
-            expressionFromValue ir item
-                |> Result.map List.singleton
-                |> Result.map (Function "count")
-
-        ( "Morphir.SDK:List:sum", item :: [] ) ->
-            expressionFromValue ir item
-                |> Result.map List.singleton
-                |> Result.map (Function "sum")
-
-        -- HANDLE AGGREGATION FUNCTIONS
         ( "Morphir.SDK:Aggregate:count", [] ) ->
             -- morphir's count takes no arguments, but Spark's does
             Function "count" [ Function "lit" [ Literal (WholeNumberLiteral 1) ] ] |> Ok
 
-        ( "Morphir.SDK:Aggregate:sumOf", item :: [] ) ->
-            expressionFromValue ir item
-                |> Result.map List.singleton
-                |> Result.map (Function "sum")
-
-        ( "Morphir.SDK:Aggregate:averageOf", item :: [] ) ->
-            expressionFromValue ir item
-                |> Result.map List.singleton
-                |> Result.map (Function "avg")
-
-        ( "Morphir.SDK:Aggregate:minimumOf", item :: [] ) ->
-            expressionFromValue ir item
-                |> Result.map List.singleton
-                |> Result.map (Function "min")
-
-        ( "Morphir.SDK:Aggregate:maximumOf", item :: [] ) ->
-            expressionFromValue ir item
-                |> Result.map List.singleton
-                |> Result.map (Function "max")
-
-        ( "Morphir.SDK:Aggregate:weightedAverageOf", _ ) ->
-            -- XXX: I can't see a Spark equivalent
-            UnsupportedSDKFunction fQName |> Err
-
         _ ->
-            FunctionNotFound fQName |> Err
+            Result.map2
+                (\partialFunc exprArgs -> partialFunc exprArgs)
+                (fQNameToPartialSparkFunction fQName)
+                (args
+                    |> List.map (expressionFromValue ir)
+                    |> ResultList.keepFirstError
+                )
 
 
 {-| A simple mapping for a Morphir.SDK:Basics binary operations to its spark string equivalent
