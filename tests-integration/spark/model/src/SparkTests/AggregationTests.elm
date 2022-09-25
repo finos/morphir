@@ -80,15 +80,27 @@ testAggregateFilterAll antiques =
             )
 
 
-testAggregateFilterOne : List Antique -> List { product : Product, vintage : Float, all : Float }
-testAggregateFilterOne antiques =
+testAggregateFilterOneCount : List Antique -> List { product : Product, vintage : Float, all : Float }
+testAggregateFilterOneCount antiques =
     antiques
         |> groupBy .product
         |> aggregate
             (\key inputs ->
                 { product = key
-                , vintage = inputs (count |> withFilter (\a -> a.ageOfItem >= 20.0))
                 , all = inputs count
+                , vintage = inputs (count |> withFilter (\a -> a.ageOfItem >= 20.0))
+                }
+            )
+
+
+testAggregateFilterOneMin : List Antique -> List { product : Product, youngest_qualifying : Float }
+testAggregateFilterOneMin antiques =
+    antiques
+        |> groupBy .product
+        |> aggregate
+            (\key inputs ->
+                { product = key
+                , youngest_qualifying = inputs (minimumOf .ageOfItem |> withFilter (\a -> a.ageOfItem >= 20.0))
                 }
             )
 

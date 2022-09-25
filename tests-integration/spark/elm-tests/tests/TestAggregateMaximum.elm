@@ -43,4 +43,4 @@ encodeResult results =
 
 testAggregate : Test
 testAggregate =
-    executeTest "aggregateMaximum" antiquesDataSource testAggregateMaximum encodeResult
+    executeTest "testAggregateMaximum" antiquesDataSource testAggregateMaximum encodeResult

@@ -247,6 +247,7 @@ type Error
     | UnhandledPatternMatch ( Pattern (Type.Type ()), TypedValue )
     | UnhandledNamedExpressions NamedExpressions
     | UnhandledObjectExpression ObjectExpression
+    | UnhandledExpression Expression
     | AggregationError ConstructAggregationError
 
 
@@ -397,6 +398,39 @@ namedExpressionsFromFields ir fields =
 
 objectExpressionFromAggregationCall : IR -> AggregationCall -> Result Error ObjectExpression
 objectExpressionFromAggregationCall ir aggregationCall =
+    let
+        spliceFilterIntoFunction : Expression -> Expression -> Result Error Expression
+        spliceFilterIntoFunction filterExpr function =
+            case function of
+                Function funcName [funcArg] ->
+                    Function funcName [Function "when" [filterExpr, funcArg] ] |> Ok
+                other ->
+                    UnhandledExpression other |> Err
+
+        namedExpressionFromAggValue : AggregateValue -> Result Error (Name, Expression)
+        namedExpressionFromAggValue aggValue =
+            case aggValue of
+                AggregateValue fieldName filterFunc aggName aggArg ->
+                    let
+                        aggArgs =
+                            aggArg
+                                |> Maybe.map List.singleton
+                                |> Maybe.withDefault []
+                        aggExpr =
+                            mapSDKFunctions ir aggArgs aggName
+
+                    in
+                    case filterFunc of
+                        Just filt ->
+                            Result.map2
+                                spliceFilterIntoFunction
+                                (expressionFromValue ir filt)
+                                (aggExpr)
+                            |> Result.andThen (Result.map (Tuple.pair fieldName))
+                        Nothing ->
+                            aggExpr |> Result.map (Tuple.pair fieldName)
+
+    in
     case aggregationCall of
         AggregationCall groupKey _ aggValues sourceRelation ->
             -- not using returned group key yet
@@ -404,17 +438,7 @@ objectExpressionFromAggregationCall ir aggregationCall =
                 Aggregate
                 (groupKey |> Name.toTitleCase |> Ok)
                 (aggValues
-                    |> List.map
-                        (\aggValue ->
-                            case aggValue of
-                                AggregateValue fieldName _ aggName (Just aggArg) ->
-                                    mapSDKFunctions ir [ aggArg ] aggName
-                                        |> Result.andThen (\expr -> Tuple.pair fieldName expr |> Ok)
-
-                                AggregateValue fieldName _ aggName Nothing ->
-                                    mapSDKFunctions ir [] aggName
-                                        |> Result.andThen (\expr -> Tuple.pair fieldName expr |> Ok)
-                        )
+                    |> List.map namedExpressionFromAggValue
                     |> ResultList.keepFirstError
                 )
                 (objectExpressionFromValue ir sourceRelation)
