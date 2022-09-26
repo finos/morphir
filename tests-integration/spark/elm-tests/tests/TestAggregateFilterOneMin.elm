@@ -15,18 +15,18 @@
 -}
 
 
-module TestAggregateMinimum exposing (..)
+module TestAggregateFilterOneMin exposing (..)
 
 import AntiquesDataSource exposing (antiquesDataSource)
 import Csv.Encode as Encode exposing (..)
 import CsvUtils exposing (antiqueEncoder)
-import SparkTests.AggregationTests exposing (testAggregateMinimum)
+import SparkTests.AggregationTests exposing (testAggregateFilterOneMin)
 import SparkTests.DataDefinition.Persistence.Income.AntiqueShop exposing (Product(..), productToString)
 import Test exposing (Test)
 import TestUtils exposing (executeTest)
 
 
-encodeResult : List { product : Product, minimum : Float } -> String
+encodeResult : List { product : Product, youngest_qualifying : Float } -> String
 encodeResult results =
     results
         |> Encode.encode
@@ -34,7 +34,7 @@ encodeResult results =
                 Encode.withFieldNames
                     (\result ->
                         [ ( "product", productToString result.product )
-                        , ( "minimum", String.fromFloat result.minimum )
+                        , ( "youngest_qualifying", String.fromFloat result.youngest_qualifying )
                         ]
                     )
             , fieldSeparator = ','
@@ -43,4 +43,4 @@ encodeResult results =
 
 testAggregate : Test
 testAggregate =
-    executeTest "testAggregateMinimum" antiquesDataSource testAggregateMinimum encodeResult
+    executeTest "testAggregateFilterOneMin" antiquesDataSource testAggregateFilterOneMin encodeResult
