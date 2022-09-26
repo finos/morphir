@@ -6,7 +6,7 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Type.Constraint exposing (Constraint(..))
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, isNamedVariable, metaFun, metaRecord, metaRef, metaTuple, metaVar, wrapInAliases)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaRef, metaTuple, metaVar, variableGreaterThan, wrapInAliases)
 
 
 type SolutionMap
@@ -226,7 +226,7 @@ unifyVariable : Aliases -> Variable -> MetaType -> Result UnificationError Solut
 unifyVariable aliases var1 metaType2 =
     case metaType2 of
         MetaVar var2 ->
-            if isNamedVariable var1 then
+            if variableGreaterThan var1 var2 then
                 Ok (singleSolution aliases var2 (metaVar var1))
 
             else

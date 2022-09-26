@@ -16,7 +16,7 @@ import Morphir.IR.Type as Type exposing (Specification(..), Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), Value)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Type.Class as Class exposing (Class)
-import Morphir.Type.Constraint exposing (Constraint(..), class, equality, isRecursive)
+import Morphir.Type.Constraint as Constraint exposing (Constraint(..), class, equality, isRecursive)
 import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet(..))
 import Morphir.Type.Count as Count exposing (Count)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaClosedRecord, metaFun, metaOpenRecord, metaTuple, metaUnit, metaVar)
@@ -1376,7 +1376,8 @@ solveHelp : IR -> SolutionMap -> ConstraintSet -> Result TypeError ( ConstraintS
 solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
     --let
     --    _ =
-    --        Debug.log "constraints so far" (constraints |> List.length)
+    --        constraints
+    --            |> List.map (Constraint.toString >> Debug.log "constraints so far")
     --
     --    _ =
     --        Debug.log "solutions so far" (solutionsSoFar |> Solve.toList |> List.length)

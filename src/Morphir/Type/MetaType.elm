@@ -1,4 +1,4 @@
-module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, contains, floatType, intType, isNamedVariable, listType, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, substituteVariable, substituteVariables, toName, toString, variableByIndex, variables, wrapInAliases)
+module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, contains, floatType, intType, listType, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, substituteVariable, substituteVariables, toName, toString, variableByIndex, variableGreaterThan, variables, wrapInAliases)
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName, fqn)
@@ -160,14 +160,14 @@ variableByIndex i =
     i
 
 
-isNamedVariable : Variable -> Bool
-isNamedVariable _ =
-    False
-
-
 toName : Variable -> Name
 toName i =
     [ "t", String.fromInt i ]
+
+
+variableGreaterThan : Variable -> Variable -> Bool
+variableGreaterThan var1 var2 =
+    var1 < var2
 
 
 variables : MetaType -> Set Variable
