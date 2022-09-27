@@ -3,6 +3,6 @@
 		"PII": true
 	},
 	 "Value:Morphir.Reference.Model:Issues.Issue401:foo": {
-		"PII": true
+		"PII": false
 	}
 }

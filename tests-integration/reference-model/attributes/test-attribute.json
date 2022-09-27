@@ -3,6 +3,6 @@
 		"MMPI": false
 	},
 	 "Value:Morphir.Reference.Model:Issues.Issue401:foo": {
-		"MMPI": false
+		"MMPI": true
 	}
 }

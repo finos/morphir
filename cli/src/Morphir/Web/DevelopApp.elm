@@ -968,9 +968,9 @@ viewHome model packageName packageDef =
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
             ]
 
-        getAttributeValue node =
+        viewAttributeValues node =
             let
-                attributeValue nodeId =
+                attributeValuesList nodeId =
                     model.customAttributes
                         |> SDKDict.foldl
                             (\nodeID jsonValueDict jsonValueList ->
@@ -991,18 +991,20 @@ viewHome model packageName packageDef =
                             )
                             []
             in
-            attributeValue node
-                |> List.map
-                    (\( attrId, jsonValueStr ) ->
-                        Element.Input.multiline
-                            [ Border.width 1 ]
-                            { text = jsonValueStr
-                            , placeholder = Just (placeholder [] (text "Add a new value"))
-                            , onChange = \new -> UpdateAttribute new
-                            , label = labelAbove [] (text attrId)
-                            , spellcheck = False
-                            }
-                    )
+            column [ padding 10, spacing 10 ]
+                (attributeValuesList node
+                    |> List.map
+                        (\( attrId, jsonValueStr ) ->
+                            Element.Input.multiline
+                                []
+                                { text = jsonValueStr
+                                , placeholder = Just (placeholder [] (text "Add a new value"))
+                                , onChange = \new -> UpdateAttribute new
+                                , label = labelAbove [] (text attrId)
+                                , spellcheck = False
+                                }
+                        )
+                )
 
         -- Display a single selected definition on the ui
         viewDefinition : Maybe Definition -> Element Msg
@@ -1050,8 +1052,10 @@ viewHome model packageName packageDef =
                                                             ( packageName, moduleName, valueName )
                                                     in
                                                     column []
-                                                        [ row [ width fill, padding 10, spacing 20 ] (getAttributeValue (ValueID fullyQualifiedName))
-                                                        , viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
+                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
+                                                        , el [ Font.bold, Font.underline ] (text "Custom Attributes")
+                                                        , row [ width fill ]
+                                                            [ viewAttributeValues (ValueID fullyQualifiedName) ]
                                                         , toggleDisplayType
                                                         ]
                                                 )
