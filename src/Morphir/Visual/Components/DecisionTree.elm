@@ -14,11 +14,12 @@ import Svg.Attributes
 import Morphir.Visual.Config exposing (HighlightState(..))
 import Morphir.Visual.Theme exposing (smallPadding)
 import Element exposing (explain)
+import Morphir.Value.Interpreter exposing (Variables)
 
 
 type Node
     = Branch BranchNode
-    | Leaf EnrichedValue
+    | Leaf Variables EnrichedValue
 
 
 type alias BranchNode =
@@ -119,7 +120,7 @@ layoutHelp config highlightState viewValue rootNode =
                 Branch branch ->
                     depthOf f (f branch) + 1
 
-                Leaf _ ->
+                Leaf _ _ ->
                     1
     in
     case rootNode of
@@ -189,14 +190,14 @@ layoutHelp config highlightState viewValue rootNode =
                 elseState
                 (layoutHelp {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight elseState } } elseState viewValue branch.elseBranch)
 
-        Leaf value ->
+        Leaf variables value ->
             el
                 [ highlightState |> highlightStateToBorderWidth |> Border.width
                 , Border.rounded 6
                 , Border.color (highlightState |> highlightStateToColor |> toElementColor)
                 , smallPadding config.state.theme |> padding
                 ]
-                (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight highlightState } } value)
+                (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight highlightState, variables = variables } } value)
 
 
 horizontalLayout : Config msg -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg

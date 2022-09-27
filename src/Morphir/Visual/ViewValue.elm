@@ -32,6 +32,7 @@ import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewRecord as ViewRecord
 import Morphir.Visual.XRayView as XRayView
 import Morphir.IR.Value exposing (Pattern(..))
+import Element exposing (pointer)
 
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
@@ -185,6 +186,7 @@ viewValueByLanguageFeature config value =
                         [ smallPadding config.state.theme |> padding
                         , smallSpacing config.state.theme |> spacing
                         , onClick (config.handlers.onReferenceClicked fQName False)
+                        , pointer
                         ]
                         [ text (nameToText localName) ]
 
@@ -390,7 +392,7 @@ viewPopup config =
                             , Font.color config.state.theme.colors.darkest
                             , Border.rounded 4
                             , Font.center
-                            , mediumPadding config.state.theme |> padding
+                            , smallPadding config.state.theme |> padding
                             , htmlAttribute (style "position" "absolute")
                             , htmlAttribute (style "transition" "all 0.2s ease-in-out")
                             ]

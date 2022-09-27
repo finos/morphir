@@ -1,13 +1,13 @@
-module Morphir.Visual.Common exposing (cssClass, definition, element, grayScale, nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl)
+module Morphir.Visual.Common exposing (cssClass, definition, element, grayScale, nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 
-import Element exposing (Attribute, Color, Element, column, el, height, paddingEach, rgb, row, shrink, spacing, text, width)
+import Element exposing (Attribute, Color, Element, column, el, height, paddingEach, rgb, row, shrink, spacing, text, width, inFront, mouseOver, transparent, none, htmlAttribute, fill)
 import Element.Font as Font
 import Html exposing (Html)
 import Html.Attributes exposing (class)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.Visual.Config exposing (Config)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing)
-import Morphir.IR.Path as Path exposing (Path, toString)
+import Morphir.IR.Path as Path exposing (Path)
 
 
 cssClass : String -> Attribute msg
@@ -73,3 +73,17 @@ pathToFullUrl path =
 pathToDisplayString : Path -> String
 pathToDisplayString =
     Path.toString (Name.toHumanWords >> String.join " ") " > "
+
+tooltip : (Element msg -> Attribute msg) -> Element msg -> Attribute msg
+tooltip usher tooltip_ =
+    inFront <|
+        el
+            [ width fill
+            , height fill
+            , transparent True
+            , mouseOver [ transparent False ]
+            , (usher ) <|
+                el [ htmlAttribute (Html.Attributes.style "pointerEvents" "none") ]
+                    tooltip_
+            ]
+            none

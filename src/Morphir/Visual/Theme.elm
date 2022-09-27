@@ -111,6 +111,9 @@ largePadding : Theme -> Int
 largePadding theme =
     scaled 4 theme
 
+borderRounded : Attribute msg
+borderRounded = 
+    Border.rounded 3
 
 scaled : Int -> Theme -> Int
 scaled scaleValue theme =
