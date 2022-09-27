@@ -1043,19 +1043,9 @@ viewHome model packageName packageDef =
 
                 createUiElement : Element Msg -> Definition -> Name -> (Name -> String) -> Element Msg
                 createUiElement icon definition name nameTransformation =
-                    let
-                        shouldColorBg : Bool
-                        shouldColorBg =
-                            case model.homeState.selectedDefinition of
-                                Just defi ->
-                                    definition == defi
-
-                                Nothing ->
-                                    False
-                    in
                     viewAsLabel
                         model.theme
-                        shouldColorBg
+                        (model.homeState.selectedDefinition == Just definition)
                         icon
                         (text (nameToText name))
                         (pathToDisplayString moduleName)
@@ -2068,7 +2058,7 @@ viewDefinitionDetails model =
 
                                                     inputs : List (Maybe RawValue)
                                                     inputs =
-                                                        List.map (\inputName -> Dict.get inputName model.insightViewState.variables) (List.map (\( inputName, _, _ ) -> inputName) valueDef.inputTypes)
+                                                        List.map (\inputName -> Dict.get inputName model.insightViewState.variables) (Dict.keys model.insightViewState.variables)
 
                                                     ir : IR
                                                     ir =

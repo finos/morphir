@@ -74,7 +74,7 @@ pathToDisplayString : Path -> String
 pathToDisplayString =
     Path.toString (Name.toHumanWords >> String.join " ") " > "
 
-tooltip : (Element msg -> Attribute msg) -> Element Never -> Attribute msg
+tooltip : (Element msg -> Attribute msg) -> Element msg -> Attribute msg
 tooltip usher tooltip_ =
     inFront <|
         el
@@ -82,7 +82,7 @@ tooltip usher tooltip_ =
             , height fill
             , transparent True
             , mouseOver [ transparent False ]
-            , (usher << Element.map never) <|
+            , (usher ) <|
                 el [ htmlAttribute (Html.Attributes.style "pointerEvents" "none") ]
                     tooltip_
             ]
