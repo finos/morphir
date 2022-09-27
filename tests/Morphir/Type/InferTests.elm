@@ -555,14 +555,14 @@ solvePositiveTests =
             , ( [ equality (tvar 1) (tvar 2)
                 ]
               , []
-              , [ ( t 1, tvar 2 )
+              , [ ( t 2, tvar 1 )
                 ]
               )
             , ( [ equality (tvar 1) (tvar 2)
                 , equality (tvar 2) (tvar 1)
                 ]
               , []
-              , [ ( t 1, tvar 2 )
+              , [ ( t 2, tvar 1 )
                 ]
               )
             , ( [ equality (tvar 1) (metaTuple [ tvar 5, tvar 4 ])
