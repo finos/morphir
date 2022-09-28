@@ -22,8 +22,8 @@ import CsvUtils exposing (..)
 import SparkTests.Types exposing (..)
 
 
-csvAgeData : String
-csvAgeData =
+csvData : String
+csvData =
     """ageOfItem
 -1.0
 0.0
@@ -38,4 +38,4 @@ csvAgeData =
 
 antiqueAgeDataSource : Result Error (List AgeRecord)
 antiqueAgeDataSource =
-    Decode.decodeCsv Decode.FieldNamesFromFirstRow antiqueAgeDecoder csvAgeData
+    Decode.decodeCsv Decode.FieldNamesFromFirstRow antiqueAgeDecoder csvData
