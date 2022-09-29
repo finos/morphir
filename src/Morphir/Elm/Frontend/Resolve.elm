@@ -37,6 +37,7 @@ import Morphir.IR.Path.Codec exposing (encodePath)
 import Morphir.IR.Type as Type
 import Morphir.JsonExtra as JsonExtra
 import Morphir.ListOfResults as ListOfResults
+import Set
 
 
 type alias ModuleName =
@@ -403,7 +404,8 @@ createModuleResolver ctx =
                         |> Result.fromMaybe (CouldNotFindLocalName trace nameType sourceLocalName)
                         |> Result.andThen
                             (\modulePaths ->
-                                case modulePaths of
+                                -- deduplicate module paths before the check
+                                case modulePaths |> Set.fromList |> Set.toList of
                                     [] ->
                                         Err (CouldNotFindLocalName trace nameType sourceLocalName)
 
