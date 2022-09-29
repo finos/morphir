@@ -1,7 +1,7 @@
 module Morphir.Visual.XRayView exposing (NodeType(..), TreeNode(..), childNodes, noPadding, patternToNode, valueToNode, viewConstructorName, viewLiteral, viewPatternAsHeader, viewReferenceName, viewTreeNode, viewType, viewValue, viewValueAsHeader, viewValueDefinition)
 
 import Dict
-import Element exposing (Element, column, el, fill, link, paddingEach, paddingXY, rgb, row, spacing, text, width)
+import Element exposing (Element, column, el, fill, link, paddingEach, paddingXY, rgb, row, spacing, text, width, pointer)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -472,7 +472,7 @@ viewType urlBuilder tpe =
 
         Type.Reference _ ( b, c, localName ) argTypes ->
             if List.isEmpty argTypes then
-                link [] { url = "/home" ++ urlBuilder b ++ urlBuilder c ++ "/" ++ Name.toTitleCase localName, label = text <| Name.toTitleCase localName }
+                link [pointer] { url = "/home" ++ urlBuilder b ++ urlBuilder c ++ "/" ++ Name.toTitleCase localName, label = text <| Name.toTitleCase localName }
 
             else
                 row [ spacing 6 ]
