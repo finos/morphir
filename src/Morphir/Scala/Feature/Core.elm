@@ -462,7 +462,9 @@ mapValue inScopeVars value =
                     Debug.todo "branch 'DecimalLiteral _' not implemented"
 
         Constructor constructorType fQName ->
-            curryConstructorArgs inScopeVars constructorType fQName []
+            Scala.TypeAscripted
+                (curryConstructorArgs inScopeVars constructorType fQName [])
+                (mapType constructorType)
 
         Tuple a elemValues ->
             Scala.Tuple
@@ -525,14 +527,16 @@ mapValue inScopeVars value =
                 _ ->
                     Scala.Select Scala.Wildcard (mapValueName fieldName)
 
-        Apply _ applyFun applyArg ->
+        Apply funType applyFun applyArg ->
             let
                 ( bottomFun, args ) =
                     Value.uncurryApply applyFun applyArg
             in
             case bottomFun of
                 Constructor constructorType fQName ->
-                    curryConstructorArgs inScopeVars constructorType fQName args
+                    Scala.TypeAscripted
+                        (curryConstructorArgs inScopeVars constructorType fQName args)
+                        (mapType funType)
 
                 _ ->
                     Scala.Apply (mapValue inScopeVars applyFun)
@@ -889,18 +893,21 @@ curryConstructorArgs : Set Name -> Type () -> FQName -> List (Value a (Type ()))
 curryConstructorArgs inScopeVars constructorType constructorFQName constructorArgs =
     let
         -- Get the argument types from a curried function type
-        extractArgTypes : Type () -> List (Type ())
+        extractArgTypes : Type () -> ( List (Type ()), Type () )
         extractArgTypes tpe =
             case tpe of
                 Type.Function _ argType returnType ->
-                    argType :: extractArgTypes returnType
+                    let
+                        ( argTypes, finalReturnType ) =
+                            extractArgTypes returnType
+                    in
+                    ( argType :: argTypes, finalReturnType )
 
                 _ ->
-                    []
+                    ( [], tpe )
 
         -- Get the argument types of the constructor
-        constructorArgTypes : List (Type ())
-        constructorArgTypes =
+        ( constructorArgTypes, constructorReturnType ) =
             extractArgTypes constructorType
 
         -- Collect the arguments that were not specified
@@ -922,29 +929,24 @@ curryConstructorArgs inScopeVars constructorType constructorFQName constructorAr
                         (curryUnspecifiedArgs restOfArgs scalaConstructorValue (scalaArgumentsSpecified ++ [ Scala.ArgValue Nothing (Scala.Variable firstArgName) ]))
 
                 [] ->
-                    Scala.Apply scalaConstructorValue scalaArgumentsSpecified
+                    Scala.TypeAscripted
+                        (Scala.Apply scalaConstructorValue scalaArgumentsSpecified)
+                        (mapType constructorReturnType)
 
         ( path, name ) =
             mapFQNameToPathAndName constructorFQName
     in
     case ( constructorArgTypes, unspecifiedArgs ) of
         ( [], _ ) ->
-            Scala.TypeAscripted
-                (Scala.Ref path (name |> Name.toTitleCase))
-                (mapType constructorType)
+            Scala.Ref path (name |> Name.toTitleCase)
 
         ( [ _ ], [ _ ] ) ->
-            Scala.TypeAscripted
-                (Scala.Ref path (name |> Name.toTitleCase))
-                (mapType constructorType)
+            Scala.Ref path (name |> Name.toTitleCase)
 
         _ ->
             curryUnspecifiedArgs
                 unspecifiedArgs
-                (Scala.TypeAscripted
-                    (Scala.Ref path (name |> Name.toTitleCase))
-                    (mapType constructorType)
-                )
+                (Scala.Ref path (name |> Name.toTitleCase))
                 (constructorArgs
                     |> List.map
                         (\arg ->

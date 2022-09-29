@@ -2,11 +2,13 @@ module Morphir.Scala.Feature.CoreTests exposing (..)
 
 import Expect
 import Morphir.IR.FQName as FQName
-import Morphir.IR.Name as Name
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as IRPath
 import Morphir.IR.Type as IRType
+import Morphir.IR.Value as IRValue
 import Morphir.Scala.AST as Scala
 import Morphir.Scala.Feature.Core as Core
+import Set exposing (Set)
 import Test exposing (Test, describe, test)
 
 
@@ -23,6 +25,40 @@ mapValueNameTests =
     describe "toScalaName"
         [ assert [ "full", "name" ] "fullName"
         , assert [ "implicit" ] "_implicit"
+        ]
+
+
+testConstructorTypeAscription : Test
+testConstructorTypeAscription =
+    let
+        packageName =
+            "package"
+
+        moduleName =
+            "Module"
+
+        defaultScalaRef name =
+            Scala.Ref [ packageName, moduleName ] name
+
+        morphirFQN name =
+            ( [ [ packageName ] ], [ [ moduleName ] ], [ name ] )
+
+        assert name value expectedScalaOutput =
+            test name <|
+                \_ ->
+                    Core.mapValue Set.empty value
+                        |> Expect.equal expectedScalaOutput
+
+        expectedNoArgFun =
+            Scala.Apply (defaultScalaRef "fn1") [ Scala.ArgValue Nothing (Scala.TypeAscripted (defaultScalaRef "Ctor1") (Scala.TypeRef [ packageName, moduleName ] "Custom")) ]
+
+        noArgFun =
+            IRValue.Apply (IRType.Unit ())
+                (IRValue.Reference (IRType.Function () (IRType.Reference () (morphirFQN "custom") []) (IRType.Unit ())) (morphirFQN "fn1"))
+                (IRValue.Constructor (IRType.Reference () (morphirFQN "custom") []) (morphirFQN "ctor1"))
+    in
+    describe "Type ascribe constructors values"
+        [ assert "Generated Scala For NoArgs Ctor TypeAscription ... " noArgFun expectedNoArgFun
         ]
 
 

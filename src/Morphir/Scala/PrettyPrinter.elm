@@ -556,9 +556,11 @@ mapValue opt value =
 
         TypeAscripted nestedValue tpe ->
             concat
-                [ mapValue opt nestedValue
+                [ "("
+                , mapValue opt nestedValue
                 , " : "
                 , mapType opt tpe
+                , ")"
                 ]
 
 
