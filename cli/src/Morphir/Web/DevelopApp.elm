@@ -5,45 +5,7 @@ import Array.Extra
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
-import Element
-    exposing
-        ( Element
-        , alignLeft
-        , alignRight
-        , alignTop
-        , centerX
-        , centerY
-        , clipX
-        , clipY
-        , column
-        , el
-        , fill
-        , fillPortion
-        , height
-        , html
-        , image
-        , layout
-        , link
-        , maximum
-        , mouseOver
-        , moveDown
-        , none
-        , padding
-        , paddingEach
-        , paddingXY
-        , paragraph
-        , pointer
-        , px
-        , rgb
-        , rgba
-        , rotate
-        , row
-        , scrollbars
-        , shrink
-        , spacing
-        , text
-        , width
-        )
+import Element exposing (Element, above, alignLeft, alignRight, alignTop, centerX, centerY, clipX, clipY, column, el, fill, fillPortion, height, html, image, layout, link, maximum, mouseOver, moveDown, none, padding, paddingEach, paddingXY, paragraph, pointer, px, rgb, rgba, rotate, row, scrollbars, shrink, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -991,7 +953,7 @@ viewHome model packageName packageDef =
                             )
                             []
             in
-            column [ padding 10, spacing 10 ]
+            column [ padding 10, spacing 10, above (el [ Font.bold, Font.underline ] (text "Custom Attributes")) ]
                 (attributeValuesList node
                     |> List.map
                         (\( attrId, jsonValueStr ) ->
@@ -1053,7 +1015,8 @@ viewHome model packageName packageDef =
                                                     in
                                                     column []
                                                         [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
-                                                        , el [ Font.bold, Font.underline ] (text "Custom Attributes")
+
+                                                        --, el [ Font.bold, Font.underline ] (text "Custom Attributes")
                                                         , row [ width fill ]
                                                             [ viewAttributeValues (ValueID fullyQualifiedName) ]
                                                         , toggleDisplayType
