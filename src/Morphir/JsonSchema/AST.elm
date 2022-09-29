@@ -18,8 +18,15 @@ type alias Schema =
 
 type SchemaType
     = Integer
-    | Array SchemaType
+    | Array ArrayType
     | String
     | Number
     | Boolean
     | Object (Dict String SchemaType)
+    | Const String
+    | Ref String
+
+
+type ArrayType
+    = ListType SchemaType
+    | TupleType (List SchemaType)

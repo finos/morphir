@@ -31,7 +31,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.JsonSchema.AST exposing (Schema, SchemaType(..), TypeName)
+import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
 
 
@@ -119,24 +119,24 @@ mapTypeDefinition typeName definition =
 mapType : Type ta -> Maybe SchemaType
 mapType typ =
     case typ of
-        Type.Reference a fQName types ->
-            case FQName.toString fQName of
-                "Morphir.SDK:Basics:int" ->
+        Type.Reference a fQName argTypes ->
+            case ( FQName.toString fQName, argTypes ) of
+                ( "Morphir.SDK:Basics:int", [] ) ->
                     Just Integer
 
-                "Morphir.SDK:String:string" ->
+                ( "Morphir.SDK:String:string", [] ) ->
                     Just String
 
-                "Morphir.SDK:Basics:float" ->
+                ( "Morphir.SDK:Basics:float", [] ) ->
                     Just Number
 
-                "Morphir.SDK:Basics:bool" ->
+                ( "Morphir.SDK:Basics:bool", [] ) ->
                     Just Boolean
 
-                "Morphir.SDK:List:list" ->
-                    List.head types
-                        |> Maybe.andThen mapType
-                        |> Maybe.map Array
+                ( "Morphir.SDK:List:list", [ itemType ] ) ->
+                    mapType itemType
+                        |> Maybe.map
+                            (ListType >> Array)
 
                 _ ->
                     Nothing
