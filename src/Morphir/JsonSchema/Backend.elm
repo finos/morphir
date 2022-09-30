@@ -25,7 +25,7 @@ import Dict exposing (Dict)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
-import Morphir.IR.FQName as FQName
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
@@ -111,8 +111,36 @@ mapTypeDefinition qualifiedName definition =
         Type.TypeAliasDefinition typeArgs typ ->
             [ ( mapQualifiedName qualifiedName, mapType typ ) ]
 
-        Type.CustomTypeDefinition typeArgs accessControlledConstructors ->
-            []
+        Type.CustomTypeDefinition typeArgs accessControlledCtors ->
+            let
+                refSchemas =
+                    accessControlledCtors.value
+                        |> Dict.toList
+                        |> List.map
+                            (\( ctorName, ctorArgs ) ->
+                                Ref (ctorName |> Name.toTitleCase)
+                            )
+
+                constArray =
+                    ( Tuple.second qualifiedName |> Name.toTitleCase, Array (TupleType refSchemas) )
+            in
+            constArray
+                :: (accessControlledCtors.value
+                        |> Dict.toList
+                        |> List.map
+                            (\( ctorName, ctorArgs ) ->
+                                ( ctorName |> Name.toTitleCase
+                                , Array
+                                    (TupleType
+                                        (Const (ctorName |> Name.toTitleCase)
+                                            :: (ctorArgs
+                                                    |> List.map (Tuple.second >> mapType)
+                                               )
+                                        )
+                                    )
+                                )
+                            )
+                   )
 
 
 mapType : Type ta -> SchemaType
@@ -136,7 +164,7 @@ mapType typ =
                     Array (ListType (mapType itemType))
 
                 _ ->
-                    Null
+                    Ref ("#/defs/" ++ (fQName |> FQName.getLocalName |> Name.toTitleCase))
 
         Type.Record a fields ->
             fields

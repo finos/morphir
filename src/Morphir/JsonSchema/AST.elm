@@ -24,7 +24,7 @@ type SchemaType
     | Boolean
     | Object (Dict String SchemaType)
     | Const String
-    | Ref String
+    | Ref TypeName
     | Null
 
 
