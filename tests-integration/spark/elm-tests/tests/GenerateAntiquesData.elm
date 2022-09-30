@@ -15,7 +15,7 @@
 -}
 
 
-module GenerateAntiqueTestData exposing (..)
+module GenerateAntiquesData exposing (..)
 
 import Expect exposing (Expectation)
 import Test exposing (..)

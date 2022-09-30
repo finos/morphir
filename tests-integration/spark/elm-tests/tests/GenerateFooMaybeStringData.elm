@@ -1,7 +1,7 @@
 module GenerateFooMaybeStringData exposing (..)
 
 import Expect exposing (Expectation)
-import GenerateAntiqueTestData exposing (..)
+import GenerateAntiquesData exposing (..)
 import Test exposing (..)
 
 
