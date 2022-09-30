@@ -78,9 +78,9 @@ generateSchema packageName packageDefinition =
                 |> Dict.foldl
                     (\modName modDef listSoFar ->
                         extractTypes modName modDef.value
-                            |> List.filterMap
+                            |> List.concatMap
                                 (\( qualifiedName, typeDef ) ->
-                                    mapTypeDefinition (mapQualifiedName qualifiedName) typeDef
+                                    mapTypeDefinition qualifiedName typeDef
                                 )
                             |> (\lst -> listSoFar ++ lst)
                     )
@@ -105,55 +105,48 @@ extractTypes modName definition =
             )
 
 
-mapTypeDefinition : TypeName -> Type.Definition ta -> Maybe ( TypeName, SchemaType )
-mapTypeDefinition typeName definition =
+mapTypeDefinition : ( Path, Name ) -> Type.Definition ta -> List ( TypeName, SchemaType )
+mapTypeDefinition qualifiedName definition =
     case definition of
         Type.TypeAliasDefinition typeArgs typ ->
-            mapType typ
-                |> Maybe.map (Tuple.pair typeName)
+            [ ( mapQualifiedName qualifiedName, mapType typ ) ]
 
         Type.CustomTypeDefinition typeArgs accessControlledConstructors ->
-            Nothing
+            []
 
 
-mapType : Type ta -> Maybe SchemaType
+mapType : Type ta -> SchemaType
 mapType typ =
     case typ of
         Type.Reference a fQName argTypes ->
             case ( FQName.toString fQName, argTypes ) of
                 ( "Morphir.SDK:Basics:int", [] ) ->
-                    Just Integer
+                    Integer
 
                 ( "Morphir.SDK:String:string", [] ) ->
-                    Just String
+                    String
 
                 ( "Morphir.SDK:Basics:float", [] ) ->
-                    Just Number
+                    Number
 
                 ( "Morphir.SDK:Basics:bool", [] ) ->
-                    Just Boolean
+                    Boolean
 
                 ( "Morphir.SDK:List:list", [ itemType ] ) ->
-                    mapType itemType
-                        |> Maybe.map
-                            (ListType >> Array)
+                    Array (ListType (mapType itemType))
 
                 _ ->
-                    Nothing
+                    Null
 
         Type.Record a fields ->
             fields
                 |> List.foldl
-                    (\field maybeDictSoFar ->
-                        maybeDictSoFar
-                            |> Maybe.map2
-                                (\schemaType dictSofar ->
-                                    Dict.insert (Name.toTitleCase field.name) schemaType dictSofar
-                                )
-                                (mapType field.tpe)
+                    (\field ->
+                        \dictSofar ->
+                            Dict.insert (Name.toTitleCase field.name) (mapType field.tpe) dictSofar
                     )
-                    (Just Dict.empty)
-                |> Maybe.map Object
+                    Dict.empty
+                |> Object
 
         _ ->
-            Nothing
+            Null

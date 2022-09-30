@@ -25,6 +25,7 @@ type SchemaType
     | Object (Dict String SchemaType)
     | Const String
     | Ref String
+    | Null
 
 
 type ArrayType

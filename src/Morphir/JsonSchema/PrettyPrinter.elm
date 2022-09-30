@@ -67,3 +67,6 @@ encodeSchemaType schemaType =
         Ref string ->
             Encode.object
                 [ ( "$ref", Encode.string string ) ]
+
+        Null ->
+            Encode.null
