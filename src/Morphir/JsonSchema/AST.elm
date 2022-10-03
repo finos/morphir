@@ -25,6 +25,7 @@ type SchemaType
     | Object (Dict String SchemaType)
     | Const String
     | Ref TypeName
+    | AnyOf (List SchemaType)
     | Null
 
 

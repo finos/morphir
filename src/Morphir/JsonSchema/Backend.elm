@@ -113,16 +113,16 @@ mapTypeDefinition qualifiedName definition =
 
         Type.CustomTypeDefinition _ accessControlledCtors ->
             let
-                refSchemas =
+                anyOfs =
                     accessControlledCtors.value
                         |> Dict.toList
                         |> List.map
                             (\( ctorName, _ ) ->
-                                Ref (ctorName |> Name.toTitleCase)
+                                Const (ctorName |> Name.toTitleCase)
                             )
 
                 constArray =
-                    ( Tuple.second qualifiedName |> Name.toTitleCase, Array (TupleType refSchemas) )
+                    ( Tuple.second qualifiedName |> Name.toTitleCase, AnyOf anyOfs )
             in
             constArray
                 :: (accessControlledCtors.value

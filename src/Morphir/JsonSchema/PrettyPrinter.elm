@@ -70,3 +70,8 @@ encodeSchemaType schemaType =
 
         Null ->
             Encode.null
+
+        AnyOf schemaTypes ->
+            Encode.object
+                [ ( "anyOf", Encode.list encodeSchemaType schemaTypes )
+                ]
