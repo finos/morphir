@@ -51,7 +51,7 @@ type Error
 representation of files generated.
 -}
 mapDistribution : Options -> Distribution -> FileMap
-mapDistribution opt distro =
+mapDistribution _ distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
             mapPackageDefinition packageName packageDef
@@ -108,16 +108,16 @@ extractTypes modName definition =
 mapTypeDefinition : ( Path, Name ) -> Type.Definition ta -> List ( TypeName, SchemaType )
 mapTypeDefinition qualifiedName definition =
     case definition of
-        Type.TypeAliasDefinition typeArgs typ ->
+        Type.TypeAliasDefinition _ typ ->
             [ ( mapQualifiedName qualifiedName, mapType typ ) ]
 
-        Type.CustomTypeDefinition typeArgs accessControlledCtors ->
+        Type.CustomTypeDefinition _ accessControlledCtors ->
             let
                 refSchemas =
                     accessControlledCtors.value
                         |> Dict.toList
                         |> List.map
-                            (\( ctorName, ctorArgs ) ->
+                            (\( ctorName, _ ) ->
                                 Ref (ctorName |> Name.toTitleCase)
                             )
 
@@ -129,16 +129,24 @@ mapTypeDefinition qualifiedName definition =
                         |> Dict.toList
                         |> List.map
                             (\( ctorName, ctorArgs ) ->
-                                ( ctorName |> Name.toTitleCase
-                                , Array
-                                    (TupleType
-                                        (Const (ctorName |> Name.toTitleCase)
-                                            :: (ctorArgs
-                                                    |> List.map (Tuple.second >> mapType)
-                                               )
+                                let
+                                    typeName =
+                                        (Tuple.second qualifiedName |> Name.toTitleCase) ++ "." ++ (ctorName |> Name.toTitleCase)
+                                in
+                                if List.isEmpty ctorArgs then
+                                    ( typeName, Const (ctorName |> Name.toTitleCase) )
+
+                                else
+                                    ( typeName
+                                    , Array
+                                        (TupleType
+                                            (Const (ctorName |> Name.toTitleCase)
+                                                :: (ctorArgs
+                                                        |> List.map (Tuple.second >> mapType)
+                                                   )
+                                            )
                                         )
                                     )
-                                )
                             )
                    )
 
@@ -146,7 +154,7 @@ mapTypeDefinition qualifiedName definition =
 mapType : Type ta -> SchemaType
 mapType typ =
     case typ of
-        Type.Reference a fQName argTypes ->
+        Type.Reference _ fQName argTypes ->
             case ( FQName.toString fQName, argTypes ) of
                 ( "Morphir.SDK:Basics:int", [] ) ->
                     Integer
@@ -166,7 +174,7 @@ mapType typ =
                 _ ->
                     Ref ("#/defs/" ++ (fQName |> FQName.getLocalName |> Name.toTitleCase))
 
-        Type.Record a fields ->
+        Type.Record _ fields ->
             fields
                 |> List.foldl
                     (\field ->
