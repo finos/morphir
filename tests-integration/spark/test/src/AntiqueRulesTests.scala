@@ -20,6 +20,7 @@ import org.apache.spark.sql.functions.explode
 import org.apache.spark.sql.types._
 import org.scalatest.FunSuite
 import sparktests.antiquerulestests.SparkJobs
+import sparktests.rules.income.antique.SparkJobs.report
 
 class antiqueRulesTest extends FunSuite {
 
@@ -31,8 +32,8 @@ class antiqueRulesTest extends FunSuite {
   val schema = new StructType()
     .add("category", StringType, true)
     .add("product", StringType, false)
-    .add("priceValue", FloatType, false)
-    .add("ageOfItem", FloatType, false)
+    .add("priceValue",DoubleType, false)
+    .add("ageOfItem", DoubleType, false)
     .add("handMade", BooleanType, false)
     .add("requiresExpert", BooleanType, false)
     .add("expertFeedBack", StringType, true)
@@ -106,6 +107,22 @@ class antiqueRulesTest extends FunSuite {
 
     assert(df_actual_results.columns.length == df_expected_results.columns.length)
     assert (df_actual_results.count == df_expected_results.count)
+    assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
+  }
+
+  test("report") {
+    val df_expected_results = localTestSession.read.format("csv")
+      .option("header", "true")
+      .schema(new StructType()
+        .add("antiqueValue", DoubleType, false)
+        .add("seizedValue", DoubleType, false)
+        .add("vintageValue", DoubleType, false))
+      .load("spark/test/src/spark_test_data/expected_results_testAntiqueReport.csv")
+
+    val df_actual_results = report(df_test_data)
+
+    assert(df_actual_results.columns.length == df_expected_results.columns.length)
+    assert(df_actual_results.count == df_expected_results.count)
     assert(df_actual_results.except(df_expected_results).isEmpty && df_expected_results.except(df_actual_results).isEmpty)
   }
 }
