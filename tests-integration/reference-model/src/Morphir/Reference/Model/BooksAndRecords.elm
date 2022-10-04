@@ -1,6 +1,5 @@
 module Morphir.Reference.Model.BooksAndRecords exposing (..)
 
-import Morphir.Reference.Model.TypeAscription exposing (Custom)
 import Morphir.SDK.StatefulApp exposing (StatefulApp(..))
 
 
@@ -22,10 +21,6 @@ type alias Price =
 
 type alias Quantity =
     Int
-
-
-type alias TypeAscripted =
-    Custom
 
 
 

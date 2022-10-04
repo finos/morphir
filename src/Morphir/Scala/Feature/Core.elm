@@ -527,16 +527,14 @@ mapValue inScopeVars value =
                 _ ->
                     Scala.Select Scala.Wildcard (mapValueName fieldName)
 
-        Apply funType applyFun applyArg ->
+        Apply _ applyFun applyArg ->
             let
                 ( bottomFun, args ) =
                     Value.uncurryApply applyFun applyArg
             in
             case bottomFun of
                 Constructor constructorType fQName ->
-                    Scala.TypeAscripted
-                        (curryConstructorArgs inScopeVars constructorType fQName args)
-                        (mapType funType)
+                    curryConstructorArgs inScopeVars constructorType fQName args
 
                 _ ->
                     Scala.Apply (mapValue inScopeVars applyFun)

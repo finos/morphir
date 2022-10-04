@@ -4,6 +4,8 @@ import Expect
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as IRPath
+import Morphir.IR.SDK.Basics exposing (boolType, intType)
+import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as IRType
 import Morphir.IR.Value as IRValue
 import Morphir.Scala.AST as Scala
@@ -43,22 +45,157 @@ testConstructorTypeAscription =
         morphirFQN name =
             ( [ [ packageName ] ], [ [ moduleName ] ], [ name ] )
 
+        customTypeFQN =
+            morphirFQN "Custom"
+
+        assert : String -> IRValue.Value ta (IRType.Type ()) -> Scala.Value -> Test
         assert name value expectedScalaOutput =
             test name <|
                 \_ ->
                     Core.mapValue Set.empty value
                         |> Expect.equal expectedScalaOutput
 
-        expectedNoArgFun =
-            Scala.Apply (defaultScalaRef "fn1") [ Scala.ArgValue Nothing (Scala.TypeAscripted (defaultScalaRef "Ctor1") (Scala.TypeRef [ packageName, moduleName ] "Custom")) ]
+        expectedNoArgsCtor =
+            Scala.Apply (defaultScalaRef "target1")
+                [ Scala.ArgValue Nothing
+                    (Scala.TypeAscripted (defaultScalaRef "ZeroArgCtor") (Scala.TypeRef [ packageName, moduleName ] "Custom"))
+                ]
 
+        expectedOneArgCtor : Scala.Value
+        expectedOneArgCtor =
+            Scala.Apply (defaultScalaRef "target1")
+                [ Scala.ArgValue Nothing
+                    (Scala.TypeAscripted
+                        (Scala.Apply (defaultScalaRef "OneArgCtor")
+                            [ Scala.ArgValue Nothing (Scala.Variable "str")
+                            ]
+                        )
+                        (Scala.TypeRef [ packageName, moduleName ] "Custom")
+                    )
+                ]
+
+        expectedTwoArgCtor : Scala.Value
+        expectedTwoArgCtor =
+            Scala.Apply
+                (Scala.Apply (defaultScalaRef "target2")
+                    [ Scala.ArgValue Nothing
+                        (Scala.TypeAscripted
+                            (Scala.Apply (defaultScalaRef "OneArgCtor")
+                                [ Scala.ArgValue Nothing (Scala.Variable "str")
+                                ]
+                            )
+                            (Scala.TypeRef [ packageName, moduleName ] "Custom")
+                        )
+                    ]
+                )
+                [ Scala.ArgValue Nothing
+                    (Scala.TypeAscripted
+                        (Scala.Apply (defaultScalaRef "TwoArgCtor")
+                            [ Scala.ArgValue Nothing (Scala.Variable "str")
+                            , Scala.ArgValue Nothing (Scala.Variable "int")
+                            ]
+                        )
+                        (Scala.TypeRef [ packageName, moduleName ] "Custom")
+                    )
+                ]
+
+        expectedPartialApplyCtor : Scala.Value
+        expectedPartialApplyCtor =
+            Scala.Apply
+                (defaultScalaRef "target3")
+                [ Scala.ArgValue Nothing
+                    (Scala.TypeAscripted (defaultScalaRef "TwoArgCtor")
+                        (Scala.FunctionType
+                            (Scala.FunctionType
+                                (Scala.TypeRef [ "morphir", "sdk", "String" ] "String")
+                                (Scala.TypeRef [ "morphir", "sdk", "Basics" ] "Int")
+                            )
+                            (Scala.TypeRef [ packageName, moduleName ] "Custom")
+                        )
+                    )
+                ]
+
+        noArgFun : IRValue.Value ta (IRType.Type ())
         noArgFun =
             IRValue.Apply (IRType.Unit ())
-                (IRValue.Reference (IRType.Function () (IRType.Reference () (morphirFQN "custom") []) (IRType.Unit ())) (morphirFQN "fn1"))
-                (IRValue.Constructor (IRType.Reference () (morphirFQN "custom") []) (morphirFQN "ctor1"))
+                (IRValue.Reference
+                    (IRType.Function ()
+                        (IRType.Reference () (morphirFQN "custom") [])
+                        (IRType.Unit ())
+                    )
+                    (morphirFQN "target1")
+                )
+                (IRValue.Constructor (IRType.Reference () (morphirFQN "custom") []) (morphirFQN "ZeroArgCtor"))
+
+        oneArgFun : IRValue.Value ta (IRType.Type ())
+        oneArgFun =
+            IRValue.Apply (boolType ())
+                (IRValue.Reference
+                    (IRType.Function ()
+                        (IRType.Reference ()
+                            customTypeFQN
+                            []
+                        )
+                        (boolType ())
+                    )
+                    (morphirFQN "target1")
+                )
+                (IRValue.Apply (IRType.Reference () customTypeFQN [])
+                    (IRValue.Constructor
+                        (IRType.Function ()
+                            (stringType ())
+                            (IRType.Reference () customTypeFQN [])
+                        )
+                        (morphirFQN "OneArgCtor")
+                    )
+                    (IRValue.Variable (stringType ()) [ "str" ])
+                )
+
+        twoCustomArgsFun : IRValue.Value ta (IRType.Type ())
+        twoCustomArgsFun =
+            IRValue.Apply (boolType ())
+                (IRValue.Apply (IRType.Function () (IRType.Reference () customTypeFQN []) (boolType ()))
+                    (IRValue.Reference (IRType.Function () (IRType.Reference () customTypeFQN []) (boolType ()))
+                        (morphirFQN "target2")
+                    )
+                    (IRValue.Apply (IRType.Reference () customTypeFQN [])
+                        (IRValue.Constructor (IRType.Function () (stringType ()) (IRType.Reference () customTypeFQN [])) (morphirFQN "OneArgCtor"))
+                        (IRValue.Variable (stringType ()) [ "str" ])
+                    )
+                )
+                (IRValue.Apply (IRType.Reference () customTypeFQN [])
+                    (IRValue.Apply (IRType.Function () (intType ()) (IRType.Reference () customTypeFQN []))
+                        (IRValue.Constructor (IRType.Function () (intType ()) (IRType.Reference () customTypeFQN [])) (morphirFQN "TwoArgCtor"))
+                        (IRValue.Variable (stringType ()) [ "str" ])
+                    )
+                    (IRValue.Variable (intType ()) [ "int" ])
+                )
+
+        partialApplyFun =
+            IRValue.Apply (boolType ())
+                (IRValue.Reference
+                    (IRType.Function ()
+                        (IRType.Function ()
+                            (IRType.Function () (stringType ()) (intType ()))
+                            (IRType.Reference () customTypeFQN [])
+                        )
+                        (boolType ())
+                    )
+                    (morphirFQN "target3")
+                )
+                (IRValue.Constructor
+                    (IRType.Function ()
+                        (IRType.Function () (stringType ()) (intType ()))
+                        (IRType.Reference () customTypeFQN [])
+                    )
+                    (morphirFQN "TwoArgCtor")
+                )
     in
     describe "Type ascribe constructors values"
-        [ assert "Generated Scala For NoArgs Ctor TypeAscription ... " noArgFun expectedNoArgFun
+        [ assert "Generated Scala Constructors Are Type... " noArgFun expectedNoArgsCtor
+        , assert "Generated Scala For OneArgs Ctor TypeAscription ... " oneArgFun expectedOneArgCtor
+        , assert "Generated Scala For TwoArgs Ctor TypeAscription ... " twoCustomArgsFun expectedTwoArgCtor
+        , assert "Generated Scala For Partially Applied" partialApplyFun expectedPartialApplyCtor
         ]
 
 

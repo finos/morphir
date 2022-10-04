@@ -1,53 +1,42 @@
 module Morphir.Reference.Model.TypeAscription exposing (..)
 
 
-type alias Item =
-    { name : String
-    , brand : String
-    , price : Float
-    }
-
-
 type Custom
-    = Ctor1
-    | Ctor2
-    | Ctor3 String
-    | Ctor4 String Int
-    | Ctor5 Custom String
-    | Ctor6 Item
+    = ZeroArgCtor
+    | OneArgCtor String
+    | TwoArgCtor String Int
 
 
-use : Bool
-use =
-    target Ctor1 Ctor2
+useCase0 : Bool
+useCase0 =
+    target1 ZeroArgCtor
 
 
-use1 : String -> Bool
-use1 a =
-    target1 (Ctor3 a)
+useCase1 : String -> Bool
+useCase1 str =
+    target1 (OneArgCtor str)
 
 
-use2 : String -> Int -> Bool
-use2 a b =
-    Ctor4 a b
-        |> target Ctor1
+useCase2 : String -> Int -> Bool
+useCase2 str int =
+    target2 (OneArgCtor str) (TwoArgCtor str int)
 
 
-use3 : String -> Bool
-use3 str =
-    target (Ctor5 Ctor1 str) (Ctor3 str)
-
-
-use4 : Item -> Bool
-use4 itm =
-    target1 (Ctor6 itm)
-
-
-target : a -> a -> Bool
-target a b =
-    True
+useCase3 : Bool
+useCase3 =
+    target3 TwoArgCtor
 
 
 target1 : a -> Bool
 target1 a =
+    True
+
+
+target2 : a -> a -> Bool
+target2 a1 a2 =
+    True
+
+
+target3 : (String -> Int -> Custom) -> Bool
+target3 ctor =
     True
