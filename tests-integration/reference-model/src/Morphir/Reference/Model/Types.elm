@@ -22,20 +22,16 @@ type Mail
     = Email String
 
 
-type alias FirstName =
-    String
+type FirstName
+    = FirstName String
 
 
-type alias LastName =
-    String
-
-
-type Foo
-    = Surname
+type LastName
+    = LastName String
 
 
 type FullName
-    = RealName String String
+    = FullName FirstName LastName
 
 
 customToInt : Custom -> Int
