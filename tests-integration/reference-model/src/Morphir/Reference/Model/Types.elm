@@ -18,26 +18,6 @@ type Custom
 
 {-| Value type example
 -}
-type Mail
-    = Email String
-
-
-type FirstName
-    = KeyName String
-
-
-type LastName
-    = String
-
-
-type Foo
-    = Surname
-
-
-type FullName
-    = RealName FirstName LastName
-
-
 customToInt : Custom -> Int
 customToInt custom =
     case custom of
