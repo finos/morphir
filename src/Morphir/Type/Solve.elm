@@ -7,6 +7,7 @@ import Morphir.IR.Name exposing (Name)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Type.Constraint exposing (Constraint(..))
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaRef, metaTuple, metaVar, variableGreaterThan, wrapInAliases)
+import Set exposing (Set)
 
 
 type SolutionMap
@@ -75,6 +76,26 @@ substituteVariable var replacement (SolutionMap solutions) =
                     metaType |> MetaType.substituteVariable var replacement
                 )
         )
+
+
+applyEquivalenceGroups : Dict Variable (Set Variable) -> SolutionMap -> SolutionMap
+applyEquivalenceGroups groups (SolutionMap solutions) =
+    solutions
+        |> Dict.toList
+        |> List.concatMap
+            (\( var, metaType ) ->
+                case groups |> Dict.get var of
+                    Just equivalentVars ->
+                        equivalentVars
+                            |> Set.toList
+                            |> List.map (\ev -> ( ev, metaType ))
+                            |> (::) ( var, metaType )
+
+                    Nothing ->
+                        [ ( var, metaType ) ]
+            )
+        |> Dict.fromList
+        |> SolutionMap
 
 
 type UnificationError
@@ -317,13 +338,13 @@ unifyRecord refs aliases recordVar1 isOpen1 fields1 metaType2 =
                                 )
 
                         else
-                            mergeSolutions
-                                refs
-                                fieldSolutions
-                                (singleSolution aliases
-                                    recordVar2
-                                    (metaRecord recordVar1 False newFields)
-                                )
+                            --mergeSolutions
+                            --    refs
+                            Ok fieldSolutions
+                     --(singleSolution aliases
+                     --    recordVar2
+                     --    (metaRecord recordVar1 False newFields)
+                     --)
                     )
 
         _ ->

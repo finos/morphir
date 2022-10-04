@@ -1383,12 +1383,30 @@ solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
     --        Debug.log "solutions so far" (solutionsSoFar |> Solve.toList |> List.length)
     --in
     case validateConstraints constraints of
+        Ok _ ->
+            case solveStep refs solutionsSoFar constraintSet of
+                Ok (Just ( newConstraints, mergedSolutions )) ->
+                    solveHelp refs mergedSolutions newConstraints
+
+                Ok Nothing ->
+                    Ok ( constraintSet, solutionsSoFar )
+
+                Err error ->
+                    Err error
+
+        Err error ->
+            Err error
+
+
+solveStep : IR -> SolutionMap -> ConstraintSet -> Result TypeError (Maybe ( ConstraintSet, SolutionMap ))
+solveStep refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
+    case validateConstraints constraints of
         Ok nonTrivialConstraints ->
             case Solve.findSubstitution refs nonTrivialConstraints of
                 Ok maybeNewSolutions ->
                     case maybeNewSolutions of
                         Nothing ->
-                            Ok ( ConstraintSet.fromList nonTrivialConstraints, solutionsSoFar )
+                            Ok Nothing
 
                         Just newSolutions ->
                             case Solve.mergeSolutions refs newSolutions solutionsSoFar of
@@ -1399,7 +1417,7 @@ solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
                                         newMergedSolutions =
                                             solutionsSoFar |> Solve.diff mergedSolutions
                                     in
-                                    solveHelp refs mergedSolutions (constraintSet |> ConstraintSet.applySubstitutions newMergedSolutions)
+                                    Ok (Just ( constraintSet |> ConstraintSet.applySubstitutions newMergedSolutions, mergedSolutions ))
 
                                 Err error ->
                                     Err (UnifyError error)

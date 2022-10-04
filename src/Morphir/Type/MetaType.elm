@@ -211,7 +211,19 @@ substituteVariable var replacement original =
 
             MetaRecord _ recordVar isOpen metaFields ->
                 if recordVar == var then
-                    replacement
+                    case replacement of
+                        MetaVar replacementVar ->
+                            metaRecord replacementVar
+                                isOpen
+                                (metaFields
+                                    |> Dict.map
+                                        (\_ fieldType ->
+                                            substituteVariable var replacement fieldType
+                                        )
+                                )
+
+                        _ ->
+                            replacement
 
                 else
                     metaRecord recordVar
@@ -274,7 +286,19 @@ substituteVariables replacements original =
             MetaRecord _ recordVar isOpen metaFields ->
                 case Dict.get recordVar replacements of
                     Just replacement ->
-                        replacement
+                        case replacement of
+                            MetaVar replacementVar ->
+                                metaRecord replacementVar
+                                    isOpen
+                                    (metaFields
+                                        |> Dict.map
+                                            (\_ fieldType ->
+                                                substituteVariables replacements fieldType
+                                            )
+                                    )
+
+                            _ ->
+                                replacement
 
                     Nothing ->
                         metaRecord recordVar

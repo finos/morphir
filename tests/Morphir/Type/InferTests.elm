@@ -137,12 +137,12 @@ positiveOutcomes =
             [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
             , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
             ]
-    , Value.Lambda (Type.Function () (barRecordType "t3") (floatType ()))
-        (Value.AsPattern (barRecordType "t3") (Value.WildcardPattern (barRecordType "t3")) [ "rec" ])
+    , Value.Lambda (Type.Function () (barRecordType "t0") (floatType ()))
+        (Value.AsPattern (barRecordType "t0") (Value.WildcardPattern (barRecordType "t0")) [ "rec" ])
         (Value.IfThenElse (floatType ())
             (Value.Literal (boolType ()) (BoolLiteral False))
             (Value.Field (floatType ())
-                (Value.Variable (barRecordType "t3") [ "rec" ])
+                (Value.Variable (barRecordType "t0") [ "rec" ])
                 [ "bar" ]
             )
             (Value.Literal (floatType ()) (FloatLiteral 2))
