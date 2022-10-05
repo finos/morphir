@@ -38,7 +38,6 @@ generator uses.
 
 import Array exposing (Array)
 import Dict exposing (Dict)
-import List.Extra exposing (uniqueBy)
 import Morphir.IR as IR exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Literal exposing (Literal(..))
@@ -305,11 +304,22 @@ mergeSelects expressions =
                 Aggregate _ _ _ ->
                     -- XXX: I don't expect to ever see this
                     Err (UnhandledObjectExpression relation)
+        unique_items : List ObjectExpression -> List ObjectExpression
+        unique_items items =
+            List.foldr
+                (\item list ->
+                    if List.member item list then
+                        list
+                    else
+                        item :: list
+                )
+                []
+                items
         unique_roots =
             expressions
                 |> List.map getRootSourceRelation
                 |> ResultList.keepFirstError
-                |> Result.map (uniqueBy Debug.toString)
+                |> Result.map unique_items
         only_root =
             unique_roots
                 |> Result.andThen
