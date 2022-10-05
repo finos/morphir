@@ -1,9 +1,9 @@
-module Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue)
+module Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue, getId)
 
 {-| This module contains utilities to work with values that are enriched with attributes that make visualization tasks
 easier.
 
-@docs EnrichedValue, fromRawValue, fromTypedValue
+@docs EnrichedValue, fromRawValue, fromTypedValue, getId
 
 -}
 
@@ -37,10 +37,19 @@ fromRawValue ir rawValue =
             )
 
 
-{-| Erich a value that has type information with a unique ID.
+{-| Enrich a value that has type information with a unique ID.
 -}
 fromTypedValue : TypedValue -> EnrichedValue
 fromTypedValue typedValue =
     typedValue
         |> indexedMapValue Tuple.pair 0
         |> Tuple.first
+
+
+getId : EnrichedValue -> Int
+getId enrichedValue =
+    let
+        ( id, _ ) =
+            Value.valueAttribute enrichedValue
+    in
+    id

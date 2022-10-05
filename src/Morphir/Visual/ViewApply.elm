@@ -6,36 +6,45 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
+import Html.Attributes exposing (value)
 import Morphir.IR as IR
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path
-import Morphir.IR.Type as Type
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..), toRawValue)
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error as Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue, evaluateValue)
 import Morphir.Visual.Common exposing (nameToText, tooltip)
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Config exposing (Config)
-import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue)
+import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), evalIfPathTaken)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, getId)
 import Morphir.Visual.Theme exposing (borderRounded, smallPadding, smallSpacing)
 
 
-view : Config msg -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
-view config viewValue functionValue argValues =
+view : Config msg -> (Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg) -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
+view config viewDefinition viewValue functionValue argValues =
     let
+        styles : List (Element.Attribute msg)
         styles =
             [ smallSpacing config.state.theme |> spacing, Element.centerY ]
 
+        viewFunctionValue : FQName -> Element msg
         viewFunctionValue fqName =
-            el [ Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName), onClick (config.handlers.onReferenceClicked fqName False), pointer ] <| viewValue functionValue
+            el [ Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName), onClick (config.handlers.onReferenceClicked fqName False (getId functionValue) config.nodePath), pointer ] <| viewValue functionValue
 
         functionOutput : FQName -> Element msg
         functionOutput fqName =
             let
-                maybeInputs =
-                    List.map (\inputName -> Dict.get inputName config.state.variables) (Dict.keys config.state.variables)
+                variables : List (Maybe RawValue)
+                variables =
+                    case Dict.get fqName config.ir.valueDefinitions of
+                        Just valueDef ->
+                            Dict.fromList (List.map2 (\( name, _, _ ) argValue -> ( name, argValue |> evalIfPathTaken config )) valueDef.inputTypes argValues) |> Dict.values
+
+                        Nothing ->
+                            []
 
                 viewRawValue : RawValue -> Element msg
                 viewRawValue rawValue =
@@ -46,6 +55,7 @@ view config viewValue functionValue argValues =
                         Err error ->
                             el [ centerX, centerY ] (text (Infer.typeErrorToMessage error))
 
+                popupstyles : List (Element.Attribute msg)
                 popupstyles =
                     [ Background.color config.state.theme.colors.lightest
                     , Font.bold
@@ -55,9 +65,9 @@ view config viewValue functionValue argValues =
                     , smallPadding config.state.theme |> padding
                     ]
             in
-            case evaluateFunctionValue config.nativeFunctions config.ir fqName maybeInputs of
+            case evaluateFunctionValue config.nativeFunctions config.ir fqName variables of
                 Ok value ->
-                    viewRawValue value
+                    el popupstyles (viewRawValue value)
 
                 Err firstError ->
                     case firstError of
@@ -70,7 +80,7 @@ view config viewValue functionValue argValues =
                                     el ((Font.color <| rgb 0.8 0 0) :: popupstyles) (text <| Error.toString err)
 
                         _ ->
-                            el popupstyles (text <| "Could not evaluate this function. (" ++ Error.toString firstError ++ ")")
+                            el popupstyles (text <| "Couldn't evaluate this function. (" ++ Error.toString firstError ++ ")")
     in
     case ( functionValue, argValues ) of
         ( (Value.Constructor _ fQName) as constr, _ ) ->
@@ -162,13 +172,55 @@ view config viewValue functionValue argValues =
                             [ viewFunctionValue fqName, viewValue argValues1, viewValue argValues2 ]
 
         ( Value.Reference _ fqName, _ ) ->
-            row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding ] ++ styles)
-                [ viewFunctionValue fqName
-                , row [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
-                    (argValues
-                        |> List.map viewValue
-                    )
-                ]
+            let
+                drillDown : DrillDownFunctions -> List Int -> Maybe (Value.Definition () (Type ()))
+                drillDown (DrillDownFunctions dict) nodePath =
+                    case nodePath of
+                        [] ->
+                            if Dict.member (getId functionValue) dict then
+                                Dict.get fqName config.ir.valueDefinitions
+
+                            else
+                                Nothing
+
+                        x :: xs ->
+                            Dict.get x dict |> Maybe.andThen (\d -> drillDown d xs)
+            in
+            case drillDown config.state.drillDownFunctions config.nodePath of
+                Just valueDef ->
+                    let
+                        variables =
+                            Dict.fromList (List.map2 (\( name, _, _ ) argValue -> ( name, argValue |> evalIfPathTaken config |> Maybe.withDefault (Value.Unit ()) )) valueDef.inputTypes argValues)
+
+                        visualState : Morphir.Visual.Config.VisualState
+                        visualState =
+                            config.state
+
+                        depthColor =
+                            let
+                                depth =
+                                    1 - (0.1 * (toFloat <| List.length config.nodePath + 1))
+                            in
+                            Element.fromRgb
+                                { red = depth
+                                , green = depth
+                                , blue = depth
+                                , alpha = 1
+                                }
+                    in
+                    el
+                        [ borderRounded, Border.width 1, Border.color depthColor, padding <| (List.length config.nodePath + 1) * 5, Border.innerGlow depthColor (toFloat (List.length config.nodePath) + 3) ]
+                    <|
+                        viewDefinition { config | state = { visualState | variables = variables }, nodePath = config.nodePath ++ [ getId functionValue ] } fqName valueDef
+
+                Nothing ->
+                    row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding ] ++ styles)
+                        [ viewFunctionValue fqName
+                        , row [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
+                            (argValues
+                                |> List.map viewValue
+                            )
+                        ]
 
         _ ->
             row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding ] ++ styles)

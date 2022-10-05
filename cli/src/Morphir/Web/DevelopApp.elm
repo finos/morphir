@@ -76,7 +76,7 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
-import Morphir.Visual.Config exposing (PopupScreenRecord)
+import Morphir.Visual.Config exposing (DrillDownFunctions(..), PopupScreenRecord, updateDrillDownDict)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
@@ -217,13 +217,14 @@ init _ url key =
 emptyVisualState : Morphir.Visual.Config.VisualState
 emptyVisualState =
     { theme = Theme.fromConfig Nothing
-    , expandedFunctions = Dict.empty
     , variables = Dict.empty
     , highlightState = Nothing
     , popupVariables =
         { variableIndex = 0
         , variableValue = Nothing
+        , nodePath = []
         }
+    , drillDownFunctions = DrillDownFunctions Dict.empty
     }
 
 
@@ -270,9 +271,9 @@ type FilterMsg
 
 
 type InsightMsg
-    = ExpandReference FQName Bool
-    | ExpandVariable Int (Maybe RawValue)
-    | ShrinkVariable Int
+    = ExpandReference FQName Bool Int (List Int)
+    | ExpandVariable Int (List Int) (Maybe RawValue)
+    | ShrinkVariable Int (List Int)
     | SwitchDisplayType
     | ArgValueUpdated Name ValueEditor.EditorState
 
@@ -390,23 +391,26 @@ update msg model =
                     model.insightViewState
             in
             case insightMsg of
-                ExpandReference (( _, moduleName, localName ) as fQName) _ ->
-                    let
-                        url =
-                            pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase localName
-                    in
-                    case fQName of
-                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
+                ExpandReference fQName _ id nodePath ->
+                    case ( fQName, id, nodePath ) of
+                        ( ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ), _, _ ) ->
                             ( model, Cmd.none )
 
                         _ ->
-                            ( model, Nav.pushUrl model.key url )
+                            ( { model
+                                | insightViewState =
+                                    { insightViewState
+                                        | drillDownFunctions = DrillDownFunctions (updateDrillDownDict insightViewState.drillDownFunctions id nodePath)
+                                    }
+                              }
+                            , Cmd.none
+                            )
 
-                ExpandVariable varIndex maybeRawValue ->
-                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue } }, Cmd.none )
+                ExpandVariable varIndex nodePath maybeRawValue ->
+                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue nodePath } }, Cmd.none )
 
-                ShrinkVariable varIndex ->
-                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing } }, Cmd.none )
+                ShrinkVariable varIndex nodePath ->
+                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing nodePath } }, Cmd.none )
 
                 SwitchDisplayType ->
                     ( case model.definitionDisplayType of
@@ -472,8 +476,6 @@ update msg model =
                 initalArgState : InsightArgumentState
                 initalArgState =
                     initArgumentStates model.irState model.homeState.selectedDefinition
-
-                    
             in
             case testingMsg of
                 UpdateDescription description ->
@@ -1781,20 +1783,24 @@ viewDefinitionDetails model =
         insightViewConfig : IR -> Morphir.Visual.Config.Config Msg
         insightViewConfig ir =
             let
-                referenceClicked : FQName -> Bool -> Msg
-                referenceClicked fqname t =
-                    Insight (ExpandReference fqname t)
+                referenceClicked : FQName -> Bool -> Int -> List Int -> Msg
+                referenceClicked fqname t id nodePath =
+                    Insight (ExpandReference fqname t id nodePath)
 
-                hoverOver : Int -> Maybe RawValue -> Msg
-                hoverOver index value =
-                    Insight (ExpandVariable index value)
+                hoverOver : Int -> List Int -> Maybe RawValue -> Msg
+                hoverOver index nodePath value =
+                    Insight (ExpandVariable index nodePath value)
+
+                hoverLeave : Int -> List Int -> Msg
+                hoverLeave index nodePath =
+                    Insight (ShrinkVariable index nodePath)
             in
             Morphir.Visual.Config.fromIR
                 ir
                 model.insightViewState
                 { onReferenceClicked = referenceClicked
                 , onHoverOver = hoverOver
-                , onHoverLeave = Insight << ShrinkVariable
+                , onHoverLeave = hoverLeave
                 }
 
         viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
@@ -2058,7 +2064,7 @@ viewDefinitionDetails model =
 
                                                     inputs : List (Maybe RawValue)
                                                     inputs =
-                                                        List.map (\inputName -> Dict.get inputName model.insightViewState.variables) (Dict.keys model.insightViewState.variables)
+                                                        valueDef.inputTypes |> List.map (\( argName, _, _ ) -> Dict.get argName model.insightViewState.variables)
 
                                                     ir : IR
                                                     ir =
