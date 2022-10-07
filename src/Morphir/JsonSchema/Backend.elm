@@ -106,14 +106,14 @@ extractTypes modName definition =
 
 
 mapTypeDefinition : ( Path, Name ) -> Type.Definition ta -> List ( TypeName, SchemaType )
-mapTypeDefinition qualifiedName definition =
+mapTypeDefinition (( path, name ) as qualifiedName) definition =
     case definition of
         Type.TypeAliasDefinition _ typ ->
             [ ( mapQualifiedName qualifiedName, mapType typ ) ]
 
         Type.CustomTypeDefinition _ accessControlledCtors ->
             let
-                anyOfs =
+                oneOfs =
                     accessControlledCtors.value
                         |> Dict.toList
                         |> List.map
@@ -122,7 +122,7 @@ mapTypeDefinition qualifiedName definition =
                             )
 
                 constArray =
-                    ( Tuple.second qualifiedName |> Name.toTitleCase, AnyOf anyOfs )
+                    ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf oneOfs )
             in
             constArray
                 :: (accessControlledCtors.value
@@ -130,14 +130,23 @@ mapTypeDefinition qualifiedName definition =
                         |> List.map
                             (\( ctorName, ctorArgs ) ->
                                 let
-                                    typeName =
-                                        (Tuple.second qualifiedName |> Name.toTitleCase) ++ "." ++ (ctorName |> Name.toTitleCase)
+                                    modulePathString =
+                                        path |> Path.toString Name.toTitleCase "."
+
+                                    typeNameString =
+                                        name |> Name.toTitleCase
+
+                                    ctorNameString =
+                                        ctorName |> Name.toTitleCase
+
+                                    qNameString =
+                                        String.concat [ modulePathString, ".", typeNameString, ".", ctorNameString ]
                                 in
                                 if List.isEmpty ctorArgs then
-                                    ( typeName, Const (ctorName |> Name.toTitleCase) )
+                                    ( qNameString, Const ctorNameString )
 
                                 else
-                                    ( typeName
+                                    ( qNameString
                                     , Array
                                         (TupleType
                                             (Const (ctorName |> Name.toTitleCase)
@@ -146,6 +155,7 @@ mapTypeDefinition qualifiedName definition =
                                                    )
                                             )
                                         )
+                                        False
                                     )
                             )
                    )
@@ -154,7 +164,7 @@ mapTypeDefinition qualifiedName definition =
 mapType : Type ta -> SchemaType
 mapType typ =
     case typ of
-        Type.Reference _ fQName argTypes ->
+        Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
             case ( FQName.toString fQName, argTypes ) of
                 ( "Morphir.SDK:Basics:int", [] ) ->
                     Integer
@@ -162,17 +172,36 @@ mapType typ =
                 ( "Morphir.SDK:String:string", [] ) ->
                     String
 
+                ( "Morphir.SDK:Char:char", [] ) ->
+                    String
+
                 ( "Morphir.SDK:Basics:float", [] ) ->
+                    Number
+
+                ( "Morphir.SDK:Tuple:tuple", [] ) ->
                     Number
 
                 ( "Morphir.SDK:Basics:bool", [] ) ->
                     Boolean
 
                 ( "Morphir.SDK:List:list", [ itemType ] ) ->
-                    Array (ListType (mapType itemType))
+                    Array (ListType (mapType itemType)) False
+
+                ( "Morphir.SDK:Set:set", [ itemType ] ) ->
+                    Array (ListType (mapType itemType)) True
+
+                ( "Morphir.SDK:Maybe:maybe", [ itemType ] ) ->
+                    OneOf [ Null, mapType itemType ]
 
                 _ ->
-                    Ref ("#/defs/" ++ (fQName |> FQName.getLocalName |> Name.toTitleCase))
+                    Ref
+                        (String.concat
+                            [ "#/$defs/"
+                            , moduleName |> Path.toString Name.toTitleCase "."
+                            , "."
+                            , localName |> Name.toTitleCase
+                            ]
+                        )
 
         Type.Record _ fields ->
             fields

@@ -16,16 +16,20 @@ type alias Schema =
     }
 
 
+type alias UniqueItems =
+    Bool
+
+
 type SchemaType
     = Integer
-    | Array ArrayType
+    | Array ArrayType UniqueItems
     | String
     | Number
     | Boolean
     | Object (Dict String SchemaType)
     | Const String
     | Ref TypeName
-    | AnyOf (List SchemaType)
+    | OneOf (List SchemaType)
     | Null
 
 

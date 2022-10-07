@@ -1,17 +1,17 @@
 module TestModel.NativeTypes exposing (..)
 
-import Morphir.SDK.Decimal exposing (Decimal)
-import Morphir.SDK.LocalDate exposing (LocalDate)
 
-type alias Employee
-    = String
+type alias Employee =
+    String
 
 
-type alias TransactionDate
-    = LocalDate
+type alias TransactionType =
+    List Int
 
-type alias TaxRate
-    = Decimal
 
-type alias Taj
-    = Int
+type alias TaxRate =
+    Float
+
+
+type alias CreditScore =
+    Int

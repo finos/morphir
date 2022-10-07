@@ -27,13 +27,21 @@ encodeSchemaType schemaType =
             Encode.object
                 [ ( "type", Encode.string "integer" ) ]
 
-        Array arrayType ->
+        Array arrayType isUnique ->
             case arrayType of
                 ListType itemSchemaType ->
                     Encode.object
-                        [ ( "type", Encode.string "array" )
-                        , ( "items", encodeSchemaType itemSchemaType )
-                        ]
+                        (List.concat
+                            [ [ ( "type", Encode.string "array" )
+                              , ( "items", encodeSchemaType itemSchemaType )
+                              ]
+                            , if isUnique then
+                                [ ( "uniqueItems", Encode.bool True ) ]
+
+                              else
+                                []
+                            ]
+                        )
 
                 TupleType schemaTypes ->
                     Encode.object
@@ -69,9 +77,10 @@ encodeSchemaType schemaType =
                 [ ( "$ref", Encode.string string ) ]
 
         Null ->
-            Encode.null
-
-        AnyOf schemaTypes ->
             Encode.object
-                [ ( "anyOf", Encode.list encodeSchemaType schemaTypes )
+                [ ( "type", Encode.string "null" ) ]
+
+        OneOf schemaTypes ->
+            Encode.object
+                [ ( "oneOf", Encode.list encodeSchemaType schemaTypes )
                 ]
