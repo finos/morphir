@@ -123,9 +123,9 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
 
                 constArray =
                     ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf oneOfs )
-            in
-            constArray
-                :: (accessControlledCtors.value
+
+                oneOfs2 =
+                    accessControlledCtors.value
                         |> Dict.toList
                         |> List.map
                             (\( ctorName, ctorArgs ) ->
@@ -143,11 +143,10 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                         String.concat [ modulePathString, ".", typeNameString, ".", ctorNameString ]
                                 in
                                 if List.isEmpty ctorArgs then
-                                    ( qNameString, Const ctorNameString )
+                                    Const ctorNameString
 
                                 else
-                                    ( qNameString
-                                    , Array
+                                    Array
                                         (TupleType
                                             (Const (ctorName |> Name.toTitleCase)
                                                 :: (ctorArgs
@@ -156,9 +155,9 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                             )
                                         )
                                         False
-                                    )
                             )
-                   )
+            in
+            [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf oneOfs2 ) ]
 
 
 mapType : Type ta -> SchemaType
