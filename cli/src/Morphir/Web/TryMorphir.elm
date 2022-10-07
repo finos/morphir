@@ -298,7 +298,7 @@ viewPackageDefinition model viewAttribute packageDef =
         ir : IR
         ir =
             IR.fromDistribution
-                (Library packageName Dict.empty packageDef)
+                (Library packageName Frontend.defaultDependencies packageDef)
     in
     packageDef.modules
         |> Dict.toList
@@ -453,7 +453,7 @@ viewValueAsIR valueState ir fullyQualifiedName irView valueDef =
 
         solveSteps : List (Element msg)
         solveSteps =
-            viewSolveSteps 0 ir Solve.emptySolution valueDefConstraints
+            viewSolveSteps 0 ir Solve.emptySolution (valueDefConstraints |> Debug.log "valueDefConstraints")
                 |> List.reverse
 
         solveStepsSlider : Element Msg
@@ -504,13 +504,15 @@ viewValueAsIR valueState ir fullyQualifiedName irView valueDef =
                     (\( _, metaVar ) ->
                         text (String.fromInt metaVar)
                     )
-                    annotatedValueDef
+                    (annotatedValueDef |> Debug.log "annotatedValueDef")
                 ]
             ]
-        , row [ height (px 500) ]
-            [ solveStepsSlider
-            , solveStepsView
-            ]
+        , el [ height fill ]
+            (row []
+                [ solveStepsSlider
+                , solveStepsView
+                ]
+            )
         ]
 
 
@@ -565,10 +567,23 @@ viewMetaType metaType =
             text (String.fromInt variable)
 
         MetaRef _ ( packageName, moduleName, localName ) args maybeMetaType ->
-            text (Name.toTitleCase localName)
+            row [ spacing 10 ]
+                [ text (Name.toTitleCase localName)
+                , args |> List.map viewMetaType |> row [ spacing 10 ]
+                , case maybeMetaType of
+                    Just alias ->
+                        row [ spacing 10 ] [ text "as", viewMetaType alias ]
+
+                    Nothing ->
+                        none
+                ]
 
         MetaTuple _ metaTypes ->
-            text "(,)"
+            row [ spacing 10 ]
+                [ text "("
+                , metaTypes |> List.map viewMetaType |> List.intersperse (text ",") |> row [ spacing 10 ]
+                , text ")"
+                ]
 
         MetaRecord _ var isOpen fields ->
             row []
@@ -637,7 +652,7 @@ viewSolveSteps depth ir solutionMap constraintSet =
     in
     case Infer.solveStep ir solutionMap constraintSet of
         Ok (Just ( newConstraints, mergedSolutions )) ->
-            if depth > 2000 then
+            if depth > 50 then
                 [ thisStep ]
 
             else
@@ -721,16 +736,41 @@ packageInfo =
 sampleSourcePrefix : String
 sampleSourcePrefix =
     """module My.Test exposing (..)
+
     """
 
 
 sampleSource : String
 sampleSource =
     """
-test =
-  \\rec ->
-    if False then
-      rec.bar
-    else
-      2.0
+import Morphir.SDK.List as List
+
+
+type alias JobPosting =
+    { companyName : String
+    , position : String
+    }
+
+
+type alias Company =
+    { name : String
+    , numberOfEmployees : Int
+    }
+
+
+innerJoin1 : List JobPosting -> List Company -> List { position : String, companySize : Int }
+innerJoin1 jobPostings companies =
+    jobPostings
+        |> List.innerJoin companies
+            (\\jobPosting company ->
+                jobPosting.companyName == company.name
+            )
+        |> List.map
+            (\\( jobPosting, company ) ->
+                { position =
+                    jobPosting.position
+                , companySize =
+                    company.numberOfEmployees
+                }
+            )
         """

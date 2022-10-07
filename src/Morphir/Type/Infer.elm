@@ -163,6 +163,7 @@ inferValueDefinition ir def =
         ( count, ( defVar, annotatedDef, constraints ) ) =
             constrainDefinition ir Dict.empty def
                 |> Count.apply 0
+                |> Debug.log "constrainDefinition"
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
         solution =
@@ -178,6 +179,7 @@ inferValue ir untypedValue =
         ( count, ( annotatedValue, constraints ) ) =
             constrainValue ir Dict.empty untypedValue
                 |> Count.apply 0
+                |> Debug.log "constrainValue"
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
         solution =
@@ -1373,20 +1375,20 @@ solve refs constraintSet =
 
 
 solveHelp : IR -> SolutionMap -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
-solveHelp refs solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
-    --let
-    --    _ =
-    --        constraints
-    --            |> List.map (Constraint.toString >> Debug.log "constraints so far")
-    --
-    --    _ =
-    --        Debug.log "solutions so far" (solutionsSoFar |> Solve.toList |> List.length)
-    --in
+solveHelp ir solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
+    let
+        _ =
+            constraints
+                |> List.map (Constraint.toString >> Debug.log "constraints so far")
+
+        _ =
+            Debug.log "solutions so far" (solutionsSoFar |> Solve.toList |> List.length)
+    in
     case validateConstraints constraints of
         Ok _ ->
-            case solveStep refs solutionsSoFar constraintSet of
+            case solveStep ir solutionsSoFar constraintSet of
                 Ok (Just ( newConstraints, mergedSolutions )) ->
-                    solveHelp refs mergedSolutions newConstraints
+                    solveHelp ir mergedSolutions newConstraints
 
                 Ok Nothing ->
                     Ok ( constraintSet, solutionsSoFar )
@@ -1465,7 +1467,7 @@ applySolutionToAnnotatedDefinition ir annotatedDef ( residualConstraints, soluti
                 , solutionMap
                     |> Solve.get metaVar
                     |> Maybe.map (metaTypeToConcreteType solutionMap)
-                    |> Maybe.withDefault (metaVar |> MetaType.toName |> Type.Variable ())
+                    |> Maybe.withDefault (Type.Variable () [ "t", String.fromInt metaVar ])
                 )
             )
         |> (\valDef -> { valDef | body = valDef.body |> fixNumberLiterals ir })
@@ -1480,7 +1482,7 @@ applySolutionToAnnotatedValue ir annotatedValue ( residualConstraints, solutionM
                 , solutionMap
                     |> Solve.get metaVar
                     |> Maybe.map (metaTypeToConcreteType solutionMap)
-                    |> Maybe.withDefault (metaVar |> MetaType.toName |> Type.Variable ())
+                    |> Maybe.withDefault (Type.Variable () [ "t", String.fromInt metaVar ])
                 )
             )
         |> fixNumberLiterals ir

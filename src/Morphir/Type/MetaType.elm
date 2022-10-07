@@ -1,4 +1,4 @@
-module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, contains, floatType, intType, listType, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, substituteVariable, substituteVariables, toName, toString, variableByIndex, variableGreaterThan, variables, wrapInAliases)
+module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, contains, floatType, intType, listType, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, substituteVariable, substituteVariables, toString, variableByIndex, variableGreaterThan, variables, wrapInAliases)
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName, fqn)
@@ -101,7 +101,7 @@ toString : MetaType -> String
 toString metaType =
     case metaType of
         MetaVar var ->
-            "var_" ++ (toName var |> Name.toSnakeCase)
+            "t" ++ (var |> String.fromInt)
 
         MetaRef _ fQName args maybeAliasedType ->
             let
@@ -125,8 +125,8 @@ toString metaType =
         MetaRecord _ var isOpen fields ->
             let
                 prefix =
-                    "var_"
-                        ++ (toName var |> Name.toSnakeCase)
+                    "t"
+                        ++ (var |> String.fromInt)
                         ++ (if isOpen then
                                 " <= "
 
@@ -158,11 +158,6 @@ type alias Variable =
 variableByIndex : Int -> Variable
 variableByIndex i =
     i
-
-
-toName : Variable -> Name
-toName i =
-    [ "t", String.fromInt i ]
 
 
 variableGreaterThan : Variable -> Variable -> Bool

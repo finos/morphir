@@ -66,7 +66,7 @@ metaTypeToConcreteType solutionMap metaType =
             solutionMap
                 |> SolutionMap.get metaVar
                 |> Maybe.map (metaTypeToConcreteType solutionMap)
-                |> Maybe.withDefault (metaVar |> MetaType.toName |> Type.Variable ())
+                |> Maybe.withDefault (Type.Variable () [ "t", String.fromInt metaVar ])
 
         MetaTuple _ metaElems ->
             Type.Tuple ()
@@ -88,7 +88,7 @@ metaTypeToConcreteType solutionMap metaType =
 
             else
                 Type.ExtensibleRecord ()
-                    (recordVar |> MetaType.toName)
+                    [ "t", String.fromInt recordVar ]
                     (metaFields
                         |> Dict.toList
                         |> List.map
