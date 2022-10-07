@@ -113,34 +113,14 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
 
         Type.CustomTypeDefinition _ accessControlledCtors ->
             let
-                oneOfs =
-                    accessControlledCtors.value
-                        |> Dict.toList
-                        |> List.map
-                            (\( ctorName, _ ) ->
-                                Const (ctorName |> Name.toTitleCase)
-                            )
-
-                constArray =
-                    ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf oneOfs )
-
                 oneOfs2 =
                     accessControlledCtors.value
                         |> Dict.toList
                         |> List.map
                             (\( ctorName, ctorArgs ) ->
                                 let
-                                    modulePathString =
-                                        path |> Path.toString Name.toTitleCase "."
-
-                                    typeNameString =
-                                        name |> Name.toTitleCase
-
                                     ctorNameString =
                                         ctorName |> Name.toTitleCase
-
-                                    qNameString =
-                                        String.concat [ modulePathString, ".", typeNameString, ".", ctorNameString ]
                                 in
                                 if List.isEmpty ctorArgs then
                                     Const ctorNameString
