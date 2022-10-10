@@ -147,13 +147,13 @@ positiveOutcomes =
             )
             (Value.Literal (floatType ()) (FloatLiteral 2))
         )
-    , Value.Lambda (Type.Function () (barRecordType "t3") (floatType ()))
-        (Value.AsPattern (barRecordType "t3") (Value.WildcardPattern (barRecordType "t3")) [ "rec" ])
+    , Value.Lambda (Type.Function () (barRecordType "t4") (floatType ()))
+        (Value.AsPattern (barRecordType "t4") (Value.WildcardPattern (barRecordType "t4")) [ "rec" ])
         (Value.IfThenElse (floatType ())
             (Value.Literal (boolType ()) (BoolLiteral False))
             (Value.Apply (floatType ())
-                (Value.FieldFunction (Type.Function () (barRecordType "t3") (floatType ())) [ "bar" ])
-                (Value.Variable (barRecordType "t3") [ "rec" ])
+                (Value.FieldFunction (Type.Function () (barRecordType "t4") (floatType ())) [ "bar" ])
+                (Value.Variable (barRecordType "t4") [ "rec" ])
             )
             (Value.Literal (floatType ()) (FloatLiteral 2))
         )
@@ -440,7 +440,7 @@ inferPositiveTests =
                                     else
                                         let
                                             ( count, ( annotatedValue, constraints ) ) =
-                                                Infer.constrainValue testReferences Dict.empty untyped
+                                                Infer.constrainValue testReferences Dict.empty Nothing untyped
                                                     |> Count.apply 0
 
                                             message =

@@ -176,7 +176,7 @@ inferValue : IR -> Value () va -> Result TypeError (TypedValue va)
 inferValue ir untypedValue =
     let
         ( count, ( annotatedValue, constraints ) ) =
-            constrainValue ir Dict.empty untypedValue
+            constrainValue ir Dict.empty Nothing untypedValue
                 |> Count.apply 0
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
@@ -272,7 +272,7 @@ constrainDefinition ir vars def =
                                                         )
                                                     |> Dict.fromList
                                         in
-                                        constrainValue ir (vars |> Dict.union inputVars) def.body
+                                        constrainValue ir (vars |> Dict.union inputVars) Nothing def.body
                                             |> Count.andThen
                                                 (\( annotatedBody, bodyConstraints ) ->
                                                     Count.one
@@ -362,11 +362,11 @@ Detailed description of inputs and outputs:
         - `ConstraintSet` - set of type constraints that use the meta type variables that were added to each value node
 
 -}
-constrainValue : IR -> Dict Name Variable -> Value () va -> Count ( Value () ( va, Variable ), ConstraintSet )
-constrainValue ir vars annotatedValue =
+constrainValue : IR -> Dict Name Variable -> Maybe Variable -> Value () va -> Count ( Value () ( va, Variable ), ConstraintSet )
+constrainValue ir vars maybeThisTypeVar annotatedValue =
     case annotatedValue of
         Value.Literal va literalValue ->
-            Count.one
+            Count.oneOrReuse maybeThisTypeVar
                 (\thisIndex ->
                     let
                         thisTypeVar : Variable
@@ -384,7 +384,7 @@ constrainValue ir vars annotatedValue =
                     countedConstructorType
                         |> Count.andThen
                             (\referenceType ->
-                                Count.one
+                                Count.oneOrReuse maybeThisTypeVar
                                     (\thisIndex ->
                                         let
                                             thisTypeVar : Variable
@@ -398,7 +398,7 @@ constrainValue ir vars annotatedValue =
                             )
 
                 Err _ ->
-                    Count.one
+                    Count.oneOrReuse maybeThisTypeVar
                         (\thisIndex ->
                             let
                                 thisTypeVar : Variable
@@ -412,11 +412,11 @@ constrainValue ir vars annotatedValue =
 
         Value.Tuple va elems ->
             elems
-                |> List.map (constrainValue ir vars)
+                |> List.map (constrainValue ir vars Nothing)
                 |> Count.all
                 |> Count.andThen
                     (\elemResults ->
-                        Count.one
+                        Count.oneOrReuse maybeThisTypeVar
                             (\thisIndex ->
                                 let
                                     thisTypeVar : Variable
@@ -452,7 +452,7 @@ constrainValue ir vars annotatedValue =
 
         Value.List va items ->
             items
-                |> List.map (constrainValue ir vars)
+                |> List.map (constrainValue ir vars Nothing)
                 |> Count.all
                 |> Count.andThen
                     (\itemResults ->
@@ -498,7 +498,7 @@ constrainValue ir vars annotatedValue =
                 |> Dict.toList
                 |> List.map
                     (\( fieldName, fieldValue ) ->
-                        constrainValue ir vars fieldValue
+                        constrainValue ir vars Nothing fieldValue
                             |> Count.map (Tuple.pair fieldName)
                     )
                 |> Count.all
@@ -554,7 +554,7 @@ constrainValue ir vars annotatedValue =
 
                 Nothing ->
                     -- this should never happen if variables were validated earlier
-                    Count.one
+                    Count.oneOrReuse maybeThisTypeVar
                         (\thisIndex ->
                             let
                                 thisTypeVar : Variable
@@ -572,7 +572,7 @@ constrainValue ir vars annotatedValue =
                     countedReferenceType
                         |> Count.andThen
                             (\referenceType ->
-                                Count.one
+                                Count.oneOrReuse maybeThisTypeVar
                                     (\thisIndex ->
                                         let
                                             thisTypeVar : Variable
@@ -586,7 +586,7 @@ constrainValue ir vars annotatedValue =
                             )
 
                 Err _ ->
-                    Count.one
+                    Count.oneOrReuse maybeThisTypeVar
                         (\thisIndex ->
                             let
                                 thisTypeVar : Variable
@@ -599,7 +599,7 @@ constrainValue ir vars annotatedValue =
                         )
 
         Value.Field va subjectValue fieldName ->
-            constrainValue ir vars subjectValue
+            constrainValue ir vars Nothing subjectValue
                 |> Count.andThen
                     (\( annotatedSubjectValue, subjectValueConstraints ) ->
                         Count.three
@@ -675,13 +675,13 @@ constrainValue ir vars annotatedValue =
                 )
 
         Value.Apply va funValue argValue ->
-            constrainValue ir vars funValue
+            constrainValue ir vars Nothing funValue
                 |> Count.andThen
                     (\( annotatedFunValue, funValueConstraints ) ->
-                        constrainValue ir vars argValue
+                        constrainValue ir vars Nothing argValue
                             |> Count.andThen
                                 (\( annotatedArgValue, argValueConstraints ) ->
-                                    Count.one
+                                    Count.oneOrReuse maybeThisTypeVar
                                         (\thisIndex ->
                                             let
                                                 thisTypeVar : Variable
@@ -711,13 +711,13 @@ constrainValue ir vars annotatedValue =
                     )
 
         Value.Lambda va argPattern bodyValue ->
-            constrainPattern ir argPattern
+            constrainPattern ir Nothing argPattern
                 |> Count.andThen
                     (\( argPatternVariables, annotatedArgPattern, argPatternConstraints ) ->
-                        constrainValue ir (Dict.union argPatternVariables vars) bodyValue
+                        constrainValue ir (Dict.union argPatternVariables vars) Nothing bodyValue
                             |> Count.andThen
                                 (\( annotatedBodyValue, bodyValueConstraints ) ->
-                                    Count.one
+                                    Count.oneOrReuse maybeThisTypeVar
                                         (\thisIndex ->
                                             let
                                                 thisTypeVar : Variable
@@ -750,10 +750,10 @@ constrainValue ir vars annotatedValue =
             constrainDefinition ir vars def
                 |> Count.andThen
                     (\( defVar, annotatedDef, defConstraints ) ->
-                        constrainValue ir (vars |> Dict.insert defName defVar) inValue
+                        constrainValue ir (vars |> Dict.insert defName defVar) Nothing inValue
                             |> Count.andThen
                                 (\( annotatedInValue, inValueConstraints ) ->
-                                    Count.one
+                                    Count.oneOrReuse maybeThisTypeVar
                                         (\thisIndex ->
                                             let
                                                 thisTypeVar =
@@ -805,10 +805,10 @@ constrainValue ir vars annotatedValue =
                                     |> List.map (\( defName, ( defVar, _, _ ) ) -> ( defName, defVar ))
                                     |> Dict.fromList
                         in
-                        constrainValue ir (vars |> Dict.union defVariables) inValue
+                        constrainValue ir (vars |> Dict.union defVariables) Nothing inValue
                             |> Count.andThen
                                 (\( annotatedInValue, inValueConstraints ) ->
-                                    Count.one
+                                    Count.oneOrReuse maybeThisTypeVar
                                         (\thisIndex ->
                                             let
                                                 thisTypeVar : Variable
@@ -845,16 +845,16 @@ constrainValue ir vars annotatedValue =
                     )
 
         Value.Destructure va bindPattern bindValue inValue ->
-            constrainPattern ir bindPattern
+            constrainPattern ir Nothing bindPattern
                 |> Count.andThen
                     (\( bindPatternVariables, annotatedBindPattern, bindPatternConstraints ) ->
-                        constrainValue ir vars bindValue
+                        constrainValue ir vars Nothing bindValue
                             |> Count.andThen
                                 (\( annotatedBindValue, bindValueConstraints ) ->
-                                    constrainValue ir (Dict.union bindPatternVariables vars) inValue
+                                    constrainValue ir (Dict.union bindPatternVariables vars) Nothing inValue
                                         |> Count.andThen
                                             (\( annotatedInValue, inValueConstraints ) ->
-                                                Count.one
+                                                Count.oneOrReuse maybeThisTypeVar
                                                     (\thisIndex ->
                                                         let
                                                             thisTypeVar : Variable
@@ -882,22 +882,23 @@ constrainValue ir vars annotatedValue =
                     )
 
         Value.IfThenElse va condition thenBranch elseBranch ->
-            constrainValue ir vars condition
-                |> Count.andThen
-                    (\( annotatedCondition, conditionConstraints ) ->
-                        constrainValue ir vars thenBranch
-                            |> Count.andThen
-                                (\( annotatedThenBranch, thenBranchConstraints ) ->
-                                    constrainValue ir vars elseBranch
-                                        |> Count.andThen
-                                            (\( annotatedElseBranch, elseBranchConstraints ) ->
-                                                Count.one
-                                                    (\thisIndex ->
+            Count.oneOrReuse maybeThisTypeVar
+                (\thisIndex ->
+                    let
+                        thisTypeVar : Variable
+                        thisTypeVar =
+                            MetaType.variableByIndex thisIndex
+                    in
+                    constrainValue ir vars Nothing condition
+                        |> Count.andThen
+                            (\( annotatedCondition, conditionConstraints ) ->
+                                constrainValue ir vars (Just thisTypeVar) thenBranch
+                                    |> Count.andThen
+                                        (\( annotatedThenBranch, thenBranchConstraints ) ->
+                                            constrainValue ir vars (Just thisTypeVar) elseBranch
+                                                |> Count.map
+                                                    (\( annotatedElseBranch, elseBranchConstraints ) ->
                                                         let
-                                                            thisTypeVar : Variable
-                                                            thisTypeVar =
-                                                                MetaType.variableByIndex thisIndex
-
                                                             specificConstraints : ConstraintSet
                                                             specificConstraints =
                                                                 ConstraintSet.fromList
@@ -922,37 +923,45 @@ constrainValue ir vars annotatedValue =
                                                         , ConstraintSet.concat (specificConstraints :: childConstraints)
                                                         )
                                                     )
-                                            )
-                                )
-                    )
+                                        )
+                            )
+                )
+                |> Count.andThen identity
 
         Value.PatternMatch va subjectValue cases ->
-            constrainValue ir vars subjectValue
+            constrainValue ir vars Nothing subjectValue
                 |> Count.andThen
                     (\( annotatedSubjectValue, subjectValueConstraints ) ->
-                        cases
-                            |> List.map
-                                (\( casePattern, caseValue ) ->
-                                    constrainPattern ir casePattern
-                                        |> Count.andThen
-                                            (\( casePatternVariables, annotatedCasePattern, casePatternConstraints ) ->
-                                                constrainValue ir (Dict.union casePatternVariables vars) caseValue
-                                                    |> Count.map
-                                                        (\( annotatedCaseValue, caseValueConstraints ) ->
-                                                            ( ( annotatedCasePattern, casePatternConstraints ), ( annotatedCaseValue, caseValueConstraints ) )
-                                                        )
-                                            )
-                                )
-                            |> Count.all
-                            |> Count.andThen
-                                (\caseResults ->
-                                    Count.one
-                                        (\subjectIndex ->
-                                            let
-                                                thisTypeVar : Variable
-                                                thisTypeVar =
-                                                    MetaType.variableByIndex subjectIndex
+                        Count.oneOrReuse maybeThisTypeVar
+                            (\subjectIndex ->
+                                let
+                                    patternMetaVariable : Variable
+                                    patternMetaVariable =
+                                        annotatedSubjectValue
+                                            |> Value.valueAttribute
+                                            |> Tuple.second
 
+                                    thisTypeVar : Variable
+                                    thisTypeVar =
+                                        MetaType.variableByIndex subjectIndex
+                                in
+                                cases
+                                    |> List.map
+                                        (\( casePattern, caseValue ) ->
+                                            constrainPattern ir (Just patternMetaVariable) casePattern
+                                                |> Count.andThen
+                                                    (\( casePatternVariables, annotatedCasePattern, casePatternConstraints ) ->
+                                                        constrainValue ir (Dict.union casePatternVariables vars) (Just thisTypeVar) caseValue
+                                                            |> Count.map
+                                                                (\( annotatedCaseValue, caseValueConstraints ) ->
+                                                                    ( ( annotatedCasePattern, casePatternConstraints ), ( annotatedCaseValue, caseValueConstraints ) )
+                                                                )
+                                                    )
+                                        )
+                                    |> Count.all
+                                    |> Count.map
+                                        (\caseResults ->
+                                            let
                                                 thisType : MetaType
                                                 thisType =
                                                     metaVar thisTypeVar
@@ -993,18 +1002,19 @@ constrainValue ir vars annotatedValue =
                                             , ConstraintSet.concat (subjectValueConstraints :: casesConstraints)
                                             )
                                         )
-                                )
+                            )
+                            |> Count.andThen identity
                     )
 
         Value.UpdateRecord va subjectValue fieldValues ->
-            constrainValue ir vars subjectValue
+            constrainValue ir vars Nothing subjectValue
                 |> Count.andThen
                     (\( annotatedSubjectValue, subjectValueConstraints ) ->
                         fieldValues
                             |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
-                                    constrainValue ir vars fieldValue
+                                    constrainValue ir vars Nothing fieldValue
                                         |> Count.map (Tuple.pair fieldName)
                                 )
                             |> Count.all
@@ -1068,7 +1078,7 @@ constrainValue ir vars annotatedValue =
                     )
 
         Value.Unit va ->
-            Count.one
+            Count.oneOrReuse maybeThisTypeVar
                 (\thisIndex ->
                     let
                         thisTypeVar : Variable
@@ -1084,11 +1094,11 @@ constrainValue ir vars annotatedValue =
 
 {-| Function that extracts variables and generates constraints for a pattern.
 -}
-constrainPattern : IR -> Pattern va -> Count ( Dict Name Variable, Pattern ( va, Variable ), ConstraintSet )
-constrainPattern ir pattern =
+constrainPattern : IR -> Maybe Variable -> Pattern va -> Count ( Dict Name Variable, Pattern ( va, Variable ), ConstraintSet )
+constrainPattern ir maybeThisTypeVar pattern =
     case pattern of
         Value.WildcardPattern va ->
-            Count.one
+            Count.oneOrReuse maybeThisTypeVar
                 (\index ->
                     ( Dict.empty
                     , Value.WildcardPattern ( va, MetaType.variableByIndex index )
@@ -1097,7 +1107,7 @@ constrainPattern ir pattern =
                 )
 
         Value.AsPattern va nestedPattern alias ->
-            constrainPattern ir nestedPattern
+            constrainPattern ir maybeThisTypeVar nestedPattern
                 |> Count.map
                     (\( nestedVariables, nestedAnnotatedPattern, nestedConstraints ) ->
                         ( nestedVariables |> Dict.insert alias (patternVariable nestedAnnotatedPattern)
@@ -1108,7 +1118,7 @@ constrainPattern ir pattern =
 
         Value.TuplePattern va elemPatterns ->
             elemPatterns
-                |> List.map (constrainPattern ir)
+                |> List.map (constrainPattern ir Nothing)
                 |> Count.all
                 |> Count.andThen
                     (\elemResults ->
@@ -1153,21 +1163,13 @@ constrainPattern ir pattern =
 
         Value.ConstructorPattern va fQName argPatterns ->
             argPatterns
-                |> List.map (constrainPattern ir)
+                |> List.map (constrainPattern ir Nothing)
                 |> Count.all
                 |> Count.andThen
                     (\argPatternResults ->
-                        Count.two
-                            (\thisIndex ctorIndex ->
+                        Count.map2
+                            (\thisTypeVar ctorTypeVar ->
                                 let
-                                    thisTypeVar : Variable
-                                    thisTypeVar =
-                                        MetaType.variableByIndex thisIndex
-
-                                    ctorTypeVar : Variable
-                                    ctorTypeVar =
-                                        MetaType.variableByIndex ctorIndex
-
                                     argVariables : List (Dict Name Variable)
                                     argVariables =
                                         argPatternResults
@@ -1240,21 +1242,23 @@ constrainPattern ir pattern =
                                             )
                                         )
                             )
+                            (Count.oneOrReuse maybeThisTypeVar
+                                (\thisIndex ->
+                                    MetaType.variableByIndex thisIndex
+                                )
+                            )
+                            (Count.one
+                                (\ctorIndex ->
+                                    MetaType.variableByIndex ctorIndex
+                                )
+                            )
                             |> Count.andThen identity
                     )
 
         Value.EmptyListPattern va ->
-            Count.two
-                (\listIndex itemIndex ->
+            Count.map2
+                (\thisTypeVar itemType ->
                     let
-                        thisTypeVar : Variable
-                        thisTypeVar =
-                            MetaType.variableByIndex listIndex
-
-                        itemType : MetaType
-                        itemType =
-                            metaVar (MetaType.variableByIndex itemIndex)
-
                         listType : MetaType
                         listType =
                             MetaType.listType itemType
@@ -1265,12 +1269,22 @@ constrainPattern ir pattern =
                         (equality (metaVar thisTypeVar) listType)
                     )
                 )
+                (Count.oneOrReuse maybeThisTypeVar
+                    (\listIndex ->
+                        MetaType.variableByIndex listIndex
+                    )
+                )
+                (Count.one
+                    (\itemIndex ->
+                        metaVar (MetaType.variableByIndex itemIndex)
+                    )
+                )
 
         Value.HeadTailPattern va headPattern tailPattern ->
-            constrainPattern ir headPattern
+            constrainPattern ir Nothing headPattern
                 |> Count.andThen
                     (\( headVariables, headAnnotatedPattern, headConstraints ) ->
-                        constrainPattern ir tailPattern
+                        constrainPattern ir Nothing tailPattern
                             |> Count.andThen
                                 (\( tailVariables, tailAnnotatedPattern, tailConstraints ) ->
                                     Count.one
@@ -1305,7 +1319,7 @@ constrainPattern ir pattern =
                     )
 
         Value.LiteralPattern va literalValue ->
-            Count.one
+            Count.oneOrReuse maybeThisTypeVar
                 (\thisIndex ->
                     let
                         thisTypeVar : Variable
@@ -1319,7 +1333,7 @@ constrainPattern ir pattern =
                 )
 
         Value.UnitPattern va ->
-            Count.one
+            Count.oneOrReuse maybeThisTypeVar
                 (\thisIndex ->
                     let
                         thisTypeVar : Variable

@@ -18,6 +18,19 @@ one f =
         )
 
 
+oneOrReuse : Maybe Int -> (Int -> a) -> Count a
+oneOrReuse maybeReuse f =
+    Count
+        (\counter ->
+            case maybeReuse of
+                Just reuse ->
+                    ( counter, f reuse )
+
+                Nothing ->
+                    ( counter + 1, f counter )
+        )
+
+
 two : (Int -> Int -> a) -> Count a
 two f =
     Count
