@@ -9,7 +9,6 @@ import Element
     exposing
         ( Element
         , above
-        , alignLeft
         , alignRight
         , alignTop
         , centerX
@@ -21,7 +20,6 @@ import Element
         , fill
         , fillPortion
         , height
-        , html
         , image
         , layout
         , link
@@ -32,7 +30,6 @@ import Element
         , padding
         , paddingEach
         , paddingXY
-        , paragraph
         , pointer
         , px
         , rgb
@@ -51,10 +48,7 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import Html.Attributes exposing (name)
 import Http exposing (Error(..), emptyBody, jsonBody)
-import Markdown.Parser as Markdown
-import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR as IR exposing (IR)
@@ -65,28 +59,26 @@ import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
-import Morphir.IR.Type as Type exposing (Type)
+import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.Type.Infer as Infer
-import Morphir.Value.Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
+import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (PopupScreenRecord)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
+import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common exposing (ifThenElse, urlFragmentToNodePath, viewAsCard)
+import Morphir.Web.DevelopApp.Common exposing (ifThenElse, urlFragmentToNodePath)
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
-import Morphir.Web.TryMorphir exposing (Model)
 import Ordering
-import Parser exposing (deadEndsToString)
 import Set exposing (Set)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
@@ -472,8 +464,6 @@ update msg model =
                 initalArgState : InsightArgumentState
                 initalArgState =
                     initArgumentStates model.irState model.homeState.selectedDefinition
-
-                    
             in
             case testingMsg of
                 UpdateDescription description ->
@@ -1025,7 +1015,7 @@ viewHome model packageName packageDef =
                                             |> Dict.get typeName
                                             |> Maybe.map
                                                 (\typeDef ->
-                                                    viewType model.theme typeName typeDef.value.value typeDef.value.doc
+                                                    ViewType.viewType model.theme typeName typeDef.value.value typeDef.value.doc
                                                 )
                                     )
                                 |> Maybe.withDefault none
@@ -1352,132 +1342,6 @@ viewHome model packageName packageDef =
         ]
 
 
-{-| Display detailed information of a Type on the UI
--}
-viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
-viewType theme typeName typeDef docs =
-    case typeDef of
-        Type.TypeAliasDefinition _ (Type.Record _ fields) ->
-            let
-                fieldNames : { a | name : Name } -> Element msg
-                fieldNames =
-                    \field ->
-                        el
-                            (Theme.boldLabelStyles theme)
-                            (text (nameToText field.name))
-
-                fieldTypes : { a | tpe : Type () } -> Element msg
-                fieldTypes =
-                    \field ->
-                        el
-                            (Theme.labelStyles theme)
-                            (XRayView.viewType pathToUrl field.tpe)
-
-                viewFields : Element msg
-                viewFields =
-                    Theme.twoColumnTableView
-                        fields
-                        fieldNames
-                        fieldTypes
-            in
-            viewAsCard theme
-                (typeName |> nameToTitleText |> text)
-                "record"
-                theme.colors.backgroundColor
-                docs
-                viewFields
-
-        Type.TypeAliasDefinition _ body ->
-            viewAsCard theme
-                (typeName |> nameToTitleText |> text)
-                "is a"
-                theme.colors.backgroundColor
-                docs
-                (el
-                    [ paddingXY 10 5
-                    ]
-                    (XRayView.viewType pathToUrl body)
-                )
-
-        Type.CustomTypeDefinition _ accessControlledConstructors ->
-            let
-                isNewType : Maybe (Type ())
-                isNewType =
-                    case accessControlledConstructors.value |> Dict.toList of
-                        [ ( ctorName, [ ( _, baseType ) ] ) ] ->
-                            if ctorName == typeName then
-                                Just baseType
-
-                            else
-                                Nothing
-
-                        _ ->
-                            Nothing
-
-                isEnum : Bool
-                isEnum =
-                    accessControlledConstructors.value
-                        |> Dict.values
-                        |> List.all List.isEmpty
-
-                viewConstructors : Element msg
-                viewConstructors =
-                    if isEnum then
-                        accessControlledConstructors.value
-                            |> Dict.toList
-                            |> List.map
-                                (\( ctorName, _ ) ->
-                                    el
-                                        (Theme.boldLabelStyles theme)
-                                        (text (nameToTitleText ctorName))
-                                )
-                            |> column [ width fill ]
-
-                    else
-                        case isNewType of
-                            Just baseType ->
-                                el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType pathToUrl baseType)
-
-                            Nothing ->
-                                let
-                                    constructorNames =
-                                        \( ctorName, _ ) ->
-                                            el
-                                                (Theme.boldLabelStyles theme)
-                                                (text (nameToTitleText ctorName))
-
-                                    constructorArgs =
-                                        \( _, ctorArgs ) ->
-                                            el
-                                                (Theme.labelStyles theme)
-                                                (ctorArgs
-                                                    |> List.map (Tuple.second >> XRayView.viewType pathToUrl)
-                                                    |> row [ spacing 5 ]
-                                                )
-                                in
-                                Theme.twoColumnTableView
-                                    (Dict.toList accessControlledConstructors.value)
-                                    constructorNames
-                                    constructorArgs
-            in
-            viewAsCard theme
-                (typeName |> nameToTitleText |> text)
-                (case isNewType of
-                    Just _ ->
-                        "wrapper"
-
-                    Nothing ->
-                        if isEnum then
-                            "enum"
-
-                        else
-                            "one of"
-                )
-                Theme.defaultColors.backgroundColor
-                docs
-                viewConstructors
-
-
 {-| Display detailed information of a Value on the UI
 -}
 viewValue : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> String -> Element msg
@@ -1504,7 +1368,7 @@ viewValue theme moduleName valueName valueDef docs =
             else
                 rgb 0.8 0.8 0.9
     in
-    viewAsCard theme
+    Card.viewAsCard theme
         cardTitle
         (if isData then
             "value"
@@ -1515,75 +1379,6 @@ viewValue theme moduleName valueName valueDef docs =
         backgroundColor
         (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
         none
-
-
-viewAsCard : Theme -> Element msg -> String -> Element.Color -> String -> Element msg -> Element msg
-viewAsCard theme header class backgroundColor docs content =
-    let
-        white =
-            rgb 1 1 1
-
-        cont =
-            el
-                [ alignTop
-                , height fill
-                , width fill
-                ]
-                content
-    in
-    column
-        [ padding (theme |> Theme.scaled 3)
-        , spacing (theme |> Theme.scaled 3)
-        ]
-        [ row
-            [ width fill
-            , paddingXY (theme |> Theme.scaled -2) (theme |> Theme.scaled -6)
-            , spacing (theme |> Theme.scaled 2)
-            , Font.size (theme |> Theme.scaled 3)
-            ]
-            [ el [ Font.bold ] header
-            , el [ alignLeft, Font.color theme.colors.secondaryInformation ] (text class)
-            ]
-        , el
-            [ Background.color white
-            , Theme.borderRounded
-            , width fill
-            , height fill
-            ]
-            (if docs == "" then
-                cont
-
-             else
-                column [ height fill, width fill ]
-                    [ el
-                        [ padding (theme |> Theme.scaled -2)
-                        , Border.widthEach { bottom = 3, top = 0, left = 0, right = 0 }
-                        , Border.color backgroundColor
-                        , height fill
-                        , width fill
-                        ]
-                        (let
-                            deadEndsToString deadEnds =
-                                deadEnds
-                                    |> List.map Markdown.deadEndToString
-                                    |> String.join "\n"
-                         in
-                         case
-                            docs
-                                |> Markdown.parse
-                                |> Result.mapError deadEndsToString
-                                |> Result.andThen (\ast -> Markdown.Renderer.render Markdown.Renderer.defaultHtmlRenderer ast)
-                         of
-                            Ok rendered ->
-                                rendered |> List.map html |> paragraph []
-
-                            Err errors ->
-                                text errors
-                        )
-                    , cont
-                    ]
-            )
-        ]
 
 
 {-| Display a Definition with its name and path as a clickable UI element with a url pointing to the Definition
