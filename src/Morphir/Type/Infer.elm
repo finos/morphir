@@ -163,7 +163,6 @@ inferValueDefinition ir def =
         ( count, ( defVar, annotatedDef, constraints ) ) =
             constrainDefinition ir Dict.empty def
                 |> Count.apply 0
-                |> Debug.log "constrainDefinition"
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
         solution =
@@ -179,7 +178,6 @@ inferValue ir untypedValue =
         ( count, ( annotatedValue, constraints ) ) =
             constrainValue ir Dict.empty untypedValue
                 |> Count.apply 0
-                |> Debug.log "constrainValue"
 
         solution : Result TypeError ( ConstraintSet, SolutionMap )
         solution =
@@ -1376,19 +1374,23 @@ solve refs constraintSet =
 
 solveHelp : IR -> SolutionMap -> ConstraintSet -> Result TypeError ( ConstraintSet, SolutionMap )
 solveHelp ir solutionsSoFar ((ConstraintSet constraints) as constraintSet) =
-    let
-        _ =
-            constraints
-                |> List.map (Constraint.toString >> Debug.log "constraints so far")
-
-        _ =
-            Debug.log "solutions so far" (solutionsSoFar |> Solve.toList |> List.length)
-    in
+    --let
+    --    _ =
+    --        constraints
+    --            |> List.map (Constraint.toString >> Debug.log "constraints so far")
+    --
+    --    _ =
+    --        Debug.log "solutions so far" (solutionsSoFar |> Solve.toList |> List.length)
+    --in
     case validateConstraints constraints of
         Ok _ ->
             case solveStep ir solutionsSoFar constraintSet of
                 Ok (Just ( newConstraints, mergedSolutions )) ->
-                    solveHelp ir mergedSolutions newConstraints
+                    if solutionsSoFar == mergedSolutions then
+                        Ok ( newConstraints, mergedSolutions )
+
+                    else
+                        solveHelp ir mergedSolutions newConstraints
 
                 Ok Nothing ->
                     Ok ( constraintSet, solutionsSoFar )

@@ -338,13 +338,13 @@ unifyRecord refs aliases recordVar1 isOpen1 fields1 metaType2 =
                                 )
 
                         else
-                            --mergeSolutions
-                            --    refs
-                            Ok fieldSolutions
-                     --(singleSolution aliases
-                     --    recordVar2
-                     --    (metaRecord recordVar1 False newFields)
-                     --)
+                            mergeSolutions
+                                refs
+                                fieldSolutions
+                                (singleSolution aliases
+                                    recordVar2
+                                    (metaRecord recordVar1 False newFields)
+                                )
                     )
 
         _ ->

@@ -28,10 +28,13 @@ import Morphir.Type.Infer as Infer
 import Morphir.Type.MetaType exposing (MetaType(..))
 import Morphir.Type.Solve as Solve exposing (SolutionMap)
 import Morphir.Visual.Common exposing (nameToText, pathToUrl)
+import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.TypeInferenceView as TypeInferenceView
 import Morphir.Visual.Config exposing (Config)
-import Morphir.Visual.Theme as Theme
+import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
+import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.SourceEditor as SourceEditor
@@ -70,6 +73,11 @@ type IRView
 type alias ValueState =
     { typeInferenceStep : Int
     }
+
+
+theme : Theme
+theme =
+    Theme.fromConfig Nothing
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -311,84 +319,95 @@ viewPackageDefinition model viewAttribute packageDef =
 
 viewModuleDefinition : Model -> IR -> PackageName -> ModuleName -> (va -> Html Msg) -> Module.Definition () (Type ()) -> Element Msg
 viewModuleDefinition model ir packageName moduleName _ moduleDef =
-    column []
-        [ moduleDef.types
-            |> viewDict
-                (\typeName -> text (typeName |> Name.toHumanWords |> String.join " "))
-                (\typeDef -> text (Debug.toString typeDef))
-        , moduleDef.values
-            |> Dict.toList
-            |> List.map
-                (\( valueName, valueDef ) ->
-                    let
-                        valueState =
-                            model.valueStates
-                                |> Dict.get ( packageName, moduleName, valueName )
-                                |> Maybe.withDefault
-                                    { typeInferenceStep = 0
-                                    }
-                    in
-                    column
-                        [ Background.color (rgb 0.9 0.9 0.9)
-                        , Border.rounded 5
-                        , padding 5
-                        , spacing 5
-                        ]
-                        [ el
-                            [ Border.rounded 5
-                            , Background.color (rgb 0.95 0.95 0.95)
-                            , width fill
-                            ]
-                            (row []
-                                [ el [ paddingXY 10 5 ] (text (nameToText valueName))
-                                , row
-                                    [ paddingXY 10 5
-                                    , spacing 5
-                                    , Background.color (rgb 1 0.9 0.8)
+    let
+        typeViews : List (Element msg)
+        typeViews =
+            moduleDef.types
+                |> Dict.toList
+                |> List.map
+                    (\( typeName, accessControlledDocumentedTypeDef ) ->
+                        ViewType.viewType theme typeName accessControlledDocumentedTypeDef.value.value accessControlledDocumentedTypeDef.value.doc
+                    )
+
+        valueViews : List (Element Msg)
+        valueViews =
+            moduleDef.values
+                |> Dict.toList
+                |> List.map
+                    (\( valueName, valueDef ) ->
+                        let
+                            valueState =
+                                model.valueStates
+                                    |> Dict.get ( packageName, moduleName, valueName )
+                                    |> Maybe.withDefault
+                                        { typeInferenceStep = 0
+                                        }
+                        in
+                        Card.viewAsCard theme
+                            (text (nameToText valueName))
+                            "value"
+                            theme.colors.backgroundColor
+                            valueDef.value.doc
+                            (column
+                                []
+                                [ el
+                                    [ Border.rounded 5
+                                    , Background.color (rgb 0.95 0.95 0.95)
+                                    , width fill
                                     ]
-                                    [ text ":"
-                                    , XRayView.viewType pathToUrl valueDef.value.value.outputType
+                                    (row []
+                                        [ el [ paddingXY 10 5 ] (text "return type")
+                                        , row
+                                            [ paddingXY 10 5
+                                            , spacing 5
+                                            , Background.color (rgb 1 0.9 0.8)
+                                            ]
+                                            [ text ":"
+                                            , XRayView.viewType pathToUrl valueDef.value.value.outputType
+                                            ]
+                                        ]
+                                    )
+                                , if List.isEmpty valueDef.value.value.inputTypes then
+                                    none
+
+                                  else
+                                    el
+                                        [ padding 5
+                                        , Border.rounded 5
+                                        , Background.color (rgb 0.95 0.95 0.95)
+                                        , width fill
+                                        ]
+                                        (valueDef.value.value.inputTypes
+                                            |> List.map
+                                                (\( argName, _, argType ) ->
+                                                    row []
+                                                        [ el [ paddingXY 10 5 ] (text (nameToText argName))
+                                                        , row
+                                                            [ paddingXY 10 5
+                                                            , spacing 5
+                                                            , Background.color (rgb 1 0.9 0.8)
+                                                            ]
+                                                            [ text ":"
+                                                            , XRayView.viewType pathToUrl argType
+                                                            ]
+                                                        ]
+                                                )
+                                            |> column [ spacing 5 ]
+                                        )
+                                , el
+                                    [ padding 5
+                                    , Border.rounded 5
+                                    , Background.color (rgb 1 1 1)
+                                    , width fill
                                     ]
+                                    (viewValue valueState ir ( packageName, moduleName, valueName ) model.irView valueDef.value.value)
                                 ]
                             )
-                        , if List.isEmpty valueDef.value.value.inputTypes then
-                            none
-
-                          else
-                            el
-                                [ padding 5
-                                , Border.rounded 5
-                                , Background.color (rgb 0.95 0.95 0.95)
-                                , width fill
-                                ]
-                                (valueDef.value.value.inputTypes
-                                    |> List.map
-                                        (\( argName, _, argType ) ->
-                                            row []
-                                                [ el [ paddingXY 10 5 ] (text (nameToText argName))
-                                                , row
-                                                    [ paddingXY 10 5
-                                                    , spacing 5
-                                                    , Background.color (rgb 1 0.9 0.8)
-                                                    ]
-                                                    [ text ":"
-                                                    , XRayView.viewType pathToUrl argType
-                                                    ]
-                                                ]
-                                        )
-                                    |> column [ spacing 5 ]
-                                )
-                        , el
-                            [ padding 5
-                            , Border.rounded 5
-                            , Background.color (rgb 1 1 1)
-                            , width fill
-                            ]
-                            (viewValue valueState ir ( packageName, moduleName, valueName ) model.irView valueDef.value.value)
-                        ]
-                )
-            |> column [ spacing 20 ]
-        ]
+                    )
+    in
+    (typeViews ++ valueViews)
+        |> List.intersperse (el [ width fill, height (px (Theme.smallSpacing theme)), Background.color theme.colors.gray ] none)
+        |> column [ spacing 20 ]
 
 
 viewValue : ValueState -> IR -> FQName -> IRView -> Value.Definition () (Type ()) -> Element Msg
@@ -453,7 +472,7 @@ viewValueAsIR valueState ir fullyQualifiedName irView valueDef =
 
         solveSteps : List (Element msg)
         solveSteps =
-            viewSolveSteps 0 ir Solve.emptySolution (valueDefConstraints |> Debug.log "valueDefConstraints")
+            TypeInferenceView.viewSolveSteps 0 ir Solve.emptySolution (valueDefConstraints |> Debug.log "valueDefConstraints")
                 |> List.reverse
 
         solveStepsSlider : Element Msg
@@ -514,155 +533,6 @@ viewValueAsIR valueState ir fullyQualifiedName irView valueDef =
                 ]
             )
         ]
-
-
-viewConstraints : ConstraintSet -> Element msg
-viewConstraints constraints =
-    table [ spacing 10 ]
-        { data =
-            constraints
-                |> ConstraintSet.toList
-        , columns =
-            [ { header = none
-              , width = shrink
-              , view =
-                    \constraint ->
-                        case constraint of
-                            Equality _ metaType1 _ ->
-                                viewMetaType metaType1
-
-                            Class _ metaType _ ->
-                                viewMetaType metaType
-              }
-            , { header = none
-              , width = shrink
-              , view =
-                    \constraint ->
-                        case constraint of
-                            Equality _ _ _ ->
-                                text "="
-
-                            Class _ _ _ ->
-                                text "is a"
-              }
-            , { header = none
-              , width = shrink
-              , view =
-                    \constraint ->
-                        case constraint of
-                            Equality _ _ metaType2 ->
-                                viewMetaType metaType2
-
-                            Class _ _ cls ->
-                                text (Debug.toString cls)
-              }
-            ]
-        }
-
-
-viewMetaType : MetaType -> Element msg
-viewMetaType metaType =
-    case metaType of
-        MetaVar variable ->
-            text (String.fromInt variable)
-
-        MetaRef _ ( packageName, moduleName, localName ) args maybeMetaType ->
-            row [ spacing 10 ]
-                [ text (Name.toTitleCase localName)
-                , args |> List.map viewMetaType |> row [ spacing 10 ]
-                , case maybeMetaType of
-                    Just alias ->
-                        row [ spacing 10 ] [ text "as", viewMetaType alias ]
-
-                    Nothing ->
-                        none
-                ]
-
-        MetaTuple _ metaTypes ->
-            row [ spacing 10 ]
-                [ text "("
-                , metaTypes |> List.map viewMetaType |> List.intersperse (text ",") |> row [ spacing 10 ]
-                , text ")"
-                ]
-
-        MetaRecord _ var isOpen fields ->
-            row []
-                [ text "{ "
-                , text (String.fromInt var)
-                , if isOpen then
-                    text " = "
-
-                  else
-                    text " | "
-                , fields
-                    |> Dict.toList
-                    |> List.map (\( n, t ) -> row [] [ text (Name.toCamelCase n), text " : ", viewMetaType t ])
-                    |> List.intersperse (text ", ")
-                    |> row []
-                , text " }"
-                ]
-
-        MetaFun _ metaType1 metaType2 ->
-            row [] [ viewMetaType metaType1, text " -> ", viewMetaType metaType2 ]
-
-        MetaUnit ->
-            text "()"
-
-
-viewSolution : SolutionMap -> Element msg
-viewSolution solutionMap =
-    table [ spacing 10 ]
-        { data =
-            solutionMap
-                |> Solve.toList
-        , columns =
-            [ { header = none
-              , width = shrink
-              , view =
-                    \( variable, _ ) ->
-                        text (String.fromInt variable)
-              }
-            , { header = none
-              , width = shrink
-              , view =
-                    \_ ->
-                        text "="
-              }
-            , { header = none
-              , width = shrink
-              , view =
-                    \( _, metaType ) ->
-                        viewMetaType metaType
-              }
-            ]
-        }
-
-
-viewSolveSteps : Int -> IR -> SolutionMap -> ConstraintSet -> List (Element msg)
-viewSolveSteps depth ir solutionMap constraintSet =
-    let
-        thisStep : Element msg
-        thisStep =
-            column [ spacing 20 ]
-                [ text "Constraints"
-                , viewConstraints constraintSet
-                , text "Solutions"
-                , viewSolution solutionMap
-                ]
-    in
-    case Infer.solveStep ir solutionMap constraintSet of
-        Ok (Just ( newConstraints, mergedSolutions )) ->
-            if depth > 50 then
-                [ thisStep ]
-
-            else
-                thisStep :: viewSolveSteps (depth + 1) ir mergedSolutions newConstraints
-
-        Ok Nothing ->
-            [ thisStep ]
-
-        Err error ->
-            [ text (Debug.toString error) ]
 
 
 viewFields : List ( Element msg, Element msg ) -> Element msg

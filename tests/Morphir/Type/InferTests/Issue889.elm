@@ -118,21 +118,14 @@ solveTest =
                 )
                 |> Expect.equal
                     (Ok
-                        ( ConstraintSet
-                            [ Equality (Set.fromList [ 0, 5 ])
-                                (MetaRef (Set.fromList [ 0 ])
-                                    ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] )
-                                    []
-                                    (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ])))
-                                )
-                                (MetaRecord (Set.fromList [ 5 ]) 5 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))
-                            ]
+                        ( ConstraintSet []
                         , SolutionMap
                             (Dict.fromList
                                 [ ( 1, MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] Nothing )
                                 , ( 2, MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) [] Nothing )
                                 , ( 3, MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing )
                                 , ( 4, MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
+                                , ( 5, MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
                                 , ( 6, MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
                                 , ( 7, MetaRef (Set.fromList [ 0 ]) ( [ [ "test" ] ], [ [ "test" ] ], [ "bar", "record" ] ) [] (Just (MetaRecord (Set.fromList [ 0 ]) 0 False (Dict.fromList [ ( [ "bar" ], MetaRef (Set.fromList []) ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) [] Nothing ) ]))) )
                                 ]
