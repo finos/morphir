@@ -148,6 +148,9 @@ mapType typ =
                 ( "Morphir.SDK:Basics:int", [] ) ->
                     Integer
 
+                ( "Morphir.SDK:Decimal:decimal", [] ) ->
+                    String
+
                 ( "Morphir.SDK:String:string", [] ) ->
                     String
 
