@@ -270,7 +270,7 @@ Such code would generate Spark of the form
 source.select(aggregationFunction(org.apache.spark.sql.col("fieldName")).alias("label"))
 ```
 
-### Idiomatic Elm Aggregation
+### Idiomatic Elm Single Aggregation
 i.e. aggregations that produce a single value
 ```
 source
@@ -284,6 +284,34 @@ Where 'mappingFunction' and 'aggregationFunction' hold the same meaning as in Pe
 Such code would generate Spark of the form
 ```
 source.select(aggregationFunction(org.apache.spark.sql.col("fieldName")).alias("fieldName"))
+```
+
+### Idiomatic Elm Multiple Aggregation
+i.e. aggregations that construct a single Record
+
+These may be represented as either a Record constructor by itself, e.g.
+```
+{ min = antiques |> List.map .ageOfItem |> List.minimum
+, sum = antiques |> List.map .ageOfItem |> List.sum
+}
+```
+or a Record constructor being applied to a value, e.g.
+```
+antiques
+    |> List.map .ageOfItem
+    |> (\ages ->
+            { min = List.minimum ages
+            , sum = List.sum ages
+            }
+       )
+```
+The above examples are functionally identical, and result in Spark code of the form:
+```
+antiques.select(
+  org.apache.spark.sql.functions.min(org.apache.spark.sql.functions.col("ageOfItem")).alias("min"),
+  org.apache.spark.sql.functions.sum(org.apache.spark.sql.functions.col("ageOfItem")).alias("sum")
+)
+
 ```
 
 ## Types
