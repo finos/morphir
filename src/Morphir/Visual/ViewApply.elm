@@ -1,10 +1,9 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, padding, pointer, rgb, row, spacing, text, width)
+import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, padding, rgb, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events exposing (onClick)
 import Element.Font as Font
 import Html.Attributes exposing (value)
 import Morphir.IR as IR
@@ -17,22 +16,27 @@ import Morphir.Type.Infer as Infer
 import Morphir.Value.Error as Error exposing (Error(..))
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue, evaluateValue)
 import Morphir.Visual.Common exposing (nameToText, tooltip)
+import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel exposing (Depth)
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), evalIfPathTaken)
+import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), evalIfPathTaken, drillDownContains)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, getId)
 import Morphir.Visual.Theme exposing (borderRounded, smallPadding, smallSpacing)
 
 
-view : Config msg -> (Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg) -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
-view config viewDefinition viewValue functionValue argValues =
+view : Config msg -> (Config msg -> Value.Definition () (Type ()) -> Element msg) -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
+view config viewDefinitionBody viewValue functionValue argValues =
     let
         styles : List (Element.Attribute msg)
         styles =
             [ smallSpacing config.state.theme |> spacing, Element.centerY ]
 
+        drillDownPanel : FQName -> Depth -> Element msg -> Element msg -> Bool -> Element msg
+        drillDownPanel fqName depth headerElement openElement isOpen =
+            DrillDownPanel.drillDownPanel { openMsg = config.handlers.onReferenceClicked fqName (getId functionValue) config.nodePath, closeMsg = config.handlers.onReferenceClose fqName (getId functionValue) config.nodePath } depth headerElement openElement isOpen
+
         viewFunctionValue : FQName -> Element msg
         viewFunctionValue fqName =
-            el [ Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName), onClick (config.handlers.onReferenceClicked fqName False (getId functionValue) config.nodePath), pointer ] <| viewValue functionValue
+            el [ Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName) ] <| viewValue functionValue
 
         functionOutput : FQName -> Element msg
         functionOutput fqName =
@@ -80,7 +84,7 @@ view config viewDefinition viewValue functionValue argValues =
                                     el ((Font.color <| rgb 0.8 0 0) :: popupstyles) (text <| Error.toString err)
 
                         _ ->
-                            el popupstyles (text <| "Couldn't evaluate this function. (" ++ Error.toString firstError ++ ")")
+                            el popupstyles (text <| "Could not evaluate. (" ++ Error.toString firstError ++ ")")
     in
     case ( functionValue, argValues ) of
         ( (Value.Constructor _ fQName) as constr, _ ) ->
@@ -174,46 +178,13 @@ view config viewDefinition viewValue functionValue argValues =
         ( Value.Reference _ fqName, _ ) ->
             let
                 drillDown : DrillDownFunctions -> List Int -> Maybe (Value.Definition () (Type ()))
-                drillDown (DrillDownFunctions dict) nodePath =
-                    case nodePath of
-                        [] ->
-                            if Dict.member (getId functionValue) dict then
-                                Dict.get fqName config.ir.valueDefinitions
+                drillDown dict nodePath =
+                    if drillDownContains dict (getId functionValue) nodePath then
+                        Dict.get fqName config.ir.valueDefinitions
+                    else
+                        Nothing
 
-                            else
-                                Nothing
-
-                        x :: xs ->
-                            Dict.get x dict |> Maybe.andThen (\d -> drillDown d xs)
-            in
-            case drillDown config.state.drillDownFunctions config.nodePath of
-                Just valueDef ->
-                    let
-                        variables =
-                            Dict.fromList (List.map2 (\( name, _, _ ) argValue -> ( name, argValue |> evalIfPathTaken config |> Maybe.withDefault (Value.Unit ()) )) valueDef.inputTypes argValues)
-
-                        visualState : Morphir.Visual.Config.VisualState
-                        visualState =
-                            config.state
-
-                        depthColor =
-                            let
-                                depth =
-                                    1 - (0.1 * (toFloat <| List.length config.nodePath + 1))
-                            in
-                            Element.fromRgb
-                                { red = depth
-                                , green = depth
-                                , blue = depth
-                                , alpha = 1
-                                }
-                    in
-                    el
-                        [ borderRounded, Border.width 1, Border.color depthColor, padding <| (List.length config.nodePath + 1) * 5, Border.innerGlow depthColor (toFloat (List.length config.nodePath) + 3) ]
-                    <|
-                        viewDefinition { config | state = { visualState | variables = variables }, nodePath = config.nodePath ++ [ getId functionValue ] } fqName valueDef
-
-                Nothing ->
+                headerElement =
                     row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding ] ++ styles)
                         [ viewFunctionValue fqName
                         , row [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
@@ -221,6 +192,24 @@ view config viewDefinition viewValue functionValue argValues =
                                 |> List.map viewValue
                             )
                         ]
+
+                openElement =
+                    case drillDown config.state.drillDownFunctions config.nodePath of
+                        Just valueDef ->
+                            let
+                                variables =
+                                    Dict.fromList (List.map2 (\( name, _, _ ) argValue -> ( name, argValue |> evalIfPathTaken config |> Maybe.withDefault (Value.Unit ()) )) valueDef.inputTypes argValues)
+
+                                visualState : Morphir.Visual.Config.VisualState
+                                visualState =
+                                    config.state
+                            in
+                            viewDefinitionBody { config | state = { visualState | variables = variables }, nodePath = config.nodePath ++ [ getId functionValue ] } valueDef
+
+                        Nothing ->
+                            Element.none
+            in
+            drillDownPanel fqName (List.length config.nodePath) headerElement openElement (drillDownContains config.state.drillDownFunctions (getId functionValue) config.nodePath)
 
         _ ->
             row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding ] ++ styles)

@@ -16,7 +16,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.DataCodec exposing (decodeData)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
-import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), PopupScreenRecord, updateDrillDownDict)
+import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), PopupScreenRecord, ExpressionTreePath, addToDrillDown)
 import Morphir.Visual.Theme as Theme exposing (Theme, ThemeConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Theme.Codec exposing (decodeThemeConfig)
 import Morphir.Visual.ViewValue as ViewValue
@@ -89,7 +89,8 @@ port receiveFunctionArguments : (Decode.Value -> msg) -> Sub msg
 type Msg
     = FunctionNameReceived String
     | FunctionArgumentsReceived Decode.Value
-    | ExpandReference FQName Bool Int (List Int)
+    | ExpandReference FQName Int ExpressionTreePath
+    | ShrinkReference FQName Int ExpressionTreePath
     | ExpandVariable Int (List Int) (Maybe RawValue)
     | ShrinkVariable Int (List Int)
 
@@ -194,7 +195,7 @@ update msg model =
                 Err _ ->
                     ( { model | modelState = Failed "Received function arguments cannot be decoded" }, Cmd.none )
 
-        ExpandReference fQName isFunctionPresent id nodePath ->
+        ExpandReference fQName id nodePath ->
             case model.modelState of
                 FunctionsSet visualizationState ->
                     case ( fQName, id, nodePath ) of
@@ -206,7 +207,7 @@ update msg model =
                                 | modelState =
                                     FunctionsSet
                                         { visualizationState
-                                            | drillDownFunctions = DrillDownFunctions (updateDrillDownDict visualizationState.drillDownFunctions id nodePath)
+                                            | drillDownFunctions = DrillDownFunctions (addToDrillDown visualizationState.drillDownFunctions id nodePath)
                                         }
                               }
                             , Cmd.none
@@ -214,6 +215,9 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+        ShrinkReference fQName id nodePath ->
+            (model, Cmd.none)
 
         ExpandVariable varIndex nodePath maybeRawValue ->
             case model.modelState of
@@ -308,6 +312,7 @@ view model =
                         , highlightState = Nothing
                         }
                         { onReferenceClicked = ExpandReference
+                        , onReferenceClose = ShrinkReference
                         , onHoverOver = ExpandVariable
                         , onHoverLeave = ShrinkVariable
                         }

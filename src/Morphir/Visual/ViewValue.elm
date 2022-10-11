@@ -1,13 +1,13 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
 import Dict
-import Element exposing (Element, column, el, fill, htmlAttribute, padding, pointer, rgb, spacing, text, width)
+import Element exposing (Element, column, el, fill, htmlAttribute, padding, pointer, rgb, spacing, text, width, explain, row, paddingEach)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
-import Morphir.IR.FQName exposing (FQName, getLocalName)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name, toCamelCase)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
@@ -15,11 +15,11 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (Pattern(..), RawValue, Value(..))
 import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
-import Morphir.Visual.Common exposing (definition, nameToText)
+import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Config as Config exposing (Config)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue, getId)
-import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
+import Morphir.Visual.Theme exposing (mediumSpacing, smallPadding, smallSpacing, mediumPadding)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -32,6 +32,20 @@ import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewRecord as ViewRecord
 import Morphir.Visual.XRayView as XRayView
 
+definition : Config msg -> String -> Element msg -> Element msg
+definition config header body =
+    column [ mediumSpacing config.state.theme |> spacing ]
+        [ row [ mediumSpacing config.state.theme |> spacing ]
+            [ el [ Font.bold ] (text header)
+            , el [] (text "=")
+            ]
+        , el [ paddingEach { left = mediumPadding config.state.theme, right = mediumPadding config.state.theme, top = 0, bottom = 0 } ]
+            body
+        ]
+
+definitionBody : Config msg -> Value.Definition () (Type ()) -> Element msg
+definitionBody config valueDef =
+    (viewValue config (valueDef.body |> fromTypedValue))
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
 viewDefinition config ( packageName, moduleName, valueName ) valueDef =
@@ -39,7 +53,7 @@ viewDefinition config ( packageName, moduleName, valueName ) valueDef =
         definitionElem =
             definition config
                 (nameToText valueName)
-                (viewValue config (valueDef.body |> fromTypedValue))
+                (definitionBody config valueDef)
     in
     Element.column [ mediumSpacing config.state.theme |> spacing ]
         [ definitionElem ]
@@ -102,7 +116,7 @@ viewValueByLanguageFeature config value =
                             Element.row
                                 [ smallPadding config.state.theme |> padding
                                 , smallSpacing config.state.theme |> spacing
-                                , onClick (config.handlers.onReferenceClicked fQName False (getId functionvalue) config.nodePath)
+                                , onClick (config.handlers.onReferenceClicked fQName (getId functionvalue) config.nodePath)
                                 ]
                                 [ text (nameToText localName) ]
 
@@ -153,7 +167,7 @@ viewValueByLanguageFeature config value =
                     Element.row
                         [ smallPadding config.state.theme |> padding
                         , smallSpacing config.state.theme |> spacing
-                        , onClick (config.handlers.onReferenceClicked fQName False (getId functionvalue) config.nodePath)
+                        , onClick (config.handlers.onReferenceClicked fQName (getId functionvalue) config.nodePath)
                         , pointer
                         ]
                         [ text (nameToText localName) ]
@@ -209,7 +223,7 @@ viewValueByLanguageFeature config value =
                         ( function, args ) =
                             Value.uncurryApply fun arg
                     in
-                    ViewApply.view config viewDefinition (viewValue config) function args
+                    ViewApply.view config definitionBody (viewValue config) function args
 
                 Value.LetDefinition _ _ _ _ ->
                     let

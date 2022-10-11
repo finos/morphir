@@ -76,7 +76,7 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
-import Morphir.Visual.Config exposing (DrillDownFunctions(..), PopupScreenRecord, updateDrillDownDict)
+import Morphir.Visual.Config exposing (DrillDownFunctions(..), PopupScreenRecord, ExpressionTreePath, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
@@ -271,7 +271,8 @@ type FilterMsg
 
 
 type InsightMsg
-    = ExpandReference FQName Bool Int (List Int)
+    = ExpandReference FQName Int ExpressionTreePath
+    | ShrinkReference FQName Int ExpressionTreePath
     | ExpandVariable Int (List Int) (Maybe RawValue)
     | ShrinkVariable Int (List Int)
     | SwitchDisplayType
@@ -391,16 +392,30 @@ update msg model =
                     model.insightViewState
             in
             case insightMsg of
-                ExpandReference fQName _ id nodePath ->
-                    case ( fQName, id, nodePath ) of
-                        ( ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ), _, _ ) ->
+                ExpandReference fQName id nodePath ->
+                    case fQName of
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
                             ( model, Cmd.none )
 
                         _ ->
                             ( { model
                                 | insightViewState =
                                     { insightViewState
-                                        | drillDownFunctions = DrillDownFunctions (updateDrillDownDict insightViewState.drillDownFunctions id nodePath)
+                                        | drillDownFunctions = DrillDownFunctions (addToDrillDown insightViewState.drillDownFunctions id nodePath)
+                                    }
+                              }
+                            , Cmd.none
+                            )
+                ShrinkReference fQName id nodePath ->
+                    case fQName of
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
+                            ( model, Cmd.none )
+
+                        _ ->
+                            ( { model
+                                | insightViewState =
+                                    { insightViewState
+                                        | drillDownFunctions = DrillDownFunctions (removeFromDrillDown insightViewState.drillDownFunctions id nodePath)
                                     }
                               }
                             , Cmd.none
@@ -1783,9 +1798,13 @@ viewDefinitionDetails model =
         insightViewConfig : IR -> Morphir.Visual.Config.Config Msg
         insightViewConfig ir =
             let
-                referenceClicked : FQName -> Bool -> Int -> List Int -> Msg
-                referenceClicked fqname t id nodePath =
-                    Insight (ExpandReference fqname t id nodePath)
+                referenceClicked : FQName -> Int -> List Int -> Msg
+                referenceClicked fQName id nodePath =
+                    Insight (ExpandReference fQName id nodePath)
+
+                referenceClosed : FQName -> Int -> List Int -> Msg
+                referenceClosed fQName int nodePath =
+                    Insight (ShrinkReference fQName int nodePath)
 
                 hoverOver : Int -> List Int -> Maybe RawValue -> Msg
                 hoverOver index nodePath value =
@@ -1799,6 +1818,7 @@ viewDefinitionDetails model =
                 ir
                 model.insightViewState
                 { onReferenceClicked = referenceClicked
+                , onReferenceClose = referenceClosed
                 , onHoverOver = hoverOver
                 , onHoverLeave = hoverLeave
                 }

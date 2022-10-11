@@ -1,11 +1,12 @@
 module Morphir.Visual.Config exposing (..)
 
 import Dict exposing (Dict)
+import Html exposing (node)
+import Json.Decode exposing (dict)
 import Morphir.IR exposing (IR)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK as SDK
-import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Value.Error as Error exposing (Error(..))
 import Morphir.Value.Interpreter as Interpreter
@@ -44,7 +45,8 @@ type alias ExpressionTreePath =
 
 
 type alias EventHandlers msg =
-    { onReferenceClicked : FQName -> Bool -> Int -> List Int -> msg
+    { onReferenceClicked : FQName -> Int -> ExpressionTreePath -> msg
+    , onReferenceClose : FQName -> Int -> ExpressionTreePath -> msg
     , onHoverOver : Int -> List Int -> Maybe RawValue -> msg
     , onHoverLeave : Int -> List Int -> msg
     }
@@ -103,9 +105,9 @@ evalIfPathTaken config expr =
         Nothing
 
 
-updateDrillDownDict : DrillDownFunctions -> Int -> List Int -> Dict Int DrillDownFunctions
-updateDrillDownDict (DrillDownFunctions dict) nodeID currentNodePath =
-    case currentNodePath of
+addToDrillDown : DrillDownFunctions -> Int -> ExpressionTreePath -> Dict Int DrillDownFunctions
+addToDrillDown (DrillDownFunctions dict) nodeID nodePath =
+    case nodePath of
         [] ->
             Dict.insert nodeID (DrillDownFunctions Dict.empty) dict
 
@@ -120,7 +122,45 @@ updateDrillDownDict (DrillDownFunctions dict) nodeID currentNodePath =
         head :: rest ->
             case Dict.get head dict of
                 Just d ->
-                    Dict.insert head (DrillDownFunctions <| updateDrillDownDict d nodeID rest) dict
+                    Dict.insert head (DrillDownFunctions <| addToDrillDown d nodeID rest) dict
 
                 Nothing ->
                     dict
+
+
+removeFromDrillDown : DrillDownFunctions -> Int -> ExpressionTreePath -> Dict Int DrillDownFunctions
+removeFromDrillDown (DrillDownFunctions dict) nodeID nodePath =
+    case nodePath of
+        [] ->
+            Dict.remove nodeID dict
+
+        [ p ] ->
+            case Dict.get p dict of
+                Just (DrillDownFunctions currentp) ->
+                    Dict.insert p (DrillDownFunctions (Dict.remove nodeID currentp)) dict
+
+                Nothing ->
+                    dict
+
+        head :: rest ->
+            case Dict.get head dict of
+                Just d ->
+                    Dict.insert head (DrillDownFunctions <| removeFromDrillDown d nodeID rest) dict
+
+                Nothing ->
+                    dict
+
+
+drillDownContains : DrillDownFunctions -> Int -> ExpressionTreePath -> Bool
+drillDownContains (DrillDownFunctions dict) nodeID nodePath =
+    case nodePath of
+        [] ->
+            Dict.member nodeID dict
+
+        x :: xs ->
+            case Dict.get x dict of
+                Just d ->
+                    drillDownContains d nodeID xs
+
+                Nothing ->
+                    False
