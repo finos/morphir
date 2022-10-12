@@ -27,8 +27,10 @@ describe('Test Suite for Basic Types',  () => {
         const schemaPath = basePath + "dist/TestModel.json"
 
         jsonBuffer = fs.readFileSync(schemaPath, 'utf8')
-
         jsonObject = JSON.parse(jsonBuffer)
+
+        jsonObject["$id"] = basePath + "dist/TestModel.json"
+
 	})
 
     test('1. Bool type test case', () => {
