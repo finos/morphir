@@ -31,10 +31,10 @@
     });
 
     //Sending Function Name threw port
-    app.ports.receiveFunctionName.send("Issues.Issue401:bar");
+    app.ports.receiveFunctionName.send("TestModel.Testing:add4");
 
     //Sending Arguments List threw port
-    var argsList = [{field: "1"}];
+    var argsList = [1,2,3,4];
     app.ports.receiveFunctionArguments.send(argsList);
 
 </script>

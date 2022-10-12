@@ -12,13 +12,11 @@ import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.QName as QName exposing (QName(..))
-import Morphir.IR.SDK as SDK
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.DataCodec exposing (decodeData)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
-import Morphir.Value.Interpreter as Interpreter
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
-import Morphir.Visual.Config as Config exposing (Config, PopupScreenRecord)
+import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), PopupScreenRecord, ExpressionTreePath, addToDrillDown)
 import Morphir.Visual.Theme as Theme exposing (Theme, ThemeConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Theme.Codec exposing (decodeThemeConfig)
 import Morphir.Visual.ViewValue as ViewValue
@@ -91,9 +89,10 @@ port receiveFunctionArguments : (Decode.Value -> msg) -> Sub msg
 type Msg
     = FunctionNameReceived String
     | FunctionArgumentsReceived Decode.Value
-    | ExpandReference FQName Bool
-    | ExpandVariable Int (Maybe RawValue)
-    | ShrinkVariable Int
+    | ExpandReference FQName Int ExpressionTreePath
+    | ShrinkReference FQName Int ExpressionTreePath
+    | ExpandVariable Int (List Int) (Maybe RawValue)
+    | ShrinkVariable Int (List Int)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -118,6 +117,7 @@ update msg model =
                 popupScreen =
                     { variableIndex = 0
                     , variableValue = Nothing
+                    , nodePath = []
                     }
             in
             case qNameString |> QName.fromString of
@@ -136,7 +136,7 @@ update msg model =
                                                         , selectedFunction = qName
                                                         , functionDefinition = funDef
                                                         , functionArguments = []
-                                                        , expandedFunctions = Dict.empty
+                                                        , drillDownFunctions = DrillDownFunctions Dict.empty
                                                         , popupVariables = popupScreen
                                                         }
                                             }
@@ -195,35 +195,31 @@ update msg model =
                 Err _ ->
                     ( { model | modelState = Failed "Received function arguments cannot be decoded" }, Cmd.none )
 
-        ExpandReference (( packageName, moduleName, localName ) as fqName) isFunctionPresent ->
+        ExpandReference fQName id nodePath ->
             case model.modelState of
                 FunctionsSet visualizationState ->
-                    if visualizationState.expandedFunctions |> Dict.member fqName then
-                        case isFunctionPresent of
-                            True ->
-                                ( { model | modelState = FunctionsSet { visualizationState | expandedFunctions = visualizationState.expandedFunctions |> Dict.remove fqName } }, Cmd.none )
+                    case ( fQName, id, nodePath ) of
+                        ( ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ), _, _ ) ->
+                            ( model, Cmd.none )
 
-                            False ->
-                                ( model, Cmd.none )
-
-                    else
-                        ( { model
-                            | modelState =
-                                FunctionsSet
-                                    { visualizationState
-                                        | expandedFunctions =
-                                            Distribution.lookupValueDefinition (QName moduleName localName) visualizationState.distribution
-                                                |> Maybe.map (\valueDef -> visualizationState.expandedFunctions |> Dict.insert fqName valueDef)
-                                                |> Maybe.withDefault visualizationState.expandedFunctions
-                                    }
-                          }
-                        , Cmd.none
-                        )
+                        _ ->
+                            ( { model
+                                | modelState =
+                                    FunctionsSet
+                                        { visualizationState
+                                            | drillDownFunctions = DrillDownFunctions (addToDrillDown visualizationState.drillDownFunctions id nodePath)
+                                        }
+                              }
+                            , Cmd.none
+                            )
 
                 _ ->
                     ( model, Cmd.none )
 
-        ExpandVariable varIndex maybeRawValue ->
+        ShrinkReference fQName id nodePath ->
+            (model, Cmd.none)
+
+        ExpandVariable varIndex nodePath maybeRawValue ->
             case model.modelState of
                 FunctionsSet visualizationState ->
                     let
@@ -231,6 +227,7 @@ update msg model =
                         popupScreen =
                             { variableIndex = varIndex
                             , variableValue = maybeRawValue
+                            , nodePath = nodePath
                             }
                     in
                     ( { model
@@ -246,7 +243,7 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        ShrinkVariable varIndex ->
+        ShrinkVariable varIndex nodePath ->
             case model.modelState of
                 FunctionsSet visualizationState ->
                     let
@@ -254,6 +251,7 @@ update msg model =
                         popupScreen =
                             { variableIndex = varIndex
                             , variableValue = Nothing
+                            , nodePath = nodePath
                             }
                     in
                     ( { model
@@ -307,13 +305,14 @@ view model =
                 config : Config Msg
                 config =
                     Config.fromIR (IR.fromDistribution visualizationState.distribution)
-                        { expandedFunctions = visualizationState.expandedFunctions
+                        { drillDownFunctions = visualizationState.drillDownFunctions
                         , variables = validArgValues
                         , popupVariables = visualizationState.popupVariables
                         , theme = model.theme
                         , highlightState = Nothing
                         }
                         { onReferenceClicked = ExpandReference
+                        , onReferenceClose = ShrinkReference
                         , onHoverOver = ExpandVariable
                         , onHoverLeave = ShrinkVariable
                         }
