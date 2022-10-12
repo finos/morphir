@@ -22,7 +22,7 @@ import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.CustomAttribute.Codec exposing (decodeAttributes)
-import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeId, CustomAttributeValuesByNodeID, CustomAttributes, toAttributeValueByNodeId)
+import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeId, CustomAttributeInfo, CustomAttributeValuesByNodeID, CustomAttributes, NodeAttributeDetail, toAttributeValueByNodeId)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -204,12 +204,12 @@ type Msg
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
-    | ServerGetAttributeResponse CustomAttributes
+    | ServerGetAttributeResponse CustomAttributeInfo
     | Filter FilterMsg
     | UI UIMsg
     | Insight InsightMsg
     | Testing TestingMsg
-    | UpdateAttribute String
+    | UpdateAttribute
 
 
 type TestingMsg
@@ -513,8 +513,8 @@ update msg model =
             , Cmd.none
             )
 
-        UpdateAttribute string ->
-            ( { model | updateAttr = string }
+        UpdateAttribute ->
+            ( model
             , Cmd.none
             )
 
@@ -930,43 +930,29 @@ viewHome model packageName packageDef =
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
             ]
 
+        viewAttributeValues : NodeID -> Element Msg
         viewAttributeValues node =
             let
+                attributeValuesList : NodeID -> List ( CustomAttributeId, NodeAttributeDetail )
                 attributeValuesList nodeId =
                     model.customAttributes
-                        |> SDKDict.foldl
-                            (\nodeID jsonValueDict jsonValueList ->
-                                if nodeID == nodeId then
-                                    jsonValueDict
-                                        |> Dict.map
-                                            (\_ jsonValue ->
-                                                let
-                                                    jsonValueString =
-                                                        Encode.encode 0 jsonValue
-                                                in
-                                                jsonValueString
-                                            )
-                                        |> Dict.toList
+                        |> SDKDict.get nodeId
+                        |> Maybe.map Dict.toList
+                        |> Maybe.withDefault []
 
-                                else
-                                    jsonValueList
+                attributeToEditors : List ( CustomAttributeId, NodeAttributeDetail ) -> List (Element Msg)
+                attributeToEditors listOfAttributes =
+                    listOfAttributes
+                        |> List.map
+                            (\( attrId, attrDetail ) ->
+                                ValueEditor.view (IR.fromDistribution attrDetail.iR)
+                                    (Type.Reference () attrDetail.entryPoint [])
+                                    (always UpdateAttribute)
+                                    (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR) (Type.Reference () attrDetail.entryPoint []) (Just attrDetail.value))
                             )
-                            []
             in
             column [ padding 10, spacing 10, above (el [ Font.bold, Font.underline ] (text "Custom Attributes")) ]
-                (attributeValuesList node
-                    |> List.map
-                        (\( attrId, jsonValueStr ) ->
-                            Element.Input.multiline
-                                []
-                                { text = jsonValueStr
-                                , placeholder = Just (placeholder [] (text "Add a new value"))
-                                , onChange = \new -> UpdateAttribute new
-                                , label = labelAbove [] (text attrId)
-                                , spellcheck = False
-                                }
-                        )
-                )
+                (attributeValuesList node |> attributeToEditors)
 
         -- Display a single selected definition on the ui
         viewDefinition : Maybe Definition -> Element Msg
