@@ -8,10 +8,11 @@ import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), T
 encodeSchema : Schema -> String
 encodeSchema schema =
     Encode.object
-        [ ( "$schema", Encode.string schema.schemaVersion )
+        [ ( "$id", Encode.string schema.id )
+        , ( "$schema", Encode.string schema.schemaVersion )
         , ( "$defs", encodeDefinitions schema.definitions )
         ]
-        |> Encode.encode 3
+        |> Encode.encode 4
 
 
 encodeDefinitions : Dict TypeName SchemaType -> Encode.Value

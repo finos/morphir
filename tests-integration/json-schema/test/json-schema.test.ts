@@ -1,6 +1,7 @@
 const fs = require('fs')
 const execSync = require('child_process').execSync;
 const basePath = "tests-integration/json-schema/model/"
+const schemaBasePath = "tests-integration/generated/jsonSchema/"
 const cli = require('../../../cli/cli')
 const CLI_OPTIONS = { typesOnly: false }
 const util = require('util')
@@ -18,13 +19,15 @@ const options = {
 describe('Test Suite for Basic Types',  () => {
 
     beforeAll(async () => {
+        fs.rmSync(schemaBasePath, {recursive: true, force : true})
+        
         const IR =  await cli.make(basePath, CLI_OPTIONS)
 		await writeFile(basePath + 'morphir-ir.json', JSON.stringify(IR))
 
         //here
-        await cli.gen(basePath + 'morphir-ir.json', basePath + "dist" , options)
+        await cli.gen(basePath + 'morphir-ir.json', schemaBasePath , options)
  
-        const schemaPath = basePath + "dist/TestModel.json"
+        const schemaPath = schemaBasePath + "TestModel.json"
 
         jsonBuffer = fs.readFileSync(schemaPath, 'utf8')
         jsonObject = JSON.parse(jsonBuffer)
