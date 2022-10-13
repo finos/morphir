@@ -34,8 +34,8 @@ defaultTheme =
         { selectedRowBackground = Just (rgb 0.8 0.9 0.9)
         }
     , icons =
-        { collapsibleBranch = text "⮞"
-        , expandableBranch = text "⮟"
+        { collapsibleBranch = text "⮟"
+        , expandableBranch = text "⮞"
         }
     }
 

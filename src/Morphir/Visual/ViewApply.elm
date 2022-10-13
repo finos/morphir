@@ -18,7 +18,7 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue, evaluateValue)
 import Morphir.Visual.Common exposing (nameToText, tooltip)
 import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel exposing (Depth)
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), evalIfPathTaken, drillDownContains)
+import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), drillDownContains, evalIfPathTaken)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, getId)
 import Morphir.Visual.Theme exposing (borderRounded, smallPadding, smallSpacing)
 
@@ -30,13 +30,13 @@ view config viewDefinitionBody viewValue functionValue argValues =
         styles =
             [ smallSpacing config.state.theme |> spacing, Element.centerY ]
 
-        drillDownPanel : FQName -> Depth -> Element msg -> Element msg -> Bool -> Element msg
-        drillDownPanel fqName depth headerElement openElement isOpen =
-            DrillDownPanel.drillDownPanel { openMsg = config.handlers.onReferenceClicked fqName (getId functionValue) config.nodePath, closeMsg = config.handlers.onReferenceClose fqName (getId functionValue) config.nodePath } depth headerElement openElement isOpen
+        drillDownPanel : FQName -> Depth -> Element msg -> Element msg -> Element msg -> Bool -> Element msg
+        drillDownPanel fqName depth closedElement openHeader openElement isOpen =
+            DrillDownPanel.drillDownPanel { openMsg = config.handlers.onReferenceClicked fqName (getId functionValue) config.nodePath, closeMsg = config.handlers.onReferenceClose fqName (getId functionValue) config.nodePath } depth closedElement openHeader openElement isOpen
 
         viewFunctionValue : FQName -> Element msg
         viewFunctionValue fqName =
-            el [ Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName) ] <| viewValue functionValue
+            el [borderRounded, Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName) ] <| viewValue functionValue
 
         functionOutput : FQName -> Element msg
         functionOutput fqName =
@@ -177,20 +177,25 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
         ( Value.Reference _ fqName, _ ) ->
             let
+                argList : Element msg
+                argList =
+                    row [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
+                        (argValues
+                            |> List.map viewValue
+                        )
+
                 drillDown : DrillDownFunctions -> List Int -> Maybe (Value.Definition () (Type ()))
                 drillDown dict nodePath =
                     if drillDownContains dict (getId functionValue) nodePath then
                         Dict.get fqName config.ir.valueDefinitions
+
                     else
                         Nothing
 
-                headerElement =
-                    row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding ] ++ styles)
+                closedElement =
+                    row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, borderRounded ] ++ styles)
                         [ viewFunctionValue fqName
-                        , row [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
-                            (argValues
-                                |> List.map viewValue
-                            )
+                        , argList
                         ]
 
                 openElement =
@@ -208,11 +213,22 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
                         Nothing ->
                             Element.none
+
+                openHeader =
+                    let
+                        ( _, _, valueName ) =
+                            fqName
+                    in
+                    row []
+                        [ el [ Background.color <| config.state.theme.colors.selectionColor, padding 3] (text (nameToText valueName))
+                        , argList
+                        , text " = "
+                        ]
             in
-            drillDownPanel fqName (List.length config.nodePath) headerElement openElement (drillDownContains config.state.drillDownFunctions (getId functionValue) config.nodePath)
+            drillDownPanel fqName (List.length config.nodePath) closedElement openHeader openElement (drillDownContains config.state.drillDownFunctions (getId functionValue) config.nodePath)
 
         _ ->
-            row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding ] ++ styles)
+            row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, borderRounded ] ++ styles)
                 [ viewFunctionValue ( [], [], [] )
                 , row [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
                     (argValues
