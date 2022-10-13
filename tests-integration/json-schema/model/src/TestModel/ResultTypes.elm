@@ -1,0 +1,1 @@
+module TestModel.ResultTypes exposing (..)

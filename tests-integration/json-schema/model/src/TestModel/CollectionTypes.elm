@@ -1,11 +1,10 @@
 module TestModel.CollectionTypes exposing (..)
 
-type alias Department
-    = List String
+import Set exposing (Set)
+
+type alias Department =
+    List String
 
 
-type alias Address
-    = String
-
-type alias Tally
-    = Int
+type alias Proids =
+    Set String

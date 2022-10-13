@@ -19,16 +19,18 @@ const options = {
 describe('Test Suite for Basic Types',  () => {
 
     beforeAll(async () => {
+        //Clear generated schema directory
         fs.rmSync(schemaBasePath, {recursive: true, force : true})
-        
+
+        //Create and write IR
         const IR =  await cli.make(basePath, CLI_OPTIONS)
 		await writeFile(basePath + 'morphir-ir.json', JSON.stringify(IR))
 
-        //here
+        // Generate the schema
         await cli.gen(basePath + 'morphir-ir.json', schemaBasePath , options)
- 
         const schemaPath = schemaBasePath + "TestModel.json"
 
+        // Read json into an object
         jsonBuffer = fs.readFileSync(schemaPath, 'utf8')
         jsonObject = JSON.parse(jsonBuffer)
 
@@ -64,7 +66,7 @@ describe('Test Suite for Basic Types',  () => {
 describe('Test Suite for Advanced Types', () => {
     test('1. Test for Decimal type', () => {
         jsonObject["$ref"] = "#/$defs/AdvancedTypes.Score"
-        var result = v.validate("99.9", jsonObject)
+        const result = v.validate("99.9", jsonObject)
         expect(result.valid).toBe(true)
     })
     test.skip('2. Test for LocalDate type', () => {
@@ -84,37 +86,74 @@ describe('Test Suite for Advanced Types', () => {
 describe('Test Suite for Optional Types', () => {
     test('Test for MayBe type', () => {
         jsonObject["$ref"] = "#/$defs/OptionalTypes.Assignment"
-        var result = v.validate('Bar', jsonObject)
+        const result = v.validate('Bar', jsonObject)
         expect(result.valid).toBe(true)
     })
 })
 
 describe('Test Suite for Collection Types', () => {
     test('Test for List type', () => {
-        jsonObject["$ref"] = "#/$defs/OptionalTypes.Assignment"
+        jsonObject["$ref"] = "#/$defs/CollectionTypes.Department"
+        const result = v.validate(["HR", "IT", "HR"], jsonObject)
+        expect(result.valid).toBe(true)
 
     })
     test('Test for Set type', () => {
-        jsonObject["$ref"] = "#/$defs/OptionalTypes.Assignment"
-
+        jsonObject["$ref"] = "#/$defs/CollectionTypes.Proids"
+        const result = v.validate(["bsdev", "morphirdev"], jsonObject)
+        expect(result.valid).toBe(true)        
     })
-    test('Test for Dict type', () => {
-        jsonObject["$ref"] = "#/$defs/OptionalTypes.Assignment"
+    test.skip('Test for Dict type', () => {
+        jsonObject["$ref"] = "#/$defs/CollectionTypes.Assignment"
 
     })
 })
 
 describe('Test Suite for Result Types', () => {
-    test('Test for  type', () => {
-        jsonObject["$ref"] = "#/$defs/OptionalTypes.Assignment"
+    test.skip('Test for  type', () => {
+        jsonObject["$ref"] = "#/$defs/ResultTypes.Assignment"
 
     })
 })
 
 
-describe('Test Suite for Composite Types', () => {
-    test('Test for Tuple  type', () => {
-        jsonObject["$ref"] = "#/$defs/OptionalTypes.Assignment"
+describe('Test Suite for Composite Types - Records/Tuples', () => {
+    test.skip('Test for Tuple  type', () => {
+        jsonObject["$ref"] = "#/$defs/CompositeTypes.Assignment"
 
+    })
+    test('Test for Record type', () => {
+        jsonObject["$ref"] = "#/$defs/RecordTypes.Address"
+        const recordInstance = {
+            country : "US",
+            state : "New York",
+            street : "Devin"
+        }
+        const result = v.validate(recordInstance, jsonObject)
+        expect(result.valid).toBe(true)
+    })
+    test.skip('Test for Tuple type', () => {
+        jsonObject["$ref"] = "#/$defs/CompositeTypes.Assignment"
+        
+    })
+})
+
+describe('Test Suite for Composite Types - Custom Types', () => {
+    test('Test for Tuple Enum', () => {
+        jsonObject["$ref"] = "#/$defs/CustomTypes.Currencies"
+        const result = v.validate("USD", jsonObject)
+        expect(result.valid).toBe(true)
+    })
+
+    test.skip('Test for Custom type 1', () => {
+        jsonObject["$ref"] = "#/$defs/CustomTypes.Person"
+        const result = v.validate(["Adult", "Foo"], jsonObject)
+        expect(result.valid).toBe(true)
+    })
+
+    test.skip('Test for Custom type 2', () => {
+        jsonObject["$ref"] = "#/$defs/CustomTypes.Person"
+        const result = v.validate(["Child", "Foo", 4], jsonObject)
+        expect(result.valid).toBe(true)
     })
 })

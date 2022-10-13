@@ -1,8 +1,11 @@
-module TestModel.Records exposing (..)
+module TestModel.RecordTypes exposing (..)
+
 
 type alias Bank =
     { bankName : String
-    , address : Address}
+    , address : Address
+    }
+
 
 type alias Address =
     { country : String

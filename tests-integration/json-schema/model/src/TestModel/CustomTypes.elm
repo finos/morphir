@@ -1,14 +1,18 @@
-module TestModel.Unions exposing (..)
+module TestModel.CustomTypes exposing (..)
+
 
 type FullName
     = Firstname
 
+
 type Employee
     = Fulltime String
 
+
 type Person
-    = Person String
+    = Adult String
     | Child String Int
+
 
 type Currencies
     = USD
@@ -16,6 +20,7 @@ type Currencies
     | HUF
     | EUR
     | JPY
+
 
 type TransactionType
     = Deposit
