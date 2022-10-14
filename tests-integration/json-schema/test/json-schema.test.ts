@@ -7,8 +7,6 @@ const CLI_OPTIONS = { typesOnly: false }
 const util = require('util')
 const writeFile = util.promisify(fs.writeFile)
 
-const Validator = require('jsonschema').Validator;
-const v = new Validator()
 var jsonObject
 var jsonBuffer
 const options = {
