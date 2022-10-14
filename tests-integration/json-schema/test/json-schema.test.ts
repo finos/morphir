@@ -1,4 +1,4 @@
-import Ajv2020 from "../../../node_modules/ajv/dist/2020"
+const Ajv2020 = require("../../../node_modules/ajv/dist/2020")
 
 const fs = require('fs')
 const basePath = "tests-integration/json-schema/model/"
