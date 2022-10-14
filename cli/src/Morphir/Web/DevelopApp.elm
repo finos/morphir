@@ -1333,7 +1333,7 @@ viewHome model packageName packageDef =
                     , width (ifThenElse model.showModules (fillPortion 2) (px 40))
                     , clipX
                     ]
-                    [ row [ alignTop, rotate (degrees -90), width (px 40), moveDown 182, padding (model.theme |> Theme.scaled -6), spacing (model.theme |> Theme.scaled -6) ] [ toggleDefinitionsMenu, toggleModulesMenu ]
+                    [ row [ alignTop, rotate (degrees -90), width (px 40), moveDown 165, padding (model.theme |> Theme.scaled -6), spacing (model.theme |> Theme.scaled -6) ] [ toggleDefinitionsMenu, toggleModulesMenu ]
                     , ifThenElse model.showModules moduleTree none
                     ]
                 , ifThenElse model.showDefinitions definitionList none

@@ -21,6 +21,7 @@ import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), drillDownContains, evalIfPathTaken)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, getId)
 import Morphir.Visual.Theme exposing (borderRounded, smallPadding, smallSpacing)
+import Element exposing (paddingEach)
 
 
 view : Config msg -> (Config msg -> Value.Definition () (Type ()) -> Element msg) -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
@@ -220,7 +221,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
                             fqName
                     in
                     row []
-                        [ el [ Background.color <| config.state.theme.colors.selectionColor, padding 3] (text (nameToText valueName))
+                        [ el [ Background.color <| config.state.theme.colors.selectionColor, smallPadding config.state.theme |> padding ] (text (nameToText valueName))
                         , argList
                         , text " = "
                         ]
