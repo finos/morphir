@@ -97,12 +97,16 @@ type alias Model =
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     , customAttributes : CustomAttributeValuesByNodeID
-    , updateAttr : String
+    , attributeStates : AttributeEditorState
     }
 
 
 type alias InsightArgumentState =
     Dict Name ValueEditor.EditorState
+
+
+type alias AttributeEditorState =
+    SDKDict.Dict ValueDetail ValueEditor.EditorState
 
 
 type alias HomeState =
@@ -174,7 +178,7 @@ init _ url key =
             , argStates = Dict.empty
             , expandedValues = Dict.empty
             , customAttributes = SDKDict.empty
-            , updateAttr = ""
+            , attributeStates = SDKDict.empty
             }
     in
     ( toRoute url initModel
@@ -209,7 +213,18 @@ type Msg
     | UI UIMsg
     | Insight InsightMsg
     | Testing TestingMsg
-    | UpdateAttribute
+    | Attribute AttributeMsg
+
+
+type AttributeMsg
+    = ValueUpdated ValueDetail ValueEditor.EditorState
+
+
+type alias ValueDetail =
+    { attrId : CustomAttributeId
+    , nodeId : NodeID
+    , irValue : Value () ()
+    }
 
 
 type TestingMsg
@@ -513,10 +528,31 @@ update msg model =
             , Cmd.none
             )
 
-        UpdateAttribute ->
-            ( model
-            , Cmd.none
-            )
+        Attribute attributeMsg ->
+            case attributeMsg of
+                ValueUpdated valueDetail attrState ->
+                    let
+                        newEditState : AttributeEditorState
+                        newEditState =
+                            model.attributeStates |> SDKDict.insert valueDetail attrState
+
+                        newCustomAttribute : CustomAttributeValuesByNodeID
+                        newCustomAttribute =
+                            model.customAttributes
+                                |> SDKDict.update valueDetail.nodeId
+                                    (Maybe.map
+                                        (Dict.update valueDetail.attrId
+                                            (Maybe.map
+                                                (\nodeDetail ->
+                                                    { nodeDetail | value = valueDetail.irValue }
+                                                )
+                                            )
+                                        )
+                                    )
+                    in
+                    ( { model | customAttributes = newCustomAttribute, attributeStates = newEditState }
+                    , Cmd.none
+                    )
 
 
 
@@ -940,19 +976,33 @@ viewHome model packageName packageDef =
                         |> Maybe.map Dict.toList
                         |> Maybe.withDefault []
 
-                attributeToEditors : List ( CustomAttributeId, NodeAttributeDetail ) -> List (Element Msg)
+                attributeToEditors : List ( CustomAttributeId, NodeAttributeDetail ) -> Element Msg
                 attributeToEditors listOfAttributes =
                     listOfAttributes
                         |> List.map
                             (\( attrId, attrDetail ) ->
-                                ValueEditor.view (IR.fromDistribution attrDetail.iR)
+                                let
+                                    nodeDetail =
+                                        { attrId = attrId, nodeId = node, irValue = attrDetail.value }
+                                in
+                                ( Name.fromString attrDetail.displayName
+                                , ValueEditor.view (IR.fromDistribution attrDetail.iR)
                                     (Type.Reference () attrDetail.entryPoint [])
-                                    (always UpdateAttribute)
-                                    (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR) (Type.Reference () attrDetail.entryPoint []) (Just attrDetail.value))
+                                    (Attribute << ValueUpdated nodeDetail)
+                                    (model.attributeStates
+                                        |> SDKDict.get nodeDetail
+                                        |> Maybe.withDefault
+                                            (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
+                                                (Type.Reference () attrDetail.entryPoint [])
+                                                (Just attrDetail.value)
+                                            )
+                                    )
+                                )
                             )
+                        |> FieldList.view
             in
-            column [ padding 10, spacing 10, above (el [ Font.bold, Font.underline ] (text "Custom Attributes")) ]
-                (attributeValuesList node |> attributeToEditors)
+            column [ spacing (model.theme |> Theme.scaled 5) ]
+                [ el [ Font.bold, Font.underline ] (text "Custom Attributes"), attributeValuesList node |> attributeToEditors ]
 
         -- Display a single selected definition on the ui
         viewDefinition : Maybe Definition -> Element Msg
@@ -1001,9 +1051,7 @@ viewHome model packageName packageDef =
                                                     in
                                                     column []
                                                         [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
-
-                                                        --, el [ Font.bold, Font.underline ] (text "Custom Attributes")
-                                                        , row [ width fill ]
+                                                        , row [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
                                                             [ viewAttributeValues (ValueID fullyQualifiedName) ]
                                                         , toggleDisplayType
                                                         ]

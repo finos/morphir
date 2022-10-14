@@ -70,7 +70,7 @@ app.get('/server/attributes', wrap(async (req, res, next) => {
         data: JSON.parse(attrFileContent.toString()),
         displayName : configJsonContent[attrId].displayName,
         entryPoint : configJsonContent[attrId].entryPoint,
-        ir : JSON.parse(irFileContent.toString())
+        iR : JSON.parse(irFileContent.toString())
       }
   };
   res.send(responseJson)

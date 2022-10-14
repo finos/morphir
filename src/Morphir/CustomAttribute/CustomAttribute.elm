@@ -47,9 +47,8 @@ type alias CustomAttributeDetail =
 
 
 type alias NodeAttributeDetail =
-    { --displayName : String
-      --,
-      iR : Morphir.IR.Distribution.Distribution
+    { displayName : String
+    , iR : Morphir.IR.Distribution.Distribution
     , entryPoint : FQName
     , value : IRValue.Value () ()
     }
@@ -66,9 +65,8 @@ toAttributeValueByNodeId customAttributeInfo =
                             let
                                 nodeDetail : NodeAttributeDetail
                                 nodeDetail =
-                                    { --displayName = customAttrValueDict.displayName
-                                      --,
-                                      iR = customAttrValueDict.iR
+                                    { displayName = customAttrValueDict.displayName
+                                    , iR = customAttrValueDict.iR
                                     , entryPoint = customAttrValueDict.entryPoint
                                     , value = irValue
                                     }

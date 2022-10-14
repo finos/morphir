@@ -4,8 +4,10 @@ import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeConfig, CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo, CustomAttributeValueByNodeID, CustomAttributes)
-import Morphir.IR as IR
+import Morphir.IR as IR exposing (IR)
+import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.Distribution.Codec exposing (decodeVersionedDistribution)
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.FQName.Codec as FQN
 import Morphir.IR.NodeId exposing (NodeID(..), nodeIdFromString)
 import Morphir.IR.Type as Type
@@ -57,24 +59,14 @@ decodeAttributes =
 decodeCustomAttributeDetail : Decode.Decoder CustomAttributeDetail
 decodeCustomAttributeDetail =
     let
-        irDecoder =
-            Decode.field "ir" decodeVersionedDistribution
-
         entryPointDecoder =
-            Decode.field "entryPoint" FQN.decodeFQName
+            Decode.field "entryPoint" Decode.string
+                |> Decode.map (\fqnString -> FQName.fromString fqnString ":")
 
-        valueDecoder : Decode.Decoder IRValue.RawValue
-        valueDecoder =
-            irDecoder
-                |> Decode.andThen
-                    (\ir ->
-                        entryPointDecoder
-                            |> Decode.andThen
-                                (\entryPointFqn ->
-                                    DataCodec.decodeData (IR.fromDistribution ir) (Type.Reference () entryPointFqn [])
-                                        |> resultToFailure
-                                )
-                    )
+        valueDecoder : Distribution -> FQName -> Decode.Decoder IRValue.RawValue
+        valueDecoder distro entryPointFqn =
+            DataCodec.decodeData (IR.fromDistribution distro) (Type.Reference () entryPointFqn [])
+                |> resultToFailure
 
         resultToFailure result =
             case result of
@@ -84,9 +76,9 @@ decodeCustomAttributeDetail =
                 Err error ->
                     Decode.fail error
 
-        decodeCustomAttributeData : Decode.Decoder (SDKDict.Dict NodeID (IRValue.Value () ()))
-        decodeCustomAttributeData =
-            Decode.keyValuePairs valueDecoder
+        decodeCustomAttributeData : Distribution -> FQName -> Decode.Decoder (SDKDict.Dict NodeID (IRValue.Value () ()))
+        decodeCustomAttributeData distro entryPointFqn =
+            Decode.keyValuePairs (valueDecoder distro entryPointFqn)
                 |> Decode.andThen
                     (List.foldl
                         (\( nodeIdString, decodedValue ) decodedSoFar ->
@@ -105,8 +97,12 @@ decodeCustomAttributeDetail =
                     )
                 |> Decode.map SDKDict.fromList
     in
-    Decode.map4 CustomAttributeDetail
+    Decode.map3
+        (\displayName entryPoint distribution ->
+            Decode.field "data" (decodeCustomAttributeData distribution entryPoint)
+                |> Decode.map (CustomAttributeDetail displayName entryPoint distribution)
+        )
         (Decode.field "displayName" Decode.string)
         entryPointDecoder
-        irDecoder
-        (Decode.field "data" decodeCustomAttributeData)
+        (Decode.field "iR" decodeVersionedDistribution)
+        |> Decode.andThen identity
