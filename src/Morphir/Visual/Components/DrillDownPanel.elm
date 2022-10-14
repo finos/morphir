@@ -35,7 +35,7 @@ drillDownPanel config depth closedHeader openHeader openElement isOpen =
                 }
     in
     if isOpen then
-        column [ borderRounded, Border.width 1, Border.color depthColor, padding <| (depth + 1) * 5, Border.innerGlow depthColor (toFloat depth + 3), spacing 10 ]
+        column [ borderRounded, Border.width 1, Border.color depthColor, padding <| (depth + 1) * 3, Border.innerGlow depthColor (toFloat depth + 3)]
             [ row [ padding 1, pointer, onClick config.closeMsg, Font.size 11, Border.width 1, Border.color depthColor, borderRounded ] [ text " ⮟ ", openHeader ]
             , el [ width fill ] openElement
             ]
