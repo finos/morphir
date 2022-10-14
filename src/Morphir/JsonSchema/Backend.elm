@@ -133,6 +133,7 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                                         |> List.map (Tuple.second >> mapType)
                                                    )
                                             )
+                                            ((ctorArgs |> List.length) + 1)
                                         )
                                         False
                             )

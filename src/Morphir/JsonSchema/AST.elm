@@ -20,6 +20,10 @@ type alias UniqueItems =
     Bool
 
 
+type alias NoOfItems =
+    Int
+
+
 type SchemaType
     = Integer
     | Array ArrayType UniqueItems
@@ -35,4 +39,4 @@ type SchemaType
 
 type ArrayType
     = ListType SchemaType
-    | TupleType (List SchemaType)
+    | TupleType (List SchemaType) NoOfItems
