@@ -6,7 +6,8 @@ import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.ListOfResults as ListOfResults
 import Morphir.Type.Constraint exposing (Constraint(..))
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, isNamedVariable, metaFun, metaRecord, metaRef, metaTuple, metaVar, wrapInAliases)
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaFun, metaRecord, metaRef, metaTuple, metaVar, variableGreaterThan, wrapInAliases)
+import Set exposing (Set)
 
 
 type SolutionMap
@@ -75,6 +76,26 @@ substituteVariable var replacement (SolutionMap solutions) =
                     metaType |> MetaType.substituteVariable var replacement
                 )
         )
+
+
+applyEquivalenceGroups : Dict Variable (Set Variable) -> SolutionMap -> SolutionMap
+applyEquivalenceGroups groups (SolutionMap solutions) =
+    solutions
+        |> Dict.toList
+        |> List.concatMap
+            (\( var, metaType ) ->
+                case groups |> Dict.get var of
+                    Just equivalentVars ->
+                        equivalentVars
+                            |> Set.toList
+                            |> List.map (\ev -> ( ev, metaType ))
+                            |> (::) ( var, metaType )
+
+                    Nothing ->
+                        [ ( var, metaType ) ]
+            )
+        |> Dict.fromList
+        |> SolutionMap
 
 
 type UnificationError
@@ -213,9 +234,9 @@ unifyMetaType ir aliases metaType1 metaType2 =
                 handleCommon metaType2
                     (unifyFun ir aliases arg1 return1)
 
-            MetaRecord _ extends1 fields1 ->
+            MetaRecord _ recordVar1 isOpen1 fields1 ->
                 handleCommon metaType2
-                    (unifyRecord ir aliases extends1 fields1)
+                    (unifyRecord ir aliases recordVar1 isOpen1 fields1)
 
             MetaUnit ->
                 handleCommon metaType2
@@ -226,7 +247,7 @@ unifyVariable : Aliases -> Variable -> MetaType -> Result UnificationError Solut
 unifyVariable aliases var1 metaType2 =
     case metaType2 of
         MetaVar var2 ->
-            if isNamedVariable var1 then
+            if variableGreaterThan var1 var2 then
                 Ok (singleSolution aliases var2 (metaVar var1))
 
             else
@@ -270,8 +291,8 @@ unifyRef ir aliases ref1 args1 metaType2 =
             else
                 Err (CouldNotUnify RefMismatch (metaRef ref1 args1) metaType2)
 
-        MetaRecord _ extends2 fields2 ->
-            unifyRecord ir aliases extends2 fields2 (metaRef ref1 args1)
+        MetaRecord _ recordVar2 isOpen2 fields2 ->
+            unifyRecord ir aliases recordVar2 isOpen2 fields2 (metaRef ref1 args1)
 
         _ ->
             Err (CouldNotUnify NoUnificationRule (metaRef ref1 args1) metaType2)
@@ -291,44 +312,47 @@ unifyFun ir aliases arg1 return1 metaType2 =
             Err (CouldNotUnify NoUnificationRule (metaFun arg1 return1) metaType2)
 
 
-unifyRecord : IR -> Aliases -> Maybe Variable -> Dict Name MetaType -> MetaType -> Result UnificationError SolutionMap
-unifyRecord refs aliases extends1 fields1 metaType2 =
+unifyRecord : IR -> Aliases -> Variable -> Bool -> Dict Name MetaType -> MetaType -> Result UnificationError SolutionMap
+unifyRecord refs aliases recordVar1 isOpen1 fields1 metaType2 =
     case metaType2 of
-        MetaRecord _ extends2 fields2 ->
-            unifyFields refs extends1 fields1 extends2 fields2
+        MetaRecord _ recordVar2 isOpen2 fields2 ->
+            unifyFields refs recordVar1 isOpen1 fields1 recordVar2 isOpen2 fields2
                 |> Result.andThen
                     (\( newFields, fieldSolutions ) ->
-                        case extends1 of
-                            Just extendsVar1 ->
-                                mergeSolutions
-                                    refs
-                                    fieldSolutions
-                                    (singleSolution aliases
-                                        extendsVar1
-                                        (metaRecord extends2 newFields)
-                                    )
+                        if isOpen1 then
+                            mergeSolutions
+                                refs
+                                fieldSolutions
+                                (singleSolution aliases
+                                    recordVar1
+                                    (metaRecord recordVar2 isOpen2 newFields)
+                                )
 
-                            Nothing ->
-                                case extends2 of
-                                    Just extendsVar2 ->
-                                        mergeSolutions
-                                            refs
-                                            fieldSolutions
-                                            (singleSolution aliases
-                                                extendsVar2
-                                                (metaRecord extends1 newFields)
-                                            )
+                        else if isOpen2 then
+                            mergeSolutions
+                                refs
+                                fieldSolutions
+                                (singleSolution aliases
+                                    recordVar2
+                                    (metaRecord recordVar1 isOpen1 newFields)
+                                )
 
-                                    Nothing ->
-                                        Ok fieldSolutions
+                        else
+                            mergeSolutions
+                                refs
+                                fieldSolutions
+                                (singleSolution aliases
+                                    recordVar2
+                                    (metaRecord recordVar1 False newFields)
+                                )
                     )
 
         _ ->
-            Err (CouldNotUnify NoUnificationRule (metaRecord extends1 fields1) metaType2)
+            Err (CouldNotUnify NoUnificationRule (metaRecord recordVar1 isOpen1 fields1) metaType2)
 
 
-unifyFields : IR -> Maybe Variable -> Dict Name MetaType -> Maybe Variable -> Dict Name MetaType -> Result UnificationError ( Dict Name MetaType, SolutionMap )
-unifyFields ir oldExtends oldFields newExtends newFields =
+unifyFields : IR -> Variable -> Bool -> Dict Name MetaType -> Variable -> Bool -> Dict Name MetaType -> Result UnificationError ( Dict Name MetaType, SolutionMap )
+unifyFields ir oldRecordVar oldIsOpen oldFields newRecordVar newIsOpen newFields =
     let
         extraOldFields : Dict Name MetaType
         extraOldFields =
@@ -363,11 +387,11 @@ unifyFields ir oldExtends oldFields newExtends newFields =
             Dict.union commonFieldsOldType
                 (Dict.union extraOldFields extraNewFields)
     in
-    if oldExtends == Nothing && not (Dict.isEmpty extraNewFields) then
-        Err (CouldNotUnify FieldMismatch (metaRecord oldExtends oldFields) (metaRecord newExtends newFields))
+    if not oldIsOpen && not (Dict.isEmpty extraNewFields) then
+        Err (CouldNotUnify FieldMismatch (metaRecord oldRecordVar oldIsOpen oldFields) (metaRecord newRecordVar newIsOpen newFields))
 
-    else if newExtends == Nothing && not (Dict.isEmpty extraOldFields) then
-        Err (CouldNotUnify FieldMismatch (metaRecord oldExtends oldFields) (metaRecord newExtends newFields))
+    else if not newIsOpen && not (Dict.isEmpty extraOldFields) then
+        Err (CouldNotUnify FieldMismatch (metaRecord oldRecordVar oldIsOpen oldFields) (metaRecord newRecordVar newIsOpen newFields))
 
     else
         fieldSolutionsResult
