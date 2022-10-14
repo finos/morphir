@@ -416,3 +416,8 @@ encodeFloatList result =
         |> List.map String.fromFloat
         |> (::) "float"
         |> String.join "\u{000D}\n"
+
+
+encodeMinSumRecord : { sum : Float, min : Maybe Float } -> String
+encodeMinSumRecord record =
+    "min,sum\r\n" ++ ( record.min |> Maybe.map String.fromFloat |> Maybe.withDefault "" ) ++ "," ++ (String.fromFloat record.sum)

@@ -70,13 +70,13 @@ fromConfig : Maybe ThemeConfig -> Theme
 fromConfig maybeConfig =
     case maybeConfig of
         Just config ->
-            { fontSize = config.fontSize |> Maybe.withDefault 12
+            { fontSize = config.fontSize |> Maybe.withDefault 10
             , decimalDigit = config.decimalDigit |> Maybe.withDefault 2
             , colors = defaultColors
             }
 
         Nothing ->
-            { fontSize = 12
+            { fontSize = 10
             , decimalDigit = 2
             , colors = defaultColors
             }
@@ -111,6 +111,9 @@ largePadding : Theme -> Int
 largePadding theme =
     scaled 4 theme
 
+borderRounded : Attribute msg
+borderRounded = 
+    Border.rounded 3
 
 scaled : Int -> Theme -> Int
 scaled scaleValue theme =

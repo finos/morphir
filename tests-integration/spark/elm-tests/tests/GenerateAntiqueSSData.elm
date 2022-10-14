@@ -1,7 +1,7 @@
-module GenerateAntiqueSSTestData exposing (testASubsetDataGeneration)
+module GenerateAntiqueSSData exposing (testASubsetDataGeneration)
 
 import Expect exposing (Expectation)
-import GenerateAntiqueTestData exposing (..)
+import GenerateAntiquesData exposing (..)
 import Test exposing (..)
 
 

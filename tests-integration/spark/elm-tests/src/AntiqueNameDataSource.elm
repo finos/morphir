@@ -22,8 +22,8 @@ import CsvUtils exposing (..)
 import SparkTests.Types exposing (..)
 
 
-csvNameData : String
-csvNameData =
+csvData : String
+csvData =
     """name
 Upright Chair
 Small Table
@@ -42,4 +42,4 @@ Item7868
 
 antiqueNameDataSource : Result Error (List NameRecord)
 antiqueNameDataSource =
-    Decode.decodeCsv Decode.FieldNamesFromFirstRow antiqueNameDecoder csvNameData
+    Decode.decodeCsv Decode.FieldNamesFromFirstRow antiqueNameDecoder csvData

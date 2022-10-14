@@ -22,8 +22,8 @@ import CsvUtils exposing (..)
 import SparkTests.Types exposing (..)
 
 
-fooBoolData : String
-fooBoolData =
+csvData : String
+csvData =
     """foo
 True
 False
@@ -32,4 +32,4 @@ False
 
 fooBoolDataSource : Result Error (List FooBool)
 fooBoolDataSource =
-    Decode.decodeCsv Decode.FieldNamesFromFirstRow fooBoolDecoder fooBoolData
+    Decode.decodeCsv Decode.FieldNamesFromFirstRow fooBoolDecoder csvData

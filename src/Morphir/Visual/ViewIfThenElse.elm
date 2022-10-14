@@ -3,10 +3,9 @@ module Morphir.Visual.ViewIfThenElse exposing (view)
 import Dict
 import Element exposing (Element)
 import Morphir.IR.Literal exposing (Literal(..))
-import Morphir.IR.Type as Type exposing (Type(..))
+import Morphir.IR.Type exposing (Type(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
 import Morphir.Value.Interpreter exposing (matchPattern)
-import Morphir.Visual.Components.DecisionTable exposing (TypedPattern)
 import Morphir.Visual.Components.DecisionTree as DecisionTree
 import Morphir.Visual.Config as Config exposing (Config)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
@@ -23,26 +22,13 @@ valueToTree config doEval value =
         maybeToDecisionTree : EnrichedValue -> ( Value.Pattern ( Int, Type () ), EnrichedValue ) -> ( Value.Pattern ( Int, Type () ), EnrichedValue ) -> DecisionTree.Node
         maybeToDecisionTree caseOf ( justPattern, justBody ) ( nothingPattern, nothingBody ) =
             let
-                pathTaken : Bool
-                pathTaken =
-                    not (config.state.highlightState == Just Config.Unmatched || config.state.highlightState == Just Config.Default)
-
-                eval : Value ta va -> Maybe RawValue
-                eval expr =
-                    if pathTaken && doEval then
-                        case config |> Config.evaluate (Value.toRawValue (expr |> Debug.log "")) of
-                            Ok v ->
-                                Just v
-
-                            _ ->
-                                Nothing
+                maybeCaseOfValue : Maybe RawValue
+                maybeCaseOfValue =
+                    if doEval then
+                        Config.evalIfPathTaken config caseOf
 
                     else
                         Nothing
-
-                maybeCaseOfValue : Maybe (RawValue)
-                maybeCaseOfValue =
-                    eval caseOf
 
                 isSet : Bool
                 isSet =
@@ -74,6 +60,7 @@ valueToTree config doEval value =
                     case maybeCaseOfValue of
                         Just _ ->
                             Just isSet
+
                         _ ->
                             Nothing
             in
@@ -82,7 +69,7 @@ valueToTree config doEval value =
                 , isThenBranchSelected = isThenBranchSelected
                 , thenBranch = valueToTree justBranchConfig isSet justBody
                 , elseBranch = valueToTree config (not isSet) nothingBody
-                , thenLabel  = "set"
+                , thenLabel = "set"
                 , elseLabel = "not set"
                 }
     in
@@ -150,4 +137,4 @@ valueToTree config doEval value =
                 inValue
 
         _ ->
-            DecisionTree.Leaf value
+            DecisionTree.Leaf config.state.variables value

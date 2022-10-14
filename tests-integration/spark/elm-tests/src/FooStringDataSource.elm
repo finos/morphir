@@ -22,8 +22,8 @@ import CsvUtils exposing (..)
 import SparkTests.Types exposing (..)
 
 
-fooStringData : String
-fooStringData =
+csvData : String
+csvData =
     """foo
 bar
 cat
@@ -39,4 +39,4 @@ paper
 
 fooStringDataSource : Result Error (List FooString)
 fooStringDataSource =
-    Decode.decodeCsv Decode.FieldNamesFromFirstRow fooStringDecoder fooStringData
+    Decode.decodeCsv Decode.FieldNamesFromFirstRow fooStringDecoder csvData

@@ -230,6 +230,7 @@ These are the supported Values:
   - **This**
   - **CommentedValue**
   - **ForComp**
+  - **TypeAscripted**
 
 -}
 type Value
@@ -252,6 +253,7 @@ type Value
     | This
     | CommentedValue Value String
     | ForComp (List Generator) Value
+    | TypeAscripted Value Type
 
 
 {-| -}

@@ -22,8 +22,8 @@ import CsvUtils exposing (..)
 import SparkTests.Types exposing (..)
 
 
-csvSSData : String
-csvSSData =
+csvData : String
+csvData =
     """name,ageOfItem,product,report
 item 3287,-1.0,Paintings,Report #1
 item 896539,-1.0,Paintings,
@@ -110,4 +110,4 @@ item 896578,101.0,HistoryWritings,
 
 antiqueSSDataSource : Result Error (List AntiqueSubset)
 antiqueSSDataSource =
-    Decode.decodeCsv Decode.FieldNamesFromFirstRow antiqueSSDecoder csvSSData
+    Decode.decodeCsv Decode.FieldNamesFromFirstRow antiqueSSDecoder csvData

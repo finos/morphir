@@ -43,4 +43,4 @@ encodeResult results =
 
 testAggregate : Test
 testAggregate =
-    executeTest "aggregateAverage" antiquesDataSource testAggregateAverage encodeResult
+    executeTest "testAggregateAverage" antiquesDataSource testAggregateAverage encodeResult

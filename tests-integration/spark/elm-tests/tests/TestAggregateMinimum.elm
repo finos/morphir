@@ -43,4 +43,4 @@ encodeResult results =
 
 testAggregate : Test
 testAggregate =
-    executeTest "aggregateMinimum" antiquesDataSource testAggregateMinimum encodeResult
+    executeTest "testAggregateMinimum" antiquesDataSource testAggregateMinimum encodeResult
