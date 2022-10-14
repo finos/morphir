@@ -31,7 +31,7 @@ import Morphir.Visual.Common exposing (nameToText, pathToUrl)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TypeInferenceView as TypeInferenceView
-import Morphir.Visual.Config exposing (Config)
+import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..))
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewType as ViewType
@@ -420,20 +420,23 @@ viewValue valueState ir fullyQualifiedName irView valueDef =
                     { ir = ir
                     , nativeFunctions = Dict.empty
                     , state =
-                        { expandedFunctions = Dict.empty
+                        { drillDownFunctions = DrillDownFunctions Dict.empty
                         , variables = Dict.empty
                         , popupVariables =
                             { variableIndex = -1
                             , variableValue = Nothing
+                            , nodePath = []
                             }
                         , theme = Theme.fromConfig Nothing
                         , highlightState = Nothing
                         }
                     , handlers =
-                        { onReferenceClicked = \_ _ -> DoNothing
-                        , onHoverOver = \_ _ -> DoNothing
-                        , onHoverLeave = \_ -> DoNothing
+                        { onReferenceClicked = \_ _ _ -> DoNothing
+                        , onReferenceClose = \_ _ _ -> DoNothing
+                        , onHoverOver = \_ _ _ -> DoNothing
+                        , onHoverLeave = \_ _ -> DoNothing
                         }
+                    , nodePath = []
                     }
 
                 editors =
