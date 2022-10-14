@@ -82,7 +82,7 @@ theme =
 
 init : Flags -> ( Model, Cmd Msg )
 init _ =
-    update (ChangeSource sampleSource) { source = "", maybePackageDef = Nothing, errors = [], irView = IRView, valueStates = Dict.empty }
+    update (ChangeSource sampleSource) { source = "", maybePackageDef = Nothing, errors = [], irView = InsightView, valueStates = Dict.empty }
 
 
 moduleSource : String -> SourceFile
@@ -613,34 +613,20 @@ sampleSourcePrefix =
 sampleSource : String
 sampleSource =
     """
-import Morphir.SDK.List as List
+request : Bool -> Int -> Int -> Response
+request allowPartial availableSurfboards requestedSurfboards =
+    if availableSurfboards < requestedSurfboards then
+        if allowPartial then
+            Reserved (min availableSurfboards requestedSurfboards)
+
+        else
+            Rejected
+
+    else
+        Reserved requestedSurfboards
 
 
-type alias JobPosting =
-    { companyName : String
-    , position : String
-    }
-
-
-type alias Company =
-    { name : String
-    , numberOfEmployees : Int
-    }
-
-
-innerJoin1 : List JobPosting -> List Company -> List { position : String, companySize : Int }
-innerJoin1 jobPostings companies =
-    jobPostings
-        |> List.innerJoin companies
-            (\\jobPosting company ->
-                jobPosting.companyName == company.name
-            )
-        |> List.map
-            (\\( jobPosting, company ) ->
-                { position =
-                    jobPosting.position
-                , companySize =
-                    company.numberOfEmployees
-                }
-            )
+type Response
+    = Rejected
+    | Reserved Int
         """
