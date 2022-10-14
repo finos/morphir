@@ -12,7 +12,6 @@ var jsonObject
 var jsonBuffer
 const options = {
     target : 'JsonSchema',
-
 }
 describe('Test Suite for Basic Types',  () => {
 
