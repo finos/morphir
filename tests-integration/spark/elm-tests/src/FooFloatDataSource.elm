@@ -22,8 +22,8 @@ import CsvUtils exposing (..)
 import SparkTests.Types exposing (..)
 
 
-fooFloatData : String
-fooFloatData =
+csvData : String
+csvData =
     """foo
 9.99
 8.13
@@ -39,4 +39,4 @@ fooFloatData =
 
 fooFloatDataSource : Result Error (List FooFloat)
 fooFloatDataSource =
-    Decode.decodeCsv Decode.FieldNamesFromFirstRow fooFloatDecoder fooFloatData
+    Decode.decodeCsv Decode.FieldNamesFromFirstRow fooFloatDecoder csvData

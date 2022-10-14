@@ -109,8 +109,8 @@ seize_item antique =
 
 type alias Report =
     { antiqueValue : Float
-    , vintageValue : Float
     , seizedValue : Float
+    , vintageValue : Float
     }
 
 
@@ -121,14 +121,14 @@ report antiques =
             |> List.filter is_item_antique
             |> List.map .priceValue
             |> List.sum
-    , vintageValue =
-        antiques
-            |> List.filter is_item_vintage
-            |> List.map .priceValue
-            |> List.sum
     , seizedValue =
         antiques
             |> List.filter seize_item
+            |> List.map .priceValue
+            |> List.sum
+    , vintageValue =
+        antiques
+            |> List.filter is_item_vintage
             |> List.map .priceValue
             |> List.sum
     }

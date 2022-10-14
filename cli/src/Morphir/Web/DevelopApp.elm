@@ -70,7 +70,7 @@ import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDispla
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.TreeLayout as TreeLayout
-import Morphir.Visual.Config exposing (PopupScreenRecord)
+import Morphir.Visual.Config exposing (DrillDownFunctions(..), PopupScreenRecord, ExpressionTreePath, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
@@ -210,13 +210,14 @@ init _ url key =
 emptyVisualState : Morphir.Visual.Config.VisualState
 emptyVisualState =
     { theme = Theme.fromConfig Nothing
-    , expandedFunctions = Dict.empty
     , variables = Dict.empty
     , highlightState = Nothing
     , popupVariables =
         { variableIndex = 0
         , variableValue = Nothing
+        , nodePath = []
         }
+    , drillDownFunctions = DrillDownFunctions Dict.empty
     }
 
 
@@ -263,9 +264,10 @@ type FilterMsg
 
 
 type InsightMsg
-    = ExpandReference FQName Bool
-    | ExpandVariable Int (Maybe RawValue)
-    | ShrinkVariable Int
+    = ExpandReference FQName Int ExpressionTreePath
+    | ShrinkReference FQName Int ExpressionTreePath
+    | ExpandVariable Int (List Int) (Maybe RawValue)
+    | ShrinkVariable Int (List Int)
     | SwitchDisplayType
     | ArgValueUpdated Name ValueEditor.EditorState
 
@@ -383,23 +385,40 @@ update msg model =
                     model.insightViewState
             in
             case insightMsg of
-                ExpandReference (( _, moduleName, localName ) as fQName) _ ->
-                    let
-                        url =
-                            pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase localName
-                    in
+                ExpandReference fQName id nodePath ->
                     case fQName of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
                             ( model, Cmd.none )
 
                         _ ->
-                            ( model, Nav.pushUrl model.key url )
+                            ( { model
+                                | insightViewState =
+                                    { insightViewState
+                                        | drillDownFunctions = DrillDownFunctions (addToDrillDown insightViewState.drillDownFunctions id nodePath)
+                                    }
+                              }
+                            , Cmd.none
+                            )
+                ShrinkReference fQName id nodePath ->
+                    case fQName of
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
+                            ( model, Cmd.none )
 
-                ExpandVariable varIndex maybeRawValue ->
-                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue } }, Cmd.none )
+                        _ ->
+                            ( { model
+                                | insightViewState =
+                                    { insightViewState
+                                        | drillDownFunctions = DrillDownFunctions (removeFromDrillDown insightViewState.drillDownFunctions id nodePath)
+                                    }
+                              }
+                            , Cmd.none
+                            )
 
-                ShrinkVariable varIndex ->
-                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing } }, Cmd.none )
+                ExpandVariable varIndex nodePath maybeRawValue ->
+                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue nodePath } }, Cmd.none )
+
+                ShrinkVariable varIndex nodePath ->
+                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing nodePath } }, Cmd.none )
 
                 SwitchDisplayType ->
                     ( case model.definitionDisplayType of
@@ -1577,20 +1596,29 @@ viewDefinitionDetails model =
         insightViewConfig : IR -> Morphir.Visual.Config.Config Msg
         insightViewConfig ir =
             let
-                referenceClicked : FQName -> Bool -> Msg
-                referenceClicked fqname t =
-                    Insight (ExpandReference fqname t)
+                referenceClicked : FQName -> Int -> List Int -> Msg
+                referenceClicked fQName id nodePath =
+                    Insight (ExpandReference fQName id nodePath)
 
-                hoverOver : Int -> Maybe RawValue -> Msg
-                hoverOver index value =
-                    Insight (ExpandVariable index value)
+                referenceClosed : FQName -> Int -> List Int -> Msg
+                referenceClosed fQName int nodePath =
+                    Insight (ShrinkReference fQName int nodePath)
+
+                hoverOver : Int -> List Int -> Maybe RawValue -> Msg
+                hoverOver index nodePath value =
+                    Insight (ExpandVariable index nodePath value)
+
+                hoverLeave : Int -> List Int -> Msg
+                hoverLeave index nodePath =
+                    Insight (ShrinkVariable index nodePath)
             in
             Morphir.Visual.Config.fromIR
                 ir
                 model.insightViewState
                 { onReferenceClicked = referenceClicked
+                , onReferenceClose = referenceClosed
                 , onHoverOver = hoverOver
-                , onHoverLeave = Insight << ShrinkVariable
+                , onHoverLeave = hoverLeave
                 }
 
         viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
@@ -1854,7 +1882,7 @@ viewDefinitionDetails model =
 
                                                     inputs : List (Maybe RawValue)
                                                     inputs =
-                                                        List.map (\inputName -> Dict.get inputName model.insightViewState.variables) (Dict.keys model.insightViewState.variables)
+                                                        valueDef.inputTypes |> List.map (\( argName, _, _ ) -> Dict.get argName model.insightViewState.variables)
 
                                                     ir : IR
                                                     ir =

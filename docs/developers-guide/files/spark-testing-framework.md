@@ -46,7 +46,8 @@ testExampleMax source =
 ```
 
 #### 2) Write code to generate input test data
-- If a new type has been designed for the test then new data of that type needs to be generated to use as an input for the test. This can be done in `/morphir-elm/tests-integration/spark/elm-tests/tests` using some elm code placed in a Generate....elm file. This can be done using the 'flatten' and 'generator' functions defined in GenerateAntiqueTestData.elm. It is simple to create code to generate input data by following the example set by the other Generate....elm files in the same directory. Some example data generation code in elm can be seen below.
+- If a new type has been designed for the test then new data of that type needs to be generated to use as an input for the test. This can be done in `/morphir-elm/tests-integration/spark/elm-tests/tests` using some elm code placed in a Generate....elm file. This can be done using the 'flatten' and 'generator' functions defined in GenerateAntiqueTestData.elm. It is simple to create code to generate input data by following the example set by the other Generate....elm files in the same directory. All Generate*.elm files should be placed in the `/morphir-elm/tests-integration/spark/elm-tests/tests` directory. The Generate*.elm file and its counterpart *DataSource.elm must be of the form " Generate<Type>Data.elm" and "<Type>DataSource.elm".
+Some example data generation code in elm can be seen below.
 
 ```
 columnNamesExample : String
@@ -96,27 +97,15 @@ can
 paper
 
 """
-
+ 
 
 exampleDataSource : Result Error (List ExampleType)
 exampleDataSource =
     Decode.decodeCsv Decode.FieldNamesFromFirstRow exampleDecoder exampleData
 ```
+- The generation of the test data and the copying of it is done automatically in the `/morphir-elm/tests-integration/spark/elm-tests/tests/create_csv_files.sh` file, which creates  CSV data formatted as both raw csv data and inlined into an elm file.
 
-- In order to generate the data and copy it in to the data source file some code must be added to `/morphir-elm/tests-integration/spark/elm-tests/tests/create_csv_files.sh`. This code should generate the input data CSV file, then put speech marks around the data and the copy it in to the data source. There is code already in that file that carries out those steps for other data types and can be used as an example to write new code. Some shell code can be seen below.
 
-```
-elm-test GenerateExampleTestData.elm > "$TEST_OUTPUT_DIR/generate_example_test_data.txt"
-grep -m1 example_data.csv "$TEST_OUTPUT_DIR/generate_example_test_data.txt" | sed -e 's?example_data.csv: \["??' -e 's?",",?\n?g' -e 's?"]??' > "$SPARK_TEST_DATA_DIR/example_data.csv"
-
-echo -n '    """' | cat - "$SPARK_TEST_DATA_DIR/example_data.csv" > "$TEST_OUTPUT_DIR/example_data.csv.in"
-echo '"""' >> "$TEST_OUTPUT_DIR/example_data.csv.in"
-
-cat ../src/ExampleDataSource.elm \
-    | sed -e '/^    """/,/^"""/d' \
-    | sed -e "/^exampleData =/ r $TEST_OUTPUT_DIR/example_data.csv.in" > "$TEST_OUTPUT_DIR/Temp.elm"
-cp "$TEST_OUTPUT_DIR/Temp.elm" ../src/ExampleDataSource.elm
-```
 
 #### 3) Write encoders and decoders for the input test data
 
@@ -147,19 +136,16 @@ exampleEncoder examples =
 
 #### 4) Write the code that will run the test on the input data and produce an output data csv
 
-- The final step of creating a working elm test is to create a file from where the test will actually be executed from. These files are the ones in `/morphir-elm/tests-integration/spark/elm-tests/tests` that have the name Test....elm. In order to code one for the new test it will need the test data source, the encoder and some other functions defined in TestUtils.elm to run the test. Following a similar structure to the other test files will make it simple to code the elm test file. Some example elm code for running a test can be seen below
-
+- The final step of creating a working elm test is to create a file from where the test will actually be executed from. These files are the ones in `/morphir-elm/tests-integration/spark/elm-tests/tests` that have the name Test....elm. In order to code one for the new test it will need the test data source, the encoder and some other functions defined in TestUtils.elm to run the test. Following a similar structure to the other test files will make it simple to code the elm test file. 
+- All Test*.elm files should be placed in the `/morphir-elm/tests-integration/spark/elm-tests/tests` directory and each file must specify its name in double quotation marks on a line that starts with `executeTest` so that the create_csv_files.sh script can detect it.
+- Some example elm code for running a test can be seen below
 ```
 testForExample: Test
 testForExample =
     executeTest "exampleTest" exampleDataSource exampleTest exampleEncoder
 ```
 
-- Then this elm test file will be used in create_csv_files.sh to run the test automatically. The 'elmTestOutputToCSV' function in create_csv_files.sh will be used to format the output of the test so it looks correct in the CSV file. Following the structure of the other test calls in create_csv_files.sh makes it simple to code a new test call. An example shell script test call can be seen below.
-
-```
-elmTestOutputToCsv "TestExample.elm" "exampleTest" 
-```
+- Then this elm test file will be used in create_csv_files.sh to run the test automatically.
 
 #### 5) Write Scala code to check that the elm tests work as expected
 
