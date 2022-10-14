@@ -39,6 +39,7 @@ describe('Test Suite for Basic Types',  () => {
 
     test('1. Bool type test case', () => {
         jsonObject["$ref"] = "#/$defs/BasicTypes.Paid"
+        jsonObject["$id"] = "#"
         const validate = ajv.compile(jsonObject)
         const result = validate(true);
         expect(result).toBe(true)
