@@ -247,6 +247,22 @@ testLetBinding source =
         |> List.filter item_filter
 
 
+testLetDef : List AntiqueSubset -> List AntiqueSubset
+testLetDef source =
+    let
+        exact1 = 5.0
+        exact2 = 7.0
+        max = 20.0
+        min = 10.0
+        not = 15.0
+    in
+    source
+        |> List.filter
+            (\antique ->
+                (antique.ageOfItem <= max) && (antique.ageOfItem >= min) && (antique.ageOfItem /= not) || (antique.ageOfItem == exact1) || (antique.ageOfItem == exact2)
+            )
+
+
 filterFn : AntiqueSubset -> Bool
 filterFn record1 =
     modBy (floor record1.ageOfItem) 2 <= 3

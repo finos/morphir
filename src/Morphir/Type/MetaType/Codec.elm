@@ -16,10 +16,17 @@ encodeMetaType metaType =
                 , encodeVariable variable
                 ]
 
-        MetaRef _ fQName _ _ ->
+        MetaRef _ fQName args maybeAliasedType ->
             Encode.list identity
                 [ Encode.string "meta_ref"
                 , encodeFQName fQName
+                , Encode.list encodeMetaType args
+                , case maybeAliasedType of
+                    Just aliasedType ->
+                        encodeMetaType aliasedType
+
+                    Nothing ->
+                        Encode.null
                 ]
 
         MetaTuple _ metaTypes ->
@@ -28,15 +35,11 @@ encodeMetaType metaType =
                 , Encode.list encodeMetaType metaTypes
                 ]
 
-        MetaRecord _ maybeVar dict ->
+        MetaRecord _ recordVar isOpen dict ->
             Encode.list identity
                 [ Encode.string "meta_record"
-                , case maybeVar of
-                    Just var ->
-                        encodeVariable var
-
-                    Nothing ->
-                        Encode.null
+                , encodeVariable recordVar
+                , Encode.bool isOpen
                 , dict
                     |> Dict.toList
                     |> Encode.list
@@ -62,5 +65,5 @@ encodeMetaType metaType =
 
 
 encodeVariable : Variable -> Encode.Value
-encodeVariable ( n, i, s ) =
-    Encode.list identity [ encodeName n, Encode.int i, Encode.int s ]
+encodeVariable i =
+    Encode.int i

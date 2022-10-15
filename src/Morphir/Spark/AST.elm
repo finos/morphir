@@ -249,6 +249,7 @@ type Error
     | UnhandledObjectExpression ObjectExpression
     | UnhandledExpression Expression
     | AggregationError ConstructAggregationError
+    | ObjectExpressionsNotUnique (List ObjectExpression)
 
 
 appendFunctionToSelect : FQName -> ObjectExpression -> Result Error ObjectExpression
@@ -265,31 +266,84 @@ appendFunctionToSelect funcName sourceExpression =
             Err (UnhandledObjectExpression other)
 
 
-isBasicType : FQName -> List (Type.Type ta) -> Bool
-isBasicType funcName funcArgs =
-    case funcName of
-        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "bool" ] ) ->
-            True
+mergeSelects : List ObjectExpression -> Result Error ObjectExpression
+mergeSelects expressions =
+    let
+        collectNamedExpressions : Result Error NamedExpressions
+        collectNamedExpressions =
+            expressions
+                |> List.map
+                    (\expression ->
+                        case expression of
+                            Select [namedExpression] (From _) ->
+                                namedExpression |> Ok
+                            Select [(exprName, Function funcName [funcArg])] (Filter filterExpression (From _)) ->
+                                -- i.e. `source.filter(...).select(...)` into `source.select(...)`
+                                Ok ( exprName
+                                , Function funcName [ Function "when" [ filterExpression, funcArg ] ]
+                                )
 
-        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "float" ] ) ->
-            True
 
-        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "int" ] ) ->
-            True
+                            other ->
+                                UnhandledObjectExpression other |> Err
+                    )
+                |> ResultList.keepFirstError
 
-        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "basics" ] ], [ "string" ] ) ->
-            True
+        getRootSourceRelation : ObjectExpression -> Result Error ObjectExpression
+        getRootSourceRelation relation =
+            case relation of
+                From _ ->
+                    Ok relation
+                Filter _ sourceRelation ->
+                    getRootSourceRelation sourceRelation
+                Select _ sourceRelation ->
+                    getRootSourceRelation sourceRelation
+                Join _ _ _ _ ->
+                    -- XXX: Joins merge two source relations, no one "root"
+                    Err (UnhandledObjectExpression relation)
+                Aggregate _ _ _ ->
+                    -- XXX: I don't expect to ever see this
+                    Err (UnhandledObjectExpression relation)
+        unique_items : List ObjectExpression -> List ObjectExpression
+        unique_items items =
+            List.foldr
+                (\item list ->
+                    if List.member item list then
+                        list
+                    else
+                        item :: list
+                )
+                []
+                items
+        unique_roots =
+            expressions
+                |> List.map getRootSourceRelation
+                |> ResultList.keepFirstError
+                |> Result.map unique_items
+        only_root =
+            unique_roots
+                |> Result.andThen
+                    ( \roots ->
+                        case roots of
+                            head :: [] ->
+                                head |> Ok
+                            _ ->
+                                ObjectExpressionsNotUnique roots |> Err
+                    )
+    in
+        Result.map2
+            Select
+            collectNamedExpressions
+            only_root
 
-        ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "maybe" ] ) ->
-            case funcArgs of
-                [ Type.Reference _ fqn [] ] ->
-                    isBasicType fqn []
 
-                _ ->
-                    False
-
+substituteOnlyFieldName : Name -> ObjectExpression -> Result Error ObjectExpression
+substituteOnlyFieldName fieldName sourceExpression =
+    case sourceExpression of
+        Select [ (name, expression) ] source ->
+            Select [ (fieldName, expression) ] source |> Ok
         _ ->
-            False
+            Err (UnhandledObjectExpression sourceExpression)
 
 
 {-| provides a way to create ObjectExpressions from a Morphir Value.
@@ -301,28 +355,6 @@ objectExpressionFromValue ir morphirValue =
     case morphirValue of
         Value.Variable _ varName ->
             From varName |> Ok
-
-        Value.Apply _ ((Value.Lambda _ _ (Value.List _ [ Value.Record _ _ ])) as lambda) sourceRelation ->
-            -- e.g. source |> List.map .fieldName |> (\a -> [{min = List.minimum(a)}])
-            objectExpressionFromValue ir sourceRelation
-                |> Result.andThen
-                    (\sourceExpression ->
-                        namedExpressionsFromValue ir lambda
-                            |> Result.andThen
-                                (\lambdaExpressions ->
-                                    case sourceExpression of
-                                        Select (( _, subExpression ) :: []) oldSourceExpression ->
-                                            case lambdaExpressions of
-                                                ( lamName, Function fname [ a ] ) :: [] ->
-                                                    Select [ ( lamName, Function fname [ subExpression ] ) ] oldSourceExpression |> Ok
-
-                                                other ->
-                                                    Err (UnhandledNamedExpressions other)
-
-                                        other ->
-                                            Err (UnhandledObjectExpression other)
-                                )
-                    )
 
         Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "aggregate" ] ], [ "aggregate" ] )) aggregateBody) (Value.Apply _ (Value.Apply _ (Value.Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "aggregate" ] ], [ "group", "by" ] )) groupKey) sourceRelation) ->
             constructAggregationCall aggregateBody groupKey sourceRelation
@@ -355,18 +387,41 @@ objectExpressionFromValue ir morphirValue =
             inlineLetDef [] [] morphirValue
                 |> objectExpressionFromValue ir
 
-        Value.Apply (Type.Reference _ (( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) as returnFQN) returnArgs) (Value.Reference _ applyFuncName) sourceRelation ->
-            case isBasicType returnFQN returnArgs of
-                True ->
-                    objectExpressionFromValue ir sourceRelation
-                        |> Result.andThen (appendFunctionToSelect applyFuncName)
+        Value.Apply _ (Value.Reference _ applyFuncName) sourceRelation ->
+            objectExpressionFromValue ir sourceRelation
+                |> Result.andThen (appendFunctionToSelect applyFuncName)
 
-                False ->
-                    let
-                        _ =
-                            Debug.log "not a basic type" ( returnFQN, returnArgs )
-                    in
-                    Err (UnhandledValue morphirValue)
+        Value.Apply applyType ( Value.Lambda lamType lamArgs ( Value.List _ [ (Value.Record _ _ ) as record ] ) ) sourceRelation ->
+            Value.Apply applyType ( Value.Lambda lamType lamArgs record) sourceRelation
+                |> objectExpressionFromValue ir
+
+        Value.Apply _ ((Value.Lambda _ _ (Value.Record ta relations) ) as lam) sourceRelation ->
+            relations
+                |> Dict.toList
+                |> List.map
+                    (\( name, value ) ->
+                        inlineArguments (collectLambdaParams lam [] ) [sourceRelation] value
+                            |> Tuple.pair name
+                    )
+                |> Dict.fromList
+                |> Value.Record ta
+                |> objectExpressionFromValue ir
+
+        Value.Record _ relations ->
+            relations
+                |> Dict.toList
+                |> List.map
+                    (\( name, value ) ->
+                        objectExpressionFromValue ir value
+                            |> Result.andThen (substituteOnlyFieldName name)
+                    )
+                |> ResultList.keepFirstError
+                |> Result.andThen mergeSelects
+
+        Value.Apply _ (Value.Lambda _ (Value.AsPattern _ (WildcardPattern _) label) body) sourceRelation ->
+            -- Attempt to inline simple lambdas to see if that makes it readable before erroring
+            inlineArguments [label] [sourceRelation] body
+                |> objectExpressionFromValue ir
 
         other ->
             let
@@ -636,7 +691,7 @@ inlineLetDef names letValues v =
                     inlineArguments names letValues def.body
             in
             inlineLetDef
-                (List.append [ name ] names)
+                (List.append names [ name ])
                 ({ def | body = inlined }
                     |> lambdaFromDefinition
                     |> List.singleton
@@ -725,22 +780,16 @@ mapApply ir args target =
 inlineArguments : List Name -> List TypedValue -> TypedValue -> TypedValue
 inlineArguments paramList argList fnBody =
     let
+
         overwriteValue : Name -> TypedValue -> TypedValue -> TypedValue
         overwriteValue searchTerm replacement scope =
             -- TODO handle replacement of the variable within a lambda
             case scope of
-                Value.Apply a target ((Value.Variable _ name) as var) ->
+                Value.Variable _ name ->
                     if name == searchTerm then
-                        -- Replace variable if the name matches the searchTerm
-                        Value.Apply a
-                            (overwriteValue searchTerm replacement target)
-                            replacement
-
+                        replacement
                     else
-                        -- Name does not match. Maintain variable
-                        Value.Apply a
-                            (overwriteValue searchTerm replacement target)
-                            var
+                        scope
 
                 Value.Apply a target arg ->
                     Value.Apply a
@@ -750,6 +799,17 @@ inlineArguments paramList argList fnBody =
                 Value.Lambda a pattern body ->
                     overwriteValue searchTerm replacement body
                         |> Value.Lambda a pattern
+
+                Value.Record a args ->
+                    args
+                        |> Dict.toList
+                        |> List.map
+                            (\( name, value ) ->
+                                overwriteValue searchTerm replacement value
+                                    |> Tuple.pair name
+                            )
+                        |> Dict.fromList
+                        |> Value.Record a
 
                 _ ->
                     scope

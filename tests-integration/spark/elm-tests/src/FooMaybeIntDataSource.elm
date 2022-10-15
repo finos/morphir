@@ -22,8 +22,8 @@ import CsvUtils exposing (..)
 import SparkTests.Types exposing (..)
 
 
-fooMaybeIntData : String
-fooMaybeIntData =
+csvData : String
+csvData =
     """foo
 20
 2879
@@ -42,4 +42,4 @@ fooMaybeIntData =
 
 fooMaybeIntDataSource : Result Error (List FooMaybeInt)
 fooMaybeIntDataSource =
-    Decode.decodeCsv Decode.FieldNamesFromFirstRow fooIntMaybeDecoder fooMaybeIntData
+    Decode.decodeCsv Decode.FieldNamesFromFirstRow fooIntMaybeDecoder csvData
