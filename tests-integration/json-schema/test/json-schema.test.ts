@@ -13,7 +13,7 @@ var jsonBuffer
 const options = {
     target : 'JsonSchema',
 }
-describe('Test Suite for Basic Types',  () => {
+describe('Test Suite for Basic Types and Decimal',  () => {
 
     beforeAll(async () => {
         //Clear generated schema directory
@@ -33,51 +33,52 @@ describe('Test Suite for Basic Types',  () => {
 
 	})
 
-    test('1. Bool type test case', () => {
+    test.skip('1. Bool type test case', () => {
         const boolSchema = jsonObject["$defs"]["BasicTypes.Paid"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(boolSchema)
         const result = validate(true);
         expect(result).toBe(true)
     })
-    test('2. Int type test case', () => {
+    test.skip('2. Int type test case', () => {
         const intSchema = jsonObject["$defs"]["BasicTypes.Age"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(intSchema)
         const result = validate(45)
         expect(result).toBe(true)
     })
-    test('3. Float type test case', () => {
+    test.skip('3. Float type test case', () => {
         const floatSchema = jsonObject["$defs"]["BasicTypes.Score"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(floatSchema)
         const result = validate(4.5)
         expect(result).toBe(true)
     })
-    test('4. Char type test case', () => {
+    test.skip('4. Char type test case', () => {
         const charSchema = jsonObject["$defs"]["BasicTypes.Grade"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(charSchema)
         const result = validate('A')
         expect(result).toBe(true)
     })
-    test('5. String type test case', () => {
+    test.skip('5. String type test case', () => {
         const stringSchema = jsonObject["$defs"]["BasicTypes.Fullname"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(stringSchema)
         const result = validate("Morphir String")
         expect(result).toBe(true)
     })
-})
-
-describe('Test Suite for Advanced Types', () => {
-    test('1. Test for Decimal type', () => {
+    test('6. Test for Decimal type', () => {
         const decimalSchema = jsonObject["$defs"]["AdvancedTypes.Score"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(decimalSchema)
         const result = validate("99.9")
         expect(result).toBe(true)
     })
+})
+
+describe('Test Suite for Advanced Types', () => {
+
 
     test.skip('2. Test for LocalDate type', () => {
     })
@@ -90,7 +91,7 @@ describe('Test Suite for Advanced Types', () => {
 })
 
 describe('Test Suite for Optional Types', () => {
-    test('Test for MayBe type', () => {
+    test.skip('Test for MayBe type', () => {
         const mayBeSchema = jsonObject["$defs"]["OptionalTypes.Assignment"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(mayBeSchema)
