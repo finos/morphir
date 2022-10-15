@@ -1,3 +1,11 @@
+/*
+    This file contains the automated tests for the JsonSchema backend.
+    It runs the make command to generate the IR from the Morphir models
+    Then it runs the gen command to generate the Json Schema.
+    The ajv library https://www.npmjs.com/package/ajv  is used to validate the generate json schema
+    and instances of the subschemas.
+*/
+
 const  Ajv2020 = require("../../../node_modules/ajv/dist/2020")
 const fs = require('fs')
 const basePath = "tests-integration/json-schema/model/"
@@ -8,7 +16,6 @@ const util = require('util')
 const writeFile = util.promisify(fs.writeFile)
 
 var jsonObject
-var jsonBuffer
 
 const options = {
     target : 'JsonSchema',
@@ -19,16 +26,16 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         //Clear generated schema directory
         fs.rmSync(schemaBasePath, {recursive: true, force : true})
 
-        //Create and write IR
+        //Create and write IR to file
         const IR =  await cli.make(basePath, CLI_OPTIONS)
 		await writeFile(basePath + 'morphir-ir.json', JSON.stringify(IR))
 
-        // Generate the schema
+        // Generate the Json schema
         await cli.gen(basePath + 'morphir-ir.json', schemaBasePath , options)
         const schemaPath = schemaBasePath + "TestModel.json"
 
         // Read json into an object
-        jsonBuffer = fs.readFileSync(schemaPath, 'utf8')
+        const jsonBuffer = fs.readFileSync(schemaPath, 'utf8')
         jsonObject = JSON.parse(jsonBuffer)
 
 	})
