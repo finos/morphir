@@ -42,28 +42,28 @@ describe('Test Suite for Basic Types',  () => {
     })
     test('2. Int type test case', () => {
         const intSchema = jsonObject["$defs"]["BasicTypes.Age"]
-        const ajv = new Ajv2020({schemas : [intSchema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(intSchema)
         const result = validate(45)
         expect(result).toBe(true)
     })
     test('3. Float type test case', () => {
         const floatSchema = jsonObject["$defs"]["BasicTypes.Score"]
-        const ajv = new Ajv2020({schemas : [floatSchema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(floatSchema)
         const result = validate(4.5)
         expect(result).toBe(true)
     })
     test('4. Char type test case', () => {
         const charSchema = jsonObject["$defs"]["BasicTypes.Grade"]
-        const ajv = new Ajv2020({schemas : [charSchema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(charSchema)
         const result = validate('A')
         expect(result).toBe(true)
     })
     test('5. String type test case', () => {
         const stringSchema = jsonObject["$defs"]["BasicTypes.Fullname"]
-        const ajv = new Ajv2020({schemas : [stringSchema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(stringSchema)
         const result = validate("Morphir String")
         expect(result).toBe(true)
@@ -73,7 +73,7 @@ describe('Test Suite for Basic Types',  () => {
 describe('Test Suite for Advanced Types', () => {
     test('1. Test for Decimal type', () => {
         const decimalSchema = jsonObject["$defs"]["AdvancedTypes.Score"]
-        const ajv = new Ajv2020({schemas : [decimalSchema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(decimalSchema)
         const result = validate("99.9")
         expect(result).toBe(true)
@@ -92,7 +92,7 @@ describe('Test Suite for Advanced Types', () => {
 describe('Test Suite for Optional Types', () => {
     test('Test for MayBe type', () => {
         const mayBeSchema = jsonObject["$defs"]["OptionalTypes.Assignment"]
-        const ajv = new Ajv2020({schemas : [mayBeSchema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(mayBeSchema)
         const result = validate('Bar')
         expect(result).toBe(true)
@@ -102,7 +102,7 @@ describe('Test Suite for Optional Types', () => {
 describe('Test Suite for Collection Types', () => {
     test('Test for List type', () => {
         const listSchema = jsonObject["$defs"]["CollectionTypes.Department"]
-        const ajv = new Ajv2020({schemas : [listSchema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(listSchema)
         const result = validate(["HR", "IT", "HR"])
         expect(result).toBe(true)
@@ -110,7 +110,7 @@ describe('Test Suite for Collection Types', () => {
     })
     test('Test for Set type', () => {
         const setSchema = jsonObject["$defs"]["CollectionTypes.Proids"]
-        const ajv = new Ajv2020({schemas : [setSchema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(setSchema)
         const result = validate(["bsdev", "morphirdev"])
         expect(result).toBe(true)        
@@ -132,7 +132,7 @@ describe('Test Suite for Composite Types - Records/Tuples', () => {
 
     test('Test for Record type', () => {
         const recordSchema = jsonObject["$defs"]["RecordTypes.Address"]
-        const ajv = new Ajv2020({schemas : [recordSchema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(recordSchema)
         const recordInstance = {
             country : "US",
@@ -150,7 +150,7 @@ describe('Test Suite for Composite Types - Records/Tuples', () => {
 describe('Test Suite for Composite Types - Custom Types', () => {
     test('Test for Enum Type', () => {
         const enumSchema = jsonObject["$defs"]["CustomTypes.Currencies"]
-        const ajv = new Ajv2020({schemas : [enumSchema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(enumSchema)
         const result = validate("USD")
         expect(result).toBe(true)
@@ -158,7 +158,7 @@ describe('Test Suite for Composite Types - Custom Types', () => {
 
     test.skip('Test for Custom type 1',  () => {
         const custom1Schema = jsonObject["$defs"]["CustomTypes.Person"]
-        const ajv = new Ajv2020({schemas : [custom1Schema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(custom1Schema)
         const result = validate(["Child", "Bar", 11])
         expect(result).toBe(true)
@@ -166,7 +166,7 @@ describe('Test Suite for Composite Types - Custom Types', () => {
 
     test.skip('Test for Custom type 2',  () => {
         const custom2Schema = jsonObject["$defs"]["CustomTypes.Person"]
-        const ajv = new Ajv2020({schemas : [custom2Schema]})
+        const ajv = new Ajv2020()
         const validate = ajv.compile(custom2Schema)
         const result = validate( ["Adult", "foo"]);
         expect(result).toBe(true)
