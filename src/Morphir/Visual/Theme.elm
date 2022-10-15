@@ -7,6 +7,7 @@ import Element.Font as Font exposing (center)
 import Element.Input as Input
 import Html exposing (div, text)
 import Html.Attributes exposing (style)
+import Element exposing (Attr)
 
 
 type alias Theme =
@@ -114,6 +115,10 @@ largePadding theme =
 borderRounded : Attribute msg
 borderRounded = 
     Border.rounded 3
+
+borderBottom : Int -> Attribute msg
+borderBottom width = 
+    Border.widthEach { top = 0, left = 0, right = 0, bottom = width }
 
 scaled : Int -> Theme -> Int
 scaled scaleValue theme =
