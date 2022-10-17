@@ -2,7 +2,6 @@ module Morphir.Visual.Components.TabsComponent exposing (..)
 
 import Array exposing (Array)
 import Element exposing (Element, column, el, fill, height, mouseOver, none, padding, pointer, row, spacing, text, width)
-import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
@@ -10,10 +9,10 @@ import Morphir.Visual.Theme as Theme exposing (Theme)
 
 
 type alias TabsComponentConfig msg =
-    { switchTab : Int -> msg
+    { theme : Theme
     , tabs : Array (Tab msg)
+    , onSwitchTab : Int -> msg
     , activeTab : Int
-    , theme : Theme
     }
 
 
@@ -41,7 +40,7 @@ tabsComponent config =
                         []
             in
             el
-                ([ onClick (config.switchTab index)
+                ([ onClick (config.onSwitchTab index)
                  , pointer
                  , Border.widthEach { top = 0, left = 0, right = 0, bottom = 2 }
                  , mouseOver [ Border.color config.theme.colors.primaryHighlight ]

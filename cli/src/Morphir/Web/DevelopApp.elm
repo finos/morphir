@@ -1851,7 +1851,7 @@ viewDefinitionDetails model =
                                                 in
                                                 Just <| tabsComponent
                                                     { theme = model.theme
-                                                    , switchTab = UI << SwitchTab
+                                                    , onSwitchTab = UI << SwitchTab
                                                     , activeTab = model.activeTabIndex
                                                     , tabs = Array.fromList [ 
                                                         { name = "Insight View", content =column
