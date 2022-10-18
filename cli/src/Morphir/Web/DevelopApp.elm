@@ -69,8 +69,9 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.TabsComponent exposing (TabsComponentConfig, tabsComponent)
 import Morphir.Visual.Components.TreeLayout as TreeLayout
-import Morphir.Visual.Config exposing (DrillDownFunctions(..), PopupScreenRecord, ExpressionTreePath, addToDrillDown, removeFromDrillDown)
+import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
@@ -118,11 +119,11 @@ type alias Model =
     , homeState : HomeState
     , repo : Repo
     , insightViewState : Morphir.Visual.Config.VisualState
-    , definitionDisplayType : DisplayType
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
     , selectedTestcaseIndex : Int
     , testDescription : String
+    , activeTabIndex : Int
     }
 
 
@@ -144,11 +145,6 @@ type alias FilterState =
     , showTypes : Bool
     , moduleClicked : String
     }
-
-
-type DisplayType
-    = XRayView
-    | InsightView
 
 
 type alias ModelUpdate =
@@ -195,11 +191,11 @@ init _ url key =
                 }
             , repo = Repo.empty []
             , insightViewState = emptyVisualState
-            , definitionDisplayType = InsightView
             , argStates = Dict.empty
             , expandedValues = Dict.empty
             , selectedTestcaseIndex = -1
             , testDescription = ""
+            , activeTabIndex = 0
             }
     in
     ( toRoute url initModel
@@ -254,6 +250,7 @@ type UIMsg
     | ToggleDefinitionsMenu
     | ExpandModule (TreeLayout.NodePath ModuleName)
     | CollapseModule (TreeLayout.NodePath ModuleName)
+    | SwitchTab Int
 
 
 type FilterMsg
@@ -268,7 +265,6 @@ type InsightMsg
     | ShrinkReference FQName Int ExpressionTreePath
     | ExpandVariable Int (List Int) (Maybe RawValue)
     | ShrinkVariable Int (List Int)
-    | SwitchDisplayType
     | ArgValueUpdated Name ValueEditor.EditorState
 
 
@@ -375,6 +371,9 @@ update msg model =
                     , Cmd.none
                     )
 
+                SwitchTab tabIndex ->
+                    ( { model | activeTabIndex = tabIndex }, Cmd.none )
+
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
 
@@ -399,6 +398,7 @@ update msg model =
                               }
                             , Cmd.none
                             )
+
                 ShrinkReference fQName id nodePath ->
                     case fQName of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
@@ -420,15 +420,6 @@ update msg model =
                 ShrinkVariable varIndex nodePath ->
                     ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing nodePath } }, Cmd.none )
 
-                SwitchDisplayType ->
-                    ( case model.definitionDisplayType of
-                        XRayView ->
-                            { model | definitionDisplayType = InsightView }
-
-                        InsightView ->
-                            { model | definitionDisplayType = XRayView }
-                    , Cmd.none
-                    )
 
                 ArgValueUpdated argName editorState ->
                     let
@@ -983,31 +974,6 @@ viewHome model packageName packageDef =
         -- Display a single selected definition on the ui
         viewDefinition : Maybe Definition -> Element Msg
         viewDefinition maybeSelectedDefinition =
-            let
-                toggleDisplayType : Element Msg
-                toggleDisplayType =
-                    let
-                        xrayOrInsight a b =
-                            case model.definitionDisplayType of
-                                XRayView ->
-                                    a
-
-                                InsightView ->
-                                    b
-                    in
-                    Element.Input.button
-                        [ padding 7
-                        , Background.color <| xrayOrInsight lightMorphIrBlue lightMorphIrOrange
-                        , Theme.borderRounded
-                        , Font.color model.theme.colors.lightest
-                        , Font.bold
-                        , Font.size (model.theme |> Theme.scaled 2)
-                        , mouseOver [ Background.color <| xrayOrInsight morphIrBlue morphIrOrange ]
-                        ]
-                        { onPress = Just (Insight SwitchDisplayType)
-                        , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text <| "Switch to " ++ xrayOrInsight "InsightView" "XRayView" ]
-                        }
-            in
             case maybeSelectedDefinition of
                 Just selectedDefinition ->
                     case selectedDefinition of
@@ -1021,7 +987,7 @@ viewHome model packageName packageDef =
                                             |> Maybe.map
                                                 (\valueDef ->
                                                     column []
-                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc, toggleDisplayType ]
+                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc ]
                                                 )
                                     )
                                 |> Maybe.withDefault none
@@ -1278,7 +1244,7 @@ viewHome model packageName packageDef =
                                     , onClick <| handleModuleClick m
                                     , width (maximum 100 shrink)
                                     , Border.color model.theme.colors.gray
-                                    , Border.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
+                                    , Theme.borderBottom 1
                                     , mouseOver [ Border.color model.theme.colors.darkest ]
                                     ]
                                     { label = Theme.ellipseText <| " > " ++ (m |> List.reverse |> List.head |> Maybe.withDefault [ "" ] |> nameToTitleText)
@@ -1432,12 +1398,7 @@ viewAsLabel theme shouldColorBg icon header class url =
     in
     link
         [ Border.color theme.colors.lightest
-        , Border.widthEach
-            { bottom = 1
-            , left = 0
-            , top = 0
-            , right = 0
-            }
+        , Theme.borderBottom 1
         , mouseOver [ Border.color theme.colors.darkest ]
         , pointer
         , width fill
@@ -1761,7 +1722,7 @@ viewDefinitionDetails model =
                                 , Font.size (model.theme |> Theme.scaled 5)
                                 , pointer
                                 , height fill
-                                , Border.roundEach { topLeft = 0, bottomLeft = 0, topRight = 6, bottomRight = 6 }
+                                , Border.roundEach { topLeft = 0, bottomLeft = 0, topRight = 3, bottomRight = 3 }
                                 ]
                                 { onPress = Just <| Testing (DeleteTestCase fQName index)
                                 , label = el [ centerX, centerY ] (text " 🗑 ")
@@ -1796,7 +1757,7 @@ viewDefinitionDetails model =
                                 styles =
                                     [ Background.color <| evaluate test
                                     , height fill
-                                    , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
+                                    , Border.widthXY 0 1
                                     , paddingXY (model.theme |> Theme.scaled -1) (model.theme |> Theme.scaled -5)
                                     , Border.color model.theme.colors.lightest
                                     , pointer
@@ -1810,7 +1771,7 @@ viewDefinitionDetails model =
                             in
                             -- first cell's left border should be rounded
                             if columnIndex == 0 then
-                                el (styles ++ [ Border.roundEach { topLeft = 6, bottomLeft = 6, topRight = 0, bottomRight = 0 } ]) rowCell
+                                el (styles ++ [ Border.roundEach { topLeft = 3, bottomLeft = 3, topRight = 0, bottomRight = 0 } ]) rowCell
 
                             else if columnIndex < maxIndex then
                                 el styles rowCell
@@ -1888,13 +1849,12 @@ viewDefinitionDetails model =
                                                     ir =
                                                         IR.fromDistribution distribution
                                                 in
-                                                case model.definitionDisplayType of
-                                                    XRayView ->
-                                                        Just <| XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef
-
-                                                    InsightView ->
-                                                        Just <|
-                                                            column
+                                                Just <| tabsComponent
+                                                    { theme = model.theme
+                                                    , onSwitchTab = UI << SwitchTab
+                                                    , activeTab = model.activeTabIndex
+                                                    , tabs = Array.fromList [ 
+                                                        { name = "Insight View", content =column
                                                                 [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
                                                                 [ column [ spacing (model.theme |> Theme.scaled 5) ]
                                                                     [ el [ Font.bold, Font.underline ] (text "INPUTS")
@@ -1908,7 +1868,9 @@ viewDefinitionDetails model =
                                                                     , ifThenElse (Dict.isEmpty model.argStates) none descriptionInput
                                                                     ]
                                                                 , scenarios fullyQualifiedName ir valueDef.inputTypes
-                                                                ]
+                                                                ] }, 
+                                                        { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef } ]
+                                                    }
                                             )
                                         |> Maybe.withDefault none
 
