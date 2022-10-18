@@ -41,7 +41,16 @@ module Morphir.Visual.Components.Picklist exposing (State, init, view)
     view : Model -> Element msg
     view model =
         column []
-            []
+            [ Picklist.view
+                { state = model.picklist
+                , onStateChange = PicklistChanged
+                , selectedTag = model.selectedOption
+                , onSelectionChange = OptionSelected
+                }
+                [ ( Option1, "Option A" )
+                , ( Option2, "Option B" )
+                ]
+            ]
 
 @docs State, init, view
 

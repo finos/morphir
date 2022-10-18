@@ -86,6 +86,11 @@ viewComponents c =
                 }
                 [ ( 1, text "Option A" )
                 , ( 2, text "Option B" )
+                , ( 3, text "Option C" )
+                , ( 4, text "Option D" )
+                , ( 5, text "Option E" )
+                , ( 6, text "Option F" )
+                , ( 7, text "Option G" )
                 ]
             ]
         )
