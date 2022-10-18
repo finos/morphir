@@ -2,15 +2,19 @@ module Morphir.Visual.DesignSystemApp exposing (..)
 
 import Array exposing (Array)
 import Browser
-import Element exposing (Element, column, el, htmlAttribute, layout, none, padding, paddingEach, rgb, row, spacing, text)
+import Element exposing (Color, Element, column, el, height, htmlAttribute, layout, none, padding, paddingEach, px, rgb, row, spacing, text, width)
 import Element.Background as Background
+import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
+import Element.Input as Input
 import FontAwesome.Styles as Icon
 import Html exposing (Html)
+import Html.Attributes
 import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel
 import Morphir.Visual.Components.Picklist as Picklist
 import Morphir.Visual.Components.TabsComponent as TabsComponent
-import Morphir.Visual.Theme as Theme exposing (Theme)
+import Morphir.Visual.Theme as Theme exposing (Colors, Theme)
 
 
 main : Program () Model Msg
@@ -28,6 +32,7 @@ type alias Model =
 
 type alias Components =
     { theme : Theme
+    , highlightingColor : Bool
     , activeTab : Int
     , drillDownIsOpen : Bool
     , picklist : Picklist.State
@@ -37,6 +42,9 @@ type alias Components =
 
 type Msg
     = DoNothing
+    | IncreaseFontSize
+    | DecreaseFontSize
+    | HighlightColor (Colors -> Colors)
     | SwitchTab Int
     | OpenDrillDown
     | CloseDrillDown
@@ -47,9 +55,18 @@ type Msg
 init : Model
 init =
     let
+        theme =
+            Theme.fromConfig Nothing
+
+        adjustedTheme =
+            { theme
+                | fontSize = 12
+            }
+
         components : Components
         components =
-            { theme = Theme.fromConfig Nothing
+            { theme = adjustedTheme
+            , highlightingColor = False
             , activeTab = 0
             , drillDownIsOpen = False
             , picklist = Picklist.init
@@ -90,13 +107,67 @@ update msg model =
                 | drillDownIsOpen = False
             }
 
+        HighlightColor updateColors ->
+            let
+                theme =
+                    model.theme
+
+                defaultTheme =
+                    Theme.fromConfig Nothing
+            in
+            if model.highlightingColor then
+                { model
+                    | theme =
+                        { theme
+                            | colors = defaultTheme.colors
+                        }
+                    , highlightingColor = False
+                }
+
+            else
+                { model
+                    | theme =
+                        { theme
+                            | colors = updateColors theme.colors
+                        }
+                    , highlightingColor = True
+                }
+
+        IncreaseFontSize ->
+            let
+                theme =
+                    model.theme
+            in
+            { model
+                | theme =
+                    { theme
+                        | fontSize = theme.fontSize + 4
+                    }
+            }
+
+        DecreaseFontSize ->
+            let
+                theme =
+                    model.theme
+            in
+            { model
+                | theme =
+                    { theme
+                        | fontSize = theme.fontSize - 4
+                    }
+            }
+
 
 view : Model -> Html Msg
 view model =
     Html.div []
         [ Icon.css
         , layout [ Font.size 12 ]
-            (viewComponents model)
+            (column []
+                [ viewTheme model.theme
+                , viewComponents model
+                ]
+            )
         ]
 
 
@@ -138,7 +209,7 @@ viewComponents c =
             , viewComponent "Picklist"
                 (text (Debug.toString c.picklist))
                 (text (Debug.toString c.picklistSelection))
-                (Picklist.view
+                (Picklist.view c.theme
                     { state = c.picklist
                     , onStateChange = PicklistChanged
                     , selectedTag = c.picklistSelection
@@ -171,3 +242,66 @@ viewComponent title internalState externalState component =
                 component
             ]
         ]
+
+
+viewTheme : Theme -> Element Msg
+viewTheme theme =
+    column [ padding 20, spacing 20 ]
+        [ row [ spacing 20 ]
+            [ row [ spacing 10 ]
+                [ text "Font size:"
+                , text (String.fromInt theme.fontSize)
+                , Input.button []
+                    { onPress = Just IncreaseFontSize
+                    , label = el [ padding 4 ] (text "+")
+                    }
+                , Input.button []
+                    { onPress = Just DecreaseFontSize
+                    , label = el [ padding 4 ] (text "-")
+                    }
+                ]
+            , row [ spacing 10 ] [ text "Colors:" ]
+            , viewColors theme.colors
+            ]
+        ]
+
+
+viewColors : Colors -> Element Msg
+viewColors colors =
+    let
+        highlight =
+            rgb 1 0 0
+    in
+    row [ spacing 4 ]
+        ([ ( colors.lightest, \c -> { c | lightest = highlight }, "lightest" )
+         , ( colors.darkest, \c -> { c | darkest = highlight }, "darkest" )
+         , ( colors.primaryHighlight, \c -> { c | primaryHighlight = highlight }, "primaryHighlight" )
+         , ( colors.secondaryHighlight, \c -> { c | secondaryHighlight = highlight }, "secondaryHighlight" )
+         , ( colors.positive, \c -> { c | positive = highlight }, "positive" )
+         , ( colors.positiveLight, \c -> { c | positiveLight = highlight }, "positiveLight" )
+         , ( colors.negative, \c -> { c | negative = highlight }, "negative" )
+         , ( colors.negativeLight, \c -> { c | negativeLight = highlight }, "negativeLight" )
+         , ( colors.backgroundColor, \c -> { c | backgroundColor = highlight }, "backgroundColor" )
+         , ( colors.selectionColor, \c -> { c | selectionColor = highlight }, "selectionColor" )
+         , ( colors.secondaryInformation, \c -> { c | secondaryInformation = highlight }, "secondaryInformation" )
+         , ( colors.gray, \c -> { c | gray = highlight }, "gray" )
+         ]
+            |> List.map
+                (\( color, updateColors, name ) ->
+                    row
+                        [ spacing 10
+                        , Events.onClick (HighlightColor updateColors)
+                        ]
+                        [ el
+                            [ width (px 16)
+                            , height (px 16)
+                            , Background.color color
+                            , Border.width 1
+                            , htmlAttribute (Html.Attributes.title name)
+                            ]
+                            none
+
+                        --, text name
+                        ]
+                )
+        )

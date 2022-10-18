@@ -61,7 +61,7 @@ module Morphir.Visual.Components.Picklist exposing (State, init, view)
 
 -}
 
-import Element exposing (Element, alignRight, below, column, el, fill, focused, height, html, mouseOver, moveDown, none, paddingEach, px, rgb255, rgba, row, spacing, text, width)
+import Element exposing (Element, alignRight, below, column, el, fill, focused, height, html, htmlAttribute, mouseOver, moveDown, none, paddingEach, px, rgb255, rgba, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -70,16 +70,15 @@ import Element.Input as Input
 import FontAwesome as Icon
 import FontAwesome.Attributes as Icon
 import FontAwesome.Solid as Icon
+import Html.Attributes
+import Morphir.Visual.Common exposing (colorToSvg)
+import Morphir.Visual.Theme as Theme exposing (Theme)
 import Svg.Attributes
 
 
-{-| Opaque type that contains the internal state of this component.
+{-| Type that contains the internal state of this component.
 -}
-type State
-    = State InternalState
-
-
-type alias InternalState =
+type alias State =
     { dropDownOpen : Bool
     }
 
@@ -91,12 +90,11 @@ type Msg tag
 
 init : State
 init =
-    State
-        { dropDownOpen = False
-        }
+    { dropDownOpen = False
+    }
 
 
-update : Msg tag -> InternalState -> InternalState
+update : Msg tag -> State -> State
 update msg state =
     case msg of
         ToggleDropdown ->
@@ -131,9 +129,20 @@ type alias Config msg tag =
     }
 
 
-{-| -}
-view : Config msg tag -> List ( tag, Element msg ) -> Element msg
-view config selectableValues =
+{-| Invoke this from your view function to display the component. Arguments:
+
+  - _theme_
+      - Configuration that controls the styling of the component.
+  - _config_
+      - This is where you should do your wiring of states and event handlers. See the docs on `Config` for more details.
+  - _selectableValues_
+      - This is where you can specify what will be in the drop-down list. It's a tuple with 2 elements:
+          - The "tag" value that is returned by the selection change event.
+          - The visual representation.
+
+-}
+view : Theme -> Config msg tag -> List ( tag, Element msg ) -> Element msg
+view theme config selectableValues =
     let
         selectedValue : Maybe (Element msg)
         selectedValue =
@@ -151,51 +160,48 @@ view config selectableValues =
                                 )
                             |> List.head
                     )
-
-        internalState : InternalState
-        internalState =
-            case config.state of
-                State s ->
-                    s
     in
     Input.button
         [ width (px 240)
         , height (px 30)
         , paddingEach
             { top = 0
-            , right = 12
+            , right = theme |> Theme.mediumPadding
             , bottom = 0
-            , left = 12
+            , left = theme |> Theme.mediumPadding
             }
         , Border.width 1
-        , Border.rounded 4
+        , Theme.borderRounded
         , Border.color (grey 201)
+        , Font.size theme.fontSize
+        , Background.color theme.colors.lightest
         , focused
-            [ Border.color (rgb255 27 150 255)
+            [ Border.color theme.colors.primaryHighlight
             , Border.shadow
                 { offset = ( 0, 0 )
                 , size = 0
                 , blur = 3
-                , color = rgb255 1 118 211
+                , color = theme.colors.primaryHighlight
                 }
             ]
         , below
-            (if internalState.dropDownOpen then
-                viewDropdown config.selectedTag config.onSelectionChange selectableValues
+            (if config.state.dropDownOpen then
+                viewDropdown theme config.selectedTag config.onSelectionChange selectableValues
 
              else
                 none
             )
-        , Events.onLoseFocus (config.onStateChange (State (update CloseDropdown internalState)))
+        , Events.onLoseFocus (config.onStateChange (update CloseDropdown config.state))
         ]
-        { onPress = Just (config.onStateChange (State (update ToggleDropdown internalState)))
+        { onPress = Just (config.onStateChange (update ToggleDropdown config.state))
         , label =
             let
                 labelContent : Element msg
                 labelContent =
                     case selectedValue of
                         Just selected ->
-                            selected
+                            el [ htmlAttribute (Html.Attributes.style "text-overflow" "ellipsis") ]
+                                selected
 
                         Nothing ->
                             el
@@ -211,8 +217,8 @@ view config selectableValues =
         }
 
 
-viewDropdown : Maybe tag -> (Maybe tag -> msg) -> List ( tag, Element msg ) -> Element msg
-viewDropdown selectedTag onSelectionChange selectableValues =
+viewDropdown : Theme -> Maybe tag -> (Maybe tag -> msg) -> List ( tag, Element msg ) -> Element msg
+viewDropdown theme selectedTag onSelectionChange selectableValues =
     let
         viewListItem : { icon : Element msg, label : Element msg, onClick : msg } -> Element msg
         viewListItem args =
@@ -220,12 +226,12 @@ viewDropdown selectedTag onSelectionChange selectableValues =
                 [ height (px 32)
                 , width fill
                 , paddingEach
-                    { top = 8
-                    , right = 12
-                    , bottom = 8
-                    , left = 12
+                    { top = theme |> Theme.smallPadding
+                    , right = theme |> Theme.mediumPadding
+                    , bottom = theme |> Theme.smallPadding
+                    , left = theme |> Theme.mediumPadding
                     }
-                , spacing 8
+                , spacing (theme |> Theme.smallSpacing)
                 , Font.color (grey 24)
                 , mouseOver
                     [ Background.color (grey 243)
@@ -244,7 +250,7 @@ viewDropdown selectedTag onSelectionChange selectableValues =
             else
                 [ viewListItem
                     { icon =
-                        html (Icon.xmark |> Icon.styled [ Icon.lg, Svg.Attributes.color "rgb(201, 201, 201)" ] |> Icon.view)
+                        html (Icon.xmark |> Icon.styled [ Icon.lg, Svg.Attributes.color (colorToSvg theme.colors.gray) ] |> Icon.view)
                     , label =
                         el [ Font.color (grey 160) ] (text "Clear selection")
                     , onClick = onSelectionChange Nothing
@@ -259,7 +265,7 @@ viewDropdown selectedTag onSelectionChange selectableValues =
                         viewListItem
                             { icon =
                                 if selectedTag == Just tag then
-                                    html (Icon.check |> Icon.styled [ Icon.lg, Svg.Attributes.color "rgb(1, 118, 211)" ] |> Icon.view)
+                                    html (Icon.check |> Icon.styled [ Icon.lg, Svg.Attributes.color (colorToSvg theme.colors.primaryHighlight) ] |> Icon.view)
 
                                 else
                                     none
@@ -288,6 +294,7 @@ viewDropdown selectedTag onSelectionChange selectableValues =
             , blur = 3
             , color = shadow 0.16
             }
+        , Background.color theme.colors.lightest
         ]
         (column
             [ width fill
