@@ -69,7 +69,7 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Components.TabsComponent exposing (TabsComponentConfig, tabsComponent)
+import Morphir.Visual.Components.TabsComponent as TabsComponent exposing (view)
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
@@ -1849,7 +1849,7 @@ viewDefinitionDetails model =
                                                     ir =
                                                         IR.fromDistribution distribution
                                                 in
-                                                Just <| tabsComponent
+                                                Just <| TabsComponent.view
                                                     { theme = model.theme
                                                     , onSwitchTab = UI << SwitchTab
                                                     , activeTab = model.activeTabIndex

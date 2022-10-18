@@ -1,4 +1,35 @@
-module Morphir.Visual.Components.TabsComponent exposing (..)
+module Morphir.Visual.Components.TabsComponent exposing (TabsComponentConfig, Tab, view)
+
+{-| This module implements a component that allows users to pick between content displayed in tabs.
+
+
+# Usage
+
+
+    type alias Model =
+        { activeTab : Int -- the index of the selected tab
+
+        -- ... other fields ...
+        }
+
+    type Msg
+        = SwitchTab Int -- message used to change the active tab
+
+    -- ... other messages ...
+    update : Msg -> Model -> Model
+    update msg model =
+        case msg of
+            SwitchTab index ->
+                -- when the
+                { model
+                    | activeTab = index
+                }
+
+    -- ... other message handler ... --
+
+@docs TabsComponentConfig, Tab, view
+
+-}
 
 import Array exposing (Array)
 import Element exposing (Element, column, el, fill, height, mouseOver, none, padding, pointer, row, spacing, text, width)
@@ -8,6 +39,32 @@ import Element.Font as Font
 import Morphir.Visual.Theme as Theme exposing (Theme)
 
 
+{-| A type defining a tab:
+
+  - _name_
+      - The name of the tab displayed on the tab header.
+      - _content_
+          - The content displayed when the tab is active.
+
+-}
+type alias Tab msg =
+    { name : String
+    , content : Element msg
+    }
+
+
+{-| Configuration for the tabs component:
+
+  - _theme_
+      - Theme configuration.
+      - _tabs_
+          - List of tabs content elements.
+  - _onSwitchTab_
+      - Called when a tab header is clicked.
+  - _activeTab_
+      - The index of the actibe tab.
+
+-}
 type alias TabsComponentConfig msg =
     { theme : Theme
     , tabs : Array (Tab msg)
@@ -16,14 +73,12 @@ type alias TabsComponentConfig msg =
     }
 
 
-type alias Tab msg =
-    { name : String
-    , content : Element msg
-    }
 
-
-tabsComponent : TabsComponentConfig msg -> Element msg
-tabsComponent config =
+{-
+   Display a Tabs Component
+-}
+view : TabsComponentConfig msg -> Element msg
+view config =
     let
         tabHeader : String -> Int -> Element msg
         tabHeader name index =
