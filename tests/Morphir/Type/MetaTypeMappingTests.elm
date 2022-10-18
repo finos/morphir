@@ -9,7 +9,8 @@ import Morphir.IR.SDK as SDK
 import Morphir.IR.SDK.Basics exposing (boolType, intType)
 import Morphir.IR.SDK.String exposing (stringType)
 import Morphir.IR.Type as Type
-import Morphir.Type.MetaType as MetaType exposing (MetaType(..), metaAlias, metaRecord, variableByIndex)
+import Morphir.Type.Count as Count
+import Morphir.Type.MetaType as MetaType exposing (MetaType(..), metaAlias, metaClosedRecord, metaRecord, variableByIndex)
 import Morphir.Type.MetaTypeMapping exposing (concreteTypeToMetaType)
 import Set
 import Test exposing (Test, describe, test)
@@ -20,11 +21,13 @@ concreteTypeToMetaTypeTests =
     describe "concreteTypeToMetaType"
         [ test "alias lookup"
             (\_ ->
-                concreteTypeToMetaType (variableByIndex 0) testIR Dict.empty (Type.Reference () (fqn "Test" "Test" "FooBarBazRecord") [])
+                concreteTypeToMetaType testIR Dict.empty (Type.Reference () (fqn "Test" "Test" "FooBarBazRecord") [])
+                    |> Count.apply 0
+                    |> Tuple.second
                     |> Expect.equal
                         (metaAlias (fqn "Test" "Test" "FooBarBazRecord")
                             []
-                            (metaRecord Nothing
+                            (metaClosedRecord 0
                                 (Dict.fromList
                                     [ ( [ "foo" ], MetaType.stringType )
                                     , ( [ "bar" ], MetaType.boolType )

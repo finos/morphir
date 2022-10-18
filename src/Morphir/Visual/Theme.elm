@@ -7,6 +7,7 @@ import Element.Font as Font exposing (center)
 import Element.Input as Input
 import Html exposing (div, text)
 import Html.Attributes exposing (style)
+import Element exposing (Attr)
 
 
 type alias Theme =
@@ -70,13 +71,13 @@ fromConfig : Maybe ThemeConfig -> Theme
 fromConfig maybeConfig =
     case maybeConfig of
         Just config ->
-            { fontSize = config.fontSize |> Maybe.withDefault 12
+            { fontSize = config.fontSize |> Maybe.withDefault 10
             , decimalDigit = config.decimalDigit |> Maybe.withDefault 2
             , colors = defaultColors
             }
 
         Nothing ->
-            { fontSize = 12
+            { fontSize = 10
             , decimalDigit = 2
             , colors = defaultColors
             }
@@ -114,6 +115,10 @@ largePadding theme =
 borderRounded : Attribute msg
 borderRounded = 
     Border.rounded 3
+
+borderBottom : Int -> Attribute msg
+borderBottom width = 
+    Border.widthEach { top = 0, left = 0, right = 0, bottom = width }
 
 scaled : Int -> Theme -> Int
 scaled scaleValue theme =

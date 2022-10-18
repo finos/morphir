@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, padding, rgb, row, spacing, text, width)
+import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, padding, paddingEach, rgb, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -32,11 +32,19 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
         drillDownPanel : FQName -> Depth -> Element msg -> Element msg -> Element msg -> Bool -> Element msg
         drillDownPanel fqName depth closedElement openHeader openElement isOpen =
-            DrillDownPanel.drillDownPanel { openMsg = config.handlers.onReferenceClicked fqName (getId functionValue) config.nodePath, closeMsg = config.handlers.onReferenceClose fqName (getId functionValue) config.nodePath } depth closedElement openHeader openElement isOpen
+            DrillDownPanel.drillDownPanel
+                { openMsg = config.handlers.onReferenceClicked fqName (getId functionValue) config.nodePath
+                , closeMsg = config.handlers.onReferenceClose fqName (getId functionValue) config.nodePath
+                , depth = depth
+                , closedElement = closedElement
+                , openElement = openElement
+                , openHeader = openHeader
+                , isOpen = isOpen
+                }
 
         viewFunctionValue : FQName -> Element msg
         viewFunctionValue fqName =
-            el [borderRounded, Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName) ] <| viewValue functionValue
+            el [ borderRounded, Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName) ] <| viewValue functionValue
 
         functionOutput : FQName -> Element msg
         functionOutput fqName =
@@ -220,7 +228,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
                             fqName
                     in
                     row []
-                        [ el [ Background.color <| config.state.theme.colors.selectionColor, padding 3] (text (nameToText valueName))
+                        [ el [ Background.color <| config.state.theme.colors.selectionColor, smallPadding config.state.theme |> padding ] (text (nameToText valueName))
                         , argList
                         , text " = "
                         ]
