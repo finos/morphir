@@ -4,7 +4,7 @@ import Element exposing (Element, column, el, fill, padding, pointer, row, text,
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
-import Morphir.Visual.Theme exposing (borderRounded)
+import Morphir.Visual.Theme exposing (Theme, borderRounded)
 
 
 type alias PanelConfig msg =
@@ -22,8 +22,8 @@ type alias Depth =
     Int
 
 
-drillDownPanel : PanelConfig msg ->  Element msg
-drillDownPanel config  =
+drillDownPanel : Theme -> PanelConfig msg -> Element msg
+drillDownPanel theme config =
     let
         depthColor =
             let
@@ -38,8 +38,8 @@ drillDownPanel config  =
                 }
     in
     if config.isOpen then
-        column [ borderRounded, Border.width 1, Border.color depthColor, padding <| (config.depth + 1) * 3, Border.innerGlow depthColor (toFloat config.depth + 3)]
-            [ row [ padding 1, pointer, onClick config.closeMsg, Font.size 11, Border.width 1, Border.color depthColor, borderRounded ] [ text " ⮟ ", config.openHeader ]
+        column [ theme |> borderRounded, Border.width 1, Border.color depthColor, padding <| (config.depth + 1) * 3, Border.innerGlow depthColor (toFloat config.depth + 3) ]
+            [ row [ padding 1, pointer, onClick config.closeMsg, Font.size 11, Border.width 1, Border.color depthColor, theme |> borderRounded ] [ text " ⮟ ", config.openHeader ]
             , el [ width fill ] config.openElement
             ]
 

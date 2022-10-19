@@ -420,7 +420,6 @@ update msg model =
                 ShrinkVariable varIndex nodePath ->
                     ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing nodePath } }, Cmd.none )
 
-
                 ArgValueUpdated argName editorState ->
                     let
                         variables : InsightArgumentState -> Dict Name (Value () ())
@@ -967,7 +966,7 @@ viewHome model packageName packageDef =
         listStyles =
             [ width fill
             , Background.color model.theme.colors.lightest
-            , Theme.borderRounded
+            , model.theme |> Theme.borderRounded
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
             ]
 
@@ -1171,7 +1170,7 @@ viewHome model packageName packageDef =
             Element.Input.button
                 [ padding 7
                 , Background.color <| ifThenElse model.showModules lightMorphIrBlue lightMorphIrOrange
-                , Theme.borderRounded
+                , model.theme |> Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
                 , Font.size (model.theme |> Theme.scaled 2)
@@ -1187,7 +1186,7 @@ viewHome model packageName packageDef =
             Element.Input.button
                 [ padding 7
                 , Background.color <| ifThenElse model.showDefinitions lightMorphIrBlue lightMorphIrOrange
-                , Theme.borderRounded
+                , model.theme |> Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
                 , Font.size (model.theme |> Theme.scaled 2)
@@ -1599,7 +1598,7 @@ viewDefinitionDetails model =
         buttonStyles : List (Element.Attribute msg)
         buttonStyles =
             [ padding 7
-            , Theme.borderRounded
+            , model.theme |> Theme.borderRounded
             , Background.color model.theme.colors.darkest
             , Font.color model.theme.colors.lightest
             , Font.bold
@@ -1649,7 +1648,7 @@ viewDefinitionDetails model =
             row [ spacing (model.theme |> Theme.scaled 2) ] <|
                 ifThenElse (List.isEmpty testCase.inputs)
                     []
-                    [ row [ Theme.borderRounded, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
+                    [ row [ model.theme |> Theme.borderRounded, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
                         (case evaluateOutput ir testCase.inputs fQName of
                             Ok rawValue ->
                                 case rawValue of
@@ -1738,7 +1737,7 @@ viewDefinitionDetails model =
                                     [ Background.color model.theme.colors.darkest
                                     , Font.color model.theme.colors.lightest
                                     , padding (model.theme |> Theme.scaled -2)
-                                    , Theme.borderRounded
+                                    , model.theme |> Theme.borderRounded
                                     , Font.size (model.theme |> Theme.scaled 2)
                                     , Font.bold
                                     , Border.shadow
@@ -1849,28 +1848,34 @@ viewDefinitionDetails model =
                                                     ir =
                                                         IR.fromDistribution distribution
                                                 in
-                                                Just <| TabsComponent.view
-                                                    { theme = model.theme
-                                                    , onSwitchTab = UI << SwitchTab
-                                                    , activeTab = model.activeTabIndex
-                                                    , tabs = Array.fromList [ 
-                                                        { name = "Insight View", content =column
-                                                                [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
-                                                                [ column [ spacing (model.theme |> Theme.scaled 5) ]
-                                                                    [ el [ Font.bold, Font.underline ] (text "INPUTS")
-                                                                    , viewArgumentEditors ir model.argStates valueDef.inputTypes
-                                                                    , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
-                                                                    , viewActualOutput
-                                                                        model.theme
-                                                                        ir
-                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                        fullyQualifiedName
-                                                                    , ifThenElse (Dict.isEmpty model.argStates) none descriptionInput
-                                                                    ]
-                                                                , scenarios fullyQualifiedName ir valueDef.inputTypes
-                                                                ] }, 
-                                                        { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef } ]
-                                                    }
+                                                Just <|
+                                                    TabsComponent.view
+                                                        { theme = model.theme
+                                                        , onSwitchTab = UI << SwitchTab
+                                                        , activeTab = model.activeTabIndex
+                                                        , tabs =
+                                                            Array.fromList
+                                                                [ { name = "Insight View"
+                                                                  , content =
+                                                                        column
+                                                                            [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
+                                                                            [ column [ spacing (model.theme |> Theme.scaled 5) ]
+                                                                                [ el [ Font.bold, Font.underline ] (text "INPUTS")
+                                                                                , viewArgumentEditors ir model.argStates valueDef.inputTypes
+                                                                                , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                                , viewActualOutput
+                                                                                    model.theme
+                                                                                    ir
+                                                                                    { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                    fullyQualifiedName
+                                                                                , ifThenElse (Dict.isEmpty model.argStates) none descriptionInput
+                                                                                ]
+                                                                            , scenarios fullyQualifiedName ir valueDef.inputTypes
+                                                                            ]
+                                                                  }
+                                                                , { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef }
+                                                                ]
+                                                        }
                                             )
                                         |> Maybe.withDefault none
 

@@ -1,4 +1,4 @@
-module Morphir.Visual.Common exposing (cssClass, element, grayScale, nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
+module Morphir.Visual.Common exposing (colorToSvg, cssClass, element, grayScale, nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 
 import Element exposing (Attribute, Color, Element, el, fill, height, htmlAttribute, inFront, mouseOver, none, rgb, shrink, transparent, width)
 import Html exposing (Html)
@@ -73,3 +73,26 @@ tooltip usher tooltip_ =
                     tooltip_
             ]
             none
+
+
+colorToSvg : Color -> String
+colorToSvg color =
+    let
+        to255 : Float -> Int
+        to255 f =
+            round (255 * f)
+
+        rgba =
+            Element.toRgb color
+    in
+    String.concat
+        [ "rgba("
+        , rgba.red |> to255 |> String.fromInt
+        , ", "
+        , rgba.green |> to255 |> String.fromInt
+        , ", "
+        , rgba.blue |> to255 |> String.fromInt
+        , ", "
+        , rgba.alpha |> String.fromFloat
+        , ")"
+        ]
