@@ -55,6 +55,22 @@ defaultColors =
     , gray = rgb 0.9 0.9 0.9
     }
 
+morphIrBlue : Element.Color
+morphIrBlue =
+     rgb 0 0.639 0.882
+
+lightMorphIrBlue : Element.Color
+lightMorphIrBlue =
+    rgba 0 0.639 0.882 0.3
+
+morphIrOrange : Element.Color
+morphIrOrange =
+    rgb 1 0.411 0
+
+lightMorphIrOrange : Element.Color
+lightMorphIrOrange =
+    rgba 1 0.411 0 0.3
+
 labelStyles : Theme -> List (Attribute msg)
 labelStyles theme =
             [ width fill

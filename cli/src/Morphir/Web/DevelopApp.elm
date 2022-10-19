@@ -69,6 +69,7 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.SelectableElement as SelectableElement
 import Morphir.Visual.Components.TabsComponent as TabsComponent exposing (view)
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
@@ -243,6 +244,7 @@ type TestingMsg
 type NavigationMsg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
+    | DefinitionSelected String
 
 
 type UIMsg
@@ -311,6 +313,9 @@ update msg model =
 
                 UrlChanged url ->
                     ( toRoute url model, Cmd.none )
+
+                DefinitionSelected url ->
+                    ( model, Nav.pushUrl model.key url )
 
         HttpError httpError ->
             case model.irState of
@@ -419,7 +424,6 @@ update msg model =
 
                 ShrinkVariable varIndex nodePath ->
                     ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing nodePath } }, Cmd.none )
-
 
                 ArgValueUpdated argName editorState ->
                     let
@@ -946,22 +950,6 @@ viewBody model =
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
 viewHome model packageName packageDef =
     let
-        morphIrBlue : Element.Color
-        morphIrBlue =
-            rgb 0 0.639 0.882
-
-        lightMorphIrBlue : Element.Color
-        lightMorphIrBlue =
-            rgba 0 0.639 0.882 0.6
-
-        morphIrOrange : Element.Color
-        morphIrOrange =
-            rgb 1 0.411 0
-
-        lightMorphIrOrange : Element.Color
-        lightMorphIrOrange =
-            rgba 1 0.411 0 0.6
-
         -- Styles to make the module tree and the definition list
         listStyles : List (Element.Attribute msg)
         listStyles =
@@ -1013,19 +1001,36 @@ viewHome model packageName packageDef =
         moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List ( Definition, Element Msg )
         moduleDefinitionsAsUiElements moduleName moduleDef =
             let
+                definitionUiElement icon definition name nameTransformation =
+                    let
+                        elem : Element Msg
+                        elem =
+                            row
+                                [ width fill
+                                , Font.size (model.theme |> Theme.scaled 2)
+                                ]
+                                [ icon
+                                , el
+                                    [ paddingXY (model.theme |> Theme.scaled -10) (model.theme |> Theme.scaled -3)
+                                    ]
+                                    (text (nameToText name))
+                                , el
+                                    [ alignRight
+                                    , Font.color model.theme.colors.secondaryInformation
+                                    , paddingXY (model.theme |> Theme.scaled -10) (model.theme |> Theme.scaled -3)
+                                    ]
+                                    (text (pathToDisplayString moduleName))
+                                ]
+                    in
+                    SelectableElement.view model.theme
+                        { isSelected = model.homeState.selectedDefinition == Just definition
+                        , content = elem
+                        , onSelect = Navigate (DefinitionSelected (linkToDefinition name nameTransformation))
+                        }
+
                 linkToDefinition : Name -> (Name -> String) -> String
                 linkToDefinition name nameTransformation =
                     pathToFullUrl [ packageName, moduleName ] ++ "/" ++ nameTransformation name ++ filterStateToQueryParams model.homeState.filterState
-
-                createUiElement : Element Msg -> Definition -> Name -> (Name -> String) -> Element Msg
-                createUiElement icon definition name nameTransformation =
-                    viewAsLabel
-                        model.theme
-                        (model.homeState.selectedDefinition == Just definition)
-                        icon
-                        (text (nameToText name))
-                        (pathToDisplayString moduleName)
-                        (linkToDefinition name nameTransformation)
 
                 createElementKey : List Name -> Name -> String
                 createElementKey mname name =
@@ -1038,7 +1043,7 @@ viewHome model packageName packageDef =
                         |> List.map
                             (\( typeName, _ ) ->
                                 ( Type ( moduleName, typeName )
-                                , createUiElement (Element.Keyed.el [ Font.color lightMorphIrBlue ] ( createElementKey moduleName typeName, text "ⓣ " )) (Type ( moduleName, typeName )) typeName Name.toTitleCase
+                                , definitionUiElement (Element.Keyed.el [ Font.color Theme.morphIrBlue ] ( createElementKey moduleName typeName, text " ⓣ " )) (Type ( moduleName, typeName )) typeName Name.toTitleCase
                                 )
                             )
 
@@ -1049,7 +1054,7 @@ viewHome model packageName packageDef =
                         |> List.map
                             (\( valueName, _ ) ->
                                 ( Value ( moduleName, valueName )
-                                , createUiElement (Element.Keyed.el [ Font.color lightMorphIrOrange ] ( createElementKey moduleName valueName, text "ⓥ " )) (Value ( moduleName, valueName )) valueName Name.toCamelCase
+                                , definitionUiElement (Element.Keyed.el [ Font.color Theme.morphIrOrange ] ( createElementKey moduleName valueName, text " ⓥ " )) (Value ( moduleName, valueName )) valueName Name.toCamelCase
                                 )
                             )
             in
@@ -1170,12 +1175,12 @@ viewHome model packageName packageDef =
         toggleModulesMenu =
             Element.Input.button
                 [ padding 7
-                , Background.color <| ifThenElse model.showModules lightMorphIrBlue lightMorphIrOrange
+                , Background.color <| ifThenElse model.showModules Theme.lightMorphIrBlue Theme.lightMorphIrOrange
                 , Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
                 , Font.size (model.theme |> Theme.scaled 2)
-                , mouseOver [ Background.color <| ifThenElse model.showModules morphIrBlue morphIrOrange ]
+                , mouseOver [ Background.color <| ifThenElse model.showModules Theme.morphIrBlue Theme.morphIrOrange ]
                 ]
                 { onPress = Just (UI ToggleModulesMenu)
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showModules "🗁" "🗀", text "Modules" ]
@@ -1186,12 +1191,12 @@ viewHome model packageName packageDef =
         toggleDefinitionsMenu =
             Element.Input.button
                 [ padding 7
-                , Background.color <| ifThenElse model.showDefinitions lightMorphIrBlue lightMorphIrOrange
+                , Background.color <| ifThenElse model.showDefinitions Theme.lightMorphIrBlue Theme.lightMorphIrOrange
                 , Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
                 , Font.size (model.theme |> Theme.scaled 2)
-                , mouseOver [ Background.color <| ifThenElse model.showDefinitions morphIrBlue morphIrOrange ]
+                , mouseOver [ Background.color <| ifThenElse model.showDefinitions Theme.morphIrBlue Theme.morphIrOrange ]
                 ]
                 { onPress = Just (UI ToggleDefinitionsMenu)
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showDefinitions "🗁" "🗀", text "Definitions" ]
@@ -1365,45 +1370,6 @@ viewValue theme moduleName valueName valueDef docs =
         backgroundColor
         (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
         none
-
-
-{-| Display a Definition with its name and path as a clickable UI element with a url pointing to the Definition
--}
-viewAsLabel : Theme -> Bool -> Element msg -> Element msg -> String -> String -> Element msg
-viewAsLabel theme shouldColorBg icon header class url =
-    let
-        elem =
-            row
-                ([ width fill
-                 , Font.size (theme |> Theme.scaled 2)
-                 ]
-                    ++ ifThenElse shouldColorBg [ Background.color theme.colors.selectionColor ] []
-                )
-                [ icon
-                , el
-                    [ Font.bold
-                    , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
-                    ]
-                    header
-                , el
-                    ([ alignRight
-                     , Font.color theme.colors.secondaryInformation
-                     , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
-                     ]
-                        ++ ifThenElse shouldColorBg [ Background.color theme.colors.selectionColor ] []
-                    )
-                  <|
-                    text class
-                ]
-    in
-    link
-        [ Border.color theme.colors.lightest
-        , Theme.borderBottom 1
-        , mouseOver [ Border.color theme.colors.darkest ]
-        , pointer
-        , width fill
-        ]
-        { label = elem, url = url }
 
 
 
@@ -1849,28 +1815,33 @@ viewDefinitionDetails model =
                                                     ir =
                                                         IR.fromDistribution distribution
                                                 in
-                                                Just <| TabsComponent.view
-                                                    { theme = model.theme
-                                                    , onSwitchTab = UI << SwitchTab
-                                                    , activeTab = model.activeTabIndex
-                                                    , tabs = Array.fromList [ 
-                                                        { name = "Insight View", content =column
-                                                                [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
-                                                                [ column [ spacing (model.theme |> Theme.scaled 5) ]
-                                                                    [ el [ Font.bold, Font.underline ] (text "INPUTS")
-                                                                    , viewArgumentEditors ir model.argStates valueDef.inputTypes
-                                                                    , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
-                                                                    , viewActualOutput
-                                                                        model.theme
-                                                                        ir
-                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                        fullyQualifiedName
-                                                                    , ifThenElse (Dict.isEmpty model.argStates) none descriptionInput
-                                                                    ]
-                                                                , scenarios fullyQualifiedName ir valueDef.inputTypes
-                                                                ] }, 
-                                                        { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef } ]
-                                                    }
+                                                Just <|
+                                                    TabsComponent.view model.theme
+                                                        { onSwitchTab = UI << SwitchTab
+                                                        , activeTab = model.activeTabIndex
+                                                        , tabs =
+                                                            Array.fromList
+                                                                [ { name = "Insight View"
+                                                                  , content =
+                                                                        column
+                                                                            [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
+                                                                            [ column [ spacing (model.theme |> Theme.scaled 5) ]
+                                                                                [ el [ Font.bold, Font.underline ] (text "INPUTS")
+                                                                                , viewArgumentEditors ir model.argStates valueDef.inputTypes
+                                                                                , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                                , viewActualOutput
+                                                                                    model.theme
+                                                                                    ir
+                                                                                    { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                    fullyQualifiedName
+                                                                                , ifThenElse (Dict.isEmpty model.argStates) none descriptionInput
+                                                                                ]
+                                                                            , scenarios fullyQualifiedName ir valueDef.inputTypes
+                                                                            ]
+                                                                  }
+                                                                , { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef }
+                                                                ]
+                                                        }
                                             )
                                         |> Maybe.withDefault none
 
