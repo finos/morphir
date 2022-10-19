@@ -178,7 +178,7 @@ viewComponents c =
             [ viewComponent "Tabs"
                 none
                 (text (Debug.toString c.activeTab))
-                (TabsComponent.tabsComponent
+                (TabsComponent.view
                     { theme = c.theme
                     , tabs =
                         Array.fromList
@@ -196,7 +196,7 @@ viewComponents c =
             , viewComponent "Drill-down Panel"
                 none
                 (text (Debug.toString c.drillDownIsOpen))
-                (DrillDownPanel.drillDownPanel
+                (DrillDownPanel.drillDownPanel c.theme
                     { openMsg = OpenDrillDown
                     , closeMsg = CloseDrillDown
                     , depth = 1

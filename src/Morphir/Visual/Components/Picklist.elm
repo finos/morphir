@@ -171,7 +171,7 @@ view theme config selectableValues =
             , left = theme |> Theme.mediumPadding
             }
         , Border.width 1
-        , Theme.borderRounded
+        , theme |> Theme.borderRounded
         , Border.color (grey 201)
         , Font.size theme.fontSize
         , Background.color theme.colors.lightest
@@ -286,7 +286,7 @@ viewDropdown theme selectedTag onSelectionChange selectableValues =
             }
         , width fill
         , Border.width 1
-        , Border.rounded 4
+        , theme |> Theme.borderRounded
         , Border.color (grey 229)
         , Border.shadow
             { offset = ( 0, 2 )
