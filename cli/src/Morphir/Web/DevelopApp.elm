@@ -955,7 +955,7 @@ viewHome model packageName packageDef =
         listStyles =
             [ width fill
             , Background.color model.theme.colors.lightest
-            , Theme.borderRounded
+            , model.theme |> Theme.borderRounded
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
             ]
 
@@ -1175,8 +1175,8 @@ viewHome model packageName packageDef =
         toggleModulesMenu =
             Element.Input.button
                 [ padding 7
-                , Background.color <| ifThenElse model.showModules Theme.lightMorphIrBlue Theme.lightMorphIrOrange
-                , Theme.borderRounded
+                , Background.color <| ifThenElse model.showModules lightMorphIrBlue lightMorphIrOrange
+                , model.theme |> Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
                 , Font.size (model.theme |> Theme.scaled 2)
@@ -1191,8 +1191,8 @@ viewHome model packageName packageDef =
         toggleDefinitionsMenu =
             Element.Input.button
                 [ padding 7
-                , Background.color <| ifThenElse model.showDefinitions Theme.lightMorphIrBlue Theme.lightMorphIrOrange
-                , Theme.borderRounded
+                , Background.color <| ifThenElse model.showDefinitions lightMorphIrBlue lightMorphIrOrange
+                , model.theme |> Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
                 , Font.size (model.theme |> Theme.scaled 2)
@@ -1565,7 +1565,7 @@ viewDefinitionDetails model =
         buttonStyles : List (Element.Attribute msg)
         buttonStyles =
             [ padding 7
-            , Theme.borderRounded
+            , model.theme |> Theme.borderRounded
             , Background.color model.theme.colors.darkest
             , Font.color model.theme.colors.lightest
             , Font.bold
@@ -1615,7 +1615,7 @@ viewDefinitionDetails model =
             row [ spacing (model.theme |> Theme.scaled 2) ] <|
                 ifThenElse (List.isEmpty testCase.inputs)
                     []
-                    [ row [ Theme.borderRounded, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
+                    [ row [ model.theme |> Theme.borderRounded, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
                         (case evaluateOutput ir testCase.inputs fQName of
                             Ok rawValue ->
                                 case rawValue of
@@ -1704,7 +1704,7 @@ viewDefinitionDetails model =
                                     [ Background.color model.theme.colors.darkest
                                     , Font.color model.theme.colors.lightest
                                     , padding (model.theme |> Theme.scaled -2)
-                                    , Theme.borderRounded
+                                    , model.theme |> Theme.borderRounded
                                     , Font.size (model.theme |> Theme.scaled 2)
                                     , Font.bold
                                     , Border.shadow

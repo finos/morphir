@@ -32,7 +32,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
         drillDownPanel : FQName -> Depth -> Element msg -> Element msg -> Element msg -> Bool -> Element msg
         drillDownPanel fqName depth closedElement openHeader openElement isOpen =
-            DrillDownPanel.drillDownPanel
+            DrillDownPanel.drillDownPanel config.state.theme
                 { openMsg = config.handlers.onReferenceClicked fqName (getId functionValue) config.nodePath
                 , closeMsg = config.handlers.onReferenceClose fqName (getId functionValue) config.nodePath
                 , depth = depth
@@ -44,7 +44,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
         viewFunctionValue : FQName -> Element msg
         viewFunctionValue fqName =
-            el [ borderRounded, Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName) ] <| viewValue functionValue
+            el [ config.state.theme |> borderRounded, Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName) ] <| viewValue functionValue
 
         functionOutput : FQName -> Element msg
         functionOutput fqName =
@@ -72,7 +72,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
                     [ Background.color config.state.theme.colors.lightest
                     , Font.bold
                     , Font.center
-                    , borderRounded
+                    , config.state.theme |> borderRounded
                     , Border.width 1
                     , smallPadding config.state.theme |> padding
                     ]
@@ -201,7 +201,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
                         Nothing
 
                 closedElement =
-                    row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, borderRounded ] ++ styles)
+                    row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, config.state.theme |> borderRounded ] ++ styles)
                         [ viewFunctionValue fqName
                         , argList
                         ]
@@ -236,7 +236,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
             drillDownPanel fqName (List.length config.nodePath) closedElement openHeader openElement (drillDownContains config.state.drillDownFunctions (getId functionValue) config.nodePath)
 
         _ ->
-            row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, borderRounded ] ++ styles)
+            row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, config.state.theme |> borderRounded ] ++ styles)
                 [ viewFunctionValue ( [], [], [] )
                 , row [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
                     (argValues

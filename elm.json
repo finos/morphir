@@ -72,6 +72,7 @@
         "elm-explorations/test": "1.2.2 <= v < 2.0.0",
         "erlandsona/assoc-set": "1.1.0 <= v < 2.0.0",
         "justinmimbs/date": "3.2.1 <= v < 4.0.0",
+        "lattyware/elm-fontawesome": "6.0.0 <= v < 7.0.0",
         "mdgriffith/elm-ui": "1.1.8 <= v < 2.0.0",
         "pzp1997/assoc-list": "1.0.0 <= v < 2.0.0",
         "rtfeldman/elm-iso8601-date-strings": "1.1.4 <= v < 2.0.0",
