@@ -26,6 +26,7 @@ import Element
         , maximum
         , mouseOver
         , moveDown
+        , moveUp
         , none
         , padding
         , paddingEach
@@ -69,8 +70,9 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.SectionComponent as SectionComponent
 import Morphir.Visual.Components.SelectableElement as SelectableElement
-import Morphir.Visual.Components.TabsComponent as TabsComponent exposing (view)
+import Morphir.Visual.Components.TabsComponent as TabsComponent
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
@@ -125,6 +127,7 @@ type alias Model =
     , selectedTestcaseIndex : Int
     , testDescription : String
     , activeTabIndex : Int
+    , openSections : Set Int
     }
 
 
@@ -197,6 +200,7 @@ init _ url key =
             , selectedTestcaseIndex = -1
             , testDescription = ""
             , activeTabIndex = 0
+            , openSections = Set.empty
             }
     in
     ( toRoute url initModel
@@ -253,6 +257,7 @@ type UIMsg
     | ExpandModule (TreeLayout.NodePath ModuleName)
     | CollapseModule (TreeLayout.NodePath ModuleName)
     | SwitchTab Int
+    | ToggleSection Int
 
 
 type FilterMsg
@@ -378,6 +383,13 @@ update msg model =
 
                 SwitchTab tabIndex ->
                     ( { model | activeTabIndex = tabIndex }, Cmd.none )
+
+                ToggleSection sectionId ->
+                    if Set.member sectionId model.openSections then
+                        ( { model | openSections = Set.remove sectionId model.openSections }, Cmd.none )
+
+                    else
+                        ( { model | openSections = Set.insert sectionId model.openSections }, Cmd.none )
 
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
@@ -1106,7 +1118,7 @@ viewHome model packageName packageDef =
                     in
                     if List.isEmpty displayList then
                         if model.homeState.filterState.searchText == "" then
-                            [ text "Please select a module on the left!" ]
+                            [ text "Please select a module above!" ]
 
                         else
                             [ text "No matching definition in this module." ]
@@ -1175,7 +1187,7 @@ viewHome model packageName packageDef =
         toggleModulesMenu =
             Element.Input.button
                 [ padding 7
-                , Background.color <| ifThenElse model.showModules lightMorphIrBlue lightMorphIrOrange
+                , Background.color <| ifThenElse model.showModules Theme.lightMorphIrBlue Theme.lightMorphIrOrange
                 , model.theme |> Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
@@ -1191,7 +1203,7 @@ viewHome model packageName packageDef =
         toggleDefinitionsMenu =
             Element.Input.button
                 [ padding 7
-                , Background.color <| ifThenElse model.showDefinitions lightMorphIrBlue lightMorphIrOrange
+                , Background.color <| ifThenElse model.showDefinitions Theme.lightMorphIrBlue Theme.lightMorphIrOrange
                 , model.theme |> Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
@@ -1273,7 +1285,7 @@ viewHome model packageName packageDef =
                 [ row
                     [ width fill
                     , spacing (model.theme |> Theme.scaled 1)
-                    , height <| fillPortion 1
+                    , height <| fillPortion 2
                     ]
                     [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
                 , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ]
@@ -1283,40 +1295,19 @@ viewHome model packageName packageDef =
     in
     row [ width fill, height fill, Background.color model.theme.colors.gray, spacing 10 ]
         [ column
-            [ width
-                (ifThenElse model.showDefinitions
-                    (ifThenElse model.showModules (fillPortion 5) (fillPortion 3))
-                    (fillPortion 1)
-                )
+            [ width (fillPortion 1)
             , height fill
-            , paddingXY 0 (model.theme |> Theme.scaled -3)
-            , clipX
+            , padding (model.theme |> Theme.scaled -3)
+            , scrollbars
             ]
-            [ row
-                [ height fill
-                , width fill
-                , spacing <| ifThenElse model.showModules 10 0
-                , clipY
-                ]
-                [ row
-                    [ Background.color model.theme.colors.gray
-                    , height fill
-                    , width (ifThenElse model.showModules (fillPortion 2) (px 40))
-                    , clipX
-                    ]
-                    [ row [ alignTop, rotate (degrees -90), width (px 40), moveDown 165, padding (model.theme |> Theme.scaled -6), spacing (model.theme |> Theme.scaled -6) ] [ toggleDefinitionsMenu, toggleModulesMenu ]
-                    , ifThenElse model.showModules moduleTree none
-                    ]
+            [ column [ width fill, height fill, scrollbars, spacing (model.theme |> Theme.scaled 0) ]
+                [ ifThenElse model.showModules moduleTree none
                 , ifThenElse model.showDefinitions definitionList none
                 ]
             ]
         , column
             [ height fill
-            , width
-                (ifThenElse model.showDefinitions
-                    (ifThenElse model.showModules (fillPortion 6) (fillPortion 7))
-                    (fillPortion 46)
-                )
+            , width (fillPortion 4)
             , Background.color model.theme.colors.lightest
             , scrollbars
             ]
@@ -1779,14 +1770,8 @@ viewDefinitionDetails model =
                         , columns = columns
                         }
             in
-            ifThenElse (Array.isEmpty listOfTestcases)
-                none
-                (column [ height fill, width fill ]
-                    [ el [ Font.bold, padding (model.theme |> Theme.scaled -2), Font.underline ]
-                        (text "TEST CASES")
-                    , testsTable
-                    ]
-                )
+            SectionComponent.view model.theme
+                {title = "Test Cases", content = testsTable, onToggle = UI (ToggleSection 1), isOpen = Set.member 1 model.openSections}
     in
     case model.irState of
         IRLoaded ((Library packageName _ packageDef) as distribution) ->

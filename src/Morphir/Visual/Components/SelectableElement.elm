@@ -9,8 +9,8 @@ import Morphir.Visual.Theme exposing (Theme, lightMorphIrBlue)
 
 
 type alias Config msg =
-    { onSelect : msg
-    , content : Element msg
+    { content : Element msg
+    , onSelect : msg
     , isSelected : Bool
     }
 
