@@ -451,47 +451,58 @@ constrainValue ir vars maybeThisTypeVar annotatedValue =
                     )
 
         Value.List va items ->
-            items
-                |> List.map (constrainValue ir vars Nothing)
-                |> Count.all
-                |> Count.andThen
-                    (\itemResults ->
-                        Count.two
-                            (\thisIndex itemIndex ->
-                                let
-                                    thisTypeVar : Variable
-                                    thisTypeVar =
-                                        MetaType.variableByIndex thisIndex
+            Count.oneOrReuse maybeThisTypeVar
+                (\thisIndex ->
+                    let
+                        thisTypeVar : Variable
+                        thisTypeVar =
+                            MetaType.variableByIndex thisIndex
+                    in
+                    Count.one
+                        (\itemIndex ->
+                            let
+                                itemTypeVar : Variable
+                                itemTypeVar =
+                                    MetaType.variableByIndex itemIndex
 
-                                    itemType : MetaType
-                                    itemType =
-                                        metaVar (MetaType.variableByIndex itemIndex)
+                                itemType : MetaType
+                                itemType =
+                                    metaVar itemTypeVar
+                            in
+                            items
+                                |> List.map (constrainValue ir vars (Just itemTypeVar))
+                                |> Count.all
+                                |> Count.map
+                                    (\itemResults ->
+                                        let
+                                            listConstraint : Constraint
+                                            listConstraint =
+                                                equality (metaVar thisTypeVar) (MetaType.listType itemType)
 
-                                    listConstraint : Constraint
-                                    listConstraint =
-                                        equality (metaVar thisTypeVar) (MetaType.listType itemType)
+                                            annotatedItems : List (Value () ( va, Variable ))
+                                            annotatedItems =
+                                                itemResults
+                                                    |> List.map (\( annotatedItem, _ ) -> annotatedItem)
 
-                                    annotatedItems : List (Value () ( va, Variable ))
-                                    annotatedItems =
-                                        itemResults
-                                            |> List.map (\( annotatedItem, _ ) -> annotatedItem)
-
-                                    itemsConstraints : ConstraintSet
-                                    itemsConstraints =
-                                        itemResults
-                                            |> List.map
-                                                (\( annotatedItem, itemConstraints ) ->
-                                                    itemConstraints
-                                                        |> ConstraintSet.insert (equality itemType (metaTypeVarForValue annotatedItem))
-                                                )
-                                            |> ConstraintSet.concat
-                                in
-                                ( Value.List ( va, thisTypeVar ) annotatedItems
-                                , itemsConstraints
-                                    |> ConstraintSet.insert listConstraint
-                                )
-                            )
-                    )
+                                            itemsConstraints : ConstraintSet
+                                            itemsConstraints =
+                                                itemResults
+                                                    |> List.map
+                                                        (\( annotatedItem, itemConstraints ) ->
+                                                            itemConstraints
+                                                                |> ConstraintSet.insert (equality itemType (metaTypeVarForValue annotatedItem))
+                                                        )
+                                                    |> ConstraintSet.concat
+                                        in
+                                        ( Value.List ( va, thisTypeVar ) annotatedItems
+                                        , itemsConstraints
+                                            |> ConstraintSet.insert listConstraint
+                                        )
+                                    )
+                        )
+                )
+                |> Count.andThen identity
+                |> Count.andThen identity
 
         Value.Record va fieldValues ->
             fieldValues
