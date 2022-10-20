@@ -69,7 +69,7 @@
         "elm-community/list-extra": "8.2.4 <= v < 9.0.0",
         "elm-community/maybe-extra": "5.0.0 <= v < 6.0.0",
         "elm-explorations/markdown": "1.0.0 <= v < 2.0.0",
-        "elm-explorations/test": "1.2.2 <= v < 2.0.0",
+        "elm-explorations/test": "2.0.1 <= v < 3.0.0",
         "erlandsona/assoc-set": "1.1.0 <= v < 2.0.0",
         "justinmimbs/date": "3.2.1 <= v < 4.0.0",
         "mdgriffith/elm-ui": "1.1.8 <= v < 2.0.0",

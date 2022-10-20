@@ -114,8 +114,6 @@ type alias Decimal =
     D.Decimal
 
 
-
-
 {-| Converts an Int to a Decimal
 -}
 fromInt : Int -> Decimal
@@ -127,7 +125,16 @@ fromInt n =
 -}
 fromFloat : Float -> Decimal
 fromFloat f =
-    D.fromFloat f
+    let
+        dec : D.Decimal
+        dec =
+            D.fromFloat f
+    in
+    if D.eq dec zero then
+        zero
+
+    else
+        dec
 
 
 {-| Converts an Int to a Decimal that represents n hundreds.
@@ -163,6 +170,7 @@ tenth n =
 hundredth : Int -> Decimal
 hundredth n =
     D.fromFloat (toFloat n * 0.01)
+
 
 {-| Converts an Int to a Decimal that represents n thousandths.
 -}
