@@ -48,6 +48,7 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
+import FontAwesome.Styles as Icon
 import Http exposing (Error(..), emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
@@ -831,7 +832,8 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "Morphir - Home"
     , body =
-        [ layout
+        [ Icon.css
+        , layout
             [ Font.family
                 [ Font.external
                     { name = "Poppins"

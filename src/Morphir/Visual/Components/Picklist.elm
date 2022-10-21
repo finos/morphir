@@ -1,4 +1,4 @@
-module Morphir.Visual.Components.Picklist exposing (State, init, view)
+module Morphir.Visual.Components.Picklist exposing (State, init, getSelectedTag, view)
 
 {-| This module implements a component that allows users to pick an item from a dropdown list.
 
@@ -57,11 +57,11 @@ module Morphir.Visual.Components.Picklist exposing (State, init, view)
                 ]
             ]
 
-@docs State, init, view
+@docs State, init, getSelectedTag, view
 
 -}
 
-import Element exposing (Element, alignRight, below, column, el, fill, focused, height, html, htmlAttribute, mouseOver, moveDown, none, paddingEach, px, rgb255, rgba, row, spacing, text, width)
+import Element exposing (Element, alignRight, behindContent, below, column, el, fill, focused, height, html, htmlAttribute, maximum, minimum, mouseOver, moveDown, none, paddingEach, paddingXY, px, rgb255, rgba, row, shrink, spacing, text, transparent, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Events
@@ -78,9 +78,26 @@ import Svg.Attributes
 
 {-| Type that contains the internal state of this component.
 -}
-type alias State =
-    { dropDownOpen : Bool
+type alias State tag =
+    { selectedTag : Maybe tag
+    , dropDownOpen : Bool
     }
+
+
+{-| Initialize the state of the component.
+-}
+init : Maybe tag -> State tag
+init selectedTag =
+    { selectedTag = selectedTag
+    , dropDownOpen = False
+    }
+
+
+{-| Get the currently selected tag value.
+-}
+getSelectedTag : State tag -> Maybe tag
+getSelectedTag state =
+    state.selectedTag
 
 
 type Msg tag
@@ -88,13 +105,7 @@ type Msg tag
     | CloseDropdown
 
 
-init : State
-init =
-    { dropDownOpen = False
-    }
-
-
-update : Msg tag -> State -> State
+update : Msg tag -> State tag -> State tag
 update msg state =
     case msg of
         ToggleDropdown ->
@@ -114,18 +125,11 @@ update msg state =
       - Internal state of the component.
   - _onStateChange_
       - Called when the internal state of the component changes.
-  - _selectedTag_
-      - Sets the selection using the tag value.
-      - It is an optional value. If it's not set that means nothing is selected.
-  - _onSelectionChange_
-      - Called when the selection changes.
 
 -}
 type alias Config msg tag =
-    { state : State
-    , onStateChange : State -> msg
-    , selectedTag : Maybe tag
-    , onSelectionChange : Maybe tag -> msg
+    { state : State tag
+    , onStateChange : State tag -> msg
     }
 
 
@@ -146,7 +150,8 @@ view theme config selectableValues =
     let
         selectedValue : Maybe (Element msg)
         selectedValue =
-            config.selectedTag
+            config.state
+                |> getSelectedTag
                 |> Maybe.andThen
                     (\selected ->
                         selectableValues
@@ -161,60 +166,71 @@ view theme config selectableValues =
                             |> List.head
                     )
     in
-    Input.button
-        [ width (px (theme.fontSize * 12))
-        , height (px (theme.fontSize * 2))
-        , paddingEach
-            { top = 0
-            , right = theme |> Theme.mediumPadding
-            , bottom = 0
-            , left = theme |> Theme.mediumPadding
-            }
-        , Border.width 1
-        , theme |> Theme.borderRounded
-        , Border.color (grey 201)
-        , Font.size theme.fontSize
-        , Background.color theme.colors.lightest
-        , focused
-            [ Border.color theme.colors.primaryHighlight
-            , Border.shadow
-                { offset = ( 0, 0 )
-                , size = 0
-                , blur = 3
-                , color = theme.colors.primaryHighlight
-                }
-            ]
-        , below
-            (if config.state.dropDownOpen then
-                viewDropdown theme config.selectedTag config.onSelectionChange selectableValues
-
-             else
-                none
-            )
-        , Events.onLoseFocus (config.onStateChange (update CloseDropdown config.state))
-        ]
-        { onPress = Just (config.onStateChange (update ToggleDropdown config.state))
-        , label =
-            let
-                labelContent : Element msg
-                labelContent =
-                    case selectedValue of
-                        Just selected ->
-                            el [ htmlAttribute (Html.Attributes.style "text-overflow" "ellipsis") ]
-                                selected
-
-                        Nothing ->
-                            el
-                                [ Font.color (grey 160)
-                                ]
-                                viewUnselected
-            in
-            row [ width fill, height fill ]
-                [ labelContent
-                , el [ alignRight ]
-                    (html (Icon.caretDown |> Icon.styled [ Icon.lg ] |> Icon.view))
+    el []
+        (Input.button
+            [ width (shrink |> minimum (theme.fontSize * 14) |> maximum (theme.fontSize * 20))
+            , paddingXY (theme |> Theme.mediumPadding) (theme |> Theme.smallPadding)
+            , Border.width 1
+            , theme |> Theme.borderRounded
+            , Border.color (grey 201)
+            , Font.size theme.fontSize
+            , Background.color theme.colors.lightest
+            , focused
+                [ Border.color theme.colors.primaryHighlight
+                , Border.shadow
+                    { offset = ( 0, 0 )
+                    , size = 0
+                    , blur = 3
+                    , color = theme.colors.primaryHighlight
+                    }
                 ]
-        }
+            , below
+                (let
+                    onSelectionChange : Maybe tag -> msg
+                    onSelectionChange selectedTag =
+                        let
+                            state : State tag
+                            state =
+                                config.state
+                        in
+                        config.onStateChange { state | selectedTag = selectedTag, dropDownOpen = False }
+                 in
+                 el
+                    [ transparent (not config.state.dropDownOpen)
+                    ]
+                    (viewDropdown theme config.state.selectedTag onSelectionChange selectableValues)
+                )
+            , Events.onLoseFocus (config.onStateChange (update CloseDropdown config.state))
+            ]
+            { onPress =
+                if config.state.dropDownOpen then
+                    Nothing
+
+                else
+                    Just (config.onStateChange (update ToggleDropdown config.state))
+            , label =
+                let
+                    labelContent : Element msg
+                    labelContent =
+                        case selectedValue of
+                            Just selected ->
+                                el [ width fill ]
+                                    selected
+
+                            Nothing ->
+                                el
+                                    [ width fill
+                                    , Font.color (grey 160)
+                                    ]
+                                    viewUnselected
+                in
+                row [ width fill, height fill ]
+                    [ labelContent
+                    , el [ alignRight ]
+                        (html (Icon.caretDown |> Icon.styled [ Icon.lg ] |> Icon.view))
+                    ]
+            }
+        )
 
 
 viewDropdown : Theme -> Maybe tag -> (Maybe tag -> msg) -> List ( tag, Element msg ) -> Element msg
@@ -277,14 +293,14 @@ viewDropdown theme selectedTag onSelectionChange selectableValues =
                     )
     in
     el
-        [ moveDown 2
+        [ width (shrink |> minimum (theme.fontSize * 14) |> maximum (theme.fontSize * 20))
+        , moveDown 2
         , paddingEach
             { top = 4
             , right = 0
             , bottom = 4
             , left = 0
             }
-        , width fill
         , Border.width 1
         , theme |> Theme.borderRounded
         , Border.color (grey 229)
