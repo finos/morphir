@@ -185,20 +185,21 @@ view theme config selectableValues =
                     }
                 ]
             , below
-                (let
-                    onSelectionChange : Maybe tag -> msg
-                    onSelectionChange selectedTag =
-                        let
-                            state : State tag
-                            state =
-                                config.state
-                        in
-                        config.onStateChange { state | selectedTag = selectedTag, dropDownOpen = False }
-                 in
-                 el
-                    [ transparent (not config.state.dropDownOpen)
-                    ]
-                    (viewDropdown theme config.state.selectedTag onSelectionChange selectableValues)
+                (if config.state.dropDownOpen then
+                    let
+                        onSelectionChange : Maybe tag -> msg
+                        onSelectionChange selectedTag =
+                            let
+                                state : State tag
+                                state =
+                                    config.state
+                            in
+                            config.onStateChange { state | selectedTag = selectedTag, dropDownOpen = False }
+                    in
+                    viewDropdown theme config.state.selectedTag onSelectionChange selectableValues
+
+                 else
+                    none
                 )
             , Events.onLoseFocus (config.onStateChange (update CloseDropdown config.state))
             ]
