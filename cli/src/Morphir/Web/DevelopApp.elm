@@ -1587,7 +1587,8 @@ viewDefinitionDetails model =
                 |> List.map
                     (\( argName, _, argType ) ->
                         ( argName
-                        , ValueEditor.view ir
+                        , ValueEditor.view model.theme
+                            ir
                             argType
                             (Insight << ArgValueUpdated argName)
                             (argState |> Dict.get argName |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))

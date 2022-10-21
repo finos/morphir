@@ -162,8 +162,8 @@ view theme config selectableValues =
                     )
     in
     Input.button
-        [ width (px 240)
-        , height (px 30)
+        [ width (px (theme.fontSize * 12))
+        , height (px (theme.fontSize * 2))
         , paddingEach
             { top = 0
             , right = theme |> Theme.mediumPadding
@@ -223,7 +223,7 @@ viewDropdown theme selectedTag onSelectionChange selectableValues =
         viewListItem : { icon : Element msg, label : Element msg, onClick : msg } -> Element msg
         viewListItem args =
             row
-                [ height (px 32)
+                [ height (px (theme.fontSize * 2))
                 , width fill
                 , paddingEach
                     { top = theme |> Theme.smallPadding

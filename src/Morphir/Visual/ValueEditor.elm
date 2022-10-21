@@ -89,6 +89,7 @@ import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Decimal as Decimal
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Theme exposing (Theme)
 import Svg
 import Svg.Attributes
 
@@ -503,14 +504,15 @@ initDictEditor ir dictKeyType dictValueType maybeInitialValue =
 
 {-| Display the editor. It takes the following inputs:
 
+  - `theme` - This is used for styling the component.
   - `ir` - This is used to look up additional type information when needed.
   - `valueType` - The type of the value being edited.
   - `updateEditorState` - Function to create the message that will be sent by this component during edits.
   - `editorState` - The current editor state.
 
 -}
-view : IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
-view ir valueType updateEditorState editorState =
+view : Theme -> IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
+view theme ir valueType updateEditorState editorState =
     let
         baseStyle : List (Element.Attribute msg)
         baseStyle =
@@ -709,7 +711,8 @@ view ir valueType updateEditorState editorState =
                                         , height fill
                                         , centerY
                                         ]
-                                        (view ir
+                                        (view theme
+                                            ir
                                             fieldType
                                             (\newFieldEditorState ->
                                                 let
@@ -841,7 +844,8 @@ view ir valueType updateEditorState editorState =
                                                 , height fill
                                                 , centerY
                                                 ]
-                                                (view ir
+                                                (view theme
+                                                    ir
                                                     argumentType
                                                     (\newArgumentEditorState ->
                                                         let
@@ -889,7 +893,8 @@ view ir valueType updateEditorState editorState =
         MaybeEditor itemType maybeItemEditorState ->
             let
                 itemEditor itemEditorState =
-                    view ir
+                    view theme
+                        ir
                         itemType
                         (\newItemEditorState ->
                             let
@@ -996,7 +1001,8 @@ view ir valueType updateEditorState editorState =
                                               else
                                                 none
                                             ]
-                                        , view ir
+                                        , view theme
+                                            ir
                                             itemType
                                             (\newItemEditorState ->
                                                 updateState (itemEditorStates |> set index newItemEditorState)
@@ -1139,7 +1145,8 @@ view ir valueType updateEditorState editorState =
                                                     below none
                                                 , onRight (removeButton (cellEditorStates |> remove rowIndex))
                                                 ]
-                                                (view ir
+                                                (view theme
+                                                    ir
                                                     columnType
                                                     (\newItemEditorState ->
                                                         updateState (cellEditorStates |> set rowIndex columnIndex newItemEditorState)
@@ -1272,7 +1279,8 @@ view ir valueType updateEditorState editorState =
                                                         below none
                                                     , onRight (removeButton (cellEditorStates |> remove rowIndex))
                                                     ]
-                                                    (view ir
+                                                    (view theme
+                                                        ir
                                                         columnType
                                                         (\newItemEditorState ->
                                                             updateState (cellEditorStates |> set rowIndex columnIndex newItemEditorState)
