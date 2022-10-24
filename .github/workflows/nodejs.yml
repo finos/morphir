@@ -3,7 +3,7 @@
 name: Node.js CI
 on:
   push:
-    branches: [ main ]
+    branches: [ json-schema-new ]
 jobs:
   # building project
   build:
