@@ -46,15 +46,18 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 
         const mainSchema = JSON.parse(jsonString)
         mainSchema["$ref"] = "#/$defs/BasicTypes.Paid"
-
+        const boolSchema = mainSchema["$defs"]["BasicTypes.Paid"]
         const boolString = JSON.stringify(mainSchema, null, 4)
-        console.log(mainSchema)
 
-        const ajv = new Ajv2020({coerceTypes: true})
-        const validate = ajv.compile(mainSchema)
+        const ajv = new Ajv2020({allowUnionTypes: true})
+
+        ajv.addSchema(mainSchema)
+
+        const validate = ajv.compile(boolSchema)
         const result = validate(true);
         expect(result).toBe(true)
     })
+
     test.skip('2. Int type test case', () => {
         const intSchema = jsonObject["$defs"]["BasicTypes.Age"]
         const ajv = new Ajv2020()
