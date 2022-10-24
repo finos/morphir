@@ -1,11 +1,11 @@
 module Morphir.Visual.Components.SectionComponent exposing (..)
 
-import Element exposing (Element, el, fill, mouseOver, pointer, row, text, width, column, height, none, spacing)
+import Element exposing (Element, column, el, fill, height, none, pointer, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
-import Morphir.Visual.Theme exposing (Theme, scaled, smallSpacing)
+import Morphir.Visual.Theme exposing (Theme, scaled, smallSpacing, mediumSpacing)
 
 
 type alias Config msg =
@@ -28,6 +28,21 @@ view theme config =
                     else
                         theme.icons.closed
             in
-            row [ width fill, Background.color theme.colors.lightest, Font.bold, smallSpacing theme |> spacing, onClick config.onToggle, pointer ] [ el [ ] (text icon), el [Font.size (theme |> scaled 2)] (text config.title) ]
+            row
+                [ width fill
+                , Background.color theme.colors.lightest
+                , Font.bold
+                , smallSpacing theme |> spacing
+                , onClick config.onToggle
+                , pointer
+                ]
+                [ el [] (text icon), el [ Font.size (theme |> scaled 2) ] (text config.title) ]
     in
-    column [width fill, height fill, Background.color theme.colors.lightest] [header, (if config.isOpen then config.content else none)]
+    column [ width fill, height fill, Background.color theme.colors.lightest, mediumSpacing theme |> spacing]
+        [ header
+        , if config.isOpen then
+            config.content
+
+          else
+            none
+        ]

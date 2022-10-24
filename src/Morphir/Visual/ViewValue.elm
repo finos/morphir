@@ -55,7 +55,7 @@ viewDefinition config ( packageName, moduleName, valueName ) valueDef =
                 (nameToText valueName)
                 (definitionBody config valueDef)
     in
-    Element.column [ mediumSpacing config.state.theme |> spacing ]
+    Element.column [ mediumSpacing config.state.theme |> spacing, padding 1 ]
         [ definitionElem ]
 
 

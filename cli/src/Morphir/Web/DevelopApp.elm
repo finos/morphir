@@ -2,6 +2,7 @@ module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), ServerState
 
 import Array exposing (Array)
 import Array.Extra
+import Bootstrap.Accordion exposing (isOpen)
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
@@ -1279,7 +1280,7 @@ viewHome model packageName packageDef =
                 [ Background.color model.theme.colors.gray
                 , height fill
                 , width (ifThenElse model.showModules (fillPortion 3) fill)
-                , spacing (model.theme |> Theme.scaled -4)
+                , spacing (model.theme |> Theme.scaled -2)
                 , clipX
                 ]
                 [ row
@@ -1603,27 +1604,28 @@ viewDefinitionDetails model =
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
-            row [ spacing (model.theme |> Theme.scaled 2) ] <|
-                ifThenElse (List.isEmpty testCase.inputs)
-                    []
-                    [ row [ model.theme |> Theme.borderRounded, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
-                        (case evaluateOutput ir testCase.inputs fQName of
-                            Ok rawValue ->
-                                case rawValue of
-                                    Value.Unit () ->
-                                        [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
+            ifThenElse (List.isEmpty testCase.inputs)
+                none
+                (column [ spacing (theme |> Theme.scaled 1), padding (theme |> Theme.scaled -2) ]
+                    (case evaluateOutput ir testCase.inputs fQName of
+                        Ok rawValue ->
+                            case rawValue of
+                                Value.Unit () ->
+                                    [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
 
-                                    expectedOutput ->
-                                        [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value:")
-                                        , el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
+                                expectedOutput ->
+                                    [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value ="), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
+                                    , row [ width fill, spacing (theme |> Theme.scaled 1) ]
+                                        [ descriptionInput
                                         , ifThenElse (Dict.isEmpty model.argStates) none (saveTestcaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         , ifThenElse (model.selectedTestcaseIndex < 0) none (updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         ]
+                                    ]
 
-                            Err _ ->
-                                [ text "Invalid or missing inputs" ]
-                        )
-                    ]
+                        Err _ ->
+                            [ text "Invalid or missing inputs" ]
+                    )
+                )
 
         evaluateOutput : IR -> List (Maybe RawValue) -> FQName -> Result Error RawValue
         evaluateOutput ir inputs fQName =
@@ -1770,8 +1772,7 @@ viewDefinitionDetails model =
                         , columns = columns
                         }
             in
-            SectionComponent.view model.theme
-                {title = "Test Cases", content = testsTable, onToggle = UI (ToggleSection 1), isOpen = Set.member 1 model.openSections}
+            testsTable
     in
     case model.irState of
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
@@ -1808,20 +1809,36 @@ viewDefinitionDetails model =
                                                             Array.fromList
                                                                 [ { name = "Insight View"
                                                                   , content =
-                                                                        column
-                                                                            [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
-                                                                            [ column [ spacing (model.theme |> Theme.scaled 5) ]
-                                                                                [ el [ Font.bold, Font.underline ] (text "INPUTS")
-                                                                                , viewArgumentEditors ir model.argStates valueDef.inputTypes
-                                                                                , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
-                                                                                , viewActualOutput
-                                                                                    model.theme
-                                                                                    ir
-                                                                                    { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                                    fullyQualifiedName
-                                                                                , ifThenElse (Dict.isEmpty model.argStates) none descriptionInput
-                                                                                ]
-                                                                            , scenarios fullyQualifiedName ir valueDef.inputTypes
+                                                                        column [ spacing (model.theme |> Theme.scaled 5), paddingXY (model.theme |> Theme.scaled 1) 0 ]
+                                                                            [ SectionComponent.view model.theme
+                                                                                { title = "Inputs"
+                                                                                , onToggle = UI (ToggleSection 1)
+                                                                                , isOpen = Set.member 1 model.openSections
+                                                                                , content = viewArgumentEditors ir model.argStates valueDef.inputTypes
+                                                                                }
+                                                                            , SectionComponent.view model.theme
+                                                                                { title = "Insight view"
+                                                                                , onToggle = UI (ToggleSection 2)
+                                                                                , isOpen = Set.member 2 model.openSections
+                                                                                , content = el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray ] <| ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                                }
+                                                                            , SectionComponent.view model.theme
+                                                                                { title = "Outputs"
+                                                                                , onToggle = UI (ToggleSection 3)
+                                                                                , isOpen = Set.member 3 model.openSections
+                                                                                , content =
+                                                                                    viewActualOutput
+                                                                                        model.theme
+                                                                                        ir
+                                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                        fullyQualifiedName
+                                                                                }
+                                                                            , SectionComponent.view model.theme
+                                                                                { title = "Test Cases"
+                                                                                , onToggle = UI (ToggleSection 4)
+                                                                                , isOpen = Set.member 4 model.openSections
+                                                                                , content = scenarios fullyQualifiedName ir valueDef.inputTypes
+                                                                                }
                                                                             ]
                                                                   }
                                                                 , { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef }
