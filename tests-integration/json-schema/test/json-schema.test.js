@@ -51,9 +51,9 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 
         const ajv = new Ajv2020({allowUnionTypes: true})
 
-        ajv.addSchema(mainSchema)
+        ajv.addSchema(boolSchema)
 
-        const validate = ajv.compile(boolSchema)
+        const validate = ajv.compile(mainSchema)
         const result = validate(true);
         expect(result).toBe(true)
     })
