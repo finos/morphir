@@ -39,7 +39,7 @@ drillDownPanel theme config =
     in
     if config.isOpen then
         column [ theme |> borderRounded, Border.width 1, Border.color depthColor, padding <| (config.depth + 1) * 3, Border.innerGlow depthColor (toFloat config.depth + 3) ]
-            [ row [ padding 1, pointer, onClick config.closeMsg, Font.size 11, Border.width 1, Border.color depthColor, theme |> borderRounded ] [ text " ⮟ ", config.openHeader ]
+            [ row [ padding 1, pointer, onClick config.closeMsg, Font.size 11, Border.width 1, Border.color depthColor, theme |> borderRounded ] [ el [padding 1] (text theme.icons.opened), config.openHeader ]
             , el [ width fill ] config.openElement
             ]
 

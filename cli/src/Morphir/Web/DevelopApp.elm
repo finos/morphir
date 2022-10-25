@@ -2,6 +2,7 @@ module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), ServerState
 
 import Array exposing (Array)
 import Array.Extra
+import Bootstrap.Accordion exposing (isOpen)
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
@@ -26,6 +27,7 @@ import Element
         , maximum
         , mouseOver
         , moveDown
+        , moveUp
         , none
         , padding
         , paddingEach
@@ -70,7 +72,9 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Components.TabsComponent as TabsComponent exposing (view)
+import Morphir.Visual.Components.SectionComponent as SectionComponent
+import Morphir.Visual.Components.SelectableElement as SelectableElement
+import Morphir.Visual.Components.TabsComponent as TabsComponent
 import Morphir.Visual.Components.TreeLayout as TreeLayout
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
@@ -125,6 +129,7 @@ type alias Model =
     , selectedTestcaseIndex : Int
     , testDescription : String
     , activeTabIndex : Int
+    , openSections : Set Int
     }
 
 
@@ -197,6 +202,7 @@ init _ url key =
             , selectedTestcaseIndex = -1
             , testDescription = ""
             , activeTabIndex = 0
+            , openSections = Set.empty
             }
     in
     ( toRoute url initModel
@@ -244,6 +250,7 @@ type TestingMsg
 type NavigationMsg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
+    | DefinitionSelected String
 
 
 type UIMsg
@@ -252,6 +259,7 @@ type UIMsg
     | ExpandModule (TreeLayout.NodePath ModuleName)
     | CollapseModule (TreeLayout.NodePath ModuleName)
     | SwitchTab Int
+    | ToggleSection Int
 
 
 type FilterMsg
@@ -312,6 +320,9 @@ update msg model =
 
                 UrlChanged url ->
                     ( toRoute url model, Cmd.none )
+
+                DefinitionSelected url ->
+                    ( model, Nav.pushUrl model.key url )
 
         HttpError httpError ->
             case model.irState of
@@ -374,6 +385,13 @@ update msg model =
 
                 SwitchTab tabIndex ->
                     ( { model | activeTabIndex = tabIndex }, Cmd.none )
+
+                ToggleSection sectionId ->
+                    if Set.member sectionId model.openSections then
+                        ( { model | openSections = Set.remove sectionId model.openSections }, Cmd.none )
+
+                    else
+                        ( { model | openSections = Set.insert sectionId model.openSections }, Cmd.none )
 
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
@@ -947,22 +965,6 @@ viewBody model =
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
 viewHome model packageName packageDef =
     let
-        morphIrBlue : Element.Color
-        morphIrBlue =
-            rgb 0 0.639 0.882
-
-        lightMorphIrBlue : Element.Color
-        lightMorphIrBlue =
-            rgba 0 0.639 0.882 0.6
-
-        morphIrOrange : Element.Color
-        morphIrOrange =
-            rgb 1 0.411 0
-
-        lightMorphIrOrange : Element.Color
-        lightMorphIrOrange =
-            rgba 1 0.411 0 0.6
-
         -- Styles to make the module tree and the definition list
         listStyles : List (Element.Attribute msg)
         listStyles =
@@ -1014,19 +1016,36 @@ viewHome model packageName packageDef =
         moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List ( Definition, Element Msg )
         moduleDefinitionsAsUiElements moduleName moduleDef =
             let
+                definitionUiElement icon definition name nameTransformation =
+                    let
+                        elem : Element Msg
+                        elem =
+                            row
+                                [ width fill
+                                , Font.size (model.theme |> Theme.scaled 2)
+                                ]
+                                [ icon
+                                , el
+                                    [ paddingXY (model.theme |> Theme.scaled -10) (model.theme |> Theme.scaled -3)
+                                    ]
+                                    (text (nameToText name))
+                                , el
+                                    [ alignRight
+                                    , Font.color model.theme.colors.secondaryInformation
+                                    , paddingXY (model.theme |> Theme.scaled -10) (model.theme |> Theme.scaled -3)
+                                    ]
+                                    (text (pathToDisplayString moduleName))
+                                ]
+                    in
+                    SelectableElement.view model.theme
+                        { isSelected = model.homeState.selectedDefinition == Just definition
+                        , content = elem
+                        , onSelect = Navigate (DefinitionSelected (linkToDefinition name nameTransformation))
+                        }
+
                 linkToDefinition : Name -> (Name -> String) -> String
                 linkToDefinition name nameTransformation =
                     pathToFullUrl [ packageName, moduleName ] ++ "/" ++ nameTransformation name ++ filterStateToQueryParams model.homeState.filterState
-
-                createUiElement : Element Msg -> Definition -> Name -> (Name -> String) -> Element Msg
-                createUiElement icon definition name nameTransformation =
-                    viewAsLabel
-                        model.theme
-                        (model.homeState.selectedDefinition == Just definition)
-                        icon
-                        (text (nameToText name))
-                        (pathToDisplayString moduleName)
-                        (linkToDefinition name nameTransformation)
 
                 createElementKey : List Name -> Name -> String
                 createElementKey mname name =
@@ -1039,7 +1058,7 @@ viewHome model packageName packageDef =
                         |> List.map
                             (\( typeName, _ ) ->
                                 ( Type ( moduleName, typeName )
-                                , createUiElement (Element.Keyed.el [ Font.color lightMorphIrBlue ] ( createElementKey moduleName typeName, text "ⓣ " )) (Type ( moduleName, typeName )) typeName Name.toTitleCase
+                                , definitionUiElement (Element.Keyed.el [ Font.color Theme.morphIrBlue ] ( createElementKey moduleName typeName, text " ⓣ " )) (Type ( moduleName, typeName )) typeName Name.toTitleCase
                                 )
                             )
 
@@ -1050,7 +1069,7 @@ viewHome model packageName packageDef =
                         |> List.map
                             (\( valueName, _ ) ->
                                 ( Value ( moduleName, valueName )
-                                , createUiElement (Element.Keyed.el [ Font.color lightMorphIrOrange ] ( createElementKey moduleName valueName, text "ⓥ " )) (Value ( moduleName, valueName )) valueName Name.toCamelCase
+                                , definitionUiElement (Element.Keyed.el [ Font.color Theme.morphIrOrange ] ( createElementKey moduleName valueName, text " ⓥ " )) (Value ( moduleName, valueName )) valueName Name.toCamelCase
                                 )
                             )
             in
@@ -1102,7 +1121,7 @@ viewHome model packageName packageDef =
                     in
                     if List.isEmpty displayList then
                         if model.homeState.filterState.searchText == "" then
-                            [ text "Please select a module on the left!" ]
+                            [ text "Please select a module above!" ]
 
                         else
                             [ text "No matching definition in this module." ]
@@ -1171,12 +1190,12 @@ viewHome model packageName packageDef =
         toggleModulesMenu =
             Element.Input.button
                 [ padding 7
-                , Background.color <| ifThenElse model.showModules lightMorphIrBlue lightMorphIrOrange
+                , Background.color <| ifThenElse model.showModules Theme.lightMorphIrBlue Theme.lightMorphIrOrange
                 , model.theme |> Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
                 , Font.size (model.theme |> Theme.scaled 2)
-                , mouseOver [ Background.color <| ifThenElse model.showModules morphIrBlue morphIrOrange ]
+                , mouseOver [ Background.color <| ifThenElse model.showModules Theme.morphIrBlue Theme.morphIrOrange ]
                 ]
                 { onPress = Just (UI ToggleModulesMenu)
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showModules "🗁" "🗀", text "Modules" ]
@@ -1187,12 +1206,12 @@ viewHome model packageName packageDef =
         toggleDefinitionsMenu =
             Element.Input.button
                 [ padding 7
-                , Background.color <| ifThenElse model.showDefinitions lightMorphIrBlue lightMorphIrOrange
+                , Background.color <| ifThenElse model.showDefinitions Theme.lightMorphIrBlue Theme.lightMorphIrOrange
                 , model.theme |> Theme.borderRounded
                 , Font.color model.theme.colors.lightest
                 , Font.bold
                 , Font.size (model.theme |> Theme.scaled 2)
-                , mouseOver [ Background.color <| ifThenElse model.showDefinitions morphIrBlue morphIrOrange ]
+                , mouseOver [ Background.color <| ifThenElse model.showDefinitions Theme.morphIrBlue Theme.morphIrOrange ]
                 ]
                 { onPress = Just (UI ToggleDefinitionsMenu)
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showDefinitions "🗁" "🗀", text "Definitions" ]
@@ -1263,13 +1282,13 @@ viewHome model packageName packageDef =
                 [ Background.color model.theme.colors.gray
                 , height fill
                 , width (ifThenElse model.showModules (fillPortion 3) fill)
-                , spacing (model.theme |> Theme.scaled -4)
+                , spacing (model.theme |> Theme.scaled -2)
                 , clipX
                 ]
                 [ row
                     [ width fill
                     , spacing (model.theme |> Theme.scaled 1)
-                    , height <| fillPortion 1
+                    , height <| fillPortion 2
                     ]
                     [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
                 , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ]
@@ -1279,40 +1298,19 @@ viewHome model packageName packageDef =
     in
     row [ width fill, height fill, Background.color model.theme.colors.gray, spacing 10 ]
         [ column
-            [ width
-                (ifThenElse model.showDefinitions
-                    (ifThenElse model.showModules (fillPortion 5) (fillPortion 3))
-                    (fillPortion 1)
-                )
+            [ width (fillPortion 1)
             , height fill
-            , paddingXY 0 (model.theme |> Theme.scaled -3)
-            , clipX
+            , padding (model.theme |> Theme.scaled -3)
+            , scrollbars
             ]
-            [ row
-                [ height fill
-                , width fill
-                , spacing <| ifThenElse model.showModules 10 0
-                , clipY
-                ]
-                [ row
-                    [ Background.color model.theme.colors.gray
-                    , height fill
-                    , width (ifThenElse model.showModules (fillPortion 2) (px 40))
-                    , clipX
-                    ]
-                    [ row [ alignTop, rotate (degrees -90), width (px 40), moveDown 165, padding (model.theme |> Theme.scaled -6), spacing (model.theme |> Theme.scaled -6) ] [ toggleDefinitionsMenu, toggleModulesMenu ]
-                    , ifThenElse model.showModules moduleTree none
-                    ]
+            [ column [ width fill, height fill, scrollbars, spacing (model.theme |> Theme.scaled 0) ]
+                [ ifThenElse model.showModules moduleTree none
                 , ifThenElse model.showDefinitions definitionList none
                 ]
             ]
         , column
             [ height fill
-            , width
-                (ifThenElse model.showDefinitions
-                    (ifThenElse model.showModules (fillPortion 6) (fillPortion 7))
-                    (fillPortion 46)
-                )
+            , width (fillPortion 4)
             , Background.color model.theme.colors.lightest
             , scrollbars
             ]
@@ -1366,45 +1364,6 @@ viewValue theme moduleName valueName valueDef docs =
         backgroundColor
         (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
         none
-
-
-{-| Display a Definition with its name and path as a clickable UI element with a url pointing to the Definition
--}
-viewAsLabel : Theme -> Bool -> Element msg -> Element msg -> String -> String -> Element msg
-viewAsLabel theme shouldColorBg icon header class url =
-    let
-        elem =
-            row
-                ([ width fill
-                 , Font.size (theme |> Theme.scaled 2)
-                 ]
-                    ++ ifThenElse shouldColorBg [ Background.color theme.colors.selectionColor ] []
-                )
-                [ icon
-                , el
-                    [ Font.bold
-                    , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
-                    ]
-                    header
-                , el
-                    ([ alignRight
-                     , Font.color theme.colors.secondaryInformation
-                     , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
-                     ]
-                        ++ ifThenElse shouldColorBg [ Background.color theme.colors.selectionColor ] []
-                    )
-                  <|
-                    text class
-                ]
-    in
-    link
-        [ Border.color theme.colors.lightest
-        , Theme.borderBottom 1
-        , mouseOver [ Border.color theme.colors.darkest ]
-        , pointer
-        , width fill
-        ]
-        { label = elem, url = url }
 
 
 
@@ -1648,27 +1607,28 @@ viewDefinitionDetails model =
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
-            row [ spacing (model.theme |> Theme.scaled 2) ] <|
-                ifThenElse (List.isEmpty testCase.inputs)
-                    []
-                    [ row [ model.theme |> Theme.borderRounded, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
-                        (case evaluateOutput ir testCase.inputs fQName of
-                            Ok rawValue ->
-                                case rawValue of
-                                    Value.Unit () ->
-                                        [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
+            ifThenElse (List.isEmpty testCase.inputs)
+                none
+                (column [ spacing (theme |> Theme.scaled 1), padding (theme |> Theme.scaled -2) ]
+                    (case evaluateOutput ir testCase.inputs fQName of
+                        Ok rawValue ->
+                            case rawValue of
+                                Value.Unit () ->
+                                    [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
 
-                                    expectedOutput ->
-                                        [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value:")
-                                        , el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
+                                expectedOutput ->
+                                    [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value ="), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
+                                    , row [ width fill, spacing (theme |> Theme.scaled 1) ]
+                                        [ descriptionInput
                                         , ifThenElse (Dict.isEmpty model.argStates) none (saveTestcaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         , ifThenElse (model.selectedTestcaseIndex < 0) none (updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         ]
+                                    ]
 
-                            Err _ ->
-                                [ text "Invalid or missing inputs" ]
-                        )
-                    ]
+                        Err _ ->
+                            [ text "Invalid or missing inputs" ]
+                    )
+                )
 
         evaluateOutput : IR -> List (Maybe RawValue) -> FQName -> Result Error RawValue
         evaluateOutput ir inputs fQName =
@@ -1815,14 +1775,7 @@ viewDefinitionDetails model =
                         , columns = columns
                         }
             in
-            ifThenElse (Array.isEmpty listOfTestcases)
-                none
-                (column [ height fill, width fill ]
-                    [ el [ Font.bold, padding (model.theme |> Theme.scaled -2), Font.underline ]
-                        (text "TEST CASES")
-                    , testsTable
-                    ]
-                )
+            testsTable
     in
     case model.irState of
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
@@ -1852,28 +1805,43 @@ viewDefinitionDetails model =
                                                         IR.fromDistribution distribution
                                                 in
                                                 Just <|
-                                                    TabsComponent.view
-                                                        { theme = model.theme
-                                                        , onSwitchTab = UI << SwitchTab
+                                                    TabsComponent.view model.theme
+                                                        { onSwitchTab = UI << SwitchTab
                                                         , activeTab = model.activeTabIndex
                                                         , tabs =
                                                             Array.fromList
                                                                 [ { name = "Insight View"
                                                                   , content =
-                                                                        column
-                                                                            [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
-                                                                            [ column [ spacing (model.theme |> Theme.scaled 5) ]
-                                                                                [ el [ Font.bold, Font.underline ] (text "INPUTS")
-                                                                                , viewArgumentEditors ir model.argStates valueDef.inputTypes
-                                                                                , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
-                                                                                , viewActualOutput
-                                                                                    model.theme
-                                                                                    ir
-                                                                                    { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                                    fullyQualifiedName
-                                                                                , ifThenElse (Dict.isEmpty model.argStates) none descriptionInput
-                                                                                ]
-                                                                            , scenarios fullyQualifiedName ir valueDef.inputTypes
+                                                                        column [ spacing (model.theme |> Theme.scaled 5), paddingXY (model.theme |> Theme.scaled 1) 0 ]
+                                                                            [ SectionComponent.view model.theme
+                                                                                { title = "Inputs"
+                                                                                , onToggle = UI (ToggleSection 1)
+                                                                                , isOpen = Set.member 1 model.openSections
+                                                                                , content = viewArgumentEditors ir model.argStates valueDef.inputTypes
+                                                                                }
+                                                                            , SectionComponent.view model.theme
+                                                                                { title = "Insight view"
+                                                                                , onToggle = UI (ToggleSection 2)
+                                                                                , isOpen = Set.member 2 model.openSections
+                                                                                , content = el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray ] <| ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                                }
+                                                                            , SectionComponent.view model.theme
+                                                                                { title = "Outputs"
+                                                                                , onToggle = UI (ToggleSection 3)
+                                                                                , isOpen = Set.member 3 model.openSections
+                                                                                , content =
+                                                                                    viewActualOutput
+                                                                                        model.theme
+                                                                                        ir
+                                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                        fullyQualifiedName
+                                                                                }
+                                                                            , SectionComponent.view model.theme
+                                                                                { title = "Test Cases"
+                                                                                , onToggle = UI (ToggleSection 4)
+                                                                                , isOpen = Set.member 4 model.openSections
+                                                                                , content = scenarios fullyQualifiedName ir valueDef.inputTypes
+                                                                                }
                                                                             ]
                                                                   }
                                                                 , { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef }
