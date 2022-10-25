@@ -2,7 +2,6 @@ module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), ServerState
 
 import Array exposing (Array)
 import Array.Extra
-import Bootstrap.Accordion exposing (isOpen)
 import Browser
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
@@ -11,11 +10,9 @@ import Element
         ( Element
         , above
         , alignRight
-        , alignTop
         , centerX
         , centerY
         , clipX
-        , clipY
         , column
         , el
         , fill
@@ -26,8 +23,6 @@ import Element
         , link
         , maximum
         , mouseOver
-        , moveDown
-        , moveUp
         , none
         , padding
         , paddingEach
@@ -36,7 +31,6 @@ import Element
         , px
         , rgb
         , rgba
-        , rotate
         , row
         , scrollbars
         , shrink
@@ -50,7 +44,7 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import Http exposing (Error(..), emptyBody, jsonBody)
+import Http exposing (emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.IR as IR exposing (IR)
@@ -82,7 +76,6 @@ import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common exposing (ifThenElse, urlFragmentToNodePath)
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Ordering
 import Set exposing (Set)
@@ -853,11 +846,11 @@ view model =
             [ Font.family
                 [ Font.external
                     { name = "Poppins"
-                    , url = "https://fonts.googleapis.com/css2?family=Poppins:wght@300&display=swap"
+                    , url = "https://fonts.googleapis.com/css2?family=Poppins:wght@400&display=swap"
                     }
                 , Font.sansSerif
                 ]
-            , Font.size (model.theme |> Theme.scaled 2)
+            , Font.size model.theme.fontSize
             , width fill
             , height fill
             ]
@@ -889,7 +882,7 @@ viewHeader : Model -> Element Msg
 viewHeader model =
     column
         [ width fill
-        , Background.color model.theme.colors.primaryHighlight
+        , Background.color model.theme.colors.brandPrimary
         ]
         [ row
             [ width fill ]
@@ -952,7 +945,17 @@ viewBody : Model -> Element Msg
 viewBody model =
     case model.irState of
         IRLoading ->
-            text "Loading the IR ..."
+            el
+                [ width fill
+                , height fill
+                , Background.color model.theme.colors.gray
+                ]
+                (el
+                    [ padding (Theme.scaled 5 model.theme)
+                    , Font.size (Theme.scaled 5 model.theme)
+                    ]
+                    (text "Loading the IR ...")
+                )
 
         IRLoaded (Library packageName _ packageDef) ->
             viewHome model packageName packageDef
@@ -1020,7 +1023,7 @@ viewHome model packageName packageDef =
                         elem =
                             row
                                 [ width fill
-                                , Font.size (model.theme |> Theme.scaled 2)
+                                , Font.size model.theme.fontSize
                                 ]
                                 [ icon
                                 , el
@@ -1056,7 +1059,7 @@ viewHome model packageName packageDef =
                         |> List.map
                             (\( typeName, _ ) ->
                                 ( Type ( moduleName, typeName )
-                                , definitionUiElement (Element.Keyed.el [ Font.color Theme.morphIrBlue ] ( createElementKey moduleName typeName, text " ⓣ " )) (Type ( moduleName, typeName )) typeName Name.toTitleCase
+                                , definitionUiElement (Element.Keyed.el [ Font.color model.theme.colors.brandPrimary ] ( createElementKey moduleName typeName, text " ⓣ " )) (Type ( moduleName, typeName )) typeName Name.toTitleCase
                                 )
                             )
 
@@ -1067,7 +1070,7 @@ viewHome model packageName packageDef =
                         |> List.map
                             (\( valueName, _ ) ->
                                 ( Value ( moduleName, valueName )
-                                , definitionUiElement (Element.Keyed.el [ Font.color Theme.morphIrOrange ] ( createElementKey moduleName valueName, text " ⓥ " )) (Value ( moduleName, valueName )) valueName Name.toCamelCase
+                                , definitionUiElement (Element.Keyed.el [ Font.color model.theme.colors.brandSecondary ] ( createElementKey moduleName valueName, text " ⓥ " )) (Value ( moduleName, valueName )) valueName Name.toCamelCase
                                 )
                             )
             in
@@ -1151,7 +1154,7 @@ viewHome model packageName packageDef =
         definitionFilter : Element Msg
         definitionFilter =
             Element.Input.search
-                [ Font.size (model.theme |> Theme.scaled 2)
+                [ Font.size model.theme.fontSize
                 , padding (model.theme |> Theme.scaled -2)
                 , width (fillPortion 7)
                 ]
@@ -1181,38 +1184,6 @@ viewHome model packageName packageDef =
                 , checked = model.homeState.filterState.showTypes
                 , icon = Element.Input.defaultCheckbox
                 , label = Element.Input.labelLeft [] (text "types:")
-                }
-
-        -- Creates a checkbox to open and close the module tree
-        toggleModulesMenu : Element Msg
-        toggleModulesMenu =
-            Element.Input.button
-                [ padding 7
-                , Background.color <| ifThenElse model.showModules Theme.lightMorphIrBlue Theme.lightMorphIrOrange
-                , model.theme |> Theme.borderRounded
-                , Font.color model.theme.colors.lightest
-                , Font.bold
-                , Font.size (model.theme |> Theme.scaled 2)
-                , mouseOver [ Background.color <| ifThenElse model.showModules Theme.morphIrBlue Theme.morphIrOrange ]
-                ]
-                { onPress = Just (UI ToggleModulesMenu)
-                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showModules "🗁" "🗀", text "Modules" ]
-                }
-
-        -- Creates a checkbox to open and close the definitions list
-        toggleDefinitionsMenu : Element Msg
-        toggleDefinitionsMenu =
-            Element.Input.button
-                [ padding 7
-                , Background.color <| ifThenElse model.showDefinitions Theme.lightMorphIrBlue Theme.lightMorphIrOrange
-                , model.theme |> Theme.borderRounded
-                , Font.color model.theme.colors.lightest
-                , Font.bold
-                , Font.size (model.theme |> Theme.scaled 2)
-                , mouseOver [ Background.color <| ifThenElse model.showDefinitions Theme.morphIrBlue Theme.morphIrOrange ]
-                ]
-                { onPress = Just (UI ToggleDefinitionsMenu)
-                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showDefinitions "🗁" "🗀", text "Definitions" ]
                 }
 
         -- A document tree like view of the modules in the current package
@@ -1294,14 +1265,13 @@ viewHome model packageName packageDef =
                 , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
                 ]
     in
-    row [ width fill, height fill, Background.color model.theme.colors.gray, spacing 10 ]
+    row [ width fill, height fill, Background.color model.theme.colors.gray, spacing (Theme.smallSpacing model.theme) ]
         [ column
             [ width (fillPortion 1)
             , height fill
-            , padding (model.theme |> Theme.scaled -3)
             , scrollbars
             ]
-            [ column [ width fill, height fill, scrollbars, spacing (model.theme |> Theme.scaled 0) ]
+            [ column [ width fill, height fill, scrollbars, spacing (Theme.smallSpacing model.theme) ]
                 [ ifThenElse model.showModules moduleTree none
                 , ifThenElse model.showDefinitions definitionList none
                 ]
@@ -1561,7 +1531,7 @@ viewDefinitionDetails model =
             , Background.color model.theme.colors.darkest
             , Font.color model.theme.colors.lightest
             , Font.bold
-            , Font.size (model.theme |> Theme.scaled 2)
+            , Font.size model.theme.fontSize
             ]
 
         saveTestcaseButton : FQName -> TestCase -> Element Msg
@@ -1593,7 +1563,7 @@ viewDefinitionDetails model =
         descriptionInput : Element Msg
         descriptionInput =
             Element.Input.text
-                [ Font.size (model.theme |> Theme.scaled 2)
+                [ Font.size model.theme.fontSize
                 , padding (model.theme |> Theme.scaled -2)
                 ]
                 { onChange = Testing << UpdateDescription
@@ -1698,7 +1668,7 @@ viewDefinitionDetails model =
                                     , Font.color model.theme.colors.lightest
                                     , padding (model.theme |> Theme.scaled -2)
                                     , model.theme |> Theme.borderRounded
-                                    , Font.size (model.theme |> Theme.scaled 2)
+                                    , Font.size model.theme.fontSize
                                     , Font.bold
                                     , Border.shadow
                                         { offset = ( 0, 3 ), blur = 6, size = 0, color = rgba 0 0 0 0.32 }
@@ -1914,3 +1884,27 @@ initInsightViewState argState =
             argState
                 |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ()))
     }
+
+
+ifThenElse : Bool -> a -> a -> a
+ifThenElse boolValue ifTrue ifFalse =
+    if boolValue then
+        ifTrue
+
+    else
+        ifFalse
+
+
+urlFragmentToNodePath : String -> List Path
+urlFragmentToNodePath f =
+    let
+        makeNodePath : String -> List Path -> List Path
+        makeNodePath s l =
+            case s of
+                "" ->
+                    l
+
+                _ ->
+                    makeNodePath (s |> String.split "." |> List.reverse |> List.drop 1 |> List.reverse |> String.join ".") (l ++ [ Path.fromString s ])
+    in
+    makeNodePath f []
