@@ -53,9 +53,16 @@ describe('Test Suite for Basic Types and Decimal',  () => {
             $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes_Paid"
         }
 
-        console.log(typeof(mainSchema["$defs"]["BasicTypes_Paid"]))
 
-        const ajv = new Ajv2020({schemas: [boolSchema, mainSchema], strict: false})
+        const ajv = new Ajv2020({
+            schemas: [boolSchema, mainSchema],
+            strict: false,
+            allErrors: true
+        })
+
+        console.log(ajv.validateSchema(boolSchema))
+        console.log(ajv.errors)
+
         const validate = ajv.getSchema("bool")
 
         const result = ajv.validate(true);
