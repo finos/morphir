@@ -7,6 +7,7 @@
 */
 
 const  Ajv2020 = require("../../../node_modules/ajv/dist/2020")
+const addFormats = require("ajv-formats")
 const fs = require('fs')
 const basePath = "tests-integration/json-schema/model/"
 const schemaBasePath = "tests-integration/generated/jsonSchema/"
@@ -44,17 +45,23 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 
     test('1. Bool type test case', () => {
 
-        const mainSchema = JSON.parse(jsonString)
-        mainSchema["$ref"] = "#/$defs/BasicTypes.Paid"
-        const boolSchema = mainSchema["$defs"]["BasicTypes.Paid"]
-        const boolString = JSON.stringify(mainSchema, null, 4)
+        const mainSchema = {
+            $id: "sj",
+            $ref: "dj#/$defs/bool"
+        }
 
-        const ajv = new Ajv2020({allowUnionTypes: true})
+        const boolSchema = {
+            $id : "dj",
+            $defs: {
+                bool: {type: "boolean"}
+            }
+        }
 
-        ajv.addSchema(boolSchema)
+        const ajv = new Ajv2020({schemas: [mainSchema, boolSchema]})
 
-        const validate = ajv.compile(mainSchema)
-        const result = validate(true);
+
+        const validate = ajv.getSchema("sj")
+        const result = ajv.validate(true);
         expect(result).toBe(true)
     })
 
