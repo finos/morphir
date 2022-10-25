@@ -26,14 +26,6 @@ type alias CustomAttributeValueByNodeID =
     SDKDict.Dict NodeID Encode.Value
 
 
-type alias CustomAttributeValuesByNodeID =
-    SDKDict.Dict NodeID (Dict CustomAttributeId NodeAttributeDetail)
-
-
-type alias CustomAttributes =
-    Dict CustomAttributeId CustomAttributeValueByNodeID
-
-
 type alias CustomAttributeInfo =
     Dict CustomAttributeId CustomAttributeDetail
 
@@ -44,39 +36,3 @@ type alias CustomAttributeDetail =
     , iR : Morphir.IR.Distribution.Distribution
     , data : SDKDict.Dict NodeID (IRValue.Value () ())
     }
-
-
-type alias NodeAttributeDetail =
-    { displayName : String
-    , iR : Morphir.IR.Distribution.Distribution
-    , entryPoint : FQName
-    , value : IRValue.Value () ()
-    }
-
-
-toAttributeValueByNodeId : CustomAttributeInfo -> CustomAttributeValuesByNodeID
-toAttributeValueByNodeId customAttributeInfo =
-    customAttributeInfo
-        |> Dict.foldl
-            (\customAttrId customAttrValueDict customAttrByNodeIdDict ->
-                customAttrValueDict.data
-                    |> SDKDict.foldl
-                        (\nodeId irValue innerValueByNodeId ->
-                            let
-                                nodeDetail : NodeAttributeDetail
-                                nodeDetail =
-                                    { displayName = customAttrValueDict.displayName
-                                    , iR = customAttrValueDict.iR
-                                    , entryPoint = customAttrValueDict.entryPoint
-                                    , value = irValue
-                                    }
-                            in
-                            if SDKDict.member nodeId innerValueByNodeId then
-                                SDKDict.update nodeId (Maybe.map (Dict.insert customAttrId nodeDetail)) innerValueByNodeId
-
-                            else
-                                SDKDict.insert nodeId (Dict.singleton customAttrId nodeDetail) innerValueByNodeId
-                        )
-                        customAttrByNodeIdDict
-            )
-            SDKDict.empty

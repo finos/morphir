@@ -3,16 +3,18 @@ module Morphir.CustomAttribute.Codec exposing (..)
 import Dict exposing (Dict)
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeConfig, CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo, CustomAttributeValueByNodeID, CustomAttributes)
+import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeConfig, CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo, CustomAttributeValueByNodeID)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.Distribution.Codec exposing (decodeVersionedDistribution)
+import Morphir.IR.Distribution.Codec exposing (decodeVersionedDistribution, encodeVersionedDistribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.FQName.Codec as FQN
-import Morphir.IR.NodeId exposing (NodeID(..), nodeIdFromString)
+import Morphir.IR.FQName.CodecV1 as FQName
+import Morphir.IR.NodeId exposing (NodeID(..), nodeIdFromString, nodeIdToString)
 import Morphir.IR.Type as Type
 import Morphir.IR.Type.DataCodec as DataCodec
 import Morphir.IR.Value as IRValue
+import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Dict as SDKDict
 
 
@@ -56,18 +58,9 @@ decodeAttributes =
     Decode.dict decodeCustomAttributeDetail
 
 
-decodeCustomAttributeDetail : Decode.Decoder CustomAttributeDetail
-decodeCustomAttributeDetail =
+valueDecoder : Distribution -> FQName -> Decode.Decoder IRValue.RawValue
+valueDecoder distro entryPointFqn =
     let
-        entryPointDecoder =
-            Decode.field "entryPoint" Decode.string
-                |> Decode.map (\fqnString -> FQName.fromString fqnString ":")
-
-        valueDecoder : Distribution -> FQName -> Decode.Decoder IRValue.RawValue
-        valueDecoder distro entryPointFqn =
-            DataCodec.decodeData (IR.fromDistribution distro) (Type.Reference () entryPointFqn [])
-                |> resultToFailure
-
         resultToFailure result =
             case result of
                 Ok decoder ->
@@ -75,27 +68,39 @@ decodeCustomAttributeDetail =
 
                 Err error ->
                     Decode.fail error
+    in
+    DataCodec.decodeData (IR.fromDistribution distro) (Type.Reference () entryPointFqn [])
+        |> resultToFailure
 
-        decodeCustomAttributeData : Distribution -> FQName -> Decode.Decoder (SDKDict.Dict NodeID (IRValue.Value () ()))
-        decodeCustomAttributeData distro entryPointFqn =
-            Decode.keyValuePairs (valueDecoder distro entryPointFqn)
-                |> Decode.andThen
-                    (List.foldl
-                        (\( nodeIdString, decodedValue ) decodedSoFar ->
-                            decodedSoFar
-                                |> Decode.andThen
-                                    (\nodeIdList ->
-                                        case nodeIdFromString nodeIdString of
-                                            Ok nodeID ->
-                                                Decode.succeed <| ( nodeID, decodedValue ) :: nodeIdList
 
-                                            Err message ->
-                                                Decode.fail message
-                                    )
-                        )
-                        (Decode.succeed [])
-                    )
-                |> Decode.map SDKDict.fromList
+decodeCustomAttributeData : Distribution -> FQName -> Decode.Decoder (SDKDict.Dict NodeID (IRValue.Value () ()))
+decodeCustomAttributeData distro entryPointFqn =
+    Decode.keyValuePairs (valueDecoder distro entryPointFqn)
+        |> Decode.andThen
+            (List.foldl
+                (\( nodeIdString, decodedValue ) decodedSoFar ->
+                    decodedSoFar
+                        |> Decode.andThen
+                            (\nodeIdList ->
+                                case nodeIdFromString nodeIdString of
+                                    Ok nodeID ->
+                                        Decode.succeed <| ( nodeID, decodedValue ) :: nodeIdList
+
+                                    Err message ->
+                                        Decode.fail message
+                            )
+                )
+                (Decode.succeed [])
+            )
+        |> Decode.map SDKDict.fromList
+
+
+decodeCustomAttributeDetail : Decode.Decoder CustomAttributeDetail
+decodeCustomAttributeDetail =
+    let
+        entryPointDecoder =
+            Decode.field "entryPoint" Decode.string
+                |> Decode.map (\fqnString -> FQName.fromString fqnString ":")
     in
     Decode.map3
         (\displayName entryPoint distribution ->
@@ -106,3 +111,35 @@ decodeCustomAttributeDetail =
         entryPointDecoder
         (Decode.field "iR" decodeVersionedDistribution)
         |> Decode.andThen identity
+
+
+encodeAttributeData : CustomAttributeDetail -> Encode.Value
+encodeAttributeData customAttrDetail =
+    let
+        encodeIrValue =
+            customAttrDetail.data
+                |> SDKDict.toList
+                |> List.map
+                    (\( nodeId, irValue ) ->
+                        let
+                            resultToFailure result =
+                                case result of
+                                    Ok encoder ->
+                                        encoder
+
+                                    Err error ->
+                                        Encode.null
+                        in
+                        ( nodeIdToString nodeId
+                        , DataCodec.encodeData
+                            (IR.fromDistribution customAttrDetail.iR)
+                            (Type.Reference () customAttrDetail.entryPoint [])
+                            |> Result.andThen
+                                (\encoderValue ->
+                                    irValue |> encoderValue
+                                )
+                            |> resultToFailure
+                        )
+                    )
+    in
+    Encode.object encodeIrValue

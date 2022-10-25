@@ -29,3 +29,13 @@ nodeIdFromString str =
 
         _ ->
             Err <| "Invalid NodeId: " ++ str
+
+
+nodeIdToString : NodeID -> String
+nodeIdToString nodeId =
+    case nodeId of
+        TypeID fQName ->
+            String.concat [ "Type:", FQName.toString fQName ]
+
+        ValueID fQName ->
+            String.concat [ "Value:", FQName.toString fQName ]

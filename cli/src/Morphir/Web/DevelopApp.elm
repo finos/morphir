@@ -60,8 +60,8 @@ import Markdown.Parser as Markdown
 import Markdown.Renderer
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
-import Morphir.CustomAttribute.Codec exposing (decodeAttributes)
-import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeId, CustomAttributeInfo, CustomAttributeValuesByNodeID, CustomAttributes, NodeAttributeDetail, toAttributeValueByNodeId)
+import Morphir.CustomAttribute.Codec exposing (decodeAttributes, decodeCustomAttributeData, encodeAttributeData)
+import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -134,7 +134,7 @@ type alias Model =
     , definitionDisplayType : DisplayType
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
-    , customAttributes : CustomAttributeValuesByNodeID
+    , customAttributes : CustomAttributeInfo
     , attributeStates : AttributeEditorState
     , selectedTestcaseIndex : Int
     , testDescription : String
@@ -146,7 +146,7 @@ type alias InsightArgumentState =
 
 
 type alias AttributeEditorState =
-    SDKDict.Dict ValueDetail ValueEditor.EditorState
+    SDKDict.Dict AttrValueDetail ValueEditor.EditorState
 
 
 type alias HomeState =
@@ -217,7 +217,7 @@ init _ url key =
             , definitionDisplayType = InsightView
             , argStates = Dict.empty
             , expandedValues = Dict.empty
-            , customAttributes = SDKDict.empty
+            , customAttributes = Dict.empty
             , attributeStates = SDKDict.empty
             , selectedTestcaseIndex = -1
             , testDescription = ""
@@ -260,13 +260,12 @@ type Msg
 
 
 type AttributeMsg
-    = ValueUpdated ValueDetail ValueEditor.EditorState
+    = ValueUpdated AttrValueDetail ValueEditor.EditorState
 
 
-type alias ValueDetail =
+type alias AttrValueDetail =
     { attrId : CustomAttributeId
     , nodeId : NodeID
-    , irValue : Value () ()
     }
 
 
@@ -604,12 +603,12 @@ update msg model =
                     )
 
         ServerGetAttributeResponse attributes ->
-            let
-                newCustomAttributeStructure : CustomAttributeValuesByNodeID
-                newCustomAttributeStructure =
-                    toAttributeValueByNodeId attributes
-            in
-            ( { model | customAttributes = newCustomAttributeStructure }
+            --let
+            --    newCustomAttributeStructure : CustomAttributeValuesByNodeID
+            --    newCustomAttributeStructure =
+            --        toAttributeValueByNodeId attributes
+            --in
+            ( { model | customAttributes = attributes }
             , Cmd.none
             )
 
@@ -621,23 +620,38 @@ update msg model =
                         newEditState =
                             model.attributeStates |> SDKDict.insert valueDetail attrState
 
-                        newCustomAttribute : CustomAttributeValuesByNodeID
+                        newCustomAttribute : CustomAttributeInfo
                         newCustomAttribute =
                             model.customAttributes
-                                |> SDKDict.update valueDetail.nodeId
+                                |> Dict.update valueDetail.attrId
                                     (Maybe.map
-                                        (Dict.update valueDetail.attrId
-                                            (Maybe.map
-                                                (\nodeDetail ->
-                                                    { nodeDetail | value = valueDetail.irValue }
-                                                )
-                                            )
+                                        (\attrDetail ->
+                                            let
+                                                irValueUpdate : SDKDict.Dict NodeID (Value () ()) -> SDKDict.Dict NodeID (Value () ())
+                                                irValueUpdate =
+                                                    SDKDict.update valueDetail.nodeId
+                                                        (Maybe.andThen
+                                                            (\_ ->
+                                                                attrState.lastValidValue
+                                                            )
+                                                        )
+                                            in
+                                            { attrDetail
+                                                | data =
+                                                    attrDetail.data
+                                                        |> irValueUpdate
+                                            }
                                         )
                                     )
                     in
-                    ( { model | customAttributes = newCustomAttribute, attributeStates = newEditState }
-                    , Cmd.none
-                    )
+                    case attrState.errorState of
+                        Just error ->
+                            Debug.todo ""
+
+                        Nothing ->
+                            ( { model | customAttributes = newCustomAttribute, attributeStates = newEditState }
+                            , httpSaveAttrValue valueDetail.attrId newCustomAttribute
+                            )
 
 
 
@@ -1054,21 +1068,23 @@ viewHome model packageName packageDef =
         viewAttributeValues : NodeID -> Element Msg
         viewAttributeValues node =
             let
-                attributeValuesList : NodeID -> List ( CustomAttributeId, NodeAttributeDetail )
-                attributeValuesList nodeId =
+                attributeToEditors : Element Msg
+                attributeToEditors =
                     model.customAttributes
-                        |> SDKDict.get nodeId
-                        |> Maybe.map Dict.toList
-                        |> Maybe.withDefault []
-
-                attributeToEditors : List ( CustomAttributeId, NodeAttributeDetail ) -> Element Msg
-                attributeToEditors listOfAttributes =
-                    listOfAttributes
+                        |> Dict.toList
                         |> List.map
                             (\( attrId, attrDetail ) ->
                                 let
+                                    irValue : Maybe (Value () ())
+                                    irValue =
+                                        attrDetail.data
+                                            |> SDKDict.get node
+                                            |> Maybe.map
+                                                (\iRvalue -> iRvalue)
+
+                                    nodeDetail : AttrValueDetail
                                     nodeDetail =
-                                        { attrId = attrId, nodeId = node, irValue = attrDetail.value }
+                                        { attrId = attrId, nodeId = node }
                                 in
                                 ( Name.fromString attrDetail.displayName
                                 , ValueEditor.view (IR.fromDistribution attrDetail.iR)
@@ -1079,7 +1095,7 @@ viewHome model packageName packageDef =
                                         |> Maybe.withDefault
                                             (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
                                                 (Type.Reference () attrDetail.entryPoint [])
-                                                (Just attrDetail.value)
+                                                irValue
                                             )
                                     )
                                 )
@@ -1087,7 +1103,7 @@ viewHome model packageName packageDef =
                         |> FieldList.view
             in
             column [ spacing (model.theme |> Theme.scaled 5) ]
-                [ el [ Font.bold, Font.underline ] (text "Custom Attributes"), attributeValuesList node |> attributeToEditors ]
+                [ el [ Font.bold, Font.underline ] (text "Custom Attributes"), attributeToEditors ]
 
         -- Display a single selected definition on the ui
         viewDefinition : Maybe Definition -> Element Msg
@@ -1153,7 +1169,20 @@ viewHome model packageName packageDef =
                                             |> Dict.get typeName
                                             |> Maybe.map
                                                 (\typeDef ->
-                                                    ViewType.viewType model.theme typeName typeDef.value.value typeDef.value.doc
+                                                    let
+                                                        fullyQualifiedName : ( PackageName, ModuleName, Name )
+                                                        fullyQualifiedName =
+                                                            ( packageName, moduleName, typeName )
+                                                    in
+                                                    column []
+                                                        [ ViewType.viewType
+                                                            model.theme
+                                                            typeName
+                                                            typeDef.value.value
+                                                            typeDef.value.doc
+                                                        , row [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
+                                                            [ viewAttributeValues (TypeID fullyQualifiedName) ]
+                                                        ]
                                                 )
                                     )
                                 |> Maybe.withDefault none
@@ -1619,6 +1648,36 @@ httpAttributes =
                 )
                 decodeAttributes
         }
+
+
+httpSaveAttrValue : CustomAttributeId -> CustomAttributeInfo -> Cmd Msg
+httpSaveAttrValue attrId customAttributes =
+    let
+        updatedCustomAttrDetail : Maybe CustomAttributeDetail
+        updatedCustomAttrDetail =
+            customAttributes
+                |> Dict.get attrId
+    in
+    case updatedCustomAttrDetail of
+        Just customAttrData ->
+            Http.post
+                { url = "/server/updateattribute/" ++ attrId
+                , body = jsonBody (encodeAttributeData customAttrData)
+                , expect =
+                    Http.expectJson
+                        (\response ->
+                            case response of
+                                Err httpError ->
+                                    HttpError httpError
+
+                                Ok result ->
+                                    ServerGetAttributeResponse result
+                        )
+                        decodeAttributes
+                }
+
+        Nothing ->
+            Cmd.none
 
 
 httpSaveTestSuite : IR -> TestSuite -> TestSuite -> Cmd Msg
