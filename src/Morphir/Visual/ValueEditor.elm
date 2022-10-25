@@ -42,11 +42,9 @@ import Element
         , column
         , el
         , fill
-        , fillPortion
         , height
         , html
         , inFront
-        , minimum
         , moveDown
         , moveLeft
         , moveUp
@@ -68,10 +66,6 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font exposing (center)
 import Element.Input as Input exposing (placeholder)
-import Html
-import Html.Attributes
-import Html.Events
-import Json.Decode as Decode
 import Morphir.Elm.Frontend as Frontend
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.FQName exposing (FQName)
@@ -89,6 +83,8 @@ import Morphir.ListOfResults as ListOfResults
 import Morphir.SDK.Decimal as Decimal
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.Picklist as Picklist
+import Morphir.Visual.Theme exposing (Theme)
 import Svg
 import Svg.Attributes
 
@@ -136,12 +132,18 @@ type ComponentState
     = TextEditor String
     | BoolEditor (Maybe Bool)
     | RecordEditor (Dict Name ( Type (), EditorState ))
-    | CustomEditor Path Path Name (Type.Constructors ()) Name (Dict Name ( Type (), EditorState ))
+    | CustomTypeEditor FQName (Type.Constructors ()) CustomTypeEditorState
     | MaybeEditor (Type ()) (Maybe EditorState)
     | ListEditor (Type ()) (List EditorState)
     | GridEditor (List ( Name, Type () )) (List (Array EditorState))
     | DictEditor ( Type (), Type () ) (List ( EditorState, EditorState ))
     | GenericEditor String
+
+
+type alias CustomTypeEditorState =
+    { constructorPicklistState : Picklist.State (Type.Constructor ())
+    , argumentEditorStates : Dict Name ( Type (), EditorState )
+    }
 
 
 type alias Error =
@@ -373,13 +375,53 @@ initRecordEditor ir fieldTypes maybeInitialValue =
 {-| Creates a component state for a custom type editor with an optional error.
 -}
 initCustomEditor : IR -> FQName -> Type.Constructors () -> Maybe RawValue -> ( Maybe Error, ComponentState )
-initCustomEditor _ ( packageName, moduleName, name ) constructors maybeSelected =
+initCustomEditor ir fqn constructors maybeSelected =
+    let
+        findConstructor : Name -> Maybe (Type.Constructor ())
+        findConstructor ctorNameToFind =
+            constructors
+                |> Dict.toList
+                |> List.filter
+                    (\( ctorName, _ ) ->
+                        ctorName == ctorNameToFind
+                    )
+                |> List.head
+
+        emptyState : ( Maybe Error, ComponentState )
+        emptyState =
+            ( Nothing, CustomTypeEditor fqn constructors (CustomTypeEditorState (Picklist.init Nothing) Dict.empty) )
+    in
     case maybeSelected of
         Just (Value.Constructor _ ( _, _, selectedName )) ->
-            ( Nothing, CustomEditor packageName moduleName name constructors selectedName Dict.empty )
+            ( Nothing, CustomTypeEditor fqn constructors (CustomTypeEditorState (Picklist.init (findConstructor selectedName)) Dict.empty) )
+
+        Just (Value.Apply _ fun lastArg) ->
+            case Value.uncurryApply fun lastArg of
+                ( Value.Constructor _ ( _, _, selectedName ), argValues ) ->
+                    case findConstructor selectedName of
+                        Just (( _, selectedConstructorArgs ) as selectedConstructor) ->
+                            let
+                                argumentEditorStates : Dict Name ( Type (), EditorState )
+                                argumentEditorStates =
+                                    Dict.fromList
+                                        (List.map2
+                                            (\( argName, argType ) argValue ->
+                                                ( argName, ( argType, initEditorState ir argType (Just argValue) ) )
+                                            )
+                                            selectedConstructorArgs
+                                            argValues
+                                        )
+                            in
+                            ( Nothing, CustomTypeEditor fqn constructors (CustomTypeEditorState (Picklist.init (Just selectedConstructor)) argumentEditorStates) )
+
+                        _ ->
+                            emptyState
+
+                _ ->
+                    emptyState
 
         _ ->
-            ( Nothing, CustomEditor packageName moduleName name constructors (Name.fromString "") Dict.empty )
+            emptyState
 
 
 {-| Creates a component state for a optional values.
@@ -503,14 +545,15 @@ initDictEditor ir dictKeyType dictValueType maybeInitialValue =
 
 {-| Display the editor. It takes the following inputs:
 
+  - `theme` - This is used for styling the component.
   - `ir` - This is used to look up additional type information when needed.
   - `valueType` - The type of the value being edited.
   - `updateEditorState` - Function to create the message that will be sent by this component during edits.
   - `editorState` - The current editor state.
 
 -}
-view : IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
-view ir valueType updateEditorState editorState =
+view : Theme -> IR -> Type () -> (EditorState -> msg) -> EditorState -> Element msg
+view theme ir valueType updateEditorState editorState =
     let
         baseStyle : List (Element.Attribute msg)
         baseStyle =
@@ -709,7 +752,8 @@ view ir valueType updateEditorState editorState =
                                         , height fill
                                         , centerY
                                         ]
-                                        (view ir
+                                        (view theme
+                                            ir
                                             fieldType
                                             (\newFieldEditorState ->
                                                 let
@@ -764,132 +808,14 @@ view ir valueType updateEditorState editorState =
                     )
                 ]
 
-        CustomEditor packageName moduleName typeName constructors selectedConstructor argumentEditorStates ->
-            row [ width fill, height fill, spacing 5 ] <|
-                el labelStyle (text <| nameToText typeName)
-                    :: (el
-                            [ width fill
-                            , height fill
-                            ]
-                            (html
-                                (Html.select
-                                    [ Html.Attributes.style "height" "100%"
-                                    , Html.Events.on "change"
-                                        (Decode.at [ "target", "value" ] Decode.string
-                                            |> Decode.map
-                                                (\selectedConstructorName ->
-                                                    if String.isEmpty selectedConstructorName then
-                                                        updateEditorState
-                                                            { componentState = CustomEditor packageName moduleName typeName constructors (Name.fromString "") Dict.empty
-                                                            , lastValidValue = Nothing
-                                                            , errorState = Nothing
-                                                            , defaultValueCheckbox = { show = False, checked = False }
-                                                            }
-
-                                                    else
-                                                        let
-                                                            selectedConstructorArgumentsMaybe : Maybe (List ( Name, Type () ))
-                                                            selectedConstructorArgumentsMaybe =
-                                                                Dict.get (Name.fromString selectedConstructorName) constructors
-
-                                                            selectedConstructorArguments : Dict Name ( Type (), EditorState )
-                                                            selectedConstructorArguments =
-                                                                case selectedConstructorArgumentsMaybe of
-                                                                    Just argumentsList ->
-                                                                        List.map (\( name, tpe ) -> ( name, ( tpe, initEditorState ir tpe Nothing ) )) argumentsList
-                                                                            |> Dict.fromList
-
-                                                                    Nothing ->
-                                                                        Dict.empty
-                                                        in
-                                                        updateEditorState
-                                                            (applyResult (Ok (Value.Constructor () ( packageName, moduleName, Name.fromString selectedConstructorName )))
-                                                                { editorState
-                                                                    | componentState = CustomEditor packageName moduleName typeName constructors (Name.fromString selectedConstructorName) selectedConstructorArguments
-                                                                }
-                                                            )
-                                                )
-                                        )
-                                    ]
-                                    (constructors
-                                        |> Dict.toList
-                                        |> List.map
-                                            (\( constructorName, _ ) ->
-                                                Html.option
-                                                    [ Html.Attributes.value (Name.toTitleCase constructorName)
-                                                    , Html.Attributes.selected (selectedConstructor == constructorName)
-                                                    ]
-                                                    [ Html.text (nameToText constructorName)
-                                                    ]
-                                            )
-                                        |> List.append
-                                            [ Html.option
-                                                [ Html.Attributes.value ""
-                                                ]
-                                                [ Html.text "..."
-                                                ]
-                                            ]
-                                    )
-                                )
-                            )
-                            :: (argumentEditorStates
-                                    |> Dict.toList
-                                    |> List.map
-                                        (\( argumentName, ( argumentType, argumentEditorState ) ) ->
-                                            el
-                                                [ width fill
-                                                , height fill
-                                                , centerY
-                                                ]
-                                                (view ir
-                                                    argumentType
-                                                    (\newArgumentEditorState ->
-                                                        let
-                                                            newArgumentEditorStates : Dict Name ( Type (), EditorState )
-                                                            newArgumentEditorStates =
-                                                                argumentEditorStates
-                                                                    |> Dict.insert argumentName ( argumentType, newArgumentEditorState )
-
-                                                            customResult : Result String RawValue
-                                                            customResult =
-                                                                newArgumentEditorStates
-                                                                    |> Dict.toList
-                                                                    |> List.foldl
-                                                                        (\( _, ( _, nextArgumentEditorState ) ) argumentsResultSoFar ->
-                                                                            argumentsResultSoFar
-                                                                                |> Result.andThen
-                                                                                    (\argumentsSoFar ->
-                                                                                        editorStateToRawValueResult nextArgumentEditorState
-                                                                                            |> Result.map
-                                                                                                (\maybeNextArgumentValue ->
-                                                                                                    case maybeNextArgumentValue of
-                                                                                                        Just nextArgumentValue ->
-                                                                                                            Apply () argumentsSoFar nextArgumentValue
-
-                                                                                                        Nothing ->
-                                                                                                            argumentsSoFar
-                                                                                                )
-                                                                                    )
-                                                                        )
-                                                                        (Ok (Value.Constructor () ( packageName, moduleName, selectedConstructor )))
-                                                        in
-                                                        updateEditorState
-                                                            (applyResult customResult
-                                                                { editorState
-                                                                    | componentState = CustomEditor packageName moduleName typeName constructors selectedConstructor newArgumentEditorStates
-                                                                }
-                                                            )
-                                                    )
-                                                    argumentEditorState
-                                                )
-                                        )
-                               )
-                       )
+        CustomTypeEditor fqn constructors customEditorState ->
+            viewCustomTypeEditor theme labelStyle ir updateEditorState editorState fqn constructors customEditorState
 
         MaybeEditor itemType maybeItemEditorState ->
             let
                 itemEditor itemEditorState =
-                    view ir
+                    view theme
+                        ir
                         itemType
                         (\newItemEditorState ->
                             let
@@ -996,7 +922,8 @@ view ir valueType updateEditorState editorState =
                                               else
                                                 none
                                             ]
-                                        , view ir
+                                        , view theme
+                                            ir
                                             itemType
                                             (\newItemEditorState ->
                                                 updateState (itemEditorStates |> set index newItemEditorState)
@@ -1139,7 +1066,8 @@ view ir valueType updateEditorState editorState =
                                                     below none
                                                 , onRight (removeButton (cellEditorStates |> remove rowIndex))
                                                 ]
-                                                (view ir
+                                                (view theme
+                                                    ir
                                                     columnType
                                                     (\newItemEditorState ->
                                                         updateState (cellEditorStates |> set rowIndex columnIndex newItemEditorState)
@@ -1272,7 +1200,8 @@ view ir valueType updateEditorState editorState =
                                                         below none
                                                     , onRight (removeButton (cellEditorStates |> remove rowIndex))
                                                     ]
-                                                    (view ir
+                                                    (view theme
+                                                        ir
                                                         columnType
                                                         (\newItemEditorState ->
                                                             updateState (cellEditorStates |> set rowIndex columnIndex newItemEditorState)
@@ -1336,6 +1265,134 @@ view ir valueType updateEditorState editorState =
                     , spellcheck = False
                     }
                 )
+
+
+viewCustomTypeEditor : Theme -> List (Element.Attribute msg) -> IR -> (EditorState -> msg) -> EditorState -> FQName -> Type.Constructors () -> CustomTypeEditorState -> Element msg
+viewCustomTypeEditor theme labelStyle ir updateEditorState editorState (( packageName, moduleName, typeName ) as fqn) constructors customTypeEditorState =
+    let
+        viewConstructor : Element msg
+        viewConstructor =
+            Picklist.view theme
+                { state = customTypeEditorState.constructorPicklistState
+                , onStateChange =
+                    \constructorPicklistState ->
+                        case constructorPicklistState |> Picklist.getSelectedTag of
+                            Nothing ->
+                                updateEditorState
+                                    { componentState =
+                                        CustomTypeEditor fqn
+                                            constructors
+                                            { customTypeEditorState
+                                                | constructorPicklistState = constructorPicklistState
+                                                , argumentEditorStates = Dict.empty
+                                            }
+                                    , lastValidValue = Nothing
+                                    , errorState = Nothing
+                                    , defaultValueCheckbox = { show = False, checked = False }
+                                    }
+
+                            Just ( selectedConstructorName, selectedConstructorArgs ) ->
+                                let
+                                    argumentEditorStates : Dict Name ( Type (), EditorState )
+                                    argumentEditorStates =
+                                        selectedConstructorArgs
+                                            |> List.map (\( name, tpe ) -> ( name, ( tpe, initEditorState ir tpe Nothing ) ))
+                                            |> Dict.fromList
+                                in
+                                updateEditorState
+                                    (applyResult (Ok (Value.Constructor () ( packageName, moduleName, selectedConstructorName )))
+                                        { editorState
+                                            | componentState =
+                                                CustomTypeEditor fqn
+                                                    constructors
+                                                    { customTypeEditorState
+                                                        | constructorPicklistState = constructorPicklistState
+                                                        , argumentEditorStates = argumentEditorStates
+                                                    }
+                                        }
+                                    )
+                }
+                (constructors
+                    |> Dict.toList
+                    |> List.map
+                        (\( ctorName, ctorArgs ) ->
+                            ( ( ctorName, ctorArgs ), text (ctorName |> Name.toHumanWordsTitle |> String.join " ") )
+                        )
+                )
+
+        viewArguments : List (Element msg)
+        viewArguments =
+            customTypeEditorState.argumentEditorStates
+                |> Dict.toList
+                |> List.map
+                    (\( argumentName, ( argumentType, argumentEditorState ) ) ->
+                        el
+                            [ width fill
+                            , height fill
+                            , centerY
+                            ]
+                            (view theme
+                                ir
+                                argumentType
+                                (\newArgumentEditorState ->
+                                    let
+                                        newArgumentEditorStates : Dict Name ( Type (), EditorState )
+                                        newArgumentEditorStates =
+                                            customTypeEditorState.argumentEditorStates
+                                                |> Dict.insert argumentName ( argumentType, newArgumentEditorState )
+
+                                        selectedConstructorResult : Result Error (Value () ())
+                                        selectedConstructorResult =
+                                            customTypeEditorState.constructorPicklistState
+                                                |> Picklist.getSelectedTag
+                                                |> Maybe.map
+                                                    (\( ctorName, _ ) ->
+                                                        Value.Constructor () ( packageName, moduleName, ctorName )
+                                                    )
+                                                |> Result.fromMaybe "No constructor selected"
+
+                                        customResult : Result String RawValue
+                                        customResult =
+                                            newArgumentEditorStates
+                                                |> Dict.toList
+                                                |> List.foldl
+                                                    (\( _, ( _, nextArgumentEditorState ) ) argumentsResultSoFar ->
+                                                        argumentsResultSoFar
+                                                            |> Result.andThen
+                                                                (\argumentsSoFar ->
+                                                                    editorStateToRawValueResult nextArgumentEditorState
+                                                                        |> Result.map
+                                                                            (\maybeNextArgumentValue ->
+                                                                                case maybeNextArgumentValue of
+                                                                                    Just nextArgumentValue ->
+                                                                                        Apply () argumentsSoFar nextArgumentValue
+
+                                                                                    Nothing ->
+                                                                                        argumentsSoFar
+                                                                            )
+                                                                )
+                                                    )
+                                                    selectedConstructorResult
+                                    in
+                                    updateEditorState
+                                        (applyResult customResult
+                                            { editorState
+                                                | componentState = CustomTypeEditor fqn constructors { customTypeEditorState | argumentEditorStates = newArgumentEditorStates }
+                                            }
+                                        )
+                                )
+                                argumentEditorState
+                            )
+                    )
+    in
+    row [ width fill, height fill, spacing 5 ]
+        [ el labelStyle (text <| nameToText typeName)
+        , viewConstructor
+        , row
+            [ spacing 5
+            ]
+            viewArguments
+        ]
 
 
 {-| Utility function to apply the result of an edit to the editor state using the following logic:

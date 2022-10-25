@@ -1,23 +1,23 @@
 {-
-Copyright 2020 Morgan Stanley
+   Copyright 2020 Morgan Stanley
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 -}
 
 
 module Morphir.IR.Name exposing
     ( Name, fromList, toList
-    , fromString, toTitleCase, toCamelCase, toSnakeCase, toHumanWords
+    , fromString, toTitleCase, toCamelCase, toSnakeCase, toHumanWords, toHumanWordsTitle
     )
 
 {-| `Name` is an abstraction of human-readable identifiers made up of words. This abstraction
@@ -52,7 +52,7 @@ abbreviation:
 
 # String conversion
 
-@docs fromString, toTitleCase, toCamelCase, toSnakeCase, toHumanWords
+@docs fromString, toTitleCase, toCamelCase, toSnakeCase, toHumanWords, toHumanWordsTitle
 
 -}
 
@@ -200,6 +200,25 @@ toHumanWords name =
                                 process (List.append prefix [ join abbrev, first ]) [] rest
     in
     process [] [] words
+
+
+{-| Turns a name into a list of human-readable strings with the first word capitalized. The only difference
+compared to [`toList`](#toList) is how it handles abbreviations. They will
+be turned into a single upper-case word instead of separate single-character
+words.
+
+    toHumanWordsTitle (fromList [ "value", "in", "u", "s", "d" ])
+    --> [ "Value", "in", "USD" ]
+
+-}
+toHumanWordsTitle : Name -> List String
+toHumanWordsTitle name =
+    case toHumanWords name of
+        firstWord :: rest ->
+            capitalize firstWord :: rest
+
+        [] ->
+            []
 
 
 capitalize : String -> String
