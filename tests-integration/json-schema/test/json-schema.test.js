@@ -47,11 +47,11 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 
         const mainSchema = {
             $id: "sj",
-            $ref: "dj#/$defs/bool"
+            $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/bool"
         }
 
         const boolSchema = {
-            $id : "dj",
+            $id : "https://morphir.finos.org/test_model.schema.json",
             $defs: {
                 bool: {type: "boolean"}
             }
