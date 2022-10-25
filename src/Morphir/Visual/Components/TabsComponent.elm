@@ -34,6 +34,7 @@ module Morphir.Visual.Components.TabsComponent exposing (TabsComponentConfig, Ta
 import Array exposing (Array)
 import Element exposing (Element, column, el, fill, height, mouseOver, none, padding, pointer, row, spacing, text, width)
 import Element.Border as Border
+import Element.Background as Background
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Morphir.Visual.Theme as Theme exposing (Theme)
@@ -66,8 +67,7 @@ type alias Tab msg =
 
 -}
 type alias TabsComponentConfig msg =
-    { theme : Theme
-    , tabs : Array (Tab msg)
+    { tabs : Array (Tab msg)
     , onSwitchTab : Int -> msg
     , activeTab : Int
     }
@@ -77,8 +77,8 @@ type alias TabsComponentConfig msg =
 {-
    Display a Tabs Component
 -}
-view : TabsComponentConfig msg -> Element msg
-view config =
+view : Theme -> TabsComponentConfig msg -> Element msg
+view theme config =
     let
         tabHeader : String -> Int -> Element msg
         tabHeader name index =
@@ -89,7 +89,7 @@ view config =
 
                 activeStyles =
                     if isActive then
-                        [ Font.bold, Border.color config.theme.colors.primaryHighlight ]
+                        [ Font.bold, Border.color theme.colors.primaryHighlight ]
 
                     else
                         []
@@ -97,10 +97,12 @@ view config =
             el
                 ([ onClick (config.onSwitchTab index)
                  , pointer
+                 , Background.color theme.colors.lightest
+                 , Font.size (Theme.scaled 2 theme)
                  , Border.widthEach { top = 0, left = 0, right = 0, bottom = 2 }
-                 , mouseOver [ Border.color config.theme.colors.primaryHighlight ]
-                 , padding (Theme.mediumPadding config.theme)
-                 , Border.color config.theme.colors.lightest
+                 , mouseOver [ Border.color theme.colors.primaryHighlight ]
+                 , padding (Theme.mediumPadding theme)
+                 , Border.color theme.colors.lightest
                  ]
                     ++ activeStyles
                 )
@@ -119,5 +121,5 @@ view config =
                 Nothing ->
                     none
     in
-    column [ width fill, height fill, spacing (Theme.largeSpacing config.theme) ]
-        [ row [ width fill, spacing (Theme.smallSpacing config.theme), Theme.borderBottom 1, Border.color config.theme.colors.gray ] tabHeaders, el [ width fill ] activeTab ]
+    column [ width fill, height fill, spacing (Theme.largeSpacing theme) ]
+        [ row [ width fill, spacing (Theme.smallSpacing theme), Theme.borderBottom 1, Border.color theme.colors.gray ] tabHeaders, el [ width fill ] activeTab ]

@@ -13,6 +13,7 @@ type alias Theme =
     { fontSize : Int
     , decimalDigit : Int
     , colors : Colors
+    , icons : Icons
     }
 
 
@@ -29,6 +30,12 @@ type alias Colors =
     , selectionColor : Color
     , secondaryInformation : Color
     , gray : Color
+    }
+
+
+type alias Icons =
+    { opened : String
+    , closed : String
     }
 
 
@@ -55,6 +62,33 @@ defaultColors =
     }
 
 
+defaultIcons : Icons
+defaultIcons =
+    { opened = "⮟"
+    , closed = "⮞"
+    }
+
+
+morphIrBlue : Element.Color
+morphIrBlue =
+    rgb 0 0.639 0.882
+
+
+lightMorphIrBlue : Element.Color
+lightMorphIrBlue =
+    rgba 0 0.639 0.882 0.3
+
+
+morphIrOrange : Element.Color
+morphIrOrange =
+    rgb 1 0.411 0
+
+
+lightMorphIrOrange : Element.Color
+lightMorphIrOrange =
+    rgba 1 0.411 0 0.3
+
+
 labelStyles : Theme -> List (Attribute msg)
 labelStyles theme =
     [ width fill
@@ -77,12 +111,14 @@ fromConfig maybeConfig =
             { fontSize = config.fontSize |> Maybe.withDefault 10
             , decimalDigit = config.decimalDigit |> Maybe.withDefault 2
             , colors = defaultColors
+            , icons = defaultIcons
             }
 
         Nothing ->
             { fontSize = 10
             , decimalDigit = 2
             , colors = defaultColors
+            , icons = defaultIcons
             }
 
 
