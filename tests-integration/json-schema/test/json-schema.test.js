@@ -57,7 +57,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         expect(result).toBe(true)
     })
 
-    test('2. Int type test case', () => {
+    test.skip('2. Int type test case', () => {
         const intSchema = {
             $id: "int",
             $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Age"
@@ -68,7 +68,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         const result = validate(45)
         expect(result).toBe(true)
     })
-    test('3. Float type test case', () => {
+    test.skip('3. Float type test case', () => {
         const floatSchema = {
             $id: "float",
             $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Score"
@@ -80,7 +80,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         const result = validate(4.5)
         expect(result).toBe(true)
     })
-    test('4. Char type test case', () => {
+    test.skip('4. Char type test case', () => {
         const charSchema = {
             $id: "char",
             $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Grade"
@@ -91,7 +91,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         const result = validate('A')
         expect(result).toBe(true)
     })
-    test('5. String type test case', () => {
+    test.skip('5. String type test case', () => {
         const stringSchema = {
             $id: "string",
             $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Fullname"
@@ -99,21 +99,22 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         const ajv = new Ajv2020({schemas: [stringSchema, jsonObject]})
         const validate = ajv.getSchema("string")
 
-
         const result = validate("Morphir String")
-        expect(result).toBe(true)
-    })
-    test.skip('6. Test for Decimal type', () => {
-        const decimalSchema = jsonObject["$defs"]["AdvancedTypes.Score"]
-        const ajv = new Ajv2020()
-        const validate = ajv.compile(decimalSchema)
-        const result = validate("99.9")
         expect(result).toBe(true)
     })
 })
 
 describe('Test Suite for Advanced Types', () => {
-
+    test.skip('1. Test for Decimal type', () => {
+        const decimalSchema = {
+            $id: "decimal",
+            $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/AdvancedTypes.Score"
+        }
+        const ajv = new Ajv2020({schemas: [decimalSchema, jsonObject]})
+        const validate = ajv.getSchema("decimal")
+        const result = validate("99.9")
+        expect(result).toBe(true)
+    })
 
     test.skip('2. Test for LocalDate type', () => {
     })
