@@ -38,58 +38,68 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 
         // Read json into an object
         const jsonBuffer = fs.readFileSync(schemaPath, 'utf8')
-        const jsonObject = JSON.parse(jsonBuffer.toString())
+        jsonObject = JSON.parse(jsonBuffer)
         jsonString = JSON.stringify(jsonObject, null, 4)
 
 	})
 
     test('1. Bool type test case', () => {
 
-        const mainSchema = {
-            $id: "sj",
-            $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/bool"
-        }
-
         const boolSchema = {
-            $id : "https://morphir.finos.org/test_model.schema.json",
-            $defs: {
-                bool: {type: "boolean"}
-            }
+            $id: "bool",
+            $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Paid"
         }
+        const ajv = new Ajv2020({schemas: [boolSchema, jsonObject]})
+        const validate = ajv.getSchema("bool")
 
-        const ajv = new Ajv2020({schemas: [mainSchema, boolSchema]})
 
-
-        const validate = ajv.getSchema("sj")
         const result = ajv.validate(true);
         expect(result).toBe(true)
     })
 
-    test.skip('2. Int type test case', () => {
-        const intSchema = jsonObject["$defs"]["BasicTypes.Age"]
-        const ajv = new Ajv2020()
-        const validate = ajv.compile(intSchema)
+    test('2. Int type test case', () => {
+        const intSchema = {
+            $id: "int",
+            $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Age"
+        }
+        const ajv = new Ajv2020({schemas: [intSchema, jsonObject]})
+        const validate = ajv.getSchema("int")
+
         const result = validate(45)
         expect(result).toBe(true)
     })
-    test.skip('3. Float type test case', () => {
-        const floatSchema = jsonObject["$defs"]["BasicTypes.Score"]
-        const ajv = new Ajv2020()
-        const validate = ajv.compile(floatSchema)
+    test('3. Float type test case', () => {
+        const floatSchema = {
+            $id: "float",
+            $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Score"
+        }
+        const ajv = new Ajv2020({schemas: [floatSchema, jsonObject]})
+        const validate = ajv.getSchema("float")
+
+
         const result = validate(4.5)
         expect(result).toBe(true)
     })
-    test.skip('4. Char type test case', () => {
-        const charSchema = jsonObject["$defs"]["BasicTypes.Grade"]
-        const ajv = new Ajv2020()
-        const validate = ajv.compile(charSchema)
+    test('4. Char type test case', () => {
+        const charSchema = {
+            $id: "char",
+            $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Grade"
+        }
+        const ajv = new Ajv2020({schemas: [charSchema, jsonObject]})
+        const validate = ajv.getSchema("char")
+
         const result = validate('A')
         expect(result).toBe(true)
     })
-    test.skip('5. String type test case', () => {
-        const stringSchema = jsonObject["$defs"]["BasicTypes.Fullname"]
-        const ajv = new Ajv2020()
-        const validate = ajv.compile(stringSchema)
+    test('5. String type test case', () => {
+        const stringSchema = {
+            $id: "string",
+            $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Fullname"
+        }
+        const ajv = new Ajv2020({schemas: [stringSchema, jsonObject]})
+        const validate = ajv.getSchema("string")
+
+
         const result = validate("Morphir String")
         expect(result).toBe(true)
     })
