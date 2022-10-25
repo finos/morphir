@@ -5,7 +5,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
-import Morphir.Visual.Theme exposing (Theme, scaled, smallSpacing, mediumSpacing)
+import Morphir.Visual.Theme exposing (Theme, mediumSpacing, scaled, smallSpacing)
 
 
 type alias Config msg =
@@ -36,9 +36,9 @@ view theme config =
                 , onClick config.onToggle
                 , pointer
                 ]
-                [ el [] (text icon), el [ Font.size (theme |> scaled 2) ] (text config.title) ]
+                [ el [] (text icon), el [ Font.size theme.fontSize ] (text config.title) ]
     in
-    column [ width fill, height fill, Background.color theme.colors.lightest, mediumSpacing theme |> spacing]
+    column [ width fill, height fill, Background.color theme.colors.lightest, mediumSpacing theme |> spacing ]
         [ header
         , if config.isOpen then
             config.content

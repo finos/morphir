@@ -33,8 +33,8 @@ module Morphir.Visual.Components.TabsComponent exposing (TabsComponentConfig, Ta
 
 import Array exposing (Array)
 import Element exposing (Element, column, el, fill, height, mouseOver, none, padding, pointer, row, spacing, text, width)
-import Element.Border as Border
 import Element.Background as Background
+import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
 import Morphir.Visual.Theme as Theme exposing (Theme)
@@ -77,6 +77,8 @@ type alias TabsComponentConfig msg =
 {-
    Display a Tabs Component
 -}
+
+
 view : Theme -> TabsComponentConfig msg -> Element msg
 view theme config =
     let
@@ -98,7 +100,7 @@ view theme config =
                 ([ onClick (config.onSwitchTab index)
                  , pointer
                  , Background.color theme.colors.lightest
-                 , Font.size (Theme.scaled 2 theme)
+                 , Font.size theme.fontSize
                  , Border.widthEach { top = 0, left = 0, right = 0, bottom = 2 }
                  , mouseOver [ Border.color theme.colors.primaryHighlight ]
                  , padding (Theme.mediumPadding theme)

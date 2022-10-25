@@ -30,6 +30,10 @@ type alias Colors =
     , selectionColor : Color
     , secondaryInformation : Color
     , gray : Color
+    , brandPrimary : Color
+    , brandPrimaryLight : Color
+    , brandSecondary : Color
+    , brandSecondaryLight : Color
     }
 
 
@@ -43,50 +47,6 @@ type alias ThemeConfig =
     { fontSize : Maybe Int
     , decimalDigit : Maybe Int
     }
-
-
-defaultColors : Colors
-defaultColors =
-    { lightest = rgb 1 1 1
-    , darkest = rgb 0.1 0.1 0.1
-    , primaryHighlight = rgb255 0 163 225
-    , secondaryHighlight = rgb255 255 105 0
-    , positive = rgb 0 0.6 0
-    , positiveLight = rgba 0 0.6 0 0.5
-    , negative = rgb 0.7 0 0
-    , negativeLight = rgba 0.7 0 0 0.5
-    , backgroundColor = rgb 0.9529 0.9176 0.8078
-    , selectionColor = rgb 0.8 0.9 0.9
-    , secondaryInformation = rgb 0.5 0.5 0.5
-    , gray = rgb 0.9 0.9 0.9
-    }
-
-
-defaultIcons : Icons
-defaultIcons =
-    { opened = "⮟"
-    , closed = "⮞"
-    }
-
-
-morphIrBlue : Element.Color
-morphIrBlue =
-    rgb 0 0.639 0.882
-
-
-lightMorphIrBlue : Element.Color
-lightMorphIrBlue =
-    rgba 0 0.639 0.882 0.3
-
-
-morphIrOrange : Element.Color
-morphIrOrange =
-    rgb 1 0.411 0
-
-
-lightMorphIrOrange : Element.Color
-lightMorphIrOrange =
-    rgba 1 0.411 0 0.3
 
 
 labelStyles : Theme -> List (Attribute msg)
@@ -106,16 +66,43 @@ boldLabelStyles theme =
 
 fromConfig : Maybe ThemeConfig -> Theme
 fromConfig maybeConfig =
+    let
+        defaultColors : Colors
+        defaultColors =
+            { lightest = rgb 1 1 1
+            , darkest = rgb 0.1 0.1 0.1
+            , primaryHighlight = rgb255 0 163 225
+            , secondaryHighlight = rgb255 255 105 0
+            , positive = rgb 0 0.6 0
+            , positiveLight = rgba 0 0.6 0 0.5
+            , negative = rgb 0.7 0 0
+            , negativeLight = rgba 0.7 0 0 0.5
+            , backgroundColor = rgb 0.9529 0.9176 0.8078
+            , selectionColor = rgb 0.8 0.9 0.9
+            , secondaryInformation = rgb 0.5 0.5 0.5
+            , gray = rgb 0.9 0.9 0.9
+            , brandPrimary = rgb 0 0.639 0.882
+            , brandPrimaryLight = rgba 0 0.639 0.882 0.3
+            , brandSecondary = rgb 1 0.411 0
+            , brandSecondaryLight = rgba 1 0.411 0 0.3
+            }
+
+        defaultIcons : Icons
+        defaultIcons =
+            { opened = "⮟"
+            , closed = "⮞"
+            }
+    in
     case maybeConfig of
         Just config ->
-            { fontSize = config.fontSize |> Maybe.withDefault 10
+            { fontSize = config.fontSize |> Maybe.withDefault 12
             , decimalDigit = config.decimalDigit |> Maybe.withDefault 2
             , colors = defaultColors
             , icons = defaultIcons
             }
 
         Nothing ->
-            { fontSize = 10
+            { fontSize = 12
             , decimalDigit = 2
             , colors = defaultColors
             , icons = defaultIcons
@@ -165,7 +152,7 @@ borderBottom width =
 
 scaled : Int -> Theme -> Int
 scaled scaleValue theme =
-    Element.modular (toFloat theme.fontSize) 1.25 scaleValue |> round
+    Element.modular (toFloat theme.fontSize) 1.25 (scaleValue - 2) |> round
 
 
 fontColorFor : Color -> Theme -> Color
