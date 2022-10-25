@@ -113,15 +113,20 @@ describe('Test Suite for Advanced Types', () => {
 })
 
 describe('Test Suite for Optional Types', () => {
-    test.skip('Test for MayBe type', () => {
-        const mainSchema = JSON.parse(jsonString)
-        mainSchema["$ref"] = "#/$defs/OptionalTypes.Assignment"
-
-        const maybeString = JSON.stringify(mainSchema)
-
+    test('Test for MayBe String', () => {
+        const optionalSchema = {
+                                   "oneOf": [
+                                       {
+                                           "type": "null"
+                                       },
+                                       {
+                                           "type": "string"
+                                       }
+                                   ]
+                               }
         const ajv = new Ajv2020()
-        const validate = ajv.compile(mainSchema)
-        const result = validate('Bar')
+        const validate = ajv.compile(optionalSchema)
+        const result = validate("Bar")
         expect(result).toBe(true)
     })
 })
