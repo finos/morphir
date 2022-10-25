@@ -73,8 +73,8 @@ describe('Test Suite for Basic Types and Decimal',  () => {
     })
     test('4. Char type test case', () => {
         const charSchema = {
-                            "type": "string"
-                           }
+            "type": "string"
+        }
         const ajv = new Ajv2020()
         const validate = ajv.compile(charSchema)
         const result = validate('A')
@@ -115,15 +115,15 @@ describe('Test Suite for Advanced Types', () => {
 describe('Test Suite for Optional Types', () => {
     test('Test for MayBe String', () => {
         const optionalSchema = {
-                                   "oneOf": [
-                                       {
-                                           "type": "null"
-                                       },
-                                       {
-                                           "type": "string"
-                                       }
-                                   ]
-                               }
+           "oneOf": [
+               {
+                   "type": "null"
+               },
+               {
+                   "type": "string"
+               }
+           ]
+       }
         const ajv = new Ajv2020()
         const validate = ajv.compile(optionalSchema)
         const result = validate("Bar")
@@ -188,15 +188,50 @@ describe('Test Suite for Composite Types - Custom Types', () => {
         expect(result).toBe(true)
     })
 
-    test.skip('Test for Custom type 1',  () => {
-        const custom1Schema = jsonObject["$defs"]["CustomTypes.Person"]
+    test('Test for Custom type 1',  () => {
+        const custom1Schema = {
+              "oneOf": [
+                  {
+                      "type": "array",
+                      "items": false,
+                      "prefixItems": [
+                          {
+                              "const": "Adult"
+                          },
+                          {
+                              "type": "string"
+                          }
+                      ],
+                      "minItems": 2,
+                      "maxItems": 2
+                  },
+                  {
+                      "type": "array",
+                      "items": false,
+                      "prefixItems": [
+                          {
+                              "const": "Child"
+                          },
+                          {
+                              "type": "string"
+                          },
+                          {
+                              "type": "integer"
+                          }
+                      ],
+                      "minItems": 3,
+                      "maxItems": 3
+                  }
+              ]
+          }
+
         const ajv = new Ajv2020()
         const validate = ajv.compile(custom1Schema)
         const result = validate(["Child", "Bar", 11])
         expect(result).toBe(true)
     })
 
-    test.skip('Test for Custom type 2',  () => {
+    test('Test for Custom type 2',  () => {
         const custom2Schema = jsonObject["$defs"]["CustomTypes.Person"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(custom2Schema)
