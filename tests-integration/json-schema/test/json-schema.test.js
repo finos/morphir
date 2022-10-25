@@ -127,7 +127,7 @@ describe('Test Suite for Optional Types', () => {
 })
 
 describe('Test Suite for Collection Types', () => {
-    test.skip('Test for List type', () => {
+    test('Test for List type', () => {
         const listSchema = jsonObject["$defs"]["CollectionTypes.Department"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(listSchema)
@@ -135,7 +135,7 @@ describe('Test Suite for Collection Types', () => {
         expect(result).toBe(true)
 
     })
-    test.skip('Test for Set type', () => {
+    test('Test for Set type', () => {
         const setSchema = jsonObject["$defs"]["CollectionTypes.Proids"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(setSchema)
@@ -157,7 +157,7 @@ describe('Test Suite for Composite Types - Records/Tuples', () => {
     test.skip('Test for Tuple  type', () => {
     })
 
-    test.skip('Test for Record type', () => {
+    test('Test for Record type', () => {
         const recordSchema = jsonObject["$defs"]["RecordTypes.Address"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(recordSchema)
