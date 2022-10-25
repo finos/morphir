@@ -44,35 +44,14 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 	})
 
     test('1. Bool type test case', () => {
-
-        const mainSchema = jsonObject
-        const testSchema = {
-            "type" : mainSchema["$defs"]["BasicTypes.Paid"]["type"]
-        }
-
-        console.log(testSchema)
-
-        mainSchema["$defs"]["BasicTypes_Paid"] =  testSchema
-
-
         const boolSchema = {
-            "$id": "bool",
-            "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes_Paid"
-        }
+                            "type": "boolean"
+                           }
 
-        console.log(boolSchema)
-
-
-        const ajv = new Ajv2020({
-            schemas: [boolSchema, mainSchema],
-            strict: false,
-            allErrors: true
-        })
-        const validate = ajv.getSchema("bool")
-
+        const ajv = new Ajv2020()
+        const validate = ajv.compile(boolSchema)
         const result = ajv.validate(true);
         expect(result).toBe(true)
-
     })
 
     test.skip('2. Int type test case', () => {
