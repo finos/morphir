@@ -175,7 +175,7 @@ describe('Test Suite for Composite Types - Records/Tuples', () => {
 })
 
 describe('Test Suite for Composite Types - Custom Types', () => {
-    test.skip('Test for Enum Type', () => {
+    test('Test for Enum Type', () => {
         const enumSchema = jsonObject["$defs"]["CustomTypes.Currencies"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(enumSchema)
