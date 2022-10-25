@@ -35,8 +35,7 @@ type alias Components =
     , highlightingColor : Bool
     , activeTab : Int
     , drillDownIsOpen : Bool
-    , picklist : Picklist.State
-    , picklistSelection : Maybe Int
+    , picklist : Picklist.State Int
     }
 
 
@@ -48,8 +47,7 @@ type Msg
     | SwitchTab Int
     | OpenDrillDown
     | CloseDrillDown
-    | PicklistChanged Picklist.State
-    | PicklistSelectionChanged (Maybe Int)
+    | PicklistChanged (Picklist.State Int)
 
 
 init : Model
@@ -69,8 +67,7 @@ init =
             , highlightingColor = False
             , activeTab = 0
             , drillDownIsOpen = False
-            , picklist = Picklist.init
-            , picklistSelection = Nothing
+            , picklist = Picklist.init Nothing
             }
     in
     components
@@ -85,11 +82,6 @@ update msg model =
         PicklistChanged newState ->
             { model
                 | picklist = newState
-            }
-
-        PicklistSelectionChanged maybeSelectedTag ->
-            { model
-                | picklistSelection = maybeSelectedTag
             }
 
         SwitchTab newActiveTab ->
@@ -208,12 +200,10 @@ viewComponents c =
                 )
             , viewComponent "Picklist"
                 (text (Debug.toString c.picklist))
-                (text (Debug.toString c.picklistSelection))
+                none
                 (Picklist.view c.theme
                     { state = c.picklist
                     , onStateChange = PicklistChanged
-                    , selectedTag = c.picklistSelection
-                    , onSelectionChange = PicklistSelectionChanged
                     }
                     [ ( 1, text "Option A" )
                     , ( 2, text "Option B" )

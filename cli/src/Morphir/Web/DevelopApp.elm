@@ -44,6 +44,7 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
+import FontAwesome.Styles as Icon
 import Http exposing (emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
@@ -842,7 +843,8 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "Morphir - Home"
     , body =
-        [ layout
+        [ Icon.css
+        , layout
             [ Font.family
                 [ Font.external
                     { name = "Poppins"
@@ -1516,7 +1518,8 @@ viewDefinitionDetails model =
                 |> List.map
                     (\( argName, _, argType ) ->
                         ( argName
-                        , ValueEditor.view ir
+                        , ValueEditor.view model.theme
+                            ir
                             argType
                             (Insight << ArgValueUpdated argName)
                             (argState |> Dict.get argName |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
