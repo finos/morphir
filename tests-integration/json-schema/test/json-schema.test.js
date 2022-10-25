@@ -116,7 +116,7 @@ describe('Test Suite for Advanced Types', () => {
 })
 
 describe('Test Suite for Optional Types', () => {
-    test('Test for MayBe type', () => {
+    test.skip('Test for MayBe type', () => {
         const mainSchema = JSON.parse(jsonString)
         mainSchema["$ref"] = "#/$defs/OptionalTypes.Assignment"
 
