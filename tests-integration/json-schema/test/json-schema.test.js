@@ -49,8 +49,8 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         mainSchema["$defs"]["BasicTypes_Paid"] =  mainSchema["$defs"]["BasicTypes.Paid"]
 
         const boolSchema = {
-            $id: "bool",
-            $ref: "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes_Paid"
+            "$id": "bool",
+            "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes_Paid"
         }
 
 
@@ -59,10 +59,6 @@ describe('Test Suite for Basic Types and Decimal',  () => {
             strict: false,
             allErrors: true
         })
-
-        console.log(ajv.validateSchema(boolSchema))
-        console.log(ajv.errors)
-
         const validate = ajv.getSchema("bool")
 
         const result = ajv.validate(true);
