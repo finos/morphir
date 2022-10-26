@@ -16,7 +16,6 @@ const util = require('util')
 const writeFile = util.promisify(fs.writeFile)
 
 var jsonObject
-var jsonString
 
 const options = {
     target : 'JsonSchema',
@@ -44,8 +43,8 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 
     test('1. Bool type test case', () => {
         const boolSchema = {
-                            "type": "boolean"
-                           }
+            "type": "boolean"
+        }
         const ajv = new Ajv2020()
         const validate = ajv.compile(boolSchema)
         const result = ajv.validate(true);
@@ -53,8 +52,8 @@ describe('Test Suite for Basic Types and Decimal',  () => {
     })
     test('2. Int type test case', () => {
         const intSchema = {
-                            "type": "integer"
-                           }
+            "type": "integer"
+        }
         const ajv = new Ajv2020()
         const validate = ajv.compile(intSchema)
         const result = validate(45)
@@ -62,8 +61,8 @@ describe('Test Suite for Basic Types and Decimal',  () => {
     })
     test('3. Float type test case', () => {
         const floatSchema = {
-                            "type": "number"
-                           }
+            "type": "number"
+        }
         const ajv = new Ajv2020()
         const validate = ajv.compile(floatSchema)
 
@@ -81,8 +80,8 @@ describe('Test Suite for Basic Types and Decimal',  () => {
     })
     test('5. String type test case', () => {
         const stringSchema = {
-                            "type": "string"
-                           }
+            "type": "string"
+        }
         const ajv = new Ajv2020()
         const validate = ajv.compile(stringSchema)
         const result = validate("Morphir String")
@@ -112,7 +111,7 @@ describe('Test Suite for Advanced Types', () => {
 })
 
 describe('Test Suite for Optional Types', () => {
-    test('Test for MayBe String', () => {
+    test.skip('Test for MayBe String', () => {
         const optionalSchema = jsonObject["$defs"]["OptionalTypes.Assignment"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(optionalSchema)
@@ -179,41 +178,7 @@ describe('Test Suite for Composite Types - Custom Types', () => {
     })
 
     test('Test for Custom type 1',  () => {
-        const custom1Schema = {
-              "oneOf": [
-                  {
-                      "type": "array",
-                      "items": false,
-                      "prefixItems": [
-                          {
-                              "const": "Adult"
-                          },
-                          {
-                              "type": "string"
-                          }
-                      ],
-                      "minItems": 2,
-                      "maxItems": 2
-                  },
-                  {
-                      "type": "array",
-                      "items": false,
-                      "prefixItems": [
-                          {
-                              "const": "Child"
-                          },
-                          {
-                              "type": "string"
-                          },
-                          {
-                              "type": "integer"
-                          }
-                      ],
-                      "minItems": 3,
-                      "maxItems": 3
-                  }
-              ]
-          }
+        const custom1Schema = jsonObject["$defs"]["CustomTypes.Person"]
 
         const ajv = new Ajv2020()
         const validate = ajv.compile(custom1Schema)
