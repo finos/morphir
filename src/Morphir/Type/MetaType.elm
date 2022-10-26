@@ -78,13 +78,23 @@ metaUnit =
 metaAlias : FQName -> List MetaType -> MetaType -> MetaType
 metaAlias fQName args tpe =
     let
+        vars : Set Variable
         vars =
             args
                 |> List.map variables
                 |> List.foldl Set.union Set.empty
                 |> Set.union (variables tpe)
     in
-    MetaRef vars fQName args (Just tpe)
+    case tpe of
+        MetaRef _ nestedFQName nestedArgs _ ->
+            if fQName == nestedFQName && nestedArgs == args then
+                tpe
+
+            else
+                MetaRef vars fQName args (Just tpe)
+
+        _ ->
+            MetaRef vars fQName args (Just tpe)
 
 
 wrapInAliases : List ( FQName, List MetaType ) -> MetaType -> MetaType

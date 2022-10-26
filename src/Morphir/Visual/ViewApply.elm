@@ -1,7 +1,7 @@
 module Morphir.Visual.ViewApply exposing (view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, padding, rgb, row, spacing, text, width)
+import Element exposing (Element, above, centerX, centerY, el, fill, moveUp, padding, paddingEach, rgb, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -21,7 +21,6 @@ import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..), drillDownContains, evalIfPathTaken)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, getId)
 import Morphir.Visual.Theme exposing (borderRounded, smallPadding, smallSpacing)
-import Element exposing (paddingEach)
 
 
 view : Config msg -> (Config msg -> Value.Definition () (Type ()) -> Element msg) -> (EnrichedValue -> Element msg) -> EnrichedValue -> List EnrichedValue -> Element msg
@@ -33,11 +32,19 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
         drillDownPanel : FQName -> Depth -> Element msg -> Element msg -> Element msg -> Bool -> Element msg
         drillDownPanel fqName depth closedElement openHeader openElement isOpen =
-            DrillDownPanel.drillDownPanel { openMsg = config.handlers.onReferenceClicked fqName (getId functionValue) config.nodePath, closeMsg = config.handlers.onReferenceClose fqName (getId functionValue) config.nodePath } depth closedElement openHeader openElement isOpen
+            DrillDownPanel.drillDownPanel config.state.theme
+                { openMsg = config.handlers.onReferenceClicked fqName (getId functionValue) config.nodePath
+                , closeMsg = config.handlers.onReferenceClose fqName (getId functionValue) config.nodePath
+                , depth = depth
+                , closedElement = closedElement
+                , openElement = openElement
+                , openHeader = openHeader
+                , isOpen = isOpen
+                }
 
         viewFunctionValue : FQName -> Element msg
         viewFunctionValue fqName =
-            el [borderRounded, Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName) ] <| viewValue functionValue
+            el [ config.state.theme |> borderRounded, Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName) ] <| viewValue functionValue
 
         functionOutput : FQName -> Element msg
         functionOutput fqName =
@@ -65,7 +72,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
                     [ Background.color config.state.theme.colors.lightest
                     , Font.bold
                     , Font.center
-                    , borderRounded
+                    , config.state.theme |> borderRounded
                     , Border.width 1
                     , smallPadding config.state.theme |> padding
                     ]
@@ -194,7 +201,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
                         Nothing
 
                 closedElement =
-                    row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, borderRounded ] ++ styles)
+                    row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, config.state.theme |> borderRounded ] ++ styles)
                         [ viewFunctionValue fqName
                         , argList
                         ]
@@ -229,7 +236,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
             drillDownPanel fqName (List.length config.nodePath) closedElement openHeader openElement (drillDownContains config.state.drillDownFunctions (getId functionValue) config.nodePath)
 
         _ ->
-            row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, borderRounded ] ++ styles)
+            row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, config.state.theme |> borderRounded ] ++ styles)
                 [ viewFunctionValue ( [], [], [] )
                 , row [ width fill, centerX, smallSpacing config.state.theme |> spacing ]
                     (argValues

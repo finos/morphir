@@ -444,7 +444,8 @@ viewValue valueState ir fullyQualifiedName irView valueDef =
                         |> List.map
                             (\( argName, _, argType ) ->
                                 ( argName
-                                , ValueEditor.view ir
+                                , ValueEditor.view theme
+                                    ir
                                     argType
                                     (always DoNothing)
                                     (ValueEditor.initEditorState ir argType Nothing)

@@ -1,6 +1,6 @@
 module Morphir.Visual.Theme exposing (..)
 
-import Element exposing (Color, Element, Attribute, el, fill, paddingXY, rgb, rgba, rgb255, row, spacing, toRgb, width, height, table, none, mouseOver)
+import Element exposing (Attr, Attribute, Color, Element, el, fill, height, mouseOver, none, paddingXY, rgb, rgb255, rgba, row, spacing, table, toRgb, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (center)
@@ -13,6 +13,7 @@ type alias Theme =
     { fontSize : Int
     , decimalDigit : Int
     , colors : Colors
+    , icons : Icons
     }
 
 
@@ -29,6 +30,12 @@ type alias Colors =
     , selectionColor : Color
     , secondaryInformation : Color
     , gray : Color
+    }
+
+
+type alias Icons =
+    { opened : String
+    , closed : String
     }
 
 
@@ -54,17 +61,48 @@ defaultColors =
     , gray = rgb 0.9 0.9 0.9
     }
 
+
+defaultIcons : Icons
+defaultIcons =
+    { opened = "⮟"
+    , closed = "⮞"
+    }
+
+
+morphIrBlue : Element.Color
+morphIrBlue =
+    rgb 0 0.639 0.882
+
+
+lightMorphIrBlue : Element.Color
+lightMorphIrBlue =
+    rgba 0 0.639 0.882 0.3
+
+
+morphIrOrange : Element.Color
+morphIrOrange =
+    rgb 1 0.411 0
+
+
+lightMorphIrOrange : Element.Color
+lightMorphIrOrange =
+    rgba 1 0.411 0 0.3
+
+
 labelStyles : Theme -> List (Attribute msg)
 labelStyles theme =
-            [ width fill
-            , height fill
-            , paddingXY 10 5
-            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-            , Border.color theme.colors.backgroundColor
-            ]
+    [ width fill
+    , height fill
+    , paddingXY 10 5
+    , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+    , Border.color theme.colors.backgroundColor
+    ]
+
 
 boldLabelStyles : Theme -> List (Attribute msg)
-boldLabelStyles theme =  Font.bold :: labelStyles theme
+boldLabelStyles theme =
+    Font.bold :: labelStyles theme
+
 
 fromConfig : Maybe ThemeConfig -> Theme
 fromConfig maybeConfig =
@@ -73,12 +111,14 @@ fromConfig maybeConfig =
             { fontSize = config.fontSize |> Maybe.withDefault 10
             , decimalDigit = config.decimalDigit |> Maybe.withDefault 2
             , colors = defaultColors
+            , icons = defaultIcons
             }
 
         Nothing ->
             { fontSize = 10
             , decimalDigit = 2
             , colors = defaultColors
+            , icons = defaultIcons
             }
 
 
@@ -111,9 +151,17 @@ largePadding : Theme -> Int
 largePadding theme =
     scaled 4 theme
 
-borderRounded : Attribute msg
-borderRounded = 
-    Border.rounded 3
+
+borderRounded : Theme -> Attribute msg
+borderRounded theme =
+    -- 4 px
+    Border.rounded (scaled -5 theme)
+
+
+borderBottom : Int -> Attribute msg
+borderBottom width =
+    Border.widthEach { top = 0, left = 0, right = 0, bottom = width }
+
 
 scaled : Int -> Theme -> Int
 scaled scaleValue theme =
@@ -171,8 +219,9 @@ header theme parts =
             parts.right
         ]
 
+
 twoColumnTableView : List record -> (record -> Element msg) -> (record -> Element msg) -> Element msg
-twoColumnTableView tableData leftView rightView = 
+twoColumnTableView tableData leftView rightView =
     table
         [ width fill
         ]
