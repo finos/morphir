@@ -1992,16 +1992,7 @@ viewDefinitionDetails model =
                                                                                 (model.theme
                                                                                     |> Theme.scaled 8
                                                                                 )
-                                                                            , paddingEach
-                                                                                { left =
-                                                                                    model.theme
-                                                                                        |> Theme.scaled 2
-                                                                                , top = 0
-                                                                                , right =
-                                                                                    model.theme
-                                                                                        |> Theme.scaled 2
-                                                                                , bottom = 0
-                                                                                }
+                                                                            , paddingXY 10 10
                                                                             ]
                                                                             [ viewAttributeValues (ValueID fullyQualifiedName) ]
                                                                   }

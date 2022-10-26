@@ -43,7 +43,7 @@
                                                     [
                                                         {
                                                             "name": [
-                                                                "pi"
+                                                                "pii"
                                                             ],
                                                             "tpe": [
                                                                 "Reference",
@@ -73,7 +73,7 @@
                                                         },
                                                         {
                                                             "name": [
-                                                                "mmpi"
+                                                                "mnpi"
                                                             ],
                                                             "tpe": [
                                                                 "Reference",

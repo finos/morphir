@@ -4,6 +4,6 @@ module Morphir.Attribute.Model.Sensitivity exposing (Sensitivity)
 
 
 type alias Sensitivity = 
-    { pi : Bool
-    , mmpi : Bool
+    { pii : Bool
+    , mnpi : Bool
     }

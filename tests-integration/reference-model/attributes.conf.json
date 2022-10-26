@@ -1,6 +1,6 @@
 {
 	"test-id-1":  {
-		"displayName" : "MS.Sensitivity"
+		"displayName" : "Sensitivity"
 		, "entryPoint" : "Morphir.Attribute.Model:Sensitivity:Sensitivity"
 		, "ir" : "attributes/sensitivity.ir.json"
 	}
