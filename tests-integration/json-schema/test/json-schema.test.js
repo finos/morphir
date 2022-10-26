@@ -6,8 +6,7 @@
     and instances of the subschemas.
 */
 
-const  Ajv2020 = require("../../../node_modules/ajv/dist/2020")
-const addFormats = require("ajv-formats")
+const Ajv2020 = require("ajv/dist/2020")
 const fs = require('fs')
 const basePath = "tests-integration/json-schema/model/"
 const schemaBasePath = "tests-integration/generated/jsonSchema/"
@@ -114,16 +113,7 @@ describe('Test Suite for Advanced Types', () => {
 
 describe('Test Suite for Optional Types', () => {
     test('Test for MayBe String', () => {
-        const optionalSchema = {
-           "oneOf": [
-               {
-                   "type": "null"
-               },
-               {
-                   "type": "string"
-               }
-           ]
-       }
+        const optionalSchema = jsonObject["$defs"]["OptionalTypes.Assignment"]
         const ajv = new Ajv2020()
         const validate = ajv.compile(optionalSchema)
         const result = validate("Bar")
