@@ -1,0 +1,10 @@
+{
+    "Value:Morphir.Reference.Model:Issues.Issue401:bar": {
+        "pi": true,
+        "mmpi": false
+    },
+    "Value:Morphir.Reference.Model:Issues.Issue401:foo": {
+        "pi": true,
+        "mmpi": false
+    }
+}

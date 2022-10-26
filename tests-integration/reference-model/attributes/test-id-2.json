@@ -1,0 +1,8 @@
+{
+	"Value:Morphir.Reference.Model:Issues.Issue401:bar": {
+		"mmpi": false
+	},
+	 "Value:Morphir.Reference.Model:Issues.Issue401:foo": {
+		"mmpi": true
+	}
+}
