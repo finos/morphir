@@ -37,12 +37,12 @@ The attribute description should include an entrypoint in the form of an [FQName
 ```
 {
 	"Morphir.Reference.Model.Issues.Issue401:bar": {
-		"MMPI": false,
-		"PI": true
+		"MNPI": false,
+		"PII": true
 	},
 	 "Morphir.Reference.Model.Issues.Issue401:foo": {
-		"MMPI": false,
-		"PI": false
+		"MNPI": false,
+		"PII": false
 	}
 }
 ```
