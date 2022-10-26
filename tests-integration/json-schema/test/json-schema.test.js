@@ -43,7 +43,10 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 
     test('1. Bool type test case', () => {
         const boolSchema = {
-            "type": "boolean"
+            "type": "object",
+            "properties": {
+                "boolean": jsonObject["$defs"]["BasicTypes.Paid"]
+            }
         }
         const ajv = new Ajv2020()
         const validate = ajv.compile(boolSchema)
@@ -52,21 +55,28 @@ describe('Test Suite for Basic Types and Decimal',  () => {
     })
     test('2. Int type test case', () => {
         const intSchema = {
-            "type": "integer"
+           "type": "object",
+            "properties": {
+                "int": jsonObject["$defs"]["BasicTypes.Age"]
+            }
         }
-        const ajv = new Ajv2020()
+        const ajv = new Ajv2020({allErrors: true})
         const validate = ajv.compile(intSchema)
-        const result = validate(45)
+        const result = validate({int : 45})
         expect(result).toBe(true)
+        console.log(validate.errors)
+
     })
     test('3. Float type test case', () => {
         const floatSchema = {
-            "type": "number"
-        }
+           "type": "object",
+            "properties": {
+                "float": jsonObject["$defs"]["BasicTypes.Score"]
+            }        }
         const ajv = new Ajv2020()
         const validate = ajv.compile(floatSchema)
 
-        const result = validate(4.5)
+        const result = validate({float : 4.5})
         expect(result).toBe(true)
     })
     test('4. Char type test case', () => {
@@ -111,8 +121,9 @@ describe('Test Suite for Advanced Types', () => {
 })
 
 describe('Test Suite for Optional Types', () => {
-    test.skip('Test for MayBe String', () => {
+    test('Test for MayBe String', () => {
         const optionalSchema = jsonObject["$defs"]["OptionalTypes.Assignment"]
+        console.log(optionalSchema)
         const ajv = new Ajv2020()
         const validate = ajv.compile(optionalSchema)
         const result = validate("Bar")
@@ -123,6 +134,7 @@ describe('Test Suite for Optional Types', () => {
 describe('Test Suite for Collection Types', () => {
     test('Test for List type', () => {
         const listSchema = jsonObject["$defs"]["CollectionTypes.Department"]
+        console.log(listSchema)
         const ajv = new Ajv2020()
         const validate = ajv.compile(listSchema)
         const result = validate(["HR", "IT", "HR"])
