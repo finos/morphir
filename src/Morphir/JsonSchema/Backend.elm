@@ -44,7 +44,7 @@ type alias QualifiedName =
 
 
 type Error
-    = Error String
+    = Error
 
 
 {-| Entry point for the JSON Schema backend. It takes the Morphir IR as the input and returns an in-memory
@@ -141,31 +141,31 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
             [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf oneOfs2 ) ]
 
 
-mapType : Type ta -> Result Error SchemaType
+mapType : Type ta -> SchemaType
 mapType typ =
     case typ of
         Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
             case ( FQName.toString fQName, argTypes ) of
                 ( "Morphir.SDK:Basics:int", [] ) ->
-                    Ok Integer
+                    Integer
 
                 ( "Morphir.SDK:Decimal:decimal", [] ) ->
-                    Ok String
+                    String
 
                 ( "Morphir.SDK:String:string", [] ) ->
-                    Ok String
+                    String
 
                 ( "Morphir.SDK:Char:char", [] ) ->
-                    Ok String
+                    String
 
                 ( "Morphir.SDK:Basics:float", [] ) ->
-                    Ok Number
+                    Number
 
                 ( "Morphir.SDK:Tuple:tuple", [] ) ->
-                    Ok Number
+                    Number
 
                 ( "Morphir.SDK:Basics:bool", [] ) ->
-                    Ok Boolean
+                    Boolean
 
                 ( "Morphir.SDK:List:list", [ itemType ] ) ->
                     Array (ListType (mapType itemType)) False
@@ -174,12 +174,10 @@ mapType typ =
                     Array (ListType (mapType itemType)) True
 
                 ( "Morphir.SDK:Maybe:maybe", [ itemType ] ) ->
-                    OneOf [ Null,
-                      case (mapType itemType) of
+                    OneOf [ Null, mapType itemType ]
 
-                    ]
                 _ ->
-                    Ok (Ref
+                    Ref
                         (String.concat
                             [ "#/$defs/"
                             , moduleName |> Path.toString Name.toTitleCase "."
@@ -187,17 +185,16 @@ mapType typ =
                             , localName |> Name.toTitleCase
                             ]
                         )
-                     )
 
         Type.Record _ fields ->
-            Ok (fields
+            fields
                 |> List.foldl
                     (\field ->
                         \dictSofar ->
                             Dict.insert (Name.toTitleCase field.name) (mapType field.tpe) dictSofar
                     )
                     Dict.empty
-                |> Object)
+                |> Object
 
         _ ->
-            Err (Error "Unable to map this type")
+            Null
