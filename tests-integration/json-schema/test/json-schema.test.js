@@ -49,9 +49,10 @@ describe('Test Suite for Basic Types and Decimal',  () => {
             "type": "object",
             "properties": {
                 "bool": {
-                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Paid"
+                    "$ref": "#/$defs/BasicTypes.Paid"
                 }
-            }
+            },
+            "$defs": mainSchema["$defs"]
         }
         const ajv = new ajv2020({
             schemas: [boolSchema, mainSchema]
