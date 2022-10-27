@@ -23,13 +23,12 @@ type Currencies
 
 
 type TransactionType
-    = Deposit
-    | Withdrawal
-    | Payment
+    = Commit
+    | Rollback
+    | SavePoint
 
 
-type CustomerType
-    = Individual
-    | Corporate
-    | Government
-    | VIP
+type ObjectType
+    = Procedure
+    | View
+    | StoredFunction

@@ -230,7 +230,7 @@ mapType typ =
                     (\field ->
                         \dictSofar ->
                             Dict.insert
-                                (Name.toTitleCase field.name)
+                                (Name.toCamelCase field.name)
                                 (case mapType field.tpe of
                                     Ok val ->
                                         val

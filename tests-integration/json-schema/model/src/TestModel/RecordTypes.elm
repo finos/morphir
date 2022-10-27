@@ -1,14 +1,14 @@
 module TestModel.RecordTypes exposing (..)
 
 
-type alias Bank =
-    { bankName : String
+type alias Resource =
+    { resourceName : String
     , address : Address
     }
 
 
 type alias Address =
-    { country : String
-    , state : String
-    , street : String
+    { protocol : String
+    , domainName : String
+    , path : String
     }

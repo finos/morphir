@@ -16,11 +16,23 @@ type alias Schema =
     }
 
 
+
+-- Used to enforce a Set type
+
+
 type alias UniqueItems =
     Bool
 
 
-type alias NoOfItems =
+
+{-
+   The length of the array can be specified using the minItems and maxItems keywords.
+   The numberOfItems is used to enforce this
+   |
+-}
+
+
+type alias NumberOfItems =
     Int
 
 
@@ -39,4 +51,4 @@ type SchemaType
 
 type ArrayType
     = ListType SchemaType
-    | TupleType (List SchemaType) NoOfItems
+    | TupleType (List SchemaType) NumberOfItems
