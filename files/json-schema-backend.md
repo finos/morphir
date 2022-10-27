@@ -4,39 +4,39 @@ This document describes how Morphir Models maps to Json Schema.
 Json Schema Reference can be found [here](http://json-schema.org/understanding-json-schema/reference/index.html)
 <br>
 Additional reading:
-* [Sample Json Schema](mappings.json)
+* [Sample Json Schema](json-schema-mappings.json)
 * [Json Mapping](json-mapping.md)
 
 
 The rest of the explains how each Morphir type maps to the Json Schema Types.
 
 1. ### [ SDK Types](#sdk-types) <br>
-   #### &nbsp; [1.1. Basic types](#basic-types) <br>
-      &nbsp; &nbsp; [1.1.1. Bool ](#bool)<br>
-      &nbsp; &nbsp; [1.1.2. Int ](#int)<br>
-      &nbsp; &nbsp; [1.1.3. Float ](#float)<br>
-      &nbsp; &nbsp; [1.1.4. Char ](#char)<br>
-      &nbsp; &nbsp; [1.1.5. String ](#string)<br>
-   #### &nbsp; [1.2. Advanced types (Unsupported)](#advanced-types) <br>
-      &nbsp; &nbsp; [1.2.1. Decimal (Unsupported)](#decimal)<br>
-      &nbsp; &nbsp; [1.2.2. LocalDate (Unsupported)](#localdate)<br>
-      &nbsp; &nbsp; [1.2.3. LocalTime (Unsupported)](#localtime)<br>
-      &nbsp; &nbsp; [1.2.4. Month (Unsupported)](#month)<br>
-   #### &nbsp; [1.3. Optional values](#optional-values)<br>
-   #### &nbsp; [1.4. Collections](#collections)
-   &nbsp; &nbsp; [1.4.1. List ](#list)<br>
-   &nbsp; &nbsp; [1.4.2. Set ](#set) <br>
-   &nbsp; &nbsp; [1.4.3. Dict (Unsupported)](#dict) <br>
-   #### &nbsp; [1.4.5. Results (Unsupported)](#result)
+   #### [1.1. Basic types](#basic-types) <br>
+      [1.1.1. Bool ](#bool)<br>
+      [1.1.2. Int ](#int)<br>
+      [1.1.3. Float ](#float)<br>
+       [1.1.4. Char ](#char)<br>
+      [1.1.5. String ](#string)<br>
+   #### [1.2. Advanced types (Unsupported)](#advanced-types) <br>
+      [1.2.1. Decimal (Unsupported)](#decimal)<br>
+      [1.2.2. LocalDate (Unsupported)](#localdate)<br>
+      [1.2.3. LocalTime (Unsupported)](#localtime)<br>
+      [1.2.4. Month (Unsupported)](#month)<br>
+   #### [1.3. Optional values](#optional-values)<br>
+   #### [1.4. Collections](#collections)
+    [1.4.1. List ](#list)<br>
+    [1.4.2. Set ](#set) <br>
+    [1.4.3. Dict (Unsupported)](#dict) <br>
+   ####  [1.4.5. Results (Unsupported)](#result)
 
 2. ### [Composite Types](#composite-types)
-   #### &nbsp; [2.1. Tuples (Unsupported)](#tuples) <br>
-   #### &nbsp; [2.2. Record Types ](#records) <br>
-   #### &nbsp; [2.3. Custom Types](#custom-types) <br>
-   &nbsp; &nbsp; [2.3.1. General Case ](#general-case) <br>
-   &nbsp; &nbsp; [2.3.2. Special Cases](#special-cases) <br>
-   &nbsp; &nbsp; &nbsp; [- No-arg Constructor](#) <br>
-   &nbsp; &nbsp; &nbsp; [- Single Constructor](#) <br>
+   ####  [2.1. Tuples (Unsupported)](#tuples) <br>
+   ####  [2.2. Record Types ](#records) <br>
+   #### & [2.3. Custom Types](#custom-types) <br>
+    [2.3.1. General Case ](#general-case) <br>
+    [2.3.2. Special Cases](#special-cases) <br>
+    [- No-arg Constructor](#) <br>
+    [- Single Constructor](#) <br>
 
 
 
