@@ -47,7 +47,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
           $id: "http://example.com/schemas/schema.json",
           type: "object",
           properties: {
-            foo: {$ref: "defs.json#/definitions/CollectionTypes.Department"},
+            foo: {$ref: "defs.json#/definitions/BasicTypes.Paid"},
           },
         }
 
