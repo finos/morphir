@@ -41,7 +41,29 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         jsonObject = JSON.parse(jsonBuffer)
 	})
 
-    test('1. Bool type test case', () => {
+    test("0. Do your thing", () => {
+        const schema = {
+          $id: "http://example.com/schemas/schema.json",
+          type: "object",
+          properties: {
+            foo: {$ref: "defs.json#/definitions/int"},
+            bar: {$ref: "defs.json#/definitions/str"},
+          },
+        }
+
+        const defsSchema = {
+          $id: "http://example.com/schemas/defs.json",
+          definitions: {
+            int: {type: "integer"},
+            str: {type: "string"},
+          },
+        }
+
+        const ajv = new ajv2020({schemas: [schema, defsSchema]})
+        const validate = ajv.getSchema("http://example.com/schemas/schema.json")
+    })
+
+    test.skip('1. Bool type test case', () => {
         const mainSchema = jsonObject
 
         const boolSchema= {
@@ -58,8 +80,9 @@ describe('Test Suite for Basic Types and Decimal',  () => {
             schemas: [boolSchema, mainSchema]
         })
         const validate = ajv.getSchema("bool1")
+
+
         const result = validate({bool:true})
-        console.log(validate)
         expect(result).toBe(true)
     })
 
