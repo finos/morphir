@@ -41,7 +41,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 
 	})
 
-    test('1. Bool type test case', () => {
+    test.skip('1. Bool type test case', () => {
 
         const boolSchema= {
             "type": "object",

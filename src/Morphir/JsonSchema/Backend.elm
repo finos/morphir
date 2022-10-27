@@ -44,7 +44,7 @@ type alias QualifiedName =
 
 
 type Error
-    = Error
+    = Error String
 
 
 {-| Entry point for the JSON Schema backend. It takes the Morphir IR as the input and returns an in-memory
@@ -109,7 +109,15 @@ mapTypeDefinition : ( Path, Name ) -> Type.Definition ta -> List ( TypeName, Sch
 mapTypeDefinition (( path, name ) as qualifiedName) definition =
     case definition of
         Type.TypeAliasDefinition _ typ ->
-            [ ( mapQualifiedName qualifiedName, mapType typ ) ]
+            [ ( mapQualifiedName qualifiedName
+              , case mapType typ of
+                    Ok val ->
+                        val
+
+                    _ ->
+                        Null
+              )
+            ]
 
         Type.CustomTypeDefinition _ accessControlledCtors ->
             let
@@ -129,9 +137,19 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                     Array
                                         (TupleType
                                             (Const (ctorName |> Name.toTitleCase)
-                                                :: (ctorArgs
-                                                        |> List.map (Tuple.second >> mapType)
+                                                :: (-- begin
+                                                    ctorArgs
+                                                        |> List.map
+                                                            (\x ->
+                                                                case mapType (Tuple.second x) of
+                                                                    Ok val ->
+                                                                        val
+
+                                                                    _ ->
+                                                                        Null
+                                                            )
                                                    )
+                                             -- end
                                             )
                                             ((ctorArgs |> List.length) + 1)
                                         )
@@ -141,49 +159,69 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
             [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf oneOfs2 ) ]
 
 
-mapType : Type ta -> SchemaType
+mapType : Type ta -> Result Error SchemaType
 mapType typ =
     case typ of
         Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
             case ( FQName.toString fQName, argTypes ) of
                 ( "Morphir.SDK:Basics:int", [] ) ->
-                    Integer
+                    Ok Integer
 
                 ( "Morphir.SDK:Decimal:decimal", [] ) ->
-                    String
+                    Ok String
 
                 ( "Morphir.SDK:String:string", [] ) ->
-                    String
+                    Ok String
 
                 ( "Morphir.SDK:Char:char", [] ) ->
-                    String
+                    Ok String
 
                 ( "Morphir.SDK:Basics:float", [] ) ->
-                    Number
+                    Ok Number
 
                 ( "Morphir.SDK:Tuple:tuple", [] ) ->
-                    Number
+                    Ok Number
 
                 ( "Morphir.SDK:Basics:bool", [] ) ->
-                    Boolean
+                    Ok Boolean
 
                 ( "Morphir.SDK:List:list", [ itemType ] ) ->
-                    Array (ListType (mapType itemType)) False
+                    Result.map2 Array
+                        (mapType itemType
+                            |> Result.map ListType
+                        )
+                        (Ok False)
 
                 ( "Morphir.SDK:Set:set", [ itemType ] ) ->
-                    Array (ListType (mapType itemType)) True
+                    Result.map2 Array
+                        (mapType itemType
+                            |> Result.map ListType
+                        )
+                        (Ok True)
 
                 ( "Morphir.SDK:Maybe:maybe", [ itemType ] ) ->
-                    OneOf [ Null, mapType itemType ]
+                    Ok
+                        (OneOf
+                            [ Null
+                            , case mapType itemType of
+                                Ok val ->
+                                    val
+
+                                _ ->
+                                    Null
+                            ]
+                        )
 
                 _ ->
-                    Ref
-                        (String.concat
-                            [ "#/$defs/"
-                            , moduleName |> Path.toString Name.toTitleCase "."
-                            , "."
-                            , localName |> Name.toTitleCase
-                            ]
+                    Ok
+                        (Ref
+                            (String.concat
+                                [ "#/$defs/"
+                                , moduleName |> Path.toString Name.toTitleCase "."
+                                , "."
+                                , localName |> Name.toTitleCase
+                                ]
+                            )
                         )
 
         Type.Record _ fields ->
@@ -191,10 +229,20 @@ mapType typ =
                 |> List.foldl
                     (\field ->
                         \dictSofar ->
-                            Dict.insert (Name.toTitleCase field.name) (mapType field.tpe) dictSofar
+                            Dict.insert
+                                (Name.toTitleCase field.name)
+                                (case mapType field.tpe of
+                                    Ok val ->
+                                        val
+
+                                    _ ->
+                                        Null
+                                )
+                                dictSofar
                     )
                     Dict.empty
                 |> Object
+                |> Ok
 
         _ ->
-            Null
+            Err (Error "Cannot map this type")
