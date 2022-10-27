@@ -43,7 +43,6 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 
     test('1. Bool type test case', () => {
         const boolSchema= {
-            "$id" : "bool1",
             "type": "object",
             "properties": {
                 "bool": {
@@ -51,50 +50,70 @@ describe('Test Suite for Basic Types and Decimal',  () => {
                 }
             },
         }
-        const ajv = new ajv2020()
-        const validate = ajv.addSchema(jsonObject).compile(boolSchema)
-        const result = validate({bool:true})
-        expect(result).toBe(true)
+        expect(validatorBasic(boolSchema, {bool:true})).toBe(true)
     })
 
-    test.skip('2. Int type test case', () => {
+    test('2. Int type test case', () => {
         const intSchema = {
            "type": "object",
             "properties": {
-                "int": jsonObject["$defs"]["BasicTypes.Age"]
+                "int": {
+                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Age"
+                }
             }
         }
-        expect(validator(intSchema, 67)).toBe(true)
+        expect(validatorBasic(intSchema, {int: 67})).toBe(true)
     })
 
     test('3. Float type test case', () => {
         const floatSchema = {
-            "type": "number"
+           "type": "object",
+            "properties": {
+                "float": {
+                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Score"
+                }
+            }
         }
-        expect(validator(floatSchema, 99.5)).toBe(true)
+        expect(validatorBasic(floatSchema, {float: 93.4})).toBe(true)
     })
 
     test('4. Char type test case', () => {
         const charSchema = {
-            "type": "string"
+           "type": "object",
+            "properties": {
+                "char": {
+                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Grade"
+                }
+            }
         }
-        expect(validator(charSchema, 'A')).toBe(true)
+        expect(validatorBasic(charSchema, {char: 'A'})).toBe(true)
     })
 
     test('5. String type test case', () => {
         const stringSchema = {
-            "type": "string"
+           "type": "object",
+            "properties": {
+                "string": {
+                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Fullname"
+                }
+            }
         }
-        expect(validator(stringSchema, "Baz")).toBe(true)
+        expect(validatorBasic(stringSchema, {string: "Foo"})).toBe(true)
     })
 })
 
 describe('Test Suite for Advanced Types', () => {
-    test('1. Test for Decimal type', () => {
+
+    test.skip('1. Test for Decimal type', () => {
         const decimalSchema = {
-            "type": "string"
+           "type": "object",
+            "properties": {
+                "decimal": {
+                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/AdvancedTypes.Score"
+                }
+            }
         }
-        expect(validator(decimalSchema, "56.34")).toBe(true)
+        expect(validatorBasic(decimalSchema, {decimal: "78.9"})).toBe(true)
     })
 
     test.skip('2. Test for LocalDate type', () => {
@@ -169,8 +188,16 @@ describe('Test Suite for Composite Types - Custom Types', () => {
     })
 })
 
+
 const validator = (schema, instance) => {
     const ajv = new ajv2020()
     const validate = ajv.compile(schema)
     return validate( instance);
+}
+
+//For validation of Basic Types References the main schema which is JsonObject
+const validatorBasic = (schema, instance) => {
+    const ajv = new ajv2020()
+    const validate = ajv.addSchema(jsonObject).compile(schema)
+    return validate(instance)
 }
