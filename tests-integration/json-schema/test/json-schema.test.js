@@ -127,7 +127,7 @@ describe('Test Suite for Advanced Types', () => {
 })
 
 describe('Test Suite for Optional Types', () => {
-    test('Test for MayBe String', () => {
+    test.skip('Test for MayBe String', () => {
         const optionalSchema = jsonObject["$defs"]["OptionalTypes.Assignment"]
         console.log(optionalSchema)
         const ajv = new Ajv2020()
