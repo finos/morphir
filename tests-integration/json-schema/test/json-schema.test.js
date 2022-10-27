@@ -41,30 +41,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         jsonObject = JSON.parse(jsonBuffer)
 	})
 
-    test("0. Do your thing", () => {
-
-        const boolSchema = {
-          $id: "http://example.com/schemas/schema.json",
-          type: "object",
-          properties: {
-            foo: {$ref: "defs.json#/definitions/int"},
-          },
-        }
-
-        const defsSchema = {
-          $id: "http://example.com/schemas/defs.json",
-          definitions: {
-            int: {type: `${jsonObject["$defs"]["BasicTypes.Paid"]["type"]}` },
-            str: {type: "string"},
-          },
-        }
-        const ajv = new ajv2020({schemas: [boolSchema, defsSchema]})
-        const validate = ajv.getSchema("http://example.com/schemas/schema.json")
-    })
-
     test('1. Bool type test case', () => {
-        const mainSchema = jsonObject
-
         const boolSchema= {
             "$id" : "bool1",
             "type": "object",
@@ -74,12 +51,8 @@ describe('Test Suite for Basic Types and Decimal',  () => {
                 }
             },
         }
-        const ajv = new ajv2020({
-            schemas: [boolSchema, mainSchema]
-        })
-        const validate = ajv.getSchema("bool1")
-
-
+        const ajv = new ajv2020()
+        const validate = ajv.addSchema(jsonObject).compile(boolSchema)
         const result = validate({bool:true})
         expect(result).toBe(true)
     })
