@@ -127,7 +127,7 @@ describe('Test Suite for Advanced Types', () => {
 })
 
 describe('Test Suite for Optional Types', () => {
-    test.skip('Test for MayBe String', () => {
+    test('Test for MayBe String', () => {
         const optionalSchema = jsonObject["$defs"]["OptionalTypes.Assignment"]
         expect(validator(optionalSchema, "Foo")).toBe(true)
     })
@@ -187,7 +187,6 @@ describe('Test Suite for Composite Types - Custom Types', () => {
         expect(validator(custom2Schema, ["Adult", "Bar"])).toBe(true)
     })
 })
-
 
 const validator = (schema, instance) => {
     const ajv = new ajv2020()
