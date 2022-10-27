@@ -62,7 +62,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         const validate = ajv.getSchema("http://example.com/schemas/schema.json")
     })
 
-    test.skip('1. Bool type test case', () => {
+    test('1. Bool type test case', () => {
         const mainSchema = jsonObject
 
         const boolSchema= {
@@ -70,10 +70,9 @@ describe('Test Suite for Basic Types and Decimal',  () => {
             "type": "object",
             "properties": {
                 "bool": {
-                    "$ref": "#/$defs/BasicTypes.Paid"
+                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Paid"
                 }
             },
-            "$defs": mainSchema["$defs"]
         }
         const ajv = new ajv2020({
             schemas: [boolSchema, mainSchema]
