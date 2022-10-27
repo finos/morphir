@@ -47,20 +47,17 @@ describe('Test Suite for Basic Types and Decimal',  () => {
           $id: "http://example.com/schemas/schema.json",
           type: "object",
           properties: {
-            foo: {$ref: "defs.json#/definitions/BasicTypes.Paid"},
+            foo: {$ref: "defs.json#/definitions/CollectionTypes.Department"},
           },
         }
 
         const defsSchema = {
           $id: "http://example.com/schemas/defs.json",
-          definitions: jsonObject["$defs"]
+          definitions: jsonObject["$defs"],
         }
 
         const ajv = new ajv2020({schemas: [boolSchema, defsSchema]})
         const validate = ajv.getSchema("http://example.com/schemas/schema.json")
-
-//        const result = validate({bool:true})
-//        expect(result).toBe(true)
     })
 
     test.skip('1. Bool type test case', () => {
