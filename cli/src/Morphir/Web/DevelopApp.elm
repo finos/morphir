@@ -9,6 +9,7 @@ import Element
     exposing
         ( Element
         , above
+        , alignLeft
         , alignRight
         , centerX
         , centerY
@@ -18,6 +19,7 @@ import Element
         , fill
         , fillPortion
         , height
+        , html
         , image
         , layout
         , link
@@ -27,6 +29,7 @@ import Element
         , padding
         , paddingEach
         , paddingXY
+        , paragraph
         , pointer
         , px
         , rgb
@@ -48,18 +51,22 @@ import FontAwesome.Styles as Icon
 import Http exposing (emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
+import Morphir.CustomAttribute.Codec exposing (decodeAttributes, decodeCustomAttributeData, encodeAttributeData)
+import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.NodeId exposing (NodeID(..))
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
-import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
+import Morphir.SDK.Dict as SDKDict
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Error exposing (Error)
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
@@ -119,6 +126,8 @@ type alias Model =
     , insightViewState : Morphir.Visual.Config.VisualState
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
+    , customAttributes : CustomAttributeInfo
+    , attributeStates : AttributeEditorState
     , selectedTestcaseIndex : Int
     , testDescription : String
     , activeTabIndex : Int
@@ -128,6 +137,10 @@ type alias Model =
 
 type alias InsightArgumentState =
     Dict Name ValueEditor.EditorState
+
+
+type alias AttributeEditorState =
+    SDKDict.Dict AttrValueDetail ValueEditor.EditorState
 
 
 type alias HomeState =
@@ -192,6 +205,8 @@ init _ url key =
             , insightViewState = emptyVisualState
             , argStates = Dict.empty
             , expandedValues = Dict.empty
+            , customAttributes = Dict.empty
+            , attributeStates = SDKDict.empty
             , selectedTestcaseIndex = -1
             , testDescription = ""
             , activeTabIndex = 0
@@ -199,7 +214,7 @@ init _ url key =
             }
     in
     ( toRoute url initModel
-    , Cmd.batch [ httpMakeModel ]
+    , Cmd.batch [ httpMakeModel, httpAttributes ]
     )
 
 
@@ -226,10 +241,22 @@ type Msg
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
+    | ServerGetAttributeResponse CustomAttributeInfo
     | Filter FilterMsg
     | UI UIMsg
     | Insight InsightMsg
     | Testing TestingMsg
+    | Attribute AttributeMsg
+
+
+type AttributeMsg
+    = ValueUpdated AttrValueDetail ValueEditor.EditorState
+
+
+type alias AttrValueDetail =
+    { attrId : CustomAttributeId
+    , nodeId : NodeID
+    }
 
 
 type TestingMsg
@@ -569,6 +596,57 @@ update msg model =
                     ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
+
+        ServerGetAttributeResponse attributes ->
+            --let
+            --    newCustomAttributeStructure : CustomAttributeValuesByNodeID
+            --    newCustomAttributeStructure =
+            --        toAttributeValueByNodeId attributes
+            --in
+            ( { model | customAttributes = attributes }
+            , Cmd.none
+            )
+
+        Attribute attributeMsg ->
+            case attributeMsg of
+                ValueUpdated valueDetail attrState ->
+                    let
+                        newEditState : AttributeEditorState
+                        newEditState =
+                            model.attributeStates |> SDKDict.insert valueDetail attrState
+
+                        newCustomAttribute : CustomAttributeInfo
+                        newCustomAttribute =
+                            model.customAttributes
+                                |> Dict.update valueDetail.attrId
+                                    (Maybe.map
+                                        (\attrDetail ->
+                                            let
+                                                irValueUpdate : SDKDict.Dict NodeID (Value () ()) -> SDKDict.Dict NodeID (Value () ())
+                                                irValueUpdate =
+                                                    SDKDict.update valueDetail.nodeId
+                                                        (Maybe.andThen
+                                                            (\_ ->
+                                                                attrState.lastValidValue
+                                                            )
+                                                        )
+                                            in
+                                            { attrDetail
+                                                | data =
+                                                    attrDetail.data
+                                                        |> irValueUpdate
+                                            }
+                                        )
+                                    )
+                    in
+                    case attrState.errorState of
+                        Just error ->
+                            Debug.todo ""
+
+                        Nothing ->
+                            ( { model | customAttributes = newCustomAttribute, attributeStates = newEditState }
+                            , httpSaveAttrValue valueDetail.attrId newCustomAttribute
+                            )
 
 
 
@@ -993,7 +1071,8 @@ viewHome model packageName packageDef =
                                             |> Maybe.map
                                                 (\valueDef ->
                                                     column []
-                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc ]
+                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
+                                                        ]
                                                 )
                                     )
                                 |> Maybe.withDefault none
@@ -1374,6 +1453,54 @@ httpTestModel ir =
                 )
                 (decodeTestSuite ir)
         }
+
+
+httpAttributes : Cmd Msg
+httpAttributes =
+    Http.get
+        { url = "/server/attributes"
+        , expect =
+            Http.expectJson
+                (\response ->
+                    case response of
+                        Err httpError ->
+                            HttpError httpError
+
+                        Ok result ->
+                            ServerGetAttributeResponse result
+                )
+                decodeAttributes
+        }
+
+
+httpSaveAttrValue : CustomAttributeId -> CustomAttributeInfo -> Cmd Msg
+httpSaveAttrValue attrId customAttributes =
+    let
+        updatedCustomAttrDetail : Maybe CustomAttributeDetail
+        updatedCustomAttrDetail =
+            customAttributes
+                |> Dict.get attrId
+    in
+    case updatedCustomAttrDetail of
+        Just customAttrData ->
+            Http.post
+                { url = "/server/updateattribute/" ++ attrId
+                , body = jsonBody (encodeAttributeData customAttrData)
+                , expect =
+                    Http.expectJson
+                        (\response ->
+                            case response of
+                                Err httpError ->
+                                    HttpError httpError
+
+                                Ok result ->
+                                    ServerGetAttributeResponse result
+                        )
+                        decodeAttributes
+                }
+
+        Nothing ->
+            Cmd.none
 
 
 httpSaveTestSuite : IR -> TestSuite -> TestSuite -> Cmd Msg
@@ -1773,6 +1900,47 @@ viewDefinitionDetails model =
                                                     ir : IR
                                                     ir =
                                                         IR.fromDistribution distribution
+
+                                                    viewAttributeValues : NodeID -> Element Msg
+                                                    viewAttributeValues node =
+                                                        let
+                                                            attributeToEditors : Element Msg
+                                                            attributeToEditors =
+                                                                model.customAttributes
+                                                                    |> Dict.toList
+                                                                    |> List.map
+                                                                        (\( attrId, attrDetail ) ->
+                                                                            let
+                                                                                irValue : Maybe (Value () ())
+                                                                                irValue =
+                                                                                    attrDetail.data
+                                                                                        |> SDKDict.get node
+                                                                                        |> Maybe.map
+                                                                                            (\iRvalue -> iRvalue)
+
+                                                                                nodeDetail : AttrValueDetail
+                                                                                nodeDetail =
+                                                                                    { attrId = attrId, nodeId = node }
+                                                                            in
+                                                                            ( Name.fromString attrDetail.displayName
+                                                                            , ValueEditor.view model.theme
+                                                                                (IR.fromDistribution attrDetail.iR)
+                                                                                (Type.Reference () attrDetail.entryPoint [])
+                                                                                (Attribute << ValueUpdated nodeDetail)
+                                                                                (model.attributeStates
+                                                                                    |> SDKDict.get nodeDetail
+                                                                                    |> Maybe.withDefault
+                                                                                        (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
+                                                                                            (Type.Reference () attrDetail.entryPoint [])
+                                                                                            irValue
+                                                                                        )
+                                                                                )
+                                                                            )
+                                                                        )
+                                                                    |> FieldList.view
+                                                        in
+                                                        column [ spacing (model.theme |> Theme.scaled 5) ]
+                                                            [ attributeToEditors ]
                                                 in
                                                 Just <|
                                                     TabsComponent.view model.theme
@@ -1815,6 +1983,19 @@ viewDefinitionDetails model =
                                                                             ]
                                                                   }
                                                                 , { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef }
+                                                                , { name = "Custom Attributes"
+                                                                  , content =
+                                                                        row
+                                                                            [ width fill
+                                                                            , height fill
+                                                                            , spacing
+                                                                                (model.theme
+                                                                                    |> Theme.scaled 8
+                                                                                )
+                                                                            , paddingXY 10 10
+                                                                            ]
+                                                                            [ viewAttributeValues (ValueID fullyQualifiedName) ]
+                                                                  }
                                                                 ]
                                                         }
                                             )

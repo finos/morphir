@@ -28,32 +28,63 @@ const wrap = fn => (...args) => fn(...args).catch(args[2])
 const webDir = path.join(__dirname, 'web')
 const indexHtml = path.join(webDir, 'index.html')
 
-app.get('/', (req, res) => {
-  res.sendFile(indexHtml)
-})
+const createSimpleGetJsonApi = (filePath) => {
+  app.get('/server/' + filePath, wrap(async (req, res, next) => {
+    const jsonPath = path.join(program.opts().projectDir, filePath)
+    const jsonContent = await readFile(jsonPath)
+    res.send(JSON.parse(jsonContent.toString()))
+  }))
+}
+
+async function getAttributeConfigJson() {
+  const configPath = path.join(program.opts().projectDir,'attributes.conf.json')
+  const fileContent = await readFile(configPath)
+  return JSON.parse(fileContent.toString())
+}
 
 app.use(express.static(webDir))
 app.use(express.json());
 
-app.get('/server/morphir.json', wrap(async (req, res, next) => {
-  const morphirJsonPath = path.join(program.opts().projectDir, 'morphir.json')
-  const morphirJsonContent = await readFile(morphirJsonPath)
-  const morphirJson = JSON.parse(morphirJsonContent.toString())
-  res.send(morphirJson)
+app.get('/', (req, res) => {
+  res.sendFile(indexHtml)
+})
+
+createSimpleGetJsonApi('morphir.json')
+createSimpleGetJsonApi('morphir-ir.json')
+createSimpleGetJsonApi('morphir-tests.json')
+
+app.get('/server/attributes', wrap(async (req, res, next) => {
+  const configJsonContent = await getAttributeConfigJson()
+
+  const attributeIds = Object.keys(configJsonContent)
+  let responseJson = {}
+
+  for (const attrId of attributeIds){
+    const attrFilePath = path.join(program.opts().projectDir, 'attributes', attrId + '.json')
+    const irFilePath = path.join(program.opts().projectDir, configJsonContent[attrId].ir)
+
+    const attrFileContent = await readFile(attrFilePath)
+    const irFileContent = await readFile(irFilePath)
+
+    responseJson[attrId] = {
+        data: JSON.parse(attrFileContent.toString()),
+        displayName : configJsonContent[attrId].displayName,
+        entryPoint : configJsonContent[attrId].entryPoint,
+        iR : JSON.parse(irFileContent.toString())
+      }
+  };
+  res.send(responseJson)
 }))
 
-app.get('/server/morphir-ir.json', wrap(async (req, res, next) => {
-  const morphirJsonPath = path.join(program.opts().projectDir, 'morphir-ir.json')
-  const morphirJsonContent = await readFile(morphirJsonPath)
-  const morphirJson = JSON.parse(morphirJsonContent.toString())
-  res.send(morphirJson)
-}))
 
-app.get('/server/morphir-tests.json', wrap(async (req, res, next) => {
-  const morphirTestsJsonPath = path.join(program.opts().projectDir, 'morphir-tests.json')
-  const morphirTestsJsonContent = await readFile(morphirTestsJsonPath)
-  const morphirTestsJson = JSON.parse(morphirTestsJsonContent.toString())
-  res.send(morphirTestsJson)
+app.post('/server/updateattribute/:attrId', wrap(async (req, res, next) => {
+   console.log(req.params.attrId)
+  const attrFilePath = path.join(program.opts().projectDir, 'attributes', req.params.attrId + '.json')
+
+  await writeFile(attrFilePath, JSON.stringify(req.body, null, 4))
+
+  const updatedJson = await readFile(attrFilePath)
+  res.send(updatedJson)
 }))
 
 app.post('/server/morphir-tests.json', wrap(async (req, res, next) => {
