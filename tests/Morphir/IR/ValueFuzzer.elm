@@ -50,7 +50,7 @@ fromType ir tpe =
             ir
                 |> IR.lookupTypeSpecification fQName
                 |> Result.fromMaybe (String.concat [ "Cannot find reference: ", FQName.toString fQName ])
-                |> Result.andThen
+                |> Result.map
                     (\typeSpec ->
                         case typeSpec of
                             Type.TypeAliasSpecification typeArgNames typeExp ->
@@ -92,6 +92,7 @@ fromType ir tpe =
                             Type.DerivedTypeSpecification _ _ ->
                                 Debug.todo "implement"
                     )
+                |> Result.withDefault (Fuzz.constant (Value.Unit ()))
 
         Type.Record _ fieldTypes ->
             recordFuzzer (fieldTypes |> List.map (\field -> ( field.name, fromType ir field.tpe )))
@@ -129,7 +130,7 @@ intFuzzer =
 
 floatFuzzer : Fuzzer RawValue
 floatFuzzer =
-    Fuzz.float
+    Fuzz.niceFloat
         |> Fuzz.map (FloatLiteral >> Value.Literal ())
 
 
