@@ -8,30 +8,44 @@
     Example: 
         alias InCadl = boolean
 ###### Int
-    In CADL, this maps to the subtype `integer`, which further has theses subtypes ::  
+    In CADL, this maps to the subtype `integer`, which further has theses subtypes :  
     [-] int8        [-] uint8       [-] safeint
     [-] int16       [-] uint16
     [-] int32       [-] unit32
     [-] int64       [-] unit32
     
-    NB - To assign an `integer` type, you need to actually assign a subtype instead else the `integer` type defaults to an object. 
-
     Example: 
-        alias length = int32 
+        alias length = integer 
+    
+    NB - 1. `integer` type assignment is valid CADL, but when dealing with emitters such as OpenApiSpec(OAS) it defaults to an object. 
+              To obtain an actual int value, specify a subtype of integer.
+            Example: 
+                alias length = int32
+                model P {
+                    a: int32
+                }
+          
+          2. Only one integer type can exist in a model 
+            Example: 
+                // this is invalid
+                model P {
+                    a: integer,
+                    b: integer
+                }
+        
+    Same issue for float type too. 
 ###### Float
     In CADL, this maps to the subtype `float`, which further has theses subtypes :  
     [-] float32   
     [-] float64
 
-    NB:: To assign an `float` type, you need to actually assign a subtype instead else the `float` type defaults to an object.
-    
     Example: 
         alias PI = float32
 ###### String
     This maps to the same type `string` in CADL.
     
     Example: 
-        alias KG = "KiloGram"
+        alias KG = string
 ###### Char
     In CADL, the concept of a `char` type doesn't exist. An alternative would be to use the `string` type. 
 
@@ -66,13 +80,10 @@
 ###### List
         List in morphir, maps to the`array` type in CADL. In CADL, arrays are created using the `[]` or Array<model> syntax.
         Example : 
-            model PhoneNumber {
-                code: string,
-                number: string
-            }
+            model Foo {...}
 
-            model Person {
-                contactNumbers: PhoneNumber[] // OR Array<PhoneNumber>
+            model Bar {
+                contactNumbers: Foo[] // OR Array<Foo>
             }
 ###### Set
         This is not supported directly in CADL. An alternative would be to use `array` type. 
@@ -83,23 +94,20 @@
             alias Dict<K,V> = Array<[K,V]> ;
 
 ##### Result 
-        The concept of morphir type `result` is not supported directly in CADL, but could be defined as an alias type whose values are `union` types. 
-        alias Result<OK | ERR> = OK | ERR
+        The concept of morphir type `result` is not supported directly in CADL, but could be defined as a template alias type whose values are `union` types. 
         
         Example : 
-            model Ok<T> {status: int8, data: T} 
-            model ERR<T> {code: int8, message: T}
-            alias Result<OK,ERR> = OK | ERR ;
+            alias Record<OK, ERR> = OK | ERR;
 
 ### Composite Types
 #### Tuples
     Tuples being a subtype of `array` in CADL, are respresented as more than One argument type of the `array` type.
     Example : 
-        model TouristSite {...}
-        model Country {...}
+        model Foo {...}
+        model Bar {...}
         
-        model Person {
-            visits: [Country, Array<TouristSite>]
+        model FooBar {
+            x: Array<[Foo, Bar]>
         }
 ###### Record Types
     Morphir `record` type maps to whats called `model` in CADL. Models are structures with fields called properties and are used to used to represent data shapes 
