@@ -33,6 +33,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
+import Morphir.SDK.ResultList as ResultList
 
 
 type alias Options =
@@ -80,15 +81,21 @@ generateSchema packageName packageDefinition =
                         extractTypes modName modDef.value
                             |> List.concatMap
                                 (\( qualifiedName, typeDef ) ->
-                                    mapTypeDefinition qualifiedName typeDef
+                                    case mapTypeDefinition qualifiedName typeDef of
+                                        Ok val ->
+                                            val
+
+                                        _ ->
+                                            -- TODO: Log a message indicating which module failed to map
+                                            []
                                 )
                             |> (\lst -> listSoFar ++ lst)
                     )
                     []
                 |> Dict.fromList
     in
-    { dirPath = []
-    , fileName = ""
+    { dirPath = [] -- TODO: remove
+    , fileName = "" -- TODO: remove
     , id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" packageName ++ ".schema.json"
     , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
     , definitions = schemaTypeDefinitions
@@ -105,19 +112,12 @@ extractTypes modName definition =
             )
 
 
-mapTypeDefinition : ( Path, Name ) -> Type.Definition ta -> List ( TypeName, SchemaType )
+mapTypeDefinition : ( Path, Name ) -> Type.Definition ta -> Result Error (List ( TypeName, SchemaType ))
 mapTypeDefinition (( path, name ) as qualifiedName) definition =
     case definition of
         Type.TypeAliasDefinition _ typ ->
-            [ ( mapQualifiedName qualifiedName
-              , case mapType typ of
-                    Ok val ->
-                        val
-
-                    _ ->
-                        Null
-              )
-            ]
+            mapType typ
+                |> Result.map (\schemaType -> [ ( mapQualifiedName qualifiedName, schemaType ) ])
 
         Type.CustomTypeDefinition _ accessControlledCtors ->
             let
@@ -131,32 +131,37 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                         ctorName |> Name.toTitleCase
                                 in
                                 if List.isEmpty ctorArgs then
-                                    Const ctorNameString
+                                    Ok (Const ctorNameString)
 
                                 else
-                                    Array
-                                        (TupleType
-                                            (Const (ctorName |> Name.toTitleCase)
-                                                :: (-- begin
-                                                    ctorArgs
-                                                        |> List.map
-                                                            (\x ->
-                                                                case mapType (Tuple.second x) of
-                                                                    Ok val ->
-                                                                        val
-
-                                                                    _ ->
-                                                                        Null
-                                                            )
-                                                   )
-                                             -- end
+                                    (ctorArgs
+                                        |> List.map
+                                            (\x ->
+                                                mapType (Tuple.second x)
                                             )
-                                            ((ctorArgs |> List.length) + 1)
-                                        )
-                                        False
+                                    )
+                                        |> ResultList.keepFirstError
+                                        |> Result.map
+                                            (\x ->
+                                                Array
+                                                    (TupleType
+                                                        (Const (ctorName |> Name.toTitleCase)
+                                                            :: x
+                                                        )
+                                                        ((ctorArgs |> List.length) + 1)
+                                                    )
+                                                    False
+                                            )
                             )
+                        |> ResultList.keepFirstError
             in
-            [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf oneOfs2 ) ]
+            oneOfs2
+                |> Result.map
+                    (\x -> [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf x ) ])
+
+
+
+--[ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf oneOfs2 ) ]
 
 
 mapType : Type ta -> Result Error SchemaType
@@ -200,17 +205,14 @@ mapType typ =
                         (Ok True)
 
                 ( "Morphir.SDK:Maybe:maybe", [ itemType ] ) ->
-                    Ok
-                        (OneOf
-                            [ Null
-                            , case mapType itemType of
-                                Ok val ->
-                                    val
-
-                                _ ->
-                                    Null
-                            ]
-                        )
+                    mapType itemType
+                        |> Result.map
+                            (\schemaItemType ->
+                                OneOf
+                                    [ Null
+                                    , schemaItemType
+                                    ]
+                            )
 
                 _ ->
                     Ok
@@ -226,23 +228,13 @@ mapType typ =
 
         Type.Record _ fields ->
             fields
-                |> List.foldl
+                |> List.map
                     (\field ->
-                        \dictSofar ->
-                            Dict.insert
-                                (Name.toCamelCase field.name)
-                                (case mapType field.tpe of
-                                    Ok val ->
-                                        val
-
-                                    _ ->
-                                        Null
-                                )
-                                dictSofar
+                        mapType field.tpe
+                            |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
                     )
-                    Dict.empty
-                |> Object
-                |> Ok
+                |> ResultList.keepFirstError
+                |> Result.map (Dict.fromList >> Object)
 
         _ ->
             Err (Error "Cannot map this type")
