@@ -8,9 +8,7 @@ type alias TypeName =
 
 
 type alias Schema =
-    { dirPath : List String
-    , fileName : String
-    , id : String
+    { id : String
     , schemaVersion : String
     , definitions : Dict TypeName SchemaType
     }
@@ -39,7 +37,7 @@ type alias NumberOfItems =
 type SchemaType
     = Integer
     | Array ArrayType UniqueItems
-    | String
+    | String Derivative
     | Number
     | Boolean
     | Object (Dict String SchemaType)
@@ -52,3 +50,12 @@ type SchemaType
 type ArrayType
     = ListType SchemaType
     | TupleType (List SchemaType) NumberOfItems
+
+
+type Derivative
+    = BasicString
+    | CharString
+    | DecimalString
+    | DateString
+    | TimeString
+    | MonthString

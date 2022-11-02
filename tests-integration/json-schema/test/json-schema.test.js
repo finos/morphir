@@ -7,6 +7,7 @@
 */
 // Imports
 const ajv2020 = require("ajv/dist/2020")
+const addFormats = require("ajv-formats")
 const fs = require('fs')
 const util = require('util')
 const cli = require('../../../cli/cli')
@@ -104,7 +105,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 
 describe('Test Suite for Advanced Types', () => {
 
-    test.skip('1. Test for Decimal type', () => {
+    test('1. Test for Decimal type', () => {
         const decimalSchema = {
            "type": "object",
             "properties": {
@@ -116,13 +117,40 @@ describe('Test Suite for Advanced Types', () => {
         expect(validatorBasic(decimalSchema, {decimal: "78.9"})).toBe(true)
     })
 
-    test.skip('2. Test for LocalDate type', () => {
+    test('2. Test for LocalDate type', () => {
+            const localDateSchema = {
+                "type": "object",
+                "properties": {
+                    "decimal": {
+                        "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/AdvancedTypes.AcquisitionDate"
+                    }
+                }
+            }
+            expect(validatorBasic(localDateSchema, {localDate: "2022-02-02"})).toBe(true)
     })
 
-    test.skip('3. Test for LocalTime type', () => {
+    test('3. Test for LocalTime type', () => {
+            const localTimeSchema = {
+                "type": "object",
+                "properties": {
+                    "localTime": {
+                        "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/AdvancedTypes.EntryTime"
+                    }
+                }
+            }
+            expect(validatorBasic(localTimeSchema, {localTime: "20:20:39+00:00"})).toBe(true)
     })
 
-    test.skip('4. Test for Month type', () => {
+    test('4. Test for Month type', () => {
+            const monthSchema = {
+                "type": "object",
+                "properties": {
+                    "month": {
+                        "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/AdvancedTypes.StartMonth"
+                    }
+                }
+            }
+            expect(validatorBasic(monthSchema, {month: "78.9"})).toBe(true)
     })
 })
 
@@ -154,8 +182,6 @@ describe('Test Suite for Result Types', () => {
 })
 
 describe('Test Suite for Composite Types - Records/Tuples', () => {
-    test.skip('Test for Tuple  type', () => {
-    })
 
     test('Test for Record type', () => {
         const recordSchema = jsonObject["$defs"]["RecordTypes.Address"]
@@ -197,6 +223,7 @@ const validator = (schema, instance) => {
 //For validation of Basic Types References the main schema which is JsonObject
 const validatorBasic = (schema, instance) => {
     const ajv = new ajv2020()
+    addFormats(ajv)
     const validate = ajv.addSchema(jsonObject).compile(schema)
     return validate(instance)
 }

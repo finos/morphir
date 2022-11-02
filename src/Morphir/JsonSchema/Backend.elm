@@ -31,7 +31,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), TypeName)
+import Morphir.JsonSchema.AST exposing (ArrayType(..), Derivative(..), Schema, SchemaType(..), TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
 import Morphir.SDK.ResultList as ResultList
 
@@ -94,9 +94,7 @@ generateSchema packageName packageDefinition =
                     []
                 |> Dict.fromList
     in
-    { dirPath = [] -- TODO: remove
-    , fileName = "" -- TODO: remove
-    , id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" packageName ++ ".schema.json"
+    { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" packageName ++ ".schema.json"
     , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
     , definitions = schemaTypeDefinitions
     }
@@ -136,17 +134,17 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                 else
                                     (ctorArgs
                                         |> List.map
-                                            (\x ->
-                                                mapType (Tuple.second x)
+                                            (\tpe ->
+                                                mapType (Tuple.second tpe)
                                             )
                                     )
                                         |> ResultList.keepFirstError
                                         |> Result.map
-                                            (\x ->
+                                            (\schemaType ->
                                                 Array
                                                     (TupleType
                                                         (Const (ctorName |> Name.toTitleCase)
-                                                            :: x
+                                                            :: schemaType
                                                         )
                                                         ((ctorArgs |> List.length) + 1)
                                                     )
@@ -157,11 +155,7 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
             in
             oneOfs2
                 |> Result.map
-                    (\x -> [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf x ) ])
-
-
-
---[ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf oneOfs2 ) ]
+                    (\schemaType -> [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf schemaType ) ])
 
 
 mapType : Type ta -> Result Error SchemaType
@@ -173,13 +167,22 @@ mapType typ =
                     Ok Integer
 
                 ( "Morphir.SDK:Decimal:decimal", [] ) ->
-                    Ok String
+                    Ok (String DecimalString)
 
                 ( "Morphir.SDK:String:string", [] ) ->
-                    Ok String
+                    Ok (String BasicString)
 
                 ( "Morphir.SDK:Char:char", [] ) ->
-                    Ok String
+                    Ok (String CharString)
+
+                ( "Morphir.SDK:LocalDate:localDate", [] ) ->
+                    Ok (String DateString)
+
+                ( "Morphir.SDK:LocalTime:localTime", [] ) ->
+                    Ok (String TimeString)
+
+                ( "Morphir.SDK:Month:month", [] ) ->
+                    Ok (String MonthString)
 
                 ( "Morphir.SDK:Basics:float", [] ) ->
                     Ok Number

@@ -6,6 +6,7 @@ Json Schema Reference can be found [here](http://json-schema.org/understanding-j
 Additional reading:
 * [Sample Json Schema](json-schema-mappings.json)
 * [Json Mapping](json-mapping.md)
+* [Testing Strategy](json-schema-backend-testplan.md)
 
 
 The rest of the explains how each Morphir type maps to the Json Schema Types.
@@ -17,11 +18,11 @@ The rest of the explains how each Morphir type maps to the Json Schema Types.
       [1.1.3. Float ](#float)<br>
        [1.1.4. Char ](#char)<br>
       [1.1.5. String ](#string)<br>
-   #### [1.2. Advanced types (Unsupported)](#advanced-types) <br>
-      [1.2.1. Decimal (Unsupported)](#decimal)<br>
-      [1.2.2. LocalDate (Unsupported)](#localdate)<br>
-      [1.2.3. LocalTime (Unsupported)](#localtime)<br>
-      [1.2.4. Month (Unsupported)](#month)<br>
+   #### [1.2. Advanced types](#advanced-types) <br>
+      [1.2.1. Decimal](#decimal)<br>
+      [1.2.2. LocalDate ](#localdate)<br>
+      [1.2.3. LocalTime](#localtime)<br>
+      [1.2.4. Month](#month)<br>
    #### [1.3. Optional values](#optional-values)<br>
    #### [1.4. Collections](#collections)
     [1.4.1. List ](#list)<br>
@@ -143,9 +144,17 @@ Will validate against:
 
 <h3 id="advanced-types">  1.2. Advanced types</h3>
 <h4 id="decimal">      1.2.1. Decimal </h4>
+Decimal values are would be mapped to string in the JSON schema. The ```elm pattern``` property is 
+used to specified the precision.
 <h4 id="localdate">       1.2.2. LocalDate</h4>
+LocalDate types in Morphir are mapped to strings in Json Schema.
+The format attribute in the JSON schema is used to provide the format for the date.
 <h4 id="localtime">        1.2.3. LocalTime</h4>
+LocalDate types in Morphir are mapped to strings in Json Schema.
+The format attribute in the JSON schema is used to provide the format for the time.
 <h4 id="month">        1.2.4. Month</h4>
+Month types in Morphir are mapped to strings in Json Schema.
+
 <h3 id="optional-values">   1.3. Optional values (Maybe)</h3>
 <p> A Maybe type in Morphir refers to a value that may not exist. This means that it could either be a value or a null. There are two approaches to handling Maybes.<br>
 1. Set the value of the type to an array of two strings: the type, and "null" <br>
