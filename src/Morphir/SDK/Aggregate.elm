@@ -22,6 +22,7 @@ module Morphir.SDK.Aggregate exposing
     , count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
     , byKey, withFilter
     , constructAggregationCall, AggregationCall(..), AggregateValue(..), ConstructAggregationError
+    , aggregateMap4
     )
 
 {-| This module contains functions specifically designed to work with large data sets.
@@ -39,20 +40,20 @@ module Morphir.SDK.Aggregate exposing
 @docs count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
 @docs byKey, withFilter
 
+
 ## Utilities
 
 @docs constructAggregationCall, AggregationCall, AggregateValue, ConstructAggregationError
 
 -}
 
-import Dict as CoreDict exposing (Dict)
 import AssocList as Dict exposing (Dict)
+import Dict as CoreDict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Value as Value exposing (TypedValue)
 import Morphir.SDK.Key exposing (Key0, key0)
 import Morphir.SDK.ResultList as ResultList
-
 
 
 type Operator a
@@ -346,6 +347,45 @@ aggregateMap3 agg1 agg2 agg3 f list =
             )
 
 
+aggregateMap4 : Aggregation a key1 -> Aggregation a key2 -> Aggregation a key3 -> Aggregation a key4 -> (Float -> Float -> Float -> Float -> a -> b) -> List a -> List b
+aggregateMap4 agg1 agg2 agg3 agg4 f list =
+    let
+        aggregated1 : Dict key1 Float
+        aggregated1 =
+            list
+                |> List.filter agg1.filter
+                |> aggregateHelp agg1.key agg1.operator
+
+        aggregated2 : Dict key2 Float
+        aggregated2 =
+            list
+                |> List.filter agg2.filter
+                |> aggregateHelp agg2.key agg2.operator
+
+        aggregated3 : Dict key3 Float
+        aggregated3 =
+            list
+                |> List.filter agg3.filter
+                |> aggregateHelp agg3.key agg3.operator
+
+        aggregated4 : Dict key4 Float
+        aggregated4 =
+            list
+                |> List.filter agg4.filter
+                |> aggregateHelp agg4.key agg4.operator
+    in
+    list
+        |> List.map
+            (\a ->
+                a
+                    |> f
+                        (aggregated1 |> Dict.get (agg1.key a) |> Maybe.withDefault 0)
+                        (aggregated2 |> Dict.get (agg2.key a) |> Maybe.withDefault 0)
+                        (aggregated3 |> Dict.get (agg3.key a) |> Maybe.withDefault 0)
+                        (aggregated4 |> Dict.get (agg4.key a) |> Maybe.withDefault 0)
+            )
+
+
 aggregateHelp : (a -> key) -> Operator a -> List a -> Dict key Float
 aggregateHelp getKey op list =
     let
@@ -579,15 +619,17 @@ Its values are:
 type AggregateValue
     = AggregateValue Name (Maybe TypedValue) FQName (Maybe TypedValue)
 
+
 {-| A ConstructAggregationError represents the ways constructAggregationCall may fail
 
 Its values are:
+
   - **TooManyKeyFields**
       - i.e. in `aggregate`, 'key' was used to create multiple columns of the
         field(s) the data is grouped by, which can't be represented in Spark.
-  - * UnhandledValue**
-      - i.e. the 'aggregateBody' or 'groupKey' Values passed into
-        constructAggregationCall could not be recognised as an aggregation.
+  -   - UnhandledValue\*\*
+          - i.e. the 'aggregateBody' or 'groupKey' Values passed into
+            constructAggregationCall could not be recognised as an aggregation.
 
 -}
 type ConstructAggregationError
