@@ -4,8 +4,8 @@ import Dict
 import Expect
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Documented exposing (Documented)
-import Morphir.IR.Type exposing (Definition(..))
-import Morphir.JsonSchema.AST exposing (SchemaType(..))
+import Morphir.IR.Type as Type exposing (Definition(..), Type(..))
+import Morphir.JsonSchema.AST exposing (ArrayType(..), Derivative(..), SchemaType(..))
 import Morphir.JsonSchema.Backend exposing (mapTypeDefinition)
 import Test exposing (describe, test)
 
@@ -24,13 +24,26 @@ mapTypeDefinitionTests =
                             Expect.fail "Unable to map"
                 )
 
-        accessControlledTypeDef1 : Definition a
-        accessControlledTypeDef1 =
+        accessControlledTypeDefinition1 : Definition a
+        accessControlledTypeDefinition1 =
             CustomTypeDefinition [ [ "Currencies" ] ] (AccessControlled Public (Dict.singleton [ "USD" ] []))
+
+        accessControlledTypeDefinition2 =
+            CustomTypeDefinition [ [ "Employee" ] ]
+                (AccessControlled Public
+                    (Dict.singleton [ "Fullname" ]
+                        [ ( [], Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "String" ] ], [ "string" ] ) [] )
+                        ]
+                    )
+                )
     in
     describe "Tests for Custom Types"
         [ positiveTest "Test for Enum type"
             ( [ [ "CustomTypes" ] ], [ "Currencies" ] )
-            accessControlledTypeDef1
+            accessControlledTypeDefinition1
             [ ( "CustomTypes.Currencies", OneOf [ Const "USD" ] ) ]
+        , positiveTest "Test for custom type with single constructor"
+            ( [ [ "CustomTypes" ] ], [ "Employee" ] )
+            accessControlledTypeDefinition2
+            [ ( "CustomTypes.Employee", OneOf [ Array (TupleType [ Const "Fullname", String BasicString ] 2) False ] ) ]
         ]

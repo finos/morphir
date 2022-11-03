@@ -8,7 +8,7 @@ import Morphir.JsonSchema.Backend exposing (mapType)
 import Test exposing (describe, test)
 
 
-recordTests =
+mapTypeTests =
     describe "Tests Record Types"
         [ test "Test record with single field" <|
             \_ ->
@@ -23,4 +23,24 @@ recordTests =
                         ]
                     )
                     |> Expect.equal (Ok (Object ([ ( "firstname", String BasicString ), ( "age", Integer ) ] |> Dict.fromList)))
+        , test "Test for record with a custom field" <|
+            \_ ->
+                mapType
+                    (Type.Record ()
+                        [ Type.Field [ "firstname" ] (Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "String" ] ], [ "string" ] ) [])
+                        , Type.Field [ "lastname" ] (Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "String" ] ], [ "string" ] ) [])
+                        , Type.Field [ "address" ] (Type.Reference () ( [ [ "TestModel" ] ], [ [ "RecordTypes" ] ], [ "address" ] ) [])
+                        ]
+                    )
+                    |> Expect.equal
+                        (Ok
+                            (Object
+                                ([ ( "firstname", String BasicString )
+                                 , ( "lastname", String BasicString )
+                                 , ( "address", Ref "#/$defs/RecordTypes.Address" )
+                                 ]
+                                    |> Dict.fromList
+                                )
+                            )
+                        )
         ]

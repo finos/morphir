@@ -60,10 +60,19 @@ mapDistribution _ distro =
 
 mapPackageDefinition : PackageName -> Package.Definition ta (Type ()) -> FileMap
 mapPackageDefinition packageName packageDefinition =
-    packageDefinition
-        |> generateSchema packageName
-        |> encodeSchema
-        |> Dict.singleton ( [], Path.toString Name.toTitleCase "." packageName ++ ".json" )
+    let
+        schemaResult =
+            packageDefinition
+                |> generateSchema packageName
+    in
+    case schemaResult of
+        Ok value ->
+            value
+                |> encodeSchema
+                |> Dict.singleton ( [], Path.toString Name.toTitleCase "." packageName ++ ".json" )
+
+        Err (Error error) ->
+            Dict.singleton ( [], "ErrorLog.json" ) error
 
 
 mapQualifiedName : ( Path, Name ) -> String
@@ -71,33 +80,34 @@ mapQualifiedName ( path, name ) =
     String.join "." [ Path.toString Name.toTitleCase "." path, Name.toTitleCase name ]
 
 
-generateSchema : PackageName -> Package.Definition ta (Type ()) -> Schema
+generateSchema : PackageName -> Package.Definition ta (Type ()) -> Result Error Schema
 generateSchema packageName packageDefinition =
     let
+        schemaTypeDefinitions : Result Error (List ( TypeName, SchemaType ))
         schemaTypeDefinitions =
             packageDefinition.modules
-                |> Dict.foldl
-                    (\modName modDef listSoFar ->
+                |> Dict.toList
+                |> List.map
+                    (\( modName, modDef ) ->
                         extractTypes modName modDef.value
-                            |> List.concatMap
+                            |> List.map
                                 (\( qualifiedName, typeDef ) ->
-                                    case mapTypeDefinition qualifiedName typeDef of
-                                        Ok val ->
-                                            val
-
-                                        _ ->
-                                            -- TODO: Log a message indicating which module failed to map
-                                            []
+                                    mapTypeDefinition qualifiedName typeDef
                                 )
-                            |> (\lst -> listSoFar ++ lst)
+                            |> ResultList.keepFirstError
+                            |> Result.map List.concat
                     )
-                    []
-                |> Dict.fromList
+                |> ResultList.keepFirstError
+                |> Result.map List.concat
     in
-    { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" packageName ++ ".schema.json"
-    , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
-    , definitions = schemaTypeDefinitions
-    }
+    schemaTypeDefinitions
+        |> Result.map
+            (\definitions ->
+                { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" packageName ++ ".schema.json"
+                , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
+                , definitions = definitions |> Dict.fromList
+                }
+            )
 
 
 extractTypes : ModuleName -> Module.Definition ta (Type ()) -> List ( QualifiedName, Type.Definition ta )

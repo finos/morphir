@@ -51,7 +51,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
                 }
             },
         }
-        expect(validatorBasic(boolSchema, {bool:true})).toBe(true)
+        expect(validateBasicType(boolSchema, {bool:true})).toBe(true)
     })
 
     test('2. Int type test case', () => {
@@ -63,7 +63,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
                 }
             }
         }
-        expect(validatorBasic(intSchema, {int: 67})).toBe(true)
+        expect(validateBasicType(intSchema, {int: 67})).toBe(true)
     })
 
     test('3. Float type test case', () => {
@@ -75,7 +75,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
                 }
             }
         }
-        expect(validatorBasic(floatSchema, {float: 93.4})).toBe(true)
+        expect(validateBasicType(floatSchema, {float: 93.4})).toBe(true)
     })
 
     test('4. Char type test case', () => {
@@ -87,7 +87,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
                 }
             }
         }
-        expect(validatorBasic(charSchema, {char: 'A'})).toBe(true)
+        expect(validateBasicType(charSchema, {char: 'A'})).toBe(true)
     })
 
     test('5. String type test case', () => {
@@ -99,7 +99,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
                 }
             }
         }
-        expect(validatorBasic(stringSchema, {string: "Foo"})).toBe(true)
+        expect(validateBasicType(stringSchema, {string: "Foo"})).toBe(true)
     })
 })
 
@@ -114,7 +114,7 @@ describe('Test Suite for Advanced Types', () => {
                 }
             }
         }
-        expect(validatorBasic(decimalSchema, {decimal: "78.9"})).toBe(true)
+        expect(validateBasicType(decimalSchema, {decimal: "78.9"})).toBe(true)
     })
 
     test('2. Test for LocalDate type', () => {
@@ -126,7 +126,7 @@ describe('Test Suite for Advanced Types', () => {
                     }
                 }
             }
-            expect(validatorBasic(localDateSchema, {localDate: "2022-02-02"})).toBe(true)
+            expect(validateBasicType(localDateSchema, {localDate: "2022-02-02"})).toBe(true)
     })
 
     test('3. Test for LocalTime type', () => {
@@ -138,7 +138,7 @@ describe('Test Suite for Advanced Types', () => {
                     }
                 }
             }
-            expect(validatorBasic(localTimeSchema, {localTime: "20:20:39+00:00"})).toBe(true)
+            expect(validateBasicType(localTimeSchema, {localTime: "20:20:39+00:00"})).toBe(true)
     })
 
     test('4. Test for Month type', () => {
@@ -150,7 +150,7 @@ describe('Test Suite for Advanced Types', () => {
                     }
                 }
             }
-            expect(validatorBasic(monthSchema, {month: "78.9"})).toBe(true)
+            expect(validateBasicType(monthSchema, {month: "78.9"})).toBe(true)
     })
 })
 
@@ -221,7 +221,7 @@ const validator = (schema, instance) => {
 }
 
 //For validation of Basic Types References the main schema which is JsonObject
-const validatorBasic = (schema, instance) => {
+const validateBasicType = (schema, instance) => {
     const ajv = new ajv2020()
     addFormats(ajv)
     const validate = ajv.addSchema(jsonObject).compile(schema)
