@@ -48,7 +48,7 @@ module Morphir.SDK.Aggregate exposing
 -}
 
 import AssocList as Dict exposing (Dict)
-import Dict as CoreDict exposing (Dict)
+import Dict as CoreDict
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Value as Value exposing (TypedValue)
