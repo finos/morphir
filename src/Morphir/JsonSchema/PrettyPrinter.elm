@@ -65,7 +65,6 @@ encodeSchemaType schemaType =
                 DecimalString ->
                     Encode.object
                         [ ( "type", Encode.string "string" )
-                        , ( "pattern", Encode.string "-?^\\d*(.\\d{0,2})?$" )
                         ]
 
                 DateString ->

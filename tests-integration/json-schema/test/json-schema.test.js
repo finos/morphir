@@ -105,7 +105,7 @@ describe('Test Suite for Collection Types', () => {
 })
 
 describe('Test Suite for Result Types', () => {
-    test.skip('Test for  type', () => {
+    test.skip('Test for basic Result type', () => {
     })
 })
 
@@ -121,7 +121,9 @@ describe('Test Suite for Composite Types - Records/Tuples', () => {
         expect(validator(recordSchema, recordInstance)).toBe(true)
     })
 
-    test.skip('Test for Tuple type', () => {
+    test('Test for Tuple type', () => {
+        const tupleSchema = jsonObject["$defs"]["TupleTypes.Cordinates"]
+        expect(validator(tupleSchema, [34.8, 56.59, 67.5])).toBe(true)
     })
 })
 

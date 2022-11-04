@@ -240,5 +240,17 @@ mapType typ =
                 |> ResultList.keepFirstError
                 |> Result.map (Dict.fromList >> Object)
 
+        Type.Tuple _ typeList ->
+            typeList
+                |> List.map
+                    (\tpe ->
+                        mapType tpe
+                    )
+                |> ResultList.keepFirstError
+                |> Result.map
+                    (\itemType ->
+                        Array (TupleType itemType (typeList |> List.length)) False
+                    )
+
         _ ->
             Err "Cannot map this type"
