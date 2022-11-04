@@ -43,114 +43,42 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 	})
 
     test('1. Bool type test case', () => {
-        const boolSchema= {
-            "type": "object",
-            "properties": {
-                "bool": {
-                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Paid"
-                }
-            },
-        }
-        expect(validateBasicType(boolSchema, {bool:true})).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Paid", {bool:true})).toBe(true)
     })
 
     test('2. Int type test case', () => {
-        const intSchema = {
-           "type": "object",
-            "properties": {
-                "int": {
-                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Age"
-                }
-            }
-        }
-        expect(validateBasicType(intSchema, {int: 67})).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Age", {int: 67})).toBe(true)
     })
 
     test('3. Float type test case', () => {
-        const floatSchema = {
-           "type": "object",
-            "properties": {
-                "float": {
-                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Score"
-                }
-            }
-        }
-        expect(validateBasicType(floatSchema, {float: 93.4})).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Score", {float: 93.4})).toBe(true)
     })
 
     test('4. Char type test case', () => {
-        const charSchema = {
-           "type": "object",
-            "properties": {
-                "char": {
-                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Grade"
-                }
-            }
-        }
-        expect(validateBasicType(charSchema, {char: 'A'})).toBe(true)
+        expect(validateBasicAndAdvancedType('BasicTypes.Grade', {char: 'A'})).toBe(true)
     })
 
     test('5. String type test case', () => {
-        const stringSchema = {
-           "type": "object",
-            "properties": {
-                "string": {
-                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/BasicTypes.Fullname"
-                }
-            }
-        }
-        expect(validateBasicType(stringSchema, {string: "Foo"})).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Fullname", {string: "Foo"})).toBe(true)
     })
 })
 
 describe('Test Suite for Advanced Types', () => {
 
     test('1. Test for Decimal type', () => {
-        const decimalSchema = {
-           "type": "object",
-            "properties": {
-                "decimal": {
-                    "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/AdvancedTypes.Score"
-                }
-            }
-        }
-        expect(validateBasicType(decimalSchema, {decimal: "78.9"})).toBe(true)
+        expect(validateBasicAndAdvancedType("AdvancedTypes.Score", {decimal: "78.9"})).toBe(true)
     })
 
     test('2. Test for LocalDate type', () => {
-            const localDateSchema = {
-                "type": "object",
-                "properties": {
-                    "decimal": {
-                        "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/AdvancedTypes.AcquisitionDate"
-                    }
-                }
-            }
-            expect(validateBasicType(localDateSchema, {localDate: "2022-02-02"})).toBe(true)
+            expect(validateBasicAndAdvancedType("AdvancedTypes.AcquisitionDate", {localDate: "2022-02-02"})).toBe(true)
     })
 
     test('3. Test for LocalTime type', () => {
-            const localTimeSchema = {
-                "type": "object",
-                "properties": {
-                    "localTime": {
-                        "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/AdvancedTypes.EntryTime"
-                    }
-                }
-            }
-            expect(validateBasicType(localTimeSchema, {localTime: "20:20:39+00:00"})).toBe(true)
+            expect(validateBasicAndAdvancedType("AdvancedTypes.EntryTime", {localTime: "20:20:39+00:00"})).toBe(true)
     })
 
     test('4. Test for Month type', () => {
-            const monthSchema = {
-                "type": "object",
-                "properties": {
-                    "month": {
-                        "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/AdvancedTypes.StartMonth"
-                    }
-                }
-            }
-            expect(validateBasicType(monthSchema, {month: "78.9"})).toBe(true)
+            expect(validateBasicAndAdvancedType("AdvancedTypes.StartMonth", {month: "78.9"})).toBe(true)
     })
 })
 
@@ -220,10 +148,18 @@ const validator = (schema, instance) => {
     return validate( instance);
 }
 
-//For validation of Basic Types References the main schema which is JsonObject
-const validateBasicType = (schema, instance) => {
+//For validation of Basic  and Advanced Types  References the main schema which is JsonObject
+const validateBasicAndAdvancedType = (typeName, instance) => {
     const ajv = new ajv2020()
     addFormats(ajv)
+    const schema =  {
+        "type": "object",
+        "properties": {
+            "string": {
+                "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/" + typeName
+            }
+        }
+    }
     const validate = ajv.addSchema(jsonObject).compile(schema)
     return validate(instance)
 }
