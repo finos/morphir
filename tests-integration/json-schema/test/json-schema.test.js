@@ -105,7 +105,9 @@ describe('Test Suite for Collection Types', () => {
 })
 
 describe('Test Suite for Result Types', () => {
-    test.skip('Test for basic Result type', () => {
+    test('Test for basic Result type', () => {
+        const resultSchema = jsonObject["$defs"]["ResultTypes.Output"]
+        expect(validator(resultSchema, ["Ok", 56])).toBe(true)
     })
 })
 

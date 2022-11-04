@@ -218,6 +218,21 @@ mapType typ =
                                     ]
                             )
 
+                ( "Morphir.SDK:Result:result", [ error, value ] ) ->
+                    [ mapType error
+                        |> Result.map
+                            (\errorSchema ->
+                                Array (TupleType [ Const "Err", errorSchema ] 2) True
+                            )
+                    , mapType value
+                        |> Result.map
+                            (\valueSchema ->
+                                Array (TupleType [ Const "Ok", valueSchema ] 2) True
+                            )
+                    ]
+                        |> ResultList.keepFirstError
+                        |> Result.map OneOf
+
                 _ ->
                     Ok
                         (Ref
