@@ -44,35 +44,26 @@ type alias QualifiedName =
     ( Path, Name )
 
 
-type Error
-    = Error String
+type alias Error =
+    String
 
 
 {-| Entry point for the JSON Schema backend. It takes the Morphir IR as the input and returns an in-memory
 representation of files generated.
 -}
-mapDistribution : Options -> Distribution -> FileMap
+mapDistribution : Options -> Distribution -> Result Error FileMap
 mapDistribution _ distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
             mapPackageDefinition packageName packageDef
 
 
-mapPackageDefinition : PackageName -> Package.Definition ta (Type ()) -> FileMap
+mapPackageDefinition : PackageName -> Package.Definition ta (Type ()) -> Result Error FileMap
 mapPackageDefinition packageName packageDefinition =
-    let
-        schemaResult =
-            packageDefinition
-                |> generateSchema packageName
-    in
-    case schemaResult of
-        Ok value ->
-            value
-                |> encodeSchema
-                |> Dict.singleton ( [], Path.toString Name.toTitleCase "." packageName ++ ".json" )
-
-        Err (Error error) ->
-            Dict.singleton ( [], "ErrorLog.json" ) error
+    packageDefinition
+        |> generateSchema packageName
+        |> Result.map encodeSchema
+        |> Result.map (Dict.singleton ( [], Path.toString Name.toTitleCase "." packageName ++ ".json" ))
 
 
 mapQualifiedName : ( Path, Name ) -> String
@@ -250,4 +241,4 @@ mapType typ =
                 |> Result.map (Dict.fromList >> Object)
 
         _ ->
-            Err (Error "Cannot map this type")
+            Err "Cannot map this type"

@@ -25,7 +25,8 @@ import Morphir.Compiler.Codec as CompilerCodec
 import Morphir.Correctness.Codec exposing (decodeTestSuite)
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
-import Morphir.Elm.Target exposing (decodeOptions, mapDistribution)
+import Morphir.Elm.Target exposing (BackendOptions, decodeOptions, mapDistribution)
+import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
@@ -137,18 +138,22 @@ update msg model =
 
         Generate ( optionsJson, packageDistJson ) ->
             let
+                targetOption : Result Decode.Error String
                 targetOption =
                     Decode.decodeValue (field "target" string) optionsJson
 
+                optionsResult : Result Decode.Error BackendOptions
                 optionsResult =
                     Decode.decodeValue (decodeOptions targetOption) optionsJson
 
+                packageDistroResult : Result Decode.Error Distribution
                 packageDistroResult =
                     Decode.decodeValue DistributionCodec.decodeVersionedDistribution packageDistJson
             in
             case Result.map2 Tuple.pair optionsResult packageDistroResult of
                 Ok ( options, packageDist ) ->
                     let
+                        enrichedDistro : Distribution
                         enrichedDistro =
                             case packageDist of
                                 Library packageName dependencies packageDef ->
@@ -156,8 +161,16 @@ update msg model =
 
                         fileMap =
                             mapDistribution options enrichedDistro
+
+                        encodedResult : Result String FileMap -> Encode.Value
+                        encodedResult =
+                            encodeResult Encode.string encodeFileMap
                     in
-                    ( model, fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult )
+                    ( model
+                    , fileMap
+                        |> encodedResult
+                        |> generateResult
+                    )
 
                 Err errorMessage ->
                     ( model, errorMessage |> Decode.errorToString |> jsonDecodeError )
