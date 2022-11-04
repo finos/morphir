@@ -346,6 +346,11 @@ aggregateMap3 agg1 agg2 agg3 f list =
             )
 
 
+{-|
+
+    aggregateMap4
+
+-}
 aggregateMap4 : Aggregation a key1 -> Aggregation a key2 -> Aggregation a key3 -> Aggregation a key4 -> (Float -> Float -> Float -> Float -> a -> b) -> List a -> List b
 aggregateMap4 agg1 agg2 agg3 agg4 f list =
     let
