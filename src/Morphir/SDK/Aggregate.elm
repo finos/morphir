@@ -18,11 +18,10 @@
 module Morphir.SDK.Aggregate exposing
     ( Aggregation
     , groupBy, aggregate
-    , aggregateMap, aggregateMap2, aggregateMap3
+    , aggregateMap, aggregateMap2, aggregateMap3, aggregateMap4
     , count, sumOf, minimumOf, maximumOf, averageOf, weightedAverageOf
     , byKey, withFilter
     , constructAggregationCall, AggregationCall(..), AggregateValue(..), ConstructAggregationError
-    , aggregateMap4
     )
 
 {-| This module contains functions specifically designed to work with large data sets.
@@ -32,7 +31,7 @@ module Morphir.SDK.Aggregate exposing
 
 @docs Aggregation
 @docs groupBy, aggregate
-@docs aggregateMap, aggregateMap2, aggregateMap3
+@docs aggregateMap, aggregateMap2, aggregateMap3, aggregateMap4
 
 
 ## Operators
