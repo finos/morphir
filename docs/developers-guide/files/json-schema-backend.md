@@ -203,12 +203,99 @@ A set is used to define a collection of unique values. A Json Schema can ensure 
 each of the items in the array is unique. To achieve this, we map a set to an array and set the ```uniqueItems```
 keyword to true.
 <h4 id="dict">      1.4.3. Dict </h4>
+Since we have an approach for mapping Tuples, a Morphir Dict can be considered as a list of Tuples.
+However, the challenge would be to enforce the unique key constraint.
+So when we have the Morphir declaration
+
+```elm
+type alias acronyms =
+    Dict String String
+```
+
+Can be represented as  list of list, like so:
+```json
+[[String, String]]
+```
+
+This is expected to validate the following Json document
+```json
+[["eg", "example"], ["ie", "that is"]]
+```
+The first item in each list represents the key in the dictionary and right now, we don't have a way to ensure uniqueness of this item
+
 <h3 id="result">   1.5. Result</h3>
+A Result in Elm represents the result of a computation that may fail. Therefore, it can be considered as a custom type with
+two constructors: Ok  and Err.
+With this approach, we can map a result the same way we map Custom types.
+
+The following declaration 
+```elm
+type alias Output
+    = Result String Int
+```
+would be equivalent to the following json schema
+
+```json
+{
+  "oneOf": [
+    {
+      "type": "array",
+      "items": false,
+      "prefixItems": [
+        {
+          "const": "Err"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    {
+      "type": "array",
+      "items": false,
+      "prefixItems": [
+        {
+          "const": "Ok"
+        },
+        {
+          "type": "integer"
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    }
+  ]
+}
+```
+
 
 <h2 id="composite-types">2. Composite Types </h2>
 Composite types are types composed of other types. The following composite 
 types are covered below: Tuples, Records, Custom Types
 <h3 id="tuples">2.1. Tuples</h3>
+Since tuples represents a list of possibly different types, a Morphir tuple could
+be mapped to a tuple-validated array.
+For example  ```elm (String, Int)```
+would result in:
+```json
+{
+  "type": "array",
+  "items": false,
+  "prifixitems" : [
+    {
+      "type": "string"
+    },
+    {
+      "type": "integer"
+    }
+  ],
+  "minItems": 2,
+  "maxItems": 2
+}
+```
+
 <h3 id="record-types">2.2. Record Types </h3>
 Record types in Morphir maps to objects in Json schema. The fields of the record maps to properties of the Json Schema object.
 The properties of a JSON schema is a list of schemas. An example is given below
