@@ -663,9 +663,9 @@ Its values are:
   - **TooManyKeyFields**
       - i.e. in `aggregate`, 'key' was used to create multiple columns of the
         field(s) the data is grouped by, which can't be represented in Spark.
-  -   - UnhandledValue\*\*
-          - i.e. the 'aggregateBody' or 'groupKey' Values passed into
-            constructAggregationCall could not be recognised as an aggregation.
+  - **UnhandledValue**
+    - i.e. the 'aggregateBody' or 'groupKey' Values passed into
+    constructAggregationCall could not be recognised as an aggregation.
 
 -}
 type ConstructAggregationError
