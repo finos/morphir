@@ -78,7 +78,11 @@ viewSubTree theme config nodePath (Node label attributes children) =
             let
                 configurableStyles =
                     if config.selectedPaths |> Set.member nodePath then
-                        [ Font.bold, Background.color theme.colors.brandPrimaryLight, Border.color theme.colors.primaryHighlight ]
+                        [ Font.bold
+                        , Background.color theme.colors.brandPrimaryLight
+                        , Border.widthEach { left = 2, right = 0, bottom = 0, top = 0 }
+                        , Border.color theme.colors.primaryHighlight
+                        ]
 
                     else
                         []
@@ -88,7 +92,10 @@ viewSubTree theme config nodePath (Node label attributes children) =
                     [ configurableStyles
                     , [ width fill
                       , padding 2
-                      , mouseOver [ Background.color theme.colors.brandPrimaryLight, Border.color theme.colors.primaryHighlight ]
+                      , mouseOver
+                            [ Background.color theme.colors.gray
+                            , Border.color theme.colors.primaryHighlight
+                            ]
                       ]
                     ]
                 )
