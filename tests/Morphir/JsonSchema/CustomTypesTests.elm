@@ -5,7 +5,7 @@ import Expect
 import Morphir.IR.AccessControlled exposing (Access(..), AccessControlled)
 import Morphir.IR.Documented exposing (Documented)
 import Morphir.IR.Type as Type exposing (Definition(..), Type(..))
-import Morphir.JsonSchema.AST exposing (ArrayType(..), Derivative(..), SchemaType(..))
+import Morphir.JsonSchema.AST exposing (ArrayType(..), SchemaType(..), StringConstraints)
 import Morphir.JsonSchema.Backend exposing (mapTypeDefinition)
 import Test exposing (describe, test)
 
@@ -45,5 +45,5 @@ mapTypeDefinitionTests =
         , positiveTest "Test for custom type with single constructor"
             ( [ [ "CustomTypes" ] ], [ "Employee" ] )
             accessControlledTypeDefinition2
-            [ ( "CustomTypes.Employee", OneOf [ Array (TupleType [ Const "Fullname", String BasicString ] 2) False ] ) ]
+            [ ( "CustomTypes.Employee", OneOf [ Array (TupleType [ Const "Fullname", String (StringConstraints Nothing) ] 2) False ] ) ]
         ]
