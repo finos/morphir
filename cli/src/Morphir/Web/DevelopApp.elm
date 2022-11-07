@@ -1,7 +1,5 @@
 module Morphir.Web.DevelopApp exposing (IRState(..), Model, Msg(..), ServerState(..), httpMakeModel, init, main, routeParser, subscriptions, update, view, viewBody, viewHeader)
 
---import Morphir.Visual.Components.TreeLayout as TreeLayout
-
 import Array exposing (Array)
 import Array.Extra
 import Browser
@@ -1538,7 +1536,7 @@ httpSaveTestSuite ir newTestSuite oldTestSuite =
         }
 
 
-{-| Display a TreeLayout of clickable module names in the given package, with urls pointing to the give module
+{-| Display a Tree View of clickable module names in the given package, with urls pointing to the give module
 -}
 viewModuleNames : Model -> PackageName -> ModuleName -> List ModuleName -> TreeViewComponent.Node ModuleName Msg
 viewModuleNames model packageName parentModule allModuleNames =
