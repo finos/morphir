@@ -27,13 +27,13 @@ The rest of the explains how each Morphir type maps to the Json Schema Types.
    #### [1.4. Collections](#collections)
     [1.4.1. List ](#list)<br>
     [1.4.2. Set ](#set) <br>
-    [1.4.3. Dict (Unsupported)](#dict) <br>
-   ####  [1.4.5. Results (Unsupported)](#result)
+    [1.4.3. Dict](#dict) <br>
+   ####  [1.4.5. Results](#result)
 
 2. ### [Composite Types](#composite-types)
-   ####  [2.1. Tuples (Unsupported)](#tuples) <br>
+   ####  [2.1. Tuples](#tuples) <br>
    ####  [2.2. Record Types ](#records) <br>
-   #### & [2.3. Custom Types](#custom-types) <br>
+   ####  [2.3. Custom Types](#custom-types) <br>
     [2.3.1. General Case ](#general-case) <br>
     [2.3.2. Special Cases](#special-cases) <br>
     [- No-arg Constructor](#) <br>
@@ -153,7 +153,7 @@ The format attribute in the JSON schema is used to provide the format for the da
 LocalDate types in Morphir are mapped to strings in Json Schema.
 The format attribute in the JSON schema is used to provide the format for the time.
 <h4 id="month">        1.2.4. Month</h4>
-Month types in Morphir are mapped to strings in Json Schema.
+Month types in Morphir are mapped OneOf schema type with a enum list of all the month names
 
 <h3 id="optional-values">   1.3. Optional values (Maybe)</h3>
 <p> A Maybe type in Morphir refers to a value that may not exist. This means that it could either be a value or a null. There are two approaches to handling Maybes.<br>
