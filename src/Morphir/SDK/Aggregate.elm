@@ -346,9 +346,41 @@ aggregateMap3 agg1 agg2 agg3 f list =
             )
 
 
-{-|
+{-| Map function that provides three aggregated values to the mapping function. The first argument is a tuple where the
+first element is a function that defines the aggregation key, the second element is predicate that allows you to filter
+out certain rows from the aggregation and the third argument is the aggregation operation to apply. Usage:
 
-    aggregateMap4
+        testDataSet =
+            [ TestInput1 "k1_1" "k2_1" 1
+            , TestInput1 "k1_1" "k2_1" 2
+            , TestInput1 "k1_1" "k2_2" 3
+            , TestInput1 "k1_1" "k2_2" 4
+            , TestInput1 "k1_2" "k2_1" 5
+            , TestInput1 "k1_2" "k2_1" 6
+            , TestInput1 "k1_2" "k2_2" 7
+            , TestInput1 "k1_2" "k2_2" 8
+            ]
+
+        testDataSet
+            |> aggregateMap4
+                (sumOf .value |> byKey .key1)
+                (maximumOf .value |> byKey .key2)
+                (minimumOf .value |> byKey (key2 .key1 .key2))
+                (averageOf .value |> byKey (key2 .key1 .key2))
+                (\totalValue maxValue minValue average input ->
+                    ( input, totalValue * maxValue / input.value + minValue + average )
+                )
+           {-  ==
+                [ ( TestInput1 "k1_1" "k2_1" 1, 10 * 6 / 1 + 1 + 1.5 )
+                , ( TestInput1 "k1_1" "k2_1" 2, 10 * 6 / 2 + 1 + 1.5 )
+                , ( TestInput1 "k1_1" "k2_2" 3, 10 * 8 / 3 + 3 + 3.5 )
+                , ( TestInput1 "k1_1" "k2_2" 4, 10 * 8 / 4 + 3 + 3.5 )
+                , ( TestInput1 "k1_2" "k2_1" 5, 26 * 6 / 5 + 5 + 5.5 )
+                , ( TestInput1 "k1_2" "k2_1" 6, 26 * 6 / 6 + 5 + 5.5 )
+                , ( TestInput1 "k1_2" "k2_2" 7, 26 * 8 / 7 + 7 + 7.5 )
+                , ( TestInput1 "k1_2" "k2_2" 8, 26 * 8 / 8 + 7 + 7.5 )
+                ]
+           -}
 
 -}
 aggregateMap4 : Aggregation a key1 -> Aggregation a key2 -> Aggregation a key3 -> Aggregation a key4 -> (Float -> Float -> Float -> Float -> a -> b) -> List a -> List b
