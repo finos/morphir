@@ -17,8 +17,8 @@ module Morphir.SDK.AggregateTests exposing (aggregateMapTests)
 -}
 
 import Expect
-import Morphir.SDK.Aggregate exposing (aggregateMap, aggregateMap2, aggregateMap3, averageOf, byKey, count, maximumOf, minimumOf, sumOf, weightedAverageOf, withFilter)
-import Morphir.SDK.Key exposing (key2, noKey)
+import Morphir.SDK.Aggregate exposing (aggregateMap, aggregateMap2, aggregateMap3, aggregateMap4, averageOf, byKey, count, maximumOf, minimumOf, sumOf, weightedAverageOf, withFilter)
+import Morphir.SDK.Key exposing (key2, key3, noKey)
 import Test exposing (..)
 
 
@@ -137,6 +137,27 @@ aggregateMapTests =
                         , ( TestInput1 "k1_2" "k2_1" 6, 26 * 6 / 6 + 5 )
                         , ( TestInput1 "k1_2" "k2_2" 7, 26 * 8 / 7 + 7 )
                         , ( TestInput1 "k1_2" "k2_2" 8, 26 * 8 / 8 + 7 )
+                        ]
+        , test "aggregate 4" <|
+            \_ ->
+                testDataSet
+                    |> aggregateMap4
+                        (sumOf .value |> byKey .key1)
+                        (maximumOf .value |> byKey .key2)
+                        (minimumOf .value |> byKey (key2 .key1 .key2))
+                        (averageOf .value |> byKey (key2 .key1 .key2))
+                        (\totalValue maxValue minValue average input ->
+                            ( input, totalValue * maxValue / input.value + minValue + average )
+                        )
+                    |> Expect.equal
+                        [ ( TestInput1 "k1_1" "k2_1" 1, 10 * 6 / 1 + 1 + 1.5 )
+                        , ( TestInput1 "k1_1" "k2_1" 2, 10 * 6 / 2 + 1 + 1.5 )
+                        , ( TestInput1 "k1_1" "k2_2" 3, 10 * 8 / 3 + 3 + 3.5 )
+                        , ( TestInput1 "k1_1" "k2_2" 4, 10 * 8 / 4 + 3 + 3.5 )
+                        , ( TestInput1 "k1_2" "k2_1" 5, 26 * 6 / 5 + 5 + 5.5 )
+                        , ( TestInput1 "k1_2" "k2_1" 6, 26 * 6 / 6 + 5 + 5.5 )
+                        , ( TestInput1 "k1_2" "k2_2" 7, 26 * 8 / 7 + 7 + 7.5 )
+                        , ( TestInput1 "k1_2" "k2_2" 8, 26 * 8 / 8 + 7 + 7.5 )
                         ]
         , test "count by single key" <|
             \_ ->
