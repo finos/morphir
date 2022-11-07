@@ -43,42 +43,53 @@ describe('Test Suite for Basic Types and Decimal',  () => {
 	})
 
     test('1. Bool type test case', () => {
-        expect(validateBasicAndAdvancedType("BasicTypes.Paid", {bool:true})).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Paid", [true, false])).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Paid", [25, "false"])).toBe(false)
+
     })
 
     test('2. Int type test case', () => {
-        expect(validateBasicAndAdvancedType("BasicTypes.Age", {int: 67})).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Age", [67])).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Age", [true])).toBe(false)
     })
 
     test('3. Float type test case', () => {
-        expect(validateBasicAndAdvancedType("BasicTypes.Score", {float: 93.4})).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Score", [93.4])).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Score", [""])).toBe(false)
     })
 
     test('4. Char type test case', () => {
-        expect(validateBasicAndAdvancedType('BasicTypes.Grade', {char: 'A'})).toBe(true)
+        expect(validateBasicAndAdvancedType('BasicTypes.Grade', ['A'])).toBe(true)
+        expect(validateBasicAndAdvancedType('BasicTypes.Grade', [29.5])).toBe(false)
     })
 
     test('5. String type test case', () => {
-        expect(validateBasicAndAdvancedType("BasicTypes.Fullname", {string: "Foo"})).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Fullname", ["Foo"])).toBe(true)
+        expect(validateBasicAndAdvancedType("BasicTypes.Fullname", [9655])).toBe(false)
     })
 })
 
 describe('Test Suite for Advanced Types', () => {
 
     test('1. Test for Decimal type', () => {
-        expect(validateBasicAndAdvancedType("AdvancedTypes.Score", {decimal: "78.9"})).toBe(true)
+        expect(validateBasicAndAdvancedType("AdvancedTypes.Score", ["98.9"])).toBe(true)
+        expect(validateBasicAndAdvancedType("AdvancedTypes.Score", [98.9])).toBe(false)
+
     })
 
     test('2. Test for LocalDate type', () => {
-            expect(validateBasicAndAdvancedType("AdvancedTypes.AcquisitionDate", {localDate: "2022-02-02"})).toBe(true)
+            expect(validateBasicAndAdvancedType("AdvancedTypes.AcquisitionDate", ["2022-02-02"])).toBe(true)
+            expect(validateBasicAndAdvancedType("AdvancedTypes.AcquisitionDate", [2022-02-02])).toBe(false)
     })
 
     test('3. Test for LocalTime type', () => {
-            expect(validateBasicAndAdvancedType("AdvancedTypes.EntryTime", {localTime: "20:20:39+00:00"})).toBe(true)
+            expect(validateBasicAndAdvancedType("AdvancedTypes.EntryTime", ["20:20:39+00:00"])).toBe(true)
+            expect(validateBasicAndAdvancedType("AdvancedTypes.EntryTime", [000])).toBe(false)
     })
 
     test('4. Test for Month type', () => {
-            expect(validateBasicAndAdvancedType("AdvancedTypes.StartMonth", {month: "78.9"})).toBe(true)
+            expect(validateBasicAndAdvancedType("AdvancedTypes.StartMonth", ["January"])).toBe(true)
+            expect(validateBasicAndAdvancedType("AdvancedTypes.StartMonth", ["Janvier"])).toBe(false)
     })
 })
 
@@ -157,13 +168,12 @@ const validateBasicAndAdvancedType = (typeName, instance) => {
     const ajv = new ajv2020()
     addFormats(ajv)
     const schema =  {
-        "type": "object",
-        "properties": {
-            "string": {
-                "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/" + typeName
-            }
+        "type": "array",
+        "items": {
+             "$ref": "https://morphir.finos.org/test_model.schema.json#/$defs/" + typeName
         }
     }
     const validate = ajv.addSchema(jsonObject).compile(schema)
-    return validate(instance)
+    const result = validate(instance)
+    return result
 }

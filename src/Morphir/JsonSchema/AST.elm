@@ -34,10 +34,15 @@ type alias NumberOfItems =
     Int
 
 
+type alias StringConstraints =
+    { format : Maybe String
+    }
+
+
 type SchemaType
     = Integer
     | Array ArrayType UniqueItems
-    | String Derivative
+    | String StringConstraints
     | Number
     | Boolean
     | Object (Dict String SchemaType)
@@ -50,12 +55,3 @@ type SchemaType
 type ArrayType
     = ListType SchemaType
     | TupleType (List SchemaType) NumberOfItems
-
-
-type Derivative
-    = BasicString
-    | CharString
-    | DecimalString
-    | DateString
-    | TimeString
-    | MonthString

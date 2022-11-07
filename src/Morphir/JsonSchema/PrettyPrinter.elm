@@ -2,7 +2,7 @@ module Morphir.JsonSchema.PrettyPrinter exposing (..)
 
 import Dict exposing (Dict)
 import Json.Encode as Encode
-import Morphir.JsonSchema.AST exposing (ArrayType(..), Derivative(..), Schema, SchemaType(..), TypeName)
+import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), TypeName)
 
 
 encodeSchema : Schema -> String
@@ -52,34 +52,15 @@ encodeSchemaType schemaType =
                         , ( "maxItems", Encode.int numberOfItems )
                         ]
 
-        String derivative ->
-            case derivative of
-                BasicString ->
-                    Encode.object
-                        [ ( "type", Encode.string "string" ) ]
-
-                CharString ->
-                    Encode.object
-                        [ ( "type", Encode.string "string" ) ]
-
-                DecimalString ->
+        String stringConstraint ->
+            case stringConstraint.format of
+                Just format ->
                     Encode.object
                         [ ( "type", Encode.string "string" )
+                        , ( "format", Encode.string format )
                         ]
 
-                DateString ->
-                    Encode.object
-                        [ ( "type", Encode.string "string" )
-                        , ( "format", Encode.string "date" )
-                        ]
-
-                TimeString ->
-                    Encode.object
-                        [ ( "type", Encode.string "string" )
-                        , ( "format", Encode.string "time" )
-                        ]
-
-                MonthString ->
+                Nothing ->
                     Encode.object
                         [ ( "type", Encode.string "string" ) ]
 

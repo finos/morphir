@@ -31,7 +31,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.JsonSchema.AST exposing (ArrayType(..), Derivative(..), Schema, SchemaType(..), TypeName)
+import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), StringConstraints, TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
 import Morphir.SDK.ResultList as ResultList
 
@@ -119,44 +119,40 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                 |> Result.map (\schemaType -> [ ( mapQualifiedName qualifiedName, schemaType ) ])
 
         Type.CustomTypeDefinition _ accessControlledCtors ->
-            let
-                oneOfs2 =
-                    accessControlledCtors.value
-                        |> Dict.toList
-                        |> List.map
-                            (\( ctorName, ctorArgs ) ->
-                                let
-                                    ctorNameString =
-                                        ctorName |> Name.toTitleCase
-                                in
-                                if List.isEmpty ctorArgs then
-                                    Ok (Const ctorNameString)
+            accessControlledCtors.value
+                |> Dict.toList
+                |> List.map
+                    (\( ctorName, ctorArgs ) ->
+                        let
+                            ctorNameString =
+                                ctorName |> Name.toTitleCase
+                        in
+                        if List.isEmpty ctorArgs then
+                            Ok (Const ctorNameString)
 
-                                else
-                                    (ctorArgs
-                                        |> List.map
-                                            (\tpe ->
-                                                mapType (Tuple.second tpe)
-                                            )
+                        else
+                            (ctorArgs
+                                |> List.map
+                                    (\tpe ->
+                                        mapType (Tuple.second tpe)
                                     )
-                                        |> ResultList.keepFirstError
-                                        |> Result.map
-                                            (\schemaType ->
-                                                Array
-                                                    (TupleType
-                                                        (Const (ctorName |> Name.toTitleCase)
-                                                            :: schemaType
-                                                        )
-                                                        ((ctorArgs |> List.length) + 1)
-                                                    )
-                                                    False
-                                            )
                             )
-                        |> ResultList.keepFirstError
-            in
-            oneOfs2
+                                |> ResultList.keepFirstError
+                                |> Result.map
+                                    (\schemaType ->
+                                        Array
+                                            (TupleType
+                                                (Const (ctorName |> Name.toTitleCase)
+                                                    :: schemaType
+                                                )
+                                                ((ctorArgs |> List.length) + 1)
+                                            )
+                                            False
+                                    )
+                    )
+                |> ResultList.keepFirstError
                 |> Result.map
-                    (\schemaType -> [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf schemaType ) ])
+                    (\schemaTypes -> [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf schemaTypes ) ])
 
 
 mapType : Type ta -> Result Error SchemaType
@@ -168,27 +164,39 @@ mapType typ =
                     Ok Integer
 
                 ( "Morphir.SDK:Decimal:decimal", [] ) ->
-                    Ok (String DecimalString)
+                    Ok (String (StringConstraints Nothing))
 
                 ( "Morphir.SDK:String:string", [] ) ->
-                    Ok (String BasicString)
+                    Ok (String (StringConstraints Nothing))
 
                 ( "Morphir.SDK:Char:char", [] ) ->
-                    Ok (String CharString)
+                    Ok (String (StringConstraints Nothing))
 
                 ( "Morphir.SDK:LocalDate:localDate", [] ) ->
-                    Ok (String DateString)
+                    Ok (String (StringConstraints (Just "date")))
 
                 ( "Morphir.SDK:LocalTime:localTime", [] ) ->
-                    Ok (String TimeString)
+                    Ok (String (StringConstraints (Just "time")))
 
                 ( "Morphir.SDK:Month:month", [] ) ->
-                    Ok (String MonthString)
+                    Ok
+                        (OneOf
+                            [ Const "January"
+                            , Const "February"
+                            , Const "March"
+                            , Const "April"
+                            , Const "May"
+                            , Const "June"
+                            , Const "July"
+                            , Const "August"
+                            , Const "September"
+                            , Const "October"
+                            , Const "November"
+                            , Const "December"
+                            ]
+                        )
 
                 ( "Morphir.SDK:Basics:float", [] ) ->
-                    Ok Number
-
-                ( "Morphir.SDK:Tuple:tuple", [] ) ->
                     Ok Number
 
                 ( "Morphir.SDK:Basics:bool", [] ) ->
@@ -232,6 +240,15 @@ mapType typ =
                     ]
                         |> ResultList.keepFirstError
                         |> Result.map OneOf
+
+                ( "Morphir.SDK:Dict:dict", [ keyType, valueType ] ) ->
+                    let
+                        tupleSchemaList =
+                            [ mapType keyType, mapType valueType ]
+                    in
+                    tupleSchemaList
+                        |> ResultList.keepFirstError
+                        |> Result.map (\tupleSchema -> Array (ListType (Array (TupleType tupleSchema 2) False)) True)
 
                 _ ->
                     Ok
