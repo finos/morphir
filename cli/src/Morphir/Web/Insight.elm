@@ -16,7 +16,7 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.DataCodec exposing (decodeData)
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.Visual.Components.VisualizationState exposing (VisualizationState)
-import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), PopupScreenRecord, ExpressionTreePath, addToDrillDown)
+import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), PopupScreenRecord, ExpressionTreePath, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.Theme as Theme exposing (Theme, ThemeConfig, smallPadding, smallSpacing)
 import Morphir.Visual.Theme.Codec exposing (decodeThemeConfig)
 import Morphir.Visual.ViewValue as ViewValue
@@ -217,7 +217,25 @@ update msg model =
                     ( model, Cmd.none )
 
         ShrinkReference fQName id nodePath ->
-            (model, Cmd.none)
+            case model.modelState of
+                FunctionsSet visualizationState ->
+                    case ( fQName, id, nodePath ) of
+                        ( ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ), _, _ ) ->
+                            ( model, Cmd.none )
+
+                        _ ->
+                            ( { model
+                                | modelState =
+                                    FunctionsSet
+                                        { visualizationState
+                                            | drillDownFunctions = DrillDownFunctions (removeFromDrillDown visualizationState.drillDownFunctions id nodePath)
+                                        }
+                              }
+                            , Cmd.none
+                            )
+
+                _ ->
+                    ( model, Cmd.none )
 
         ExpandVariable varIndex nodePath maybeRawValue ->
             case model.modelState of
