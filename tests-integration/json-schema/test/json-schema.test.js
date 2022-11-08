@@ -45,7 +45,6 @@ describe('Test Suite for Basic Types and Decimal',  () => {
     test('1. Bool type test case', () => {
         expect(validateBasicAndAdvancedType("BasicTypes.Paid", [true, false])).toBe(true)
         expect(validateBasicAndAdvancedType("BasicTypes.Paid", [25, "false"])).toBe(false)
-
     })
 
     test('2. Int type test case', () => {
@@ -74,7 +73,6 @@ describe('Test Suite for Advanced Types', () => {
     test('1. Test for Decimal type', () => {
         expect(validateBasicAndAdvancedType("AdvancedTypes.Score", ["98.9"])).toBe(true)
         expect(validateBasicAndAdvancedType("AdvancedTypes.Score", [98.9])).toBe(false)
-
     })
 
     test('2. Test for LocalDate type', () => {
