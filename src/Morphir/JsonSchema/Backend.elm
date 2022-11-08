@@ -285,4 +285,4 @@ mapType typ =
                     )
 
         _ ->
-            Err "Cannot map this type"
+            Err ("Cannot map the type: " ++ Type.toString typ)
