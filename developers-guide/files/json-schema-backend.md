@@ -43,10 +43,10 @@ The rest of the explains how each Morphir type maps to the Json Schema Types.
 
 
 
-<h2 id="sdk-types">1. SDK Types </h2>
-<h3 id="basic-types">   1.1. Basic types</h3>
+## 1. SDK Types 
+###  1.1. Basic types
 Basic types
-<h4 id="bool">     1.1.1. Bool </h4>
+####     1.1.1. Bool
 Boolean type in Morphir maps to boolean in Json Schema as shown in the example:
 ```elm
 type Overtime
@@ -62,7 +62,7 @@ which owould validate against
 ```json
 true
 ```
-<h4 id="int">     1.1.2. Int</h4>
+####    1.1.2. Int
 Decimal, Ints and Float types in Morphir all map to ```number``` type in Json Schema. An example is given below
 Morphir model:
 
@@ -81,7 +81,7 @@ Json Schema
   "type" : "number"
 }
 ```
-<h4 id="float">    1.1.3. Float</h4>
+####   1.1.3. Float
 Float types in Morphir all map to number type in Json Schema. An example is given below
 
 ```elm
@@ -101,7 +101,7 @@ Will validate against:
 45.5
 ```
 
-<h4 id="char">     1.1.4. Char</h4>
+####    1.1.4. Char
 ```Char``` types in Morphir directly maps to ```string``` type in Json Schema since 
 Json Schema does not have a native Char type
 Therefore elm model:
@@ -142,20 +142,20 @@ Will validate against:
 "foo"
 ```
 
-<h3 id="advanced-types">  1.2. Advanced types</h3>
-<h4 id="decimal">      1.2.1. Decimal </h4>
+###  1.2. Advanced types
+####    1.2.1. Decimal
 Decimal values are would be mapped to string in the JSON schema. The ```elm pattern``` property is 
 used to specified the precision.
-<h4 id="localdate">       1.2.2. LocalDate</h4>
+####         1.2.2. LocalDate
 LocalDate types in Morphir are mapped to strings in Json Schema.
 The format attribute in the JSON schema is used to provide the format for the date.
-<h4 id="localtime">        1.2.3. LocalTime</h4>
+####          1.2.3. LocalTime
 LocalDate types in Morphir are mapped to strings in Json Schema.
 The format attribute in the JSON schema is used to provide the format for the time.
-<h4 id="month">        1.2.4. Month</h4>
+####        1.2.4. Month
 Month types in Morphir are mapped OneOf schema type with a enum list of all the month names
 
-<h3 id="optional-values">   1.3. Optional values (Maybe)</h3>
+#### 1.3. Optional values (Maybe)
 <p> A Maybe type in Morphir refers to a value that may not exist. This means that it could either be a value or a null. There are two approaches to handling Maybes.<br>
 1. Set the value of the type to an array of two strings: the type, and "null" <br>
 2. Treat a Maybe as a [custom type](#custom-types) with two constructors: the type and null
@@ -181,8 +181,8 @@ would map to the schema
 }
 ```
 
-<h3 id="collections">   1.4. Collections</h3>
-<h4 id="list">     1.4.1. List</h4>
+###      1.4. Collections
+####        1.4.1. List
 
 An array is  list of items.
 Json schema specification supports array validation:
@@ -198,11 +198,11 @@ For tuple validation, when we want disallows extra items in the tuple, the 'item
 This is a keyword that specifies an array used to hold the schemas for a tuple-validated array.
 Each item in prefixItems is a schema that corresponds to each index of the document's array
 
-<h4 id="set">      1.4.2. Set </h4>
+####         1.4.2. Set
 A set is used to define a collection of unique values. A Json Schema can ensure that
 each of the items in the array is unique. To achieve this, we map a set to an array and set the ```uniqueItems```
 keyword to true.
-<h4 id="dict">      1.4.3. Dict </h4>
+####      1.4.3. Dict
 Since we have an approach for mapping Tuples, a Morphir Dict can be considered as a list of Tuples.
 However, the challenge would be to enforce the unique key constraint.
 So when we have the Morphir declaration
@@ -223,7 +223,7 @@ This is expected to validate the following Json document
 ```
 The first item in each list represents the key in the dictionary and right now, we don't have a way to ensure uniqueness of this item
 
-<h3 id="result">   1.5. Result</h3>
+###   1.5. Result
 A Result in Elm represents the result of a computation that may fail. Therefore, it can be considered as a custom type with
 two constructors: Ok  and Err.
 With this approach, we can map a result the same way we map Custom types.
@@ -271,10 +271,10 @@ would be equivalent to the following json schema
 ```
 
 
-<h2 id="composite-types">2. Composite Types </h2>
+## 2. Composite Types
 Composite types are types composed of other types. The following composite 
 types are covered below: Tuples, Records, Custom Types
-<h3 id="tuples">2.1. Tuples</h3>
+### 2.1. Tuples
 Since tuples represents a list of possibly different types, a Morphir tuple could
 be mapped to a tuple-validated array.
 For example  ```elm (String, Int)```
@@ -296,7 +296,7 @@ would result in:
 }
 ```
 
-<h3 id="record-types">2.2. Record Types </h3>
+### 2.2. Record Types
 Record types in Morphir maps to objects in Json schema. The fields of the record maps to properties of the Json Schema object.
 The properties of a JSON schema is a list of schemas. An example is given below
 ```elm
@@ -333,7 +333,7 @@ This validates against the json document:
 }
 ```
 
-<h3 id="custom-types">2.3. Custom Types</h3> <br>
+### 2.3. Custom Types 
 Custom types in Morphir, are union types with one or more items in the union. These items are called tags or constructors.
 Each item has zero or more arguments which are types.
 Json Schema does not support custom types natively. So we use the following approach.
@@ -341,7 +341,7 @@ Json Schema does not support custom types natively. So we use the following appr
 * the schema type for the constructor would be const (explained below)
 * the union type itself would then be represented using the "anyOf" keyword
 
-<h4 id="general-case">2.2.1. General Case</h4>
+#### 2.2.1. General Case
 The following Morphir model:
 ```elm
 type Person
@@ -379,7 +379,7 @@ The resulting "anyOf" schema would be as shown below:
     ]
 }
 ```
-<h4 id="special-cases">2.3.2. Special Cases </h4>
+#### 2.3.2. Special Cases
   **- No-arg Constructor <br>**
     As mentioned previously, when a constructor in a union type has zero arguments, then it maps to a ```const``` schema
 The model:
