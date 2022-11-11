@@ -598,11 +598,6 @@ update msg model =
                     )
 
         ServerGetAttributeResponse attributes ->
-            --let
-            --    newCustomAttributeStructure : CustomAttributeValuesByNodeID
-            --    newCustomAttributeStructure =
-            --        toAttributeValueByNodeId attributes
-            --in
             ( { model | customAttributes = attributes }
             , Cmd.none
             )
@@ -623,13 +618,20 @@ update msg model =
                                         (\attrDetail ->
                                             let
                                                 irValueUpdate : SDKDict.Dict NodeID (Value () ()) -> SDKDict.Dict NodeID (Value () ())
-                                                irValueUpdate =
-                                                    SDKDict.update valueDetail.nodeId
-                                                        (Maybe.andThen
-                                                            (\_ ->
-                                                                attrState.lastValidValue
+                                                irValueUpdate data =
+                                                    if SDKDict.member valueDetail.nodeId data then
+                                                        SDKDict.update valueDetail.nodeId
+                                                            (Maybe.andThen
+                                                                (\_ ->
+                                                                    attrState.lastValidValue
+                                                                )
                                                             )
-                                                        )
+                                                            data
+
+                                                    else
+                                                        SDKDict.insert valueDetail.nodeId
+                                                            (attrState.lastValidValue |> Maybe.withDefault (Value.Unit ()))
+                                                            data
                                             in
                                             { attrDetail
                                                 | data =
@@ -1387,7 +1389,7 @@ viewValue theme moduleName valueName valueDef docs =
                 { url =
                     "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ "?filter=" ++ nameToText valueName
                 , label =
-                    text (nameToText valueName)
+                    el [ Font.extraBold, Font.size 30 ] (text (nameToText valueName))
                 }
 
         isData : Bool
@@ -1480,6 +1482,9 @@ httpSaveAttrValue attrId customAttributes =
         updatedCustomAttrDetail =
             customAttributes
                 |> Dict.get attrId
+
+        _ =
+            Debug.log "item" "high"
     in
     case updatedCustomAttrDetail of
         Just customAttrData ->

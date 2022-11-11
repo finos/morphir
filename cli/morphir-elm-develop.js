@@ -78,7 +78,6 @@ app.get('/server/attributes', wrap(async (req, res, next) => {
 
 
 app.post('/server/updateattribute/:attrId', wrap(async (req, res, next) => {
-   console.log(req.params.attrId)
   const attrFilePath = path.join(program.opts().projectDir, 'attributes', req.params.attrId + '.json')
 
   await writeFile(attrFilePath, JSON.stringify(req.body, null, 4))

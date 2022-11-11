@@ -1,10 +1,11 @@
 {
-    "Value:Morphir.Reference.Model:Issues.Issue401:bar": {
-        "pii": false,
-        "mnpi": true
-    },
-    "Value:Morphir.Reference.Model:Issues.Issue401:foo": {
-        "pii": true,
-        "mnpi": false
-    }
+    "Value:Morphir.Reference.Model:Issues.Issue401:foo": [
+        "mNPI"
+    ],
+    "Value:Morphir.Reference.Model:Issues.Issue407:foo1": [
+        "mNPI"
+    ],
+    "Value:Morphir.Reference.Model:Issues.Issue401:bar": [
+        "mNPI"
+    ]
 }
