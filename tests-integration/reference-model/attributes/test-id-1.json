@@ -1,11 +1,5 @@
 {
-    "Value:Morphir.Reference.Model:Issues.Issue401:foo": [
-        "mNPI"
-    ],
-    "Value:Morphir.Reference.Model:Issues.Issue407:foo1": [
-        "mNPI"
-    ],
-    "Value:Morphir.Reference.Model:Issues.Issue401:bar": [
+    "Value:Morphir.Reference.Model:Issues.Issue410:addFunction": [
         "mNPI"
     ]
 }
