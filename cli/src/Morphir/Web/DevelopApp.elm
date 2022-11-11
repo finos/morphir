@@ -1482,9 +1482,6 @@ httpSaveAttrValue attrId customAttributes =
         updatedCustomAttrDetail =
             customAttributes
                 |> Dict.get attrId
-
-        _ =
-            Debug.log "item" "high"
     in
     case updatedCustomAttrDetail of
         Just customAttrData ->
