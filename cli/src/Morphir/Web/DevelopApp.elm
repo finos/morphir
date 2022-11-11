@@ -76,7 +76,7 @@ import Morphir.Visual.Components.FieldList as FieldList
 import Morphir.Visual.Components.SectionComponent as SectionComponent
 import Morphir.Visual.Components.SelectableElement as SelectableElement
 import Morphir.Visual.Components.TabsComponent as TabsComponent
-import Morphir.Visual.Components.TreeLayout as TreeLayout
+import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
@@ -118,7 +118,7 @@ type alias Model =
     , irState : IRState
     , serverState : ServerState
     , testSuite : Dict FQName (Array TestCase)
-    , collapsedModules : Set (TreeLayout.NodePath ModuleName)
+    , collapsedModules : Set (TreeViewComponent.NodePath ModuleName)
     , showModules : Bool
     , showDefinitions : Bool
     , homeState : HomeState
@@ -145,7 +145,7 @@ type alias AttributeEditorState =
 
 type alias HomeState =
     { selectedPackage : Maybe PackageName
-    , selectedModule : Maybe ( TreeLayout.NodePath ModuleName, ModuleName )
+    , selectedModule : Maybe ( TreeViewComponent.NodePath ModuleName, ModuleName )
     , selectedDefinition : Maybe Definition
     , filterState : FilterState
     }
@@ -276,8 +276,8 @@ type NavigationMsg
 type UIMsg
     = ToggleModulesMenu
     | ToggleDefinitionsMenu
-    | ExpandModule (TreeLayout.NodePath ModuleName)
-    | CollapseModule (TreeLayout.NodePath ModuleName)
+    | ExpandModule (TreeViewComponent.NodePath ModuleName)
+    | CollapseModule (TreeViewComponent.NodePath ModuleName)
     | SwitchTab Int
     | ToggleSection Int
 
@@ -1272,7 +1272,7 @@ viewHome model packageName packageDef =
         moduleTree =
             el
                 (listStyles ++ [ height fill, scrollbars ])
-                (TreeLayout.view TreeLayout.defaultTheme
+                (TreeViewComponent.view model.theme
                     { onCollapse = UI << CollapseModule
                     , onExpand = UI << ExpandModule
                     , collapsedPaths = model.collapsedModules
@@ -1536,9 +1536,9 @@ httpSaveTestSuite ir newTestSuite oldTestSuite =
         }
 
 
-{-| Display a TreeLayout of clickable module names in the given package, with urls pointing to the give module
+{-| Display a Tree View of clickable module names in the given package, with urls pointing to the give module
 -}
-viewModuleNames : Model -> PackageName -> ModuleName -> List ModuleName -> TreeLayout.Node ModuleName Msg
+viewModuleNames : Model -> PackageName -> ModuleName -> List ModuleName -> TreeViewComponent.Node ModuleName Msg
 viewModuleNames model packageName parentModule allModuleNames =
     let
         currentModuleName : Maybe Name
@@ -1561,7 +1561,7 @@ viewModuleNames model packageName parentModule allModuleNames =
                 |> Set.fromList
                 |> Set.toList
     in
-    TreeLayout.Node
+    TreeViewComponent.Node
         (\_ ->
             case currentModuleName of
                 Just name ->

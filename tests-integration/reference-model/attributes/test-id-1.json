@@ -1,7 +1,7 @@
 {
     "Value:Morphir.Reference.Model:Issues.Issue401:bar": {
-        "pii": true,
-        "mnpi": false
+        "pii": false,
+        "mnpi": true
     },
     "Value:Morphir.Reference.Model:Issues.Issue401:foo": {
         "pii": true,
