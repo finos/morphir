@@ -6,6 +6,7 @@ const path = require('path')
 const util = require('util')
 const fs = require('fs')
 const readFile = util.promisify(fs.readFile)
+const fsExists = util.promisify(fs.exists)
 const writeFile = util.promisify(fs.writeFile)
 const commander = require('commander')
 const express = require('express')
@@ -63,15 +64,29 @@ app.get('/server/attributes', wrap(async (req, res, next) => {
     const attrFilePath = path.join(program.opts().projectDir, 'attributes', attrId + '.json')
     const irFilePath = path.join(program.opts().projectDir, configJsonContent[attrId].ir)
 
-    const attrFileContent = await readFile(attrFilePath)
-    const irFileContent = await readFile(irFilePath)
+    if (await fsExists(attrFilePath)) {
+        const attrFileContent = await readFile(attrFilePath)
+        const irFileContent = await readFile(irFilePath)
 
-    responseJson[attrId] = {
-        data: JSON.parse(attrFileContent.toString()),
-        displayName : configJsonContent[attrId].displayName,
-        entryPoint : configJsonContent[attrId].entryPoint,
-        iR : JSON.parse(irFileContent.toString())
-      }
+        responseJson[attrId] = {
+          data: JSON.parse(attrFileContent.toString()),
+          displayName : configJsonContent[attrId].displayName,
+          entryPoint : configJsonContent[attrId].entryPoint,
+          iR : JSON.parse(irFileContent.toString())
+        }
+    }else{
+        await writeFile(attrFilePath, '{}')
+        const attrFileContent = await readFile(attrFilePath)
+        const irFileContent = await readFile(irFilePath)
+
+        responseJson[attrId] = {
+          data: JSON.parse(attrFileContent.toString()),
+          displayName : configJsonContent[attrId].displayName,
+          entryPoint : configJsonContent[attrId].entryPoint,
+          iR : JSON.parse(irFileContent.toString())
+        }
+    }
+    
   };
   res.send(responseJson)
 }))
