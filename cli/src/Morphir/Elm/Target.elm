@@ -56,26 +56,26 @@ decodeOptions gen =
             Decode.map (\options -> ScalaOptions options) Morphir.Scala.Backend.Codec.decodeOptions
 
 
-mapDistribution : BackendOptions -> Distribution -> FileMap
+mapDistribution : BackendOptions -> Distribution -> Result String FileMap
 mapDistribution back dist =
     case back of
         SpringBootOptions options ->
-            SpringBoot.mapDistribution options dist
+            Ok <| SpringBoot.mapDistribution options dist
 
         SemanticOptions options ->
-            SemanticBackend.mapDistribution options dist
+            Ok <| SemanticBackend.mapDistribution options dist
 
         CypherOptions options ->
-            Cypher.mapDistribution options dist
+            Ok <| Cypher.mapDistribution options dist
 
         ScalaOptions options ->
-            Morphir.Scala.Backend.mapDistribution options dist
+            Ok <| Morphir.Scala.Backend.mapDistribution options dist
 
         TypeScriptOptions options ->
-            Morphir.TypeScript.Backend.mapDistribution options dist
+            Ok <| Morphir.TypeScript.Backend.mapDistribution options dist
 
         SparkOptions options ->
-            Morphir.Spark.Backend.mapDistribution options dist
+            Ok <| Morphir.Spark.Backend.mapDistribution options dist
 
         JsonSchemaOptions options ->
             Morphir.JsonSchema.Backend.mapDistribution options dist

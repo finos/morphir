@@ -2,13 +2,13 @@ module Morphir.JsonSchema.PrettyPrinter exposing (..)
 
 import Dict exposing (Dict)
 import Json.Encode as Encode
-import Morphir.JsonSchema.AST exposing (Schema, SchemaType(..), TypeName)
+import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), TypeName)
 
 
 encodeSchema : Schema -> String
 encodeSchema schema =
     Encode.object
-        [ ( "$id", Encode.string (schema.id ++ ".schema.json") )
+        [ ( "$id", Encode.string schema.id )
         , ( "$schema", Encode.string schema.schemaVersion )
         , ( "$defs", encodeDefinitions schema.definitions )
         ]
@@ -27,15 +27,42 @@ encodeSchemaType schemaType =
             Encode.object
                 [ ( "type", Encode.string "integer" ) ]
 
-        Array st ->
-            Encode.object
-                [ ( "type", Encode.string "array" )
-                , ( "items", encodeSchemaType st )
-                ]
+        Array arrayType isUnique ->
+            case arrayType of
+                ListType itemSchemaType ->
+                    Encode.object
+                        (List.concat
+                            [ [ ( "type", Encode.string "array" )
+                              , ( "items", encodeSchemaType itemSchemaType )
+                              ]
+                            , if isUnique then
+                                [ ( "uniqueItems", Encode.bool True ) ]
 
-        String ->
-            Encode.object
-                [ ( "type", Encode.string "string" ) ]
+                              else
+                                []
+                            ]
+                        )
+
+                TupleType schemaTypes numberOfItems ->
+                    Encode.object
+                        [ ( "type", Encode.string "array" )
+                        , ( "items", Encode.bool False )
+                        , ( "prefixItems", Encode.list encodeSchemaType schemaTypes )
+                        , ( "minItems", Encode.int numberOfItems )
+                        , ( "maxItems", Encode.int numberOfItems )
+                        ]
+
+        String stringConstraint ->
+            case stringConstraint.format of
+                Just format ->
+                    Encode.object
+                        [ ( "type", Encode.string "string" )
+                        , ( "format", Encode.string format )
+                        ]
+
+                Nothing ->
+                    Encode.object
+                        [ ( "type", Encode.string "string" ) ]
 
         Number ->
             Encode.object
@@ -49,4 +76,21 @@ encodeSchemaType schemaType =
             Encode.object
                 [ ( "type", Encode.string "object" )
                 , ( "properties", Encode.dict identity encodeSchemaType st )
+                ]
+
+        Const value ->
+            Encode.object
+                [ ( "const", Encode.string value ) ]
+
+        Ref string ->
+            Encode.object
+                [ ( "$ref", Encode.string string ) ]
+
+        Null ->
+            Encode.object
+                [ ( "type", Encode.string "null" ) ]
+
+        OneOf schemaTypes ->
+            Encode.object
+                [ ( "oneOf", Encode.list encodeSchemaType schemaTypes )
                 ]
