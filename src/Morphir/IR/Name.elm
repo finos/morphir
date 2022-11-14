@@ -199,7 +199,14 @@ toHumanWords name =
                             _ ->
                                 process (List.append prefix [ join abbrev, first ]) [] rest
     in
-    process [] [] words
+    case name of
+        [word] ->
+            if String.length word == 1 then
+                name
+            else
+                process [] [] words
+        _ ->
+            process [] [] words
 
 
 {-| Turns a name into a list of human-readable strings with the first word capitalized. The only difference

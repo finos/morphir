@@ -3,6 +3,7 @@ module Morphir.IR.ValueTests exposing (..)
 import Dict
 import Expect
 import Morphir.IR.Literal exposing (Literal(..))
+import Morphir.IR.Name exposing (Name)
 import Morphir.IR.SDK.String as String
 import Morphir.IR.Value as Value exposing (Pattern(..), Value(..))
 import Test exposing (Test, describe, test)
@@ -58,6 +59,7 @@ indexedMapValueTests =
         |> List.indexedMap
             (\index expectedOutput ->
                 let
+                    input : Value () ()
                     input =
                         expectedOutput
                             |> Tuple.first
@@ -85,6 +87,7 @@ indexedMapPatternTests =
         |> List.indexedMap
             (\index expectedOutput ->
                 let
+                    input : Pattern ()
                     input =
                         expectedOutput
                             |> Tuple.first
@@ -96,3 +99,53 @@ indexedMapPatternTests =
                             |> Expect.equal expectedOutput
             )
         |> describe "indexedMapPattern"
+
+
+generateUniqueNameTests : Test
+generateUniqueNameTests =
+    let
+        assert : Value ta va -> Name -> Test
+        assert inValue outName =
+            test ("Generate unique name from " ++ Value.toString inValue) <|
+                \_ ->
+                    Value.generateUniqueName inValue
+                        |> Expect.equal outName
+
+        chars : List String
+        chars =
+            String.split "" "abcdefghijklmnopqrstuvwxyz"
+
+        everyVarNameCharUsedRecord =
+            Value.Record () <| Dict.fromList <| List.map (\char -> ( [ char ], Value.Variable () [ char ] )) chars
+    in
+    describe "generateUniqueName"
+        [ assert (Value.Variable () [ "a" ]) [ "b" ]
+        , assert (Value.Record () <| Dict.fromList [ ( [ "field" ], Literal () (StringLiteral "value") ) ]) [ "a" ]
+        , assert everyVarNameCharUsedRecord chars
+        ]
+
+
+rewriteMaybeToPatternMatchTests : Test
+rewriteMaybeToPatternMatchTests =
+    let
+        firstBranch defaultValue mapLambda inputMaybe =
+            Apply () (Apply () (Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "with", "default" ] )) defaultValue) (Apply () (Apply () (Reference () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "map" ] )) mapLambda) inputMaybe)
+
+        assert : Value ta () -> Value ta () -> Test
+        assert inValue outValue =
+            test ("Rewriting " ++ Value.toString inValue) <|
+                \_ ->
+                    Value.rewriteMaybeToPatternMatch inValue
+                        |> Expect.equal outValue
+    in
+    describe "rewriteMaybeToPatternMatch"
+        [ assert (Value.Variable () [ "a" ]) (Value.Variable () [ "a" ])
+        , assert
+            (firstBranch (Value.Literal () (StringLiteral "")) (Value.Lambda () (Value.WildcardPattern ()) (Value.Literal () (StringLiteral "a"))) (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) (Value.Variable () [ "a" ])))
+            (Value.PatternMatch ()
+                (Value.Apply () (Value.Constructor () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] )) (Value.Variable () [ "a" ]))
+                [ ( ConstructorPattern () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ Value.WildcardPattern () ], Value.rewriteMaybeToPatternMatch (Value.Literal () (StringLiteral "a")) )
+                , ( ConstructorPattern () ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], Value.Literal () (StringLiteral "") )
+                ]
+            )
+        ]
