@@ -1,5 +1,8 @@
 {
-    "Value:Morphir.Reference.Model:Issues.Issue410:addFunction": [
+    "Value:Morphir.Reference.Model:Issues.Issue401:foo": [
+        "rBCHighRiskData"
+    ],
+    "Value:Morphir.Reference.Model:Issues.Issue401:bar": [
         "mNPI"
     ]
 }
