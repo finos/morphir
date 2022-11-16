@@ -18,8 +18,10 @@ const schemaBasePath = "tests-integration/generated/jsonSchema/"
 const cliOptions = { typesOnly: false }
 const writeFile = util.promisify(fs.writeFile)
 var jsonObject
+
 const options = {
     target : 'JsonSchema',
+    filename: ''
 }
 
 
