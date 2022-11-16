@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+//NPM imports
+const path_1 = __importDefault(require("path"));
+const commander_1 = require("commander");
+const cli = require("./cli");
+require('log-timestamp');
+const program = new commander_1.Command();
+program
+    .name('morphir scala-gen')
+    .description('Generate scala code from Morphir IR')
+    .option('-i, --input <path>', 'Source location where the Morphir IR will be loaded from.', 'morphir-ir.json')
+    .option('-o, --output <path>', 'Target location where the generated code will be saved.', './dist')
+    .option('-t, --target <type>', 'Language to Generate.', 'Scala')
+    .option('-e, --target-version <version>', 'Language version to Generate.', '2.11')
+    .option('-c, --copy-deps', 'Copy the dependencies used by the generated code to the output path.', false)
+    .option('-m, --modules-to-include <comma.separated,list.of,module.names>', 'Limit the set of modules that will be included.')
+    .parse(process.argv);
+cli.gen(program.opts().input, path_1.default.resolve(program.opts().output), program.opts())
+    .then(() => {
+    console.log("Done");
+})
+    .catch((err) => {
+    console.log(err);
+    process.exit(1);
+});
