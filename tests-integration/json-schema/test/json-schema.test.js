@@ -42,7 +42,7 @@ describe('Test Suite for Basic Types and Decimal',  () => {
         // Read json into an object
         const jsonBuffer = fs.readFileSync(schemaPath, 'utf8')
         jsonObject = JSON.parse(jsonBuffer)
-	})
+    })
 
     test('1. Bool type test case', () => {
         expect(validateBasicAndAdvancedType("BasicTypes.Paid", [true, false])).toBe(true)
