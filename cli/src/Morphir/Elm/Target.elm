@@ -50,7 +50,7 @@ decodeOptions gen =
             Decode.map SparkOptions (Decode.succeed Morphir.Scala.Spark.Backend.Options)
 
         Ok "JsonSchema" ->
-            Decode.map (\options -> JsonSchemaOptions options) Morphir.JsonSchema.Backend.Codec.decodeOptions
+            Decode.map JsonSchemaOptions Morphir.JsonSchema.Backend.Codec.decodeOptions
 
         _ ->
             Decode.map (\options -> ScalaOptions options) Morphir.Scala.Backend.Codec.decodeOptions
