@@ -45,8 +45,9 @@ type alias QualifiedName =
     ( Path, Name )
 
 
-type alias Error =
-    String
+type Error
+    = TypeUnmappable String
+    | Errors (List Error)
 
 
 {-| Entry point for the JSON Schema backend. It takes the Morphir IR as the input and returns an in-memory
@@ -165,7 +166,7 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                     (\schemaTypes -> [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf schemaTypes ) ])
 
 
-mapType : Type ta -> Result Error SchemaType
+mapType : Type a -> Result Error SchemaType
 mapType typ =
     case typ of
         Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
@@ -279,7 +280,8 @@ mapType typ =
                         mapType field.tpe
                             |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
                     )
-                |> ResultList.keepFirstError
+                |> ResultList.keepAllErrors
+                |> Result.mapError Errors
                 |> Result.map (Dict.fromList >> Object)
 
         Type.Tuple _ typeList ->
@@ -288,11 +290,12 @@ mapType typ =
                     (\tpe ->
                         mapType tpe
                     )
-                |> ResultList.keepFirstError
+                |> ResultList.keepAllErrors
                 |> Result.map
                     (\itemType ->
                         Array (TupleType itemType (typeList |> List.length)) False
                     )
+                |> Result.mapError Errors
 
         _ ->
-            Err ("Cannot map the type: " ++ Type.toString typ)
+            Err (TypeUnmappable ("Cannot map type " ++ Type.toString typ))
