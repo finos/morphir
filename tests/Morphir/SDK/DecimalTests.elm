@@ -21,6 +21,7 @@ import Expect
 import Fuzz exposing (..)
 import Morphir.FuzzEx exposing (..)
 import Morphir.SDK.Decimal as Decimal exposing (..)
+import Morphir.TestUtils exposing (expectFalse, expectTrue)
 import Test exposing (..)
 
 
@@ -83,7 +84,7 @@ mulTests =
     describe "Decimal.mul"
         [ fuzz2 safeInt safeInt "mirrors normal multiplication" <|
             \a b ->
-                Expect.true "Expected multiplication to mimic integer multiplication" <|
+                expectTrue "Expected multiplication to mimic integer multiplication" <|
                     Decimal.eq (Decimal.mul (Decimal.fromInt a) (Decimal.fromInt b)) (Decimal.fromInt <| a * b)
         , fuzz2 decimal decimal "is commutative" <|
             \a b ->
@@ -140,7 +141,7 @@ fromFloatTests =
         , test "exponent" <|
             \_ ->
                 Expect.equal (Decimal.fromFloat 1.1e0) (Decimal.fromInt 11 |> Decimal.shiftDecimalLeft 1)
-        , fuzz float "equivalent to fromString" <|
+        , fuzz niceFloat "equivalent to fromString" <|
             \a ->
                 Expect.equal (Decimal.fromFloat a) ((Decimal.fromString <| String.fromFloat a) |> Maybe.withDefault Decimal.zero)
         ]
@@ -286,11 +287,11 @@ notEqualTests =
     describe "Decimal.neq"
         [ fuzz decimal "decimal inequality" <|
             \a ->
-                Expect.true "Expected differing decimal values to not be equal" <|
+                expectTrue "Expected differing decimal values to not be equal" <|
                     Decimal.neq a (Decimal.add a Decimal.minusOne)
         , fuzz decimal "decimal equality" <|
             \a ->
-                Expect.false "Expected the same value to be equal" <|
+                expectFalse "Expected the same value to be equal" <|
                     Decimal.neq a a
         ]
 

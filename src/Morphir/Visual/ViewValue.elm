@@ -1,25 +1,25 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
 import Dict
-import Element exposing (Element, column, el, fill, htmlAttribute, padding, rgb, spacing, text, width)
+import Element exposing (Element, column, el, fill, htmlAttribute, padding, pointer, rgb, spacing, text, width, explain, row, paddingEach)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
-import Morphir.IR.FQName exposing (FQName, getLocalName)
+import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name, toCamelCase)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Basics as Basics
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, Value(..))
+import Morphir.IR.Value as Value exposing (Pattern(..), RawValue, Value(..))
 import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
-import Morphir.Visual.Common exposing (definition, nameToText)
+import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
 import Morphir.Visual.Config as Config exposing (Config)
-import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue)
-import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallPadding, smallSpacing)
+import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue, getId)
+import Morphir.Visual.Theme exposing (mediumSpacing, smallPadding, smallSpacing, mediumPadding)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -31,48 +31,33 @@ import Morphir.Visual.ViewLiteral as ViewLiteral
 import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewRecord as ViewRecord
 import Morphir.Visual.XRayView as XRayView
-import Morphir.IR.Value exposing (Pattern(..))
 
+definition : Config msg -> String -> Element msg -> Element msg
+definition config header body =
+    column [ mediumSpacing config.state.theme |> spacing ]
+        [ row [ mediumSpacing config.state.theme |> spacing ]
+            [ el [ Font.bold ] (text header)
+            , el [] (text "=")
+            ]
+        , el [ paddingEach { left = mediumPadding config.state.theme, right = mediumPadding config.state.theme, top = 0, bottom = 0 } ]
+            body
+        ]
+
+definitionBody : Config msg -> Value.Definition () (Type ()) -> Element msg
+definitionBody config valueDef =
+    (viewValue config (valueDef.body |> fromTypedValue))
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
 viewDefinition config ( packageName, moduleName, valueName ) valueDef =
     let
+        visualValueDef = {valueDef | body = Value.rewriteMaybeToPatternMatch valueDef.body }
         definitionElem =
             definition config
                 (nameToText valueName)
-                (viewValue config (valueDef.body |> fromTypedValue))
+                (definitionBody config visualValueDef)
     in
-    Element.column [ mediumSpacing config.state.theme |> spacing ]
-        [ definitionElem
-        , if Dict.isEmpty config.state.expandedFunctions then
-            Element.none
-
-          else
-            Element.column
-                [ mediumSpacing config.state.theme |> spacing ]
-                (config.state.expandedFunctions
-                    |> Dict.toList
-                    |> List.reverse
-                    |> List.map
-                        (\( ( _, _, localName ) as fqName, valDef ) ->
-                            Element.column
-                                [ smallSpacing config.state.theme |> spacing ]
-                                [ definition config (nameToText localName) (viewValue config (valDef.body |> fromTypedValue))
-                                , Element.el
-                                    [ Font.bold
-                                    , Border.solid
-                                    , Border.rounded 3
-                                    , Background.color config.state.theme.colors.lightest
-                                    , Font.color config.state.theme.colors.darkest
-                                    , smallPadding config.state.theme |> padding
-                                    , smallSpacing config.state.theme |> spacing
-                                    , onClick (config.handlers.onReferenceClicked fqName True)
-                                    ]
-                                    (Element.text "Close")
-                                ]
-                        )
-                )
-        ]
+    Element.column [ mediumSpacing config.state.theme |> spacing, padding 1 ]
+        [ definitionElem ]
 
 
 viewValue : Config msg -> EnrichedValue -> Element msg
@@ -108,17 +93,16 @@ viewValueByLanguageFeature config value =
         valueElem : Element msg
         valueElem =
             case value of
-
-                Value.PatternMatch _ _ [(Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ]) [_]  , _), (Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ]) []  , _)] ->
+                Value.PatternMatch _ _ [ ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ _ ], _ ), ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], _ ) ] ->
                     ViewIfThenElse.view config viewValue value
 
-                Value.PatternMatch _ _ [(Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ]) []  , _), (Value.ConstructorPattern _ ([ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ]) [_]  , _)] ->
+                Value.PatternMatch _ _ [ ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], _ ), ( Value.ConstructorPattern _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ _ ], _ ) ] ->
                     ViewIfThenElse.view config viewValue value
 
                 Value.Literal _ literal ->
                     ViewLiteral.view config literal
 
-                Value.Constructor _ (( _, _, localName ) as fQName) ->
+                (Value.Constructor _ (( _, _, localName ) as fQName)) as functionvalue ->
                     case fQName of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "result" ] ], _ ) ->
                             Element.none
@@ -127,13 +111,13 @@ viewValueByLanguageFeature config value =
                             Element.none
 
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) ->
-                            el [Element.centerY ] (text " - ")
+                            el [ Element.centerY ] (text " - ")
 
                         _ ->
                             Element.row
                                 [ smallPadding config.state.theme |> padding
                                 , smallSpacing config.state.theme |> spacing
-                                , onClick (config.handlers.onReferenceClicked fQName False)
+                                , onClick (config.handlers.onReferenceClicked fQName (getId functionvalue) config.nodePath)
                                 ]
                                 [ text (nameToText localName) ]
 
@@ -167,10 +151,10 @@ viewValueByLanguageFeature config value =
                             Dict.get name config.state.variables
                     in
                     el
-                        [ onMouseEnter (config.handlers.onHoverOver index variableValue)
-                        , onMouseLeave (config.handlers.onHoverLeave index)
+                        [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
+                        , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
                         , Element.below
-                            (if config.state.popupVariables.variableIndex == index then
+                            (if (config.state.popupVariables.variableIndex == index) && (config.state.popupVariables.nodePath == config.nodePath) then
                                 el [ smallPadding config.state.theme |> padding ] (viewPopup config)
 
                              else
@@ -180,11 +164,12 @@ viewValueByLanguageFeature config value =
                         ]
                         (text (nameToText name))
 
-                Value.Reference _ (( _, _, localName ) as fQName) ->
+                (Value.Reference _ (( _, _, localName ) as fQName)) as functionvalue ->
                     Element.row
                         [ smallPadding config.state.theme |> padding
                         , smallSpacing config.state.theme |> spacing
-                        , onClick (config.handlers.onReferenceClicked fQName False)
+                        , onClick (config.handlers.onReferenceClicked fQName (getId functionvalue) config.nodePath)
+                        , pointer
                         ]
                         [ text (nameToText localName) ]
 
@@ -208,8 +193,8 @@ viewValueByLanguageFeature config value =
                                             Dict.get variableName config.state.variables
                                     in
                                     el
-                                        [ onMouseEnter (config.handlers.onHoverOver index variableValue)
-                                        , onMouseLeave (config.handlers.onHoverLeave index)
+                                        [ onMouseEnter (config.handlers.onHoverOver index config.nodePath variableValue)
+                                        , onMouseLeave (config.handlers.onHoverLeave index config.nodePath)
                                         , Element.below
                                             (if config.state.popupVariables.variableIndex == index then
                                                 el [ smallPadding config.state.theme |> padding ] (viewPopup config)
@@ -239,7 +224,7 @@ viewValueByLanguageFeature config value =
                         ( function, args ) =
                             Value.uncurryApply fun arg
                     in
-                    ViewApply.view config (viewValue config) function args
+                    ViewApply.view config definitionBody (viewValue config) function args
 
                 Value.LetDefinition _ _ _ _ ->
                     let
@@ -265,7 +250,10 @@ viewValueByLanguageFeature config value =
                                                                 currentState.variables
                                                                     |> Dict.insert defName evaluatedDefValue
                                                             )
-                                                        |> Result.withDefault currentState.variables
+                                                        |> Result.withDefault (currentState.variables |> Dict.insert defName (def
+                                                                |> Value.mapDefinitionAttributes (always ()) (always ())
+                                                                |> Value.definitionToValue
+                                                            ))
                                             }
 
                                         ( defs, bottomIn ) =
@@ -321,9 +309,9 @@ viewValueByLanguageFeature config value =
                 Value.LetRecursion tpe definitionDict val ->
                     Element.column [] (Dict.map (\k v -> Value.LetDefinition tpe k v val) definitionDict |> Dict.values |> List.map (viewValue config))
 
-                other   ->
+                other ->
                     let
-                        unableToVisualize = 
+                        unableToVisualize =
                             Element.column
                                 [ Background.color (rgb 1 0.6 0.6)
                                 , smallPadding config.state.theme |> padding
@@ -342,14 +330,16 @@ viewValueByLanguageFeature config value =
                                     ]
                                     (XRayView.viewValue (XRayView.viewType moduleNameToPathString) ((other |> Debug.log "unable to visualize: ") |> Value.mapValueAttributes identity (\( _, tpe ) -> tpe)))
                                 ]
-                        in
+                    in
                     case Config.evaluate (other |> Value.toRawValue) config of
                         Ok valueType ->
-                                case fromRawValue config.ir valueType of
-                                    Ok enrichedValue ->
-                                        viewValue config enrichedValue
-                                    Err _ ->
-                                        unableToVisualize
+                            case fromRawValue config.ir valueType of
+                                Ok enrichedValue ->
+                                    viewValue config enrichedValue
+
+                                Err _ ->
+                                    unableToVisualize
+
                         Err _ ->
                             unableToVisualize
     in
@@ -390,7 +380,7 @@ viewPopup config =
                             , Font.color config.state.theme.colors.darkest
                             , Border.rounded 4
                             , Font.center
-                            , mediumPadding config.state.theme |> padding
+                            , smallPadding config.state.theme |> padding
                             , htmlAttribute (style "position" "absolute")
                             , htmlAttribute (style "transition" "all 0.2s ease-in-out")
                             ]

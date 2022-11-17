@@ -21,7 +21,7 @@ module Morphir.IR.Type exposing
     , Field, mapFieldName, mapFieldType
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
     , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification
-    , Constructors
+    , Constructors, Constructor, ConstructorArgs
     , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, typeAttributes
     , eraseAttributes, collectVariables, collectReferences, collectReferencesFromDefintion, substituteTypeVariables, toString
     )
@@ -119,7 +119,7 @@ Here is the full definition for reference:
 
 # Constructors
 
-@docs Constructors
+@docs Constructors, Constructor, ConstructorArgs
 
 
 # Utilities
@@ -240,7 +240,19 @@ type Definition a
 {-| Constructors in a dictionary keyed by their name. The values are the argument types for each constructor.
 -}
 type alias Constructors a =
-    Dict Name (List ( Name, Type a ))
+    Dict Name (ConstructorArgs a)
+
+
+{-| Represents a single constructor with a name and arguments.
+-}
+type alias Constructor a =
+    ( Name, ConstructorArgs a )
+
+
+{-| Represents a list of constructor arguments.
+-}
+type alias ConstructorArgs a =
+    List ( Name, Type a )
 
 
 {-| -}

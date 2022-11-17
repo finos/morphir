@@ -8,13 +8,12 @@ import Dict exposing (Dict)
 import Element
     exposing
         ( Element
+        , above
         , alignLeft
         , alignRight
-        , alignTop
         , centerX
         , centerY
         , clipX
-        , clipY
         , column
         , el
         , fill
@@ -26,7 +25,6 @@ import Element
         , link
         , maximum
         , mouseOver
-        , moveDown
         , none
         , padding
         , paddingEach
@@ -36,7 +34,6 @@ import Element
         , px
         , rgb
         , rgba
-        , rotate
         , row
         , scrollbars
         , shrink
@@ -50,42 +47,45 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input
 import Element.Keyed
-import Html.Attributes exposing (name)
-import Http exposing (Error(..), emptyBody, jsonBody)
-import Markdown.Parser as Markdown
-import Markdown.Renderer
+import FontAwesome.Styles as Icon
+import Http exposing (emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
+import Morphir.CustomAttribute.Codec exposing (decodeAttributes, decodeCustomAttributeData, encodeAttributeData)
+import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo)
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
+import Morphir.IR.NodeId exposing (NodeID(..))
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.QName exposing (QName(..))
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Value as Value exposing (RawValue, Value(..))
+import Morphir.SDK.Dict as SDKDict
 import Morphir.Type.Infer as Infer
-import Morphir.Value.Error exposing (Error(..))
+import Morphir.Value.Error exposing (Error)
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
-import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl)
+import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
+import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
-import Morphir.Visual.Components.TreeLayout as TreeLayout
-import Morphir.Visual.Config exposing (PopupScreenRecord)
+import Morphir.Visual.Components.SectionComponent as SectionComponent
+import Morphir.Visual.Components.SelectableElement as SelectableElement
+import Morphir.Visual.Components.TabsComponent as TabsComponent
+import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
+import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.ValueEditor as ValueEditor
+import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
-import Morphir.Web.DevelopApp.Common exposing (ifThenElse, urlFragmentToNodePath, viewAsCard)
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
-import Morphir.Web.TryMorphir exposing (Model)
 import Ordering
-import Parser exposing (deadEndsToString)
 import Set exposing (Set)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
@@ -118,15 +118,20 @@ type alias Model =
     , irState : IRState
     , serverState : ServerState
     , testSuite : Dict FQName (Array TestCase)
-    , collapsedModules : Set (TreeLayout.NodePath ModuleName)
+    , collapsedModules : Set (TreeViewComponent.NodePath ModuleName)
     , showModules : Bool
     , showDefinitions : Bool
     , homeState : HomeState
     , repo : Repo
     , insightViewState : Morphir.Visual.Config.VisualState
-    , definitionDisplayType : DisplayType
     , argStates : InsightArgumentState
     , expandedValues : Dict ( FQName, Name ) (Value.Definition () (Type ()))
+    , customAttributes : CustomAttributeInfo
+    , attributeStates : AttributeEditorState
+    , selectedTestcaseIndex : Int
+    , testDescription : String
+    , activeTabIndex : Int
+    , openSections : Set Int
     }
 
 
@@ -134,9 +139,13 @@ type alias InsightArgumentState =
     Dict Name ValueEditor.EditorState
 
 
+type alias AttributeEditorState =
+    SDKDict.Dict AttrValueDetail ValueEditor.EditorState
+
+
 type alias HomeState =
     { selectedPackage : Maybe PackageName
-    , selectedModule : Maybe ( TreeLayout.NodePath ModuleName, ModuleName )
+    , selectedModule : Maybe ( TreeViewComponent.NodePath ModuleName, ModuleName )
     , selectedDefinition : Maybe Definition
     , filterState : FilterState
     }
@@ -148,11 +157,6 @@ type alias FilterState =
     , showTypes : Bool
     , moduleClicked : String
     }
-
-
-type DisplayType
-    = XRayView
-    | InsightView
 
 
 type alias ModelUpdate =
@@ -199,26 +203,32 @@ init _ url key =
                 }
             , repo = Repo.empty []
             , insightViewState = emptyVisualState
-            , definitionDisplayType = InsightView
             , argStates = Dict.empty
             , expandedValues = Dict.empty
+            , customAttributes = Dict.empty
+            , attributeStates = SDKDict.empty
+            , selectedTestcaseIndex = -1
+            , testDescription = ""
+            , activeTabIndex = 0
+            , openSections = Set.empty
             }
     in
     ( toRoute url initModel
-    , Cmd.batch [ httpMakeModel ]
+    , Cmd.batch [ httpMakeModel, httpAttributes ]
     )
 
 
 emptyVisualState : Morphir.Visual.Config.VisualState
 emptyVisualState =
     { theme = Theme.fromConfig Nothing
-    , expandedFunctions = Dict.empty
     , variables = Dict.empty
     , highlightState = Nothing
     , popupVariables =
         { variableIndex = 0
         , variableValue = Nothing
+        , nodePath = []
         }
+    , drillDownFunctions = DrillDownFunctions Dict.empty
     }
 
 
@@ -231,29 +241,45 @@ type Msg
     | HttpError Http.Error
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
+    | ServerGetAttributeResponse CustomAttributeInfo
     | Filter FilterMsg
     | UI UIMsg
     | Insight InsightMsg
     | Testing TestingMsg
+    | Attribute AttributeMsg
+
+
+type AttributeMsg
+    = ValueUpdated AttrValueDetail ValueEditor.EditorState
+
+
+type alias AttrValueDetail =
+    { attrId : CustomAttributeId
+    , nodeId : NodeID
+    }
 
 
 type TestingMsg
-    = DescriptionUpdated Int String
-    | DeleteTestCase FQName Int
+    = DeleteTestCase FQName Int
     | SaveTestSuite FQName TestCase
-    | LoadTestCase (List ( Name, Type () )) (List (Maybe RawValue))
+    | LoadTestCase (List ( Name, Type () )) (List (Maybe RawValue)) String Int
+    | UpdateTestCase FQName TestCase
+    | UpdateDescription String
 
 
 type NavigationMsg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
+    | DefinitionSelected String
 
 
 type UIMsg
     = ToggleModulesMenu
     | ToggleDefinitionsMenu
-    | ExpandModule (TreeLayout.NodePath ModuleName)
-    | CollapseModule (TreeLayout.NodePath ModuleName)
+    | ExpandModule (TreeViewComponent.NodePath ModuleName)
+    | CollapseModule (TreeViewComponent.NodePath ModuleName)
+    | SwitchTab Int
+    | ToggleSection Int
 
 
 type FilterMsg
@@ -264,10 +290,10 @@ type FilterMsg
 
 
 type InsightMsg
-    = ExpandReference FQName Bool
-    | ExpandVariable Int (Maybe RawValue)
-    | ShrinkVariable Int
-    | SwitchDisplayType
+    = ExpandReference FQName Int ExpressionTreePath
+    | ShrinkReference FQName Int ExpressionTreePath
+    | ExpandVariable Int (List Int) (Maybe RawValue)
+    | ShrinkVariable Int (List Int)
     | ArgValueUpdated Name ValueEditor.EditorState
 
 
@@ -314,6 +340,9 @@ update msg model =
 
                 UrlChanged url ->
                     ( toRoute url model, Cmd.none )
+
+                DefinitionSelected url ->
+                    ( model, Nav.pushUrl model.key url )
 
         HttpError httpError ->
             case model.irState of
@@ -374,6 +403,16 @@ update msg model =
                     , Cmd.none
                     )
 
+                SwitchTab tabIndex ->
+                    ( { model | activeTabIndex = tabIndex }, Cmd.none )
+
+                ToggleSection sectionId ->
+                    if Set.member sectionId model.openSections then
+                        ( { model | openSections = Set.remove sectionId model.openSections }, Cmd.none )
+
+                    else
+                        ( { model | openSections = Set.insert sectionId model.openSections }, Cmd.none )
+
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
 
@@ -384,33 +423,41 @@ update msg model =
                     model.insightViewState
             in
             case insightMsg of
-                ExpandReference (( _, moduleName, localName ) as fQName) isFunctionPresent ->
-                    let
-                        url =
-                            pathToFullUrl [ packageName, moduleName ] ++ "/" ++ Name.toCamelCase localName
-                    in
+                ExpandReference fQName id nodePath ->
                     case fQName of
                         ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
                             ( model, Cmd.none )
 
                         _ ->
-                            ( model, Nav.pushUrl model.key url )
+                            ( { model
+                                | insightViewState =
+                                    { insightViewState
+                                        | drillDownFunctions = DrillDownFunctions (addToDrillDown insightViewState.drillDownFunctions id nodePath)
+                                    }
+                              }
+                            , Cmd.none
+                            )
 
-                ExpandVariable varIndex maybeRawValue ->
-                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue } }, Cmd.none )
+                ShrinkReference fQName id nodePath ->
+                    case fQName of
+                        ( [ [ "morphir" ], [ "s", "d", "k" ] ], _, _ ) ->
+                            ( model, Cmd.none )
 
-                ShrinkVariable varIndex ->
-                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing } }, Cmd.none )
+                        _ ->
+                            ( { model
+                                | insightViewState =
+                                    { insightViewState
+                                        | drillDownFunctions = DrillDownFunctions (removeFromDrillDown insightViewState.drillDownFunctions id nodePath)
+                                    }
+                              }
+                            , Cmd.none
+                            )
 
-                SwitchDisplayType ->
-                    ( case model.definitionDisplayType of
-                        XRayView ->
-                            { model | definitionDisplayType = InsightView }
+                ExpandVariable varIndex nodePath maybeRawValue ->
+                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex maybeRawValue nodePath } }, Cmd.none )
 
-                        InsightView ->
-                            { model | definitionDisplayType = XRayView }
-                    , Cmd.none
-                    )
+                ShrinkVariable varIndex nodePath ->
+                    ( { model | insightViewState = { insightViewState | popupVariables = PopupScreenRecord varIndex Nothing nodePath } }, Cmd.none )
 
                 ArgValueUpdated argName editorState ->
                     let
@@ -462,22 +509,43 @@ update msg model =
                     )
 
         Testing testingMsg ->
+            let
+                initalArgState : InsightArgumentState
+                initalArgState =
+                    initArgumentStates model.irState model.homeState.selectedDefinition
+            in
             case testingMsg of
-                DescriptionUpdated _ _ ->
-                    Debug.todo "branch 'FunctionDescriptionUpdated _ _' not implemented"
+                UpdateDescription description ->
+                    ( { model | testDescription = description }, Cmd.none )
+
+                UpdateTestCase fQName testCase ->
+                    let
+                        newTestCase =
+                            { testCase | description = model.testDescription }
+
+                        newTestSuite : Dict FQName (Array TestCase)
+                        newTestSuite =
+                            Dict.insert fQName
+                                (Array.Extra.update model.selectedTestcaseIndex (always newTestCase) (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
+                                model.testSuite
+                    in
+                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
+                    , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
+                    )
 
                 DeleteTestCase fQName index ->
                     let
+                        newTestSuite : Dict FQName (Array TestCase)
                         newTestSuite =
                             Dict.insert fQName
                                 (Array.Extra.removeAt index (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
                     in
-                    ( { model | testSuite = newTestSuite }
+                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = ifThenElse (model.selectedTestcaseIndex == index) -1 model.selectedTestcaseIndex }
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
-                LoadTestCase inputTypes values ->
+                LoadTestCase inputTypes values description index ->
                     let
                         insightViewState : Morphir.Visual.Config.VisualState
                         insightViewState =
@@ -508,25 +576,79 @@ update msg model =
                     ( { model
                         | argStates = newArgStates
                         , insightViewState = { insightViewState | variables = newVariables }
+                        , selectedTestcaseIndex = index
+                        , testDescription = description
                       }
                     , Cmd.none
                     )
 
                 SaveTestSuite fQName testCase ->
                     let
+                        newTestCase =
+                            { testCase | description = model.testDescription }
+
                         newTestSuite : Dict FQName (Array TestCase)
                         newTestSuite =
                             Dict.insert fQName
-                                (Array.push testCase (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
+                                (Array.push newTestCase (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
-
-                        initalArgState : InsightArgumentState
-                        initalArgState =
-                            initArgumentStates model.irState model.homeState.selectedDefinition
                     in
-                    ( { model | testSuite = newTestSuite, argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
+                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
+
+        ServerGetAttributeResponse attributes ->
+            ( { model | customAttributes = attributes }
+            , Cmd.none
+            )
+
+        Attribute attributeMsg ->
+            case attributeMsg of
+                ValueUpdated valueDetail attrState ->
+                    let
+                        newEditState : AttributeEditorState
+                        newEditState =
+                            model.attributeStates |> SDKDict.insert valueDetail attrState
+
+                        newCustomAttribute : CustomAttributeInfo
+                        newCustomAttribute =
+                            model.customAttributes
+                                |> Dict.update valueDetail.attrId
+                                    (Maybe.map
+                                        (\attrDetail ->
+                                            let
+                                                irValueUpdate : SDKDict.Dict NodeID (Value () ()) -> SDKDict.Dict NodeID (Value () ())
+                                                irValueUpdate data =
+                                                    if SDKDict.member valueDetail.nodeId data then
+                                                        SDKDict.update valueDetail.nodeId
+                                                            (Maybe.andThen
+                                                                (\_ ->
+                                                                    attrState.lastValidValue
+                                                                )
+                                                            )
+                                                            data
+
+                                                    else
+                                                        SDKDict.insert valueDetail.nodeId
+                                                            (attrState.lastValidValue |> Maybe.withDefault (Value.Unit ()))
+                                                            data
+                                            in
+                                            { attrDetail
+                                                | data =
+                                                    attrDetail.data
+                                                        |> irValueUpdate
+                                            }
+                                        )
+                                    )
+                    in
+                    case attrState.errorState of
+                        Just error ->
+                            Debug.todo ""
+
+                        Nothing ->
+                            ( { model | customAttributes = newCustomAttribute, attributeStates = newEditState }
+                            , httpSaveAttrValue valueDetail.attrId newCustomAttribute
+                            )
 
 
 
@@ -590,7 +712,7 @@ updateHomeState pack mod def filterState =
                 initialArgState =
                     initArgumentStates model.irState maybeSelectedDefinition
             in
-            { model | homeState = newState, insightViewState = initInsightViewState initialArgState, argStates = initialArgState }
+            { model | homeState = newState, insightViewState = initInsightViewState initialArgState, argStates = initialArgState, selectedTestcaseIndex = -1, testDescription = "" }
 
         -- When selecting a definition, we should not change the selected module, once the user explicitly selected one
         keepOrChangeSelectedModule : ( List Path, List Name )
@@ -801,15 +923,16 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "Morphir - Home"
     , body =
-        [ layout
+        [ Icon.css
+        , layout
             [ Font.family
                 [ Font.external
                     { name = "Poppins"
-                    , url = "https://fonts.googleapis.com/css2?family=Poppins:wght@300&display=swap"
+                    , url = "https://fonts.googleapis.com/css2?family=Poppins:wght@400&display=swap"
                     }
                 , Font.sansSerif
                 ]
-            , Font.size (model.theme |> Theme.scaled 2)
+            , Font.size model.theme.fontSize
             , width fill
             , height fill
             ]
@@ -841,7 +964,7 @@ viewHeader : Model -> Element Msg
 viewHeader model =
     column
         [ width fill
-        , Background.color model.theme.colors.primaryHighlight
+        , Background.color model.theme.colors.brandPrimary
         ]
         [ row
             [ width fill ]
@@ -904,7 +1027,17 @@ viewBody : Model -> Element Msg
 viewBody model =
     case model.irState of
         IRLoading ->
-            text "Loading the IR ..."
+            el
+                [ width fill
+                , height fill
+                , Background.color model.theme.colors.gray
+                ]
+                (el
+                    [ padding (Theme.scaled 5 model.theme)
+                    , Font.size (Theme.scaled 5 model.theme)
+                    ]
+                    (text "Loading the IR ...")
+                )
 
         IRLoaded (Library packageName _ packageDef) ->
             viewHome model packageName packageDef
@@ -915,59 +1048,18 @@ viewBody model =
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
 viewHome model packageName packageDef =
     let
-        morphIrBlue : Element.Color
-        morphIrBlue =
-            rgb 0 0.639 0.882
-
-        lightMorphIrBlue : Element.Color
-        lightMorphIrBlue =
-            rgba 0 0.639 0.882 0.6
-
-        morphIrOrange : Element.Color
-        morphIrOrange =
-            rgb 1 0.411 0
-
-        lightMorphIrOrange : Element.Color
-        lightMorphIrOrange =
-            rgba 1 0.411 0 0.6
-
         -- Styles to make the module tree and the definition list
         listStyles : List (Element.Attribute msg)
         listStyles =
             [ width fill
             , Background.color model.theme.colors.lightest
-            , Border.rounded 3
+            , model.theme |> Theme.borderRounded
             , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
             ]
 
         -- Display a single selected definition on the ui
         viewDefinition : Maybe Definition -> Element Msg
         viewDefinition maybeSelectedDefinition =
-            let
-                toggleDisplayType : Element Msg
-                toggleDisplayType =
-                    let
-                        xrayOrInsight a b =
-                            case model.definitionDisplayType of
-                                XRayView ->
-                                    a
-
-                                InsightView ->
-                                    b
-                    in
-                    Element.Input.button
-                        [ padding 7
-                        , Background.color <| xrayOrInsight lightMorphIrBlue lightMorphIrOrange
-                        , Border.rounded 3
-                        , Font.color model.theme.colors.lightest
-                        , Font.bold
-                        , Font.size (model.theme |> Theme.scaled 2)
-                        , mouseOver [ Background.color <| xrayOrInsight morphIrBlue morphIrOrange ]
-                        ]
-                        { onPress = Just (Insight SwitchDisplayType)
-                        , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text <| "Switch to " ++ xrayOrInsight "InsightView" "XRayView" ]
-                        }
-            in
             case maybeSelectedDefinition of
                 Just selectedDefinition ->
                     case selectedDefinition of
@@ -981,7 +1073,8 @@ viewHome model packageName packageDef =
                                             |> Maybe.map
                                                 (\valueDef ->
                                                     column []
-                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc, toggleDisplayType ]
+                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
+                                                        ]
                                                 )
                                     )
                                 |> Maybe.withDefault none
@@ -995,7 +1088,7 @@ viewHome model packageName packageDef =
                                             |> Dict.get typeName
                                             |> Maybe.map
                                                 (\typeDef ->
-                                                    viewType model.theme typeName typeDef.value.value typeDef.value.doc
+                                                    ViewType.viewType model.theme typeName typeDef.value.value typeDef.value.doc
                                                 )
                                     )
                                 |> Maybe.withDefault none
@@ -1007,29 +1100,36 @@ viewHome model packageName packageDef =
         moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List ( Definition, Element Msg )
         moduleDefinitionsAsUiElements moduleName moduleDef =
             let
+                definitionUiElement icon definition name nameTransformation =
+                    let
+                        elem : Element Msg
+                        elem =
+                            row
+                                [ width fill
+                                , Font.size model.theme.fontSize
+                                ]
+                                [ icon
+                                , el
+                                    [ paddingXY (model.theme |> Theme.scaled -10) (model.theme |> Theme.scaled -3)
+                                    ]
+                                    (text (nameToText name))
+                                , el
+                                    [ alignRight
+                                    , Font.color model.theme.colors.secondaryInformation
+                                    , paddingXY (model.theme |> Theme.scaled -10) (model.theme |> Theme.scaled -3)
+                                    ]
+                                    (text (pathToDisplayString moduleName))
+                                ]
+                    in
+                    SelectableElement.view model.theme
+                        { isSelected = model.homeState.selectedDefinition == Just definition
+                        , content = elem
+                        , onSelect = Navigate (DefinitionSelected (linkToDefinition name nameTransformation))
+                        }
+
                 linkToDefinition : Name -> (Name -> String) -> String
                 linkToDefinition name nameTransformation =
                     pathToFullUrl [ packageName, moduleName ] ++ "/" ++ nameTransformation name ++ filterStateToQueryParams model.homeState.filterState
-
-                createUiElement : Element Msg -> Definition -> Name -> (Name -> String) -> Element Msg
-                createUiElement icon definition name nameTransformation =
-                    let
-                        shouldColorBg : Bool
-                        shouldColorBg =
-                            case model.homeState.selectedDefinition of
-                                Just defi ->
-                                    definition == defi
-
-                                Nothing ->
-                                    False
-                    in
-                    viewAsLabel
-                        model.theme
-                        shouldColorBg
-                        icon
-                        (text (nameToText name))
-                        (pathToDisplayString moduleName)
-                        (linkToDefinition name nameTransformation)
 
                 createElementKey : List Name -> Name -> String
                 createElementKey mname name =
@@ -1042,7 +1142,7 @@ viewHome model packageName packageDef =
                         |> List.map
                             (\( typeName, _ ) ->
                                 ( Type ( moduleName, typeName )
-                                , createUiElement (Element.Keyed.el [ Font.color lightMorphIrBlue ] ( createElementKey moduleName typeName, text "ⓣ " )) (Type ( moduleName, typeName )) typeName Name.toTitleCase
+                                , definitionUiElement (Element.Keyed.el [ Font.color model.theme.colors.brandPrimary ] ( createElementKey moduleName typeName, text " ⓣ " )) (Type ( moduleName, typeName )) typeName Name.toTitleCase
                                 )
                             )
 
@@ -1053,7 +1153,7 @@ viewHome model packageName packageDef =
                         |> List.map
                             (\( valueName, _ ) ->
                                 ( Value ( moduleName, valueName )
-                                , createUiElement (Element.Keyed.el [ Font.color lightMorphIrOrange ] ( createElementKey moduleName valueName, text "ⓥ " )) (Value ( moduleName, valueName )) valueName Name.toCamelCase
+                                , definitionUiElement (Element.Keyed.el [ Font.color model.theme.colors.brandSecondary ] ( createElementKey moduleName valueName, text " ⓥ " )) (Value ( moduleName, valueName )) valueName Name.toCamelCase
                                 )
                             )
             in
@@ -1105,7 +1205,7 @@ viewHome model packageName packageDef =
                     in
                     if List.isEmpty displayList then
                         if model.homeState.filterState.searchText == "" then
-                            [ text "Please select a module on the left!" ]
+                            [ text "Please select a module above!" ]
 
                         else
                             [ text "No matching definition in this module." ]
@@ -1137,7 +1237,7 @@ viewHome model packageName packageDef =
         definitionFilter : Element Msg
         definitionFilter =
             Element.Input.search
-                [ Font.size (model.theme |> Theme.scaled 2)
+                [ Font.size model.theme.fontSize
                 , padding (model.theme |> Theme.scaled -2)
                 , width (fillPortion 7)
                 ]
@@ -1169,44 +1269,12 @@ viewHome model packageName packageDef =
                 , label = Element.Input.labelLeft [] (text "types:")
                 }
 
-        -- Creates a checkbox to open and close the module tree
-        toggleModulesMenu : Element Msg
-        toggleModulesMenu =
-            Element.Input.button
-                [ padding 7
-                , Background.color <| ifThenElse model.showModules lightMorphIrBlue lightMorphIrOrange
-                , Border.rounded 3
-                , Font.color model.theme.colors.lightest
-                , Font.bold
-                , Font.size (model.theme |> Theme.scaled 2)
-                , mouseOver [ Background.color <| ifThenElse model.showModules morphIrBlue morphIrOrange ]
-                ]
-                { onPress = Just (UI ToggleModulesMenu)
-                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showModules "🗁" "🗀", text "Modules" ]
-                }
-
-        -- Creates a checkbox to open and close the definitions list
-        toggleDefinitionsMenu : Element Msg
-        toggleDefinitionsMenu =
-            Element.Input.button
-                [ padding 7
-                , Background.color <| ifThenElse model.showDefinitions lightMorphIrBlue lightMorphIrOrange
-                , Border.rounded 3
-                , Font.color model.theme.colors.lightest
-                , Font.bold
-                , Font.size (model.theme |> Theme.scaled 2)
-                , mouseOver [ Background.color <| ifThenElse model.showDefinitions morphIrBlue morphIrOrange ]
-                ]
-                { onPress = Just (UI ToggleDefinitionsMenu)
-                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ el [ width (px 20) ] <| text <| ifThenElse model.showDefinitions "🗁" "🗀", text "Definitions" ]
-                }
-
         -- A document tree like view of the modules in the current package
         moduleTree : Element Msg
         moduleTree =
             el
                 (listStyles ++ [ height fill, scrollbars ])
-                (TreeLayout.view TreeLayout.defaultTheme
+                (TreeViewComponent.view model.theme
                     { onCollapse = UI << CollapseModule
                     , onExpand = UI << ExpandModule
                     , collapsedPaths = model.collapsedModules
@@ -1248,7 +1316,7 @@ viewHome model packageName packageDef =
                                     , onClick <| handleModuleClick m
                                     , width (maximum 100 shrink)
                                     , Border.color model.theme.colors.gray
-                                    , Border.widthEach { bottom = 1, left = 0, top = 0, right = 0 }
+                                    , Theme.borderBottom 1
                                     , mouseOver [ Border.color model.theme.colors.darkest ]
                                     ]
                                     { label = Theme.ellipseText <| " > " ++ (m |> List.reverse |> List.head |> Maybe.withDefault [ "" ] |> nameToTitleText)
@@ -1266,13 +1334,13 @@ viewHome model packageName packageDef =
                 [ Background.color model.theme.colors.gray
                 , height fill
                 , width (ifThenElse model.showModules (fillPortion 3) fill)
-                , spacing (model.theme |> Theme.scaled -4)
+                , spacing (model.theme |> Theme.scaled -2)
                 , clipX
                 ]
                 [ row
                     [ width fill
                     , spacing (model.theme |> Theme.scaled 1)
-                    , height <| fillPortion 1
+                    , height <| fillPortion 2
                     ]
                     [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
                 , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ]
@@ -1280,42 +1348,20 @@ viewHome model packageName packageDef =
                 , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
                 ]
     in
-    row [ width fill, height fill, Background.color model.theme.colors.gray, spacing 10 ]
+    row [ width fill, height fill, Background.color model.theme.colors.gray, spacing (Theme.smallSpacing model.theme) ]
         [ column
-            [ width
-                (ifThenElse model.showDefinitions
-                    (ifThenElse model.showModules (fillPortion 5) (fillPortion 3))
-                    (fillPortion 1)
-                )
+            [ width (fillPortion 1)
             , height fill
-            , paddingXY 0 (model.theme |> Theme.scaled -3)
-            , clipX
+            , scrollbars
             ]
-            [ row
-                [ height fill
-                , width fill
-                , spacing <| ifThenElse model.showModules 10 0
-                , clipY
-                ]
-                [ row
-                    [ Background.color model.theme.colors.gray
-                    , height fill
-                    , width (ifThenElse model.showModules (fillPortion 2) (px 40))
-                    , clipX
-                    ]
-                    [ row [ alignTop, rotate (degrees -90), width (px 40), moveDown 182, padding (model.theme |> Theme.scaled -6), spacing (model.theme |> Theme.scaled -6) ] [ toggleDefinitionsMenu, toggleModulesMenu ]
-                    , ifThenElse model.showModules moduleTree none
-                    ]
+            [ column [ width fill, height fill, scrollbars, spacing (Theme.smallSpacing model.theme) ]
+                [ ifThenElse model.showModules moduleTree none
                 , ifThenElse model.showDefinitions definitionList none
                 ]
             ]
         , column
             [ height fill
-            , width
-                (ifThenElse model.showDefinitions
-                    (ifThenElse model.showModules (fillPortion 6) (fillPortion 7))
-                    (fillPortion 46)
-                )
+            , width (fillPortion 4)
             , Background.color model.theme.colors.lightest
             , scrollbars
             ]
@@ -1332,132 +1378,6 @@ viewHome model packageName packageDef =
         ]
 
 
-{-| Display detailed information of a Type on the UI
--}
-viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
-viewType theme typeName typeDef docs =
-    case typeDef of
-        Type.TypeAliasDefinition _ (Type.Record _ fields) ->
-            let
-                fieldNames : { a | name : Name } -> Element msg
-                fieldNames =
-                    \field ->
-                        el
-                            (Theme.boldLabelStyles theme)
-                            (text (nameToText field.name))
-
-                fieldTypes : { a | tpe : Type () } -> Element msg
-                fieldTypes =
-                    \field ->
-                        el
-                            (Theme.labelStyles theme)
-                            (XRayView.viewType pathToUrl field.tpe)
-
-                viewFields : Element msg
-                viewFields =
-                    Theme.twoColumnTableView
-                        fields
-                        fieldNames
-                        fieldTypes
-            in
-            viewAsCard theme
-                (typeName |> nameToTitleText |> text)
-                "record"
-                theme.colors.backgroundColor
-                docs
-                viewFields
-
-        Type.TypeAliasDefinition _ body ->
-            viewAsCard theme
-                (typeName |> nameToTitleText |> text)
-                "is a"
-                theme.colors.backgroundColor
-                docs
-                (el
-                    [ paddingXY 10 5
-                    ]
-                    (XRayView.viewType pathToUrl body)
-                )
-
-        Type.CustomTypeDefinition _ accessControlledConstructors ->
-            let
-                isNewType : Maybe (Type ())
-                isNewType =
-                    case accessControlledConstructors.value |> Dict.toList of
-                        [ ( ctorName, [ ( _, baseType ) ] ) ] ->
-                            if ctorName == typeName then
-                                Just baseType
-
-                            else
-                                Nothing
-
-                        _ ->
-                            Nothing
-
-                isEnum : Bool
-                isEnum =
-                    accessControlledConstructors.value
-                        |> Dict.values
-                        |> List.all List.isEmpty
-
-                viewConstructors : Element msg
-                viewConstructors =
-                    if isEnum then
-                        accessControlledConstructors.value
-                            |> Dict.toList
-                            |> List.map
-                                (\( ctorName, _ ) ->
-                                    el
-                                        (Theme.boldLabelStyles theme)
-                                        (text (nameToTitleText ctorName))
-                                )
-                            |> column [ width fill ]
-
-                    else
-                        case isNewType of
-                            Just baseType ->
-                                el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType pathToUrl baseType)
-
-                            Nothing ->
-                                let
-                                    constructorNames =
-                                        \( ctorName, _ ) ->
-                                            el
-                                                (Theme.boldLabelStyles theme)
-                                                (text (nameToTitleText ctorName))
-
-                                    constructorArgs =
-                                        \( _, ctorArgs ) ->
-                                            el
-                                                (Theme.labelStyles theme)
-                                                (ctorArgs
-                                                    |> List.map (Tuple.second >> XRayView.viewType pathToUrl)
-                                                    |> row [ spacing 5 ]
-                                                )
-                                in
-                                Theme.twoColumnTableView
-                                    (Dict.toList accessControlledConstructors.value)
-                                    constructorNames
-                                    constructorArgs
-            in
-            viewAsCard theme
-                (typeName |> nameToTitleText |> text)
-                (case isNewType of
-                    Just _ ->
-                        "wrapper"
-
-                    Nothing ->
-                        if isEnum then
-                            "enum"
-
-                        else
-                            "one of"
-                )
-                Theme.defaultColors.backgroundColor
-                docs
-                viewConstructors
-
-
 {-| Display detailed information of a Value on the UI
 -}
 viewValue : Theme -> ModuleName -> Name -> Value.Definition () (Type ()) -> String -> Element msg
@@ -1469,7 +1389,7 @@ viewValue theme moduleName valueName valueDef docs =
                 { url =
                     "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ "?filter=" ++ nameToText valueName
                 , label =
-                    text (nameToText valueName)
+                    el [ Font.extraBold, Font.size 30 ] (text (nameToText valueName))
                 }
 
         isData : Bool
@@ -1484,7 +1404,7 @@ viewValue theme moduleName valueName valueDef docs =
             else
                 rgb 0.8 0.8 0.9
     in
-    viewAsCard theme
+    Card.viewAsCard theme
         cardTitle
         (if isData then
             "value"
@@ -1495,119 +1415,6 @@ viewValue theme moduleName valueName valueDef docs =
         backgroundColor
         (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
         none
-
-
-viewAsCard : Theme -> Element msg -> String -> Element.Color -> String -> Element msg -> Element msg
-viewAsCard theme header class backgroundColor docs content =
-    let
-        white =
-            rgb 1 1 1
-
-        cont =
-            el
-                [ alignTop
-                , height fill
-                , width fill
-                ]
-                content
-    in
-    column
-        [ padding (theme |> Theme.scaled 3)
-        , spacing (theme |> Theme.scaled 3)
-        ]
-        [ row
-            [ width fill
-            , paddingXY (theme |> Theme.scaled -2) (theme |> Theme.scaled -6)
-            , spacing (theme |> Theme.scaled 2)
-            , Font.size (theme |> Theme.scaled 3)
-            ]
-            [ el [ Font.bold ] header
-            , el [ alignLeft, Font.color theme.colors.secondaryInformation ] (text class)
-            ]
-        , el
-            [ Background.color white
-            , Border.rounded 3
-            , width fill
-            , height fill
-            ]
-            (if docs == "" then
-                cont
-
-             else
-                column [ height fill, width fill ]
-                    [ el
-                        [ padding (theme |> Theme.scaled -2)
-                        , Border.widthEach { bottom = 3, top = 0, left = 0, right = 0 }
-                        , Border.color backgroundColor
-                        , height fill
-                        , width fill
-                        ]
-                        (let
-                            deadEndsToString deadEnds =
-                                deadEnds
-                                    |> List.map Markdown.deadEndToString
-                                    |> String.join "\n"
-                         in
-                         case
-                            docs
-                                |> Markdown.parse
-                                |> Result.mapError deadEndsToString
-                                |> Result.andThen (\ast -> Markdown.Renderer.render Markdown.Renderer.defaultHtmlRenderer ast)
-                         of
-                            Ok rendered ->
-                                rendered |> List.map html |> paragraph []
-
-                            Err errors ->
-                                text errors
-                        )
-                    , cont
-                    ]
-            )
-        ]
-
-
-{-| Display a Definition with its name and path as a clickable UI element with a url pointing to the Definition
--}
-viewAsLabel : Theme -> Bool -> Element msg -> Element msg -> String -> String -> Element msg
-viewAsLabel theme shouldColorBg icon header class url =
-    let
-        elem =
-            row
-                ([ width fill
-                 , Font.size (theme |> Theme.scaled 2)
-                 ]
-                    ++ ifThenElse shouldColorBg [ Background.color theme.colors.selectionColor ] []
-                )
-                [ icon
-                , el
-                    [ Font.bold
-                    , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
-                    ]
-                    header
-                , el
-                    ([ alignRight
-                     , Font.color theme.colors.secondaryInformation
-                     , paddingXY (theme |> Theme.scaled -10) (theme |> Theme.scaled -3)
-                     ]
-                        ++ ifThenElse shouldColorBg [ Background.color theme.colors.selectionColor ] []
-                    )
-                  <|
-                    text class
-                ]
-    in
-    link
-        [ Border.color theme.colors.lightest
-        , Border.widthEach
-            { bottom = 1
-            , left = 0
-            , top = 0
-            , right = 0
-            }
-        , mouseOver [ Border.color theme.colors.darkest ]
-        , pointer
-        , width fill
-        ]
-        { label = elem, url = url }
 
 
 
@@ -1650,6 +1457,54 @@ httpTestModel ir =
         }
 
 
+httpAttributes : Cmd Msg
+httpAttributes =
+    Http.get
+        { url = "/server/attributes"
+        , expect =
+            Http.expectJson
+                (\response ->
+                    case response of
+                        Err httpError ->
+                            HttpError httpError
+
+                        Ok result ->
+                            ServerGetAttributeResponse result
+                )
+                decodeAttributes
+        }
+
+
+httpSaveAttrValue : CustomAttributeId -> CustomAttributeInfo -> Cmd Msg
+httpSaveAttrValue attrId customAttributes =
+    let
+        updatedCustomAttrDetail : Maybe CustomAttributeDetail
+        updatedCustomAttrDetail =
+            customAttributes
+                |> Dict.get attrId
+    in
+    case updatedCustomAttrDetail of
+        Just customAttrData ->
+            Http.post
+                { url = "/server/updateattribute/" ++ attrId
+                , body = jsonBody (encodeAttributeData customAttrData)
+                , expect =
+                    Http.expectJson
+                        (\response ->
+                            case response of
+                                Err httpError ->
+                                    HttpError httpError
+
+                                Ok result ->
+                                    ServerGetAttributeResponse result
+                        )
+                        decodeAttributes
+                }
+
+        Nothing ->
+            Cmd.none
+
+
 httpSaveTestSuite : IR -> TestSuite -> TestSuite -> Cmd Msg
 httpSaveTestSuite ir newTestSuite oldTestSuite =
     let
@@ -1683,9 +1538,9 @@ httpSaveTestSuite ir newTestSuite oldTestSuite =
         }
 
 
-{-| Display a TreeLayout of clickable module names in the given package, with urls pointing to the give module
+{-| Display a Tree View of clickable module names in the given package, with urls pointing to the give module
 -}
-viewModuleNames : Model -> PackageName -> ModuleName -> List ModuleName -> TreeLayout.Node ModuleName Msg
+viewModuleNames : Model -> PackageName -> ModuleName -> List ModuleName -> TreeViewComponent.Node ModuleName Msg
 viewModuleNames model packageName parentModule allModuleNames =
     let
         currentModuleName : Maybe Name
@@ -1708,7 +1563,7 @@ viewModuleNames model packageName parentModule allModuleNames =
                 |> Set.fromList
                 |> Set.toList
     in
-    TreeLayout.Node
+    TreeViewComponent.Node
         (\_ ->
             case currentModuleName of
                 Just name ->
@@ -1761,20 +1616,29 @@ viewDefinitionDetails model =
         insightViewConfig : IR -> Morphir.Visual.Config.Config Msg
         insightViewConfig ir =
             let
-                referenceClicked : FQName -> Bool -> Msg
-                referenceClicked fqname t =
-                    Insight (ExpandReference fqname t)
+                referenceClicked : FQName -> Int -> List Int -> Msg
+                referenceClicked fQName id nodePath =
+                    Insight (ExpandReference fQName id nodePath)
 
-                hoverOver : Int -> Maybe RawValue -> Msg
-                hoverOver index value =
-                    Insight (ExpandVariable index value)
+                referenceClosed : FQName -> Int -> List Int -> Msg
+                referenceClosed fQName int nodePath =
+                    Insight (ShrinkReference fQName int nodePath)
+
+                hoverOver : Int -> List Int -> Maybe RawValue -> Msg
+                hoverOver index nodePath value =
+                    Insight (ExpandVariable index nodePath value)
+
+                hoverLeave : Int -> List Int -> Msg
+                hoverLeave index nodePath =
+                    Insight (ShrinkVariable index nodePath)
             in
             Morphir.Visual.Config.fromIR
                 ir
                 model.insightViewState
                 { onReferenceClicked = referenceClicked
+                , onReferenceClose = referenceClosed
                 , onHoverOver = hoverOver
-                , onHoverLeave = Insight << ShrinkVariable
+                , onHoverLeave = hoverLeave
                 }
 
         viewArgumentEditors : IR -> InsightArgumentState -> List ( Name, a, Type () ) -> Element Msg
@@ -1783,13 +1647,24 @@ viewDefinitionDetails model =
                 |> List.map
                     (\( argName, _, argType ) ->
                         ( argName
-                        , ValueEditor.view ir
+                        , ValueEditor.view model.theme
+                            ir
                             argType
                             (Insight << ArgValueUpdated argName)
                             (argState |> Dict.get argName |> Maybe.withDefault (ValueEditor.initEditorState ir argType Nothing))
                         )
                     )
                 |> FieldList.view
+
+        buttonStyles : List (Element.Attribute msg)
+        buttonStyles =
+            [ padding 7
+            , model.theme |> Theme.borderRounded
+            , Background.color model.theme.colors.darkest
+            , Font.color model.theme.colors.lightest
+            , Font.bold
+            , Font.size model.theme.fontSize
+            ]
 
         saveTestcaseButton : FQName -> TestCase -> Element Msg
         saveTestcaseButton fqName testCase =
@@ -1799,39 +1674,60 @@ viewDefinitionDetails model =
                     Testing (SaveTestSuite fqName testCase)
             in
             Element.Input.button
-                [ padding 7
-                , Border.rounded 3
-                , Background.color model.theme.colors.darkest
-                , Font.color model.theme.colors.lightest
-                , Font.bold
-                , Font.size (model.theme |> Theme.scaled 2)
-                ]
+                buttonStyles
                 { onPress = Just saveMsg
-                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save as testcase" ]
+                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save as new testcase" ]
+                }
+
+        updateTestCaseButton : FQName -> TestCase -> Element Msg
+        updateTestCaseButton fqName testCase =
+            let
+                updateMsg : Msg
+                updateMsg =
+                    Testing (UpdateTestCase fqName testCase)
+            in
+            Element.Input.button
+                buttonStyles
+                { onPress = Just updateMsg
+                , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text <| "Update testcase #" ++ String.fromInt (model.selectedTestcaseIndex + 1) ]
+                }
+
+        descriptionInput : Element Msg
+        descriptionInput =
+            Element.Input.text
+                [ Font.size model.theme.fontSize
+                , padding (model.theme |> Theme.scaled -2)
+                ]
+                { onChange = Testing << UpdateDescription
+                , text = model.testDescription
+                , placeholder = Just (Element.Input.placeholder [] (text "Write a test description here..."))
+                , label = Element.Input.labelHidden "Description"
                 }
 
         viewActualOutput : Theme -> IR -> TestCase -> FQName -> Element Msg
         viewActualOutput theme ir testCase fQName =
-            row [ spacing (model.theme |> Theme.scaled 2) ] <|
-                ifThenElse (List.isEmpty testCase.inputs)
-                    []
-                    [ row [ Border.rounded 5, Border.width 3, spacing (theme |> Theme.scaled 2), padding (theme |> Theme.scaled -2) ]
-                        (case evaluateOutput ir testCase.inputs fQName of
-                            Ok rawValue ->
-                                case rawValue of
-                                    Value.Unit () ->
-                                        [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
+            ifThenElse (List.isEmpty testCase.inputs)
+                none
+                (column [ spacing (theme |> Theme.scaled 1), padding (theme |> Theme.scaled -2) ]
+                    (case evaluateOutput ir testCase.inputs fQName of
+                        Ok rawValue ->
+                            case rawValue of
+                                Value.Unit () ->
+                                    [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
 
-                                    expectedOutput ->
-                                        [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value:")
-                                        , el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue)
+                                expectedOutput ->
+                                    [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value ="), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
+                                    , row [ width fill, spacing (theme |> Theme.scaled 1) ]
+                                        [ descriptionInput
                                         , ifThenElse (Dict.isEmpty model.argStates) none (saveTestcaseButton fQName { testCase | expectedOutput = expectedOutput })
+                                        , ifThenElse (model.selectedTestcaseIndex < 0) none (updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         ]
+                                    ]
 
-                            Err _ ->
-                                [ text "Invalid or missing inputs" ]
-                        )
-                    ]
+                        Err _ ->
+                            [ text "Invalid or missing inputs" ]
+                    )
+                )
 
         evaluateOutput : IR -> List (Maybe RawValue) -> FQName -> Result Error RawValue
         evaluateOutput ir inputs fQName =
@@ -1887,28 +1783,47 @@ viewDefinitionDetails model =
                                 , Font.size (model.theme |> Theme.scaled 5)
                                 , pointer
                                 , height fill
-                                , Border.roundEach { topLeft = 0, bottomLeft = 0, topRight = 6, bottomRight = 6 }
+                                , Border.roundEach { topLeft = 0, bottomLeft = 0, topRight = 3, bottomRight = 3 }
                                 ]
                                 { onPress = Just <| Testing (DeleteTestCase fQName index)
                                 , label = el [ centerX, centerY ] (text " 🗑 ")
                                 }
+
+                        myTooltip : String -> Element msg
+                        myTooltip tooltipText =
+                            if tooltipText == "" then
+                                none
+
+                            else
+                                el
+                                    [ Background.color model.theme.colors.darkest
+                                    , Font.color model.theme.colors.lightest
+                                    , padding (model.theme |> Theme.scaled -2)
+                                    , model.theme |> Theme.borderRounded
+                                    , Font.size model.theme.fontSize
+                                    , Font.bold
+                                    , Border.shadow
+                                        { offset = ( 0, 3 ), blur = 6, size = 0, color = rgba 0 0 0 0.32 }
+                                    ]
+                                    (text tooltipText)
 
                         testRow : Int -> Int -> Int -> TestCase -> Element Msg
                         testRow columnIndex selfIndex maxIndex test =
                             let
                                 loadTestCaseMsg : Msg
                                 loadTestCaseMsg =
-                                    Testing (LoadTestCase (List.map (\( name, _, tpe ) -> ( name, tpe )) inputTypes) test.inputs)
+                                    Testing (LoadTestCase (List.map (\( name, _, tpe ) -> ( name, tpe )) inputTypes) test.inputs test.description selfIndex)
 
                                 styles : List (Element.Attr () Msg)
                                 styles =
                                     [ Background.color <| evaluate test
                                     , height fill
-                                    , Border.widthEach { top = 1, bottom = 1, left = 0, right = 0 }
+                                    , Border.widthXY 0 1
                                     , paddingXY (model.theme |> Theme.scaled -1) (model.theme |> Theme.scaled -5)
                                     , Border.color model.theme.colors.lightest
                                     , pointer
                                     , onClick loadTestCaseMsg
+                                    , tooltip above (myTooltip test.description)
                                     ]
 
                                 rowCell : Element Msg
@@ -1917,7 +1832,7 @@ viewDefinitionDetails model =
                             in
                             -- first cell's left border should be rounded
                             if columnIndex == 0 then
-                                el (styles ++ [ Border.roundEach { topLeft = 6, bottomLeft = 6, topRight = 0, bottomRight = 0 } ]) rowCell
+                                el (styles ++ [ Border.roundEach { topLeft = 3, bottomLeft = 3, topRight = 0, bottomRight = 0 } ]) rowCell
 
                             else if columnIndex < maxIndex then
                                 el styles rowCell
@@ -1959,14 +1874,7 @@ viewDefinitionDetails model =
                         , columns = columns
                         }
             in
-            ifThenElse (Array.isEmpty listOfTestcases)
-                none
-                (column [ height fill, width fill ]
-                    [ el [ Font.bold, padding (model.theme |> Theme.scaled -2), Font.underline ]
-                        (text "TEST CASES")
-                    , testsTable
-                    ]
-                )
+            testsTable
     in
     case model.irState of
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
@@ -1989,32 +1897,109 @@ viewDefinitionDetails model =
 
                                                     inputs : List (Maybe RawValue)
                                                     inputs =
-                                                        List.map (\inputName -> Dict.get inputName model.insightViewState.variables) (List.map (\( inputName, _, _ ) -> inputName) valueDef.inputTypes)
+                                                        valueDef.inputTypes |> List.map (\( argName, _, _ ) -> Dict.get argName model.insightViewState.variables)
 
                                                     ir : IR
                                                     ir =
                                                         IR.fromDistribution distribution
-                                                in
-                                                case model.definitionDisplayType of
-                                                    XRayView ->
-                                                        Just <| XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef
 
-                                                    InsightView ->
-                                                        Just <|
-                                                            column
-                                                                [ width fill, height fill, spacing (model.theme |> Theme.scaled 8), paddingEach { left = model.theme |> Theme.scaled 2, top = 0, right = model.theme |> Theme.scaled 2, bottom = 0 } ]
-                                                                [ column [ spacing (model.theme |> Theme.scaled 5) ]
-                                                                    [ el [ Font.bold, Font.underline ] (text "INPUTS")
-                                                                    , viewArgumentEditors ir model.argStates valueDef.inputTypes
-                                                                    , ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
-                                                                    , viewActualOutput
-                                                                        model.theme
-                                                                        ir
-                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                        fullyQualifiedName
-                                                                    ]
-                                                                , scenarios fullyQualifiedName ir valueDef.inputTypes
+                                                    viewAttributeValues : NodeID -> Element Msg
+                                                    viewAttributeValues node =
+                                                        let
+                                                            attributeToEditors : Element Msg
+                                                            attributeToEditors =
+                                                                model.customAttributes
+                                                                    |> Dict.toList
+                                                                    |> List.map
+                                                                        (\( attrId, attrDetail ) ->
+                                                                            let
+                                                                                irValue : Maybe (Value () ())
+                                                                                irValue =
+                                                                                    attrDetail.data
+                                                                                        |> SDKDict.get node
+                                                                                        |> Maybe.map
+                                                                                            (\iRvalue -> iRvalue)
+
+                                                                                nodeDetail : AttrValueDetail
+                                                                                nodeDetail =
+                                                                                    { attrId = attrId, nodeId = node }
+                                                                            in
+                                                                            ( Name.fromString attrDetail.displayName
+                                                                            , ValueEditor.view model.theme
+                                                                                (IR.fromDistribution attrDetail.iR)
+                                                                                (Type.Reference () attrDetail.entryPoint [])
+                                                                                (Attribute << ValueUpdated nodeDetail)
+                                                                                (model.attributeStates
+                                                                                    |> SDKDict.get nodeDetail
+                                                                                    |> Maybe.withDefault
+                                                                                        (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
+                                                                                            (Type.Reference () attrDetail.entryPoint [])
+                                                                                            irValue
+                                                                                        )
+                                                                                )
+                                                                            )
+                                                                        )
+                                                                    |> FieldList.view
+                                                        in
+                                                        column [ spacing (model.theme |> Theme.scaled 5) ]
+                                                            [ attributeToEditors ]
+                                                in
+                                                Just <|
+                                                    TabsComponent.view model.theme
+                                                        { onSwitchTab = UI << SwitchTab
+                                                        , activeTab = model.activeTabIndex
+                                                        , tabs =
+                                                            Array.fromList
+                                                                [ { name = "Insight View"
+                                                                  , content =
+                                                                        column [ spacing (model.theme |> Theme.scaled 5), paddingXY (model.theme |> Theme.scaled 1) 0 ]
+                                                                            [ SectionComponent.view model.theme
+                                                                                { title = "Inputs"
+                                                                                , onToggle = UI (ToggleSection 1)
+                                                                                , isOpen = Set.member 1 model.openSections
+                                                                                , content = viewArgumentEditors ir model.argStates valueDef.inputTypes
+                                                                                }
+                                                                            , SectionComponent.view model.theme
+                                                                                { title = "Insight view"
+                                                                                , onToggle = UI (ToggleSection 2)
+                                                                                , isOpen = Set.member 2 model.openSections
+                                                                                , content = el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray ] <| ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
+                                                                                }
+                                                                            , SectionComponent.view model.theme
+                                                                                { title = "Outputs"
+                                                                                , onToggle = UI (ToggleSection 3)
+                                                                                , isOpen = Set.member 3 model.openSections
+                                                                                , content =
+                                                                                    viewActualOutput
+                                                                                        model.theme
+                                                                                        ir
+                                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                        fullyQualifiedName
+                                                                                }
+                                                                            , SectionComponent.view model.theme
+                                                                                { title = "Test Cases"
+                                                                                , onToggle = UI (ToggleSection 4)
+                                                                                , isOpen = Set.member 4 model.openSections
+                                                                                , content = scenarios fullyQualifiedName ir valueDef.inputTypes
+                                                                                }
+                                                                            ]
+                                                                  }
+                                                                , { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef }
+                                                                , { name = "Custom Attributes"
+                                                                  , content =
+                                                                        row
+                                                                            [ width fill
+                                                                            , height fill
+                                                                            , spacing
+                                                                                (model.theme
+                                                                                    |> Theme.scaled 8
+                                                                                )
+                                                                            , paddingXY 10 10
+                                                                            ]
+                                                                            [ viewAttributeValues (ValueID fullyQualifiedName) ]
+                                                                  }
                                                                 ]
+                                                        }
                                             )
                                         |> Maybe.withDefault none
 
@@ -2085,3 +2070,27 @@ initInsightViewState argState =
             argState
                 |> Dict.map (\_ arg -> arg.lastValidValue |> Maybe.withDefault (Value.Unit ()))
     }
+
+
+ifThenElse : Bool -> a -> a -> a
+ifThenElse boolValue ifTrue ifFalse =
+    if boolValue then
+        ifTrue
+
+    else
+        ifFalse
+
+
+urlFragmentToNodePath : String -> List Path
+urlFragmentToNodePath f =
+    let
+        makeNodePath : String -> List Path -> List Path
+        makeNodePath s l =
+            case s of
+                "" ->
+                    l
+
+                _ ->
+                    makeNodePath (s |> String.split "." |> List.reverse |> List.drop 1 |> List.reverse |> String.join ".") (l ++ [ Path.fromString s ])
+    in
+    makeNodePath f []

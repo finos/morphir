@@ -12,7 +12,7 @@ redistributable/Scala
 cli/web/insightapp.js
 cli/treeStuff.js
 cli/index.html
-lib
+lib/geneated
 Morphir.Elm.CLI.js
 docs.json
 /.coverage/

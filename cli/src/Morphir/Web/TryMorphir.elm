@@ -2,7 +2,7 @@ module Morphir.Web.TryMorphir exposing (..)
 
 import Browser
 import Dict exposing (Dict)
-import Element exposing (Element, alignRight, column, el, fill, height, layout, none, padding, paddingXY, paragraph, rgb, row, scrollbars, shrink, spacing, text, width)
+import Element exposing (Element, alignRight, column, el, fill, height, layout, none, padding, paddingEach, paddingXY, paragraph, px, rgb, row, scrollbars, shrink, spacing, table, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
@@ -12,15 +12,30 @@ import Json.Encode as Encode
 import Morphir.Compiler as Compiler
 import Morphir.Elm.Frontend as Frontend exposing (SourceFile)
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.Module as Module
+import Morphir.IR.Distribution exposing (Distribution(..))
+import Morphir.IR.FQName as FQName exposing (FQName, fqn)
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name
-import Morphir.IR.Package as Package
-import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Package as Package exposing (PackageName)
+import Morphir.IR.Type as Type exposing (Type)
 import Morphir.IR.Type.Codec as TypeCodec
 import Morphir.IR.Value as Value
 import Morphir.IR.Value.Codec as ValueCodec
+import Morphir.Type.Constraint exposing (Constraint(..))
+import Morphir.Type.ConstraintSet as ConstraintSet exposing (ConstraintSet)
+import Morphir.Type.Count as Count
 import Morphir.Type.Infer as Infer
+import Morphir.Type.MetaType exposing (MetaType(..))
+import Morphir.Type.Solve as Solve exposing (SolutionMap)
 import Morphir.Visual.Common exposing (nameToText, pathToUrl)
+import Morphir.Visual.Components.Card as Card
+import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.TypeInferenceView as TypeInferenceView
+import Morphir.Visual.Config exposing (Config, DrillDownFunctions(..))
+import Morphir.Visual.Theme as Theme exposing (Theme)
+import Morphir.Visual.ValueEditor as ValueEditor
+import Morphir.Visual.ViewType as ViewType
+import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.SourceEditor as SourceEditor
 
@@ -46,17 +61,28 @@ type alias Model =
     , maybePackageDef : Maybe (Package.Definition () (Type ()))
     , errors : List Compiler.Error
     , irView : IRView
+    , valueStates : Dict FQName ValueState
     }
 
 
 type IRView
-    = VisualView
-    | JsonView
+    = InsightView
+    | IRView
+
+
+type alias ValueState =
+    { typeInferenceStep : Int
+    }
+
+
+theme : Theme
+theme =
+    Theme.fromConfig Nothing
 
 
 init : Flags -> ( Model, Cmd Msg )
 init _ =
-    update (ChangeSource sampleSource) { source = "", maybePackageDef = Nothing, errors = [], irView = VisualView }
+    update (ChangeSource sampleSource) { source = "", maybePackageDef = Nothing, errors = [], irView = InsightView, valueStates = Dict.empty }
 
 
 moduleSource : String -> SourceFile
@@ -73,6 +99,8 @@ moduleSource sourceValue =
 type Msg
     = ChangeSource String
     | ChangeIRView IRView
+    | UpdateInferStep FQName Int
+    | DoNothing
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -85,7 +113,7 @@ update msg model =
 
                 sourceFiles =
                     [ { path = "Test.elm"
-                      , content = sourceCode
+                      , content = sampleSourcePrefix ++ sourceCode
                       }
                     ]
 
@@ -112,9 +140,11 @@ update msg model =
                                             |> IR.fromPackageSpecifications
                                 in
                                 packageDef
-                                    |> Package.mapDefinitionAttributes (\_ -> ()) identity
-                                    |> Infer.inferPackageDefinition ir
-                                    |> Result.map (Package.mapDefinitionAttributes (\_ -> ()) (\( _, tpe ) -> tpe))
+                                    --|> Package.mapDefinitionAttributes (\_ -> ()) identity
+                                    --|> Infer.inferPackageDefinition ir
+                                    --|> Result.map (Package.mapDefinitionAttributes (\_ -> ()) (\( _, tpe ) -> tpe))
+                                    |> Package.mapDefinitionAttributes (\_ -> ()) (\_ -> Type.Unit ())
+                                    |> Ok
                             )
             in
             ( { model
@@ -144,6 +174,26 @@ update msg model =
             , Cmd.none
             )
 
+        DoNothing ->
+            ( model, Cmd.none )
+
+        UpdateInferStep fQName updated ->
+            let
+                newValueStates : Dict FQName { typeInferenceStep : Int }
+                newValueStates =
+                    model.valueStates
+                        |> Dict.update fQName
+                            (\maybeValueState ->
+                                case maybeValueState of
+                                    Just valueState ->
+                                        Just { valueState | typeInferenceStep = updated }
+
+                                    Nothing ->
+                                        Just { typeInferenceStep = updated }
+                            )
+            in
+            ( { model | valueStates = newValueStates }, Cmd.none )
+
 
 
 -- VIEW
@@ -167,12 +217,12 @@ view model =
             [ width fill
             , height fill
             ]
-            (viewPackageResult model.source ChangeSource model.maybePackageDef model.errors model.irView)
+            (viewPackageResult model ChangeSource)
         )
 
 
-viewPackageResult : String -> (String -> Msg) -> Maybe (Package.Definition () (Type ())) -> List Compiler.Error -> IRView -> Element Msg
-viewPackageResult sourceCode onSourceChange maybePackageDef errors irView =
+viewPackageResult : Model -> (String -> Msg) -> Element Msg
+viewPackageResult model onSourceChange =
     row
         [ width fill
         , height fill
@@ -189,24 +239,24 @@ viewPackageResult sourceCode onSourceChange maybePackageDef errors irView =
                 , height fill
                 , scrollbars
                 ]
-                (SourceEditor.view sourceCode onSourceChange)
+                (SourceEditor.view model.source onSourceChange)
             , el
                 [ height shrink
                 , width fill
                 , padding 10
                 , Background.color
-                    (if List.isEmpty errors then
+                    (if List.isEmpty model.errors then
                         rgb 0.5 0.7 0.5
 
                      else
                         rgb 0.7 0.5 0.5
                     )
                 ]
-                (if List.isEmpty errors then
+                (if List.isEmpty model.errors then
                     text "Parsed > Resolved > Type checked"
 
                  else
-                    errors
+                    model.errors
                         |> List.concatMap
                             (\error ->
                                 case error of
@@ -227,7 +277,7 @@ viewPackageResult sourceCode onSourceChange maybePackageDef errors irView =
             ]
             [ row [ width fill ]
                 [ el [ height shrink, padding 10 ] (text "Morphir IR")
-                , viewIRViewTabs irView
+                , viewIRViewTabs model.irView
                 ]
             , el
                 [ width fill
@@ -235,9 +285,9 @@ viewPackageResult sourceCode onSourceChange maybePackageDef errors irView =
                 , scrollbars
                 , padding 10
                 ]
-                (case maybePackageDef of
+                (case model.maybePackageDef of
                     Just packageDef ->
-                        viewPackageDefinition (\_ -> Html.div [] []) packageDef irView
+                        viewPackageDefinition model (\_ -> Html.div [] []) packageDef
 
                     Nothing ->
                         Element.none
@@ -246,109 +296,247 @@ viewPackageResult sourceCode onSourceChange maybePackageDef errors irView =
         ]
 
 
-viewPackageDefinition : (va -> Html Msg) -> Package.Definition () (Type ()) -> IRView -> Element Msg
-viewPackageDefinition viewAttribute packageDef irView =
+viewPackageDefinition : Model -> (va -> Html Msg) -> Package.Definition () (Type ()) -> Element Msg
+viewPackageDefinition model viewAttribute packageDef =
+    let
+        packageName : PackageName
+        packageName =
+            [ [ "my" ] ]
+
+        ir : IR
+        ir =
+            IR.fromDistribution
+                (Library packageName Frontend.defaultDependencies packageDef)
+    in
     packageDef.modules
         |> Dict.toList
         |> List.map
-            (\( _, moduleDef ) -> viewModuleDefinition viewAttribute moduleDef.value irView)
+            (\( moduleName, moduleDef ) ->
+                viewModuleDefinition model ir packageName moduleName viewAttribute moduleDef.value
+            )
         |> column []
 
 
-viewModuleDefinition : (va -> Html Msg) -> Module.Definition () (Type ()) -> IRView -> Element Msg
-viewModuleDefinition _ moduleDef irView =
-    column []
-        [ moduleDef.types
-            |> viewDict
-                (\typeName -> text (typeName |> Name.toHumanWords |> String.join " "))
-                (\typeDef -> text (Debug.toString typeDef))
-        , moduleDef.values
-            |> Dict.toList
-            |> List.map
-                (\( valueName, valueDef ) ->
-                    column
-                        [ Background.color (rgb 0.9 0.9 0.9)
-                        , Border.rounded 5
-                        , padding 5
-                        , spacing 5
-                        ]
-                        [ el
-                            [ Border.rounded 5
-                            , Background.color (rgb 0.95 0.95 0.95)
-                            , width fill
-                            ]
-                            (row []
-                                [ el [ paddingXY 10 5 ] (text (nameToText valueName))
-                                , row
-                                    [ paddingXY 10 5
-                                    , spacing 5
-                                    , Background.color (rgb 1 0.9 0.8)
+viewModuleDefinition : Model -> IR -> PackageName -> ModuleName -> (va -> Html Msg) -> Module.Definition () (Type ()) -> Element Msg
+viewModuleDefinition model ir packageName moduleName _ moduleDef =
+    let
+        typeViews : List (Element msg)
+        typeViews =
+            moduleDef.types
+                |> Dict.toList
+                |> List.map
+                    (\( typeName, accessControlledDocumentedTypeDef ) ->
+                        ViewType.viewType theme typeName accessControlledDocumentedTypeDef.value.value accessControlledDocumentedTypeDef.value.doc
+                    )
+
+        valueViews : List (Element Msg)
+        valueViews =
+            moduleDef.values
+                |> Dict.toList
+                |> List.map
+                    (\( valueName, valueDef ) ->
+                        let
+                            valueState =
+                                model.valueStates
+                                    |> Dict.get ( packageName, moduleName, valueName )
+                                    |> Maybe.withDefault
+                                        { typeInferenceStep = 0
+                                        }
+                        in
+                        Card.viewAsCard theme
+                            (text (nameToText valueName))
+                            "value"
+                            theme.colors.backgroundColor
+                            valueDef.value.doc
+                            (column
+                                []
+                                [ el
+                                    [ Border.rounded 5
+                                    , Background.color (rgb 0.95 0.95 0.95)
+                                    , width fill
                                     ]
-                                    [ text ":"
-                                    , XRayView.viewType pathToUrl valueDef.value.value.outputType
+                                    (row []
+                                        [ el [ paddingXY 10 5 ] (text "return type")
+                                        , row
+                                            [ paddingXY 10 5
+                                            , spacing 5
+                                            , Background.color (rgb 1 0.9 0.8)
+                                            ]
+                                            [ text ":"
+                                            , XRayView.viewType pathToUrl valueDef.value.value.outputType
+                                            ]
+                                        ]
+                                    )
+                                , if List.isEmpty valueDef.value.value.inputTypes then
+                                    none
+
+                                  else
+                                    el
+                                        [ padding 5
+                                        , Border.rounded 5
+                                        , Background.color (rgb 0.95 0.95 0.95)
+                                        , width fill
+                                        ]
+                                        (valueDef.value.value.inputTypes
+                                            |> List.map
+                                                (\( argName, _, argType ) ->
+                                                    row []
+                                                        [ el [ paddingXY 10 5 ] (text (nameToText argName))
+                                                        , row
+                                                            [ paddingXY 10 5
+                                                            , spacing 5
+                                                            , Background.color (rgb 1 0.9 0.8)
+                                                            ]
+                                                            [ text ":"
+                                                            , XRayView.viewType pathToUrl argType
+                                                            ]
+                                                        ]
+                                                )
+                                            |> column [ spacing 5 ]
+                                        )
+                                , el
+                                    [ padding 5
+                                    , Border.rounded 5
+                                    , Background.color (rgb 1 1 1)
+                                    , width fill
                                     ]
+                                    (viewValue valueState ir ( packageName, moduleName, valueName ) model.irView valueDef.value.value)
                                 ]
                             )
-                        , if List.isEmpty valueDef.value.value.inputTypes then
-                            none
-
-                          else
-                            el
-                                [ padding 5
-                                , Border.rounded 5
-                                , Background.color (rgb 0.95 0.95 0.95)
-                                , width fill
-                                ]
-                                (valueDef.value.value.inputTypes
-                                    |> List.map
-                                        (\( argName, _, argType ) ->
-                                            row []
-                                                [ el [ paddingXY 10 5 ] (text (nameToText argName))
-                                                , row
-                                                    [ paddingXY 10 5
-                                                    , spacing 5
-                                                    , Background.color (rgb 1 0.9 0.8)
-                                                    ]
-                                                    [ text ":"
-                                                    , XRayView.viewType pathToUrl argType
-                                                    ]
-                                                ]
-                                        )
-                                    |> column [ spacing 5 ]
-                                )
-                        , el
-                            [ padding 5
-                            , Border.rounded 5
-                            , Background.color (rgb 1 1 1)
-                            , width fill
-                            ]
-                            (viewValue irView valueDef.value.value)
-                        ]
-                )
-            |> column [ spacing 20 ]
-        ]
+                    )
+    in
+    (typeViews ++ valueViews)
+        |> List.intersperse (el [ width fill, height (px (Theme.smallSpacing theme)), Background.color theme.colors.gray ] none)
+        |> column [ spacing 20 ]
 
 
-viewValue : IRView -> Value.Definition () (Type ()) -> Element Msg
-viewValue irView valueDef =
+viewValue : ValueState -> IR -> FQName -> IRView -> Value.Definition () (Type ()) -> Element Msg
+viewValue valueState ir fullyQualifiedName irView valueDef =
     case irView of
-        VisualView ->
-            XRayView.viewValueDefinition
-                (\tpe ->
-                    row
-                        [ spacing 5
-                        , Background.color (rgb 1 0.9 0.8)
-                        ]
-                        [ text ":"
-                        , XRayView.viewType pathToUrl tpe
-                        ]
-                )
-                valueDef
+        InsightView ->
+            let
+                config : Config Msg
+                config =
+                    { ir = ir
+                    , nativeFunctions = Dict.empty
+                    , state =
+                        { drillDownFunctions = DrillDownFunctions Dict.empty
+                        , variables = Dict.empty
+                        , popupVariables =
+                            { variableIndex = -1
+                            , variableValue = Nothing
+                            , nodePath = []
+                            }
+                        , theme = Theme.fromConfig Nothing
+                        , highlightState = Nothing
+                        }
+                    , handlers =
+                        { onReferenceClicked = \_ _ _ -> DoNothing
+                        , onReferenceClose = \_ _ _ -> DoNothing
+                        , onHoverOver = \_ _ _ -> DoNothing
+                        , onHoverLeave = \_ _ -> DoNothing
+                        }
+                    , nodePath = []
+                    }
 
-        JsonView ->
-            ValueCodec.encodeValue (always Encode.null) (TypeCodec.encodeType (always Encode.null)) valueDef.body
-                |> Encode.encode 2
-                |> text
+                editors =
+                    valueDef.inputTypes
+                        |> List.map
+                            (\( argName, _, argType ) ->
+                                ( argName
+                                , ValueEditor.view theme
+                                    ir
+                                    argType
+                                    (always DoNothing)
+                                    (ValueEditor.initEditorState ir argType Nothing)
+                                )
+                            )
+                        |> FieldList.view
+            in
+            column []
+                [ editors
+                , ViewValue.viewDefinition config fullyQualifiedName valueDef
+                ]
+
+        IRView ->
+            viewValueAsIR valueState ir fullyQualifiedName irView valueDef
+
+
+viewValueAsIR : ValueState -> IR -> FQName -> IRView -> Value.Definition () (Type ()) -> Element Msg
+viewValueAsIR valueState ir fullyQualifiedName irView valueDef =
+    let
+        untypedValueDef : Value.Definition () ()
+        untypedValueDef =
+            valueDef
+                |> Value.mapDefinitionAttributes identity (always ())
+
+        ( index, ( defVar, annotatedValueDef, valueDefConstraints ) ) =
+            Infer.constrainDefinition ir Dict.empty untypedValueDef
+                |> Count.apply 0
+
+        solveSteps : List (Element msg)
+        solveSteps =
+            TypeInferenceView.viewSolveSteps 0 ir Solve.emptySolution (valueDefConstraints |> Debug.log "valueDefConstraints")
+                |> List.reverse
+
+        solveStepsSlider : Element Msg
+        solveStepsSlider =
+            Input.slider
+                [ Element.height fill
+                , Element.width (Element.px 30)
+
+                -- Here is where we're creating/styling the "track"
+                , Element.behindContent
+                    (Element.el
+                        [ Element.height Element.fill
+                        , Element.width (Element.px 2)
+                        , Element.centerX
+                        , Background.color (rgb 0.5 0.5 0.5)
+                        , Border.rounded 2
+                        ]
+                        Element.none
+                    )
+                ]
+                { onChange = round >> UpdateInferStep fullyQualifiedName
+                , label =
+                    Input.labelAbove []
+                        (text "Infer")
+                , min = 0
+                , max = toFloat (List.length solveSteps - 1)
+                , step = Just 1
+                , value = toFloat valueState.typeInferenceStep
+                , thumb =
+                    Input.defaultThumb
+                }
+
+        solveStepsView =
+            solveSteps
+                |> List.drop valueState.typeInferenceStep
+                |> List.head
+                |> Maybe.map
+                    (\content ->
+                        el [ paddingEach { left = 20, right = 10, bottom = 0, top = 0 } ] content
+                    )
+                |> Maybe.withDefault none
+    in
+    column []
+        [ row [ spacing 20 ]
+            [ column [ spacing 10 ]
+                [ text (String.concat [ "definition var: ", String.fromInt defVar ])
+                , XRayView.viewValueDefinition
+                    (\( _, metaVar ) ->
+                        text (String.fromInt metaVar)
+                    )
+                    (annotatedValueDef |> Debug.log "annotatedValueDef")
+                ]
+            ]
+        , el [ height fill ]
+            (row []
+                [ solveStepsSlider
+                , solveStepsView
+                ]
+            )
+        ]
 
 
 viewFields : List ( Element msg, Element msg ) -> Element msg
@@ -403,8 +591,8 @@ viewIRViewTabs irView =
         , paddingXY 10 0
         , spacing 10
         ]
-        [ button VisualView "Visual"
-        , button JsonView "JSON"
+        [ button InsightView "Insight"
+        , button IRView "IR"
         ]
 
 
@@ -419,21 +607,30 @@ packageInfo =
     }
 
 
-sampleSource : String
-sampleSource =
+sampleSourcePrefix : String
+sampleSourcePrefix =
     """module My.Test exposing (..)
 
-bar : List a
-bar =
-    if True then
-        [ 1.5 ]
-    else
-        [ 1 ]
+    """
 
-foo : Bool -> Int
-foo myBool =
-    if myBool then
-        1 + 5
+
+sampleSource : String
+sampleSource =
+    """
+request : Bool -> Int -> Int -> Response
+request allowPartial availableSurfboards requestedSurfboards =
+    if availableSurfboards < requestedSurfboards then
+        if allowPartial then
+            Reserved (min availableSurfboards requestedSurfboards)
+
+        else
+            Rejected
+
     else
-        0
+        Reserved requestedSurfboards
+
+
+type Response
+    = Rejected
+    | Reserved Int
         """

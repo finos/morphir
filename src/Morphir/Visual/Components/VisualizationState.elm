@@ -5,8 +5,8 @@ import Morphir.IR.Distribution exposing (Distribution)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.QName exposing (QName)
 import Morphir.IR.Type exposing (Type)
-import Morphir.IR.Value as Value exposing (RawValue, Value)
-import Morphir.Visual.Config exposing (PopupScreenRecord)
+import Morphir.IR.Value as Value exposing (RawValue)
+import Morphir.Visual.Config exposing (PopupScreenRecord, DrillDownFunctions)
 
 
 type alias VisualizationState =
@@ -14,6 +14,6 @@ type alias VisualizationState =
     , selectedFunction : QName
     , functionDefinition : Value.Definition () (Type ())
     , functionArguments : List RawValue
-    , expandedFunctions : Dict FQName (Value.Definition () (Type ()))
+    , drillDownFunctions : DrillDownFunctions
     , popupVariables : PopupScreenRecord
     }

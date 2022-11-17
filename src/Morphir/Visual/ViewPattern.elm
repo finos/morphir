@@ -1,11 +1,11 @@
 module Morphir.Visual.ViewPattern exposing (..)
 
+import Decimal
 import Element exposing (Element, text)
 import Morphir.IR.FQName as FQName
 import Morphir.IR.Literal exposing (Literal(..))
 import Morphir.IR.Name as Name
 import Morphir.IR.Value exposing (Pattern(..))
-import Decimal
 
 
 patternAsText : Pattern va -> String
@@ -26,13 +26,18 @@ patternAsText pattern =
                     (elems |> List.map patternAsText)
                 ++ " )"
 
-        ConstructorPattern _ ( _, _, localName ) args ->
-            String.join " "
-                (List.concat
-                    [ [ Name.toTitleCase localName ]
-                    , args |> List.map patternAsText
-                    ]
-                )
+        ConstructorPattern _ (( _, _, localName ) as fQName) args ->
+            case fQName of
+                ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) ->
+                    String.join " " (args |> List.map patternAsText)
+
+                _ ->
+                    String.join " "
+                        (List.concat
+                            [ [ Name.toTitleCase localName ]
+                            , args |> List.map patternAsText
+                            ]
+                        )
 
         EmptyListPattern _ ->
             "[]"

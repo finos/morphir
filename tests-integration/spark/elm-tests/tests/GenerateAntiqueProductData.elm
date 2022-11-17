@@ -1,7 +1,7 @@
-module GenerateProductData exposing (..)
+module GenerateAntiqueProductData exposing (..)
 
 import Expect exposing (Expectation)
-import GenerateAntiqueTestData exposing (generateProduct)
+import GenerateAntiquesData exposing (generateProduct)
 import Test exposing (..)
 
 

@@ -18,13 +18,14 @@
 module Morphir.IR.Value exposing
     ( Value(..), RawValue, TypedValue, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
     , tuple, variable, ifThenElse, patternMatch, update, unit
-    , mapValueAttributes
+    , mapValueAttributes, rewriteMaybeToPatternMatch
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, typeAndValueToDefinition, uncurryApply, collectVariables, collectReferences, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
     , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
+    , generateUniqueName
     )
 
 {-| In functional programming data and logic are treated the same way and we refer to both as values. This module
@@ -81,7 +82,7 @@ Value is the top level building block for data and logic. See the constructor fu
 
 @docs Value, RawValue, TypedValue, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
 @docs tuple, variable, ifThenElse, patternMatch, update, unit
-@docs mapValueAttributes
+@docs mapValueAttributes, rewriteMaybeToPatternMatch
 
 
 # Pattern
@@ -114,6 +115,7 @@ which is just the specification of those. Value definitions can be typed or unty
 @docs definitionToSpecification, typeAndValueToDefinition, uncurryApply, collectVariables, collectReferences, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
 @docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
+@docs generateUniqueName
 
 -}
 
@@ -124,8 +126,8 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.ListOfResults as ListOfResults
-import Set exposing (Set)
 import Morphir.SDK.Decimal as Decimal
+import Set exposing (Set)
 
 
 {-| Type that represents a value expression. This is a recursive data structure with various node types representing
@@ -817,6 +819,60 @@ collectVariables value =
 
         _ ->
             Set.empty
+
+
+{-| Generate a unique name that is not used in the given value
+-}
+generateUniqueName : Value ta va -> Name
+generateUniqueName value =
+    let
+        existingVariableNames =
+            collectVariables (value |> Debug.log (toString value)) |> Debug.log "names"
+
+        chars =
+            String.split "" "abcdefghijklmnopqrstuvwxyz" |> List.map List.singleton
+    in
+    case List.head <| List.filter (\var -> not (Set.member var existingVariableNames)) chars of
+        Just name ->
+            name
+
+        Nothing ->
+            existingVariableNames |> Set.toList |> List.concat
+
+
+{-| Rewrite "... |> Maybe.map .. |> Maybe.withDefault ..." to a pattern match with a Just and a Nothing branch
+-}
+rewriteMaybeToPatternMatch : Value ta va -> Value ta va
+rewriteMaybeToPatternMatch value =
+    value
+        |> rewriteValue
+            (\val ->
+                case val of
+                    Apply tpe (Apply _ (Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "with", "default" ] )) defaultValue) (Apply maybetpe (Apply _ (Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "map" ] )) mapLambda) inputMaybe) ->
+                        case mapLambda of
+                            Lambda _ argPattern bodyValue ->
+                                Just <|
+                                    PatternMatch tpe
+                                        inputMaybe
+                                        [ ( ConstructorPattern maybetpe ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ argPattern ], rewriteMaybeToPatternMatch bodyValue )
+                                        , ( ConstructorPattern maybetpe ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], defaultValue )
+                                        ]
+
+                            _ ->
+                                let
+                                    argName =
+                                        generateUniqueName mapLambda
+                                in
+                                Just <|
+                                    PatternMatch tpe
+                                        inputMaybe
+                                        [ ( ConstructorPattern maybetpe ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ AsPattern tpe (WildcardPattern tpe) argName ], Apply tpe (rewriteMaybeToPatternMatch mapLambda) (Variable tpe argName) )
+                                        , ( ConstructorPattern maybetpe ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], defaultValue )
+                                        ]
+
+                    _ ->
+                        Nothing
+            )
 
 
 {-| Collect all references in a value recursively.

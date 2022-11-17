@@ -94,9 +94,20 @@ update msg model =
             case inputResult of
                 Ok ( opts, packageInfo ) ->
                     let
+                        relevantSourceFiles : List SourceFile
+                        relevantSourceFiles =
+                            sourceFiles
+                                |> List.filter
+                                    (\sourceFile ->
+                                        not
+                                            (String.contains "Morphir/SDK" sourceFile.path
+                                                || String.contains "Morphir\\SDK" sourceFile.path
+                                            )
+                                    )
+
                         frontendResult : Result (List Compiler.Error) (Package.Definition Frontend.SourceLocation Frontend.SourceLocation)
                         frontendResult =
-                            Frontend.mapSource opts packageInfo Dict.empty sourceFiles
+                            Frontend.mapSource opts packageInfo Dict.empty relevantSourceFiles
 
                         typedResult : Result (List Compiler.Error) (Package.Definition () ( Frontend.SourceLocation, Type () ))
                         typedResult =

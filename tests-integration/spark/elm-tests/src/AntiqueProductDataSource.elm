@@ -22,8 +22,8 @@ import CsvUtils exposing (..)
 import SparkTests.Types exposing (..)
 
 
-csvProductData : String
-csvProductData =
+csvData : String
+csvData =
     """product
 Paintings
 Knife
@@ -35,4 +35,4 @@ HistoryWritings
 
 antiqueProductDataSource : Result Error (List ProductRecord)
 antiqueProductDataSource =
-    Decode.decodeCsv Decode.FieldNamesFromFirstRow antiqueProductDecoder csvProductData
+    Decode.decodeCsv Decode.FieldNamesFromFirstRow antiqueProductDecoder csvData

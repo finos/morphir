@@ -107,35 +107,28 @@ seize_item antique =
         && (antique.report == Nothing)
 
 
-christmas_bonanza_15percent_priceRange : List Antique -> PriceRange
-christmas_bonanza_15percent_priceRange antiqueList =
-    let
-        bonanzaDiscount =
-            0.15
+type alias Report =
+    { antiqueValue : Float
+    , seizedValue : Float
+    , vintageValue : Float
+    }
 
-        getPriceValue : List Float -> String -> Float
-        getPriceValue priceValues order =
-            if order == "min" then
-                case priceValues |> List.minimum of
-                    Just va ->
-                        va
 
-                    Nothing ->
-                        0.0
-
-            else
-                case priceValues |> List.maximum of
-                    Just va ->
-                        va
-
-                    Nothing ->
-                        0.0
-    in
-    antiqueList
-        |> List.filter (\item -> is_item_antique item || is_item_vintage item)
-        |> List.map (\item -> item.priceValue * bonanzaDiscount)
-        |> (\lstOfPriceValues ->
-                ( getPriceValue lstOfPriceValues "min"
-                , getPriceValue lstOfPriceValues "max"
-                )
-           )
+report : List Antique -> Report
+report antiques =
+    { antiqueValue =
+        antiques
+            |> List.filter is_item_antique
+            |> List.map .priceValue
+            |> List.sum
+    , seizedValue =
+        antiques
+            |> List.filter seize_item
+            |> List.map .priceValue
+            |> List.sum
+    , vintageValue =
+        antiques
+            |> List.filter is_item_vintage
+            |> List.map .priceValue
+            |> List.sum
+    }
