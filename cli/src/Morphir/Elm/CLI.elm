@@ -36,6 +36,7 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value
+import Morphir.JsonSchema.Backend exposing (Error)
 import Morphir.ListOfResults as List
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
@@ -170,6 +171,7 @@ update msg model =
                                 Library packageName dependencies packageDef ->
                                     Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
+                        fileMap : Result Error FileMap
                         fileMap =
                             mapDistribution options enrichedDistro
 
