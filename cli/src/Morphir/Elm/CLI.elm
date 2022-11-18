@@ -37,6 +37,7 @@ import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value
 import Morphir.JsonSchema.Backend exposing (Error)
+import Morphir.JsonSchema.Backend.Codec exposing (encodeError)
 import Morphir.ListOfResults as List
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
@@ -175,9 +176,9 @@ update msg model =
                         fileMap =
                             mapDistribution options enrichedDistro
 
-                        encodedResult : Result String FileMap -> Encode.Value
+                        encodedResult : Result Error FileMap -> Encode.Value
                         encodedResult =
-                            encodeResult Encode.string encodeFileMap
+                            encodeResult encodeError encodeFileMap
                     in
                     ( model
                     , fileMap
