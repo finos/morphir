@@ -45,9 +45,8 @@ type alias QualifiedName =
     ( Path, Name )
 
 
-type Error
-    = TypeUnmappable String
-    | Errors (List Error)
+type alias Error =
+    List String
 
 
 {-| Entry point for the JSON Schema backend. It takes the Morphir IR as the input and returns an in-memory
@@ -96,10 +95,12 @@ generateSchema packageName packageDefinition =
                                 (\( qualifiedName, typeDef ) ->
                                     mapTypeDefinition qualifiedName typeDef
                                 )
-                            |> ResultList.keepFirstError
+                            |> ResultList.keepAllErrors
+                            |> Result.mapError List.concat
                             |> Result.map List.concat
                     )
-                |> ResultList.keepFirstError
+                |> ResultList.keepAllErrors
+                |> Result.mapError List.concat
                 |> Result.map List.concat
     in
     schemaTypeDefinitions
@@ -126,7 +127,7 @@ mapTypeDefinition : ( Path, Name ) -> Type.Definition ta -> Result Error (List (
 mapTypeDefinition (( path, name ) as qualifiedName) definition =
     case definition of
         Type.TypeAliasDefinition _ typ ->
-            mapType typ
+            mapType qualifiedName typ
                 |> Result.map (\schemaType -> [ ( mapQualifiedName qualifiedName, schemaType ) ])
 
         Type.CustomTypeDefinition _ accessControlledCtors ->
@@ -145,10 +146,11 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                             (ctorArgs
                                 |> List.map
                                     (\tpe ->
-                                        mapType (Tuple.second tpe)
+                                        mapType qualifiedName (Tuple.second tpe)
                                     )
                             )
-                                |> ResultList.keepFirstError
+                                |> ResultList.keepAllErrors
+                                |> Result.mapError List.concat
                                 |> Result.map
                                     (\schemaType ->
                                         Array
@@ -161,13 +163,14 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                             False
                                     )
                     )
-                |> ResultList.keepFirstError
+                |> ResultList.keepAllErrors
+                |> Result.mapError List.concat
                 |> Result.map
                     (\schemaTypes -> [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf schemaTypes ) ])
 
 
-mapType : Type a -> Result Error SchemaType
-mapType typ =
+mapType : QualifiedName -> Type a -> Result Error SchemaType
+mapType qName typ =
     case typ of
         Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
             case ( FQName.toString fQName, argTypes ) of
@@ -215,20 +218,20 @@ mapType typ =
 
                 ( "Morphir.SDK:List:list", [ itemType ] ) ->
                     Result.map2 Array
-                        (mapType itemType
+                        (mapType qName itemType
                             |> Result.map ListType
                         )
                         (Ok False)
 
                 ( "Morphir.SDK:Set:set", [ itemType ] ) ->
                     Result.map2 Array
-                        (mapType itemType
+                        (mapType qName itemType
                             |> Result.map ListType
                         )
                         (Ok True)
 
                 ( "Morphir.SDK:Maybe:maybe", [ itemType ] ) ->
-                    mapType itemType
+                    mapType qName itemType
                         |> Result.map
                             (\schemaItemType ->
                                 OneOf
@@ -238,27 +241,29 @@ mapType typ =
                             )
 
                 ( "Morphir.SDK:Result:result", [ error, value ] ) ->
-                    [ mapType error
+                    [ mapType qName error
                         |> Result.map
                             (\errorSchema ->
                                 Array (TupleType [ Const "Err", errorSchema ] 2) True
                             )
-                    , mapType value
+                    , mapType qName value
                         |> Result.map
                             (\valueSchema ->
                                 Array (TupleType [ Const "Ok", valueSchema ] 2) True
                             )
                     ]
-                        |> ResultList.keepFirstError
+                        |> ResultList.keepAllErrors
+                        |> Result.mapError List.concat
                         |> Result.map OneOf
 
                 ( "Morphir.SDK:Dict:dict", [ keyType, valueType ] ) ->
                     let
                         tupleSchemaList =
-                            [ mapType keyType, mapType valueType ]
+                            [ mapType qName keyType, mapType qName valueType ]
                     in
                     tupleSchemaList
-                        |> ResultList.keepFirstError
+                        |> ResultList.keepAllErrors
+                        |> Result.mapError List.concat
                         |> Result.map (\tupleSchema -> Array (ListType (Array (TupleType tupleSchema 2) False)) True)
 
                 _ ->
@@ -277,25 +282,25 @@ mapType typ =
             fields
                 |> List.map
                     (\field ->
-                        mapType field.tpe
+                        mapType qName field.tpe
                             |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
                     )
                 |> ResultList.keepAllErrors
-                |> Result.mapError Errors
+                |> Result.mapError List.concat
                 |> Result.map (Dict.fromList >> Object)
 
         Type.Tuple _ typeList ->
             typeList
                 |> List.map
                     (\tpe ->
-                        mapType tpe
+                        mapType qName tpe
                     )
                 |> ResultList.keepAllErrors
+                |> Result.mapError List.concat
                 |> Result.map
                     (\itemType ->
                         Array (TupleType itemType (typeList |> List.length)) False
                     )
-                |> Result.mapError Errors
 
         _ ->
-            Err (TypeUnmappable ("Cannot map type " ++ Type.toString typ))
+            Err [ "Cannot map type " ++ Type.toString typ ++ " in module " ++ Path.toString Name.toTitleCase " " (qName |> Tuple.first) ]
