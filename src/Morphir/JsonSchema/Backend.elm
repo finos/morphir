@@ -37,7 +37,8 @@ import Morphir.SDK.ResultList as ResultList
 
 
 type alias Options =
-    {}
+    { filename : String
+    }
 
 
 type alias QualifiedName =
@@ -52,18 +53,27 @@ type alias Error =
 representation of files generated.
 -}
 mapDistribution : Options -> Distribution -> Result Error FileMap
-mapDistribution _ distro =
+mapDistribution opts distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
-            mapPackageDefinition packageName packageDef
+            mapPackageDefinition opts packageName packageDef
 
 
-mapPackageDefinition : PackageName -> Package.Definition ta (Type ()) -> Result Error FileMap
-mapPackageDefinition packageName packageDefinition =
+mapPackageDefinition : Options -> PackageName -> Package.Definition ta (Type ()) -> Result Error FileMap
+mapPackageDefinition opts packageName packageDefinition =
     packageDefinition
         |> generateSchema packageName
         |> Result.map encodeSchema
-        |> Result.map (Dict.singleton ( [], Path.toString Name.toTitleCase "." packageName ++ ".json" ))
+        |> Result.map
+            (Dict.singleton
+                ( []
+                , if String.isEmpty opts.filename then
+                    Path.toString Name.toTitleCase "." packageName ++ ".json"
+
+                  else
+                    opts.filename ++ ".json"
+                )
+            )
 
 
 mapQualifiedName : ( Path, Name ) -> String
