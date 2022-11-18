@@ -2,6 +2,8 @@
   "name": "morphir-elm",
   "version": "2.68.0",
   "description": "Elm bindings for Morphir",
+  "types": "lib/dist/main.d.ts",
+  "main": "lib/dist/main.js",
   "scripts": {
     "clean": "gulp clean",
     "test": "gulp test",
