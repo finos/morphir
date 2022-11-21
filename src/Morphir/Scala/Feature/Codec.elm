@@ -21,13 +21,27 @@ import Morphir.Scala.Feature.Core as ScalaBackend exposing (mapFQNameToPathAndNa
 type alias Error =
     String
 
+circePackagePath: List String
+circePackagePath = ["io","circe"]
 
+circePathString: String
+circePathString =
+    String.join "." circePackagePath
+
+circeJsonPath: List String
+circeJsonPath =
+    List.concat [circePackagePath, ["Json"]]
+
+circeJsonPathString: String
+circeJsonPathString =
+    String.join "." circeJsonPath
 
 {-
    This is the entry point for the Codecs backend. This function takes Distribution and returns a list of compilation units.
    All the types defined in the distribution are converted into Codecs in the output language. It uses
    the two helper functions mapTypeDefinitionToEncoder and mapTypeDefinitionToDecoder
 -}
+
 
 
 mapModuleDefinitionToCodecs : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
@@ -186,7 +200,7 @@ mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef 
 
 
 composeEncoder : FQName -> List ( Name, Type ta ) -> ( Scala.Pattern, Scala.Value )
-composeEncoder fqName ctorArgs =
+composeEncoder ((_,_, ctorName) as fqName) ctorArgs =
     let
         scalaFqn =
                     ScalaBackend.mapFQNameToPathAndName fqName
@@ -220,7 +234,9 @@ composeEncoder fqName ctorArgs =
 
     else
         ( Scala.UnapplyMatch [  ] (scalaFqn ) argNames
-        , Scala.Apply (Scala.Variable (scalaFqn )) (args |> List.map (Scala.ArgValue Nothing))
+        , Scala.Apply (Scala.Ref (circeJsonPath ) "arr") (
+        [Scala.Apply (Scala.Ref (circeJsonPath ) "fromString") (List.singleton <| Scala.ArgValue Nothing <| Scala.Literal  <| Scala.StringLit <| Name.toTitleCase ctorName)] ++
+        args |> List.map (Scala.ArgValue Nothing))
         )
 
 
