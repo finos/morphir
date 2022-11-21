@@ -161,7 +161,7 @@ mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef 
                 |> Dict.toList
                 |> List.map
                     (\( ctorName, ctorArgs ) ->
-                        composeEncoder ctorName ctorArgs
+                        composeEncoder (currentPackagePath ,currentModulePath, ctorName) ctorArgs
                     )
     in
     [ Scala.withoutAnnotation
@@ -176,16 +176,23 @@ mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef 
                         ]
                     )
             , value =
-                Scala.Lambda [ ( scalaName |> Name.toTitleCase, Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ]
-                    (Scala.Match (Scala.Variable (scalaName |> Name.toTitleCase)) (Scala.MatchCases patternMatch))
+                Scala.Lambda [ ( scalaName |> Name.toCamelCase, Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ]
+                    (Scala.Match (Scala.Variable (scalaName |> Name.toCamelCase)) (Scala.MatchCases patternMatch))
             }
         )
     ]
 
 
-composeEncoder : Name -> List ( Name, Type ta ) -> ( Scala.Pattern, Scala.Value )
-composeEncoder ctorName ctorArgs =
+
+
+composeEncoder : FQName -> List ( Name, Type ta ) -> ( Scala.Pattern, Scala.Value )
+composeEncoder fqName ctorArgs =
     let
+        scalaFqn =
+                    ScalaBackend.mapFQNameToPathAndName fqName
+                    |> Tuple.mapFirst (String.join ".")
+                    |> Tuple.mapSecond (Name.toTitleCase)
+                    |> (\(scalaTypePath, scalaName) ->  String.join "." [scalaTypePath, scalaName])
         args =
             ctorArgs
                 |> List.map
@@ -209,11 +216,11 @@ composeEncoder ctorName ctorArgs =
                     )
     in
     if List.isEmpty ctorArgs then
-        ( Scala.NamedMatch (ctorName |> Name.toTitleCase), Scala.Apply (Scala.Variable (ctorName |> Name.toTitleCase)) [] )
+        ( Scala.NamedMatch (scalaFqn ), Scala.Apply (Scala.Variable (scalaFqn )) [] )
 
     else
-        ( Scala.UnapplyMatch [ "" ] (ctorName |> Name.toTitleCase) argNames
-        , Scala.Apply (Scala.Variable (ctorName |> Name.toTitleCase)) (args |> List.map (Scala.ArgValue Nothing))
+        ( Scala.UnapplyMatch [  ] (scalaFqn ) argNames
+        , Scala.Apply (Scala.Variable (scalaFqn )) (args |> List.map (Scala.ArgValue Nothing))
         )
 
 
@@ -381,12 +388,19 @@ genEncodeReference tpe =
                 scalaPackageName : List String
                 scalaPackageName =
                     packageName ++ moduleName |> List.map (Name.toCamelCase >> String.toLower)
+                codecPath: List String
+                codecPath =
+                   List.concat [scalaPackageName, ["Codec"] ]
+
+                encoderName: String
+                encoderName =
+                    ("encode" :: typeName |> Name.toCamelCase)
 
                 scalaReference : Scala.Value
                 scalaReference =
                     Scala.Ref
-                        scalaPackageName
-                        ("encode" :: typeName |> Name.toCamelCase)
+                        codecPath
+                        encoderName
             in
             Ok scalaReference
 
