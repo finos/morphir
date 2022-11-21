@@ -35,74 +35,30 @@
                                         "value": {
                                             "doc": "",
                                             "value": [
-                                                "TypeAliasDefinition",
+                                                "CustomTypeDefinition",
                                                 [],
-                                                [
-                                                    "Record",
-                                                    {},
-                                                    [
-                                                        {
-                                                            "name": [
-                                                                "pii"
+                                                {
+                                                    "access": "Private",
+                                                    "value": [
+                                                        [
+                                                            [
+                                                                "m",
+                                                                "n",
+                                                                "p",
+                                                                "i"
                                                             ],
-                                                            "tpe": [
-                                                                "Reference",
-                                                                {},
-                                                                [
-                                                                    [
-                                                                        [
-                                                                            "morphir"
-                                                                        ],
-                                                                        [
-                                                                            "s",
-                                                                            "d",
-                                                                            "k"
-                                                                        ]
-                                                                    ],
-                                                                    [
-                                                                        [
-                                                                            "basics"
-                                                                        ]
-                                                                    ],
-                                                                    [
-                                                                        "bool"
-                                                                    ]
-                                                                ],
-                                                                []
-                                                            ]
-                                                        },
-                                                        {
-                                                            "name": [
-                                                                "mnpi"
+                                                            []
+                                                        ],
+                                                        [
+                                                            [
+                                                                "p",
+                                                                "i",
+                                                                "i"
                                                             ],
-                                                            "tpe": [
-                                                                "Reference",
-                                                                {},
-                                                                [
-                                                                    [
-                                                                        [
-                                                                            "morphir"
-                                                                        ],
-                                                                        [
-                                                                            "s",
-                                                                            "d",
-                                                                            "k"
-                                                                        ]
-                                                                    ],
-                                                                    [
-                                                                        [
-                                                                            "basics"
-                                                                        ]
-                                                                    ],
-                                                                    [
-                                                                        "bool"
-                                                                    ]
-                                                                ],
-                                                                []
-                                                            ]
-                                                        }
+                                                            []
+                                                        ]
                                                     ]
-                                                ]
+                                                }
                                             ]
                                         }
                                     }
