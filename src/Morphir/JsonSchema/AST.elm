@@ -30,10 +30,6 @@ type alias UniqueItems =
 -}
 
 
-type alias NumberOfItems =
-    Int
-
-
 type alias StringConstraints =
     { format : Maybe String
     }
@@ -54,4 +50,4 @@ type SchemaType
 
 type ArrayType
     = ListType SchemaType
-    | TupleType (List SchemaType) NumberOfItems
+    | TupleType (List SchemaType)

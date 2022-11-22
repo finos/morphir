@@ -158,7 +158,6 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                                 (Const (ctorName |> Name.toTitleCase)
                                                     :: schemaType
                                                 )
-                                                ((ctorArgs |> List.length) + 1)
                                             )
                                             False
                                     )
@@ -172,6 +171,9 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
 mapType : QualifiedName -> Type a -> Result Error SchemaType
 mapType qName typ =
     case typ of
+        Type.Variable _ name ->
+            Ok (Const (Name.toSnakeCase name))
+
         Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
             case ( FQName.toString fQName, argTypes ) of
                 ( "Morphir.SDK:Basics:int", [] ) ->
@@ -244,12 +246,12 @@ mapType qName typ =
                     [ mapType qName error
                         |> Result.map
                             (\errorSchema ->
-                                Array (TupleType [ Const "Err", errorSchema ] 2) True
+                                Array (TupleType [ Const "Err", errorSchema ]) True
                             )
                     , mapType qName value
                         |> Result.map
                             (\valueSchema ->
-                                Array (TupleType [ Const "Ok", valueSchema ] 2) True
+                                Array (TupleType [ Const "Ok", valueSchema ]) True
                             )
                     ]
                         |> ResultList.keepAllErrors
@@ -264,7 +266,7 @@ mapType qName typ =
                     tupleSchemaList
                         |> ResultList.keepAllErrors
                         |> Result.mapError List.concat
-                        |> Result.map (\tupleSchema -> Array (ListType (Array (TupleType tupleSchema 2) False)) True)
+                        |> Result.map (\tupleSchema -> Array (ListType (Array (TupleType tupleSchema) False)) True)
 
                 _ ->
                     Ok
@@ -299,8 +301,8 @@ mapType qName typ =
                 |> Result.mapError List.concat
                 |> Result.map
                     (\itemType ->
-                        Array (TupleType itemType (typeList |> List.length)) False
+                        Array (TupleType itemType) False
                     )
 
         _ ->
-            Err [ "Cannot map type " ++ Type.toString typ ++ " in module " ++ Path.toString Name.toTitleCase " " (qName |> Tuple.first) ]
+            Err [ "Cannot map type " ++ Type.toString typ ++ " in module " ++ Path.toString Name.toTitleCase "." (qName |> Tuple.first) ]
