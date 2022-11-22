@@ -43,13 +43,11 @@ encodeSchemaType schemaType =
                             ]
                         )
 
-                TupleType schemaTypes numberOfItems ->
+                TupleType schemaTypes ->
                     Encode.object
                         [ ( "type", Encode.string "array" )
                         , ( "items", Encode.bool False )
                         , ( "prefixItems", Encode.list encodeSchemaType schemaTypes )
-                        , ( "minItems", Encode.int numberOfItems )
-                        , ( "maxItems", Encode.int numberOfItems )
                         ]
 
         String stringConstraint ->
