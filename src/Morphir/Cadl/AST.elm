@@ -1,13 +1,6 @@
 module Morphir.Cadl.AST exposing (..)
 
--- expressions in cadl
--- alias string <> = expression ?? type ?? model
--- alias isValid = true
--- package = set of namespaces
--- namespace == modules
-
 import Dict exposing (Dict)
-import Set exposing (Set)
 
 
 type alias Name =
@@ -20,24 +13,38 @@ type alias Field =
     }
 
 
-
--- morphir equivalence to packages
-
-
-type alias Namespace =
+type alias NamespaceDeclaration =
     Dict Name TypeDefinition
 
 
-
--- ways of defining types in CADL.
--- `ta` refers to typeAttribute or Additional Info that could be added to a type. An example
--- would be `template` defined on an alias type say; <K,V> in terms of dictionary.
+type alias Templates =
+    List Type
 
 
 type TypeDefinition
-    = Alias Name Type
+    = Alias Name (List Name) Type
+    | Model Name Namespace (List Field)
+
+
+type alias Namespace =
+    List Name
 
 
 type Type
     = Boolean
     | String
+    | Integer
+    | Float
+    | PlainDate
+    | PlainTime
+    | Array ArrayType
+    | Variable Name
+    | Reference (List Type) Namespace Name
+    | Union (List Type)
+    | Const String
+    | Null
+
+
+type ArrayType
+    = ListType Type
+    | TupleType (List Type)
