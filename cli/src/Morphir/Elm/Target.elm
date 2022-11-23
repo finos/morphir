@@ -1,12 +1,12 @@
 module Morphir.Elm.Target exposing (..)
 
 import Json.Decode as Decode exposing (Error, Value)
+import Morphir.Cadl.Backend
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.Graph.Backend.Codec
 import Morphir.Graph.CypherBackend as Cypher
 import Morphir.Graph.SemanticBackend as SemanticBackend
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.Package as Package
 import Morphir.JsonSchema.Backend
 import Morphir.Scala.Backend
 import Morphir.Scala.Backend.Codec
@@ -29,6 +29,7 @@ type BackendOptions
     | TypeScriptOptions Morphir.TypeScript.Backend.Options
     | SparkOptions Morphir.Scala.Spark.Backend.Options
     | JsonSchemaOptions Morphir.JsonSchema.Backend.Options
+    | CadlOptions Morphir.Cadl.Backend.Options
 
 
 decodeOptions : Result Error String -> Decode.Decoder BackendOptions
@@ -51,6 +52,9 @@ decodeOptions gen =
 
         Ok "JsonSchema" ->
             Decode.map JsonSchemaOptions (Decode.succeed Morphir.JsonSchema.Backend.Options)
+
+        Ok "Cadl" ->
+            Decode.map CadlOptions (Decode.succeed Morphir.Cadl.Backend.Options)
 
         _ ->
             Decode.map (\options -> ScalaOptions options) Morphir.Scala.Backend.Codec.decodeOptions
@@ -79,3 +83,6 @@ mapDistribution back dist =
 
         JsonSchemaOptions options ->
             Morphir.JsonSchema.Backend.mapDistribution options dist
+
+        CadlOptions options ->
+            Morphir.Cadl.Backend.mapDistribution options dist
