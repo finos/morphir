@@ -50,10 +50,11 @@ definitionBody config valueDef =
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
 viewDefinition config ( packageName, moduleName, valueName ) valueDef =
     let
+        visualValueDef = {valueDef | body = Value.rewriteMaybeToPatternMatch valueDef.body }
         definitionElem =
             definition config
                 (nameToText valueName)
-                (definitionBody config valueDef)
+                (definitionBody config visualValueDef)
     in
     Element.column [ mediumSpacing config.state.theme |> spacing, padding 1 ]
         [ definitionElem ]
@@ -249,7 +250,10 @@ viewValueByLanguageFeature config value =
                                                                 currentState.variables
                                                                     |> Dict.insert defName evaluatedDefValue
                                                             )
-                                                        |> Result.withDefault currentState.variables
+                                                        |> Result.withDefault (currentState.variables |> Dict.insert defName (def
+                                                                |> Value.mapDefinitionAttributes (always ()) (always ())
+                                                                |> Value.definitionToValue
+                                                            ))
                                             }
 
                                         ( defs, bottomIn ) =

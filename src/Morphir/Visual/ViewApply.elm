@@ -217,7 +217,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
                                 visualState =
                                     config.state
                             in
-                            viewDefinitionBody { config | state = { visualState | variables = variables }, nodePath = config.nodePath ++ [ getId functionValue ] } valueDef
+                            viewDefinitionBody { config | state = { visualState | variables = variables }, nodePath = config.nodePath ++ [ getId functionValue ] } { valueDef | body = Value.rewriteMaybeToPatternMatch valueDef.body }
 
                         Nothing ->
                             Element.none

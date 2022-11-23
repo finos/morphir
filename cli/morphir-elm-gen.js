@@ -21,6 +21,7 @@ program
     .option('-c, --copy-deps', 'Copy the dependencies used by the generated code to the output path.', false)
     .option('-m, --modules-to-include <comma.separated,list.of,module.names>', 'Limit the set of modules that will be included.')
     .option('-s, --include-codecs', 'Generate JSON codecs', false)
+    .option('-f, --filename <filename>', 'Filename of the generated JSON Schema.', '')
     .parse(process.argv)
 
 cli.gen(program.opts().input, path.resolve(program.opts().output), program.opts())
