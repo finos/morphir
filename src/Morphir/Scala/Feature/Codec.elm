@@ -21,27 +21,33 @@ import Morphir.Scala.Feature.Core as ScalaBackend exposing (mapFQNameToPathAndNa
 type alias Error =
     String
 
-circePackagePath: List String
-circePackagePath = ["io","circe"]
 
-circePathString: String
+circePackagePath : List String
+circePackagePath =
+    [ "io", "circe" ]
+
+
+circePathString : String
 circePathString =
     String.join "." circePackagePath
 
-circeJsonPath: List String
-circeJsonPath =
-    List.concat [circePackagePath, ["Json"]]
 
-circeJsonPathString: String
+circeJsonPath : List String
+circeJsonPath =
+    List.concat [ circePackagePath, [ "Json" ] ]
+
+
+circeJsonPathString : String
 circeJsonPathString =
     String.join "." circeJsonPath
+
+
 
 {-
    This is the entry point for the Codecs backend. This function takes Distribution and returns a list of compilation units.
    All the types defined in the distribution are converted into Codecs in the output language. It uses
    the two helper functions mapTypeDefinitionToEncoder and mapTypeDefinitionToDecoder
 -}
-
 
 
 mapModuleDefinitionToCodecs : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
@@ -175,7 +181,7 @@ mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef 
                 |> Dict.toList
                 |> List.map
                     (\( ctorName, ctorArgs ) ->
-                        composeEncoder (currentPackagePath ,currentModulePath, ctorName) ctorArgs
+                        composeEncoder ( currentPackagePath, currentModulePath, ctorName ) ctorArgs
                     )
     in
     [ Scala.withoutAnnotation
@@ -197,16 +203,15 @@ mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef 
     ]
 
 
-
-
 composeEncoder : FQName -> List ( Name, Type ta ) -> ( Scala.Pattern, Scala.Value )
-composeEncoder ((_,_, ctorName) as fqName) ctorArgs =
+composeEncoder (( _, _, ctorName ) as fqName) ctorArgs =
     let
         scalaFqn =
-                    ScalaBackend.mapFQNameToPathAndName fqName
-                    |> Tuple.mapFirst (String.join ".")
-                    |> Tuple.mapSecond (Name.toTitleCase)
-                    |> (\(scalaTypePath, scalaName) ->  String.join "." [scalaTypePath, scalaName])
+            ScalaBackend.mapFQNameToPathAndName fqName
+                |> Tuple.mapFirst (String.join ".")
+                |> Tuple.mapSecond Name.toTitleCase
+                |> (\( scalaTypePath, scalaName ) -> String.join "." [ scalaTypePath, scalaName ])
+
         args =
             ctorArgs
                 |> List.map
@@ -230,13 +235,22 @@ composeEncoder ((_,_, ctorName) as fqName) ctorArgs =
                     )
     in
     if List.isEmpty ctorArgs then
-        ( Scala.NamedMatch (scalaFqn ), Scala.Apply (Scala.Variable (scalaFqn )) [] )
+        ( Scala.NamedMatch scalaFqn, Scala.Apply (Scala.Variable scalaFqn) [] )
 
     else
-        ( Scala.UnapplyMatch [  ] (scalaFqn ) argNames
-        , Scala.Apply (Scala.Ref (circeJsonPath ) "arr") (
-        [Scala.Apply (Scala.Ref (circeJsonPath ) "fromString") (List.singleton <| Scala.ArgValue Nothing <| Scala.Literal  <| Scala.StringLit <| Name.toTitleCase ctorName)] ++
-        args |> List.map (Scala.ArgValue Nothing))
+        ( Scala.UnapplyMatch [] scalaFqn argNames
+        , Scala.Apply (Scala.Ref circeJsonPath "arr")
+            ([ Scala.Apply (Scala.Ref circeJsonPath "fromString")
+                (List.singleton <|
+                    Scala.ArgValue Nothing <|
+                        Scala.Literal <|
+                            Scala.StringLit <|
+                                Name.toTitleCase ctorName
+                )
+             ]
+                ++ args
+                |> List.map (Scala.ArgValue Nothing)
+            )
         )
 
 
@@ -404,13 +418,14 @@ genEncodeReference tpe =
                 scalaPackageName : List String
                 scalaPackageName =
                     packageName ++ moduleName |> List.map (Name.toCamelCase >> String.toLower)
-                codecPath: List String
-                codecPath =
-                   List.concat [scalaPackageName, ["Codec"] ]
 
-                encoderName: String
+                codecPath : List String
+                codecPath =
+                    List.concat [ scalaPackageName, [ "Codec" ] ]
+
+                encoderName : String
                 encoderName =
-                    ("encode" :: typeName |> Name.toCamelCase)
+                    "encode" :: typeName |> Name.toCamelCase
 
                 scalaReference : Scala.Value
                 scalaReference =
