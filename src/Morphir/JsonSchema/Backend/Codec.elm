@@ -2,7 +2,7 @@ module Morphir.JsonSchema.Backend.Codec exposing (..)
 
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Morphir.JsonSchema.Backend exposing (Error, Options)
+import Morphir.JsonSchema.Backend exposing (Error, Errors, Options)
 
 
 decodeOptions : Decoder Options
@@ -10,6 +10,6 @@ decodeOptions =
     Decode.map Options (Decode.field "filename" Decode.string)
 
 
-encodeError : Error -> Encode.Value
-encodeError error =
-    Encode.list Encode.string error
+encodeErrors : Errors -> Encode.Value
+encodeErrors errors =
+    Encode.list Encode.string errors

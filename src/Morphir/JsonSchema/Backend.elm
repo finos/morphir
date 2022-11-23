@@ -45,21 +45,25 @@ type alias QualifiedName =
     ( Path, Name )
 
 
-type alias Error =
+type alias Errors =
     List String
+
+
+type alias Error =
+    String
 
 
 {-| Entry point for the JSON Schema backend. It takes the Morphir IR as the input and returns an in-memory
 representation of files generated.
 -}
-mapDistribution : Options -> Distribution -> Result Error FileMap
+mapDistribution : Options -> Distribution -> Result Errors FileMap
 mapDistribution opts distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
             mapPackageDefinition opts packageName packageDef
 
 
-mapPackageDefinition : Options -> PackageName -> Package.Definition ta (Type ()) -> Result Error FileMap
+mapPackageDefinition : Options -> PackageName -> Package.Definition ta (Type ()) -> Result Errors FileMap
 mapPackageDefinition opts packageName packageDefinition =
     packageDefinition
         |> generateSchema packageName
@@ -81,10 +85,10 @@ mapQualifiedName ( path, name ) =
     String.join "." [ Path.toString Name.toTitleCase "." path, Name.toTitleCase name ]
 
 
-generateSchema : PackageName -> Package.Definition ta (Type ()) -> Result Error Schema
+generateSchema : PackageName -> Package.Definition ta (Type ()) -> Result Errors Schema
 generateSchema packageName packageDefinition =
     let
-        schemaTypeDefinitions : Result Error (List ( TypeName, SchemaType ))
+        schemaTypeDefinitions : Result Errors (List ( TypeName, SchemaType ))
         schemaTypeDefinitions =
             packageDefinition.modules
                 |> Dict.toList
@@ -123,7 +127,7 @@ extractTypes modName definition =
             )
 
 
-mapTypeDefinition : ( Path, Name ) -> Type.Definition ta -> Result Error (List ( TypeName, SchemaType ))
+mapTypeDefinition : ( Path, Name ) -> Type.Definition ta -> Result Errors (List ( TypeName, SchemaType ))
 mapTypeDefinition (( path, name ) as qualifiedName) definition =
     case definition of
         Type.TypeAliasDefinition _ typ ->
@@ -168,7 +172,7 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                     (\schemaTypes -> [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf schemaTypes ) ])
 
 
-mapType : QualifiedName -> Type a -> Result Error SchemaType
+mapType : QualifiedName -> Type a -> Result Errors SchemaType
 mapType qName typ =
     case typ of
         Type.Variable _ name ->

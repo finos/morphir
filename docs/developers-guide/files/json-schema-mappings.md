@@ -5,7 +5,6 @@ Json Schema Reference can be found [here](http://json-schema.org/understanding-j
 <br>
 Additional reading:
 * [Sample Json Schema](json-schema-sample.json)
-* [Json Schema Backend](json-schema-ast.md)
 * [Testing Strategy](json-schema-backend-testplan.md)
 
 ## Overview
@@ -21,10 +20,22 @@ Type | Elm sample | JSON sample | Comment
 `String` | `"Foo bar"`, `""` | `"Foo bar"`, `""` | Exact mapping
 `Maybe a` | `Just 13`, `Nothing` | `13`, `null` | Maybe maps to nullable JSON value
 `List a` | `[1, 2, 3]`, `[]` | `[1, 2, 3]`, `[]` | Lists map to JSON arrays
-tuples | `( 13, False )` | `[13, false]` | Tuples map to arrays
-record types | `{ foo = 13, bar = False }`  | `{ "foo": 13, "bar": false }` | Records map to objects
-custom types | `FooBar "hello`, `MyEnum` | `["FooBar", "hello"]`, `"MyEnum"` | see details below
+`tuples` | `( 13, False )` | `[13, false]` | Tuples map to arrays
+`record types` | `{ foo = 13, bar = False }`  | `{ "foo": 13, "bar": false }` | Records map to objects
+`custom types` | `FooBar "hello`, `MyEnum` | `["FooBar", "hello"]`, `"MyEnum"` | see details below
 
+## How to Generate a Json Schema
+Follow the two step s below to generate a Json Schema
+
+* Step 1
+Run the ```elm morphir-elm make ``` command to generate an IR
+* Step 2
+Run the ```elm morphir-elm gen -t JsonSchema``` to generate the Json Schema
+
+**Note** - The generated schema is named <package-name>.json by default. But you can specify the filename
+optionally for the schema using the -f flag.
+
+<br><br>
 Next, we will get into some specific cases that may need further explanation.
 
 The rest of the explains how each Morphir type maps to the Json Schema Types.

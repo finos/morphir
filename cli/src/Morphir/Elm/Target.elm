@@ -60,7 +60,7 @@ decodeOptions gen =
 --mapDistribution : BackendOptions -> Distribution -> Result String FileMap
 
 
-mapDistribution : BackendOptions -> Distribution -> Result Morphir.JsonSchema.Backend.Error FileMap
+mapDistribution : BackendOptions -> Distribution -> Result Morphir.JsonSchema.Backend.Errors FileMap
 mapDistribution back dist =
     case back of
         SpringBootOptions options ->
