@@ -11,19 +11,13 @@ alias isValid = boolean
 ##### [Int](https://package.elm-lang.org/packages/elm/core/latest/Basics#Int)
 In CADL, this maps to the subtype `integer`. The `integer` type assignment is valid CADL, but <br/>
 <span style="color: red; font-style:italic;"> Things to note :: </span>
-1. When dealing with emitters such as OpenApiSpec(OAS) it defaults to an object. To obtain an actual int value, specify a subtype `int64`. 
-2. There can't be two `integer` types in a model, specify subtypes instead. 
+1. When dealing with emitters such as OpenApiSpec(OAS) it defaults to an object. To obtain an actual int value, specify a subtype `int64`.
 ```
 alias Foo = integer;
 
 // when dealing with emitters
 alias Foo = int64;
-
-// invalid in CADL              |       // valid CADL
-model Bar {                     |       model Bar {
-    x: integer,                 |           x: int64,
-    y: integer                  |           y: int64,
-}                               |       }
+                              |       }
 ```
 
 ##### [Float](https://package.elm-lang.org/packages/elm/core/latest/Basics#Float)
@@ -34,12 +28,7 @@ alias PI = float
 
 // when dealing with emitters
 alias Foo = float64;
-
-// invalid in CADL              |       // valid CADL
-model Bar {                     |       model Bar {
-    x: float,                   |           x: float64,
-    y: float                    |           y: float64,
-}                               |       }
+                             |       }
 ```
 ##### [String](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-String)
 The `string` type; a sequence of characters, in morphir maps directly to `string` type in CADL.
@@ -112,18 +101,18 @@ alias Dict<K,V> = Array<[K,V]> ;
 ```
 
 ##### [Result](https://package.elm-lang.org/packages/elm/core/latest/Result)
-The `result` type in morphir is used to manage errors of a computation that may fail. The morphir type `result` returns the first argument if successful else
-it returns the second; the error. This concept is supported in CADL through the use of `template` alias. 
+The `result` type in morphir is used to manage errors of a computation that may fail. The morphir type `result` returns the second argument if successful else
+it returns the first; which is the error. This concept is supported in CADL through the use of `template` alias whose values are tagged union types. 
 ```
-alias Result<T,E> = T | E;
+alias Result<E,V> = ["Err", E] | ["Ok", V];
 ```      
 
 ### Composite Types
 #### [Tuples](https://package.elm-lang.org/packages/elm/core/latest/Tuple)
 The `tuple` type in morphir is data structure that holds elements of the same or different types as a single value. CADL directly support `tuples` as a subtype of array
-and hence uses the `[]`  syntax of array.
+and hence uses the `[]`  syntax.
 ```
-alias Tuple<T,E> = Array<[T,E]>;
+alias Tuple<T,E> = [T,E];
 ```
 ##### [Record Types](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Value#record)
 Morphir `record` represents a dictionary of fields where the keys are the field names, and the values are the field values. This maps to `model` type in CADL. 
