@@ -312,7 +312,7 @@ mapCustomTypeDefinitionToDecoder currentPackagePath currentModulePath moduleDef 
                 |> Dict.toList
                 |> List.map
                     (\( ctorName, ctorArgs ) ->
-                        composeDecoder ctorName ctorArgs
+                        composeDecoder ( currentPackagePath, currentModulePath, ctorName ) ctorArgs
                     )
     in
     [ Scala.withoutAnnotation
@@ -332,8 +332,8 @@ mapCustomTypeDefinitionToDecoder currentPackagePath currentModulePath moduleDef 
 --( "c", Just (Scala.TypeRef [ "io", "circe" ] "HCursor") )
 
 
-composeDecoder : Name -> List ( Name, Type ta ) -> ( Scala.Pattern, Scala.Value )
-composeDecoder ctorName ctorArgs =
+composeDecoder : FQName -> List ( Name, Type ta ) -> ( Scala.Pattern, Scala.Value )
+composeDecoder ((_,_,ctorName) as fqName) ctorArgs =
     let
         args =
             ctorArgs
@@ -341,7 +341,7 @@ composeDecoder ctorName ctorArgs =
                     (\( argName, argType ) ->
                         let
                             typeRefResult =
-                                genEncodeReference [] argType
+                                genDecodeReference fqName argType
 
                             arg =
                                 Scala.Variable (argName |> Name.toCamelCase)
@@ -366,7 +366,7 @@ composeDecoder ctorName ctorArgs =
                                 Scala.Variable ("c.downN(" ++ argIndex ++ ")")
 
                             typeRefResult =
-                                genDecodeReference [] (Tuple.second arg)
+                                genEncodeReference [] (Tuple.second arg)
 
                             asSelect : Scala.Value
                             asSelect =
