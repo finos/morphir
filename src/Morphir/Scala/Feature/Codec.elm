@@ -269,7 +269,7 @@ mapTypeDefinitionToDecoder currentPackagePath currentModulePath accessControlled
             in
             genDecodeReference (FQName.fQName currentPackagePath currentModulePath typeName) typeExp
                 |> Result.map
-                    (\encodeValue ->
+                    (\decodeValue ->
                         [ Scala.withoutAnnotation
                             (Scala.ValueDecl
                                 { modifiers = [ Scala.Implicit ]
@@ -282,7 +282,7 @@ mapTypeDefinitionToDecoder currentPackagePath currentModulePath accessControlled
                                             ]
                                         )
                                 , value =
-                                    encodeValue |> Scala.Lambda [ ( "c", Just (Scala.TypeRef [ "io.circe" ] "HCursor") ) ]
+                                    decodeValue |> Scala.Lambda [ ( scalaName |> Name.toCamelCase, Just (Scala.TypeRef [ "io.circe" ] "HCursor") ) ]
                                 }
                             )
                         ]
@@ -321,20 +321,22 @@ mapCustomTypeDefinitionToDecoder currentPackagePath currentModulePath moduleDef 
             , pattern = Scala.NamedMatch ("decode" :: typeName |> Name.toCamelCase)
             , valueType = Just (Scala.TypeRef [] (typeName |> Name.toTitleCase))
             , value =
-                Scala.Lambda [ ( "c", Just (Scala.TypeRef [ "io", "circe" ] "HCursor") ) ]
-                    (Scala.Match (Scala.Variable (scalaName |> Name.toTitleCase)) (Scala.MatchCases patternMatch))
+                Scala.Lambda [ ( scalaName |> Name.toCamelCase, Just (Scala.TypeRef [ "io", "circe" ] "HCursor") ) ]
+                    (Scala.Match (Scala.Variable (scalaName |> Name.toCamelCase)) (Scala.MatchCases patternMatch))
             }
         )
     ]
 
 
-
---( "c", Just (Scala.TypeRef [ "io", "circe" ] "HCursor") )
-
-
 composeDecoder : FQName -> List ( Name, Type ta ) -> ( Scala.Pattern, Scala.Value )
-composeDecoder ((_,_,ctorName) as fqName) ctorArgs =
+composeDecoder fqName ctorArgs =
     let
+        scalaFqn =
+            ScalaBackend.mapFQNameToPathAndName fqName
+                |> Tuple.mapFirst (String.join ".")
+                |> Tuple.mapSecond Name.toTitleCase
+                |> (\( scalaTypePath, scalaName ) -> String.join "." [ scalaTypePath, scalaName ])
+
         args =
             ctorArgs
                 |> List.map
@@ -391,13 +393,13 @@ composeDecoder ((_,_,ctorName) as fqName) ctorArgs =
                     )
 
         yeildExpression =
-            Scala.Apply (Scala.Variable (ctorName |> Name.toTitleCase)) yeildArgValues
+            Scala.Apply (Scala.Variable scalaFqn) yeildArgValues
     in
     if List.isEmpty ctorArgs then
-        ( Scala.NamedMatch (ctorName |> Name.toTitleCase), Scala.Apply (Scala.Variable (ctorName |> Name.toTitleCase)) [] )
+        ( Scala.NamedMatch scalaFqn, Scala.Apply (Scala.Variable scalaFqn) [] )
 
     else
-        ( Scala.NamedMatch (ctorName |> Name.toTitleCase)
+        ( Scala.NamedMatch scalaFqn
         , Scala.ForComp generators yeildExpression
         )
 
@@ -636,7 +638,7 @@ genDecodeReference fqName tpe =
 
                                                 downFieldApply : Scala.Value
                                                 downFieldApply =
-                                                    Scala.Apply (Scala.Select (Scala.Variable "c") "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
+                                                    Scala.Apply (Scala.Select (Scala.Variable (scalaName |> Name.toCamelCase)) "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
 
                                                 downFieldApplyWithAs : Scala.Value
                                                 downFieldApplyWithAs =
@@ -695,7 +697,7 @@ genDecodeReference fqName tpe =
 
                                                 downFieldApply : Scala.Value
                                                 downFieldApply =
-                                                    Scala.Apply (Scala.Select (Scala.Variable "c") "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
+                                                    Scala.Apply (Scala.Select (Scala.Variable (scalaName |> Name.toCamelCase)) "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
 
                                                 downFieldApplyWithAs : Scala.Value
                                                 downFieldApplyWithAs =
