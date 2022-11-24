@@ -131,7 +131,7 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlled
                 ( scalaTypePath, scalaName ) =
                     ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
             in
-            genEncodeReference typeExp
+            genEncodeReference scalaName typeExp
                 |> Result.map
                     (\encodeValue ->
                         [ Scala.withoutAnnotation
@@ -146,7 +146,7 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlled
                                             ]
                                         )
                                 , value =
-                                    encodeValue |> Scala.Lambda [ ( "a", Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ]
+                                    encodeValue |> Scala.Lambda [ ( scalaName |> Name.toCamelCase, Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ]
                                 }
                             )
                         ]
@@ -219,7 +219,7 @@ composeEncoder (( _, _, ctorName ) as fqName) ctorArgs =
                         let
                             typeRef : Scala.Value
                             typeRef =
-                                genEncodeReference argType |> Result.withDefault (Scala.Variable "")
+                                genEncodeReference [] argType |> Result.withDefault (Scala.Variable "")
 
                             arg =
                                 Scala.Variable (argName |> Name.toCamelCase)
@@ -341,7 +341,7 @@ composeDecoder ctorName ctorArgs =
                     (\( argName, argType ) ->
                         let
                             typeRefResult =
-                                genEncodeReference argType
+                                genEncodeReference [] argType
 
                             arg =
                                 Scala.Variable (argName |> Name.toCamelCase)
@@ -366,7 +366,7 @@ composeDecoder ctorName ctorArgs =
                                 Scala.Variable ("c.downN(" ++ argIndex ++ ")")
 
                             typeRefResult =
-                                genEncodeReference (Tuple.second arg)
+                                genDecodeReference [] (Tuple.second arg)
 
                             asSelect : Scala.Value
                             asSelect =
@@ -407,13 +407,13 @@ composeDecoder ctorName ctorArgs =
     Get an Encoder reference for a Type
 
 -}
-genEncodeReference : Type ta -> Result Error Scala.Value
-genEncodeReference tpe =
+genEncodeReference : Name -> Type ta -> Result Error Scala.Value
+genEncodeReference tpeName tpe =
     case tpe of
         Type.Variable _ varName ->
             Ok (Scala.Variable ("encode" :: varName |> Name.toCamelCase))
 
-        Type.Reference _ ( packageName, moduleName, typeName ) typeArgs ->
+        Type.Reference _ (( packageName, moduleName, typeName ) as fqName) typeArgs ->
             let
                 scalaPackageName : List String
                 scalaPackageName =
@@ -433,7 +433,46 @@ genEncodeReference tpe =
                         codecPath
                         encoderName
             in
-            Ok scalaReference
+            case FQName.toString fqName of
+                "Morphir.SDK:Basics:int" ->
+                    Ok <|
+                        Scala.Apply (Scala.Ref circeJsonPath "fromInt")
+                            [ Scala.ArgValue Nothing <|
+                                Scala.Variable <|
+                                    Name.toCamelCase
+                                        tpeName
+                            ]
+
+                "Morphir.SDK:Basics:float" ->
+                    Ok <|
+                        Scala.Apply (Scala.Ref circeJsonPath "fromFloat")
+                            [ Scala.ArgValue Nothing <|
+                                Scala.Variable <|
+                                    Name.toCamelCase
+                                        tpeName
+                            ]
+
+                "Morphir.SDK:Basics:bool" ->
+                    Ok <|
+                        Scala.Apply (Scala.Ref circeJsonPath "fromBool")
+                            [ Scala.ArgValue Nothing <|
+                                Scala.Variable <|
+                                    Name.toCamelCase
+                                        tpeName
+                            ]
+
+                "Morphir.SDK:String:string" ->
+                    Ok <|
+                        Scala.Apply (Scala.Ref circeJsonPath "fromString")
+                            [ Scala.ArgValue Nothing <|
+                                Scala.Variable <|
+                                    Name.toCamelCase
+                                        tpeName
+                            ]
+
+                _ ->
+                    Ok
+                        scalaReference
 
         Type.Tuple a types ->
             let
@@ -441,7 +480,7 @@ genEncodeReference tpe =
                     types
                         |> List.map
                             (\currentType ->
-                                genEncodeReference currentType
+                                genEncodeReference tpeName currentType
                             )
                         |> ResultList.keepFirstError
                         |> Result.map
@@ -462,7 +501,7 @@ genEncodeReference tpe =
                     fields
                         |> List.map
                             (\field ->
-                                genEncodeReference field.tpe
+                                genEncodeReference tpeName field.tpe
                                     |> Result.map
                                         (\fieldValueEncoder ->
                                             let
@@ -477,7 +516,7 @@ genEncodeReference tpe =
                                             Scala.ArgValue Nothing
                                                 (Scala.Tuple
                                                     [ fieldNameLiteral
-                                                    , Scala.Apply fieldValueEncoder [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable "a") fieldName) ]
+                                                    , Scala.Apply fieldValueEncoder [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable (tpeName |> Name.toCamelCase)) fieldName) ]
                                                     ]
                                                 )
                                         )
@@ -498,7 +537,7 @@ genEncodeReference tpe =
                     fields
                         |> List.map
                             (\field ->
-                                genEncodeReference field.tpe
+                                genEncodeReference tpeName field.tpe
                                     |> Result.map
                                         (\fieldValueEncoder ->
                                             let
@@ -513,7 +552,7 @@ genEncodeReference tpe =
                                             Scala.ArgValue Nothing
                                                 (Scala.Tuple
                                                     [ fieldNameLiteral
-                                                    , Scala.Apply fieldValueEncoder [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable "a") fieldName) ]
+                                                    , Scala.Apply fieldValueEncoder [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable (tpeName |> Name.toCamelCase)) fieldName) ]
                                                     ]
                                                 )
                                         )
