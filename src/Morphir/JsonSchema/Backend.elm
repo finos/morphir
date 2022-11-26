@@ -308,5 +308,8 @@ mapType qName typ =
                         Array (TupleType itemType) False
                     )
 
+        Type.Function _ tpe1 tpe2 ->
+            mapType qName tpe2
+
         _ ->
             Err [ "Cannot map type " ++ Type.toString typ ++ " in module " ++ Path.toString Name.toTitleCase "." (qName |> Tuple.first) ]
