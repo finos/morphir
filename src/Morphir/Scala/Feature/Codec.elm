@@ -331,6 +331,9 @@ mapCustomTypeDefinitionToDecoder currentPackagePath currentModulePath moduleDef 
 composeDecoder : FQName -> List ( Name, Type ta ) -> ( Scala.Pattern, Scala.Value )
 composeDecoder fqName ctorArgs =
     let
+        ( _, name ) =
+            ScalaBackend.mapFQNameToPathAndName fqName
+
         scalaFqn =
             ScalaBackend.mapFQNameToPathAndName fqName
                 |> Tuple.mapFirst (String.join ".")
@@ -365,7 +368,7 @@ composeDecoder fqName ctorArgs =
                                 String.right 1 (Tuple.first arg |> Name.toCamelCase)
 
                             downApply =
-                                Scala.Variable ("c.downN(" ++ argIndex ++ ")")
+                                Scala.Variable ((Tuple.first arg |> Name.toCamelCase) ++ ".downN(" ++ argIndex ++ ")")
 
                             typeRefResult =
                                 genEncodeReference [] (Tuple.second arg)
