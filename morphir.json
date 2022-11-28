@@ -1,6 +1,9 @@
 {
     "name": "Morphir",
     "sourceDirectory": "src",
+    "localDependencies": [
+        "/test-integration/reference-model/morphir-ir.json"
+    ],
     "exposedModules": [
         "IR.Name",
         "IR.Path",

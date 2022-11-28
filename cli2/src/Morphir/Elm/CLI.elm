@@ -28,10 +28,10 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.File.FileSnapshot as FileSnapshot exposing (FileSnapshot)
 import Morphir.File.FileSnapshot.Codec as FileSnapshotCodec
-import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..), lookupPackageName, lookupPackageSpecification)
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.Name as Name
-import Morphir.IR.Package exposing (PackageName)
+import Morphir.IR.Package exposing (PackageName, Specification)
 import Morphir.IR.Path as Path
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 import Morphir.IR.SDK as SDK
@@ -86,6 +86,7 @@ subscriptions _ =
 type alias BuildFromScratchInput =
     { options : Frontend.Options
     , packageInfo : PackageInfo
+    , dependencies : List Distribution
     , fileSnapshot : FileSnapshot
     }
 
@@ -94,6 +95,7 @@ type alias BuildIncrementallyInput =
     { options : Frontend.Options
     , packageInfo : PackageInfo
     , fileChanges : FileChanges
+    , dependencies : List Distribution
     , distribution : Distribution
     }
 
@@ -128,15 +130,40 @@ process msg =
             let
                 decodeInput : Decode.Decoder BuildFromScratchInput
                 decodeInput =
-                    Decode.map3 BuildFromScratchInput
+                    Decode.map4 BuildFromScratchInput
                         (Decode.field "options" FrontendCodec.decodeOptions)
                         (Decode.field "packageInfo" FrontendCodec.decodePackageInfo)
+                        (Decode.field "dependencies" decodeDependenciesInput)
                         (Decode.field "fileSnapshot" FileSnapshotCodec.decodeFileSnapshot)
+
+                decodeDependenciesInput : Decode.Decoder (List Distribution)
+                decodeDependenciesInput =
+                    Decode.list DistroCodec.decodeVersionedDistribution
+
+                insertDependenciesIntoRepo : List Distribution -> Repo -> Result Repo.Errors Repo
+                insertDependenciesIntoRepo dependencyList repo =
+                    dependencyList
+                        |> List.foldl
+                            (\distro repoResult ->
+                                let
+                                    dependencySpec : Specification ()
+                                    dependencySpec =
+                                        lookupPackageSpecification distro
+
+                                    dependencyName : PackageName
+                                    dependencyName =
+                                        lookupPackageName distro
+                                in
+                                repoResult
+                                    |> Result.andThen (Repo.insertDependencySpecification dependencyName dependencySpec)
+                            )
+                            (Ok repo)
             in
             case jsonInput |> Decode.decodeValue decodeInput of
                 Ok input ->
                     Repo.empty input.packageInfo.name
-                        |> Repo.insertDependencySpecification SDK.packageName SDK.packageSpec
+                        |> insertDependenciesIntoRepo input.dependencies
+                        |> Result.andThen (Repo.insertDependencySpecification SDK.packageName SDK.packageSpec)
                         |> Result.mapError (IncrementalFrontend.RepoError "Error while building repo." >> List.singleton)
                         |> Result.map
                             (OrderFileChanges input.packageInfo.name
@@ -155,15 +182,40 @@ process msg =
             let
                 decodeInput : Decode.Decoder BuildIncrementallyInput
                 decodeInput =
-                    Decode.map4 BuildIncrementallyInput
+                    Decode.map5 BuildIncrementallyInput
                         (Decode.field "options" FrontendCodec.decodeOptions)
                         (Decode.field "packageInfo" FrontendCodec.decodePackageInfo)
                         (Decode.field "fileChanges" FileChangesCodec.decodeFileChanges)
+                        (Decode.field "dependencies" decodeDependenciesInput)
                         (Decode.field "distribution" DistroCodec.decodeVersionedDistribution)
+
+                decodeDependenciesInput : Decode.Decoder (List Distribution)
+                decodeDependenciesInput =
+                    Decode.list DistroCodec.decodeVersionedDistribution
+
+                insertDependenciesIntoDistro : List Distribution -> Distribution -> Distribution
+                insertDependenciesIntoDistro dependencyList distribution =
+                    dependencyList
+                        |> List.foldl
+                            (\distro distroResult ->
+                                let
+                                    dependencySpec : Specification ()
+                                    dependencySpec =
+                                        lookupPackageSpecification distro
+
+                                    dependencyName : PackageName
+                                    dependencyName =
+                                        lookupPackageName distro
+                                in
+                                distroResult
+                                    |> Distribution.insertDependency dependencyName dependencySpec
+                            )
+                            distribution
             in
             case jsonInput |> Decode.decodeValue decodeInput of
                 Ok input ->
                     input.distribution
+                        |> insertDependenciesIntoDistro input.dependencies
                         |> Distribution.insertDependency SDK.packageName SDK.packageSpec
                         |> Repo.fromDistribution
                         |> Result.mapError (IncrementalFrontend.RepoError "Error while building repo." >> List.singleton)

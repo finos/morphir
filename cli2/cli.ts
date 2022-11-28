@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as util from "util";
 import * as path from "path";
 import * as FileChanges from "./FileChanges";
+import * as Dependencies from "./Dependencies";
 
 const fsExists = util.promisify(fs.exists);
 const fsWriteFile = util.promisify(fs.writeFile);
@@ -16,6 +17,7 @@ const worker = require("./../Morphir.Elm.CLI").Elm.Morphir.Elm.CLI.init();
 interface MorphirJson {
   name: string;
   sourceDirectory: string;
+  localDependencies: string[];
   exposedModules: string[];
 }
 
@@ -33,6 +35,9 @@ async function make(
     (await fsReadFile(morphirJsonPath)).toString()
   );
 
+  //collect List Of Dependency IR
+  const dependencies = await Dependencies.getDependecies(morphirJson.localDependencies)
+
   // check the status of the build incremental flag
   if (options.buildIncrementally == false) {
     // We invoke file change detection but pass in no hashes which will generate inserts only
@@ -40,10 +45,12 @@ async function make(
       new Map(),
       path.join(projectDir, morphirJson.sourceDirectory) 
     );
+
     const fileSnapshot = FileChanges.toFileSnapshotJson(fileChanges);
     const newIR: string = await buildFromScratch(
       morphirJson,
       fileSnapshot,
+      dependencies,
       options
     );
     await writeContentHashes(
@@ -67,6 +74,7 @@ async function make(
           morphirJson,
           fileChanges,
           options,
+          dependencies,
           previousIR
         );
         await writeContentHashes(
@@ -90,6 +98,7 @@ async function make(
       const newIR: string = await buildFromScratch(
         morphirJson,
         fileSnapshot,
+        dependencies,
         options
       );
       await writeContentHashes(
@@ -104,6 +113,7 @@ async function make(
 async function buildFromScratch(
   morphirJson: any,
   fileSnapshot: { [index: string]: string },
+  dependencies:string[],
   options: any
 ): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -131,9 +141,18 @@ async function buildFromScratch(
       typesOnly: options.typesOnly,
     };
 
+    let maybeDependencies: any[] = []
+    if(dependencies.length !== 0){
+      for (const dependency in dependencies) {
+        maybeDependencies.push(JSON.parse(dependency))
+      }
+      return maybeDependencies
+    }
+
     worker.ports.buildFromScratch.send({
       options: opts,
       packageInfo: morphirJson,
+      dependencies: maybeDependencies,
       fileSnapshot: fileSnapshot,
     });
   });
@@ -143,6 +162,7 @@ async function buildIncrementally(
   morphirJson: any,
   fileChanges: FileChanges.FileChanges,
   options: any,
+  dependencies: string[],
   previousIR: string
 ): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -175,10 +195,19 @@ async function buildIncrementally(
       maybeDistribution = JSON.parse(previousIR);
     }
 
+    let maybeDependencies: any[] = []
+    if(dependencies){
+      for (const dependency in dependencies) {
+        maybeDependencies.push(JSON.parse(dependency))
+      }
+      return maybeDependencies
+    }
+
     worker.ports.buildIncrementally.send({
       options: opts,
       packageInfo: morphirJson,
       fileChanges: FileChanges.toFileChangesJson(fileChanges),
+      dependencies: maybeDependencies,
       distribution: maybeDistribution,
     });
   });
