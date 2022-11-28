@@ -277,19 +277,9 @@ mapType typ =
                 requiredFields : List String
                 requiredFields =
                     fields
-                        |> List.filterMap
+                        |> List.map
                             (\field ->
-                                case field.tpe of
-                                    Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
-                                        case ( FQName.toString fQName, argTypes ) of
-                                            ( "Morphir.SDK:Maybe:maybe", [] ) ->
-                                                Nothing
-
-                                            _ ->
-                                                Just (field.name |> Name.toTitleCase)
-
-                                    _ ->
-                                        Just (field.name |> Name.toTitleCase)
+                                field.name |> Name.toCamelCase
                             )
             in
             fields

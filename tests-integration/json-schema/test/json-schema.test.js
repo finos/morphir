@@ -131,7 +131,7 @@ describe('Test Suite for Composite Types - Records/Tuples', () => {
             path : "Bar",
             protocol : "http"
         }
-        expect(validator(recordSchema, recordInstance)).toBe(true)
+         expect(validator(recordSchema, recordInstance)).toBe(true)
     })
 
     test('Test for Tuple type', () => {
