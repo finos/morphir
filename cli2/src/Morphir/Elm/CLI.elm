@@ -158,6 +158,13 @@ process msg =
                                     |> Result.andThen (Repo.insertDependencySpecification dependencyName dependencySpec)
                             )
                             (Ok repo)
+                        |> (\a ->
+                                let
+                                    _ =
+                                        Debug.log "deps" (Result.map Repo.dependsOnPackages a)
+                                in
+                                a
+                           )
             in
             case jsonInput |> Decode.decodeValue decodeInput of
                 Ok input ->
@@ -345,12 +352,19 @@ keepElmFilesOnly fileChanges =
 returnDistribution : Result IncrementalFrontend.Errors Repo -> Cmd Msg
 returnDistribution repoResult =
     let
-        removePackageDependencies (Library packageName _ packageDefinition) =
-            Library packageName Dict.empty packageDefinition
+        cleanupDependencies (Library packageName dependencies packageDefinition) =
+            Library packageName
+                (dependencies
+                    |> Dict.filter
+                        (\depPackageName _ ->
+                            depPackageName /= [ [ "morphir" ], [ "s", "d", "k" ] ]
+                        )
+                )
+                packageDefinition
     in
     repoResult
         |> Result.map Repo.toDistribution
-        |> Result.map removePackageDependencies
+        |> Result.map cleanupDependencies
         |> encodeResult (Encode.list IncrementalFrontendCodec.encodeError) DistroCodec.encodeVersionedDistribution
         |> buildCompleted
 

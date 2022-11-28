@@ -17,7 +17,7 @@ const worker = require("./../Morphir.Elm.CLI").Elm.Morphir.Elm.CLI.init();
 interface MorphirJson {
   name: string;
   sourceDirectory: string;
-  localDependencies: string[];
+  localDependencies?: string[];
   exposedModules: string[];
 }
 
@@ -26,24 +26,26 @@ async function make(
   options: any
 ): Promise<string | undefined> {
   // Morphir specific files expected to be in the project directory
-  const morphirJsonPath: string = path.join(projectDir, "morphir.json"); 
-  const hashFilePath: string = path.join(projectDir, "morphir-hashes.json");  
-  const morphirIrPath: string = path.join(projectDir, "morphir-ir.json"); 
+  const morphirJsonPath: string = path.join(projectDir, "morphir.json");
+  const hashFilePath: string = path.join(projectDir, "morphir-hashes.json");
+  const morphirIrPath: string = path.join(projectDir, "morphir-ir.json");
 
   // Load the `morphir.json` file that describes the project
   const morphirJson: MorphirJson = JSON.parse(
     (await fsReadFile(morphirJsonPath)).toString()
   );
 
-  //collect List Of Dependency IR
-  const dependencies = await Dependencies.getDependecies(morphirJson.localDependencies)
+  //load List Of Dependency IR
+  const dependencies = await Dependencies.getDependecies(
+    morphirJson.localDependencies ?? []
+  );
 
   // check the status of the build incremental flag
   if (options.buildIncrementally == false) {
     // We invoke file change detection but pass in no hashes which will generate inserts only
     const fileChanges = await FileChanges.detectChanges(
       new Map(),
-      path.join(projectDir, morphirJson.sourceDirectory) 
+      path.join(projectDir, morphirJson.sourceDirectory)
     );
 
     const fileSnapshot = FileChanges.toFileSnapshotJson(fileChanges);
@@ -63,7 +65,7 @@ async function make(
       const oldContentHashes = await readContentHashes(hashFilePath);
       const fileChanges = await FileChanges.detectChanges(
         oldContentHashes,
-        path.join(projectDir, morphirJson.sourceDirectory) 
+        path.join(projectDir, morphirJson.sourceDirectory)
       );
       if (reportFileChangeStats(fileChanges)) {
         console.log(
@@ -92,7 +94,7 @@ async function make(
       // We invoke file change detection but pass in no hashes which will generate inserts only
       const fileChanges = await FileChanges.detectChanges(
         new Map(),
-        path.join(projectDir, morphirJson.sourceDirectory) 
+        path.join(projectDir, morphirJson.sourceDirectory)
       );
       const fileSnapshot = FileChanges.toFileSnapshotJson(fileChanges);
       const newIR: string = await buildFromScratch(
@@ -113,7 +115,7 @@ async function make(
 async function buildFromScratch(
   morphirJson: any,
   fileSnapshot: { [index: string]: string },
-  dependencies:string[],
+  dependencies: string[],
   options: any
 ): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -141,18 +143,10 @@ async function buildFromScratch(
       typesOnly: options.typesOnly,
     };
 
-    let maybeDependencies: any[] = []
-    if(dependencies.length !== 0){
-      for (const dependency in dependencies) {
-        maybeDependencies.push(JSON.parse(dependency))
-      }
-      return maybeDependencies
-    }
-
     worker.ports.buildFromScratch.send({
       options: opts,
       packageInfo: morphirJson,
-      dependencies: maybeDependencies,
+      dependencies: dependencies,
       fileSnapshot: fileSnapshot,
     });
   });
@@ -195,19 +189,11 @@ async function buildIncrementally(
       maybeDistribution = JSON.parse(previousIR);
     }
 
-    let maybeDependencies: any[] = []
-    if(dependencies){
-      for (const dependency in dependencies) {
-        maybeDependencies.push(JSON.parse(dependency))
-      }
-      return maybeDependencies
-    }
-
     worker.ports.buildIncrementally.send({
       options: opts,
       packageInfo: morphirJson,
       fileChanges: FileChanges.toFileChangesJson(fileChanges),
-      dependencies: maybeDependencies,
+      dependencies: dependencies,
       distribution: maybeDistribution,
     });
   });
@@ -254,7 +240,7 @@ async function writeContentHashes(
   for (let [path, hash] of hashes) {
     jsonObject[path] = hash;
   }
-  await writeFile(filePath, JSON.stringify(jsonObject, null, 4)); 
+  await writeFile(filePath, JSON.stringify(jsonObject, null, 4));
 }
 
 function reportFileChangeStats(fileChanges: FileChanges.FileChanges): boolean {
@@ -297,7 +283,7 @@ const gen = async (
   await fsMakeDir(outputPath, {
     recursive: true,
   });
-  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input)); 
+  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input));
   const workerOptions: WorkerOptions = mapCommandToWorkerOptions(options);
   // opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(',') : undefined
   const generatedFiles: string[] = await generate(
@@ -308,10 +294,10 @@ const gen = async (
   const writePromises = generatedFiles.map(
     async ([[dirPath, fileName], content]: any) => {
       const fileDir: string = dirPath.reduce(
-        (accum: string, next: string) => path.join(accum, next), 
+        (accum: string, next: string) => path.join(accum, next),
         outputPath
       );
-      const filePath: string = path.join(fileDir, fileName); 
+      const filePath: string = path.join(fileDir, fileName);
 
       if (await fileExist(filePath)) {
         const existingContent: Buffer = await fsReadFile(filePath);
@@ -332,7 +318,7 @@ const gen = async (
   const filesToDelete = await findFilesToDelete(outputPath, generatedFiles);
   const deletePromises = filesToDelete.map(async (fileToDelete: string) => {
     console.log(`DELETE - ${fileToDelete}`);
-    return fs.unlinkSync(fileToDelete); 
+    return fs.unlinkSync(fileToDelete);
   });
   copyRedistributables(options, outputPath);
   return Promise.all(writePromises.concat(deletePromises));
@@ -364,7 +350,7 @@ const stats = async (
     });
   };
 
-  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input)); 
+  const morphirIrJson: Buffer = await fsReadFile(path.resolve(input));
 
   const stats: string[] = await collectStats(
     JSON.parse(morphirIrJson.toString())
@@ -373,10 +359,10 @@ const stats = async (
   const writePromises = stats.map(
     async ([[dirPath, fileName], content]: any) => {
       const fileDir: string = dirPath.reduce(
-        (accum: string, next: string) => path.join(accum, next), 
+        (accum: string, next: string) => path.join(accum, next),
         outputPath
       );
-      const filePath: string = path.join(fileDir, fileName); 
+      const filePath: string = path.join(fileDir, fileName);
 
       if (await fileExist(filePath)) {
         const existingContent: Buffer = await fsReadFile(filePath);
@@ -419,7 +405,7 @@ const generate = async (
 
 const fileExist = async (filePath: string) => {
   return new Promise((resolve, reject) => {
-    fs.access(filePath, fs.constants.F_OK, (err) => { 
+    fs.access(filePath, fs.constants.F_OK, (err) => {
       if (err) {
         resolve(false);
       } else {
@@ -434,19 +420,19 @@ const findFilesToDelete = async (outputPath: string, fileMap: string[]) => {
     currentDir: string,
     generatedFiles: string[]
   ) {
-    const entries: fs.Dirent[] = await readdir(currentDir, { 
+    const entries: fs.Dirent[] = await readdir(currentDir, {
       withFileTypes: true,
     });
     const filesToDelete = entries
       .filter((entry) => {
-        const entryPath: string = path.join(currentDir, entry.name); 
+        const entryPath: string = path.join(currentDir, entry.name);
         return entry.isFile() && !generatedFiles.includes(entryPath);
       })
-      .map((entry) => path.join(currentDir, entry.name)); 
+      .map((entry) => path.join(currentDir, entry.name));
     const subDirFilesToDelete: Promise<string[]> = entries
       .filter((entry) => entry.isDirectory())
       .map((entry) =>
-        readDir(path.join(currentDir, entry.name), generatedFiles) 
+        readDir(path.join(currentDir, entry.name), generatedFiles)
       )
       .reduce(async (soFarPromise, nextPromise) => {
         const soFar = await soFarPromise;
@@ -457,10 +443,10 @@ const findFilesToDelete = async (outputPath: string, fileMap: string[]) => {
   };
   const files = fileMap.map(([[dirPath, fileName], content]: any) => {
     const fileDir = dirPath.reduce(
-      (accum: string, next: string) => path.join(accum, next), 
+      (accum: string, next: string) => path.join(accum, next),
       outputPath
     );
-    return path.resolve(fileDir, fileName); 
+    return path.resolve(fileDir, fileName);
   });
   return Promise.all(await readDir(outputPath, files));
 };
@@ -470,7 +456,7 @@ function copyRedistributables(options: CommandOptions, outputPath: string) {
     const sourceDirectory: string = path.join(
       path.dirname(__dirname),
       "redistributable",
-      src 
+      src
     );
     copyRecursiveSync(sourceDirectory, outputPath);
   };
@@ -479,20 +465,20 @@ function copyRedistributables(options: CommandOptions, outputPath: string) {
 }
 
 function copyRecursiveSync(src: string, dest: string) {
-  const exists = fs.existsSync(src); 
+  const exists = fs.existsSync(src);
   if (exists) {
-    const stats = exists && fs.statSync(src); 
+    const stats = exists && fs.statSync(src);
     const isDirectory = exists && stats.isDirectory();
     if (isDirectory) {
-      if (!fs.existsSync(dest)) fs.mkdirSync(dest); 
-      fs.readdirSync(src).forEach(function (childItemName) { 
+      if (!fs.existsSync(dest)) fs.mkdirSync(dest);
+      fs.readdirSync(src).forEach(function (childItemName) {
         copyRecursiveSync(
-          path.join(src, childItemName), 
-          path.join(dest, childItemName) 
+          path.join(src, childItemName),
+          path.join(dest, childItemName)
         );
       });
     } else {
-      fs.copyFileSync(src, dest); 
+      fs.copyFileSync(src, dest);
       console.log(`COPY - ${dest}`);
     }
   }
@@ -505,30 +491,33 @@ async function writeFile(filePath: string, content: string) {
   return await fsWriteFile(filePath, content);
 }
 
-
 async function writeDockerfile(
   projectDir: string,
   programOpts: any
 ): Promise<void> {
   // read docker template file
-  let filePath = "./cli2/DockerTemplateFile"
-  let fileContent = await fsReadFile(filePath, 'utf-8')  
+  let filePath = "./cli2/DockerTemplateFile";
+  let fileContent = await fsReadFile(filePath, "utf-8");
 
-  // replace specific characteres with the required 
-  let newContent = fileContent.replace("PROJECT_MODEL_DIR", projectDir.replace(/\\/g, '/'))
-
+  // replace specific characteres with the required
+  let newContent = fileContent.replace(
+    "PROJECT_MODEL_DIR",
+    projectDir.replace(/\\/g, "/")
+  );
 
   // controlling ending slash in path
-  let removeTrailingSlash = (str: string) => { return str.endsWith('/') ? str.slice(0, -1).trim() : str.trim() };
-  let dockerfilePath = removeTrailingSlash(projectDir + "/Dockerfile")
-
+  let removeTrailingSlash = (str: string) => {
+    return str.endsWith("/") ? str.slice(0, -1).trim() : str.trim();
+  };
+  let dockerfilePath = removeTrailingSlash(projectDir + "/Dockerfile");
 
   // check if there is an existing Dockerfile in projectDir
-  if (await fsExists(dockerfilePath) && programOpts.force == false) {
-    throw new Error("Dockerfile already exist. To overwrite please use the `-f` flag");
-  }
-  else  {
-    await fsWriteFile(dockerfilePath, newContent)
+  if ((await fsExists(dockerfilePath)) && programOpts.force == false) {
+    throw new Error(
+      "Dockerfile already exist. To overwrite please use the `-f` flag"
+    );
+  } else {
+    await fsWriteFile(dockerfilePath, newContent);
   }
 }
 

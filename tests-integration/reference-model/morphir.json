@@ -1,4 +1,7 @@
 {
     "name": "Morphir.Reference.Model",
-    "sourceDirectory": "src"
+    "sourceDirectory": "src",
+    "localDependencies": [
+        "./../spark/model/morphir-ir.json"
+    ]
 }
