@@ -45,7 +45,7 @@ type SchemaType
     | String StringConstraints
     | Number
     | Boolean
-    | Object (Dict String SchemaType)
+    | Object (Dict String SchemaType) (List TypeName)
     | Const String
     | Ref TypeName
     | OneOf (List SchemaType)

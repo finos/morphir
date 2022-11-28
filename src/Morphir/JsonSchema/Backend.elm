@@ -273,6 +273,25 @@ mapType typ =
                         )
 
         Type.Record _ fields ->
+            let
+                requiredFields : List String
+                requiredFields =
+                    fields
+                        |> List.filterMap
+                            (\field ->
+                                case field.tpe of
+                                    Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
+                                        case ( FQName.toString fQName, argTypes ) of
+                                            ( "Morphir.SDK:Maybe:maybe", [] ) ->
+                                                Nothing
+
+                                            _ ->
+                                                Just (field.name |> Name.toTitleCase)
+
+                                    _ ->
+                                        Just (field.name |> Name.toTitleCase)
+                            )
+            in
             fields
                 |> List.map
                     (\field ->
@@ -280,7 +299,7 @@ mapType typ =
                             |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
                     )
                 |> ResultList.keepFirstError
-                |> Result.map (Dict.fromList >> Object)
+                |> Result.map (\schemaDict -> Object (Dict.fromList schemaDict) requiredFields)
 
         Type.Tuple _ typeList ->
             typeList

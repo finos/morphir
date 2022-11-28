@@ -72,10 +72,11 @@ encodeSchemaType schemaType =
             Encode.object
                 [ ( "type", Encode.string "boolean" ) ]
 
-        Object st ->
+        Object st requiredFields ->
             Encode.object
                 [ ( "type", Encode.string "object" )
                 , ( "properties", Encode.dict identity encodeSchemaType st )
+                , ( "required", Encode.list Encode.string requiredFields )
                 ]
 
         Const value ->
