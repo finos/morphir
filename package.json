@@ -9,6 +9,7 @@
     "jest-test": "cd cli2 && elm make src/Morphir/Elm/CLI.elm --output=Morphir.Elm.CLI.js && cd ../cli && elm make src/Morphir/Elm/CLI.elm --output=Morphir.Elm.CLI.js && cd .. && npx jest",
     "insight-server-live": "cd cli && elm-live src/Morphir/Web/Insight.elm --start-page=./insight.html --dir=./web --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/insight.js",
     "dev-server-live": "cd cli && elm-live src/Morphir/Web/DevelopApp.elm --dir=web --pushstate --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/index.js",
+    "insight-test-server-live": "cd cli && elm-live src/Morphir/Web/InsightTestApp.elm --dir=web --pushstate --proxy-prefix /server --proxy-host http://localhost:3000/server -- --output=web/insight-test-app.js",
     "try-morphir-live": "cd cli && elm-live src/Morphir/Web/TryMorphir.elm",
     "design-system-live": "elm-live src/Morphir/Visual/DesignSystemApp.elm",
     "multiary-decision-tree-live": "cd cli && elm-live src/Morphir/Web/MultiaryDecisionTreeTest.elm --start-page=./web/treeIndex.html -- --output=treeStuff.js",
