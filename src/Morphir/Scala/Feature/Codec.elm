@@ -306,34 +306,51 @@ mapCustomTypeDefinitionToDecoder currentPackagePath currentModulePath moduleDef 
         ( scalaTypePath, scalaName ) =
             ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
 
+        argIndex =
+            scalaName |> Name.toCamelCase
+
+        downApply =
+            argIndex ++ ".downN(0)" ++ ".as[io.circe.Json.String]" ++ ".flatMap"
+
         patternMatch : List ( Scala.Pattern, Scala.Value )
         patternMatch =
             accessControlledCtors.value
                 |> Dict.toList
                 |> List.map
                     (\( ctorName, ctorArgs ) ->
-                        composeDecoder ( currentPackagePath, currentModulePath, ctorName ) ctorArgs
+                        composeDecoder ( currentPackagePath, currentModulePath, ctorName ) ctorArgs scalaName
                     )
     in
     [ Scala.withoutAnnotation
         (Scala.ValueDecl
             { modifiers = [ Scala.Implicit ]
             , pattern = Scala.NamedMatch ("decode" :: typeName |> Name.toCamelCase)
-            , valueType = Just (Scala.TypeRef [] (typeName |> Name.toTitleCase))
+            , valueType =
+                Just
+                    (Scala.TypeApply
+                        (Scala.TypeRef [ "io", "circe" ] "Decoder")
+                        [ Scala.TypeRef scalaTypePath (typeName |> Name.toTitleCase)
+                        ]
+                    )
+
+            --(Scala.Apply
+            --    (Scala.Match (Scala.Variable downApply) (Scala.MatchCases patternMatch))
+            --    [ Scala.ArgValue Nothing (Scala.Variable downApply) ]
+            --)
             , value =
                 Scala.Lambda [ ( scalaName |> Name.toCamelCase, Just (Scala.TypeRef [ "io", "circe" ] "HCursor") ) ]
-                    (Scala.Match (Scala.Variable (scalaName |> Name.toCamelCase)) (Scala.MatchCases patternMatch))
+                    (Scala.Apply
+                        (Scala.Variable downApply)
+                        [ Scala.ArgValue Nothing (Scala.Lambda [ ( "tag", Nothing ) ] (Scala.Match (Scala.Variable "tag") (Scala.MatchCases patternMatch))) ]
+                    )
             }
         )
     ]
 
 
-composeDecoder : FQName -> List ( Name, Type ta ) -> ( Scala.Pattern, Scala.Value )
-composeDecoder fqName ctorArgs =
+composeDecoder : FQName -> List ( Name, Type ta ) -> Name -> ( Scala.Pattern, Scala.Value )
+composeDecoder fqName ctorArgs name =
     let
-        ( _, name ) =
-            ScalaBackend.mapFQNameToPathAndName fqName
-
         scalaFqn =
             ScalaBackend.mapFQNameToPathAndName fqName
                 |> Tuple.mapFirst (String.join ".")
@@ -368,10 +385,10 @@ composeDecoder fqName ctorArgs =
                                 String.right 1 (Tuple.first arg |> Name.toCamelCase)
 
                             downApply =
-                                Scala.Variable ((Tuple.first arg |> Name.toCamelCase) ++ ".downN(" ++ argIndex ++ ")")
+                                Scala.Variable ((name |> Name.toCamelCase) ++ ".downN(" ++ argIndex ++ ")")
 
                             typeRefResult =
-                                genEncodeReference [] (Tuple.second arg)
+                                genDecodeReference fqName (Tuple.second arg)
 
                             asSelect : Scala.Value
                             asSelect =
@@ -402,7 +419,7 @@ composeDecoder fqName ctorArgs =
         ( Scala.NamedMatch scalaFqn, Scala.Apply (Scala.Variable scalaFqn) [] )
 
     else
-        ( Scala.NamedMatch scalaFqn
+        ( Scala.LiteralMatch (Scala.StringLit (name |> Name.toTitleCase))
         , Scala.ForComp generators yeildExpression
         )
 
