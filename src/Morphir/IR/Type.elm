@@ -21,7 +21,7 @@ module Morphir.IR.Type exposing
     , Field, mapFieldName, mapFieldType
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
     , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification
-    , Constructors
+    , Constructors, Constructor, ConstructorArgs
     , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, typeAttributes
     , eraseAttributes, collectVariables, collectReferences, collectReferencesFromDefintion, substituteTypeVariables, toString
     )
@@ -119,7 +119,7 @@ Here is the full definition for reference:
 
 # Constructors
 
-@docs Constructors
+@docs Constructors, Constructor, ConstructorArgs
 
 
 # Utilities
@@ -135,7 +135,7 @@ import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlle
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
-import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.ResultList as ResultList
 import Set exposing (Set)
 
 
@@ -209,11 +209,18 @@ type alias Field a =
     , tpe : Type a
     }
 
+
 {-| -}
 type Specification a
     = TypeAliasSpecification (List Name) (Type a)
     | OpaqueTypeSpecification (List Name)
     | CustomTypeSpecification (List Name) (Constructors a)
+    | DerivedTypeSpecification
+        (List Name)
+        { baseType : Type a
+        , fromBaseType : FQName
+        , toBaseType : FQName
+        }
 
 
 {-| This syntax represents a type definition. For example:
@@ -233,7 +240,19 @@ type Definition a
 {-| Constructors in a dictionary keyed by their name. The values are the argument types for each constructor.
 -}
 type alias Constructors a =
-    Dict Name (List ( Name, Type a ))
+    Dict Name (ConstructorArgs a)
+
+
+{-| Represents a single constructor with a name and arguments.
+-}
+type alias Constructor a =
+    ( Name, ConstructorArgs a )
+
+
+{-| Represents a list of constructor arguments.
+-}
+type alias ConstructorArgs a =
+    List ( Name, Type a )
 
 
 {-| -}
@@ -275,6 +294,13 @@ mapSpecificationAttributes f spec =
                         )
                 )
 
+        DerivedTypeSpecification params config ->
+            DerivedTypeSpecification params
+                { baseType = mapTypeAttributes f config.baseType
+                , fromBaseType = config.fromBaseType
+                , toBaseType = config.toBaseType
+                }
+
 
 {-| -}
 mapDefinition : (Type a -> Result e (Type b)) -> Definition a -> Result (List e) (Definition b)
@@ -299,10 +325,10 @@ mapDefinition f def =
                                             f argType
                                                 |> Result.map (Tuple.pair argName)
                                         )
-                                    |> ListOfResults.liftAllErrors
+                                    |> ResultList.keepAllErrors
                                     |> Result.map (Tuple.pair ctorName)
                             )
-                        |> ListOfResults.liftAllErrors
+                        |> ResultList.keepAllErrors
                         |> Result.map (Dict.fromList >> AccessControlled constructors.access)
                         |> Result.mapError List.concat
             in

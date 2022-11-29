@@ -21,6 +21,7 @@ import Expect
 import Fuzz exposing (..)
 import Morphir.FuzzEx exposing (..)
 import Morphir.SDK.Number as Number exposing (Number)
+import Morphir.TestUtils exposing (expectFalse, expectTrue)
 import Test exposing (..)
 
 
@@ -57,11 +58,11 @@ equalTests =
     describe "Number.equal"
         [ fuzz number "number inequality" <|
             \a ->
-                Expect.false "Expected differing number values to not be equal" <|
+                expectFalse "Expected differing number values to not be equal" <|
                     Number.equal a (Number.add a (Number.fromInt 1))
         , fuzz number "number equality" <|
             \a ->
-                Expect.true "Expected the same value to be equal" <|
+                expectTrue "Expected the same value to be equal" <|
                     Number.equal a a
         ]
 
@@ -71,11 +72,11 @@ notEqualTests =
     describe "Number.notEqual"
         [ fuzz number "number inequality" <|
             \a ->
-                Expect.true "Expected differing number values to not be equal" <|
+                expectTrue "Expected differing number values to not be equal" <|
                     Number.notEqual a (Number.add a (Number.fromInt 1))
         , fuzz number "number equality" <|
             \a ->
-                Expect.false "Expected the same value to be equal" <|
+                expectFalse "Expected the same value to be equal" <|
                     Number.notEqual a a
         ]
 

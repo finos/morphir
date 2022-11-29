@@ -1,9 +1,7 @@
 const express = require('express')
-const app = express()
 const bodyParser = require('body-parser')
 const calc = require('./Main').Elm.Main.init({})
 require('isomorphic-fetch')
-
 
 //Config 
 const APP_PORT = 3000
@@ -16,7 +14,10 @@ const STATE_STORE_NAME = 'statestore'
 const stateStoreUrl = `http://localhost:${DAPR_HTTP_PORT}/v1.0/state/${STATE_STORE_NAME}`
 const eventPublishUrl = `http://localhost:${DAPR_HTTP_PORT}/v1.0/publish/${OUTPUT_TOPIC}`
 
+const app = express() // nosemgrep 
+
 app.use(bodyParser.json({ type: 'application/*+json' }))
+
 app.listen(APP_PORT, () => { console.log("Server running on port 3000") })
 
 app.get('/dapr/subscribe', (_req, res) => {

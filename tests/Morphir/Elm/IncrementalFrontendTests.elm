@@ -135,7 +135,9 @@ extractTypesTest =
                         |> (\extractedTypesResult ->
                                 case extractedTypesResult of
                                     Ok listOfNameAndDefs ->
-                                        cb listOfNameAndDefs
+                                        listOfNameAndDefs
+                                            |> List.map (\( name, _, def ) -> ( name, def ))
+                                            |> cb
 
                                     Err _ ->
                                         Expect.fail "Failed to parse module"

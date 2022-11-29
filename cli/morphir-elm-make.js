@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 'use strict'
 
+
 // NPM imports
 const commander = require('commander')
-const cli = require('./cli')
+
 
 // logging
 require('log-timestamp')
@@ -16,28 +17,50 @@ program
     .option('-p, --project-dir <path>', 'Root directory of the project where morphir.json is located.', '.')
     .option('-o, --output <path>', 'Target file location where the Morphir IR will be saved.', 'morphir-ir.json')
     .option('-t, --types-only', 'Only include type information in the IR, no values.', false)
+    .option('-f, --fallback-cli', 'Use old cli make function.', false)
     .parse(process.argv)
 
-cli.make(program.opts().projectDir, program.opts())
-    .then((packageDef) => {
-        console.log(`Writing file ${program.opts().output}.`)
-        cli.writeFile(program.opts().output, JSON.stringify(packageDef, null, 4))
-            .then(() => {
-                console.log('Done.')
-            })
-            .catch((err) => {
-                console.error(`Could not write file: ${err}`)
-            })
-    })
-    .catch((err) => {
-        if (err.code == 'ENOENT') {
-            console.error(`Could not find file at '${err.path}'`)
-        } else {
-            if (err instanceof Error) {
-                console.error(err)
+const programOptions = program.opts()
+
+// running function
+runAppropriateCli(programOptions.projectDir, programOptions)
+
+// runs cli1 if flag passed, else cli2
+function runAppropriateCli(projectDir, opts) {
+    if (opts.fallbackCli) {
+        make(projectDir, opts)
+    }
+
+    else {
+        const cli2 = require('../cli2/lib/cliAPI')
+        cli2.make(projectDir, opts)
+    }
+}
+
+function make(projectDir, opts) {
+    const cli = require('./cli')
+
+    cli.make(projectDir, opts)
+        .then((packageDef) => {
+            console.log(`Writing file ${opts.output}.`)
+            cli.writeFile(opts.output, JSON.stringify(packageDef, null, 4))
+                .then(() => {
+                    console.log('Done.')
+                })
+                .catch((err) => {
+                    console.error(`Could not write file: ${err}`)
+                })
+        })
+        .catch((err) => {
+            if (err.code == 'ENOENT') {
+                console.error(`Could not find file at '${err.path}'`)
             } else {
-                console.error(`Error: ${JSON.stringify(err, null, 2)}`)
+                if (err instanceof Error) {
+                    console.error(err)
+                } else {
+                    console.error(`Error: ${JSON.stringify(err, null, 2)}`)
+                }
             }
-        }
-        process.exit(1)
-    })
+            process.exit(1)
+        })
+}

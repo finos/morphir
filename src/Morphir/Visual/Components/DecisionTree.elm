@@ -1,4 +1,4 @@
-module Morphir.Visual.Components.DecisionTree exposing (BranchNode, LeftOrRight(..), Node(..), downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
+module Morphir.Visual.Components.DecisionTree exposing (BranchNode, Node(..), downArrow, downArrowHead, highlightColor, horizontalLayout, layout, noPadding, rightArrow, rightArrowHead, verticalLayout)
 
 import Element exposing (Attribute, Color, Element, alignLeft, alignTop, centerX, centerY, column, el, fill, height, html, padding, paddingEach, paddingXY, rgb255, row, shrink, spacing, text, width)
 import Element.Border as Border
@@ -11,26 +11,29 @@ import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing, smallSpacing)
 import Svg
 import Svg.Attributes
+import Morphir.Visual.Config exposing (HighlightState(..))
+import Morphir.Visual.Theme exposing (smallPadding)
+import Element exposing (explain)
+import Morphir.Value.Interpreter exposing (Variables)
 
 
 type Node
     = Branch BranchNode
-    | Leaf EnrichedValue
+    | Leaf Variables EnrichedValue
 
 
 type alias BranchNode =
     { condition : EnrichedValue
-    , conditionValue : Maybe Bool
+    , isThenBranchSelected : Maybe Bool
     , thenBranch : Node
     , elseBranch : Node
+    , thenLabel : String
+    , elseLabel : String
     }
 
 
-type LeftOrRight
-    = Left
-    | Right
 
-
+highlightColor : { true : Color, false : Color, default : Color }
 highlightColor =
     { true = Color 100 180 100
     , false = Color 180 100 100
@@ -101,21 +104,23 @@ toCssColor (Color r g b) =
     String.concat [ "rgb(", String.fromInt r, ",", String.fromInt g, ",", String.fromInt b, ")" ]
 
 
-layout : Config msg -> (EnrichedValue -> Element msg) -> Node -> Element msg
+layout : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> Node -> Element msg
 layout config viewValue rootNode =
     layoutHelp config NotHighlighted viewValue rootNode
 
 
-layoutHelp : Config msg -> HighlightState -> (EnrichedValue -> Element msg) -> Node -> Element msg
+layoutHelp : Config msg -> HighlightState -> ( Config msg -> EnrichedValue -> Element msg) -> Node -> Element msg
 layoutHelp config highlightState viewValue rootNode =
     let
+        stateConfig = config.state
+
         depthOf : (BranchNode -> Node) -> Node -> Int
         depthOf f node =
             case node of
                 Branch branch ->
                     depthOf f (f branch) + 1
 
-                Leaf _ ->
+                Leaf _ _ ->
                     1
     in
     case rootNode of
@@ -123,7 +128,7 @@ layoutHelp config highlightState viewValue rootNode =
             let
                 conditionState : HighlightState
                 conditionState =
-                    case branch.conditionValue of
+                    case branch.isThenBranchSelected of
                         Just v ->
                             Highlighted v
 
@@ -132,7 +137,7 @@ layoutHelp config highlightState viewValue rootNode =
 
                 thenState : HighlightState
                 thenState =
-                    case branch.conditionValue of
+                    case branch.isThenBranchSelected of
                         Just v ->
                             if v then
                                 Highlighted True
@@ -145,7 +150,7 @@ layoutHelp config highlightState viewValue rootNode =
 
                 elseState : HighlightState
                 elseState =
-                    case branch.conditionValue of
+                    case branch.isThenBranchSelected of
                         Just v ->
                             if v then
                                 NotHighlighted
@@ -157,41 +162,42 @@ layoutHelp config highlightState viewValue rootNode =
                             NotHighlighted
             in
             -- TODO: choose vertical/horizontal left/right layout based on some heuristics
-            horizontalLayout
+            verticalLayout
                 config
                 (el
                     [ conditionState |> highlightStateToBorderWidth |> Border.width
                     , Border.rounded 6
                     , Border.color (conditionState |> highlightStateToColor |> toElementColor)
-                    , mediumPadding config.state.theme |> padding
+                    , smallPadding config.state.theme |> padding
+                    , width fill
                     ]
-                    (viewValue branch.condition)
+                    (el [centerX, centerY] (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight conditionState } } branch.condition))
                 )
                 (el
                     [ Font.color (thenState |> highlightStateToColor |> toElementColor)
                     , thenState |> highlightStateToFontWeight
                     ]
-                    (text "Yes")
+                    (text branch.thenLabel)
                 )
                 thenState
-                (layoutHelp config thenState viewValue branch.thenBranch)
+                (layoutHelp {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight thenState } } thenState viewValue branch.thenBranch)
                 (el
                     [ Font.color (elseState |> highlightStateToColor |> toElementColor)
                     , elseState |> highlightStateToFontWeight
                     ]
-                    (text "No")
+                    (text branch.elseLabel)
                 )
                 elseState
-                (layoutHelp config elseState viewValue branch.elseBranch)
+                (layoutHelp {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight elseState } } elseState viewValue branch.elseBranch)
 
-        Leaf value ->
+        Leaf variables value ->
             el
                 [ highlightState |> highlightStateToBorderWidth |> Border.width
                 , Border.rounded 6
                 , Border.color (highlightState |> highlightStateToColor |> toElementColor)
-                , mediumPadding config.state.theme |> padding
+                , smallPadding config.state.theme |> padding
                 ]
-                (viewValue value)
+                (viewValue {config | state = { stateConfig | highlightState = Just <| branchHighlightToConfigHighLight highlightState, variables = variables } } value)
 
 
 horizontalLayout : Config msg -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg -> HighlightState -> Element msg -> Element msg
@@ -293,7 +299,7 @@ verticalLayout config condition branch1Label branch1State branch1 branch2Label b
                 , el [ centerX, paddingXY (mediumPadding config.state.theme) 0 ]
                     branch2Label
                 ]
-            , el [ alignTop, paddingEach { noPadding | bottom = mediumPadding config.state.theme } ] branch2
+            , el [ alignTop, paddingEach { noPadding | bottom = mediumPadding config.state.theme }] branch2
             ]
         , branch1
         ]
@@ -417,9 +423,20 @@ downArrowHead config highlightState =
         ]
 
 
+noPadding : { right : number, left : number, top : number, bottom : number }
 noPadding =
     { right = 0
     , left = 0
     , top = 0
     , bottom = 0
     }
+
+
+branchHighlightToConfigHighLight : HighlightState -> Morphir.Visual.Config.HighlightState
+branchHighlightToConfigHighLight branchHL = 
+    case branchHL of
+        NotHighlighted ->
+            Unmatched
+
+        Highlighted _ ->
+            Matched

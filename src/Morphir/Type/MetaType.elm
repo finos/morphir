@@ -1,4 +1,4 @@
-module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, contains, floatType, intType, isNamedVariable, listType, metaAlias, metaFun, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, subVariable, substituteVariable, substituteVariables, toName, toString, variableByIndex, variableByName, variables, wrapInAliases)
+module Morphir.Type.MetaType exposing (MetaType(..), Variable, boolType, charType, contains, floatType, intType, listType, metaAlias, metaClosedRecord, metaFun, metaOpenRecord, metaRecord, metaRef, metaTuple, metaUnit, metaVar, removeAliases, stringType, substituteVariable, substituteVariables, toString, variableByIndex, variableGreaterThan, variables, wrapInAliases)
 
 import Dict exposing (Dict)
 import Morphir.IR.FQName as FQName exposing (FQName, fqn)
@@ -10,7 +10,7 @@ type MetaType
     = MetaVar Variable
     | MetaRef (Set Variable) FQName (List MetaType) (Maybe MetaType)
     | MetaTuple (Set Variable) (List MetaType)
-    | MetaRecord (Set Variable) (Maybe Variable) (Dict Name MetaType)
+    | MetaRecord (Set Variable) Variable Bool (Dict Name MetaType)
     | MetaFun (Set Variable) MetaType MetaType
     | MetaUnit
 
@@ -38,21 +38,27 @@ metaTuple elems =
     MetaTuple vars elems
 
 
-metaRecord : Maybe Variable -> Dict Name MetaType -> MetaType
-metaRecord extends fields =
+metaRecord : Variable -> Bool -> Dict Name MetaType -> MetaType
+metaRecord var isOpen fields =
     let
-        fieldVars =
+        vars =
             fields
                 |> Dict.toList
                 |> List.map (Tuple.second >> variables)
                 |> List.foldl Set.union Set.empty
-
-        vars =
-            extends
-                |> Maybe.map (\eVar -> fieldVars |> Set.insert eVar)
-                |> Maybe.withDefault fieldVars
+                |> Set.insert var
     in
-    MetaRecord vars extends fields
+    MetaRecord vars var isOpen fields
+
+
+metaOpenRecord : Variable -> Dict Name MetaType -> MetaType
+metaOpenRecord var fields =
+    metaRecord var True fields
+
+
+metaClosedRecord : Variable -> Dict Name MetaType -> MetaType
+metaClosedRecord var fields =
+    metaRecord var False fields
 
 
 metaFun : MetaType -> MetaType -> MetaType
@@ -72,13 +78,23 @@ metaUnit =
 metaAlias : FQName -> List MetaType -> MetaType -> MetaType
 metaAlias fQName args tpe =
     let
+        vars : Set Variable
         vars =
             args
                 |> List.map variables
                 |> List.foldl Set.union Set.empty
                 |> Set.union (variables tpe)
     in
-    MetaRef vars fQName args (Just tpe)
+    case tpe of
+        MetaRef _ nestedFQName nestedArgs _ ->
+            if fQName == nestedFQName && nestedArgs == args then
+                tpe
+
+            else
+                MetaRef vars fQName args (Just tpe)
+
+        _ ->
+            MetaRef vars fQName args (Just tpe)
 
 
 wrapInAliases : List ( FQName, List MetaType ) -> MetaType -> MetaType
@@ -95,7 +111,7 @@ toString : MetaType -> String
 toString metaType =
     case metaType of
         MetaVar var ->
-            "var_" ++ (toName var |> Name.toSnakeCase)
+            "t" ++ (var |> String.fromInt)
 
         MetaRef _ fQName args maybeAliasedType ->
             let
@@ -116,15 +132,17 @@ toString metaType =
         MetaTuple _ metaTypes ->
             String.concat [ "( ", metaTypes |> List.map toString |> String.join ", ", " )" ]
 
-        MetaRecord _ extends fields ->
+        MetaRecord _ var isOpen fields ->
             let
                 prefix =
-                    case extends of
-                        Just var ->
-                            "var_" ++ (toName var |> Name.toSnakeCase)
+                    "t"
+                        ++ (var |> String.fromInt)
+                        ++ (if isOpen then
+                                " <= "
 
-                        Nothing ->
-                            ""
+                            else
+                                " = "
+                           )
 
                 fieldStrings =
                     fields
@@ -144,44 +162,17 @@ toString metaType =
 
 
 type alias Variable =
-    ( Name, Int, Int )
-
-
-nextVar : Variable -> Variable
-nextVar ( n, i, s ) =
-    ( n, i, s + 1 )
+    Int
 
 
 variableByIndex : Int -> Variable
 variableByIndex i =
-    ( [], i, 0 )
+    i
 
 
-variableByName : Name -> Variable
-variableByName name =
-    ( name, 0, 0 )
-
-
-isNamedVariable : Variable -> Bool
-isNamedVariable ( name, _, _ ) =
-    not (List.isEmpty name)
-
-
-subVariable : Variable -> Variable
-subVariable ( n, i, s ) =
-    ( n, i, s + 1 )
-
-
-toName : Variable -> Name
-toName ( n, i, s ) =
-    if List.isEmpty n then
-        [ "t", String.fromInt i, String.fromInt s ]
-
-    else if i > 0 || s > 0 then
-        n ++ [ String.fromInt i, String.fromInt s ]
-
-    else
-        n
+variableGreaterThan : Variable -> Variable -> Bool
+variableGreaterThan var1 var2 =
+    var1 < var2
 
 
 variables : MetaType -> Set Variable
@@ -196,7 +187,7 @@ variables metaType =
         MetaTuple vars _ ->
             vars
 
-        MetaRecord vars _ _ ->
+        MetaRecord vars _ _ _ ->
             vars
 
         MetaFun vars _ _ ->
@@ -223,12 +214,25 @@ substituteVariable var replacement original =
                         |> List.map (substituteVariable var replacement)
                     )
 
-            MetaRecord _ extends metaFields ->
-                if extends == Just var then
-                    replacement
+            MetaRecord _ recordVar isOpen metaFields ->
+                if recordVar == var then
+                    case replacement of
+                        MetaVar replacementVar ->
+                            metaRecord replacementVar
+                                isOpen
+                                (metaFields
+                                    |> Dict.map
+                                        (\_ fieldType ->
+                                            substituteVariable var replacement fieldType
+                                        )
+                                )
+
+                        _ ->
+                            replacement
 
                 else
-                    metaRecord extends
+                    metaRecord recordVar
+                        isOpen
                         (metaFields
                             |> Dict.map
                                 (\_ fieldType ->
@@ -284,28 +288,32 @@ substituteVariables replacements original =
                         |> List.map (substituteVariables replacements)
                     )
 
-            MetaRecord _ (Just extends) metaFields ->
-                case Dict.get extends replacements of
+            MetaRecord _ recordVar isOpen metaFields ->
+                case Dict.get recordVar replacements of
                     Just replacement ->
-                        replacement
+                        case replacement of
+                            MetaVar replacementVar ->
+                                metaRecord replacementVar
+                                    isOpen
+                                    (metaFields
+                                        |> Dict.map
+                                            (\_ fieldType ->
+                                                substituteVariables replacements fieldType
+                                            )
+                                    )
+
+                            _ ->
+                                replacement
 
                     Nothing ->
-                        metaRecord (Just extends)
+                        metaRecord recordVar
+                            isOpen
                             (metaFields
                                 |> Dict.map
                                     (\_ fieldType ->
                                         substituteVariables replacements fieldType
                                     )
                             )
-
-            MetaRecord _ Nothing metaFields ->
-                metaRecord Nothing
-                    (metaFields
-                        |> Dict.map
-                            (\_ fieldType ->
-                                substituteVariables replacements fieldType
-                            )
-                    )
 
             MetaFun _ metaFunc metaArg ->
                 metaFun
@@ -375,7 +383,7 @@ contains innerType outerType =
                 metaElems
                     |> List.any (contains innerType)
 
-            MetaRecord _ _ metaFields ->
+            MetaRecord _ _ _ metaFields ->
                 metaFields
                     |> Dict.values
                     |> List.any (contains innerType)
@@ -410,8 +418,9 @@ removeAliases original =
                     |> List.map removeAliases
                 )
 
-        MetaRecord _ extends metaFields ->
-            metaRecord extends
+        MetaRecord _ recordVar isOpen metaFields ->
+            metaRecord recordVar
+                isOpen
                 (metaFields
                     |> Dict.map
                         (\_ fieldType ->

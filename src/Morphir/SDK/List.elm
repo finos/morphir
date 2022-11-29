@@ -15,7 +15,14 @@
 -}
 
 
-module Morphir.SDK.List exposing (..)
+module Morphir.SDK.List exposing (innerJoin, leftJoin)
+
+{-| Extra utilities on lists.
+
+@docs innerJoin, leftJoin
+
+-}
+
 
 {-| Returns all elements of a list except for the last.
 
@@ -24,8 +31,6 @@ module Morphir.SDK.List exposing (..)
     init [] == Nothing
 
 -}
-
-
 init : List a -> Maybe (List a)
 init list =
     list
@@ -105,49 +110,6 @@ leftJoin listB onPredicate listA =
                 in
                 if List.isEmpty matchingRows then
                     [ ( a, Nothing ) ]
-
-                else
-                    matchingRows
-            )
-
-
-{-| Simulates a SQL right-outer-join.
-
-    dataSetA =
-        [ ( 1, "a" ), ( 2, "b" ) ]
-
-    dataSetB =
-        [ ( 3, "C" ), ( 2, "B" ) ]
-
-    dataSetA
-        |> rightJoin dataSetB
-            (\a b ->
-               Tuple.first a == Tuple.first b
-            ) ==
-            [ ( Just ( 2, "b" ), ( 2, "B" ) )
-            , ( Nothing, ( 3, "C" ) )
-            ]
-
--}
-rightJoin : List b -> (a -> b -> Bool) -> List a -> List ( Maybe a, b )
-rightJoin listB onPredicate listA =
-    listB
-        |> List.concatMap
-            (\b ->
-                let
-                    matchingRows =
-                        listA
-                            |> List.filterMap
-                                (\a ->
-                                    if onPredicate a b then
-                                        Just ( Just a, b )
-
-                                    else
-                                        Nothing
-                                )
-                in
-                if List.isEmpty matchingRows then
-                    [ ( Nothing, b ) ]
 
                 else
                     matchingRows

@@ -4,6 +4,8 @@ import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (attribute)
 import Json.Encode as Encode exposing (..)
+import Morphir.IR.FQName as FQName
+import Morphir.IR.Name as Name
 
 
 type alias Node =
@@ -42,7 +44,17 @@ dagListAsGraph dagAsList =
     Graph
         (indexByNode
             |> Dict.toList
-            |> List.map (\( item, index ) -> { label = item, id = index })
+            |> List.map
+                (\( item, index ) ->
+                    { label =
+                        FQName.fromString item ":"
+                            |> (\( _, _, name ) ->
+                                    Name.toHumanWords name
+                                        |> String.join " "
+                               )
+                    , id = index
+                    }
+                )
         )
         (dagAsList
             |> List.foldl

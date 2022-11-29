@@ -18,6 +18,7 @@ import Morphir.IR.Value as Value exposing (Value)
 import Morphir.Type.Class as Class
 import Morphir.Type.Constraint exposing (Constraint, class, equality)
 import Morphir.Type.ConstraintSet as ConstraintSet
+import Morphir.Type.Count as Count
 import Morphir.Type.Infer as Infer exposing (TypeError(..))
 import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
 import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
@@ -131,40 +132,28 @@ positiveOutcomes =
         ]
 
     -- record
-    , Value.Record (Type.Record () [ Type.Field [ "bar" ] (floatType ()), Type.Field [ "foo" ] (boolType ()) ])
-        [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
-        , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
-        ]
-    , Value.Lambda (Type.Function () (barRecordType "t5_1") (floatType ()))
-        (Value.AsPattern (barRecordType "t5_1") (Value.WildcardPattern (barRecordType "t5_1")) [ "rec" ])
+    , Value.Record (Type.Record () [ Type.Field [ "bar" ] (floatType ()), Type.Field [ "foo" ] (boolType ()) ]) <|
+        Dict.fromList
+            [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
+            , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
+            ]
+    , Value.Lambda (Type.Function () (barRecordType "t0") (floatType ()))
+        (Value.AsPattern (barRecordType "t0") (Value.WildcardPattern (barRecordType "t0")) [ "rec" ])
         (Value.IfThenElse (floatType ())
             (Value.Literal (boolType ()) (BoolLiteral False))
             (Value.Field (floatType ())
-                (Value.Variable (barRecordType "t5_1") [ "rec" ])
+                (Value.Variable (barRecordType "t0") [ "rec" ])
                 [ "bar" ]
             )
             (Value.Literal (floatType ()) (FloatLiteral 2))
         )
-    , Value.Lambda (Type.Function () (barRecordType "t6_1") (floatType ()))
-        (Value.AsPattern (barRecordType "t6_1") (Value.WildcardPattern (barRecordType "t6_1")) [ "rec" ])
+    , Value.Lambda (Type.Function () (barRecordType "t4") (floatType ()))
+        (Value.AsPattern (barRecordType "t4") (Value.WildcardPattern (barRecordType "t4")) [ "rec" ])
         (Value.IfThenElse (floatType ())
             (Value.Literal (boolType ()) (BoolLiteral False))
             (Value.Apply (floatType ())
-                (Value.FieldFunction (Type.Function () (barRecordType "t6_1") (floatType ())) [ "bar" ])
-                (Value.Variable (barRecordType "t6_1") [ "rec" ])
-            )
-            (Value.Literal (floatType ()) (FloatLiteral 2))
-        )
-    , Value.Lambda (Type.Function () (fooBarRecordType "t5_1") (floatType ()))
-        (Value.AsPattern (fooBarRecordType "t5_1") (Value.WildcardPattern (fooBarRecordType "t5_1")) [ "rec" ])
-        (Value.IfThenElse (floatType ())
-            (Value.Apply (boolType ())
-                (Value.FieldFunction (Type.Function () (fooBarRecordType "t5_1") (boolType ())) [ "foo" ])
-                (Value.Variable (fooBarRecordType "t5_1") [ "rec" ])
-            )
-            (Value.Apply (floatType ())
-                (Value.FieldFunction (Type.Function () (fooBarRecordType "t5_1") (floatType ())) [ "bar" ])
-                (Value.Variable (fooBarRecordType "t5_1") [ "rec" ])
+                (Value.FieldFunction (Type.Function () (barRecordType "t4") (floatType ())) [ "bar" ])
+                (Value.Variable (barRecordType "t4") [ "rec" ])
             )
             (Value.Literal (floatType ()) (FloatLiteral 2))
         )
@@ -172,11 +161,12 @@ positiveOutcomes =
         [ "rec" ]
         (Value.Definition []
             fooBarBazRecordType
-            (Value.Record fooBarBazRecordType
-                [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
-                , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 3.14) )
-                , ( [ "baz" ], Value.Literal (stringType ()) (StringLiteral "meh") )
-                ]
+            (Value.Record fooBarBazRecordType <|
+                Dict.fromList
+                    [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
+                    , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 3.14) )
+                    , ( [ "baz" ], Value.Literal (stringType ()) (StringLiteral "meh") )
+                    ]
             )
         )
         (Value.IfThenElse (floatType ())
@@ -190,12 +180,14 @@ positiveOutcomes =
             )
             (Value.Literal (floatType ()) (FloatLiteral 2))
         )
-    , Value.Lambda (Type.Function () (barRecordType "t3_1") (barRecordType "t3_1"))
-        (Value.AsPattern (barRecordType "t3_1") (Value.WildcardPattern (barRecordType "t3_1")) [ "rec" ])
-        (Value.UpdateRecord (barRecordType "t3_1")
-            (Value.Variable (barRecordType "t3_1") [ "rec" ])
-            [ ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
-            ]
+    , Value.Lambda (Type.Function () (barRecordType "t3") (barRecordType "t3"))
+        (Value.AsPattern (barRecordType "t3") (Value.WildcardPattern (barRecordType "t3")) [ "rec" ])
+        (Value.UpdateRecord (barRecordType "t3")
+            (Value.Variable (barRecordType "t3") [ "rec" ])
+         <|
+            Dict.fromList
+                [ ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
+                ]
         )
 
     -- reference
@@ -239,8 +231,8 @@ positiveOutcomes =
             ]
         )
         (Value.Literal (floatType ()) (FloatLiteral 3))
-    , Value.Lambda (Type.Function () (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "1", "2" ] ]) (floatType ()))
-        (Value.ConstructorPattern (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "1", "2" ] ])
+    , Value.Lambda (Type.Function () (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "2" ] ]) (floatType ()))
+        (Value.ConstructorPattern (Type.Reference () (fqn "Morphir.SDK" "Maybe" "Maybe") [ Type.Variable () [ "t", "2" ] ])
             (fqn "Morphir.SDK" "Maybe" "Nothing")
             []
         )
@@ -437,9 +429,32 @@ inferPositiveTests =
                     in
                     test ("Scenario " ++ String.fromInt index)
                         (\_ ->
-                            Infer.inferValue testReferences untyped
-                                |> Result.map (Value.mapValueAttributes identity Tuple.second)
-                                |> Expect.equal (Ok expected)
+                            case
+                                Infer.inferValue testReferences untyped
+                                    |> Result.map (Value.mapValueAttributes identity Tuple.second)
+                            of
+                                Ok actual ->
+                                    if expected == actual then
+                                        Expect.pass
+
+                                    else
+                                        let
+                                            ( count, ( annotatedValue, constraints ) ) =
+                                                Infer.constrainValue testReferences Dict.empty Nothing untyped
+                                                    |> Count.apply 0
+
+                                            message =
+                                                String.join "\n"
+                                                    [ String.join " = " [ "annotatedValue", Debug.toString annotatedValue ]
+                                                    , String.join " = " [ "constraints", Debug.toString constraints ]
+                                                    , String.join " = " [ "expected", Debug.toString expected ]
+                                                    , String.join " = " [ "actual", Debug.toString actual ]
+                                                    ]
+                                        in
+                                        Expect.fail message
+
+                                Err error ->
+                                    Expect.fail (Debug.toString error)
                         )
                 )
         )
@@ -540,14 +555,14 @@ solvePositiveTests =
             , ( [ equality (tvar 1) (tvar 2)
                 ]
               , []
-              , [ ( t 1, tvar 2 )
+              , [ ( t 2, tvar 1 )
                 ]
               )
             , ( [ equality (tvar 1) (tvar 2)
                 , equality (tvar 2) (tvar 1)
                 ]
               , []
-              , [ ( t 1, tvar 2 )
+              , [ ( t 2, tvar 1 )
                 ]
               )
             , ( [ equality (tvar 1) (metaTuple [ tvar 5, tvar 4 ])

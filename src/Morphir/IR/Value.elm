@@ -18,13 +18,14 @@
 module Morphir.IR.Value exposing
     ( Value(..), RawValue, TypedValue, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
     , tuple, variable, ifThenElse, patternMatch, update, unit
-    , mapValueAttributes
+    , mapValueAttributes, rewriteMaybeToPatternMatch
     , Pattern(..), wildcardPattern, asPattern, tuplePattern, constructorPattern, emptyListPattern, headTailPattern, literalPattern
     , Specification, mapSpecificationAttributes
     , Definition, mapDefinition, mapDefinitionAttributes
     , definitionToSpecification, typeAndValueToDefinition, uncurryApply, collectVariables, collectReferences, collectDefinitionAttributes, collectPatternAttributes
     , collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
     , definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
+    , generateUniqueName
     )
 
 {-| In functional programming data and logic are treated the same way and we refer to both as values. This module
@@ -81,7 +82,7 @@ Value is the top level building block for data and logic. See the constructor fu
 
 @docs Value, RawValue, TypedValue, literal, constructor, apply, field, fieldFunction, lambda, letDef, letDestruct, letRec, list, record, reference
 @docs tuple, variable, ifThenElse, patternMatch, update, unit
-@docs mapValueAttributes
+@docs mapValueAttributes, rewriteMaybeToPatternMatch
 
 
 # Pattern
@@ -114,6 +115,7 @@ which is just the specification of those. Value definitions can be typed or unty
 @docs definitionToSpecification, typeAndValueToDefinition, uncurryApply, collectVariables, collectReferences, collectDefinitionAttributes, collectPatternAttributes
 @docs collectValueAttributes, indexedMapPattern, indexedMapValue, mapPatternAttributes, patternAttribute, valueAttribute
 @docs definitionToValue, rewriteValue, toRawValue, countValueNodes, collectPatternVariables, isData, toString
+@docs generateUniqueName
 
 -}
 
@@ -124,6 +126,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.Decimal as Decimal
 import Set exposing (Set)
 
 
@@ -200,7 +203,7 @@ type Value ta va
     | Constructor va FQName
     | Tuple va (List (Value ta va))
     | List va (List (Value ta va))
-    | Record va (List ( Name, Value ta va ))
+    | Record va (Dict Name (Value ta va))
     | Variable va Name
     | Reference va FQName
     | Field va (Value ta va) Name
@@ -212,7 +215,7 @@ type Value ta va
     | Destructure va (Pattern va) (Value ta va) (Value ta va)
     | IfThenElse va (Value ta va) (Value ta va) (Value ta va)
     | PatternMatch va (Value ta va) (List ( Pattern va, Value ta va ))
-    | UpdateRecord va (Value ta va) (List ( Name, Value ta va ))
+    | UpdateRecord va (Value ta va) (Dict Name (Value ta va))
     | Unit va
 
 
@@ -521,9 +524,9 @@ mapValueAttributes f g v =
         Record a fields ->
             Record (g a)
                 (fields
-                    |> List.map
-                        (\( fieldName, fieldValue ) ->
-                            ( fieldName, mapValueAttributes f g fieldValue )
+                    |> Dict.map
+                        (\_ fieldValue ->
+                            mapValueAttributes f g fieldValue
                         )
                 )
 
@@ -578,9 +581,9 @@ mapValueAttributes f g v =
             UpdateRecord (g a)
                 (mapValueAttributes f g valueToUpdate)
                 (fieldsToUpdate
-                    |> List.map
-                        (\( fieldName, fieldValue ) ->
-                            ( fieldName, mapValueAttributes f g fieldValue )
+                    |> Dict.map
+                        (\_ fieldValue ->
+                            mapValueAttributes f g fieldValue
                         )
                 )
 
@@ -643,7 +646,7 @@ collectValueAttributes v =
             a :: (items |> List.concatMap collectValueAttributes)
 
         Record a fields ->
-            a :: (fields |> List.concatMap (Tuple.second >> collectValueAttributes))
+            a :: (fields |> Dict.values |> List.concatMap collectValueAttributes)
 
         Variable a _ ->
             [ a ]
@@ -697,7 +700,8 @@ collectValueAttributes v =
                 :: List.append
                     (collectValueAttributes valueToUpdate)
                     (fieldsToUpdate
-                        |> List.concatMap (Tuple.second >> collectValueAttributes)
+                        |> Dict.values
+                        |> List.concatMap collectValueAttributes
                     )
 
         Unit a ->
@@ -768,7 +772,7 @@ collectVariables value =
             collectUnion items
 
         Record _ fields ->
-            collectUnion (fields |> List.map Tuple.second)
+            collectUnion (Dict.values fields)
 
         Variable _ name ->
             Set.singleton name
@@ -810,11 +814,65 @@ collectVariables value =
                 |> Set.union (collectVariables branchOutOn)
 
         UpdateRecord _ valueToUpdate fieldsToUpdate ->
-            collectUnion (fieldsToUpdate |> List.map Tuple.second)
+            collectUnion (fieldsToUpdate |> Dict.values)
                 |> Set.union (collectVariables valueToUpdate)
 
         _ ->
             Set.empty
+
+
+{-| Generate a unique name that is not used in the given value
+-}
+generateUniqueName : Value ta va -> Name
+generateUniqueName value =
+    let
+        existingVariableNames =
+            collectVariables (value |> Debug.log (toString value)) |> Debug.log "names"
+
+        chars =
+            String.split "" "abcdefghijklmnopqrstuvwxyz" |> List.map List.singleton
+    in
+    case List.head <| List.filter (\var -> not (Set.member var existingVariableNames)) chars of
+        Just name ->
+            name
+
+        Nothing ->
+            existingVariableNames |> Set.toList |> List.concat
+
+
+{-| Rewrite "... |> Maybe.map .. |> Maybe.withDefault ..." to a pattern match with a Just and a Nothing branch
+-}
+rewriteMaybeToPatternMatch : Value ta va -> Value ta va
+rewriteMaybeToPatternMatch value =
+    value
+        |> rewriteValue
+            (\val ->
+                case val of
+                    Apply tpe (Apply _ (Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "with", "default" ] )) defaultValue) (Apply maybetpe (Apply _ (Reference _ ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "map" ] )) mapLambda) inputMaybe) ->
+                        case mapLambda of
+                            Lambda _ argPattern bodyValue ->
+                                Just <|
+                                    PatternMatch tpe
+                                        inputMaybe
+                                        [ ( ConstructorPattern maybetpe ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ argPattern ], rewriteMaybeToPatternMatch bodyValue )
+                                        , ( ConstructorPattern maybetpe ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], defaultValue )
+                                        ]
+
+                            _ ->
+                                let
+                                    argName =
+                                        generateUniqueName mapLambda
+                                in
+                                Just <|
+                                    PatternMatch tpe
+                                        inputMaybe
+                                        [ ( ConstructorPattern maybetpe ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "just" ] ) [ AsPattern tpe (WildcardPattern tpe) argName ], Apply tpe (rewriteMaybeToPatternMatch mapLambda) (Variable tpe argName) )
+                                        , ( ConstructorPattern maybetpe ( [ [ "morphir" ], [ "s", "d", "k" ] ], [ [ "maybe" ] ], [ "nothing" ] ) [], defaultValue )
+                                        ]
+
+                    _ ->
+                        Nothing
+            )
 
 
 {-| Collect all references in a value recursively.
@@ -836,7 +894,7 @@ collectReferences value =
             collectUnion items
 
         Record _ fields ->
-            collectUnion (fields |> List.map Tuple.second)
+            collectUnion (Dict.values fields)
 
         Reference _ fQName ->
             Set.singleton fQName
@@ -876,7 +934,7 @@ collectReferences value =
                 |> Set.union (collectReferences branchOutOn)
 
         UpdateRecord _ valueToUpdate fieldsToUpdate ->
-            collectUnion (fieldsToUpdate |> List.map Tuple.second)
+            collectUnion (fieldsToUpdate |> Dict.values)
                 |> Set.union (collectReferences valueToUpdate)
 
         _ ->
@@ -990,9 +1048,9 @@ indexedMapValue f baseIndex value =
                             ( ( fieldName, mappedFieldValue ), lastFieldIndex )
                         )
                         baseIndex
-                        fields
+                        (Dict.toList fields)
             in
-            ( Record (f baseIndex a) mappedFields, valuesLastIndex )
+            ( Record (f baseIndex a) (Dict.fromList mappedFields), valuesLastIndex )
 
         Variable a name ->
             ( Variable (f baseIndex a) name, baseIndex )
@@ -1162,9 +1220,9 @@ indexedMapValue f baseIndex value =
                             ( ( fieldName, mappedFieldValue ), lastFieldIndex )
                         )
                         (subjectValueLastIndex + 1)
-                        fields
+                        (Dict.toList fields)
             in
-            ( UpdateRecord (f baseIndex a) mappedSubjectValue mappedFields, valuesLastIndex )
+            ( UpdateRecord (f baseIndex a) mappedSubjectValue (Dict.fromList mappedFields), valuesLastIndex )
 
         Unit a ->
             ( Unit (f baseIndex a), baseIndex )
@@ -1252,7 +1310,7 @@ rewriteValue f value =
                     List va (items |> List.map (rewriteValue f))
 
                 Record va fields ->
-                    Record va (fields |> List.map (\( n, v ) -> ( n, rewriteValue f v )))
+                    Record va (fields |> Dict.map (\_ v -> rewriteValue f v))
 
                 Field va subject name ->
                     Field va (rewriteValue f subject) name
@@ -1294,7 +1352,7 @@ rewriteValue f value =
                 UpdateRecord va subject fields ->
                     UpdateRecord va
                         (rewriteValue f subject)
-                        (fields |> List.map (\( n, v ) -> ( n, rewriteValue f v )))
+                        (fields |> Dict.map (\_ v -> rewriteValue f v))
 
                 _ ->
                     value
@@ -1448,7 +1506,7 @@ list attributes items =
     List attributes items
 
 
-{-| A [record] represents a list of fields where each field has a name and a value.
+{-| A [record] represents a dictionary of fields where the keys are the field names, and the values are the field values
 
     { foo = "bar" } -- Record [ ( [ "foo" ], Literal (StringLiteral "bar") ) ]
 
@@ -1459,7 +1517,7 @@ list attributes items =
 [record]: https://en.wikipedia.org/wiki/Record_(computer_science)
 
 -}
-record : va -> List ( Name, Value ta va ) -> Value ta va
+record : va -> Dict Name (Value ta va) -> Value ta va
 record attributes fields =
     Record attributes fields
 
@@ -1655,7 +1713,7 @@ patternMatch attributes branchOutOn cases =
     { a | foo = 1 } -- Update (Variable ["a"]) [ ( ["foo"], Literal (WholeNumberLiteral 1) ) ]
 
 -}
-update : va -> Value ta va -> List ( Name, Value ta va ) -> Value ta va
+update : va -> Value ta va -> Dict Name (Value ta va) -> Value ta va
 update attributes valueToUpdate fieldsToUpdate =
     UpdateRecord attributes valueToUpdate fieldsToUpdate
 
@@ -1819,7 +1877,7 @@ isData value =
 
         Record _ fields ->
             fields
-                |> List.map Tuple.second
+                |> Dict.values
                 |> List.all isData
 
         Apply _ fun arg ->
@@ -1861,6 +1919,9 @@ toString value =
 
                 FloatLiteral float ->
                     String.fromFloat float
+
+                DecimalLiteral decimal ->
+                    Decimal.toString decimal
 
         patternToString : Pattern va -> String
         patternToString pattern =
@@ -1924,6 +1985,7 @@ toString value =
                     String.concat
                         [ "{ "
                         , fields
+                            |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     String.concat [ Name.toCamelCase fieldName, " = ", toString fieldValue ]
@@ -2009,6 +2071,7 @@ toString value =
                         , valueToString subject
                         , " | "
                         , fields
+                            |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     String.concat [ Name.toCamelCase fieldName, " = ", toString fieldValue ]

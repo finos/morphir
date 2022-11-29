@@ -8,6 +8,7 @@ module Morphir.SDK.Decimal exposing
     , million
     , tenth
     , hundredth
+    , thousandth
     , millionth
     , bps
     , toString
@@ -54,6 +55,7 @@ module Morphir.SDK.Decimal exposing
 @docs million
 @docs tenth
 @docs hundredth
+@docs thousandth
 @docs millionth
 @docs bps
 
@@ -103,7 +105,6 @@ module Morphir.SDK.Decimal exposing
 
 -}
 
-import Basics as B
 import Decimal as D
 
 
@@ -111,14 +112,6 @@ import Decimal as D
 -}
 type alias Decimal =
     D.Decimal
-
-
-type RoundingMode
-    = Down
-    | Up
-    | TowardsZero
-    | AlwaysFromZero
-    | HalfToEven
 
 
 {-| Converts an Int to a Decimal
@@ -132,7 +125,16 @@ fromInt n =
 -}
 fromFloat : Float -> Decimal
 fromFloat f =
-    D.fromFloat f
+    let
+        dec : D.Decimal
+        dec =
+            D.fromFloat f
+    in
+    if D.eq dec zero then
+        zero
+
+    else
+        dec
 
 
 {-| Converts an Int to a Decimal that represents n hundreds.
@@ -168,6 +170,13 @@ tenth n =
 hundredth : Int -> Decimal
 hundredth n =
     D.fromFloat (toFloat n * 0.01)
+
+
+{-| Converts an Int to a Decimal that represents n thousandths.
+-}
+thousandth : Int -> Decimal
+thousandth n =
+    D.fromFloat (toFloat n * 0.001)
 
 
 {-| Converts an Int to a Decimal that represents n basis points (i.e. 1/10 of % or a ten-thousandth

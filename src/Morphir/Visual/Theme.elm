@@ -1,6 +1,6 @@
 module Morphir.Visual.Theme exposing (..)
 
-import Element exposing (Color, Element, Attribute, el, fill, paddingXY, rgb, rgba, rgb255, row, spacing, toRgb, width, height, table, none, mouseOver)
+import Element exposing (Attr, Attribute, Color, Element, el, fill, height, mouseOver, none, paddingXY, rgb, rgb255, rgba, row, spacing, table, toRgb, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font exposing (center)
@@ -13,6 +13,7 @@ type alias Theme =
     { fontSize : Int
     , decimalDigit : Int
     , colors : Colors
+    , icons : Icons
     }
 
 
@@ -28,6 +29,17 @@ type alias Colors =
     , backgroundColor : Color
     , selectionColor : Color
     , secondaryInformation : Color
+    , gray : Color
+    , brandPrimary : Color
+    , brandPrimaryLight : Color
+    , brandSecondary : Color
+    , brandSecondaryLight : Color
+    }
+
+
+type alias Icons =
+    { opened : String
+    , closed : String
     }
 
 
@@ -37,46 +49,63 @@ type alias ThemeConfig =
     }
 
 
-defaultColors : Colors
-defaultColors =
-    { lightest = rgb 1 1 1
-    , darkest = rgb 0.1 0.1 0.1
-    , primaryHighlight = rgb255 0 163 225
-    , secondaryHighlight = rgb255 255 105 0
-    , positive = rgb 0 0.6 0
-    , positiveLight = rgba 0 0.6 0 0.5
-    , negative = rgb 0.7 0 0
-    , negativeLight = rgba 0.7 0 0 0.5
-    , backgroundColor = rgb 0.9529 0.9176 0.8078
-    , selectionColor = rgb 0.8 0.9 0.9
-    , secondaryInformation = rgb 0.5 0.5 0.5
-    }
-
 labelStyles : Theme -> List (Attribute msg)
 labelStyles theme =
-            [ width fill
-            , height fill
-            , paddingXY 10 5
-            , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
-            , Border.color theme.colors.backgroundColor
-            ]
+    [ width fill
+    , height fill
+    , paddingXY 10 5
+    , Border.widthEach { bottom = 1, top = 0, left = 0, right = 0 }
+    , Border.color theme.colors.backgroundColor
+    ]
+
 
 boldLabelStyles : Theme -> List (Attribute msg)
-boldLabelStyles theme =  Font.bold :: labelStyles theme
+boldLabelStyles theme =
+    Font.bold :: labelStyles theme
+
 
 fromConfig : Maybe ThemeConfig -> Theme
 fromConfig maybeConfig =
+    let
+        defaultColors : Colors
+        defaultColors =
+            { lightest = rgb 1 1 1
+            , darkest = rgb 0.1 0.1 0.1
+            , primaryHighlight = rgb255 0 163 225
+            , secondaryHighlight = rgb255 255 105 0
+            , positive = rgb 0 0.6 0
+            , positiveLight = rgba 0 0.6 0 0.5
+            , negative = rgb 0.7 0 0
+            , negativeLight = rgba 0.7 0 0 0.5
+            , backgroundColor = rgb 0.9529 0.9176 0.8078
+            , selectionColor = rgb 0.8 0.9 0.9
+            , secondaryInformation = rgb 0.5 0.5 0.5
+            , gray = rgb 0.9 0.9 0.9
+            , brandPrimary = rgb 0 0.639 0.882
+            , brandPrimaryLight = rgba 0 0.639 0.882 0.3
+            , brandSecondary = rgb 1 0.411 0
+            , brandSecondaryLight = rgba 1 0.411 0 0.3
+            }
+
+        defaultIcons : Icons
+        defaultIcons =
+            { opened = "⮟"
+            , closed = "⮞"
+            }
+    in
     case maybeConfig of
         Just config ->
             { fontSize = config.fontSize |> Maybe.withDefault 12
             , decimalDigit = config.decimalDigit |> Maybe.withDefault 2
             , colors = defaultColors
+            , icons = defaultIcons
             }
 
         Nothing ->
             { fontSize = 12
             , decimalDigit = 2
             , colors = defaultColors
+            , icons = defaultIcons
             }
 
 
@@ -110,9 +139,20 @@ largePadding theme =
     scaled 4 theme
 
 
+borderRounded : Theme -> Attribute msg
+borderRounded theme =
+    -- 4 px
+    Border.rounded (scaled -5 theme)
+
+
+borderBottom : Int -> Attribute msg
+borderBottom width =
+    Border.widthEach { top = 0, left = 0, right = 0, bottom = width }
+
+
 scaled : Int -> Theme -> Int
 scaled scaleValue theme =
-    Element.modular (toFloat theme.fontSize) 1.25 scaleValue |> round
+    Element.modular (toFloat theme.fontSize) 1.25 (scaleValue - 2) |> round
 
 
 fontColorFor : Color -> Theme -> Color
@@ -166,8 +206,9 @@ header theme parts =
             parts.right
         ]
 
+
 twoColumnTableView : List record -> (record -> Element msg) -> (record -> Element msg) -> Element msg
-twoColumnTableView tableData leftView rightView = 
+twoColumnTableView tableData leftView rightView =
     table
         [ width fill
         ]
@@ -190,7 +231,6 @@ ellipseText str =
     Element.html <|
         div
             [ style "text-overflow" "ellipsis"
-            , style "white-space" "nowrap"
             , style "overflow" "hidden"
             , style "width" "100%"
             , style "flex-basis" "auto"

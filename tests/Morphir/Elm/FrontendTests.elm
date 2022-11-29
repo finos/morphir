@@ -416,10 +416,10 @@ valueTests =
         , checkIR "( foo, bar, baz )" <| Tuple () [ ref "foo", ref "bar", ref "baz" ]
         , checkIR "( foo )" <| ref "foo"
         , checkIR "[ foo, bar, baz ]" <| List () [ ref "foo", ref "bar", ref "baz" ]
-        , checkIR "{ foo = foo, bar = bar, baz = baz }" <| Record () [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ), ( [ "baz" ], ref "baz" ) ]
+        , checkIR "{ foo = foo, bar = bar, baz = baz }" <| Record ()  <| Dict.fromList [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ), ( [ "baz" ], ref "baz" ) ]
         , checkIR "foo.bar" <| Field () (ref "foo") [ "bar" ]
         , checkIR ".bar" <| FieldFunction () [ "bar" ]
-        , checkIR "{ a | foo = foo, bar = bar }" <| UpdateRecord () (Variable () [ "a" ]) [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ) ]
+        , checkIR "{ a | foo = foo, bar = bar }" <| UpdateRecord () (Variable () [ "a" ]) <| Dict.fromList  [ ( [ "foo" ], ref "foo" ), ( [ "bar" ], ref "bar" ) ]
         , checkIR "\\() -> foo " <| Lambda () (UnitPattern ()) (ref "foo")
         , checkIR "\\() () -> foo " <| Lambda () (UnitPattern ()) (Lambda () (UnitPattern ()) (ref "foo"))
         , checkIR "\\_ -> foo " <| Lambda () (WildcardPattern ()) (ref "foo")

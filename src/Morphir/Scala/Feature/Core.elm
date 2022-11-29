@@ -110,8 +110,8 @@ mapTypeMember currentPackagePath currentModulePath accessControlledModuleDef ( t
                 accessControlledCtors
 
 
-mapModuleDefinition : Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
-mapModuleDefinition distribution currentPackagePath currentModulePath accessControlledModuleDef =
+mapModuleDefinition : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
+mapModuleDefinition currentPackagePath currentModulePath accessControlledModuleDef =
     let
         ( scalaPackagePath, moduleName ) =
             case currentModulePath |> List.reverse of
@@ -179,7 +179,7 @@ mapModuleDefinition distribution currentPackagePath currentModulePath accessCont
                             , returnType =
                                 Just (mapType accessControlledValueDef.value.value.outputType)
                             , body =
-                                Just (mapFunctionBody distribution accessControlledValueDef.value.value)
+                                Just (mapFunctionBody accessControlledValueDef.value.value)
                             }
                         ]
                     )
@@ -419,8 +419,8 @@ mapType tpe =
 
 {-| Generate Scala for a Morphir function body.
 -}
-mapFunctionBody : Distribution -> Value.Definition ta (Type ()) -> Scala.Value
-mapFunctionBody distribution valueDef =
+mapFunctionBody : Value.Definition ta (Type ()) -> Scala.Value
+mapFunctionBody valueDef =
     mapValue
         (valueDef.inputTypes
             |> List.map (\( name, _, _ ) -> name)
@@ -458,8 +458,13 @@ mapValue inScopeVars value =
                 FloatLiteral v ->
                     wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
 
+                DecimalLiteral _ ->
+                    Debug.todo "branch 'DecimalLiteral _' not implemented"
+
         Constructor constructorType fQName ->
-            curryConstructorArgs inScopeVars constructorType fQName []
+            Scala.TypeAscripted
+                (curryConstructorArgs inScopeVars constructorType fQName [])
+                (mapType constructorType)
 
         Tuple a elemValues ->
             Scala.Tuple
@@ -482,6 +487,7 @@ mapValue inScopeVars value =
                     in
                     Scala.Apply (Scala.Ref path (name |> Name.toTitleCase))
                         (fieldValues
+                            |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     Scala.ArgValue (Just (mapValueName fieldName)) (mapValue inScopeVars fieldValue)
@@ -491,6 +497,7 @@ mapValue inScopeVars value =
                 _ ->
                     Scala.StructuralValue
                         (fieldValues
+                            |> Dict.toList
                             |> List.map
                                 (\( fieldName, fieldValue ) ->
                                     ( mapValueName fieldName, mapValue inScopeVars fieldValue )
@@ -695,12 +702,13 @@ mapValue inScopeVars value =
             Scala.Apply
                 (Scala.Select (mapValue inScopeVars subjectValue) "copy")
                 (fieldUpdates
-                    |> List.map
-                        (\( fieldName, fieldValue ) ->
+                    |> Dict.map
+                        (\fieldName fieldValue ->
                             Scala.ArgValue
                                 (Just (mapValueName fieldName))
                                 (mapValue inScopeVars fieldValue)
                         )
+                    |> Dict.values
                 )
 
         Unit a ->
@@ -759,6 +767,9 @@ mapPattern pattern =
 
                         FloatLiteral v ->
                             Scala.FloatLit v
+
+                        DecimalLiteral v ->
+                            Scala.DecimalLit v
             in
             Scala.LiteralMatch (map literal)
 
@@ -880,18 +891,21 @@ curryConstructorArgs : Set Name -> Type () -> FQName -> List (Value a (Type ()))
 curryConstructorArgs inScopeVars constructorType constructorFQName constructorArgs =
     let
         -- Get the argument types from a curried function type
-        extractArgTypes : Type () -> List (Type ())
+        extractArgTypes : Type () -> ( List (Type ()), Type () )
         extractArgTypes tpe =
             case tpe of
                 Type.Function _ argType returnType ->
-                    argType :: extractArgTypes returnType
+                    let
+                        ( argTypes, finalReturnType ) =
+                            extractArgTypes returnType
+                    in
+                    ( argType :: argTypes, finalReturnType )
 
                 _ ->
-                    []
+                    ( [], tpe )
 
         -- Get the argument types of the constructor
-        constructorArgTypes : List (Type ())
-        constructorArgTypes =
+        ( constructorArgTypes, constructorReturnType ) =
             extractArgTypes constructorType
 
         -- Collect the arguments that were not specified
@@ -913,7 +927,9 @@ curryConstructorArgs inScopeVars constructorType constructorFQName constructorAr
                         (curryUnspecifiedArgs restOfArgs scalaConstructorValue (scalaArgumentsSpecified ++ [ Scala.ArgValue Nothing (Scala.Variable firstArgName) ]))
 
                 [] ->
-                    Scala.Apply scalaConstructorValue scalaArgumentsSpecified
+                    Scala.TypeAscripted
+                        (Scala.Apply scalaConstructorValue scalaArgumentsSpecified)
+                        (mapType constructorReturnType)
 
         ( path, name ) =
             mapFQNameToPathAndName constructorFQName

@@ -22,8 +22,16 @@ type alias Error =
     String
 
 
-mapModuleDefinitionToCodecs : Distribution -> Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
-mapModuleDefinitionToCodecs distribution currentPackagePath currentModulePath accessControlledModuleDef =
+
+{-
+   This is the entry point for the Codecs backend. This function takes Distribution and returns a list of compilation units.
+   All the types defined in the distribution are converted into Codecs in the output language. It uses
+   the two helper functions mapTypeDefinitionToEncoder and mapTypeDefinitionToDecoder
+-}
+
+
+mapModuleDefinitionToCodecs : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
+mapModuleDefinitionToCodecs currentPackagePath currentModulePath accessControlledModuleDef =
     let
         scalaPackagePath : List String
         scalaPackagePath =
@@ -91,13 +99,14 @@ mapModuleDefinitionToCodecs distribution currentPackagePath currentModulePath ac
 
 {-|
 
-    Maps a Morphir Type Definition to an Encoder
+    Maps a Morphir Type Definition to an Encoder. It takes an access controlled documented type definition and  returns a
+    Result list of Scala.Annotated Member Declaration
 
 -}
 mapTypeDefinitionToEncoder : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> Result Error (List (Scala.Annotated Scala.MemberDecl))
 mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
     case accessControlledDocumentedTypeDef.value.value of
-        Type.TypeAliasDefinition typeParams typeExp ->
+        Type.TypeAliasDefinition _ typeExp ->
             let
                 ( scalaTypePath, scalaName ) =
                     ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
@@ -133,6 +142,12 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlled
                     typeParams
                     accessControlledCtors
                 )
+
+
+
+{-
+   This function maps a custom type definition to a Scala encoder
+-}
 
 
 mapCustomTypeDefinitionToEncoder : Package.PackageName -> Path -> Module.Definition ta (Type ()) -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List (Scala.Annotated Scala.MemberDecl)
@@ -376,7 +391,24 @@ genEncodeReference tpe =
             Ok scalaReference
 
         Type.Tuple a types ->
-            Err "Not implemented yet"
+            let
+                encodedTypesResult =
+                    types
+                        |> List.map
+                            (\currentType ->
+                                genEncodeReference currentType
+                            )
+                        |> ResultList.keepFirstError
+                        |> Result.map
+                            (\x ->
+                                x |> List.map (\y -> Scala.ArgValue Nothing y)
+                            )
+            in
+            encodedTypesResult
+                |> Result.map
+                    (\argVal ->
+                        Scala.Apply (Scala.Variable "io.circe.arr") argVal
+                    )
 
         Type.Record a fields ->
             let
@@ -415,13 +447,46 @@ genEncodeReference tpe =
             objRef
 
         Type.ExtensibleRecord a name fields ->
-            Err "Not implemented yet"
+            let
+                objFields : Result Error (List Scala.ArgValue)
+                objFields =
+                    fields
+                        |> List.map
+                            (\field ->
+                                genEncodeReference field.tpe
+                                    |> Result.map
+                                        (\fieldValueEncoder ->
+                                            let
+                                                fieldNameLiteral : Scala.Value
+                                                fieldNameLiteral =
+                                                    Scala.Literal (Scala.StringLit (Name.toCamelCase field.name))
+
+                                                fieldName : Scala.Name
+                                                fieldName =
+                                                    Name.toCamelCase field.name
+                                            in
+                                            Scala.ArgValue Nothing
+                                                (Scala.Tuple
+                                                    [ fieldNameLiteral
+                                                    , Scala.Apply fieldValueEncoder [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable "a") fieldName) ]
+                                                    ]
+                                                )
+                                        )
+                            )
+                        |> ResultList.keepFirstError
+
+                objRef : Result Error Scala.Value
+                objRef =
+                    objFields
+                        |> Result.map (Scala.Apply (Scala.Ref [ "io", "circe", "Json" ] "obj"))
+            in
+            objRef
 
         Type.Function a argType returnType ->
             Err "Cannot encode a function"
 
         Type.Unit a ->
-            Err "Not implemented yet"
+            Ok Scala.Unit
 
 
 {-|
@@ -451,7 +516,24 @@ genDecodeReference fqName tpe =
             Ok scalaReference
 
         Type.Tuple a types ->
-            Err "Not implemented yet"
+            let
+                decodedTypesResult =
+                    types
+                        |> List.map
+                            (\currentType ->
+                                genDecodeReference fqName currentType
+                            )
+                        |> ResultList.keepFirstError
+                        |> Result.map
+                            (\val ->
+                                val |> List.map (\y -> Scala.ArgValue Nothing y)
+                            )
+            in
+            decodedTypesResult
+                |> Result.map
+                    (\argVal ->
+                        Scala.Apply (Scala.Variable "io.circe.arr") argVal
+                    )
 
         Record a fields ->
             let
@@ -510,7 +592,57 @@ genDecodeReference fqName tpe =
             Err "Cannot decode a function"
 
         Type.Unit a ->
-            Err "Not implemented yet"
+            Ok Scala.Unit
 
         ExtensibleRecord a name fields ->
-            Err "Not implemented yet"
+            let
+                generatorsResult : Result Error (List Scala.Generator)
+                generatorsResult =
+                    fields
+                        |> List.map
+                            (\field ->
+                                genDecodeReference fqName field.tpe
+                                    |> Result.map
+                                        (\fieldValueDecoder ->
+                                            let
+                                                fieldNameLiteral : Scala.Value
+                                                fieldNameLiteral =
+                                                    Scala.Literal (Scala.StringLit (field.name |> Name.toCamelCase))
+
+                                                downFieldApply : Scala.Value
+                                                downFieldApply =
+                                                    Scala.Apply (Scala.Select (Scala.Variable "c") "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
+
+                                                downFieldApplyWithAs : Scala.Value
+                                                downFieldApplyWithAs =
+                                                    Scala.Select downFieldApply "as"
+
+                                                forCompFieldRHS : Scala.Value
+                                                forCompFieldRHS =
+                                                    Scala.Apply downFieldApplyWithAs [ Scala.ArgValue Nothing fieldValueDecoder ]
+
+                                                forCompField : Scala.Generator
+                                                forCompField =
+                                                    Scala.Extract (Scala.NamedMatch (field.name |> Name.toCamelCase)) forCompFieldRHS
+                                            in
+                                            forCompField
+                                        )
+                            )
+                        |> ResultList.keepFirstError
+
+                yieldValue : List Scala.ArgValue
+                yieldValue =
+                    fields
+                        |> List.map
+                            (\field ->
+                                Scala.ArgValue Nothing (Scala.Variable (Name.toCamelCase field.name))
+                            )
+
+                ( path, scalaName ) =
+                    mapFQNameToPathAndName fqName
+            in
+            generatorsResult
+                |> Result.map
+                    (\generators ->
+                        Scala.ForComp generators (Scala.Apply (Scala.Ref path (scalaName |> Name.toCamelCase)) yieldValue)
+                    )

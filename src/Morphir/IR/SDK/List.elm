@@ -29,8 +29,9 @@ import Morphir.IR.SDK.Maybe exposing (just, maybeType, nothing)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
 import Morphir.IR.Value as Value exposing (RawValue, Value)
 import Morphir.ListOfResults as ListOfResults
+import Morphir.SDK.ResultList as ResultList
 import Morphir.Value.Error exposing (Error(..))
-import Morphir.Value.Native as Native exposing (decodeFun1, decodeList, decodeLiteral, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeRaw, encodeResultList, encodeTuple2, eval1, eval2, floatLiteral, intLiteral, oneOf)
+import Morphir.Value.Native as Native exposing (Eval, decodeFun1, decodeList, decodeLiteral, decodeRaw, decodeTuple2, encodeList, encodeLiteral, encodeMaybe, encodeRaw, encodeResultList, encodeTuple2, eval1, eval2, floatLiteral, intLiteral, oneOf)
 import Morphir.Value.Native.Comparable exposing (compareValue)
 
 
@@ -110,6 +111,18 @@ moduleSpec =
             , vSpec "drop" [ ( "n", intType () ), ( "list", listType () (tVar "a") ) ] (listType () (tVar "a"))
             , vSpec "partition" [ ( "f", tFun [ tVar "a" ] (boolType ()) ), ( "list", listType () (tVar "a") ) ] (Type.Tuple () [ listType () (tVar "a"), listType () (tVar "a") ])
             , vSpec "unzip" [ ( "list", listType () (Type.Tuple () [ tVar "a", tVar "b" ]) ) ] (Type.Tuple () [ listType () (tVar "a"), listType () (tVar "b") ])
+            , vSpec "innerJoin"
+                [ ( "listB", listType () (tVar "b") )
+                , ( "f", tFun [ tVar "a", tVar "b" ] (boolType ()) )
+                , ( "listA", listType () (tVar "a") )
+                ]
+                (listType () (Type.Tuple () [ tVar "a", tVar "b" ]))
+            , vSpec "leftJoin"
+                [ ( "listB", listType () (tVar "b") )
+                , ( "f", tFun [ tVar "a", tVar "b" ] (boolType ()) )
+                , ( "listA", listType () (tVar "a") )
+                ]
+                (listType () (Type.Tuple () [ tVar "a", maybeType () (tVar "b") ]))
             ]
     }
 
@@ -758,4 +771,76 @@ nativeFunctions =
                     Err (UnexpectedArguments args)
       )
     , ( "unzip", eval1 List.unzip (decodeList (decodeTuple2 ( decodeRaw, decodeRaw ))) (encodeTuple2 ( encodeList encodeRaw, encodeList encodeRaw )) )
+    , ( "innerJoin"
+      , nativeJoin False
+      )
+    , ( "leftJoin"
+      , nativeJoin True
+      )
     ]
+
+
+nativeJoin : Bool -> Eval -> List RawValue -> Result Error RawValue
+nativeJoin isOuter eval args =
+    case args of
+        [ listB, fun, listA ] ->
+            eval listA
+                |> Result.andThen
+                    (\evaluatedListA ->
+                        eval listB
+                            |> Result.andThen
+                                (\evaluatedListB ->
+                                    case evaluatedListA of
+                                        Value.List () listAItems ->
+                                            listAItems
+                                                |> List.map
+                                                    (\listAItem ->
+                                                        let
+                                                            filterListB : Value () ()
+                                                            filterListB =
+                                                                Value.Apply ()
+                                                                    (Value.Apply ()
+                                                                        (Value.Reference () (toFQName moduleName "filter"))
+                                                                        (Value.Apply () fun listAItem)
+                                                                    )
+                                                                    evaluatedListB
+                                                        in
+                                                        eval filterListB
+                                                            |> Result.andThen
+                                                                (\filteredListB ->
+                                                                    case filteredListB of
+                                                                        Value.List () listBItems ->
+                                                                            if isOuter then
+                                                                                if List.isEmpty listBItems then
+                                                                                    Ok [ Value.Tuple () [ listAItem, nothing () ] ]
+
+                                                                                else
+                                                                                    listBItems
+                                                                                        |> List.map
+                                                                                            (\listBItem ->
+                                                                                                Value.Tuple () [ listAItem, just () listBItem ]
+                                                                                            )
+                                                                                        |> Ok
+
+                                                                            else
+                                                                                listBItems
+                                                                                    |> List.map
+                                                                                        (\listBItem ->
+                                                                                            Value.Tuple () [ listAItem, listBItem ]
+                                                                                        )
+                                                                                    |> Ok
+
+                                                                        _ ->
+                                                                            Err (ExpectedList filteredListB)
+                                                                )
+                                                    )
+                                                |> ResultList.keepFirstError
+                                                |> Result.map (List.concat >> Value.List ())
+
+                                        _ ->
+                                            Err (ExpectedList evaluatedListB)
+                                )
+                    )
+
+        _ ->
+            Err (UnexpectedArguments args)

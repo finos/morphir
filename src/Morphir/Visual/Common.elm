@@ -1,12 +1,10 @@
-module Morphir.Visual.Common exposing (cssClass, definition, element, grayScale, nameToText, nameToTitleText)
+module Morphir.Visual.Common exposing (colorToSvg, cssClass, element, grayScale, nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 
-import Element exposing (Attribute, Color, Element, column, el, height, paddingEach, rgb, row, shrink, spacing, text, width)
-import Element.Font as Font
+import Element exposing (Attribute, Color, Element, el, fill, height, htmlAttribute, inFront, mouseOver, none, rgb, shrink, transparent, width)
 import Html exposing (Html)
 import Html.Attributes exposing (class)
 import Morphir.IR.Name as Name exposing (Name)
-import Morphir.Visual.Config exposing (Config)
-import Morphir.Visual.Theme exposing (mediumPadding, mediumSpacing)
+import Morphir.IR.Path as Path exposing (Path)
 
 
 cssClass : String -> Attribute msg
@@ -47,13 +45,54 @@ grayScale v =
     rgb v v v
 
 
-definition : Config msg -> String -> Element msg -> Element msg
-definition config header body =
-    column [ mediumSpacing config.state.theme |> spacing ]
-        [ row [ mediumSpacing config.state.theme |> spacing ]
-            [ el [ Font.bold ] (text header)
-            , el [] (text "=")
+pathToUrl : Path -> String
+pathToUrl path =
+    "/" ++ Path.toString Name.toTitleCase "." path
+
+
+pathToFullUrl : List Path -> String
+pathToFullUrl path =
+    "/home" ++ String.concat (List.map pathToUrl path)
+
+
+pathToDisplayString : Path -> String
+pathToDisplayString =
+    Path.toString (Name.toHumanWords >> String.join " ") " > "
+
+
+tooltip : (Element msg -> Attribute msg) -> Element msg -> Attribute msg
+tooltip usher tooltip_ =
+    inFront <|
+        el
+            [ width fill
+            , height fill
+            , transparent True
+            , mouseOver [ transparent False ]
+            , usher <|
+                el [ htmlAttribute (Html.Attributes.style "pointerEvents" "none") ]
+                    tooltip_
             ]
-        , el [ paddingEach { left = mediumPadding config.state.theme, right = mediumPadding config.state.theme, top = 0, bottom = 0 } ]
-            body
+            none
+
+
+colorToSvg : Color -> String
+colorToSvg color =
+    let
+        to255 : Float -> Int
+        to255 f =
+            round (255 * f)
+
+        rgba =
+            Element.toRgb color
+    in
+    String.concat
+        [ "rgba("
+        , rgba.red |> to255 |> String.fromInt
+        , ", "
+        , rgba.green |> to255 |> String.fromInt
+        , ", "
+        , rgba.blue |> to255 |> String.fromInt
+        , ", "
+        , rgba.alpha |> String.fromFloat
+        , ")"
         ]

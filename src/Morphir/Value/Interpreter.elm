@@ -1,10 +1,10 @@
-module Morphir.Value.Interpreter exposing (evaluate, evaluateValue, evaluateFunctionValue, matchPattern)
+module Morphir.Value.Interpreter exposing (evaluate, evaluateValue, evaluateFunctionValue, matchPattern, Variables)
 
 {-| This module contains an interpreter for Morphir expressions. The interpreter takes a piece of logic as input,
 evaluates it and returns the resulting data. In Morphir both logic and data is captured as a `Value` so the interpreter
 takes a `Value` and returns a `Value` (or an error for invalid expressions):
 
-@docs evaluate, evaluateValue, evaluateFunctionValue, matchPattern
+@docs evaluate, evaluateValue, evaluateFunctionValue, matchPattern, Variables
 
 -}
 
@@ -88,9 +88,10 @@ evaluateValue nativeFunctions ir variables arguments value =
                             Just (Type.TypeAliasSpecification _ (Type.Record _ fields)) ->
                                 Ok
                                     (Value.Record ()
-                                        (List.map2 Tuple.pair
-                                            (fields |> List.map .name)
-                                            evaluatedArgs
+                                        (Dict.fromList <|
+                                            List.map2 Tuple.pair
+                                                (fields |> List.map .name)
+                                                evaluatedArgs
                                         )
                                     )
 
@@ -131,6 +132,7 @@ evaluateValue nativeFunctions ir variables arguments value =
         Value.Record _ fields ->
             -- For a record we need to evaluate each element and return them wrapped back into a record
             fields
+                |> Dict.toList
                 -- We evaluate each field separately.
                 |> List.map
                     (\( fieldName, fieldValue ) ->
@@ -140,7 +142,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                 -- If any of those fails we return the first failure.
                 |> ListOfResults.liftFirstError
                 -- If nothing fails we wrap the result in a record.
-                |> Result.map (Value.Record ())
+                |> Result.map (Dict.fromList >> Value.Record ())
 
         Value.Variable _ varName ->
             -- When we run into a variable we simply look up the value of the variable in the state.
@@ -193,7 +195,6 @@ evaluateValue nativeFunctions ir variables arguments value =
                         case evaluatedSubjectValue of
                             Value.Record _ fields ->
                                 fields
-                                    |> Dict.fromList
                                     |> Dict.get fieldName
                                     |> Result.fromMaybe (FieldNotFound subjectValue fieldName)
 
@@ -212,7 +213,6 @@ evaluateValue nativeFunctions ir variables arguments value =
                                 case evaluatedSubjectValue of
                                     Value.Record _ fields ->
                                         fields
-                                            |> Dict.fromList
                                             |> Dict.get fieldName
                                             |> Result.fromMaybe (FieldNotFound subjectValue fieldName)
 
@@ -368,6 +368,7 @@ evaluateValue nativeFunctions ir variables arguments value =
                             Value.Record _ fields ->
                                 -- Once we hve the fields we fold through the field updates
                                 fieldUpdates
+                                    |> Dict.toList
                                     |> List.foldl
                                         -- For each field update we update a single field and return the new field dictionary
                                         (\( fieldName, newFieldValue ) fieldsResultSoFar ->
@@ -395,8 +396,8 @@ evaluateValue nativeFunctions ir variables arguments value =
                                                     )
                                         )
                                         -- We start with the original fields
-                                        (Ok (fields |> Dict.fromList))
-                                    |> Result.map (Dict.toList >> Value.Record ())
+                                        (Ok fields)
+                                    |> Result.map (Value.Record ())
 
                             _ ->
                                 Err (RecordExpected subjectValue evaluatedSubjectValue)

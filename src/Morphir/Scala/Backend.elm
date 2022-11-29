@@ -38,7 +38,7 @@ import List
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.SourceCode exposing (Doc)
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
-import Morphir.IR.Module exposing (ModuleName)
+import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Package as Package
 import Morphir.IR.Type exposing (Type)
 import Morphir.Scala.Feature.Codec exposing (mapModuleDefinitionToCodecs)
@@ -77,9 +77,9 @@ mapPackageDefinition opt distribution packagePath packageDef =
         |> List.concatMap
             (\( modulePath, moduleImpl ) ->
                 List.concat
-                    [ mapModuleDefinition distribution packagePath modulePath moduleImpl
+                    [ mapModuleDefinition packagePath modulePath moduleImpl
                     , if opt.includeCodecs then
-                        mapModuleDefinitionToCodecs distribution packagePath modulePath moduleImpl
+                        mapModuleDefinitionToCodecs packagePath modulePath moduleImpl
 
                       else
                         []

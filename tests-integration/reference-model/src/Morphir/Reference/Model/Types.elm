@@ -18,7 +18,7 @@ type Custom
 
 {-| Value type example
 -}
-type Email
+type Mail
     = Email String
 
 

@@ -1,6 +1,10 @@
 FROM ubuntu:latest
 #FROM node:16
 
+ENV $APP_USER = appUser
+# Add Non Root User
+RUN adduser -S -H $APP_USER
+
 # Create app directory
 WORKDIR /usr/src/app
 
@@ -32,4 +36,7 @@ RUN \
 COPY . .
 
 EXPOSE 8080
+
+USER $APP_USER
+
 CMD [ "node", "server.js" ]

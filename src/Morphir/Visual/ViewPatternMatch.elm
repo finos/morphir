@@ -1,12 +1,10 @@
 module Morphir.Visual.ViewPatternMatch exposing (..)
 
-import Dict exposing (Dict)
-import Element exposing (Attribute, Column, Element, fill, row, spacing, table, text, width)
-import List exposing (concat)
+import Element exposing (Element)
+import List
 import Morphir.IR.Literal as Value
-import Morphir.IR.Name exposing (Name)
-import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Pattern, TypedValue, Value)
+import Morphir.IR.Type exposing (Type)
+import Morphir.IR.Value as Value exposing (Pattern, TypedValue)
 import Morphir.Value.Interpreter exposing (matchPattern)
 import Morphir.Visual.Components.DecisionTable as DecisionTable exposing (DecisionTable, Match(..), Rule, TypedPattern)
 import Morphir.Visual.Config as Config exposing (Config, HighlightState(..))
@@ -16,29 +14,26 @@ import Morphir.Visual.EnrichedValue exposing (EnrichedValue)
 view : Config msg -> (Config msg -> EnrichedValue -> Element msg) -> EnrichedValue -> List ( Pattern ( Int, Type () ), EnrichedValue ) -> Element msg
 view config viewValue subject matches =
     let
-        typedSubject : TypedValue
-        typedSubject =
-            toTypedValue subject
 
-        typedMatches : List ( TypedPattern, TypedValue )
+        typedMatches : List ( TypedPattern, EnrichedValue )
         typedMatches =
-            List.map (\( a, b ) -> ( toTypedPattern a, toTypedValue b )) matches
+            List.map (\( a, b ) -> ( toTypedPattern a, b )) matches
 
         decisionTable : DecisionTable
         decisionTable =
-            toDecisionTable config typedSubject typedMatches
+            toDecisionTable config subject typedMatches
     in
     DecisionTable.displayTable config viewValue decisionTable
 
 
-toDecisionTable : Config msg -> TypedValue -> List ( TypedPattern, TypedValue ) -> DecisionTable
+toDecisionTable : Config msg -> EnrichedValue -> List ( TypedPattern, EnrichedValue ) -> DecisionTable
 toDecisionTable config subject matches =
     let
-        decomposedInput : List TypedValue
+        decomposedInput : List EnrichedValue
         decomposedInput =
             decomposeInput subject
 
-        rules : List ( List Match, TypedValue )
+        rules : List ( List Match, EnrichedValue )
         rules =
             getRules decomposedInput matches
 
@@ -51,7 +46,7 @@ toDecisionTable config subject matches =
     }
 
 
-decomposeInput : TypedValue -> List TypedValue
+decomposeInput : EnrichedValue -> List EnrichedValue
 decomposeInput subject =
     case subject of
         Value.Tuple _ elems ->
@@ -61,15 +56,15 @@ decomposeInput subject =
             [ subject ]
 
 
-getRules : List TypedValue -> List ( TypedPattern, TypedValue ) -> List ( List Match, TypedValue )
+getRules : List EnrichedValue -> List ( TypedPattern, EnrichedValue ) -> List ( List Match, EnrichedValue )
 getRules subject matches =
     matches |> List.concatMap (decomposePattern subject)
 
 
-decomposePattern : List TypedValue -> ( TypedPattern, TypedValue ) -> List ( List Match, TypedValue )
+decomposePattern : List EnrichedValue -> ( TypedPattern, EnrichedValue ) -> List ( List Match, EnrichedValue )
 decomposePattern subject match =
     case match of
-        ( Value.WildcardPattern tpe, _ ) ->
+        ( Value.WildcardPattern _, _ ) ->
             let
                 wildcardMatch : Match
                 wildcardMatch =
@@ -77,7 +72,7 @@ decomposePattern subject match =
             in
             [ ( List.repeat (List.length subject) wildcardMatch, Tuple.second match ) ]
 
-        ( Value.LiteralPattern tpe literal, _ ) ->
+        ( Value.LiteralPattern _ _, _ ) ->
             let
                 literalMatch : Match
                 literalMatch =
@@ -85,7 +80,7 @@ decomposePattern subject match =
             in
             [ ( [ literalMatch ], Tuple.second match ) ]
 
-        ( Value.TuplePattern tpe matches, _ ) ->
+        ( Value.TuplePattern _ matches, _ ) ->
             let
                 tupleMatch : List Match
                 tupleMatch =
@@ -93,7 +88,7 @@ decomposePattern subject match =
             in
             [ ( tupleMatch, Tuple.second match ) ]
 
-        ( Value.ConstructorPattern tpe fQName matches, _ ) ->
+        ( Value.ConstructorPattern _ _ _, _ ) ->
             let
                 constructorMatch : Match
                 constructorMatch =
@@ -101,7 +96,7 @@ decomposePattern subject match =
             in
             [ ( [ constructorMatch ], Tuple.second match ) ]
 
-        ( Value.AsPattern tpe pattern name, _ ) ->
+        ( Value.AsPattern _ _ _, _ ) ->
             let
                 asMatch : Match
                 asMatch =
@@ -113,14 +108,14 @@ decomposePattern subject match =
             []
 
 
-getHighlightStates : Config msg -> List TypedValue -> List ( List Match, TypedValue ) -> List (List HighlightState)
+getHighlightStates : Config msg -> List EnrichedValue -> List ( List Match, EnrichedValue ) -> List (List HighlightState)
 getHighlightStates config subject matches =
     let
         patterns : List (List Match)
         patterns =
             List.map (\x -> Tuple.first x) matches
 
-        referencedPatterns : List (List ( TypedValue, Match ))
+        referencedPatterns : List (List ( EnrichedValue, Match ))
         referencedPatterns =
             List.map (List.map2 Tuple.pair subject) patterns
     in
@@ -137,7 +132,7 @@ getHighlightStates config subject matches =
                     List.map (\x -> List.repeat (List.length x) Default) patterns
 
 
-comparePreviousHighlightStates : Config msg -> List ( TypedValue, Match ) -> List (List HighlightState) -> List (List HighlightState)
+comparePreviousHighlightStates : Config msg -> List ( EnrichedValue, Match ) -> List (List HighlightState) -> List (List HighlightState)
 comparePreviousHighlightStates config matches previousStates =
     let
         mostRecentRow : List HighlightState
@@ -153,7 +148,7 @@ comparePreviousHighlightStates config matches previousStates =
         nextMatches =
             --check whether the previous row is either untouched or fully matched, meaning we should stop checking highlight logic.
             case mostRecentRow of
-                x :: _ ->
+                _ :: _ ->
                     if isFullyMatchedRow mostRecentRow || isFullyDefaultRow mostRecentRow then
                         List.repeat (List.length matches + 1) Default
 
@@ -205,7 +200,7 @@ isFullyDefaultRow highlightStates =
     List.length (List.filter isNotDefaultHighlightState highlightStates) == 0
 
 
-getNextHighlightState : Config msg -> ( TypedValue, Match ) -> List HighlightState -> List HighlightState
+getNextHighlightState : Config msg -> ( EnrichedValue, Match ) -> List HighlightState -> List HighlightState
 getNextHighlightState config currentMatch previousStates =
     let
         lastState : HighlightState

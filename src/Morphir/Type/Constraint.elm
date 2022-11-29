@@ -1,7 +1,7 @@
 module Morphir.Type.Constraint exposing (..)
 
 import Dict exposing (Dict)
-import Morphir.Type.Class exposing (Class)
+import Morphir.Type.Class as Class exposing (Class)
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable)
 import Set exposing (Set)
 
@@ -113,3 +113,21 @@ isRecursive constraint =
 
         Class _ _ _ ->
             False
+
+
+toString : Constraint -> String
+toString constraint =
+    case constraint of
+        Equality _ metaType1 metaType2 ->
+            String.concat
+                [ MetaType.toString metaType1
+                , " == "
+                , MetaType.toString metaType2
+                ]
+
+        Class _ metaType c ->
+            String.concat
+                [ MetaType.toString metaType
+                , " is a "
+                , Class.toString c
+                ]

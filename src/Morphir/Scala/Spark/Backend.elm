@@ -222,6 +222,9 @@ mapColumnExpression value =
 
                 FloatLiteral float ->
                     Scala.FloatLit float
+
+                DecimalLiteral decimal ->
+                    Scala.DecimalLit decimal
     in
     case value of
         Value.Literal _ lit ->

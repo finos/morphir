@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Morphir.Web.InsightTestApp</title>
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+      }
+    </style>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js" integrity="sha384-GbzfludOrzCE1rDoNAJqwlW4ZhytkPlu66df3zSVpLQrC61zzQdtNFSPj2W3vMtV" crossorigin="anonymous"></script>
+  </head>
+
+  <body>
+    <pre id="elm"></pre>
+    <!--Reference to graph.js which is where the graph custom element is created. The index.js
+reference points to the file that holds the output for elm-make-->
+    <script src="/graph.js"></script>
+    <script src="/insight-test-app.js"></script>
+    <script>
+      try {
+        var app = Elm.Morphir.Web.InsightTestApp.init({
+          node: document.getElementById("elm"),
+        });
+      } catch (e) {
+        // display initialization errors (e.g. bad flags, infinite recursion)
+        var header = document.createElement("h1");
+        header.style.fontFamily = "monospace";
+        header.innerText = "Initialization Error";
+        var pre = document.getElementById("elm");
+        document.body.insertBefore(header, pre);
+        pre.innerText = e;
+        throw e;
+      }
+    </script>
+  </body>
+</html>
