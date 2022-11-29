@@ -7,6 +7,10 @@ type alias TypeName =
     String
 
 
+type alias FieldName =
+    String
+
+
 type alias Schema =
     { id : String
     , schemaVersion : String
@@ -45,7 +49,7 @@ type SchemaType
     | String StringConstraints
     | Number
     | Boolean
-    | Object (Dict String SchemaType) (List TypeName)
+    | Object (Dict String SchemaType) (List FieldName)
     | Const String
     | Ref TypeName
     | OneOf (List SchemaType)
