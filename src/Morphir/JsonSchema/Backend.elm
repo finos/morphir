@@ -46,7 +46,7 @@ type alias QualifiedName =
 
 
 type alias Errors =
-    List String
+    List Error
 
 
 type alias Error =
