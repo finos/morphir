@@ -81,6 +81,15 @@ async function gen(input, outputPath, options) {
     })
     const morphirIrJson = await readFile(path.resolve(input))  
     const opts = options
+
+    if (options.customConfig != null) {
+        const file = await readFile(path.resolve(input))
+        opts.config = JSON.parse(file.toString())
+    } else {
+        opts.config = null
+    }
+
+
     opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(',') : null
     opts.includeCodecs = options.includeCodecs ? true : false
     opts.filename = options.filename == '' ? '' : options.filename
