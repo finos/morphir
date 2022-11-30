@@ -644,7 +644,7 @@ genDecodeReference fqName tpeName tpe =
 
                 "Morphir.SDK:String:string" ->
                     Ok <|
-                        Scala.Apply (Scala.Ref circeJsonPath "toString")
+                        Scala.Apply (Scala.Ref circeJsonPath "decodeString")
                             [ Scala.ArgValue Nothing <|
                                 Scala.Variable <|
                                     Name.toCamelCase
