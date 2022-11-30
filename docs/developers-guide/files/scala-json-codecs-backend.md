@@ -21,16 +21,44 @@ are Scala values defined in the Scala AST. The Codec files generated contains va
 Below is an outline of how each type is mapped
 
 #### Variable
-Variable types in Elm are mapped to Scala Variables
+Variable types in Elm are mapped to Scala Variables. We simply append the 'encode' prefix to the variable name
+```foo```
+maps to 
+```encodeFoo```
+
 
 #### Reference
 Reference types in Elm are mapped to Scala Ref which uses the Elm path and name
 to create a Scala Ref value
 
+
+
 #### Tuple 
 Not completed yet
 
 #### Record
+A record in Elm could serialize into one of these two:
+1. final case class
+2. record type declaration
+
+For example the elm type declaration:
+
+```elm 
+type Person =
+    { name: String
+    , age: Int
+    }
+```
+
+```scala 
+type Person = Record {
+  val name: String
+  val age: Int
+}
+```
+The resulting codec would is given below:
+
+
 An Elm record type maps to Circe object which consists of a list of fields which are applied to
 the Circe.json.obj function.
 
