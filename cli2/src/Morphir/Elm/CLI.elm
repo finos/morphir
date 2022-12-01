@@ -352,19 +352,12 @@ keepElmFilesOnly fileChanges =
 returnDistribution : Result IncrementalFrontend.Errors Repo -> Cmd Msg
 returnDistribution repoResult =
     let
-        cleanupDependencies (Library packageName dependencies packageDefinition) =
-            Library packageName
-                (dependencies
-                    |> Dict.filter
-                        (\depPackageName _ ->
-                            depPackageName /= [ [ "morphir" ], [ "s", "d", "k" ] ]
-                        )
-                )
-                packageDefinition
+        removeDependencies (Library packageName _ packageDefinition) =
+            Library packageName Dict.empty packageDefinition
     in
     repoResult
         |> Result.map Repo.toDistribution
-        |> Result.map cleanupDependencies
+        |> Result.map removeDependencies
         |> encodeResult (Encode.list IncrementalFrontendCodec.encodeError) DistroCodec.encodeVersionedDistribution
         |> buildCompleted
 
