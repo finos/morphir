@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as util from "util";
 import * as path from "path";
 import * as FileChanges from "./FileChanges";
-import * as Dependencies from "./Dependencies";
+import * as Dependencies from "./dependencies";
 
 const fsExists = util.promisify(fs.exists);
 const fsWriteFile = util.promisify(fs.writeFile);
