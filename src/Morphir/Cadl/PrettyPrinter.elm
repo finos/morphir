@@ -22,19 +22,21 @@ mapNamespace namespaceName namespace =
                     |> concat
                 )
     in
-    "namespace"
-        ++ space
-        ++ namespaceName
-        ++ space
-        ++ "{"
-        ++ newLine
-        ++ namespaceContent
-        ++ newLine
-        ++ "}"
+    [ "namespace"
+    , space
+    , namespaceName
+    , space
+    , "{"
+    , newLine
+    , namespaceContent
+    , newLine
+    , "}"
+    ]
+        |> concat
 
 
 mapTypeDefinition : Name -> AST.TypeDefinition -> Doc
-mapTypeDefinition nm typeDefinition =
+mapTypeDefinition name typeDefinition =
     let
         printTemplateArgs : List Name -> Doc
         printTemplateArgs templates =
@@ -50,11 +52,32 @@ mapTypeDefinition nm typeDefinition =
                     ++ ">"
     in
     case typeDefinition of
-        AST.Alias name lstOfNames tpe ->
-            "alias" ++ space ++ name ++ printTemplateArgs lstOfNames ++ " = " ++ mapType tpe ++ semi
+        AST.Alias templateArgs tpe ->
+            [ "alias"
+            , space
+            , name
+            , printTemplateArgs templateArgs
+            , space
+            , "="
+            , space
+            , mapType tpe
+            , semi
+            ]
+                |> concat
 
-        AST.Model name namespace fields ->
-            ""
+        AST.Model templateArgs fields ->
+            [ "model"
+            , space
+            , name
+            , printTemplateArgs templateArgs
+            , space
+            , "{"
+            , newLine
+            , indent 3 (mapField fields)
+            , "}"
+            , semi
+            ]
+                |> concat
 
 
 mapType : AST.Type -> String
@@ -92,8 +115,12 @@ mapType tpe =
                            )
                         ++ "]"
 
-        AST.Reference templates namespace name ->
-            "reference"
+        AST.Reference _ namespace name ->
+            name
+                :: List.drop 1 namespace
+                |> List.reverse
+                |> List.intersperse "."
+                |> concat
 
         AST.Null ->
             "null"
@@ -104,14 +131,37 @@ mapType tpe =
         AST.Union types ->
             types
                 |> List.map mapType
-                |> List.intersperse "|"
+                |> List.intersperse " | "
                 |> concat
 
         AST.Const string ->
             [ "\"", string, "\"" ]
                 |> concat
 
+        AST.Object fields ->
+            mapField fields
 
-mapFields : List AST.Field -> Doc
-mapFields fields =
-    Debug.todo ""
+
+mapField : AST.Fields -> Doc
+mapField fields =
+    let
+        mapFieldDef : AST.FieldDef -> Doc
+        mapFieldDef fieldDef =
+            mapType fieldDef.tpe
+                |> (\typeSoFar ->
+                        if fieldDef.optional == True then
+                            [ space, "?:", space, typeSoFar, semi, newLine ]
+
+                        else
+                            [ space, ":", space, typeSoFar, semi, newLine ]
+                   )
+                |> concat
+    in
+    fields
+        |> Dict.toList
+        |> List.map
+            (\( fieldName, fieldDef ) ->
+                [ fieldName, mapFieldDef fieldDef ]
+            )
+        |> List.concat
+        |> concat

@@ -7,27 +7,31 @@ type alias Name =
     String
 
 
-type alias Field =
-    { name : Name
-    , tpe : Type
+type alias FieldDef =
+    { tpe : Type
+    , optional : Bool
     }
+
+
+type alias Fields =
+    Dict Name FieldDef
 
 
 type alias NamespaceDeclaration =
     Dict Name TypeDefinition
 
 
-type alias Templates =
-    List Type
-
-
-type TypeDefinition
-    = Alias Name (List Name) Type
-    | Model Name Namespace (List Field)
+type alias TemplateArgs =
+    List Name
 
 
 type alias Namespace =
     List Name
+
+
+type TypeDefinition
+    = Alias TemplateArgs Type
+    | Model TemplateArgs Fields
 
 
 type Type
@@ -42,6 +46,7 @@ type Type
     | Reference (List Type) Namespace Name
     | Union (List Type)
     | Const String
+    | Object Fields
     | Null
 
 

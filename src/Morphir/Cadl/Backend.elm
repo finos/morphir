@@ -81,8 +81,14 @@ mapTypeDefinition tpeName definition =
                 |> mapType
                 |> Result.map
                     (\cadlType ->
-                        Alias (iRNameToName tpeName) (tpeArgs |> List.map iRNameToName) cadlType
-                            |> Tuple.pair (iRNameToName tpeName)
+                        case cadlType of
+                            AST.Object fields ->
+                                Model (tpeArgs |> List.map iRNameToName) fields
+                                    |> Tuple.pair (iRNameToName tpeName)
+
+                            _ ->
+                                Alias (tpeArgs |> List.map iRNameToName) cadlType
+                                    |> Tuple.pair (iRNameToName tpeName)
                     )
 
         IRType.CustomTypeDefinition lists accessControlled ->
@@ -188,6 +194,37 @@ mapType tpe =
                     (\itemType ->
                         Array (TupleType itemType)
                     )
+
+        IRType.Record _ fields ->
+            fields
+                |> List.map
+                    (\field ->
+                        let
+                            mapMandatoryType =
+                                mapType field.tpe
+                                    |> Result.map
+                                        (\fieldType ->
+                                            ( IRName.toCamelCase field.name, AST.FieldDef fieldType False )
+                                        )
+                        in
+                        case field.tpe of
+                            IRType.Reference _ fQName argTypes ->
+                                case ( FQName.toString fQName, argTypes ) of
+                                    ( "Morphir.SDK:Maybe:maybe", [ itemType ] ) ->
+                                        mapType itemType
+                                            |> Result.map
+                                                (\fieldType ->
+                                                    ( IRName.toCamelCase field.name, AST.FieldDef fieldType True )
+                                                )
+
+                                    _ ->
+                                        mapMandatoryType
+
+                            _ ->
+                                mapMandatoryType
+                    )
+                |> ResultList.keepFirstError
+                |> Result.map (Dict.fromList >> AST.Object)
 
         _ ->
             Err ("Type " ++ Debug.toString tpe ++ " Not Supported")

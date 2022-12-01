@@ -62,3 +62,11 @@ type alias ResultType a b =
 
 type alias MaybeRep a =
     Maybe a
+
+
+type alias FooBarBazRecord =
+    { foo : Int
+    , bar : String
+    , baz : StringRep
+    , baj : Maybe Int
+    }
