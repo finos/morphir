@@ -21,6 +21,7 @@ to the file-system.
    limitations under the License.
 -}
 
+import Debug exposing (log)
 import Dict exposing (Dict)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
@@ -34,10 +35,12 @@ import Morphir.IR.Type as Type exposing (Type)
 import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), StringConstraints, TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
 import Morphir.SDK.ResultList as ResultList
+import Set exposing (Set)
 
 
 type alias Options =
-    { filename : String
+    { limitToModules : Maybe (Set ModuleName)
+    , filename : String
     }
 
 
@@ -60,7 +63,12 @@ mapDistribution : Options -> Distribution -> Result Errors FileMap
 mapDistribution opts distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
-            mapPackageDefinition opts packageName packageDef
+            case opts.limitToModules of
+                Just modulesToInclude ->
+                    mapPackageDefinition opts packageName (Package.selectModules modulesToInclude packageName packageDef)
+
+                Nothing ->
+                    mapPackageDefinition opts packageName packageDef
 
 
 mapPackageDefinition : Options -> PackageName -> Package.Definition ta (Type ()) -> Result Errors FileMap
