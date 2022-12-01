@@ -49,9 +49,9 @@ Thursday DD MMM yyyy - 11am ET / 3pm UK
 - **Meeting ID:** 954 5254 0437
 - **Passcode:** 778814
 
-**Dial-in**
+### Dial-in
 
-**Find your local number:** https://zoom.us/u/aFGSSGV9x
+- **Find your local number:** https://zoom.us/u/aFGSSGV9x
 
 **Github Repo:** https://github.com/finos/morphir/
 
