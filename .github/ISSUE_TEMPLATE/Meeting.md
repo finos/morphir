@@ -43,16 +43,15 @@ Thursday DD MMM yyyy - 11am ET / 3pm UK
 - [ ] Action 2
 - [ ] ...
 
-### WebEx info
+### Zoom info
 
-**Webex:**
-https://finos.webex.com/finos/j.php?MTID=mc06ba4f96e798bb141883a77db0aa4e5
+- https://zoom.us/j/95452540437?pwd=TEk0bitJcVFsK3lrWVZCYmxyTm5LZz09
+- **Meeting ID:** 954 5254 0437
+- **Passcode:** 778814
 
 **Dial-in**
 
-- **US** +1-415-655-0003 US Toll
-- **UK** +44-20319-88141 UK Toll
-- **Meeting number:** 2555 504 4597
+**Find your local number:** https://zoom.us/u/aFGSSGV9x
 
 **Github Repo:** https://github.com/finos/morphir/
 
