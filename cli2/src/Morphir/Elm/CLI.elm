@@ -158,13 +158,6 @@ process msg =
                                     |> Result.andThen (Repo.insertDependencySpecification dependencyName dependencySpec)
                             )
                             (Ok repo)
-                        |> (\a ->
-                                let
-                                    _ =
-                                        Debug.log "deps" (Result.map Repo.dependsOnPackages a)
-                                in
-                                a
-                           )
             in
             case jsonInput |> Decode.decodeValue decodeInput of
                 Ok input ->
