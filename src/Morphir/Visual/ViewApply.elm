@@ -89,10 +89,10 @@ view config viewDefinitionBody viewValue functionValue argValues =
                                     el popupstyles (viewRawValue value)
 
                                 Err err ->
-                                    el ((Font.color <| rgb 0.8 0 0) :: popupstyles) (text <| Error.toString err)
+                                    Element.none
 
                         _ ->
-                            el popupstyles (text <| "Could not evaluate. (" ++ Error.toString firstError ++ ")")
+                            Element.none
     in
     case ( functionValue, argValues ) of
         ( (Value.Constructor _ fQName) as constr, _ ) ->
