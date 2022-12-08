@@ -54,13 +54,12 @@ async function getAttributeConfigJson() {
     program.opts().projectDir,
     "attributes.conf.json"
   );
-  if (await fsExists(configPath)) {
+  try {
     const fileContent = await readFile(configPath);
     return JSON.parse(fileContent.toString());
-  }else{
-    await writeFile(configPath, "{}");
-    const fileContent = await readFile(configPath);
-    return JSON.parse(fileContent.toString());
+  } catch (ex) {
+    console.error(ex);
+    return {};
   }
 }
 
