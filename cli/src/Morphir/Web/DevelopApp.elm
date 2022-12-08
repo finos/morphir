@@ -50,6 +50,7 @@ import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.CustomAttribute.Codec exposing (decodeAttributes, encodeAttributeData)
 import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo)
+import Morphir.Elm.ParsedModule exposing (moduleName)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -965,23 +966,27 @@ viewHeader model =
         ]
         [ row
             [ width fill ]
-            [ row
-                [ width fill
-                ]
-                [ el [ padding 6 ]
-                    (image
-                        [ height (px 40)
+            [ link []
+                { url = pathToFullUrl [] ++ filterStateToQueryParams model.homeState.filterState
+                , label =
+                    row
+                        [ width fill
                         ]
-                        { src = "/assets/2020_Morphir_Logo_Icon_WHT.svg"
-                        , description = "Morphir Logo"
-                        }
-                    )
-                , el
-                    [ paddingXY 10 0
-                    , Font.size (model.theme |> Theme.scaled 5)
-                    ]
-                    (text "Morphir Web")
-                ]
+                        [ el [ padding 6 ]
+                            (image
+                                [ height (px 40)
+                                ]
+                                { src = "/assets/2020_Morphir_Logo_Icon_WHT.svg"
+                                , description = "Morphir Logo"
+                                }
+                            )
+                        , el
+                            [ paddingXY 10 0
+                            , Font.size (model.theme |> Theme.scaled 5)
+                            ]
+                            (text "Morphir Web")
+                        ]
+                }
             ]
         ]
 
@@ -1344,6 +1349,60 @@ viewHome model packageName packageDef =
                     pathToSelectedModule
                 , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
                 ]
+
+        homeTabs =
+            let
+                col elements =
+                    column
+                        [ height fill
+                        , width fill
+                        , scrollbars
+                        ]
+                        elements
+
+                leafModules : ModuleName -> List ModuleName
+                leafModules moduleName =
+                    packageDef.modules |> Dict.keys |> List.filter (\l -> List.concat l |> String.join "." |> String.startsWith (List.concat moduleName |> String.join "."))
+
+                summary =
+                    let
+                        numberOfModules =
+                            packageDef.modules |> Dict.keys |> List.length
+
+                        numberofValuesAndTypes acmoduledef moduleName =
+                            row [ width fill ] [ text <| (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ " : " ++ String.fromInt (acmoduledef.value.values |> Dict.keys |> List.length) ++ " definition(s) and " ++ String.fromInt (acmoduledef.value.types |> Dict.keys |> List.length) ++ " type(s)." ]
+                    in
+                    case model.homeState.selectedModule of
+                        Just ( modulePath, moduleName ) ->
+                            column [ spacing (Theme.smallSpacing model.theme) ]
+                                (leafModules moduleName
+                                    |> List.map
+                                        (\mn ->
+                                            case Dict.get mn packageDef.modules of
+                                                Just acmd ->
+                                                    numberofValuesAndTypes acmd mn
+
+                                                Nothing ->
+                                                    Element.none
+                                        )
+                                )
+
+                        Nothing ->
+                            row [ width fill ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
+            in
+            TabsComponent.view model.theme
+                { onSwitchTab = UI << SwitchTab
+                , activeTab = model.activeTabIndex
+                , tabs =
+                    Array.fromList
+                        [ { name = "Summary"
+                          , content = el [ padding <| Theme.smallPadding model.theme ] summary
+                          }
+                        , { name = "Dependency Graph"
+                          , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
+                          }
+                        ]
+                }
     in
     row [ width fill, height fill, Background.color model.theme.colors.gray, spacing (Theme.smallSpacing model.theme) ]
         [ column
@@ -1363,7 +1422,7 @@ viewHome model packageName packageDef =
             , scrollbars
             ]
             [ ifThenElse (model.homeState.selectedDefinition == Nothing)
-                (dependencyGraph model.homeState.selectedModule model.repo)
+                homeTabs
                 (column
                     [ scrollbars, height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, width fill, spacing (model.theme |> Theme.scaled 1) ]
                     [ viewDefinition model.homeState.selectedDefinition
@@ -1968,11 +2027,14 @@ viewDefinitionDetails model =
                                                                                             )
                                                                                         ]
                                                                                         [ el [ borderBottom 2, paddingXY 0 5 ] (viewArgumentEditors ir model.argStates valueDef.inputTypes)
-                                                                                        , row [] [el [Font.bold] (text "Outputs: "), viewActualOutput
-                                                                                            model.theme
-                                                                                            ir
-                                                                                            { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                                            fullyQualifiedName]
+                                                                                        , row []
+                                                                                            [ el [ Font.bold ] (text "Outputs: ")
+                                                                                            , viewActualOutput
+                                                                                                model.theme
+                                                                                                ir
+                                                                                                { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                                fullyQualifiedName
+                                                                                            ]
                                                                                         ]
                                                                                 }
                                                                             , SectionComponent.view model.theme

@@ -1,19 +1,18 @@
 module Morphir.Web.Graph.DependencyGraph exposing (..)
 
+import Dict exposing (Dict)
 import Element
     exposing
         ( Element
         , column
         , fill
-        , fillPortion
         , height
         , html
-        , rgb
         , scrollbars
         , width
         )
-import Element.Border as Border
 import Morphir.Dependency.DAG as DAG
+import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
@@ -27,6 +26,10 @@ type alias SelectedModule =
     Maybe ( TreeLayout.NodePath ModuleName, ModuleName )
 
 
+type alias Dependency =
+    ( String, List String )
+
+
 viewGraph : Graph -> Element msg
 viewGraph graph =
     Graph.visGraph graph |> html
@@ -35,42 +38,72 @@ viewGraph graph =
 dependencyGraph : SelectedModule -> Repo -> Element msg
 dependencyGraph selectedModule repo =
     let
-        gray =
-            rgb 0.9 0.9 0.9
-
-        filterDepsBySelectedModule : DAG.DAG FQName -> List ( String, List String )
-        filterDepsBySelectedModule deps =
+        filterDepsBySelectedModule : DAG.DAG FQName -> Maybe ModuleName -> List Dependency
+        filterDepsBySelectedModule deps moduleName =
+            let
+                createDependencyTuple nodeName childNodeNames =
+                    ( FQName.toString nodeName
+                    , Set.map FQName.toString childNodeNames
+                        |> Set.toList
+                    )
+            in
             deps
                 |> DAG.toList
-                |> List.filterMap
-                    (\( ( _, moduleName, _ ) as fqName, fqNameSet ) ->
-                        case selectedModule of
-                            Just ( _, selectedModName ) ->
-                                if selectedModName == moduleName then
-                                    Just
-                                        ( FQName.toString fqName
-                                        , Set.map FQName.toString fqNameSet
-                                            |> Set.toList
-                                        )
+                |> (case moduleName of
+                        Just justmn ->
+                            List.filterMap
+                                (\( ( _, mn, _ ) as fqName, fqNameSet ) ->
+                                    if justmn == mn then
+                                        Just <| createDependencyTuple fqName fqNameSet
 
-                                else
-                                    Nothing
+                                    else
+                                        Nothing
+                                )
 
-                            Nothing ->
-                                Just
-                                    ( FQName.toString fqName
-                                    , Set.map FQName.toString fqNameSet
-                                        |> Set.toList
-                                    )
-                    )
+                        Nothing ->
+                            List.map
+                                (\( fqName, fqNameSet ) ->
+                                    createDependencyTuple fqName fqNameSet
+                                )
+                   )
 
+        filterTypeDeps : Maybe ModuleName -> List Dependency
         filterTypeDeps =
             filterDepsBySelectedModule (Repo.typeDependencies repo)
 
+        filterValueDeps : Maybe ModuleName -> List Dependency
         filterValueDeps =
             filterDepsBySelectedModule (Repo.valueDependencies repo)
+
+        createGraph : List Dependency -> Element msg
+        createGraph =
+            Graph.dagListAsGraph >> viewGraph
+
+        mapModulesToGraph : ModuleName -> (Maybe ModuleName -> List Dependency) -> Element msg
+        mapModulesToGraph parentModuleName mapping =
+            let
+                (Library _ _ packageDef) =
+                    repo |> Repo.toDistribution
+
+                leafModules : ModuleName -> List ModuleName
+                leafModules moduleName =
+                    packageDef.modules |> Dict.keys |> List.filter (\l -> List.concat l |> String.join "." |> String.startsWith (List.concat moduleName |> String.join "."))
+            in
+            leafModules parentModuleName
+                |> List.map
+                    (\mn ->
+                        mapping <| Just mn
+                    )
+                |> List.foldr (++) []
+                |> createGraph
     in
-    column [ width fill, height (fillPortion 3), Border.widthXY 0 8, Border.color gray, scrollbars ]
-        [ viewGraph (Graph.dagListAsGraph filterTypeDeps)
-        , viewGraph (Graph.dagListAsGraph filterValueDeps)
-        ]
+    column [ width fill, height fill, scrollbars ]
+        (case selectedModule of
+            Just ( _, moduelName ) ->
+                [ mapModulesToGraph moduelName filterTypeDeps
+                , mapModulesToGraph moduelName filterValueDeps
+                ]
+
+            Nothing ->
+                [ filterTypeDeps Nothing |> createGraph, filterValueDeps Nothing |> createGraph ]
+        )
