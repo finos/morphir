@@ -295,8 +295,20 @@ mapType typ =
             fields
                 |> List.map
                     (\field ->
-                        mapType field.tpe
-                            |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
+                        case field.tpe of
+                            Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
+                                case ( FQName.toString fQName, argTypes ) of
+                                    ( "Morphir.SDK:Maybe:maybe", [ itemType ] ) ->
+                                        mapType itemType
+                                            |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
+
+                                    _ ->
+                                        mapType field.tpe
+                                            |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
+
+                            _ ->
+                                mapType field.tpe
+                                    |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
                     )
                 |> ResultList.keepFirstError
                 |> Result.map (\schemaDict -> Object (Dict.fromList schemaDict) requiredFields)
