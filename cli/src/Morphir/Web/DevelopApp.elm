@@ -86,7 +86,9 @@ import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Ordering
+import Process
 import Set exposing (Set)
+import Task
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
@@ -239,6 +241,7 @@ emptyVisualState =
 type Msg
     = Navigate NavigationMsg
     | HttpError Http.Error
+    | DismissHttpError
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
     | ServerGetAttributeResponse CustomAttributeInfo
@@ -351,7 +354,8 @@ update msg model =
 
                 _ ->
                     ( { model | serverState = ServerHttpError httpError }
-                    , Cmd.none
+                    , Process.sleep (10 * 1000)
+                        |> Task.perform (\_ -> DismissHttpError)
                     )
 
         ServerGetIRResponse distribution ->
@@ -650,6 +654,13 @@ update msg model =
                             , httpSaveAttrValue valueDetail.attrId newCustomAttribute
                             )
 
+        DismissHttpError ->
+            let
+                newModel =
+                    { model | serverState = ServerReady }
+            in
+            ( newModel, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -941,17 +952,17 @@ view model =
                 , height fill
                 ]
                 [ viewHeader model
+                , el
+                    [ width fill
+                    , height fill
+                    ]
+                    (viewBody model)
                 , case model.serverState of
                     ServerReady ->
                         none
 
                     ServerHttpError error ->
                         viewServerError error
-                , el
-                    [ width fill
-                    , height fill
-                    ]
-                    (viewBody model)
                 ]
             )
         ]
