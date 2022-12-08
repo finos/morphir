@@ -6,7 +6,7 @@ import Morphir.Graph.Backend.Codec
 import Morphir.Graph.CypherBackend as Cypher
 import Morphir.Graph.SemanticBackend as SemanticBackend
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.JsonSchema.Backend
+import Morphir.JsonSchema.Backend exposing (Errors)
 import Morphir.JsonSchema.Backend.Codec
 import Morphir.Scala.Backend
 import Morphir.Scala.Backend.Codec
@@ -56,11 +56,7 @@ decodeOptions gen =
             Decode.map (\options -> ScalaOptions options) Morphir.Scala.Backend.Codec.decodeOptions
 
 
-
---mapDistribution : BackendOptions -> Distribution -> Result String FileMap
-
-
-mapDistribution : BackendOptions -> Distribution -> Result Morphir.JsonSchema.Backend.Errors FileMap
+mapDistribution : BackendOptions -> Distribution -> Result Errors FileMap
 mapDistribution back dist =
     case back of
         SpringBootOptions options ->
