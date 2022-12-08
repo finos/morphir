@@ -90,7 +90,7 @@ mapPackageDefinition opts packageName packageDefinition =
 
 mapQualifiedName : ( Path, Name ) -> String
 mapQualifiedName ( path, name ) =
-    String.join "." [ Path.toString Name.toTitleCase "." path, Name.toTitleCase name ]
+    String.concat [ Path.toString Name.toTitleCase "." path, ".", Name.toTitleCase name ]
 
 
 generateSchema : PackageName -> Package.Definition ta (Type ()) -> Result Errors Schema

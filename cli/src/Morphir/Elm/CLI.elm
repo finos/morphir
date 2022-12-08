@@ -324,3 +324,8 @@ encodeResult encodeErr encodeValue result =
                 [ encodeErr e
                 , Encode.null
                 ]
+
+
+encodeErrors : Errors -> Encode.Value
+encodeErrors errors =
+    Encode.list Encode.string errors
