@@ -21,7 +21,6 @@ to the file-system.
    limitations under the License.
 -}
 
-import Debug exposing (log)
 import Dict exposing (Dict)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
