@@ -125,43 +125,50 @@ mapModuleDefinitionToCodecs currentPackagePath currentModulePath accessControlle
 -}
 mapTypeDefinitionToEncoder : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> Result Error (List (Scala.Annotated Scala.MemberDecl))
 mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
+    let
+        ( scalaTypePath, scalaName ) =
+            ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
+
+        patternMatch : Type.Constructors a -> Result Error (List ( Scala.Pattern, Scala.Value ))
+        patternMatch ctors =
+            ctors
+                |> Dict.toList
+                |> List.map
+                    (\( ctorName, ctorArgs ) ->
+                        composeEncoder scalaTypePath ( currentPackagePath, currentModulePath, ctorName ) ctorArgs
+                    )
+                |> ResultList.keepFirstError
+
+        scalaDeclaration : Scala.Value -> List (Scala.Annotated Scala.MemberDecl)
+        scalaDeclaration scalaValue =
+            [ Scala.withoutAnnotation
+                (Scala.ValueDecl
+                    { modifiers = [ Scala.Implicit ]
+                    , pattern = Scala.NamedMatch ("encode" :: typeName |> Name.toCamelCase)
+                    , valueType =
+                        Just
+                            (Scala.TypeApply
+                                (Scala.TypeRef [ "io", "circe" ] "Encoder")
+                                [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
+                                ]
+                            )
+                    , value =
+                        scalaValue
+                    }
+                )
+            ]
+    in
     case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition _ typeExp ->
-            let
-                ( scalaTypePath, scalaName ) =
-                    ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
-            in
-            genEncodeReference scalaName typeExp
-                |> Result.map
-                    (\encodeValue ->
-                        [ Scala.withoutAnnotation
-                            (Scala.ValueDecl
-                                { modifiers = [ Scala.Implicit ]
-                                , pattern = Scala.NamedMatch ("encode" :: typeName |> Name.toCamelCase)
-                                , valueType =
-                                    Just
-                                        (Scala.TypeApply
-                                            (Scala.TypeRef [ "io", "circe" ] "Encoder")
-                                            [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
-                                            ]
-                                        )
-                                , value =
-                                    encodeValue |> Scala.Lambda [ ( scalaName |> Name.toCamelCase, Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ]
-                                }
-                            )
-                        ]
-                    )
+            mapTypeToEncoder scalaName scalaTypePath typeExp
+                |> Result.map scalaDeclaration
 
         Type.CustomTypeDefinition typeParams accessControlledCtors ->
-            Ok
-                (mapCustomTypeDefinitionToEncoder
-                    currentPackagePath
-                    currentModulePath
-                    accessControlledModuleDef.value
-                    typeName
-                    typeParams
-                    accessControlledCtors
-                )
+            patternMatch accessControlledCtors.value
+                |> Result.map Scala.MatchCases
+                |> Result.map (Scala.Match (Scala.Variable (scalaName |> Name.toCamelCase)))
+                |> Result.map (scalaLambda scalaName scalaTypePath)
+                |> Result.map scalaDeclaration
 
 
 
@@ -170,41 +177,8 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlled
 -}
 
 
-mapCustomTypeDefinitionToEncoder : Package.PackageName -> Path -> Module.Definition ta (Type ()) -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List (Scala.Annotated Scala.MemberDecl)
-mapCustomTypeDefinitionToEncoder currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
-    let
-        ( scalaTypePath, scalaName ) =
-            ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
-
-        patternMatch =
-            accessControlledCtors.value
-                |> Dict.toList
-                |> List.map
-                    (\( ctorName, ctorArgs ) ->
-                        composeEncoder ( currentPackagePath, currentModulePath, ctorName ) ctorArgs
-                    )
-    in
-    [ Scala.withoutAnnotation
-        (Scala.ValueDecl
-            { modifiers = [ Scala.Implicit ]
-            , pattern = Scala.NamedMatch ("encode" :: typeName |> Name.toCamelCase)
-            , valueType =
-                Just
-                    (Scala.TypeApply
-                        (Scala.TypeRef [ "io", "circe" ] "Encoder")
-                        [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
-                        ]
-                    )
-            , value =
-                Scala.Lambda [ ( scalaName |> Name.toCamelCase, Just (Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)) ) ]
-                    (Scala.Match (Scala.Variable (scalaName |> Name.toCamelCase)) (Scala.MatchCases patternMatch))
-            }
-        )
-    ]
-
-
-composeEncoder : FQName -> List ( Name, Type ta ) -> ( Scala.Pattern, Scala.Value )
-composeEncoder (( _, _, ctorName ) as fqName) ctorArgs =
+composeEncoder : Scala.Path -> FQName -> List ( Name, Type ta ) -> Result Error ( Scala.Pattern, Scala.Value )
+composeEncoder tpePath (( _, _, ctorName ) as fqName) ctorArgs =
     let
         scalaFqn =
             ScalaBackend.mapFQNameToPathAndName fqName
@@ -212,20 +186,19 @@ composeEncoder (( _, _, ctorName ) as fqName) ctorArgs =
                 |> Tuple.mapSecond Name.toTitleCase
                 |> (\( scalaTypePath, scalaName ) -> String.join "." [ scalaTypePath, scalaName ])
 
-        args =
+        argsEncodersResult : Result Error (List Scala.Value)
+        argsEncodersResult =
             ctorArgs
                 |> List.map
                     (\( argName, argType ) ->
                         let
-                            typeRef : Scala.Value
-                            typeRef =
-                                genEncodeReference [] argType |> Result.withDefault (Scala.Variable "")
-
                             arg =
                                 Scala.Variable (argName |> Name.toCamelCase)
                         in
-                        Scala.Apply typeRef [ Scala.ArgValue Nothing arg ]
+                        mapTypeToEncoder tpePath [] argType
+                            |> Result.map (\typeEncoder -> Scala.Apply typeEncoder [ Scala.ArgValue Nothing arg ])
                     )
+                |> ResultList.keepFirstError
 
         argNames =
             ctorArgs
@@ -235,23 +208,36 @@ composeEncoder (( _, _, ctorName ) as fqName) ctorArgs =
                     )
     in
     if List.isEmpty ctorArgs then
-        ( Scala.NamedMatch scalaFqn, Scala.Apply (Scala.Variable scalaFqn) [] )
-
-    else
         ( Scala.UnapplyMatch [] scalaFqn argNames
-        , Scala.Apply (Scala.Ref circeJsonPath "arr")
-            ([ Scala.Apply (Scala.Ref circeJsonPath "fromString")
-                (List.singleton <|
-                    Scala.ArgValue Nothing <|
-                        Scala.Literal <|
-                            Scala.StringLit <|
-                                Name.toTitleCase ctorName
-                )
-             ]
-                ++ args
-                |> List.map (Scala.ArgValue Nothing)
+        , Scala.Apply (Scala.Ref circeJsonPath "fromString")
+            (List.singleton <|
+                Scala.ArgValue Nothing <|
+                    Scala.Literal <|
+                        Scala.StringLit <|
+                            Name.toTitleCase ctorName
             )
         )
+            |> Ok
+
+    else
+        argsEncodersResult
+            |> Result.map
+                (\argsEncoders ->
+                    ( Scala.UnapplyMatch [] scalaFqn argNames
+                    , Scala.Apply (Scala.Ref circeJsonPath "arr")
+                        ([ Scala.Apply (Scala.Ref circeJsonPath "fromString")
+                            (List.singleton <|
+                                Scala.ArgValue Nothing <|
+                                    Scala.Literal <|
+                                        Scala.StringLit <|
+                                            Name.toTitleCase ctorName
+                            )
+                         ]
+                            ++ argsEncoders
+                            |> List.map (Scala.ArgValue Nothing)
+                        )
+                    )
+                )
 
 
 {-|
@@ -419,17 +405,31 @@ composeDecoder fqName ctorArgs name =
         )
 
 
+scalaLambda : Name -> Scala.Path -> Scala.Value -> Scala.Value
+scalaLambda tpeName tpePath body =
+    Scala.Lambda
+        [ ( tpeName
+                |> Name.toCamelCase
+          , Just (Scala.TypeRef tpePath (tpeName |> Name.toTitleCase))
+          )
+        ]
+        body
+
+
 {-|
 
     Get an Encoder reference for a Type
 
 -}
-genEncodeReference : Name -> Type ta -> Result Error Scala.Value
-genEncodeReference tpeName tpe =
+mapTypeToEncoder : Name -> Scala.Path -> Type ta -> Result Error Scala.Value
+mapTypeToEncoder tpeName tpePath tpe =
     case tpe of
         Type.Variable _ varName ->
-            Ok (Scala.Variable ("encode" :: varName |> Name.toCamelCase))
+            Scala.Variable ("encode" :: varName |> Name.toCamelCase)
+                |> scalaLambda tpeName tpePath
+                |> Ok
 
+        -- Assuming that the encoders for a reference have already been handled. We just have to return the encoder reference
         Type.Reference _ (( packageName, moduleName, typeName ) as fqName) typeArgs ->
             let
                 scalaPackageName : List String
@@ -444,52 +444,26 @@ genEncodeReference tpeName tpe =
                 encoderName =
                     "encode" :: typeName |> Name.toCamelCase
 
-                scalaReference : Scala.Value
-                scalaReference =
-                    Scala.Ref
-                        codecPath
-                        encoderName
+                scalaReference : List String -> String -> Scala.Value
+                scalaReference path name =
+                    Scala.Ref path name
             in
             case FQName.toString fqName of
                 "Morphir.SDK:Basics:int" ->
-                    Ok <|
-                        Scala.Apply (Scala.Ref circeJsonPath "fromInt")
-                            [ Scala.ArgValue Nothing <|
-                                Scala.Variable <|
-                                    Name.toCamelCase
-                                        tpeName
-                            ]
+                    Ok <| scalaReference circeJsonPath "fromInt"
 
+                -- SDK Float expands to Scala Double
                 "Morphir.SDK:Basics:float" ->
-                    Ok <|
-                        Scala.Apply (Scala.Ref circeJsonPath "fromFloat")
-                            [ Scala.ArgValue Nothing <|
-                                Scala.Variable <|
-                                    Name.toCamelCase
-                                        tpeName
-                            ]
+                    Ok <| scalaReference circeJsonPath "fromDoubleOrNull"
 
                 "Morphir.SDK:Basics:bool" ->
-                    Ok <|
-                        Scala.Apply (Scala.Ref circeJsonPath "fromBool")
-                            [ Scala.ArgValue Nothing <|
-                                Scala.Variable <|
-                                    Name.toCamelCase
-                                        tpeName
-                            ]
+                    Ok <| scalaReference circeJsonPath "fromBoolean"
 
                 "Morphir.SDK:String:string" ->
-                    Ok <|
-                        Scala.Apply (Scala.Ref circeJsonPath "fromString")
-                            [ Scala.ArgValue Nothing <|
-                                Scala.Variable <|
-                                    Name.toCamelCase
-                                        tpeName
-                            ]
+                    Ok <| scalaReference circeJsonPath "fromString"
 
                 _ ->
-                    Ok
-                        scalaReference
+                    Ok <| scalaReference codecPath encoderName
 
         Type.Tuple a types ->
             let
@@ -497,7 +471,7 @@ genEncodeReference tpeName tpe =
                     types
                         |> List.map
                             (\currentType ->
-                                genEncodeReference tpeName currentType
+                                mapTypeToEncoder tpeName tpePath currentType
                             )
                         |> ResultList.keepFirstError
                         |> Result.map
@@ -509,6 +483,7 @@ genEncodeReference tpeName tpe =
                 |> Result.map
                     (\argVal ->
                         Scala.Apply (Scala.Variable "io.circe.arr") argVal
+                            |> scalaLambda tpeName tpePath
                     )
 
         Type.Record a fields ->
@@ -518,9 +493,9 @@ genEncodeReference tpeName tpe =
                     fields
                         |> List.map
                             (\field ->
-                                genEncodeReference tpeName field.tpe
+                                mapTypeToEncoder tpeName tpePath field.tpe
                                     |> Result.map
-                                        (\fieldValueEncoder ->
+                                        (\fieldEncoder ->
                                             let
                                                 fieldNameLiteral : Scala.Value
                                                 fieldNameLiteral =
@@ -533,7 +508,8 @@ genEncodeReference tpeName tpe =
                                             Scala.ArgValue Nothing
                                                 (Scala.Tuple
                                                     [ fieldNameLiteral
-                                                    , Scala.Apply fieldValueEncoder [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable (tpeName |> Name.toCamelCase)) fieldName) ]
+                                                    , Scala.Apply fieldEncoder
+                                                        [ Scala.ArgValue Nothing (Scala.Select (Scala.Variable (tpeName |> Name.toCamelCase)) fieldName) ]
                                                     ]
                                                 )
                                         )
@@ -543,9 +519,10 @@ genEncodeReference tpeName tpe =
                 objRef : Result Error Scala.Value
                 objRef =
                     objFields
-                        |> Result.map (Scala.Apply (Scala.Ref [ "io", "circe", "Json" ] "obj"))
+                        |> Result.map (Scala.Apply (Scala.Ref circeJsonPath "obj"))
             in
             objRef
+                |> Result.map (scalaLambda tpeName tpePath)
 
         Type.ExtensibleRecord a name fields ->
             let
@@ -554,7 +531,7 @@ genEncodeReference tpeName tpe =
                     fields
                         |> List.map
                             (\field ->
-                                genEncodeReference tpeName field.tpe
+                                mapTypeToEncoder tpeName tpePath field.tpe
                                     |> Result.map
                                         (\fieldValueEncoder ->
                                             let
@@ -579,15 +556,17 @@ genEncodeReference tpeName tpe =
                 objRef : Result Error Scala.Value
                 objRef =
                     objFields
-                        |> Result.map (Scala.Apply (Scala.Ref [ "io", "circe", "Json" ] "obj"))
+                        |> Result.map (Scala.Apply (Scala.Ref circeJsonPath "obj"))
             in
-            objRef
+            objRef |> Result.map (scalaLambda tpeName tpePath)
 
         Type.Function a argType returnType ->
             Err "Cannot encode a function"
 
         Type.Unit a ->
-            Ok Scala.Unit
+            Scala.Unit
+                |> scalaLambda tpeName tpePath
+                |> Ok
 
 
 {-|
