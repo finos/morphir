@@ -454,7 +454,7 @@ mapTypeToEncoder tpeName tpePath tpe =
 
                 -- SDK Float expands to Scala Double
                 "Morphir.SDK:Basics:float" ->
-                    Ok <| scalaReference circeJsonPath "fromDouble"
+                    Ok <| scalaReference circeJsonPath "fromDoubleOrNull"
 
                 "Morphir.SDK:Basics:bool" ->
                     Ok <| scalaReference circeJsonPath "fromBoolean"
