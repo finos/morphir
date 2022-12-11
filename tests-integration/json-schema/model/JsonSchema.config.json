@@ -1,0 +1,11 @@
+{
+  "input": "morphir-ir.json",
+  "output": "./dist",
+  "target": "JsonSchema",
+  "targetVersion" : "2020-12",
+  "copyDeps": false,
+  "filename": "TestModel.json",
+  "userConfig": "",
+  "limitToModules" : [],
+  "groupBy": "package"
+}
