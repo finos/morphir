@@ -4,8 +4,8 @@ This file serves as the entrypoint for Json Schema Backend configuration process
 import * as fs from "fs";
 import path from 'path';
 import * as util from 'util'
-const fsReadFile = util.promisify(fs.readFile);
 
+const fsReadFile = util.promisify(fs.readFile);
 const configFilePath: string = "JsonSchema.config.json";
 
 // Interface for JsonSchema backend opitons
@@ -17,7 +17,7 @@ interface JsonBackendOptions {
       filename: string,
       useConfig: boolean,
       limitToModules : string[],
-      groupBy: string
+      groupSchemaBy: string
 }
 
 /*
@@ -53,7 +53,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
         filename: "",
         useConfig: false,
         limitToModules: [],
-        groupBy: "",
+        groupSchemaBy: "",
         target: "JsonSchema"
     }
 
@@ -69,8 +69,8 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
             selectedOptions.targetVersion = cliOptions.targetVersion != "2020-12"? cliOptions.targetVersion : configFileJson.targetVersion
             selectedOptions.useConfig = cliOptions.useConfig != false? cliOptions.useConfig : configFileJson.useConfig         
             selectedOptions.limitToModules = cliOptions.limitToModules != ""? cliOptions.limitToModules : configFileJson.limitToModules
-            selectedOptions.groupBy = cliOptions.filename != ""? cliOptions.filename : configFileJson.filename 
-            selectedOptions.groupBy = cliOptions.groupBy != "package"? cliOptions.groupBy : configFileJson.groupBy
+            selectedOptions.filename = cliOptions.filename != ""? cliOptions.filename : configFileJson.filename
+            selectedOptions.groupSchemaBy = cliOptions.groupSchemaBy != "package"? cliOptions.groupSchemaBy : configFileJson.groupSchemaBy
         }
         else {
             selectedOptions = configFileJson

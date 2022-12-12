@@ -21,7 +21,8 @@ var jsonObject
 
 const options = {
     target : 'JsonSchema',
-    filename: ''
+    filename: '',
+    groupSchemaBy: 'package'
 }
 
 
