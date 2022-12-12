@@ -12,6 +12,7 @@ const configFilePath: string = "JsonSchema.config.json";
 interface JsonBackendOptions {
       input: string,
       output: string,
+      target: string,
       targetVersion : string,
       filename: string,
       useConfig: boolean,
@@ -24,8 +25,27 @@ This function determines the Json Schema code generation parameters based on
 - cli defaults
 - cli user options
 - config if if it exists
+The algorithm is given below:
+
+def inferBackenConfig:
+    initialize workerOptions/selectedOptions with empty fields
+    if use-Config exists then:
+    read content of config file
+    if configFile != cliOptions
+            for each config parameter
+                Check if user explicitly specified a paramter
+                    set the workerOptions field with the parameter
+                else:
+                    set the workerOptions field with config file  field
+        else:
+            set workerOptions = configFile
+    else:
+        set workerOptions = cliOptions
+    return workerOptions
+
 */
 async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
+   
     let selectedOptions: JsonBackendOptions = {
         input: "",
         output: "",
@@ -33,20 +53,24 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
         filename: "",
         useConfig: false,
         limitToModules: [],
-        groupBy: ""
+        groupBy: "",
+        target: "JsonSchema"
     }
+
     if (cliOptions.useConfig){ //then use the config file parameters
-        const configFileBuffer: Buffer = await fsReadFile(path.resolve(configFilePath));
+        const configFileBuffer:Buffer =  await fsReadFile(path.resolve(configFilePath));
         const configFileJson = JSON.parse(configFileBuffer.toString());
 
         // Check if content of config file have changed,
-        if (configFileJson != cliOptions) { 
-            selectedOptions.input = cliOptions.input == configFileJson.input? cliOptions.input : configFileJson.input
-            selectedOptions.output = cliOptions.input == configFileJson.input? cliOptions.input : configFileJson.input
-            selectedOptions.targetVersion = cliOptions.targetVersion == configFileJson.targetVersion? cliOptions.targetVersion : configFileJson.targetVersion
-            selectedOptions.useConfig = cliOptions.useConfig == configFileJson.useConfig? cliOptions.useConfig : configFileJson.useConfig         
-            selectedOptions.limitToModules = cliOptions.limitToModules == configFileJson.limitToModules? cliOptions.limitToModules : configFileJson.limitToModules
-            selectedOptions.groupBy = cliOptions.groupBy == configFileJson.groupBy? cliOptions.groupBy : configFileJson.groupBy
+        if (configFileJson != cliOptions) {
+
+            selectedOptions.input = cliOptions.input != "morphir-ir.json"? cliOptions.input : configFileJson.input
+            selectedOptions.output = cliOptions.input != "./dist"? cliOptions.output : configFileJson.output
+            selectedOptions.targetVersion = cliOptions.targetVersion != "2020-12"? cliOptions.targetVersion : configFileJson.targetVersion
+            selectedOptions.useConfig = cliOptions.useConfig != false? cliOptions.useConfig : configFileJson.useConfig         
+            selectedOptions.limitToModules = cliOptions.limitToModules != ""? cliOptions.limitToModules : configFileJson.limitToModules
+            selectedOptions.groupBy = cliOptions.filename != ""? cliOptions.filename : configFileJson.filename 
+            selectedOptions.groupBy = cliOptions.groupBy != "package"? cliOptions.groupBy : configFileJson.groupBy
         }
         else {
             selectedOptions = configFileJson
