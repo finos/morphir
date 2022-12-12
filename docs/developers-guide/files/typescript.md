@@ -123,7 +123,7 @@ might do that:
     function loadMorphirIR(text) {
         let data = JSON.parse(text);
 
-        if (data['format-version'] != 2) {
+        if (data['formatVersion'] != 2) {
             throw "Unsupported morphir-ir.json format";
         }
 

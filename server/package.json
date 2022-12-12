@@ -8,7 +8,7 @@
         "start": "node server.js"
     },
     "dependencies": {
-        "express": "^4.16.1",
+        "express": "^4.17.3",
         "morphir-bsq-transpiler": "^0.1.10"
     }
 }

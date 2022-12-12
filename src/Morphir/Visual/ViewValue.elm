@@ -1,12 +1,13 @@
 module Morphir.Visual.ViewValue exposing (viewDefinition, viewValue)
 
 import Dict
-import Element exposing (Element, column, el, fill, htmlAttribute, padding, pointer, rgb, spacing, text, width, explain, row, paddingEach)
+import Element exposing (Element, column, el, explain, fill, htmlAttribute, padding, paddingEach, pointer, rgb, row, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Element.Font as Font exposing (..)
 import Html.Attributes exposing (style)
+import Morphir.IR exposing (resolveType)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name, toCamelCase)
 import Morphir.IR.Path as Path exposing (Path)
@@ -17,9 +18,10 @@ import Morphir.Type.Infer as Infer exposing (TypeError)
 import Morphir.Visual.BoolOperatorTree as BoolOperatorTree exposing (BoolOperatorTree)
 import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.AritmeticExpressions as ArithmeticOperatorTree exposing (ArithmeticOperatorTree)
-import Morphir.Visual.Config as Config exposing (Config)
+import Morphir.Visual.Components.DrillDownPanel as DrillDownPanel
+import Morphir.Visual.Config as Config exposing (Config, DrillDownFunctions(..), drillDownContains)
 import Morphir.Visual.EnrichedValue exposing (EnrichedValue, fromRawValue, fromTypedValue, getId)
-import Morphir.Visual.Theme exposing (mediumSpacing, smallPadding, smallSpacing, mediumPadding)
+import Morphir.Visual.Theme exposing (borderRounded, mediumPadding, mediumSpacing, smallPadding, smallSpacing)
 import Morphir.Visual.ViewApply as ViewApply
 import Morphir.Visual.ViewArithmetic as ViewArithmetic
 import Morphir.Visual.ViewBoolOperatorTree as ViewBoolOperatorTree
@@ -32,6 +34,7 @@ import Morphir.Visual.ViewPatternMatch as ViewPatternMatch
 import Morphir.Visual.ViewRecord as ViewRecord
 import Morphir.Visual.XRayView as XRayView
 
+
 definition : Config msg -> String -> Element msg -> Element msg
 definition config header body =
     column [ mediumSpacing config.state.theme |> spacing ]
@@ -43,14 +46,18 @@ definition config header body =
             body
         ]
 
+
 definitionBody : Config msg -> Value.Definition () (Type ()) -> Element msg
 definitionBody config valueDef =
-    (viewValue config (valueDef.body |> fromTypedValue))
+    viewValue config (valueDef.body |> fromTypedValue)
+
 
 viewDefinition : Config msg -> FQName -> Value.Definition () (Type ()) -> Element msg
 viewDefinition config ( packageName, moduleName, valueName ) valueDef =
     let
-        visualValueDef = {valueDef | body = Value.rewriteMaybeToPatternMatch valueDef.body }
+        visualValueDef =
+            { valueDef | body = Value.rewriteMaybeToPatternMatch valueDef.body }
+
         definitionElem =
             definition config
                 (nameToText valueName)
@@ -65,7 +72,7 @@ viewValue config typedValue =
     let
         valueType : Type ()
         valueType =
-            Value.valueAttribute typedValue |> Tuple.second
+            resolveType (Value.valueAttribute typedValue |> Tuple.second) config.ir
     in
     if valueType == Basics.boolType () then
         let
@@ -165,13 +172,45 @@ viewValueByLanguageFeature config value =
                         (text (nameToText name))
 
                 (Value.Reference _ (( _, _, localName ) as fQName)) as functionvalue ->
-                    Element.row
-                        [ smallPadding config.state.theme |> padding
-                        , smallSpacing config.state.theme |> spacing
-                        , onClick (config.handlers.onReferenceClicked fQName (getId functionvalue) config.nodePath)
-                        , pointer
-                        ]
-                        [ text (nameToText localName) ]
+                    let
+                        id : Int
+                        id =
+                            getId functionvalue
+
+                        drillDown : DrillDownFunctions -> List Int -> Maybe (Value.Definition () (Type ()))
+                        drillDown dict nodePath =
+                            if drillDownContains dict id nodePath then
+                                Dict.get fQName config.ir.valueDefinitions
+
+                            else
+                                Nothing
+
+                        closedElement =
+                            Element.row
+                                [ smallPadding config.state.theme |> padding
+                                , smallSpacing config.state.theme |> spacing
+                                , onClick (config.handlers.onReferenceClicked fQName id config.nodePath)
+                                , pointer
+                                ]
+                                [ text (nameToText localName) ]
+
+                        openElement =
+                            case drillDown config.state.drillDownFunctions config.nodePath of
+                                Just valueDef ->
+                                    definitionBody { config | nodePath = config.nodePath ++ [ id ] } { valueDef | body = Value.rewriteMaybeToPatternMatch valueDef.body }
+
+                                Nothing ->
+                                    Element.none
+                    in
+                    DrillDownPanel.drillDownPanel config.state.theme
+                        { openMsg = config.handlers.onReferenceClicked fQName (getId functionvalue) config.nodePath
+                        , closeMsg = config.handlers.onReferenceClose fQName (getId functionvalue) config.nodePath
+                        , depth = List.length config.nodePath
+                        , closedElement = closedElement
+                        , openElement = openElement
+                        , openHeader = closedElement
+                        , isOpen = drillDownContains config.state.drillDownFunctions id config.nodePath
+                        }
 
                 Value.Field ( _, _ ) subjectValue fieldName ->
                     let
@@ -250,10 +289,14 @@ viewValueByLanguageFeature config value =
                                                                 currentState.variables
                                                                     |> Dict.insert defName evaluatedDefValue
                                                             )
-                                                        |> Result.withDefault (currentState.variables |> Dict.insert defName (def
-                                                                |> Value.mapDefinitionAttributes (always ()) (always ())
-                                                                |> Value.definitionToValue
-                                                            ))
+                                                        |> Result.withDefault
+                                                            (currentState.variables
+                                                                |> Dict.insert defName
+                                                                    (def
+                                                                        |> Value.mapDefinitionAttributes (always ()) (always ())
+                                                                        |> Value.definitionToValue
+                                                                    )
+                                                            )
                                             }
 
                                         ( defs, bottomIn ) =

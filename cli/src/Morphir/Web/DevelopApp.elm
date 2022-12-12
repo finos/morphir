@@ -9,7 +9,6 @@ import Element
     exposing
         ( Element
         , above
-        , alignLeft
         , alignRight
         , centerX
         , centerY
@@ -19,7 +18,6 @@ import Element
         , fill
         , fillPortion
         , height
-        , html
         , image
         , layout
         , link
@@ -29,7 +27,6 @@ import Element
         , padding
         , paddingEach
         , paddingXY
-        , paragraph
         , pointer
         , px
         , rgb
@@ -51,7 +48,7 @@ import FontAwesome.Styles as Icon
 import Http exposing (emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
-import Morphir.CustomAttribute.Codec exposing (decodeAttributes, decodeCustomAttributeData, encodeAttributeData)
+import Morphir.CustomAttribute.Codec exposing (decodeAttributes, encodeAttributeData)
 import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
@@ -79,14 +76,16 @@ import Morphir.Visual.Components.TabsComponent as TabsComponent
 import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
-import Morphir.Visual.Theme as Theme exposing (Theme)
+import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Ordering
+import Process
 import Set exposing (Set)
+import Task
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
@@ -210,7 +209,7 @@ init _ url key =
             , selectedTestcaseIndex = -1
             , testDescription = ""
             , activeTabIndex = 0
-            , openSections = Set.empty
+            , openSections = Set.fromList [ 1 ]
             }
     in
     ( toRoute url initModel
@@ -239,6 +238,7 @@ emptyVisualState =
 type Msg
     = Navigate NavigationMsg
     | HttpError Http.Error
+    | DismissHttpError
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
     | ServerGetAttributeResponse CustomAttributeInfo
@@ -351,7 +351,8 @@ update msg model =
 
                 _ ->
                     ( { model | serverState = ServerHttpError httpError }
-                    , Cmd.none
+                    , Process.sleep (10 * 1000)
+                        |> Task.perform (\_ -> DismissHttpError)
                     )
 
         ServerGetIRResponse distribution ->
@@ -650,6 +651,13 @@ update msg model =
                             , httpSaveAttrValue valueDetail.attrId newCustomAttribute
                             )
 
+        DismissHttpError ->
+            let
+                newModel =
+                    { model | serverState = ServerReady }
+            in
+            ( newModel, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -712,7 +720,7 @@ updateHomeState pack mod def filterState =
                 initialArgState =
                     initArgumentStates model.irState maybeSelectedDefinition
             in
-            { model | homeState = newState, insightViewState = initInsightViewState initialArgState, argStates = initialArgState, selectedTestcaseIndex = -1, testDescription = "" }
+            { model | homeState = newState, insightViewState = initInsightViewState initialArgState, argStates = initialArgState, selectedTestcaseIndex = -1, testDescription = "", openSections = Set.fromList [ 1 ] }
 
         -- When selecting a definition, we should not change the selected module, once the user explicitly selected one
         keepOrChangeSelectedModule : ( List Path, List Name )
@@ -941,17 +949,17 @@ view model =
                 , height fill
                 ]
                 [ viewHeader model
+                , el
+                    [ width fill
+                    , height fill
+                    ]
+                    (viewBody model)
                 , case model.serverState of
                     ServerReady ->
                         none
 
                     ServerHttpError error ->
                         viewServerError error
-                , el
-                    [ width fill
-                    , height fill
-                    ]
-                    (viewBody model)
                 ]
             )
         ]
@@ -1954,32 +1962,34 @@ viewDefinitionDetails model =
                                                                   , content =
                                                                         column [ spacing (model.theme |> Theme.scaled 5), paddingXY (model.theme |> Theme.scaled 1) 0 ]
                                                                             [ SectionComponent.view model.theme
-                                                                                { title = "Inputs"
+                                                                                { title = "Insight view"
                                                                                 , onToggle = UI (ToggleSection 1)
                                                                                 , isOpen = Set.member 1 model.openSections
-                                                                                , content = viewArgumentEditors ir model.argStates valueDef.inputTypes
-                                                                                }
-                                                                            , SectionComponent.view model.theme
-                                                                                { title = "Insight view"
-                                                                                , onToggle = UI (ToggleSection 2)
-                                                                                , isOpen = Set.member 2 model.openSections
                                                                                 , content = el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray ] <| ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
                                                                                 }
                                                                             , SectionComponent.view model.theme
-                                                                                { title = "Outputs"
-                                                                                , onToggle = UI (ToggleSection 3)
-                                                                                , isOpen = Set.member 3 model.openSections
+                                                                                { title = "Inputs & Output"
+                                                                                , onToggle = UI (ToggleSection 2)
+                                                                                , isOpen = Set.member 2 model.openSections
                                                                                 , content =
-                                                                                    viewActualOutput
-                                                                                        model.theme
-                                                                                        ir
-                                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                                        fullyQualifiedName
+                                                                                    column
+                                                                                        [ spacing
+                                                                                            (model.theme
+                                                                                                |> Theme.scaled 4
+                                                                                            )
+                                                                                        ]
+                                                                                        [ el [ borderBottom 2, paddingXY 0 5 ] (viewArgumentEditors ir model.argStates valueDef.inputTypes)
+                                                                                        , row [] [el [Font.bold] (text "Outputs: "), viewActualOutput
+                                                                                            model.theme
+                                                                                            ir
+                                                                                            { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                            fullyQualifiedName]
+                                                                                        ]
                                                                                 }
                                                                             , SectionComponent.view model.theme
                                                                                 { title = "Test Cases"
-                                                                                , onToggle = UI (ToggleSection 4)
-                                                                                , isOpen = Set.member 4 model.openSections
+                                                                                , onToggle = UI (ToggleSection 3)
+                                                                                , isOpen = Set.member 3 model.openSections
                                                                                 , content = scenarios fullyQualifiedName ir valueDef.inputTypes
                                                                                 }
                                                                             ]
