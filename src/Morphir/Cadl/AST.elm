@@ -29,9 +29,14 @@ type alias Namespace =
     List Name
 
 
+type alias EnumValues =
+    List Name
+
+
 type TypeDefinition
     = Alias TemplateArgs Type
     | Model TemplateArgs Fields
+    | Enum EnumValues
 
 
 type Type

@@ -70,3 +70,16 @@ type alias FooBarBazRecord =
     , baz : StringRep
     , baj : Maybe Int
     }
+
+
+type Errors
+    = Err1
+    | Err2 String
+    | Err3 String
+    | Err4 NoArgConstructors
+
+
+type NoArgConstructors
+    = NoArg1
+    | NorArg2
+    | NoArg3

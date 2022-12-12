@@ -91,8 +91,67 @@ mapTypeDefinition tpeName definition =
                                     |> Tuple.pair (iRNameToName tpeName)
                     )
 
-        IRType.CustomTypeDefinition lists accessControlled ->
-            Err "Custom Type not Supported"
+        IRType.CustomTypeDefinition tpeArgs accessControlled ->
+            let
+                isNoArgConstructors : Bool
+                isNoArgConstructors =
+                    accessControlled.value
+                        |> Dict.toList
+                        |> List.map Tuple.second
+                        |> List.all List.isEmpty
+            in
+            if isNoArgConstructors then
+                let
+                    enumFields : AST.EnumValues
+                    enumFields =
+                        accessControlled.value
+                            |> Dict.toList
+                            |> List.map
+                                (\( ctorName, _ ) ->
+                                    iRNameToName ctorName
+                                )
+                in
+                Ok
+                    (Enum enumFields
+                        |> Tuple.pair (iRNameToName tpeName)
+                    )
+
+            else
+                let
+                    unionTypeList : Result Errors (List AST.Type)
+                    unionTypeList =
+                        let
+                            extractedTpe : IRType.ConstructorArgs a -> Result Errors (List AST.Type)
+                            extractedTpe ctorArgs =
+                                ctorArgs
+                                    |> List.map (Tuple.second >> mapType)
+                                    |> ResultList.keepFirstError
+                        in
+                        accessControlled.value
+                            |> Dict.toList
+                            |> List.map
+                                (\( ctorName, ctorArgs ) ->
+                                    if List.isEmpty ctorArgs then
+                                        Ok (Const (iRNameToName ctorName))
+
+                                    else
+                                        extractedTpe ctorArgs
+                                            |> Result.map
+                                                (\lstOfTypesSoFar ->
+                                                    Const (iRNameToName ctorName)
+                                                        :: lstOfTypesSoFar
+                                                        |> TupleType
+                                                        |> Array
+                                                )
+                                )
+                            |> ResultList.keepFirstError
+                in
+                unionTypeList
+                    |> Result.map
+                        (Union
+                            >> Alias (tpeArgs |> List.map iRNameToName)
+                            >> Tuple.pair (iRNameToName tpeName)
+                        )
 
 
 iRNameToName : IRName.Name -> AST.Name

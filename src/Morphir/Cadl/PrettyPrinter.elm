@@ -74,6 +74,27 @@ mapTypeDefinition name typeDefinition =
             , "{"
             , newLine
             , indent 3 (mapField fields)
+            , newLine
+            , "}"
+            , semi
+            ]
+                |> concat
+
+        AST.Enum enumValues ->
+            let
+                mapEnumValues =
+                    enumValues
+                        |> List.intersperse (space ++ "," ++ newLine)
+                        |> concat
+            in
+            [ "enum"
+            , space
+            , name
+            , space
+            , "{"
+            , newLine
+            , indent 3 mapEnumValues
+            , newLine
             , "}"
             , semi
             ]
@@ -150,10 +171,10 @@ mapField fields =
             mapType fieldDef.tpe
                 |> (\typeSoFar ->
                         if fieldDef.optional == True then
-                            [ space, "?:", space, typeSoFar, semi, newLine ]
+                            [ space, "?:", space, typeSoFar, semi ]
 
                         else
-                            [ space, ":", space, typeSoFar, semi, newLine ]
+                            [ space, ":", space, typeSoFar, semi ]
                    )
                 |> concat
     in
@@ -161,7 +182,7 @@ mapField fields =
         |> Dict.toList
         |> List.map
             (\( fieldName, fieldDef ) ->
-                [ fieldName, mapFieldDef fieldDef ]
+                [ fieldName, mapFieldDef fieldDef, newLine ]
             )
         |> List.concat
         |> concat
