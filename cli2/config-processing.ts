@@ -9,14 +9,14 @@ const fsReadFile = util.promisify(fs.readFile);
 const configFilePath: string = "JsonSchema.config.json";
 
 // Interface for JsonSchema backend opitons
-interface JsonBackendOptions {
+export interface JsonBackendOptions {
       input: string,
       output: string,
       target: string,
       targetVersion : string,
       filename: string,
       useConfig: boolean,
-      limitToModules : string[],
+      limitToModules : any,
       groupSchemaBy: string
 }
 
@@ -52,7 +52,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
         targetVersion: "",
         filename: "",
         useConfig: false,
-        limitToModules: [],
+        limitToModules: "",
         groupSchemaBy: "",
         target: "JsonSchema"
     }
@@ -63,7 +63,6 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
 
         // Check if content of config file have changed,
         if (configFileJson != cliOptions) {
-
             selectedOptions.input = cliOptions.input != "morphir-ir.json"? cliOptions.input : configFileJson.input
             selectedOptions.output = cliOptions.input != "./dist"? cliOptions.output : configFileJson.output
             selectedOptions.targetVersion = cliOptions.targetVersion != "2020-12"? cliOptions.targetVersion : configFileJson.targetVersion
@@ -82,4 +81,4 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
     return selectedOptions
 }
 
-export = {inferBackendConfig}
+export default {inferBackendConfig}
