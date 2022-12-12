@@ -327,20 +327,24 @@ update msg model =
     in
     case msg of
         Navigate navigationMsg ->
+            let
+                resetTabs =
+                    { model | activeTabIndex = 0 }
+            in
             case navigationMsg of
                 LinkClicked urlRequest ->
                     case urlRequest of
                         Browser.Internal url ->
-                            ( model, Nav.pushUrl model.key (Url.toString url) )
+                            ( resetTabs, Nav.pushUrl model.key (Url.toString url) )
 
                         Browser.External href ->
-                            ( model, Nav.load href )
+                            ( resetTabs, Nav.load href )
 
                 UrlChanged url ->
-                    ( toRoute url model, Cmd.none )
+                    ( toRoute url resetTabs, Cmd.none )
 
                 DefinitionSelected url ->
-                    ( model, Nav.pushUrl model.key url )
+                    ( resetTabs, Nav.pushUrl model.key url )
 
         HttpError httpError ->
             case model.irState of
@@ -502,8 +506,8 @@ update msg model =
                     )
 
                 ModuleClicked path ->
-                    ( model
-                    , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | moduleClicked = path })
+                    ( { model | activeTabIndex = 0 }
+                    , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | moduleClicked = path, searchText = "" })
                     )
 
         Testing testingMsg ->
