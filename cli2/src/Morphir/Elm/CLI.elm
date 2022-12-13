@@ -193,6 +193,10 @@ process msg =
                 decodeDependenciesInput =
                     Decode.list DistroCodec.decodeVersionedDistribution
 
+                depInsert : PackageName -> Specification () -> Distribution -> Distribution
+                depInsert name spec distro =
+                    Distribution.insertDependency name spec distro
+
                 insertDependenciesIntoDistro : List Distribution -> Distribution -> Distribution
                 insertDependenciesIntoDistro dependencyList distribution =
                     dependencyList
@@ -208,7 +212,7 @@ process msg =
                                         lookupPackageName distro
                                 in
                                 distroResult
-                                    |> Distribution.insertDependency dependencyName dependencySpec
+                                    |> depInsert dependencyName dependencySpec
                             )
                             distribution
             in
@@ -216,7 +220,7 @@ process msg =
                 Ok input ->
                     input.distribution
                         |> insertDependenciesIntoDistro input.dependencies
-                        |> Distribution.insertDependency SDK.packageName SDK.packageSpec
+                        |> depInsert SDK.packageName SDK.packageSpec
                         |> Repo.fromDistribution
                         |> Result.mapError (IncrementalFrontend.RepoError "Error while building repo." >> List.singleton)
                         |> Result.map
