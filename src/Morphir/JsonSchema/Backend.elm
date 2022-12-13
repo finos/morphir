@@ -286,6 +286,7 @@ mapType qName typ =
                             (\field ->
                                 case field.tpe of
                                     Type.Reference _ (( _, _, _ ) as fQName) argTypes ->
+
                                         case ( FQName.toString fQName, argTypes ) of
                                             ( "Morphir.SDK:Maybe:maybe", _ ) ->
                                                 Nothing
@@ -317,6 +318,7 @@ mapType qName typ =
                     )
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
+
                 |> Result.map (\schemaDict -> Object (Dict.fromList schemaDict) requiredFields)
 
         Type.Tuple _ typeList ->

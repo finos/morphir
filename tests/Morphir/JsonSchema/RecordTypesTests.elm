@@ -22,7 +22,7 @@ mapTypeTests =
                         , Type.Field [ "age" ] (Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "Basics" ] ], [ "int" ] ) [])
                         ]
                     )
-                    |> Expect.equal (Ok (Object ([ ( "firstname", String (StringConstraints Nothing) ), ( "age", Integer ) ] |> Dict.fromList)))
+                    |> Expect.equal (Ok (Object ([ ( "firstname", String (StringConstraints Nothing) ), ( "age", Integer ) ] |> Dict.fromList) [ "firstname", "age" ]))
         , test "Test for record with a custom field" <|
             \_ ->
                 mapType ( [], [] )
@@ -41,6 +41,7 @@ mapTypeTests =
                                  ]
                                     |> Dict.fromList
                                 )
+                                [ "firstname", "lastname", "address" ]
                             )
                         )
         ]

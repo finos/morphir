@@ -84,6 +84,7 @@ encodeSchemaType schemaType =
                     ]
                 )
 
+
         Const value ->
             Encode.object
                 [ ( "const", Encode.string value ) ]

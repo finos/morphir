@@ -12,16 +12,6 @@ type alias FieldName =
 
 
 
-{-
-   This is a representation of a JSON Schema. It is modeled as a record with three fields:
-   - id
-   - schemaVersion
-   - definitions
-   The definitions property holds all the sub-schemas as a dictionary of TypeName and SchemaType
-   |
--}
-
-
 type alias Schema =
     { id : String
     , schemaVersion : String
