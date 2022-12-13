@@ -15,7 +15,7 @@ import Morphir.SDK.ResultList as ResultList
 
 
 type alias Errors =
-    String
+    List String
 
 
 type alias Options =
@@ -286,7 +286,7 @@ mapType tpe =
                 |> Result.map (Dict.fromList >> AST.Object)
 
         _ ->
-            Err ("Type " ++ Debug.toString tpe ++ " Not Supported")
+            Err [ "Type " ++ Debug.toString tpe ++ " Not Supported" ]
 
 
 mapReferenceType : PackageName -> ModuleName -> IRName.Name -> List (IRType.Type ta) -> Result Errors AST.Type
