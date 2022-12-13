@@ -36,8 +36,6 @@ import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.SDK as SDK
 import Morphir.IR.Type exposing (Type)
 import Morphir.IR.Value as Value
-import Morphir.JsonSchema.Backend exposing (Error, Errors)
-import Morphir.JsonSchema.Backend.Codec exposing (encodeErrors)
 import Morphir.ListOfResults as List
 import Morphir.Type.Infer as Infer
 import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
@@ -172,13 +170,13 @@ update msg model =
                                 Library packageName dependencies packageDef ->
                                     Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
-                        fileMap : Result Errors FileMap
+                        fileMap : Result (List String) FileMap
                         fileMap =
                             mapDistribution options enrichedDistro
 
-                        encodedResult : Result Errors FileMap -> Encode.Value
+                        encodedResult : Result (List String) FileMap -> Encode.Value
                         encodedResult =
-                            encodeResult encodeErrors encodeFileMap
+                            encodeResult (Encode.list Encode.string) encodeFileMap
                     in
                     ( model
                     , fileMap
@@ -324,8 +322,3 @@ encodeResult encodeErr encodeValue result =
                 [ encodeErr e
                 , Encode.null
                 ]
-
-
-encodeErrors : Errors -> Encode.Value
-encodeErrors errors =
-    Encode.list Encode.string errors

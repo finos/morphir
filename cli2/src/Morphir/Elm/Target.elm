@@ -6,8 +6,7 @@ import Morphir.Graph.Backend.Codec
 import Morphir.Graph.CypherBackend as Cypher
 import Morphir.Graph.SemanticBackend as SemanticBackend
 import Morphir.IR.Distribution exposing (Distribution)
-import Morphir.IR.Package as Package
-import Morphir.JsonSchema.Backend exposing (Errors)
+import Morphir.JsonSchema.Backend as JsonSchemaBackend exposing (Errors)
 import Morphir.JsonSchema.Backend.Codec
 import Morphir.Scala.Backend
 import Morphir.Scala.Backend.Codec
@@ -15,7 +14,6 @@ import Morphir.Scala.Spark.Backend
 import Morphir.SpringBoot.Backend as SpringBoot
 import Morphir.SpringBoot.Backend.Codec
 import Morphir.TypeScript.Backend
-import Morphir.TypeScript.Backend.Codec
 
 
 
@@ -29,7 +27,7 @@ type BackendOptions
     | CypherOptions Cypher.Options
     | TypeScriptOptions Morphir.TypeScript.Backend.Options
     | SparkOptions Morphir.Scala.Spark.Backend.Options
-    | JsonSchemaOptions Morphir.JsonSchema.Backend.Options
+    | JsonSchemaOptions JsonSchemaBackend.Options
 
 
 decodeOptions : Result Error String -> Decode.Decoder BackendOptions
@@ -51,17 +49,17 @@ decodeOptions gen =
             Decode.map SparkOptions (Decode.succeed Morphir.Scala.Spark.Backend.Options)
 
         Ok "JsonSchema" ->
-            Decode.map JsonSchemaOptions Morphir.JsonSchema.Backend.Codec.decodeOptions
+            Decode.map (\options -> JsonSchemaOptions options) Morphir.JsonSchema.Backend.Codec.decodeOptions
 
         _ ->
-            Decode.map ScalaOptions Morphir.Scala.Backend.Codec.decodeOptions
+            Decode.map (\options -> ScalaOptions options) Morphir.Scala.Backend.Codec.decodeOptions
 
 
 mapDistribution : BackendOptions -> Distribution -> Result Errors FileMap
 mapDistribution back dist =
     case back of
         SpringBootOptions options ->
-            Ok (SpringBoot.mapDistribution options dist)
+            Ok <| SpringBoot.mapDistribution options dist
 
         SemanticOptions options ->
             Ok <| SemanticBackend.mapDistribution options dist
@@ -79,4 +77,4 @@ mapDistribution back dist =
             Ok <| Morphir.Scala.Spark.Backend.mapDistribution options dist
 
         JsonSchemaOptions options ->
-            Morphir.JsonSchema.Backend.mapDistribution options dist
+            JsonSchemaBackend.mapDistribution options dist

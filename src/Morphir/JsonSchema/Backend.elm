@@ -31,15 +31,15 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), StringConstraints, TypeName)
+import Morphir.JsonSchema.AST exposing (ArrayType(..), FieldName, Schema, SchemaType(..), StringConstraints, TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
 import Morphir.SDK.ResultList as ResultList
 import Set exposing (Set)
 
 
 type alias Options =
-    { limitToModules : Maybe (Set ModuleName)
-    , filename : String
+    { filename : String
+    , limitToModules : Maybe (Set ModuleName)
     }
 
 
@@ -47,12 +47,12 @@ type alias QualifiedName =
     ( Path, Name )
 
 
-type alias Errors =
-    List Error
-
-
 type alias Error =
     String
+
+
+type alias Errors =
+    List Error
 
 
 {-| Entry point for the JSON Schema backend. It takes the Morphir IR as the input and returns an in-memory
@@ -62,12 +62,7 @@ mapDistribution : Options -> Distribution -> Result Errors FileMap
 mapDistribution opts distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
-            case opts.limitToModules of
-                Just modulesToInclude ->
-                    mapPackageDefinition opts packageName (Package.selectModules modulesToInclude packageName packageDef)
-
-                Nothing ->
-                    mapPackageDefinition opts packageName packageDef
+            mapPackageDefinition opts packageName packageDef
 
 
 mapPackageDefinition : Options -> PackageName -> Package.Definition ta (Type ()) -> Result Errors FileMap
@@ -106,12 +101,10 @@ generateSchema packageName packageDefinition =
                                 (\( qualifiedName, typeDef ) ->
                                     mapTypeDefinition qualifiedName typeDef
                                 )
-                            |> ResultList.keepAllErrors
-                            |> Result.mapError List.concat
+                            |> ResultList.keepFirstError
                             |> Result.map List.concat
                     )
-                |> ResultList.keepAllErrors
-                |> Result.mapError List.concat
+                |> ResultList.keepFirstError
                 |> Result.map List.concat
     in
     schemaTypeDefinitions
@@ -160,8 +153,7 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                         mapType qualifiedName (Tuple.second tpe)
                                     )
                             )
-                                |> ResultList.keepAllErrors
-                                |> Result.mapError List.concat
+                                |> ResultList.keepFirstError
                                 |> Result.map
                                     (\schemaType ->
                                         Array
@@ -173,8 +165,7 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                             False
                                     )
                     )
-                |> ResultList.keepAllErrors
-                |> Result.mapError List.concat
+                |> ResultList.keepFirstError
                 |> Result.map
                     (\schemaTypes -> [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf schemaTypes ) ])
 
@@ -182,10 +173,7 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
 mapType : QualifiedName -> Type a -> Result Errors SchemaType
 mapType qName typ =
     case typ of
-        Type.Variable _ name ->
-            Ok (Const (Name.toSnakeCase name))
-
-        Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
+        Type.Reference _ (( _, moduleName, localName ) as fQName) argTypes ->
             case ( FQName.toString fQName, argTypes ) of
                 ( "Morphir.SDK:Basics:int", [] ) ->
                     Ok Integer
@@ -265,8 +253,7 @@ mapType qName typ =
                                 Array (TupleType [ Const "Ok", valueSchema ]) True
                             )
                     ]
-                        |> ResultList.keepAllErrors
-                        |> Result.mapError List.concat
+                        |> ResultList.keepFirstError
                         |> Result.map OneOf
 
                 ( "Morphir.SDK:Dict:dict", [ keyType, valueType ] ) ->
@@ -275,8 +262,7 @@ mapType qName typ =
                             [ mapType qName keyType, mapType qName valueType ]
                     in
                     tupleSchemaList
-                        |> ResultList.keepAllErrors
-                        |> Result.mapError List.concat
+                        |> ResultList.keepFirstError
                         |> Result.map (\tupleSchema -> Array (ListType (Array (TupleType tupleSchema) False)) True)
 
                 _ ->
@@ -292,15 +278,46 @@ mapType qName typ =
                         )
 
         Type.Record _ fields ->
+            let
+                requiredFields : List FieldName
+                requiredFields =
+                    fields
+                        |> List.filterMap
+                            (\field ->
+                                case field.tpe of
+                                    Type.Reference _ (( _, _, _ ) as fQName) argTypes ->
+                                        case ( FQName.toString fQName, argTypes ) of
+                                            ( "Morphir.SDK:Maybe:maybe", _ ) ->
+                                                Nothing
+
+                                            _ ->
+                                                Just (field.name |> Name.toCamelCase)
+
+                                    _ ->
+                                        Just (field.name |> Name.toCamelCase)
+                            )
+            in
             fields
                 |> List.map
                     (\field ->
-                        mapType qName field.tpe
-                            |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
+                        case field.tpe of
+                            Type.Reference _ (( _, _, _ ) as fQName) argTypes ->
+                                case ( FQName.toString fQName, argTypes ) of
+                                    ( "Morphir.SDK:Maybe:maybe", [ itemType ] ) ->
+                                        mapType qName itemType
+                                            |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
+
+                                    _ ->
+                                        mapType qName field.tpe
+                                            |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
+
+                            _ ->
+                                mapType qName field.tpe
+                                    |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
                     )
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
-                |> Result.map (Dict.fromList >> Object)
+                |> Result.map (\schemaDict -> Object (Dict.fromList schemaDict) requiredFields)
 
         Type.Tuple _ typeList ->
             typeList
@@ -314,9 +331,6 @@ mapType qName typ =
                     (\itemType ->
                         Array (TupleType itemType) False
                     )
-
-        Type.Function _ tpe1 tpe2 ->
-            mapType qName tpe2
 
         _ ->
             Err [ "Cannot map type " ++ Type.toString typ ++ " in module " ++ Path.toString Name.toTitleCase "." (qName |> Tuple.first) ]

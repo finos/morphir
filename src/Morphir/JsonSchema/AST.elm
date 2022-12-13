@@ -7,6 +7,10 @@ type alias TypeName =
     String
 
 
+type alias FieldName =
+    String
+
+
 
 {-
    This is a representation of a JSON Schema. It is modeled as a record with three fields:
@@ -60,7 +64,7 @@ type SchemaType
     | String StringConstraints
     | Number
     | Boolean
-    | Object (Dict String SchemaType)
+    | Object (Dict String SchemaType) (List FieldName)
     | Const String
     | Ref TypeName
     | OneOf (List SchemaType)
