@@ -75,7 +75,7 @@ mapModuleDefinitionToCodecs currentPackagePath currentModulePath accessControlle
                 |> Dict.toList
                 |> List.concatMap
                     (\types ->
-                        mapTypeDefinitionToDecoder currentPackagePath currentModulePath accessControlledModuleDef types
+                        mapTypeDefinitionToDecoder currentPackagePath currentModulePath types
                             |> Result.withDefault []
                     )
 
@@ -135,7 +135,7 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlled
                 |> Dict.toList
                 |> List.map
                     (\( ctorName, ctorArgs ) ->
-                        composeEncoder scalaTypePath ( currentPackagePath, currentModulePath, ctorName ) ctorArgs
+                        mapConstructorsToEncoders scalaTypePath ( currentPackagePath, currentModulePath, ctorName ) ctorArgs
                     )
                 |> ResultList.keepFirstError
 
@@ -160,7 +160,7 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlled
     in
     case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition _ typeExp ->
-            mapTypeToEncoder scalaName scalaTypePath typeExp
+            mapTypeToEncoderReference scalaName scalaTypePath typeExp
                 |> Result.map scalaDeclaration
 
         Type.CustomTypeDefinition typeParams accessControlledCtors ->
@@ -177,8 +177,8 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath accessControlled
 -}
 
 
-composeEncoder : Scala.Path -> FQName -> List ( Name, Type ta ) -> Result Error ( Scala.Pattern, Scala.Value )
-composeEncoder tpePath (( _, _, ctorName ) as fqName) ctorArgs =
+mapConstructorsToEncoders : Scala.Path -> FQName -> List ( Name, Type ta ) -> Result Error ( Scala.Pattern, Scala.Value )
+mapConstructorsToEncoders tpePath (( _, _, ctorName ) as fqName) ctorArgs =
     let
         scalaFqn =
             ScalaBackend.mapFQNameToPathAndName fqName
@@ -195,7 +195,7 @@ composeEncoder tpePath (( _, _, ctorName ) as fqName) ctorArgs =
                             arg =
                                 Scala.Variable (argName |> Name.toCamelCase)
                         in
-                        mapTypeToEncoder tpePath [] argType
+                        mapTypeToEncoderReference tpePath [] argType
                             |> Result.map (\typeEncoder -> Scala.Apply typeEncoder [ Scala.ArgValue Nothing arg ])
                     )
                 |> ResultList.keepFirstError
@@ -245,92 +245,73 @@ composeEncoder tpePath (( _, _, ctorName ) as fqName) ctorArgs =
     Maps a Morphir Type Definition to a Decoder
 
 -}
-mapTypeDefinitionToDecoder : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> Result Error (List (Scala.Annotated Scala.MemberDecl))
-mapTypeDefinitionToDecoder currentPackagePath currentModulePath accessControlledModuleDef ( typeName, accessControlledDocumentedTypeDef ) =
-    case accessControlledDocumentedTypeDef.value.value of
-        Type.TypeAliasDefinition typeArgs typeExp ->
-            let
-                ( scalaTypePath, scalaName ) =
-                    ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
-            in
-            genDecodeReference (FQName.fQName currentPackagePath currentModulePath typeName) scalaName typeExp
-                |> Result.map
-                    (\decodeValue ->
-                        [ Scala.withoutAnnotation
-                            (Scala.ValueDecl
-                                { modifiers = [ Scala.Implicit ]
-                                , pattern = Scala.NamedMatch ("decode" :: typeName |> Name.toCamelCase)
-                                , valueType =
-                                    Just
-                                        (Scala.TypeApply
-                                            (Scala.TypeRef [ "io", "circe" ] "Decoder")
-                                            [ Scala.TypeRef scalaTypePath (scalaName |> Name.toTitleCase)
-                                            ]
-                                        )
-                                , value =
-                                    decodeValue |> Scala.Lambda [ ( scalaName |> Name.toCamelCase, Just (Scala.TypeRef [ "io.circe" ] "HCursor") ) ]
-                                }
-                            )
-                        ]
-                    )
-
-        Type.CustomTypeDefinition typeParams accessControlledCtors ->
-            Ok
-                (mapCustomTypeDefinitionToDecoder
-                    currentPackagePath
-                    currentModulePath
-                    accessControlledModuleDef.value
-                    typeName
-                    typeParams
-                    accessControlledCtors
-                )
-
-
-mapCustomTypeDefinitionToDecoder : Package.PackageName -> Path -> Module.Definition ta (Type ()) -> Name -> List Name -> AccessControlled (Type.Constructors a) -> List (Scala.Annotated Scala.MemberDecl)
-mapCustomTypeDefinitionToDecoder currentPackagePath currentModulePath moduleDef typeName typeParams accessControlledCtors =
+mapTypeDefinitionToDecoder : Package.PackageName -> Path -> ( Name, AccessControlled (Documented (Type.Definition ta)) ) -> Result Error (List (Scala.Annotated Scala.MemberDecl))
+mapTypeDefinitionToDecoder currentPackagePath currentModulePath ( typeName, accessControlledDocumentedTypeDef ) =
     let
         ( scalaTypePath, scalaName ) =
             ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
 
-        argIndex =
-            scalaName |> Name.toCamelCase
-
-        downApply =
-            argIndex ++ ".downN(0)" ++ ".as[String]" ++ ".flatMap"
-
-        patternMatch : List ( Scala.Pattern, Scala.Value )
-        patternMatch =
-            accessControlledCtors.value
-                |> Dict.toList
-                |> List.map
-                    (\( ctorName, ctorArgs ) ->
-                        composeDecoder ( currentPackagePath, currentModulePath, ctorName ) ctorArgs scalaName
-                    )
+        scalaDeclaration : Scala.Value -> List (Scala.Annotated Scala.MemberDecl)
+        scalaDeclaration scalaValue =
+            [ Scala.withoutAnnotation
+                (Scala.ValueDecl
+                    { modifiers = [ Scala.Implicit ]
+                    , pattern = Scala.NamedMatch ("decode" :: typeName |> Name.toCamelCase)
+                    , valueType =
+                        Just
+                            (Scala.TypeApply
+                                (Scala.TypeRef [ "io", "circe" ] "Decoder")
+                                [ Scala.TypeRef scalaTypePath (typeName |> Name.toTitleCase)
+                                ]
+                            )
+                    , value =
+                        scalaValue
+                    }
+                )
+            ]
     in
-    [ Scala.withoutAnnotation
-        (Scala.ValueDecl
-            { modifiers = [ Scala.Implicit ]
-            , pattern = Scala.NamedMatch ("decode" :: typeName |> Name.toCamelCase)
-            , valueType =
-                Just
-                    (Scala.TypeApply
-                        (Scala.TypeRef [ "io", "circe" ] "Decoder")
-                        [ Scala.TypeRef scalaTypePath (typeName |> Name.toTitleCase)
-                        ]
-                    )
-            , value =
-                Scala.Lambda [ ( scalaName |> Name.toCamelCase, Just (Scala.TypeRef [ "io", "circe" ] "HCursor") ) ]
-                    (Scala.Apply
-                        (Scala.Variable downApply)
-                        [ Scala.ArgValue Nothing (Scala.Lambda [ ( "tag", Nothing ) ] (Scala.Match (Scala.Variable "tag") (Scala.MatchCases patternMatch))) ]
-                    )
-            }
-        )
-    ]
+    case accessControlledDocumentedTypeDef.value.value of
+        Type.TypeAliasDefinition typeArgs typeExp ->
+            mapTypeToDecoderReference (FQName.fQName currentPackagePath currentModulePath typeName) scalaName typeExp
+                |> Result.map
+                    (Scala.Lambda [ ( "c", Just (Scala.TypeRef [ "io.circe" ] "HCursor") ) ])
+                |> Result.map scalaDeclaration
+
+        Type.CustomTypeDefinition typeParams accessControlledCtors ->
+            let
+                patternMatchResult : Result Error (List ( Scala.Pattern, Scala.Value ))
+                patternMatchResult =
+                    accessControlledCtors.value
+                        |> Dict.toList
+                        |> List.map
+                            (\( ctorName, ctorArgs ) ->
+                                mapConstructorsToDecoder ( currentPackagePath, currentModulePath, ctorName ) ctorArgs scalaName
+                            )
+                        |> ResultList.keepFirstError
+
+                hCursor =
+                    "c"
+
+                downApply =
+                    hCursor ++ ".downN(0)" ++ ".as[String]" ++ ".flatMap"
+
+                scalaValueResult : Result Error Scala.Value
+                scalaValueResult =
+                    patternMatchResult
+                        |> Result.map
+                            (\patternMatch ->
+                                Scala.Lambda [ ( "c", Just (Scala.TypeRef [ "io", "circe" ] "HCursor") ) ]
+                                    (Scala.Apply
+                                        (Scala.Variable downApply)
+                                        [ Scala.ArgValue Nothing (Scala.Lambda [ ( "tag", Nothing ) ] (Scala.Match (Scala.Variable "tag") (Scala.MatchCases patternMatch))) ]
+                                    )
+                            )
+            in
+            Result.map (\scalaValue -> scalaDeclaration scalaValue) scalaValueResult
 
 
-composeDecoder : FQName -> List ( Name, Type ta ) -> Name -> ( Scala.Pattern, Scala.Value )
-composeDecoder fqName ctorArgs name =
+mapConstructorsToDecoder : FQName -> List ( Name, Type ta ) -> Name -> Result Error ( Scala.Pattern, Scala.Value )
+mapConstructorsToDecoder (( _, _, ctorName ) as fqName) ctorArgs name =
     let
         scalaFqn =
             ScalaBackend.mapFQNameToPathAndName fqName
@@ -338,26 +319,8 @@ composeDecoder fqName ctorArgs name =
                 |> Tuple.mapSecond Name.toTitleCase
                 |> (\( scalaTypePath, scalaName ) -> String.join "." [ scalaTypePath, scalaName ])
 
-        args =
-            ctorArgs
-                |> List.map
-                    (\( argName, argType ) ->
-                        let
-                            typeRefResult =
-                                genDecodeReference fqName name argType
-
-                            arg =
-                                Scala.Variable (argName |> Name.toCamelCase)
-                        in
-                        case typeRefResult of
-                            Ok typeRef ->
-                                Scala.Apply typeRef [ Scala.ArgValue Nothing arg ]
-
-                            Err err ->
-                                Scala.Literal (Scala.StringLit "Unable to obtain reference")
-                    )
-
-        generators =
+        generatorsResult : Result Error (List Scala.Generator)
+        generatorsResult =
             ctorArgs
                 |> List.map
                     (\arg ->
@@ -366,25 +329,22 @@ composeDecoder fqName ctorArgs name =
                                 String.right 1 (Tuple.first arg |> Name.toCamelCase)
 
                             downApply =
-                                Scala.Variable ((name |> Name.toCamelCase) ++ ".downN(" ++ argIndex ++ ")")
-
-                            typeRefResult =
-                                genDecodeReference fqName name (Tuple.second arg)
+                                Scala.Variable ("c" ++ ".downN(" ++ argIndex ++ ")")
 
                             asSelect : Scala.Value
                             asSelect =
                                 Scala.Select downApply "as"
 
+                            generatorRHS : Result Error Scala.Value
                             generatorRHS =
-                                case typeRefResult of
-                                    Ok typeRef ->
-                                        Scala.Apply asSelect [ Scala.ArgValue Nothing typeRef ]
-
-                                    Err _ ->
-                                        Scala.Literal (Scala.StringLit "Unable to obtain reference")
+                                mapTypeToDecoderReference fqName name (Tuple.second arg)
+                                    |> Result.map (Scala.Apply asSelect << List.singleton << Scala.ArgValue Nothing)
                         in
-                        Scala.Extract (Scala.NamedMatch (Tuple.first arg |> Name.toCamelCase)) generatorRHS
+                        generatorRHS
+                            |> Result.map
+                                (Scala.Extract (Scala.NamedMatch (Tuple.first arg |> Name.toCamelCase)))
                     )
+                |> ResultList.keepFirstError
 
         yeildArgValues =
             ctorArgs
@@ -397,12 +357,22 @@ composeDecoder fqName ctorArgs name =
             Scala.Apply (Scala.Variable scalaFqn) yeildArgValues
     in
     if List.isEmpty ctorArgs then
-        ( Scala.NamedMatch scalaFqn, Scala.Apply (Scala.Variable scalaFqn) [] )
+        --Scala.Apply (Scala.Variable scalaFqn) []
+        ( Scala.LiteralMatch (Scala.StringLit (ctorName |> Name.toTitleCase))
+        , Scala.Apply (Scala.Variable "Right")
+            [ Scala.ArgValue Nothing <| Scala.Variable scalaFqn
+            ]
+        )
+            |> Ok
 
     else
-        ( Scala.LiteralMatch (Scala.StringLit (name |> Name.toTitleCase))
-        , Scala.ForComp generators yeildExpression
-        )
+        generatorsResult
+            |> Result.map
+                (\generators ->
+                    ( Scala.LiteralMatch (Scala.StringLit (name |> Name.toTitleCase))
+                    , Scala.ForComp generators yeildExpression
+                    )
+                )
 
 
 scalaLambda : Name -> Scala.Path -> Scala.Value -> Scala.Value
@@ -421,8 +391,8 @@ scalaLambda tpeName tpePath body =
     Get an Encoder reference for a Type
 
 -}
-mapTypeToEncoder : Name -> Scala.Path -> Type ta -> Result Error Scala.Value
-mapTypeToEncoder tpeName tpePath tpe =
+mapTypeToEncoderReference : Name -> Scala.Path -> Type ta -> Result Error Scala.Value
+mapTypeToEncoderReference tpeName tpePath tpe =
     case tpe of
         Type.Variable _ varName ->
             Scala.Variable ("encode" :: varName |> Name.toCamelCase)
@@ -448,22 +418,7 @@ mapTypeToEncoder tpeName tpePath tpe =
                 scalaReference path name =
                     Scala.Ref path name
             in
-            case FQName.toString fqName of
-                "Morphir.SDK:Basics:int" ->
-                    Ok <| scalaReference circeJsonPath "fromInt"
-
-                -- SDK Float expands to Scala Double
-                "Morphir.SDK:Basics:float" ->
-                    Ok <| scalaReference circeJsonPath "fromDoubleOrNull"
-
-                "Morphir.SDK:Basics:bool" ->
-                    Ok <| scalaReference circeJsonPath "fromBoolean"
-
-                "Morphir.SDK:String:string" ->
-                    Ok <| scalaReference circeJsonPath "fromString"
-
-                _ ->
-                    Ok <| scalaReference codecPath encoderName
+            Ok <| scalaReference codecPath encoderName
 
         Type.Tuple a types ->
             let
@@ -471,7 +426,7 @@ mapTypeToEncoder tpeName tpePath tpe =
                     types
                         |> List.map
                             (\currentType ->
-                                mapTypeToEncoder tpeName tpePath currentType
+                                mapTypeToEncoderReference tpeName tpePath currentType
                             )
                         |> ResultList.keepFirstError
                         |> Result.map
@@ -493,7 +448,7 @@ mapTypeToEncoder tpeName tpePath tpe =
                     fields
                         |> List.map
                             (\field ->
-                                mapTypeToEncoder tpeName tpePath field.tpe
+                                mapTypeToEncoderReference tpeName tpePath field.tpe
                                     |> Result.map
                                         (\fieldEncoder ->
                                             let
@@ -531,7 +486,7 @@ mapTypeToEncoder tpeName tpePath tpe =
                     fields
                         |> List.map
                             (\field ->
-                                mapTypeToEncoder tpeName tpePath field.tpe
+                                mapTypeToEncoderReference tpeName tpePath field.tpe
                                     |> Result.map
                                         (\fieldValueEncoder ->
                                             let
@@ -574,64 +529,31 @@ mapTypeToEncoder tpeName tpePath tpe =
     Get an Decoder reference for a Type
 
 -}
-genDecodeReference : FQName -> Name -> Type ta -> Result Error Scala.Value
-genDecodeReference fqName tpeName tpe =
+mapTypeToDecoderReference : FQName -> Name -> Type ta -> Result Error Scala.Value
+mapTypeToDecoderReference fqName tpeName tpe =
     case tpe of
         Type.Variable _ varName ->
-            Ok (Scala.Variable ("decode" :: varName |> Name.toCamelCase))
+            Scala.Variable ("decode" :: varName |> Name.toCamelCase)
+                |> Ok
 
         Type.Reference _ (( packageName, moduleName, typeName ) as fqnName) typeArgs ->
             let
                 scalaPackageName =
                     packageName ++ moduleName |> List.map (Name.toCamelCase >> String.toLower)
 
-                scalaModuleName =
-                    "Codec"
+                codecPath : List String
+                codecPath =
+                    List.concat [ scalaPackageName, [ "Codec" ] ]
 
-                scalaReference =
-                    Scala.Ref
-                        (scalaPackageName ++ [ scalaModuleName ])
-                        ("decode" :: typeName |> Name.toCamelCase)
+                decoderName : String
+                decoderName =
+                    "decode" :: typeName |> Name.toCamelCase
+
+                scalaReference : List String -> String -> Scala.Value
+                scalaReference path name =
+                    Scala.Ref path name
             in
-            case FQName.toString fqnName of
-                "Morphir.SDK:Basics:int" ->
-                    Ok <|
-                        Scala.Apply (Scala.Ref circeJsonPath "decodeJsonNumber")
-                            [ Scala.ArgValue Nothing <|
-                                Scala.Variable <|
-                                    Name.toCamelCase
-                                        tpeName
-                            ]
-
-                "Morphir.SDK:Basics:float" ->
-                    Ok <|
-                        Scala.Apply (Scala.Ref circeJsonPath "decodeFloat")
-                            [ Scala.ArgValue Nothing <|
-                                Scala.Variable <|
-                                    Name.toCamelCase
-                                        tpeName
-                            ]
-
-                "Morphir.SDK:Basics:bool" ->
-                    Ok <|
-                        Scala.Apply (Scala.Ref circeJsonPath "decodeBoolean")
-                            [ Scala.ArgValue Nothing <|
-                                Scala.Variable <|
-                                    Name.toCamelCase
-                                        tpeName
-                            ]
-
-                "Morphir.SDK:String:string" ->
-                    Ok <|
-                        Scala.Apply (Scala.Ref circeJsonPath "decodeString")
-                            [ Scala.ArgValue Nothing <|
-                                Scala.Variable <|
-                                    Name.toCamelCase
-                                        tpeName
-                            ]
-
-                _ ->
-                    Ok scalaReference
+            Ok (scalaReference codecPath decoderName)
 
         Type.Tuple a types ->
             let
@@ -639,7 +561,7 @@ genDecodeReference fqName tpeName tpe =
                     types
                         |> List.map
                             (\currentType ->
-                                genDecodeReference fqName tpeName currentType
+                                mapTypeToDecoderReference fqName tpeName currentType
                             )
                         |> ResultList.keepFirstError
                         |> Result.map
@@ -660,7 +582,7 @@ genDecodeReference fqName tpeName tpe =
                     fields
                         |> List.map
                             (\field ->
-                                genDecodeReference fqName tpeName field.tpe
+                                mapTypeToDecoderReference fqName tpeName field.tpe
                                     |> Result.map
                                         (\fieldValueDecoder ->
                                             let
@@ -670,7 +592,7 @@ genDecodeReference fqName tpeName tpe =
 
                                                 downFieldApply : Scala.Value
                                                 downFieldApply =
-                                                    Scala.Apply (Scala.Select (Scala.Variable (scalaName |> Name.toCamelCase)) "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
+                                                    Scala.Apply (Scala.Select (Scala.Variable "c") "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
 
                                                 downFieldApplyWithAs : Scala.Value
                                                 downFieldApplyWithAs =
@@ -719,7 +641,7 @@ genDecodeReference fqName tpeName tpe =
                     fields
                         |> List.map
                             (\field ->
-                                genDecodeReference fqName name field.tpe
+                                mapTypeToDecoderReference fqName name field.tpe
                                     |> Result.map
                                         (\fieldValueDecoder ->
                                             let
@@ -729,7 +651,7 @@ genDecodeReference fqName tpeName tpe =
 
                                                 downFieldApply : Scala.Value
                                                 downFieldApply =
-                                                    Scala.Apply (Scala.Select (Scala.Variable (scalaName |> Name.toCamelCase)) "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
+                                                    Scala.Apply (Scala.Select (Scala.Variable "c") "downField") [ Scala.ArgValue Nothing fieldNameLiteral ]
 
                                                 downFieldApplyWithAs : Scala.Value
                                                 downFieldApplyWithAs =
