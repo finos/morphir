@@ -50,7 +50,6 @@ import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
 import Morphir.CustomAttribute.Codec exposing (decodeAttributes, encodeAttributeData)
 import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo)
-import Morphir.Elm.ParsedModule exposing (moduleName)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
 import Morphir.IR.Distribution.Codec as DistributionCodec
@@ -311,6 +310,10 @@ update msg model =
         fromStoredTestSuite testSuite =
             Dict.fromList (List.map (\( k, v ) -> ( k, Array.fromList v )) (Dict.toList testSuite))
 
+        resetTabs : Model -> Model
+        resetTabs m =
+            { m | activeTabIndex = 0 }
+
         toStoredTestSuite : Dict FQName (Array TestCase) -> Dict FQName (List TestCase)
         toStoredTestSuite testSuite =
             Dict.fromList
@@ -327,24 +330,20 @@ update msg model =
     in
     case msg of
         Navigate navigationMsg ->
-            let
-                resetTabs =
-                    { model | activeTabIndex = 0 }
-            in
             case navigationMsg of
                 LinkClicked urlRequest ->
                     case urlRequest of
                         Browser.Internal url ->
-                            ( resetTabs, Nav.pushUrl model.key (Url.toString url) )
+                            ( resetTabs model, Nav.pushUrl model.key (Url.toString url) )
 
                         Browser.External href ->
-                            ( resetTabs, Nav.load href )
+                            ( resetTabs model, Nav.load href )
 
                 UrlChanged url ->
-                    ( toRoute url resetTabs, Cmd.none )
+                    ( model |> resetTabs |> toRoute url, Cmd.none )
 
                 DefinitionSelected url ->
-                    ( resetTabs, Nav.pushUrl model.key url )
+                    ( resetTabs model, Nav.pushUrl model.key url )
 
         HttpError httpError ->
             case model.irState of
@@ -506,7 +505,7 @@ update msg model =
                     )
 
                 ModuleClicked path ->
-                    ( { model | activeTabIndex = 0 }
+                    ( resetTabs model
                     , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | moduleClicked = path, searchText = "" })
                     )
 
@@ -971,7 +970,7 @@ viewHeader model =
         [ row
             [ width fill ]
             [ link []
-                { url = pathToFullUrl [] ++ filterStateToQueryParams model.homeState.filterState
+                { url = "/home" ++ filterStateToQueryParams model.homeState.filterState
                 , label =
                     row
                         [ width fill
@@ -1049,59 +1048,134 @@ viewBody model =
             viewHome model packageName packageDef
 
 
+listStyles : Theme -> List (Element.Attribute msg)
+listStyles theme =
+    [ width fill
+    , Background.color theme.colors.lightest
+    , theme |> Theme.borderRounded
+    , paddingXY (theme |> Theme.scaled 3) (theme |> Theme.scaled -1)
+    ]
+
+
 {-| Display the home UI
 -}
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
 viewHome model packageName packageDef =
     let
-        -- Styles to make the module tree and the definition list
-        listStyles : List (Element.Attribute msg)
-        listStyles =
-            [ width fill
-            , Background.color model.theme.colors.lightest
-            , model.theme |> Theme.borderRounded
-            , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
+        -- A document tree like view of the modules in the current package
+        moduleTree : Element Msg
+        moduleTree =
+            el
+                (listStyles model.theme ++ [ height fill, scrollbars ])
+                (TreeViewComponent.view model.theme
+                    { onCollapse = UI << CollapseModule
+                    , onExpand = UI << ExpandModule
+                    , collapsedPaths = model.collapsedModules
+                    , selectedPaths =
+                        model.homeState.selectedModule
+                            |> Maybe.map (Tuple.first >> Set.singleton)
+                            |> Maybe.withDefault Set.empty
+                    }
+                    (viewModuleNames model
+                        packageName
+                        []
+                        (packageDef.modules |> Dict.keys)
+                    )
+                )
+
+        -- Creates two tabs showing a summmary and a dep. graph, which are shown when no definition is selected
+        homeTabs : Element Msg
+        homeTabs =
+            let
+                col : List (Element msg) -> Element msg
+                col elements =
+                    column
+                        [ height fill
+                        , width fill
+                        , scrollbars
+                        ]
+                        elements
+
+                leafModules : ModuleName -> List ModuleName
+                leafModules moduleName =
+                    packageDef.modules |> Dict.keys |> List.filter (\l -> List.concat l |> String.join "." |> String.startsWith (List.concat moduleName |> String.join "."))
+
+                summary : Element msg
+                summary =
+                    let
+                        numberOfModules : Int
+                        numberOfModules =
+                            packageDef.modules |> Dict.keys |> List.length
+
+                        displayNumberofValuesAndTypes : { a | value : { b | values : Dict c v, types : Dict d e } } -> List Name -> Element msg
+                        displayNumberofValuesAndTypes acmoduledef moduleName =
+                            row [ width fill ] [ text <| (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ " : " ++ String.fromInt (acmoduledef.value.values |> Dict.keys |> List.length) ++ " definition(s) and " ++ String.fromInt (acmoduledef.value.types |> Dict.keys |> List.length) ++ " type(s)." ]
+                    in
+                    case model.homeState.selectedModule of
+                        Just ( _, moduleName ) ->
+                            column [ spacing (Theme.smallSpacing model.theme) ]
+                                (leafModules moduleName
+                                    |> List.map
+                                        (\mn ->
+                                            case Dict.get mn packageDef.modules of
+                                                Just acmd ->
+                                                    displayNumberofValuesAndTypes acmd mn
+
+                                                Nothing ->
+                                                    Element.none
+                                        )
+                                )
+
+                        Nothing ->
+                            row [ width fill ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
+            in
+            TabsComponent.view model.theme
+                { onSwitchTab = UI << SwitchTab
+                , activeTab = model.activeTabIndex
+                , tabs =
+                    Array.fromList
+                        [ { name = "Summary"
+                          , content = el [ padding <| Theme.smallPadding model.theme ] summary
+                          }
+                        , { name = "Dependency Graph"
+                          , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
+                          }
+                        ]
+                }
+    in
+    row [ width fill, height fill, Background.color model.theme.colors.gray, spacing (Theme.smallSpacing model.theme) ]
+        [ column
+            [ width (fillPortion 1)
+            , height fill
+            , scrollbars
             ]
+            [ column [ width fill, height fill, scrollbars, spacing (Theme.smallSpacing model.theme) ]
+                [ ifThenElse model.showModules moduleTree none
+                , ifThenElse model.showDefinitions (definitionList packageDef model) none
+                ]
+            ]
+        , column
+            [ height fill
+            , width (fillPortion 4)
+            , Background.color model.theme.colors.lightest
+            , scrollbars
+            ]
+            [ ifThenElse (model.homeState.selectedDefinition == Nothing)
+                homeTabs
+                (column
+                    [ scrollbars, height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, width fill, spacing (model.theme |> Theme.scaled 1) ]
+                    [ viewDefinition packageDef model.theme model.homeState.selectedDefinition
+                    , el [ height fill, width fill, scrollbars ]
+                        (viewDefinitionDetails model)
+                    ]
+                )
+            ]
+        ]
 
-        -- Display a single selected definition on the ui
-        viewDefinition : Maybe Definition -> Element Msg
-        viewDefinition maybeSelectedDefinition =
-            case maybeSelectedDefinition of
-                Just selectedDefinition ->
-                    case selectedDefinition of
-                        Value ( moduleName, valueName ) ->
-                            packageDef.modules
-                                |> Dict.get moduleName
-                                |> Maybe.andThen
-                                    (\accessControlledModuleDef ->
-                                        accessControlledModuleDef.value.values
-                                            |> Dict.get valueName
-                                            |> Maybe.map
-                                                (\valueDef ->
-                                                    column []
-                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
-                                                        ]
-                                                )
-                                    )
-                                |> Maybe.withDefault none
 
-                        Type ( moduleName, typeName ) ->
-                            packageDef.modules
-                                |> Dict.get moduleName
-                                |> Maybe.andThen
-                                    (\accessControlledModuleDef ->
-                                        accessControlledModuleDef.value.types
-                                            |> Dict.get typeName
-                                            |> Maybe.map
-                                                (\typeDef ->
-                                                    ViewType.viewType model.theme typeName typeDef.value.value typeDef.value.doc
-                                                )
-                                    )
-                                |> Maybe.withDefault none
-
-                Nothing ->
-                    text "Please select a definition on the left!"
-
+definitionList : Package.Definition () (Type ()) -> Model -> Element Msg
+definitionList packageDef model =
+    let
         -- Given a module name and a module definition, returns a list of tuples with the module's definitions, and their human readable form
         moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List ( Definition, Element Msg )
         moduleDefinitionsAsUiElements moduleName moduleDef =
@@ -1239,63 +1313,6 @@ viewHome model packageName packageDef =
                 |> getElements
                 |> column [ height fill, width fill ]
 
-        -- Creates a text input to search defintions by name
-        definitionFilter : Element Msg
-        definitionFilter =
-            Element.Input.search
-                [ Font.size model.theme.fontSize
-                , padding (model.theme |> Theme.scaled -2)
-                , width (fillPortion 7)
-                ]
-                { onChange = Filter << SearchDefinition
-                , text = model.homeState.filterState.searchText
-                , placeholder = Just (Element.Input.placeholder [] (text "Search for a definition"))
-                , label = Element.Input.labelHidden "Search"
-                }
-
-        -- Creates a checkbox to filter out values from the definition list
-        valueCheckbox : Element Msg
-        valueCheckbox =
-            Element.Input.checkbox
-                [ width (fillPortion 2) ]
-                { onChange = Filter << ToggleValues
-                , checked = model.homeState.filterState.showValues
-                , icon = Element.Input.defaultCheckbox
-                , label = Element.Input.labelLeft [] (text "values:")
-                }
-
-        -- Creates a checkbox to filter out types from the definition list
-        typeCheckbox : Element Msg
-        typeCheckbox =
-            Element.Input.checkbox
-                [ width (fillPortion 2) ]
-                { onChange = Filter << ToggleTypes
-                , checked = model.homeState.filterState.showTypes
-                , icon = Element.Input.defaultCheckbox
-                , label = Element.Input.labelLeft [] (text "types:")
-                }
-
-        -- A document tree like view of the modules in the current package
-        moduleTree : Element Msg
-        moduleTree =
-            el
-                (listStyles ++ [ height fill, scrollbars ])
-                (TreeViewComponent.view model.theme
-                    { onCollapse = UI << CollapseModule
-                    , onExpand = UI << ExpandModule
-                    , collapsedPaths = model.collapsedModules
-                    , selectedPaths =
-                        model.homeState.selectedModule
-                            |> Maybe.map (Tuple.first >> Set.singleton)
-                            |> Maybe.withDefault Set.empty
-                    }
-                    (viewModuleNames model
-                        packageName
-                        []
-                        (packageDef.modules |> Dict.keys)
-                    )
-                )
-
         -- A path to the currently selected module in an easily readable format
         pathToSelectedModule =
             let
@@ -1332,110 +1349,117 @@ viewHome model packageName packageDef =
 
                 _ ->
                     [ text ">" ]
+    in
+    column
+        [ Background.color model.theme.colors.gray
+        , height fill
+        , width (ifThenElse model.showModules (fillPortion 3) fill)
+        , spacing (model.theme |> Theme.scaled -2)
+        , clipX
+        ]
+        [ definitionFilters model.theme model.homeState
+        , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ]
+            pathToSelectedModule
+        , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles model.theme) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
+        ]
 
-        -- Second column on the UI, the list of definitions in a module
-        definitionList : Element Msg
-        definitionList =
-            column
-                [ Background.color model.theme.colors.gray
-                , height fill
-                , width (ifThenElse model.showModules (fillPortion 3) fill)
-                , spacing (model.theme |> Theme.scaled -2)
-                , clipX
+
+
+{-
+   Creates UI elements to filter definitions by name, and type/value
+-}
+
+
+definitionFilters : Theme -> HomeState -> Element Msg
+definitionFilters theme homeState =
+    let
+        -- Creates a text input to search defintions by name
+        definitionFilter : Element Msg
+        definitionFilter =
+            Element.Input.search
+                [ Font.size theme.fontSize
+                , padding (theme |> Theme.scaled -2)
+                , width (fillPortion 7)
                 ]
-                [ row
-                    [ width fill
-                    , spacing (model.theme |> Theme.scaled 1)
-                    , height <| fillPortion 2
-                    ]
-                    [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
-                , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ]
-                    pathToSelectedModule
-                , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
-                ]
+                { onChange = Filter << SearchDefinition
+                , text = homeState.filterState.searchText
+                , placeholder = Just (Element.Input.placeholder [] (text "Search for a definition"))
+                , label = Element.Input.labelHidden "Search"
+                }
 
-        homeTabs =
-            let
-                col elements =
-                    column
-                        [ height fill
-                        , width fill
-                        , scrollbars
-                        ]
-                        elements
+        -- Creates a checkbox to filter out values from the definition list
+        valueCheckbox : Element Msg
+        valueCheckbox =
+            Element.Input.checkbox
+                [ width (fillPortion 2) ]
+                { onChange = Filter << ToggleValues
+                , checked = homeState.filterState.showValues
+                , icon = Element.Input.defaultCheckbox
+                , label = Element.Input.labelLeft [] (text "values:")
+                }
 
-                leafModules : ModuleName -> List ModuleName
-                leafModules moduleName =
-                    packageDef.modules |> Dict.keys |> List.filter (\l -> List.concat l |> String.join "." |> String.startsWith (List.concat moduleName |> String.join "."))
-
-                summary =
-                    let
-                        numberOfModules =
-                            packageDef.modules |> Dict.keys |> List.length
-
-                        numberofValuesAndTypes acmoduledef moduleName =
-                            row [ width fill ] [ text <| (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ " : " ++ String.fromInt (acmoduledef.value.values |> Dict.keys |> List.length) ++ " definition(s) and " ++ String.fromInt (acmoduledef.value.types |> Dict.keys |> List.length) ++ " type(s)." ]
-                    in
-                    case model.homeState.selectedModule of
-                        Just ( modulePath, moduleName ) ->
-                            column [ spacing (Theme.smallSpacing model.theme) ]
-                                (leafModules moduleName
-                                    |> List.map
-                                        (\mn ->
-                                            case Dict.get mn packageDef.modules of
-                                                Just acmd ->
-                                                    numberofValuesAndTypes acmd mn
-
-                                                Nothing ->
-                                                    Element.none
-                                        )
-                                )
-
-                        Nothing ->
-                            row [ width fill ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
-            in
-            TabsComponent.view model.theme
-                { onSwitchTab = UI << SwitchTab
-                , activeTab = model.activeTabIndex
-                , tabs =
-                    Array.fromList
-                        [ { name = "Summary"
-                          , content = el [ padding <| Theme.smallPadding model.theme ] summary
-                          }
-                        , { name = "Dependency Graph"
-                          , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
-                          }
-                        ]
+        -- Creates a checkbox to filter out types from the definition list
+        typeCheckbox : Element Msg
+        typeCheckbox =
+            Element.Input.checkbox
+                [ width (fillPortion 2) ]
+                { onChange = Filter << ToggleTypes
+                , checked = homeState.filterState.showTypes
+                , icon = Element.Input.defaultCheckbox
+                , label = Element.Input.labelLeft [] (text "types:")
                 }
     in
-    row [ width fill, height fill, Background.color model.theme.colors.gray, spacing (Theme.smallSpacing model.theme) ]
-        [ column
-            [ width (fillPortion 1)
-            , height fill
-            , scrollbars
-            ]
-            [ column [ width fill, height fill, scrollbars, spacing (Theme.smallSpacing model.theme) ]
-                [ ifThenElse model.showModules moduleTree none
-                , ifThenElse model.showDefinitions definitionList none
-                ]
-            ]
-        , column
-            [ height fill
-            , width (fillPortion 4)
-            , Background.color model.theme.colors.lightest
-            , scrollbars
-            ]
-            [ ifThenElse (model.homeState.selectedDefinition == Nothing)
-                homeTabs
-                (column
-                    [ scrollbars, height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, width fill, spacing (model.theme |> Theme.scaled 1) ]
-                    [ viewDefinition model.homeState.selectedDefinition
-                    , el [ height fill, width fill, scrollbars ]
-                        (viewDefinitionDetails model)
-                    ]
-                )
-            ]
+    row
+        [ width fill
+        , spacing (theme |> Theme.scaled 1)
+        , height <| fillPortion 2
         ]
+        [ definitionFilter, row [ alignRight, spacing (theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
+
+
+
+{-
+   Display a single selected definition on the ui
+-}
+
+
+viewDefinition : Package.Definition () (Type ()) -> Theme -> Maybe Definition -> Element Msg
+viewDefinition packageDef theme maybeSelectedDefinition =
+    case maybeSelectedDefinition of
+        Just selectedDefinition ->
+            case selectedDefinition of
+                Value ( moduleName, valueName ) ->
+                    packageDef.modules
+                        |> Dict.get moduleName
+                        |> Maybe.andThen
+                            (\accessControlledModuleDef ->
+                                accessControlledModuleDef.value.values
+                                    |> Dict.get valueName
+                                    |> Maybe.map
+                                        (\valueDef ->
+                                            column []
+                                                [ viewValue theme moduleName valueName valueDef.value.value valueDef.value.doc
+                                                ]
+                                        )
+                            )
+                        |> Maybe.withDefault none
+
+                Type ( moduleName, typeName ) ->
+                    packageDef.modules
+                        |> Dict.get moduleName
+                        |> Maybe.andThen
+                            (\accessControlledModuleDef ->
+                                accessControlledModuleDef.value.types
+                                    |> Dict.get typeName
+                                    |> Maybe.map
+                                        (\typeDef ->
+                                            ViewType.viewType theme typeName typeDef.value.value typeDef.value.doc
+                                        )
+                            )
+                        |> Maybe.withDefault none
+
+        Nothing ->
+            text "Please select a definition on the left!"
 
 
 {-| Display detailed information of a Value on the UI
