@@ -13,7 +13,7 @@ mapTypeTests =
         [ test "Test record with single field" <|
             \_ ->
                 mapType ( [], [] ) (Type.Record () [ Type.Field [ "firstname" ] (Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "String" ] ], [ "string" ] ) []) ])
-                    |> Expect.equal (Ok (Object ([ ( "firstname", String (StringConstraints Nothing) ) ] |> Dict.fromList)))
+                    |> Expect.equal (Ok (Object ([ ( "firstname", String (StringConstraints Nothing) ) ] |> Dict.fromList) [ "firstname" ]))
         , test "Test for record with two fields" <|
             \_ ->
                 mapType ( [], [] )
