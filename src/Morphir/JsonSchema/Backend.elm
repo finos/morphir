@@ -31,7 +31,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), StringConstraints, TypeName)
+import Morphir.JsonSchema.AST exposing (ArrayType(..), FieldName, Schema, SchemaType(..), StringConstraints, TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
 import Morphir.SDK.ResultList as ResultList
 
@@ -273,14 +273,45 @@ mapType typ =
                         )
 
         Type.Record _ fields ->
+            let
+                requiredFields : List FieldName
+                requiredFields =
+                    fields
+                        |> List.filterMap
+                            (\field ->
+                                case field.tpe of
+                                    Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
+                                        case ( FQName.toString fQName, argTypes ) of
+                                            ( "Morphir.SDK:Maybe:maybe", _ ) ->
+                                                Nothing
+
+                                            _ ->
+                                                Just (field.name |> Name.toCamelCase)
+
+                                    _ ->
+                                        Just (field.name |> Name.toCamelCase)
+                            )
+            in
             fields
                 |> List.map
                     (\field ->
-                        mapType field.tpe
-                            |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
+                        case field.tpe of
+                            Type.Reference _ (( packageName, moduleName, localName ) as fQName) argTypes ->
+                                case ( FQName.toString fQName, argTypes ) of
+                                    ( "Morphir.SDK:Maybe:maybe", [ itemType ] ) ->
+                                        mapType itemType
+                                            |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
+
+                                    _ ->
+                                        mapType field.tpe
+                                            |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
+
+                            _ ->
+                                mapType field.tpe
+                                    |> Result.map (\fieldSchemaType -> ( Name.toCamelCase field.name, fieldSchemaType ))
                     )
                 |> ResultList.keepFirstError
-                |> Result.map (Dict.fromList >> Object)
+                |> Result.map (\schemaDict -> Object (Dict.fromList schemaDict) requiredFields)
 
         Type.Tuple _ typeList ->
             typeList
