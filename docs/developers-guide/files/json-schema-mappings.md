@@ -1,13 +1,42 @@
-# Json Schema Backend
-This is a documentation a of the Json Schema backend for generating Json Schema. 
+# Json Schema Mappings
+This is a documentation of the mapping strategy from Morphir types to Json Schema. 
 This document describes how Morphir Models maps to Json Schema.
 Json Schema Reference can be found [here](http://json-schema.org/understanding-json-schema/reference/index.html)
 <br>
 Additional reading:
-* [Sample Json Schema](json-schema-mappings.json)
-* [Json Mapping](json-mapping.md)
+* [Sample Json Schema](json-schema-sample.json)
 * [Testing Strategy](json-schema-backend-testplan.md)
 
+## Overview
+
+We will give a quick overview of the mapping in the table below:
+
+Type | Elm sample | JSON sample | Comment
+---- | ---------- | ----------- | -------
+`Bool` | `True`, `False` | `true`, `false` | Exact mapping
+`Int` | `123`, `-15` | `123`, `-15` | Ints map to JSON number
+`Float` | `3.14`, `-53.2` | `3.14`, `-53.2` | Floats map to JSON number
+`Char` | `'A'`, `'z'` | `"A"`, `"z"` | Chars map to JSON strings
+`String` | `"Foo bar"`, `""` | `"Foo bar"`, `""` | Exact mapping
+`Maybe a` | `Just 13`, `Nothing` | `13`, `null` | Maybe maps to nullable JSON value
+`List a` | `[1, 2, 3]`, `[]` | `[1, 2, 3]`, `[]` | Lists map to JSON arrays
+`tuples` | `( 13, False )` | `[13, false]` | Tuples map to arrays
+`record types` | `{ foo = 13, bar = False }`  | `{ "foo": 13, "bar": false }` | Records map to objects
+`custom types` | `FooBar "hello`, `MyEnum` | `["FooBar", "hello"]`, `"MyEnum"` | see details below
+
+## How to Generate a Json Schema
+Follow the two step s below to generate a Json Schema
+
+* Step 1
+Run the ```elm morphir-elm make ``` command to generate an IR
+* Step 2
+Run the ```elm morphir-elm gen -t JsonSchema``` to generate the Json Schema
+
+**Note** - The generated schema is named <package-name>.json by default. But you can specify the filename
+optionally for the schema using the -f flag.
+
+<br><br>
+Next, we will get into some specific cases that may need further explanation.
 
 The rest of the explains how each Morphir type maps to the Json Schema Types.
 
@@ -298,7 +327,28 @@ would result in:
 
 ### 2.2. Record Types
 Record types in Morphir maps to objects in Json schema. The fields of the record maps to properties of the Json Schema object.
-The properties of a JSON schema is a list of schemas. An example is given below
+The properties of a JSON schema is a list of schemas. The only clarification we need to make is that field names
+use a **camel case** naming convention
+
+Example 1
+```elm
+sample1 =
+    { fooBar = "hello"
+    , fooBaz = 13
+    }
+```
+
+Which maps to the following JSON:
+
+```json
+{
+  "fooBar" : "hello",
+  "fooBaz" : 13
+}
+```
+
+
+Example 2
 ```elm
 type alias Address =
     { country : String
@@ -340,6 +390,36 @@ Json Schema does not support custom types natively. So we use the following appr
 * a constructor with its arguments will map to a tuple-validated array where the constructor is the first item in the array
 * the schema type for the constructor would be const (explained below)
 * the union type itself would then be represented using the "anyOf" keyword
+
+ Custom types are special union types where each subtype is marked with a special tag to make it easier to differentiate. Besides the tag each subtype can also have any number of arguments.
+These tags are also called constructors since you can think of them as functions with different names and
+arguments that create instances of the same type. 
+ Here's an example:
+
+```elm
+type Foo 
+    = FooBar String
+    | FooBaz Int Bool 
+
+sample1 =
+    FooBar "hello"
+    
+sample2 =    
+    FooBaz 13 False
+```
+
+Our JSON format needs to capture both the tag and the arguments and also connect them together. So we
+decided to simply put all of them in an array starting with the tag as the first value:
+
+```json
+["FooBar", "hello"]
+```
+
+```json
+["FooBaz", 13, false]
+```
+
+For the tags we use **upper camel case** (which is also called **PascalCase**).
 
 #### 2.2.1. General Case
 The following Morphir model:
@@ -395,6 +475,20 @@ would generate the schema:
 ```
 
   **- Single Constructor <br>**
+  When a constructor doesn't have any arguments it behaves like an enum value. The format described
+  above would dictate that we map those to single element arrays in JSON but for simplicity we will
+  map them to just a string value:
+
+```elm
+sample3 =
+    MyEnumValue
+```
+
+Maps to:
+
+```json
+"MyEnumValue"
+```
 
 
 

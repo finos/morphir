@@ -35,6 +35,7 @@ import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 import Morphir.IR.SDK as SDK
+import Morphir.JsonSchema.Backend
 import Morphir.Stats.Backend as Stats
 import Process
 import Task
@@ -208,11 +209,13 @@ process msg =
                                 Library packageName dependencies packageDef ->
                                     Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
-                        fileMap : FileMap
+                        fileMap : Result Morphir.JsonSchema.Backend.Errors FileMap
                         fileMap =
                             mapDistribution options enrichedDistro
                     in
-                    fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult
+                    fileMap
+                        |> encodeResult encodeErrors encodeFileMap
+                        |> generateResult
 
                 Err errorMessage ->
                     errorMessage |> Decode.errorToString |> jsonDecodeError
@@ -327,3 +330,8 @@ encodeResult encodeErr encodeValue result =
                 [ encodeErr e
                 , Encode.null
                 ]
+
+
+encodeErrors : Morphir.JsonSchema.Backend.Errors -> Encode.Value
+encodeErrors errors =
+    Encode.list Encode.string errors
