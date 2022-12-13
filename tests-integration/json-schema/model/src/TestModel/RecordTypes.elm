@@ -8,7 +8,7 @@ type alias Resource =
 
 
 type alias Address =
-    { protocol : String
+    { protocol : Maybe String
     , domainName : String
     , path : String
     }
