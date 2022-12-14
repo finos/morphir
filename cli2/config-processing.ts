@@ -68,7 +68,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
             selectedOptions.output = cliOptions.input != "./dist"? cliOptions.output : configFileJson.output
             selectedOptions.targetVersion = cliOptions.targetVersion != "2020-12"? cliOptions.targetVersion : configFileJson.targetVersion
             selectedOptions.useConfig = cliOptions.useConfig != false? cliOptions.useConfig : configFileJson.useConfig         
-            selectedOptions.limitToModules = cliOptions.limitToModules != ""? cliOptions.limitToModules : configFileJson.limitToModules
+            selectedOptions.limitToModules = cliOptions.limitToModules != ""? cliOptions.limitToModules : configFileJson.limitToModules.split(",")
             selectedOptions.filename = cliOptions.filename != ""? cliOptions.filename : configFileJson.filename
             selectedOptions.groupSchemaBy = cliOptions.groupSchemaBy != "package"? cliOptions.groupSchemaBy : configFileJson.groupSchemaBy
         }

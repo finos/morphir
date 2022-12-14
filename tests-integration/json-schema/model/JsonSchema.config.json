@@ -4,7 +4,7 @@
   "targetVersion": "2020-12",
   "filename": "",
   "useConfig": true,
-  "limitToModules": "",
+  "limitToModules": "BasicTypes,AdvancedTypes,OptionalTypes",
   "groupSchemaBy": "module",
   "target": "JsonSchema"
 }
