@@ -4,6 +4,7 @@ This file serves as the entrypoint for Json Schema Backend configuration process
 import * as fs from "fs";
 import path from 'path';
 import * as util from 'util'
+import cli from "./cli";
 
 const fsReadFile = util.promisify(fs.readFile);
 const configFilePath: string = "JsonSchema.config.json";
@@ -52,7 +53,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
         targetVersion: "",
         filename: "",
         useConfig: false,
-        limitToModules: "",
+        limitToModules: [],
         groupSchemaBy: "",
         target: "JsonSchema"
     }
@@ -75,8 +76,9 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
             selectedOptions = configFileJson
         }
     }
-    else { // Use the cli command defaults
+    else { // Process and use the cli defaults except where a parameter was specified in a flag
         selectedOptions = cliOptions
+        selectedOptions.limitToModules = cliOptions.limitToModules? cliOptions.limitToModules.split(" "): []
     }
     return selectedOptions
 }

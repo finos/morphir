@@ -25,7 +25,7 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
-            limitToModules: "",
+            limitToModules: [],
             groupSchemaBy: 'package',
             useConfig: false
         }
@@ -49,7 +49,7 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: 'Foo',
-            limitToModules: "",
+            limitToModules: [],
             groupSchemaBy: 'package',
             useConfig: false
         }
@@ -73,7 +73,7 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: 'Bar',
-            limitToModules: "",
+            limitToModules: [],
             groupSchemaBy: 'module',
             useConfig: false
         }
@@ -97,7 +97,7 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
-            limitToModules: "",
+            limitToModules: [],
             groupSchemaBy: 'package',
             useConfig: false
         }
@@ -121,7 +121,7 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
-            limitToModules: "",
+            limitToModules: [],
             groupSchemaBy: 'package',
             useConfig: false
         }
@@ -145,7 +145,31 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
-            limitToModules: "",
+            limitToModules: [],
+            groupSchemaBy: 'package',
+            useConfig: false
+        }
+        expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
+    })
+
+    test('Test Case for limitToModules', async ()=>{
+        const inputOptions: any = {
+            input: "morphir-ir.json",
+            output: "./dist",
+            targetVersion: "2020-12",
+            filename: "",
+            useConfig: false,
+            limitToModules: "BasicTypes",
+            groupSchemaBy: "package",
+            target: "JsonSchema"
+        }
+        const expectedOutputOptions: JsonBackendOptions = {
+            input: 'morphir-ir.json',
+            output: './dist',
+            target: 'JsonSchema',
+            targetVersion: '2020-12',
+            filename: '',
+            limitToModules: ["BasicTypes"],
             groupSchemaBy: 'package',
             useConfig: false
         }

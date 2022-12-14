@@ -56,8 +56,8 @@ decodeOptions gen =
 
 
 mapDistribution : BackendOptions -> Distribution -> Result Errors FileMap
-mapDistribution back dist =
-    case back of
+mapDistribution backendOptions dist =
+    case backendOptions of
         SpringBootOptions options ->
             Ok <| SpringBoot.mapDistribution options dist
 

@@ -62,7 +62,12 @@ mapDistribution : Options -> Distribution -> Result Errors FileMap
 mapDistribution opts distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
-            mapPackageDefinition opts packageName packageDef
+            case opts.limitToModules of
+                Just selectedModules ->
+                    mapPackageDefinition opts packageName (Package.selectModules selectedModules packageName packageDef)
+
+                Nothing ->
+                    mapPackageDefinition opts packageName packageDef
 
 
 mapPackageDefinition : Options -> PackageName -> Package.Definition ta (Type ()) -> Result Errors FileMap
