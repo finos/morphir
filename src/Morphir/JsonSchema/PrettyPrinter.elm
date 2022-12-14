@@ -43,13 +43,11 @@ encodeSchemaType schemaType =
                             ]
                         )
 
-                TupleType schemaTypes numberOfItems ->
+                TupleType schemaTypes ->
                     Encode.object
                         [ ( "type", Encode.string "array" )
                         , ( "items", Encode.bool False )
                         , ( "prefixItems", Encode.list encodeSchemaType schemaTypes )
-                        , ( "minItems", Encode.int numberOfItems )
-                        , ( "maxItems", Encode.int numberOfItems )
                         ]
 
         String stringConstraint ->
@@ -74,10 +72,18 @@ encodeSchemaType schemaType =
 
         Object st requiredFields ->
             Encode.object
-                [ ( "type", Encode.string "object" )
-                , ( "properties", Encode.dict identity encodeSchemaType st )
-                , ( "required", Encode.list Encode.string requiredFields )
-                ]
+                (List.concat
+                    [ [ ( "type", Encode.string "object" )
+                      , ( "properties", Encode.dict identity encodeSchemaType st )
+                      ]
+                    , if List.isEmpty requiredFields then
+                        []
+
+                      else
+                        [ ( "required", Encode.list Encode.string requiredFields ) ]
+                    ]
+                )
+
 
         Const value ->
             Encode.object
