@@ -537,14 +537,12 @@ mapValue inScopeVars value =
                     curryConstructorArgs inScopeVars constructorType fQName args
 
                 _ ->
-                    Scala.TypeAscripted
-                        (Scala.Apply (mapValue inScopeVars applyFun)
-                            [ Scala.ArgValue Nothing (mapValue inScopeVars applyArg)
-                            ]
-                        )
-                        (mapType applyType)
+                    Scala.Apply
+                        (mapValue inScopeVars applyFun)
+                        [ Scala.ArgValue Nothing (mapValue inScopeVars applyArg)
+                        ]
 
-        Lambda _ argPattern bodyValue ->
+        Lambda lambdaType argPattern bodyValue ->
             let
                 newInScopeVars : Set Name
                 newInScopeVars =
@@ -559,7 +557,7 @@ mapValue inScopeVars value =
                         (mapValue newInScopeVars bodyValue)
 
                 _ ->
-                    Scala.MatchCases [ ( mapPattern argPattern, mapValue newInScopeVars bodyValue ) ]
+                    Scala.TypeAscripted (Scala.MatchCases [ ( mapPattern argPattern, mapValue newInScopeVars bodyValue ) ]) (mapType lambdaType)
 
         LetDefinition _ _ _ _ ->
             let
