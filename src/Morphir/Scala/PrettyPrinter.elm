@@ -172,7 +172,8 @@ mapMemberDecl opt memberDecl =
 
         ValueDecl decl ->
             concat
-                [ "val "
+                [ mapModifiers decl.modifiers
+                , "val "
                 , mapPattern decl.pattern
                 , case decl.valueType of
                     Just tpe ->
