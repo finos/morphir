@@ -26,13 +26,14 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.IR.AccessControlled exposing (AccessControlled)
 import Morphir.IR.Distribution as Distribution exposing (Distribution)
 import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Module as Module exposing (ModuleName)
+import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.JsonSchema.AST exposing (ArrayType(..), FieldName, Schema, SchemaType(..), StringConstraints, TypeName)
+import Morphir.JsonSchema.AST exposing (ArrayType(..), FieldName, Schema(..), SchemaType(..), StringConstraints, TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
+import Morphir.JsonSchema.Utils exposing (QualifiedName, StringType(..), extractTypes, getTypeDefinitionFromModule, isTypeOrModule)
 import Morphir.SDK.ResultList as ResultList
 import Set exposing (Set)
 
@@ -40,11 +41,8 @@ import Set exposing (Set)
 type alias Options =
     { filename : String
     , limitToModules : Maybe (Set ModuleName)
+    , include : Maybe (Set String) -- Set of Strings which may either be module names or fully qualified names of types
     }
-
-
-type alias QualifiedName =
-    ( Path, Name )
 
 
 type alias Error =
@@ -62,15 +60,40 @@ mapDistribution : Options -> Distribution -> Result Errors FileMap
 mapDistribution opts distro =
     case distro of
         Distribution.Library packageName _ packageDef ->
-            case opts.limitToModules of
-                Just selectedModules ->
-                    mapPackageDefinition opts packageName (Package.selectModules selectedModules packageName packageDef)
+            case opts.include of
+                Just strings ->
+                    strings
+                        |> Set.toList
+                        |> List.map
+                            (\currentString ->
+                                case isTypeOrModule currentString of
+                                    TypeNameString ->
+                                        generateSchemaByTypeName currentString packageName packageDef
+
+                                    ModuleNameString ->
+                                        generateSchemaByModuleName currentString packageName packageDef
+
+                                    UnknownString ->
+                                        Err [ "No module or type found for string " ++ currentString ]
+                            )
+                        |> ResultList.keepAllErrors
+                        |> Result.mapError List.concat
+                        |> Result.map (List.foldl Dict.union Dict.empty)
 
                 Nothing ->
                     mapPackageDefinition opts packageName packageDef
 
 
-mapPackageDefinition : Options -> PackageName -> Package.Definition ta (Type ()) -> Result Errors FileMap
+
+--case opts.limitToModules of
+--    Just selectedModules ->
+--        mapPackageDefinition opts packageName (Package.selectModules selectedModules packageName packageDef)
+--
+--    Nothing ->
+--        mapPackageDefinition opts packageName packageDef
+
+
+mapPackageDefinition : Options -> PackageName -> Package.Definition () (Type ()) -> Result Errors FileMap
 mapPackageDefinition opts packageName packageDefinition =
     packageDefinition
         |> generateSchema packageName
@@ -92,7 +115,7 @@ mapQualifiedName ( path, name ) =
     String.concat [ Path.toString Name.toTitleCase "." path, ".", Name.toTitleCase name ]
 
 
-generateSchema : PackageName -> Package.Definition ta (Type ()) -> Result Errors Schema
+generateSchema : PackageName -> Package.Definition () (Type ()) -> Result Errors Schema
 generateSchema packageName packageDefinition =
     let
         schemaTypeDefinitions : Result Errors (List ( TypeName, SchemaType ))
@@ -106,29 +129,22 @@ generateSchema packageName packageDefinition =
                                 (\( qualifiedName, typeDef ) ->
                                     mapTypeDefinition qualifiedName typeDef
                                 )
-                            |> ResultList.keepFirstError
+                            |> ResultList.keepAllErrors
+                            |> Result.mapError List.concat
                             |> Result.map List.concat
                     )
-                |> ResultList.keepFirstError
+                |> ResultList.keepAllErrors
+                |> Result.mapError List.concat
                 |> Result.map List.concat
     in
     schemaTypeDefinitions
         |> Result.map
             (\definitions ->
-                { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" packageName ++ ".schema.json"
-                , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
-                , definitions = definitions |> Dict.fromList
-                }
-            )
-
-
-extractTypes : ModuleName -> Module.Definition ta (Type ()) -> List ( QualifiedName, Type.Definition ta )
-extractTypes modName definition =
-    definition.types
-        |> Dict.toList
-        |> List.map
-            (\( name, accessControlled ) ->
-                ( ( modName, name ), accessControlled.value.value )
+                ComplexSchema
+                    { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" packageName ++ ".schema.json"
+                    , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
+                    , definitions = definitions |> Dict.fromList
+                    }
             )
 
 
@@ -158,7 +174,8 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                         mapType qualifiedName (Tuple.second tpe)
                                     )
                             )
-                                |> ResultList.keepFirstError
+                                |> ResultList.keepAllErrors
+                                |> Result.mapError List.concat
                                 |> Result.map
                                     (\schemaType ->
                                         Array
@@ -170,7 +187,8 @@ mapTypeDefinition (( path, name ) as qualifiedName) definition =
                                             False
                                     )
                     )
-                |> ResultList.keepFirstError
+                |> ResultList.keepAllErrors
+                |> Result.mapError List.concat
                 |> Result.map
                     (\schemaTypes -> [ ( (path |> Path.toString Name.toTitleCase ".") ++ "." ++ (name |> Name.toTitleCase), OneOf schemaTypes ) ])
 
@@ -258,7 +276,8 @@ mapType qName typ =
                                 Array (TupleType [ Const "Ok", valueSchema ]) True
                             )
                     ]
-                        |> ResultList.keepFirstError
+                        |> ResultList.keepAllErrors
+                        |> Result.mapError List.concat
                         |> Result.map OneOf
 
                 ( "Morphir.SDK:Dict:dict", [ keyType, valueType ] ) ->
@@ -267,7 +286,8 @@ mapType qName typ =
                             [ mapType qName keyType, mapType qName valueType ]
                     in
                     tupleSchemaList
-                        |> ResultList.keepFirstError
+                        |> ResultList.keepAllErrors
+                        |> Result.mapError List.concat
                         |> Result.map (\tupleSchema -> Array (ListType (Array (TupleType tupleSchema) False)) True)
 
                 _ ->
@@ -339,3 +359,79 @@ mapType qName typ =
 
         _ ->
             Err [ "Cannot map type " ++ Type.toString typ ++ " in module " ++ Path.toString Name.toTitleCase "." (qName |> Tuple.first) ]
+
+
+
+-- Take a string which represents a typename and tries to generate a schema.
+-- We first check if the a type with such a name exists. If so  then call mapType
+-- Else return Nothing
+
+
+generateSchemaByTypeName : String -> PackageName -> Package.Definition () (Type ()) -> Result Errors FileMap
+generateSchemaByTypeName typeFQNString _ pkgDef =
+    let
+        fqName =
+            FQName.fromString typeFQNString ":"
+
+        typeName =
+            FQName.getLocalName fqName
+
+        moduleDef =
+            Package.lookupModuleDefinition (FQName.getModulePath fqName) pkgDef
+    in
+    getTypeDefinitionFromModule typeName (FQName.getModulePath fqName) moduleDef
+        |> List.map (mapTypeDefinition ( [], [] ))
+        |> ResultList.keepAllErrors
+        |> Result.mapError List.concat
+        |> Result.map List.concat
+        |> Result.map
+            (\schemas ->
+                schemas
+                    |> List.map
+                        (\( _, schemaType ) ->
+                            SimpleSchema schemaType
+                        )
+                    |> List.map encodeSchema
+                    |> List.map (Dict.singleton ( [], (typeName |> Name.toTitleCase) ++ ".json" ))
+                    |> List.foldl Dict.union Dict.empty
+            )
+
+
+generateSchemaByModuleName : String -> PackageName -> Package.Definition () (Type ()) -> Result Errors FileMap
+generateSchemaByModuleName moduleNameString pkgName pkgDef =
+    let
+        moduleName =
+            moduleNameString
+                |> String.split ":"
+                |> List.reverse
+                |> List.take 1
+                |> List.map Name.fromString
+    in
+    case Package.lookupModuleDefinition moduleName pkgDef of
+        Just moduleDef ->
+            extractTypes moduleName moduleDef
+                |> List.map
+                    (\( qualifiedName, typeDef ) ->
+                        mapTypeDefinition qualifiedName typeDef
+                    )
+                |> ResultList.keepAllErrors
+                |> Result.mapError List.concat
+                |> Result.map List.concat
+                |> Result.map
+                    (\definitions ->
+                        ComplexSchema
+                            { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
+                            , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
+                            , definitions = definitions |> Dict.fromList
+                            }
+                    )
+                |> Result.map
+                    (encodeSchema
+                        >> Dict.singleton
+                            ( []
+                            , (moduleNameString |> String.split ":" |> List.reverse |> List.take 1 |> Name.toTitleCase) ++ ".json"
+                            )
+                    )
+
+        Nothing ->
+            Err [ "Module not found in the package: " ++ moduleNameString ]

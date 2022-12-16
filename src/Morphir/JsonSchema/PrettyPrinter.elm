@@ -2,17 +2,22 @@ module Morphir.JsonSchema.PrettyPrinter exposing (..)
 
 import Dict exposing (Dict)
 import Json.Encode as Encode
-import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema, SchemaType(..), TypeName)
+import Morphir.JsonSchema.AST exposing (ArrayType(..), Schema(..), SchemaType(..), TypeName)
 
 
 encodeSchema : Schema -> String
 encodeSchema schema =
-    Encode.object
-        [ ( "$id", Encode.string schema.id )
-        , ( "$schema", Encode.string schema.schemaVersion )
-        , ( "$defs", encodeDefinitions schema.definitions )
-        ]
-        |> Encode.encode 4
+    case schema of
+        SimpleSchema simpleSchema ->
+            Encode.encode 4 (encodeSchemaType simpleSchema)
+
+        ComplexSchema complexSchema ->
+            Encode.object
+                [ ( "$id", Encode.string complexSchema.id )
+                , ( "$schema", Encode.string complexSchema.schemaVersion )
+                , ( "$defs", encodeDefinitions complexSchema.definitions )
+                ]
+                |> Encode.encode 4
 
 
 encodeDefinitions : Dict TypeName SchemaType -> Encode.Value
@@ -83,7 +88,6 @@ encodeSchemaType schemaType =
                         [ ( "required", Encode.list Encode.string requiredFields ) ]
                     ]
                 )
-
 
         Const value ->
             Encode.object

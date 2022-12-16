@@ -18,7 +18,8 @@ export interface JsonBackendOptions {
       filename: string,
       useConfig: boolean,
       limitToModules : any,
-      groupSchemaBy: string
+      groupSchemaBy: string,
+      include: any
 }
 
 /*
@@ -55,7 +56,8 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
         useConfig: false,
         limitToModules: [],
         groupSchemaBy: "",
-        target: "JsonSchema"
+        target: "JsonSchema",
+        include: []
     }
 
     if (cliOptions.useConfig){ //then use the config file parameters
@@ -71,6 +73,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
             selectedOptions.limitToModules = cliOptions.limitToModules != ""? cliOptions.limitToModules : configFileJson.limitToModules.split(",")
             selectedOptions.filename = cliOptions.filename != ""? cliOptions.filename : configFileJson.filename
             selectedOptions.groupSchemaBy = cliOptions.groupSchemaBy != "package"? cliOptions.groupSchemaBy : configFileJson.groupSchemaBy
+            selectedOptions.include = cliOptions.include != ""? cliOptions.include : configFileJson.include.split(",")        
         }
         else {
             selectedOptions = configFileJson
@@ -79,6 +82,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
     else { // Process and use the cli defaults except where a parameter was specified in a flag
         selectedOptions = cliOptions
         selectedOptions.limitToModules = cliOptions.limitToModules? cliOptions.limitToModules.split(" "): []
+        selectedOptions.include = cliOptions.include? cliOptions.include.split(" "): []
     }
     return selectedOptions
 }

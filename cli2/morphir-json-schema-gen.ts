@@ -20,6 +20,7 @@ program
     .option('-m, --limit-to-modules <comma.separated,list.of,module.names>', 'Limit the set of modules that will be included.', '')
     .option('-g, --group-schema-by <string>', 'Group generate schema by package, module or type.', 'package')
     .option('-c, --use-config', 'Use configuration specified in the config file.', false)
+    .option('-ls, --include <comma.separated,list.of,strings>', 'Limit what will be included.', '')
     .parse(process.argv)
 
 configProcessing.inferBackendConfig(program.opts()).then((options) => {

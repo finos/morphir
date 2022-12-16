@@ -22,7 +22,7 @@ var jsonObject
 const options = {
     target : 'JsonSchema',
     filename: '',
-    groupSchemaBy: 'package'
+    include: ""
 }
 
 
