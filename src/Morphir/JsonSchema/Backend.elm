@@ -33,7 +33,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.JsonSchema.AST exposing (ArrayType(..), FieldName, Schema(..), SchemaType(..), StringConstraints, TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
-import Morphir.JsonSchema.Utils exposing (QualifiedName, StringType(..), extractTypes, getTypeDefinitionFromModule, isTypeOrModule)
+import Morphir.JsonSchema.Utils exposing (QualifiedName, extractTypes, getTypeDefinitionFromModule)
 import Morphir.SDK.ResultList as ResultList
 import Set exposing (Set)
 
@@ -66,15 +66,7 @@ mapDistribution opts distro =
                         |> Set.toList
                         |> List.map
                             (\currentString ->
-                                case isTypeOrModule currentString of
-                                    TypeNameString ->
-                                        generateSchemaByTypeName currentString packageName packageDef
-
-                                    ModuleNameString ->
-                                        generateSchemaByModuleName currentString packageName packageDef
-
-                                    UnknownString ->
-                                        Err [ "No module or type found for string " ++ currentString ]
+                                generateSchemaByTypeNameOrModuleName currentString packageName packageDef
                             )
                         |> ResultList.keepAllErrors
                         |> Result.mapError List.concat
@@ -362,49 +354,16 @@ mapType qName typ =
 
 
 
--- Take a string which represents a typename and tries to generate a schema.
--- We first check if the a type with such a name exists. If so  then call mapType
--- Else return Nothing
+-- Take a string which represents a TypeName or ModulePath and tries to generate a schema.
 
 
-generateSchemaByTypeName : String -> PackageName -> Package.Definition () (Type ()) -> Result Errors FileMap
-generateSchemaByTypeName typeFQNString _ pkgDef =
-    let
-        fqName =
-            FQName.fromString typeFQNString ":"
-
-        typeName =
-            FQName.getLocalName fqName
-
-        moduleDef =
-            Package.lookupModuleDefinition (FQName.getModulePath fqName) pkgDef
-    in
-    getTypeDefinitionFromModule typeName (FQName.getModulePath fqName) moduleDef
-        |> List.map (mapTypeDefinition ( [], [] ))
-        |> ResultList.keepAllErrors
-        |> Result.mapError List.concat
-        |> Result.map List.concat
-        |> Result.map
-            (\schemas ->
-                schemas
-                    |> List.map
-                        (\( _, schemaType ) ->
-                            SimpleSchema schemaType
-                        )
-                    |> List.map encodeSchema
-                    |> List.map (Dict.singleton ( [], (typeName |> Name.toTitleCase) ++ ".json" ))
-                    |> List.foldl Dict.union Dict.empty
-            )
-
-
-generateSchemaByModuleName : String -> PackageName -> Package.Definition () (Type ()) -> Result Errors FileMap
-generateSchemaByModuleName moduleNameString pkgName pkgDef =
+generateSchemaByTypeNameOrModuleName : String -> PackageName -> Package.Definition () (Type ()) -> Result Errors FileMap
+generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
     let
         moduleName =
-            moduleNameString
-                |> String.split ":"
+            inputString
+                |> String.split "."
                 |> List.reverse
-                |> List.take 1
                 |> List.map Name.fromString
     in
     case Package.lookupModuleDefinition moduleName pkgDef of
@@ -429,9 +388,43 @@ generateSchemaByModuleName moduleNameString pkgName pkgDef =
                     (encodeSchema
                         >> Dict.singleton
                             ( []
-                            , (moduleNameString |> String.split ":" |> List.reverse |> List.take 1 |> Name.toTitleCase) ++ ".json"
+                            , inputString ++ ".json"
                             )
                     )
 
         Nothing ->
-            Err [ "Module not found in the package: " ++ moduleNameString ]
+            let
+                typeName =
+                    inputString
+                        |> String.split "."
+                        |> List.reverse
+                        |> List.take 1
+
+                modulePath =
+                    inputString
+                        |> String.split "."
+                        |> List.take ((inputString |> String.split "." |> List.length) - 1)
+                        |> List.map Name.fromString
+            in
+            case Package.lookupModuleDefinition modulePath pkgDef of
+                Just moduleDefi ->
+                    getTypeDefinitionFromModule typeName modulePath (Just moduleDefi)
+                        |> List.map (mapTypeDefinition ( [], [] ))
+                        |> ResultList.keepAllErrors
+                        |> Result.mapError List.concat
+                        |> Result.map
+                            (List.concat
+                                >> (\schemas ->
+                                        schemas
+                                            |> List.map
+                                                (\( _, schemaType ) ->
+                                                    SimpleSchema schemaType
+                                                )
+                                            |> List.map encodeSchema
+                                            |> List.map (Dict.singleton ( [], inputString ++ ".json" ))
+                                            |> List.foldl Dict.union Dict.empty
+                                   )
+                            )
+
+                Nothing ->
+                    Err [ "Module or Type not found in the package: " ++ inputString ]

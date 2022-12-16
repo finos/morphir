@@ -51,27 +51,3 @@ getTypeDefinitionFromModule typeName _ moduleDef =
 
         Nothing ->
             []
-
-
-isTypeOrModule : String -> StringType
-isTypeOrModule val =
-    let
-        words =
-            val
-                |> String.split ":"
-                |> List.length
-    in
-    if words == 3 then
-        TypeNameString
-
-    else if words == 2 then
-        ModuleNameString
-
-    else
-        UnknownString
-
-
-type StringType
-    = TypeNameString
-    | ModuleNameString
-    | UnknownString
