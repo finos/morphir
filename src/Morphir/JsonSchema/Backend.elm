@@ -411,7 +411,7 @@ generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
                 Just moduleDefi ->
                     case
                         getTypeDefinitionFromModule typeName modulePath (Just moduleDefi)
-                            |> Maybe.map (mapTypeDefinition ( [], [] ))
+                            |> Maybe.map (Tuple.first >> mapTypeDefinition ( [], [] ))
                             |> Maybe.map
                                 (\schemaList ->
                                     schemaList

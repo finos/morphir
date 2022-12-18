@@ -21,7 +21,7 @@ extractTypes modName definition =
             )
 
 
-getTypeDefinitionFromModule : Name -> ModuleName -> Maybe (Module.Definition () (Type ())) -> Maybe (Type.Definition ())
+getTypeDefinitionFromModule : Name -> ModuleName -> Maybe (Module.Definition () (Type ())) -> Maybe ( Type.Definition (), List (Type ()) )
 getTypeDefinitionFromModule typeName _ moduleDef =
     let
         typName =
@@ -37,14 +37,14 @@ getTypeDefinitionFromModule typeName _ moduleDef =
                                 case accControlled.value.value of
                                     Type.TypeAliasDefinition _ _ ->
                                         if typName == name then
-                                            Just accControlled.value.value
+                                            Just ( accControlled.value.value, [] )
 
                                         else
                                             Nothing
 
                                     Type.CustomTypeDefinition _ _ ->
                                         if typeName == name then
-                                            Just accControlled.value.value
+                                            Just ( accControlled.value.value, [] )
 
                                         else
                                             Nothing
