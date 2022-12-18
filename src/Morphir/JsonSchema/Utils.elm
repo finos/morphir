@@ -21,33 +21,43 @@ extractTypes modName definition =
             )
 
 
-getTypeDefinitionFromModule : Name -> ModuleName -> Maybe (Module.Definition () (Type ())) -> List (Type.Definition ())
+getTypeDefinitionFromModule : Name -> ModuleName -> Maybe (Module.Definition () (Type ())) -> Maybe (Type.Definition ())
 getTypeDefinitionFromModule typeName _ moduleDef =
-    case moduleDef of
-        Just moduleDefn ->
-            moduleDefn.types
-                |> Dict.toList
-                |> List.filterMap
-                    (\( name, accControlled ) ->
-                        case accControlled.value.value of
-                            Type.TypeAliasDefinition _ _ ->
-                                let
-                                    typName =
-                                        [ typeName |> Name.toTitleCase |> String.toLower ]
-                                in
-                                if typName == name then
-                                    Just accControlled.value.value
+    let
+        typName =
+            [ typeName |> Name.toTitleCase |> String.toLower ]
 
-                                else
-                                    Nothing
+        typeDefList =
+            case moduleDef of
+                Just moduleDefn ->
+                    moduleDefn.types
+                        |> Dict.toList
+                        |> List.filterMap
+                            (\( name, accControlled ) ->
+                                case accControlled.value.value of
+                                    Type.TypeAliasDefinition _ _ ->
+                                        if typName == name then
+                                            Just accControlled.value.value
 
-                            Type.CustomTypeDefinition _ _ ->
-                                if typeName == name then
-                                    Just accControlled.value.value
+                                        else
+                                            Nothing
 
-                                else
-                                    Nothing
-                    )
+                                    Type.CustomTypeDefinition _ _ ->
+                                        if typeName == name then
+                                            Just accControlled.value.value
 
-        Nothing ->
-            []
+                                        else
+                                            Nothing
+                            )
+
+                Nothing ->
+                    []
+    in
+    case
+        typeDefList
+    of
+        [ typeDef ] ->
+            Just typeDef
+
+        _ ->
+            Nothing

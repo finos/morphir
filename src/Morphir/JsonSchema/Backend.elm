@@ -89,16 +89,16 @@ mapPackageDefinition : Options -> PackageName -> Package.Definition () (Type ())
 mapPackageDefinition opts packageName packageDefinition =
     packageDefinition
         |> generateSchema packageName
-        |> Result.map encodeSchema
         |> Result.map
-            (Dict.singleton
-                ( []
-                , if String.isEmpty opts.filename then
-                    Path.toString Name.toTitleCase "." packageName ++ ".json"
+            (encodeSchema
+                >> Dict.singleton
+                    ( []
+                    , if String.isEmpty opts.filename then
+                        Path.toString Name.toTitleCase "." packageName ++ ".json"
 
-                  else
-                    opts.filename ++ ".json"
-                )
+                      else
+                        opts.filename ++ ".json"
+                    )
             )
 
 
@@ -375,21 +375,22 @@ generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
                     )
                 |> ResultList.keepAllErrors
                 |> Result.mapError List.concat
-                |> Result.map List.concat
                 |> Result.map
-                    (\definitions ->
-                        ComplexSchema
-                            { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
-                            , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
-                            , definitions = definitions |> Dict.fromList
-                            }
-                    )
-                |> Result.map
-                    (encodeSchema
-                        >> Dict.singleton
-                            ( []
-                            , inputString ++ ".json"
-                            )
+                    ((List.concat
+                        >> (\definitions ->
+                                ComplexSchema
+                                    { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
+                                    , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
+                                    , definitions = definitions |> Dict.fromList
+                                    }
+                           )
+                     )
+                        >> (encodeSchema
+                                >> Dict.singleton
+                                    ( []
+                                    , inputString ++ ".json"
+                                    )
+                           )
                     )
 
         Nothing ->
@@ -408,23 +409,30 @@ generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
             in
             case Package.lookupModuleDefinition modulePath pkgDef of
                 Just moduleDefi ->
-                    getTypeDefinitionFromModule typeName modulePath (Just moduleDefi)
-                        |> List.map (mapTypeDefinition ( [], [] ))
-                        |> ResultList.keepAllErrors
-                        |> Result.mapError List.concat
-                        |> Result.map
-                            (List.concat
-                                >> (\schemas ->
-                                        schemas
-                                            |> List.map
-                                                (\( _, schemaType ) ->
-                                                    SimpleSchema schemaType
-                                                )
-                                            |> List.map encodeSchema
-                                            |> List.map (Dict.singleton ( [], inputString ++ ".json" ))
-                                            |> List.foldl Dict.union Dict.empty
-                                   )
-                            )
+                    case
+                        getTypeDefinitionFromModule typeName modulePath (Just moduleDefi)
+                            |> Maybe.map (mapTypeDefinition ( [], [] ))
+                            |> Maybe.map
+                                (\schemaList ->
+                                    schemaList
+                                        |> Result.map
+                                            (\schemas ->
+                                                schemas
+                                                    |> List.map
+                                                        (\( _, schemaType ) ->
+                                                            SimpleSchema schemaType
+                                                        )
+                                                    |> List.map
+                                                        (encodeSchema >> Dict.singleton ( [], inputString ++ ".json" ))
+                                                    |> List.foldl Dict.union Dict.empty
+                                            )
+                                )
+                    of
+                        Just typeDefinition ->
+                            typeDefinition
+
+                        Nothing ->
+                            Err [ "Type " ++ (typeName |> Name.toTitleCase) ++ " not found in the module: " ++ Path.toString Name.toTitleCase "." modulePath ]
 
                 Nothing ->
-                    Err [ "Module or Type not found in the package: " ++ inputString ]
+                    Err [ "Module found in the package: " ++ inputString ]
