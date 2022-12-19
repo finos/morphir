@@ -33,7 +33,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.JsonSchema.AST exposing (ArrayType(..), FieldName, Schema(..), SchemaType(..), StringConstraints, TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
-import Morphir.JsonSchema.Utils exposing (QualifiedName, extractTypes, getTypeDefinitionFromModule)
+import Morphir.JsonSchema.Utils exposing (QualifiedName, extractTypes, getTypeDefinitionsFromModule)
 import Morphir.SDK.ResultList as ResultList
 import Set exposing (Set)
 
@@ -409,29 +409,29 @@ generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
             in
             case Package.lookupModuleDefinition modulePath pkgDef of
                 Just moduleDefi ->
-                    case
-                        getTypeDefinitionFromModule typeName modulePath (Just moduleDefi)
-                            |> Maybe.map (Tuple.first >> mapTypeDefinition ( [], [] ))
-                            |> Maybe.map
-                                (\schemaList ->
-                                    schemaList
-                                        |> Result.map
-                                            (\schemas ->
-                                                schemas
-                                                    |> List.map
-                                                        (\( _, schemaType ) ->
-                                                            SimpleSchema schemaType
-                                                        )
-                                                    |> List.map
-                                                        (encodeSchema >> Dict.singleton ( [], inputString ++ ".json" ))
-                                                    |> List.foldl Dict.union Dict.empty
-                                            )
-                                )
-                    of
-                        Just typeDefinition ->
-                            typeDefinition
+                    let
+                        typeDefintionsFound =
+                            getTypeDefinitionsFromModule typeName modulePath (Just moduleDefi) pkgName pkgDef
+                                |> List.map (\x -> mapTypeDefinition (Tuple.first x) (Tuple.second x))
+                                |> ResultList.keepAllErrors
+                                |> Result.mapError List.concat
+                                |> Result.map List.concat
+                                |> Result.map
+                                    (\definitions ->
+                                        ComplexSchema
+                                            { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
+                                            , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
+                                            , definitions = definitions |> Dict.fromList
+                                            }
+                                    )
+                                |> Result.map (\x -> encodeSchema x)
+                                |> Result.map (\x -> Dict.singleton ( [], inputString ++ ".json" ) x)
+                    in
+                    case typeDefintionsFound of
+                        Ok _ ->
+                            typeDefintionsFound
 
-                        Nothing ->
+                        _ ->
                             Err [ "Type " ++ (typeName |> Name.toTitleCase) ++ " not found in the module: " ++ Path.toString Name.toTitleCase "." modulePath ]
 
                 Nothing ->
