@@ -12,16 +12,38 @@ type alias QualifiedName =
     ( Path, Name )
 
 
-extractTypes : ModuleName -> Module.Definition () (Type ()) -> List ( QualifiedName, Type.Definition () )
-extractTypes modName definition =
-    definition.types
+{-|
+
+    This function extracts ALL the type definitions from a module.
+    If any type is a reference type, it would search the package to collect all the referenced types
+
+-}
+extractTypes : ModuleName -> Module.Definition () (Type ()) -> PackageName -> Package.Definition () (Type ()) -> List ( QualifiedName, Type.Definition () )
+extractTypes modName moduleDef pkgName pkgDef =
+    moduleDef.types
         |> Dict.toList
-        |> List.map
+        |> List.concatMap
             (\( name, accessControlled ) ->
-                ( ( modName, name ), accessControlled.value.value )
+                case accessControlled.value.value of
+                    Type.TypeAliasDefinition _ typ ->
+                        case typ of
+                            Type.Reference () ( p, m, l ) [] ->
+                                ( ( modName, name ), accessControlled.value.value ) :: getTypeDefinitionsFromModule name modName (Just moduleDef) pkgName pkgDef
+
+                            _ ->
+                                [ ( ( modName, name ), accessControlled.value.value ) ]
+
+                    Type.CustomTypeDefinition _ ctors ->
+                        [ ( ( modName, name ), accessControlled.value.value ) ]
             )
 
 
+{-|
+
+    This function searches through a module to find ONE type definition.
+    If the type is a reference, it searches the package to collect all the referenced types
+
+-}
 getTypeDefinitionsFromModule : Name -> ModuleName -> Maybe (Module.Definition () (Type ())) -> PackageName -> Package.Definition () (Type ()) -> List ( QualifiedName, Type.Definition () )
 getTypeDefinitionsFromModule typeName moduleName moduleDef pkgName pkgDef =
     let

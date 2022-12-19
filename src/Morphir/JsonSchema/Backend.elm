@@ -116,7 +116,7 @@ generateSchema packageName packageDefinition =
                 |> Dict.toList
                 |> List.map
                     (\( modName, modDef ) ->
-                        extractTypes modName modDef.value
+                        extractTypes modName modDef.value packageName packageDefinition
                             |> List.map
                                 (\( qualifiedName, typeDef ) ->
                                     mapTypeDefinition qualifiedName typeDef
@@ -140,12 +140,16 @@ generateSchema packageName packageDefinition =
             )
 
 
-mapTypeDefinition : ( Path, Name ) -> Type.Definition ta -> Result Errors (List ( TypeName, SchemaType ))
+mapTypeDefinition : ( Path, Name ) -> Type.Definition () -> Result Errors (List ( TypeName, SchemaType ))
 mapTypeDefinition (( path, name ) as qualifiedName) definition =
     case definition of
         Type.TypeAliasDefinition _ typ ->
-            mapType qualifiedName typ
-                |> Result.map (\schemaType -> [ ( mapQualifiedName qualifiedName, schemaType ) ])
+            -- Consider case  where the type typ is a reference type and references a different module
+            mapType ( path, name ) typ
+                |> Result.map
+                    (\schemaType ->
+                        [ ( mapQualifiedName ( path, name ), schemaType ) ]
+                    )
 
         Type.CustomTypeDefinition _ accessControlledCtors ->
             accessControlledCtors.value
@@ -368,7 +372,7 @@ generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
     in
     case Package.lookupModuleDefinition moduleName pkgDef of
         Just moduleDef ->
-            extractTypes moduleName moduleDef
+            extractTypes moduleName moduleDef pkgName pkgDef
                 |> List.map
                     (\( qualifiedName, typeDef ) ->
                         mapTypeDefinition qualifiedName typeDef
@@ -415,17 +419,18 @@ generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
                                 |> List.map (\x -> mapTypeDefinition (Tuple.first x) (Tuple.second x))
                                 |> ResultList.keepAllErrors
                                 |> Result.mapError List.concat
-                                |> Result.map List.concat
                                 |> Result.map
-                                    (\definitions ->
-                                        ComplexSchema
-                                            { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
-                                            , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
-                                            , definitions = definitions |> Dict.fromList
-                                            }
+                                    (List.concat
+                                        >> ((\definitions ->
+                                                ComplexSchema
+                                                    { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
+                                                    , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
+                                                    , definitions = definitions |> Dict.fromList
+                                                    }
+                                            )
+                                                >> (encodeSchema >> Dict.singleton ( [], inputString ++ ".json" ))
+                                           )
                                     )
-                                |> Result.map (\x -> encodeSchema x)
-                                |> Result.map (\x -> Dict.singleton ( [], inputString ++ ".json" ) x)
                     in
                     case typeDefintionsFound of
                         Ok _ ->
