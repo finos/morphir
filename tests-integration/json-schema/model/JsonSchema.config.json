@@ -3,8 +3,8 @@
   "output": "./output",
   "targetVersion": "2020-12",
   "filename": "",
-  "useConfig": true,
   "limitToModules": "BasicTypes,AdvancedTypes,OptionalTypes",
   "groupSchemaBy": "module",
-  "target": "JsonSchema"
+  "target": "JsonSchema",
+  "include": "OptionalTypes.Assignment"
 }

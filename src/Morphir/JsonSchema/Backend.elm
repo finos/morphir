@@ -414,30 +414,29 @@ generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
             case Package.lookupModuleDefinition modulePath pkgDef of
                 Just moduleDefi ->
                     let
-                        typeDefintionsFound =
+                        typeDefinitionsFound =
                             getTypeDefinitionsFromModule typeName modulePath (Just moduleDefi) pkgName pkgDef
-                                |> List.map (\x -> mapTypeDefinition (Tuple.first x) (Tuple.second x))
-                                |> ResultList.keepAllErrors
-                                |> Result.mapError List.concat
-                                |> Result.map
-                                    (List.concat
-                                        >> ((\definitions ->
-                                                ComplexSchema
-                                                    { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
-                                                    , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
-                                                    , definitions = definitions |> Dict.fromList
-                                                    }
-                                            )
-                                                >> (encodeSchema >> Dict.singleton ( [], inputString ++ ".json" ))
-                                           )
-                                    )
                     in
-                    case typeDefintionsFound of
-                        Ok _ ->
-                            typeDefintionsFound
+                    if (typeDefinitionsFound |> List.length) > 0 then
+                        typeDefinitionsFound
+                            |> List.map (\x -> mapTypeDefinition (Tuple.first x) (Tuple.second x))
+                            |> ResultList.keepAllErrors
+                            |> Result.mapError List.concat
+                            |> Result.map
+                                (List.concat
+                                    >> ((\definitions ->
+                                            ComplexSchema
+                                                { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
+                                                , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
+                                                , definitions = definitions |> Dict.fromList
+                                                }
+                                        )
+                                            >> (encodeSchema >> Dict.singleton ( [], inputString ++ ".json" ))
+                                       )
+                                )
 
-                        _ ->
-                            Err [ "Type " ++ (typeName |> Name.toTitleCase) ++ " not found in the module: " ++ Path.toString Name.toTitleCase "." modulePath ]
+                    else
+                        Err [ "Type " ++ (typeName |> Name.toTitleCase) ++ " not found in the module: " ++ Path.toString Name.toTitleCase "." modulePath ]
 
                 Nothing ->
                     Err [ "Module found in the package: " ++ inputString ]

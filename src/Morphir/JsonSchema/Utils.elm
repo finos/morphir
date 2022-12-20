@@ -27,13 +27,14 @@ extractTypes modName moduleDef pkgName pkgDef =
                 case accessControlled.value.value of
                     Type.TypeAliasDefinition _ typ ->
                         case typ of
-                            Type.Reference () ( p, m, l ) [] ->
-                                ( ( modName, name ), accessControlled.value.value ) :: getTypeDefinitionsFromModule name modName (Just moduleDef) pkgName pkgDef
+                            Type.Reference () ( _, _, _ ) [] ->
+                                ( ( modName, name ), accessControlled.value.value )
+                                    :: getTypeDefinitionsFromModule name modName (Just moduleDef) pkgName pkgDef
 
                             _ ->
                                 [ ( ( modName, name ), accessControlled.value.value ) ]
 
-                    Type.CustomTypeDefinition _ ctors ->
+                    Type.CustomTypeDefinition _ _ ->
                         [ ( ( modName, name ), accessControlled.value.value ) ]
             )
 
@@ -41,7 +42,7 @@ extractTypes modName moduleDef pkgName pkgDef =
 {-|
 
     This function searches through a module to find ONE type definition.
-    If the type is a reference, it searches the package to collect all the referenced types
+    If the type is a reference, it searches the package and recursively collect all the referenced types
 
 -}
 getTypeDefinitionsFromModule : Name -> ModuleName -> Maybe (Module.Definition () (Type ())) -> PackageName -> Package.Definition () (Type ()) -> List ( QualifiedName, Type.Definition () )
