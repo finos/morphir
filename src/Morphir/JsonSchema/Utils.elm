@@ -34,8 +34,28 @@ extractTypes modName moduleDef pkgName pkgDef =
                             _ ->
                                 [ ( ( modName, name ), accessControlled.value.value ) ]
 
-                    Type.CustomTypeDefinition _ _ ->
-                        [ ( ( modName, name ), accessControlled.value.value ) ]
+                    Type.CustomTypeDefinition typName ctors ->
+                        let
+                            typeDefs =
+                                [ ( ( modName, name ), accessControlled.value.value ) ]
+                                    :: (ctors.value
+                                            |> Dict.toList
+                                            |> List.map
+                                                (\( ctorName, ctorArgs ) ->
+                                                    ctorArgs
+                                                        |> List.concatMap
+                                                            (\( argName, argType ) ->
+                                                                case argType of
+                                                                    Type.Reference () ( p, m, l ) [] ->
+                                                                        getTypeDefinitionsFromModule name modName (Just moduleDef) pkgName pkgDef
+
+                                                                    _ ->
+                                                                        []
+                                                            )
+                                                )
+                                       )
+                        in
+                        typeDefs |> List.concat
             )
 
 
@@ -107,7 +127,7 @@ getTypeDefinitionsFromModule typeName moduleName moduleDef pkgName pkgDef =
                                                                                             getTypeDefinitionsFromModule l m refModuleDef pkgName pkgDef
 
                                                                                         baseTypeDef =
-                                                                                            ( ( m, l ), accControlled.value.value )
+                                                                                            ( ( moduleName, typeName ), accControlled.value.value )
                                                                                     in
                                                                                     baseTypeDef :: refTypeDef
 

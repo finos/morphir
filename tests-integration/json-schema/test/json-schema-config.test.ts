@@ -14,7 +14,6 @@ describe('Test for Json Schema Config Processing',  () => {
             output: "./dist",
             targetVersion: "2020-12",
             filename: "",
-            useConfig: false,
             limitToModules: "",
             groupSchemaBy: "package",
             target: "JsonSchema",
@@ -28,7 +27,6 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: [],
             groupSchemaBy: 'package',
-            useConfig: false,
             include: []
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
@@ -40,7 +38,6 @@ describe('Test for Json Schema Config Processing',  () => {
             output: "./dist",
             targetVersion: "2020-12",
             filename: "Foo",
-            useConfig: false,
             limitToModules: "",
             groupSchemaBy: "package",
             target: "JsonSchema",
@@ -55,7 +52,6 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: 'Foo',
             limitToModules: [],
             groupSchemaBy: 'package',
-            useConfig: false,
             include: []
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
@@ -67,7 +63,6 @@ describe('Test for Json Schema Config Processing',  () => {
             output: "./dist",
             targetVersion: "2020-12",
             filename: "Bar",
-            useConfig: false,
             limitToModules: "",
             groupSchemaBy: "module",
             target: "JsonSchema",
@@ -81,7 +76,6 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: 'Bar',
             limitToModules: [],
             groupSchemaBy: 'module',
-            useConfig: false,
             include: []
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
@@ -93,7 +87,6 @@ describe('Test for Json Schema Config Processing',  () => {
             output: "./output",
             targetVersion: "2020-12",
             filename: "",
-            useConfig: false,
             limitToModules: "",
             groupSchemaBy: "package",
             target: "JsonSchema",
@@ -107,7 +100,6 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: [],
             groupSchemaBy: 'package',
-            useConfig: false,
             include: []
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
@@ -119,7 +111,6 @@ describe('Test for Json Schema Config Processing',  () => {
             output: "./dist",
             targetVersion: "2020-12",
             filename: "",
-            useConfig: false,
             limitToModules: "",
             groupSchemaBy: "package",
             target: "JsonSchema",
@@ -133,7 +124,6 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: [],
             groupSchemaBy: 'package',
-            useConfig: false,
             include: []
 
         }
@@ -146,7 +136,6 @@ describe('Test for Json Schema Config Processing',  () => {
             output: "./dist",
             targetVersion: "2020-12",
             filename: "",
-            useConfig: false,
             limitToModules: "",
             groupSchemaBy: "package",
             target: "JsonSchema",
@@ -160,7 +149,6 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: [],
             groupSchemaBy: 'package',
-            useConfig: false,
             include: []
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
@@ -172,7 +160,6 @@ describe('Test for Json Schema Config Processing',  () => {
             output: "./dist",
             targetVersion: "2020-12",
             filename: "",
-            useConfig: false,
             limitToModules: "BasicTypes",
             groupSchemaBy: "package",
             target: "JsonSchema",
@@ -187,7 +174,6 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: ["BasicTypes"],
             groupSchemaBy: 'package',
-            useConfig: false,
             include: []
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
