@@ -106,35 +106,44 @@ getTypeDefinitionsFromModule typeName moduleName moduleDef pkgName pkgDef =
                                             []
 
                                     Type.CustomTypeDefinition _ ctors ->
-                                        if typeName == name then
+                                        let
+                                            nameBeingProcessed =
+                                                name |> Name.toTitleCase
+
+                                            nameBeingSearched =
+                                                typeName |> Name.toTitleCase
+                                        in
+                                        if nameBeingSearched == nameBeingProcessed then
                                             let
                                                 -- we must map  the ctor args to see if any of them is has a Reference type
                                                 refTypesDefs =
-                                                    ctors.value
-                                                        |> Dict.toList
-                                                        |> List.concatMap
-                                                            (\( _, ctorArgs ) ->
-                                                                ctorArgs
-                                                                    |> List.map
-                                                                        (\( _, argType ) ->
-                                                                            case argType of
-                                                                                Type.Reference _ ( _, m, l ) [] ->
-                                                                                    let
-                                                                                        refModuleDef =
-                                                                                            Package.lookupModuleDefinition m pkgDef
+                                                    [ ( ( moduleName, typeName ), accControlled.value.value ) ]
+                                                        :: (ctors.value
+                                                                |> Dict.toList
+                                                                |> List.concatMap
+                                                                    (\( _, ctorArgs ) ->
+                                                                        ctorArgs
+                                                                            |> List.map
+                                                                                (\( _, argType ) ->
+                                                                                    case argType of
+                                                                                        Type.Reference _ ( _, m, l ) [] ->
+                                                                                            let
+                                                                                                refModuleDef =
+                                                                                                    Package.lookupModuleDefinition m pkgDef
 
-                                                                                        refTypeDef =
-                                                                                            getTypeDefinitionsFromModule l m refModuleDef pkgName pkgDef
+                                                                                                refTypeDef =
+                                                                                                    getTypeDefinitionsFromModule l m refModuleDef pkgName pkgDef
 
-                                                                                        baseTypeDef =
-                                                                                            ( ( moduleName, typeName ), accControlled.value.value )
-                                                                                    in
-                                                                                    baseTypeDef :: refTypeDef
+                                                                                                baseTypeDef =
+                                                                                                    ( ( moduleName, typeName ), accControlled.value.value )
+                                                                                            in
+                                                                                            baseTypeDef :: refTypeDef
 
-                                                                                _ ->
-                                                                                    []
-                                                                        )
-                                                            )
+                                                                                        _ ->
+                                                                                            []
+                                                                                )
+                                                                    )
+                                                           )
                                             in
                                             ( ( moduleName, typeName ), accControlled.value.value ) :: (refTypesDefs |> List.concat)
 
