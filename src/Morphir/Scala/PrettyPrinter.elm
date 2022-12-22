@@ -27,6 +27,7 @@ import Decimal
 import Morphir.File.SourceCode exposing (Doc, concat, dot, dotSep, empty, indent, indentLines, newLine, parens, space)
 import Morphir.IR.Name as Name
 import Morphir.Scala.AST exposing (..)
+import Morphir.Scala.Common exposing (prefixKeyword, prefixKeywords)
 
 
 {-| -}
@@ -69,7 +70,7 @@ mapAnnotated valueToDoc annotated =
 mapCompilationUnit : Options -> CompilationUnit -> Doc
 mapCompilationUnit opt cu =
     concat
-        [ concat [ "package ", dotSep cu.packageDecl, newLine ]
+        [ concat [ "package ", dotSep (prefixKeywords cu.packageDecl), newLine ]
         , newLine
         , cu.typeDecls
             |> List.map (mapDocumented (mapAnnotated (mapTypeDecl opt)))
@@ -338,7 +339,12 @@ mapType opt tpe =
             name
 
         TypeRef path name ->
-            dotSep (path ++ [ name ])
+            case name of
+                "type" ->
+                    dotSep (path ++ [ name ])
+
+                _ ->
+                    dotSep <| prefixKeywords (path ++ [ name ])
 
         TypeApply ctor args ->
             mapType opt ctor
@@ -410,13 +416,13 @@ mapValue opt value =
             mapLit lit
 
         Variable name ->
-            name
+            prefixKeyword name
 
         Ref path name ->
-            dotSep (path ++ [ name ])
+            dotSep <| prefixKeywords (path ++ [ name ])
 
         Select targetValue name ->
-            mapValue opt targetValue ++ dot ++ name
+            mapValue opt targetValue ++ dot ++ prefixKeyword name
 
         Wildcard ->
             "_"
@@ -435,10 +441,10 @@ mapValue opt value =
                 argDoc ( argName, maybeArgType ) =
                     case maybeArgType of
                         Just argType ->
-                            concat [ argName, ": ", mapType opt argType ]
+                            concat [ prefixKeyword argName, ": ", mapType opt argType ]
 
                         Nothing ->
-                            argName
+                            prefixKeyword argName
 
                 argsDoc =
                     parens (args |> List.map argDoc |> String.join ", ")
@@ -572,10 +578,10 @@ mapPattern pattern =
             "_"
 
         NamedMatch name ->
-            name
+            prefixKeyword name
 
         AliasedMatch name aliasedPattern ->
-            concat [ name, " @ ", mapPattern aliasedPattern ]
+            concat [ prefixKeyword name, " @ ", mapPattern aliasedPattern ]
 
         LiteralMatch lit ->
             mapLit lit
@@ -595,7 +601,7 @@ mapPattern pattern =
                                     |> concat
                                 )
             in
-            dotSep (path ++ [ name ]) ++ argsDoc
+            (dotSep <| prefixKeywords (path ++ [ name ])) ++ argsDoc
 
         TupleMatch elemPatterns ->
             parens

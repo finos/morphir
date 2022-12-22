@@ -15,7 +15,7 @@ import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type(..))
 import Morphir.SDK.ResultList as ResultList
 import Morphir.Scala.AST as Scala exposing (Annotated)
-import Morphir.Scala.Common exposing (mapPathToScalaPath, mapValueName, prefixKeywords)
+import Morphir.Scala.Common exposing (prefixKeywords)
 import Morphir.Scala.Feature.Core as ScalaBackend exposing (mapFQNameToPathAndName)
 
 
@@ -43,24 +43,6 @@ circeJsonPathString =
     String.join "." circeJsonPath
 
 
-prefixScalaKeywordsInName : Name -> Name
-prefixScalaKeywordsInName name =
-    case name of
-        [ _ ] ->
-            Name.toList name
-                |> List.map prefixKeywords
-
-        _ ->
-            name
-
-
-prefixScalaKeywordsInPath : Path -> Path
-prefixScalaKeywordsInPath path =
-    Path.toList path
-        |> List.map
-            prefixScalaKeywordsInName
-
-
 scalaType : List Name -> Name -> Scala.Path -> Scala.Type
 scalaType typeParams tpeName scalaTypePath =
     case typeParams of
@@ -84,13 +66,6 @@ scalaType typeParams tpeName scalaTypePath =
 mapModuleDefinitionToCodecs : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
 mapModuleDefinitionToCodecs currentPackagePath currentModulePath accessControlledModuleDef =
     let
-        --currentPackagePath : Path
-        --currentPackagePath =
-        --    prefixScalaKeywordsInPath currentPackagePath_
-        --
-        --currentModulePath : Path
-        --currentModulePath =
-        --    prefixScalaKeywordsInPath currentModulePath_
         scalaPackagePath : List String
         scalaPackagePath =
             currentPackagePath
@@ -129,7 +104,7 @@ mapModuleDefinitionToCodecs currentPackagePath currentModulePath accessControlle
 
         moduleUnit : Scala.CompilationUnit
         moduleUnit =
-            { dirPath = scalaPackagePath
+            { dirPath = prefixKeywords scalaPackagePath
             , fileName = "Codec.scala"
             , packageDecl = scalaPackagePath
             , imports = []
@@ -175,7 +150,7 @@ mapTypeDefinitionToEncoder : Package.PackageName -> Path -> ( Name, AccessContro
 mapTypeDefinitionToEncoder currentPackagePath currentModulePath ( typeName, accessControlledDocumentedTypeDef ) =
     let
         ( scalaTypePath, scalaTypeName ) =
-            ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath (prefixScalaKeywordsInName typeName))
+            ScalaBackend.mapFQNameToPathAndName (FQName.fQName currentPackagePath currentModulePath typeName)
 
         scalaDeclaration : Scala.Type -> List Name -> Scala.Value -> Scala.Annotated Scala.MemberDecl
         scalaDeclaration scalaTpe typeParams scalaValue =
@@ -249,7 +224,7 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath ( typeName, acce
                         |> Dict.toList
                         |> List.map
                             (\( ctorName, ctorArgs ) ->
-                                mapConstructorsToEncoders scalaTypePath ( currentPackagePath, currentModulePath, ctorName ) ctorArgs
+                                mapConstructorsToEncoders scalaTypePath ( currentPackagePath, currentModulePath, ctorName ) ctorArgs typeParams
                             )
                         |> ResultList.keepFirstError
             in
@@ -266,16 +241,15 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath ( typeName, acce
 -}
 
 
-mapConstructorsToEncoders : Scala.Path -> FQName -> List ( Name, Type ta ) -> Result Error ( Scala.Pattern, Scala.Value )
-mapConstructorsToEncoders tpePath (( _, _, ctorName ) as fqName_) ctorArgs =
+mapConstructorsToEncoders : Scala.Path -> FQName -> List ( Name, Type ta ) -> List Name -> Result Error ( Scala.Pattern, Scala.Value )
+mapConstructorsToEncoders tpePath (( _, _, ctorName ) as fqName) ctorArgs typeParams =
     let
-        fqName =
-            let
-                ( pn, mn, ln ) =
-                    fqName_
-            in
-            ( prefixScalaKeywordsInPath pn, prefixScalaKeywordsInPath mn, ln )
-
+        --fqName =
+        --    let
+        --        ( pn, mn, ln ) =
+        --            fqName_
+        --    in
+        --    ( pn, mn, ln )
         scalaFqn =
             ScalaBackend.mapFQNameToPathAndName fqName
                 |> Tuple.mapFirst (String.join ".")
@@ -291,7 +265,7 @@ mapConstructorsToEncoders tpePath (( _, _, ctorName ) as fqName_) ctorArgs =
                             arg =
                                 Scala.Variable (argName |> Name.toCamelCase)
                         in
-                        mapTypeToEncoderReference tpePath [] [] argType
+                        mapTypeToEncoderReference argName [] typeParams argType
                             |> Result.map (\typeEncoder -> Scala.Apply typeEncoder [ Scala.ArgValue Nothing arg ])
                     )
                 |> ResultList.keepFirstError
@@ -353,7 +327,7 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
             let
                 scalaPackageName : List String
                 scalaPackageName =
-                    prefixScalaKeywordsInPath packageName ++ prefixScalaKeywordsInPath moduleName |> List.map (Name.toCamelCase >> String.toLower)
+                    packageName ++ moduleName |> List.map (Name.toCamelCase >> String.toLower)
 
                 codecPath : List String
                 codecPath =
@@ -363,20 +337,20 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
                 encoderName =
                     "encode" :: typeName |> Name.toCamelCase
 
-                scalaReference : List String -> String -> Scala.Value
-                scalaReference path name =
-                    Scala.Ref path name
+                scalaReference : Scala.Value
+                scalaReference =
+                    Scala.Ref codecPath encoderName
             in
             case typeArgs of
                 [] ->
-                    Ok <| scalaReference codecPath encoderName
+                    Ok <| scalaReference
 
                 _ ->
                     typeArgs
                         |> List.map (\typeArg -> mapTypeToEncoderReference tpeName tpePath typeParams typeArg)
                         |> ResultList.keepFirstError
                         |> Result.map (List.map (Scala.ArgValue Nothing))
-                        |> Result.map (Scala.Apply (scalaReference codecPath encoderName))
+                        |> Result.map (Scala.Apply scalaReference)
 
         Type.Tuple a types ->
             let
@@ -438,7 +412,7 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
                         |> Result.map (Scala.Apply (Scala.Ref circeJsonPath "obj"))
             in
             objRef
-                |> Result.map (encoderLambda [ ( tpeName, typeRef tpeName tpePath typeParams |> Just ) ])
+                |> Result.map (encoderLambda [ ( tpeName, ScalaBackend.mapType tpe |> Just ) ])
 
         Type.ExtensibleRecord a name fields ->
             let
@@ -474,13 +448,13 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
                     objFields
                         |> Result.map (Scala.Apply (Scala.Ref circeJsonPath "obj"))
             in
-            objRef |> Result.map (encoderLambda [ ( tpeName, typeRef tpeName tpePath typeParams |> Just ) ])
+            objRef |> Result.map (encoderLambda [ ( tpeName, ScalaBackend.mapType tpe |> Just ) ])
 
         Type.Function a argType returnType ->
             Err "Cannot encode a function"
 
         Type.Unit a ->
-            Scala.Apply (Scala.Ref circeJsonPath "arr") []
+            Scala.Ref [ "morphir", "sdk", "basics", "Codec" ] "encodeUnit"
                 |> Ok
 
 
@@ -488,13 +462,13 @@ typeRef : Name -> Scala.Path -> List Name -> Scala.Type
 typeRef name path typeParams =
     case typeParams of
         [] ->
-            Scala.TypeRef path (name |> prefixScalaKeywordsInName |> Name.toTitleCase)
+            Scala.TypeRef path (name |> Name.toTitleCase)
 
         _ ->
             typeParams
                 |> List.map (Name.toTitleCase >> Scala.TypeVar)
                 |> Scala.TypeApply
-                    (Scala.TypeRef path (name |> prefixScalaKeywordsInName |> Name.toTitleCase))
+                    (Scala.TypeRef path (name |> Name.toTitleCase))
 
 
 encoderLambda : List ( Name, Maybe Scala.Type ) -> Scala.Value -> Scala.Value
@@ -599,7 +573,7 @@ mapConstructorsToDecoder (( _, _, ctorName ) as fqName_) ctorArgs name =
                 ( pn, mn, ln ) =
                     fqName_
             in
-            ( prefixScalaKeywordsInPath pn, prefixScalaKeywordsInPath mn, ln )
+            ( pn, mn, ln )
 
         ( tpePath, tpeName ) =
             ScalaBackend.mapFQNameToPathAndName fqName
@@ -681,8 +655,8 @@ mapTypeToDecoderReference tpeName tpePath tpe =
         Type.Reference _ ( packageName, moduleName, typeName ) typeArgs ->
             let
                 scalaPackageName =
-                    prefixScalaKeywordsInPath packageName
-                        ++ prefixScalaKeywordsInPath moduleName
+                    packageName
+                        ++ moduleName
                         |> List.map (Name.toCamelCase >> String.toLower)
 
                 codecPath : List String

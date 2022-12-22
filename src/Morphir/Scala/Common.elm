@@ -22,8 +22,13 @@ mapValueName name =
         scalaName
 
 
-prefixKeywords : String -> String
-prefixKeywords word =
+prefixKeywords : List String -> List String
+prefixKeywords strings =
+    strings |> List.map prefixKeyword
+
+
+prefixKeyword : String -> String
+prefixKeyword word =
     if Set.member word scalaKeywords then
         "_" ++ word
 
