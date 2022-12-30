@@ -40,8 +40,11 @@ Defines a standard format for storing and sharing business logic. A clear set of
 > _Morphir’s automated processing helps disseminate information which otherwise may not be understood or shared at all, a useful tool when brining elements of business logic to conversation outside of its immediate audience (i.e developers)._
 
 ## FINOS Morphir Resources
+### Documentation
+If you want to start using Morphir, start with the [Documentation](docs/).
 
-[Morphir Resource Centre](https://resources.finos.org/morphir/)
+### Other Resources
+If you're interested in learning more about the project, [Morphir Resource Centre](https://resources.finos.org/morphir/), has many links.
 
 | Episode                                                                                                                                                                                                  | Description                                                                                                                                      |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
