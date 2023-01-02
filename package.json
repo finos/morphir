@@ -44,14 +44,8 @@
     "dist/morphir-server/*",
     "src/Morphir/SDK/*",
     "redistributable/**",
-    "cli2/lib/cli.js",
-    "cli2/lib/morphir-make.js",
-    "cli2/lib/morphir.js",
-    "cli2/lib/morphir-scala-gen.js",
-    "cli2/lib/morphir-stats.js",
-    "cli2/lib/FileChanges.js",
-    "cli2/Morphir.Elm.CLI.js",
-    "cli2/lib/cliAPI.js"
+    "cli2/lib/*",
+    "cli2/Morphir.Elm.CLI.js"
   ],
   "keywords": [
     "morphir",
