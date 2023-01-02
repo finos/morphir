@@ -1,0 +1,7 @@
+{
+    "name": "Model",
+    "sourceDirectory": "src",
+    "localDependencies": [
+        "./../reference-model/morphir-ir.json"
+    ]
+}
