@@ -19,6 +19,7 @@ import Element
         , fillPortion
         , height
         , image
+        , inFront
         , layout
         , link
         , maximum
@@ -70,13 +71,14 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.ModalComponent exposing (attachModal)
 import Morphir.Visual.Components.SectionComponent as SectionComponent
 import Morphir.Visual.Components.SelectableElement as SelectableElement
 import Morphir.Visual.Components.TabsComponent as TabsComponent
 import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
-import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom)
+import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing)
 import Morphir.Visual.ValueEditor as ValueEditor
 import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
@@ -87,13 +89,14 @@ import Set exposing (Set)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
+import Element exposing (paragraph)
 
 
 
 -- MAIN
 
 
-main : Program () Model Msg
+main : Program Flags Model Msg
 main =
     Browser.application
         { init = init
@@ -129,6 +132,12 @@ type alias Model =
     , testDescription : String
     , activeTabIndex : Int
     , openSections : Set Int
+    , isAboutOpen : Bool
+    , version : String
+    }
+
+type alias Flags =
+    { version : String
     }
 
 
@@ -175,8 +184,8 @@ type ServerState
     | ServerHttpError Http.Error
 
 
-init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init _ url key =
+init : Flags -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
     let
         initModel =
             { key = key
@@ -208,6 +217,8 @@ init _ url key =
             , testDescription = ""
             , activeTabIndex = 0
             , openSections = Set.fromList [ 1 ]
+            , isAboutOpen = False
+            , version = flags.version |> Debug.log "v_"
             }
     in
     ( toRoute url initModel
@@ -277,6 +288,7 @@ type UIMsg
     | CollapseModule (TreeViewComponent.NodePath ModuleName)
     | SwitchTab Int
     | ToggleSection Int
+    | ToggleAboutModal Bool
 
 
 type FilterMsg
@@ -413,6 +425,9 @@ update msg model =
 
                     else
                         ( { model | openSections = Set.insert sectionId model.openSections }, Cmd.none )
+
+                ToggleAboutModal isOpen ->
+                    ( { model | isAboutOpen = isOpen }, Cmd.none )
 
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
@@ -936,6 +951,7 @@ view model =
             , Font.size model.theme.fontSize
             , width fill
             , height fill
+            , attachModal model.theme { content = viewAbout model.theme model.version, isOpen = model.isAboutOpen, onClose = UI (ToggleAboutModal False) }
             ]
             (column
                 [ width fill
@@ -968,7 +984,7 @@ viewHeader model =
         , Background.color model.theme.colors.brandPrimary
         ]
         [ row
-            [ width fill ]
+            [ width fill, paddingEach { top = 0, left = 0, bottom = 0, right = largeSpacing model.theme } ]
             [ link []
                 { url = "/home" ++ filterStateToQueryParams model.homeState.filterState
                 , label =
@@ -990,6 +1006,18 @@ viewHeader model =
                             (text "Morphir Web")
                         ]
                 }
+            , el
+                [ alignRight
+                , pointer
+                , Theme.borderBottom 1
+                , Border.color model.theme.colors.brandPrimary
+                , mouseOver [ Border.color model.theme.colors.lightest ]
+                , onClick (UI (ToggleAboutModal True))
+                , Font.color model.theme.colors.lightest
+                , Font.size (Theme.scaled 5 model.theme)
+                ]
+              <|
+                text " ⓘ "
             ]
         ]
 
@@ -1055,6 +1083,39 @@ listStyles theme =
     , theme |> Theme.borderRounded
     , paddingXY (theme |> Theme.scaled 3) (theme |> Theme.scaled -1)
     ]
+
+
+viewAbout : Theme -> String -> Element Msg
+viewAbout theme version=
+    let
+        about : Element msg
+        about =
+            row [ width fill, padding (largePadding theme) ] [ paragraph [] [text "On this page you can browse through the types and definitions of a MorphIR package, and see how they behave and interact.", text "Select a definition on the left to begin. "] ]
+
+        feedback : Element msg
+        feedback =
+            let
+                gitHubLink =
+                    link [] { url = "https://github.com/finos/morphir-elm/issues", label = el [ Font.color theme.colors.brandPrimary ] (text "GitHub issues page.") }
+            in
+            row [ width fill, padding (largePadding theme) ] [ text "If you would like to report a bug, or to provide feedback, please visit our ", gitHubLink ]
+
+        close : Element Msg
+        close =
+            el [ alignRight, onClick (UI (ToggleAboutModal False)), pointer ] (text " x ")
+
+        sectionTitleStyles : List (Element.Attribute msg)
+        sectionTitleStyles =
+            [ width fill, Font.size (Theme.scaled 5 theme), Font.bold ]
+    in
+    column [ width fill, height fill, padding (largePadding theme), spacing (largeSpacing theme), Background.color theme.colors.lightest, Border.color theme.colors.lightest, borderRounded theme ]
+        [ row sectionTitleStyles [ text "About", close ]
+        , about
+        , row sectionTitleStyles [ text "Feedback" ]
+        , feedback
+        , row sectionTitleStyles [ text "Version" ]
+        , row [ width fill, padding (largePadding theme) ] [ text <| "This page is currently running version " ++ version ]
+        ]
 
 
 {-| Display the home UI
