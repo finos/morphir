@@ -11,13 +11,11 @@ type alias FieldName =
     String
 
 
-type Schema
-    = SimpleSchema SchemaType
-    | ComplexSchema
-        { id : String
-        , schemaVersion : String
-        , definitions : Dict TypeName SchemaType
-        }
+type alias Schema =
+    { id : String
+    , schemaVersion : String
+    , definitions : Dict TypeName SchemaType
+    }
 
 
 

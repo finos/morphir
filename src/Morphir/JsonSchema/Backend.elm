@@ -31,7 +31,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.JsonSchema.AST exposing (ArrayType(..), FieldName, Schema(..), SchemaType(..), StringConstraints, TypeName)
+import Morphir.JsonSchema.AST exposing (ArrayType(..), FieldName, Schema, SchemaType(..), StringConstraints, TypeName)
 import Morphir.JsonSchema.PrettyPrinter exposing (encodeSchema)
 import Morphir.JsonSchema.Utils exposing (QualifiedName, extractTypes, getTypeDefinitionsFromModule)
 import Morphir.SDK.ResultList as ResultList
@@ -132,11 +132,10 @@ generateSchema packageName packageDefinition =
     schemaTypeDefinitions
         |> Result.map
             (\definitions ->
-                ComplexSchema
-                    { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" packageName ++ ".schema.json"
-                    , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
-                    , definitions = definitions |> Dict.fromList
-                    }
+                { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" packageName ++ ".schema.json"
+                , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
+                , definitions = definitions |> Dict.fromList
+                }
             )
 
 
@@ -382,11 +381,10 @@ generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
                 |> Result.map
                     ((List.concat
                         >> (\definitions ->
-                                ComplexSchema
-                                    { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
-                                    , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
-                                    , definitions = definitions |> Dict.fromList
-                                    }
+                                { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
+                                , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
+                                , definitions = definitions |> Dict.fromList
+                                }
                            )
                      )
                         >> (encodeSchema
@@ -399,12 +397,14 @@ generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
 
         Nothing ->
             let
+                typeName : List String
                 typeName =
                     inputString
                         |> String.split "."
                         |> List.reverse
                         |> List.take 1
 
+                modulePath : List Name
                 modulePath =
                     inputString
                         |> String.split "."
@@ -425,11 +425,10 @@ generateSchemaByTypeNameOrModuleName inputString pkgName pkgDef =
                             |> Result.map
                                 (List.concat
                                     >> ((\definitions ->
-                                            ComplexSchema
-                                                { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
-                                                , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
-                                                , definitions = definitions |> Dict.fromList
-                                                }
+                                            { id = "https://morphir.finos.org/" ++ Path.toString Name.toSnakeCase "-" pkgName ++ ".schema.json"
+                                            , schemaVersion = "https://json-schema.org/draft/2020-12/schema"
+                                            , definitions = definitions |> Dict.fromList
+                                            }
                                         )
                                             >> (encodeSchema >> Dict.singleton ( [], inputString ++ ".json" ))
                                        )

@@ -55,7 +55,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
         limitToModules: [],
         groupSchemaBy: "",
         target: "JsonSchema",
-        include: []
+        include: ""
     }
 
     if (cliOptions.useConfig){ //then use the config file parameters
@@ -79,7 +79,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
     else { // Process and use the cli defaults except where a parameter was specified in a flag
         selectedOptions = cliOptions
         selectedOptions.limitToModules = cliOptions.limitToModules? cliOptions.limitToModules.split(" "): []
-        selectedOptions.include = cliOptions.include? cliOptions.include.split(" "): []
+        selectedOptions.include = cliOptions.include? cliOptions.include.split(" "): ""
     }
     return selectedOptions
 }
