@@ -25,9 +25,9 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
-            limitToModules: [],
+            limitToModules: "",
             groupSchemaBy: 'package',
-            include: []
+            include: ""
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -50,9 +50,9 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: 'Foo',
-            limitToModules: [],
+            limitToModules: "",
             groupSchemaBy: 'package',
-            include: []
+            include: ""
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -74,9 +74,9 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: 'Bar',
-            limitToModules: [],
+            limitToModules: "",
             groupSchemaBy: 'module',
-            include: []
+            include: ""
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -98,9 +98,9 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
-            limitToModules: [],
+            limitToModules: "",
             groupSchemaBy: 'package',
-            include: []
+            include: ""
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -122,9 +122,9 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
-            limitToModules: [],
+            limitToModules: "",
             groupSchemaBy: 'package',
-            include: []
+            include: ""
 
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
@@ -147,9 +147,9 @@ describe('Test for Json Schema Config Processing',  () => {
             target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
-            limitToModules: [],
+            limitToModules: "",
             groupSchemaBy: 'package',
-            include: []
+            include: ""
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -174,7 +174,7 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: ["BasicTypes"],
             groupSchemaBy: 'package',
-            include: []
+            include: ""
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
