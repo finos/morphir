@@ -93,28 +93,17 @@ app.get(
         configJsonContent[attrId].ir
       );
 
-      if (await fsExists(attrFilePath)) {
-        const attrFileContent = await readFile(attrFilePath);
-        const irFileContent = await readFile(irFilePath);
-
-        responseJson[attrId] = {
-          data: JSON.parse(attrFileContent.toString()),
-          displayName: configJsonContent[attrId].displayName,
-          entryPoint: configJsonContent[attrId].entryPoint,
-          iR: JSON.parse(irFileContent.toString()),
-        };
-      } else {
-        await writeFile(attrFilePath, "{}");
-        const attrFileContent = await readFile(attrFilePath);
-        const irFileContent = await readFile(irFilePath);
-
-        responseJson[attrId] = {
-          data: JSON.parse(attrFileContent.toString()),
-          displayName: configJsonContent[attrId].displayName,
-          entryPoint: configJsonContent[attrId].entryPoint,
-          iR: JSON.parse(irFileContent.toString()),
-        };
+      if (!(await fsExists(attrFilePath))) {
+         await writeFile(attrFilePath, "{}");
       }
+      const attrFileContent = await readFile(attrFilePath);
+      const irFileContent = await readFile(irFilePath);
+      responseJson[attrId] = {
+         data: JSON.parse(attrFileContent.toString()),
+         displayName: configJsonContent[attrId].displayName,
+         entryPoint: configJsonContent[attrId].entryPoint,
+         iR: JSON.parse(irFileContent.toString()),
+      };
     }
     res.send(responseJson);
   })
