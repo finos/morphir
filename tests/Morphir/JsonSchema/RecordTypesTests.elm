@@ -12,20 +12,20 @@ mapTypeTests =
     describe "Tests Record Types"
         [ test "Test record with single field" <|
             \_ ->
-                mapType (Type.Record () [ Type.Field [ "firstname" ] (Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "String" ] ], [ "string" ] ) []) ])
-                    |> Expect.equal (Ok (Object ([ ( "firstname", String (StringConstraints Nothing) ) ] |> Dict.fromList)))
+                mapType ( [], [] ) (Type.Record () [ Type.Field [ "firstname" ] (Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "String" ] ], [ "string" ] ) []) ])
+                    |> Expect.equal (Ok (Object ([ ( "firstname", String (StringConstraints Nothing) ) ] |> Dict.fromList) [ "firstname" ]))
         , test "Test for record with two fields" <|
             \_ ->
-                mapType
+                mapType ( [], [] )
                     (Type.Record ()
                         [ Type.Field [ "firstname" ] (Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "String" ] ], [ "string" ] ) [])
                         , Type.Field [ "age" ] (Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "Basics" ] ], [ "int" ] ) [])
                         ]
                     )
-                    |> Expect.equal (Ok (Object ([ ( "firstname", String (StringConstraints Nothing) ), ( "age", Integer ) ] |> Dict.fromList)))
+                    |> Expect.equal (Ok (Object ([ ( "firstname", String (StringConstraints Nothing) ), ( "age", Integer ) ] |> Dict.fromList) [ "firstname", "age" ]))
         , test "Test for record with a custom field" <|
             \_ ->
-                mapType
+                mapType ( [], [] )
                     (Type.Record ()
                         [ Type.Field [ "firstname" ] (Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "String" ] ], [ "string" ] ) [])
                         , Type.Field [ "lastname" ] (Type.Reference () ( [ [ "Morphir.SDK" ] ], [ [ "String" ] ], [ "string" ] ) [])
@@ -41,6 +41,7 @@ mapTypeTests =
                                  ]
                                     |> Dict.fromList
                                 )
+                                [ "firstname", "lastname", "address" ]
                             )
                         )
         ]

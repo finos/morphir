@@ -61,13 +61,12 @@ async function getAttributeConfigJson() {
     program.opts().projectDir,
     "attributes.conf.json"
   );
-  if (await fsExists(configPath)) {
+  try {
     const fileContent = await readFile(configPath);
     return JSON.parse(fileContent.toString());
-  }else{
-    await writeFile(configPath, "{}");
-    const fileContent = await readFile(configPath);
-    return JSON.parse(fileContent.toString());
+  } catch (ex) {
+    console.error(ex);
+    return {};
   }
 }
 
@@ -104,28 +103,17 @@ app.get(
         configJsonContent[attrId].ir
       );
 
-      if (await fsExists(attrFilePath)) {
-        const attrFileContent = await readFile(attrFilePath);
-        const irFileContent = await readFile(irFilePath);
-
-        responseJson[attrId] = {
-          data: JSON.parse(attrFileContent.toString()),
-          displayName: configJsonContent[attrId].displayName,
-          entryPoint: configJsonContent[attrId].entryPoint,
-          iR: JSON.parse(irFileContent.toString()),
-        };
-      } else {
-        await writeFile(attrFilePath, "{}");
-        const attrFileContent = await readFile(attrFilePath);
-        const irFileContent = await readFile(irFilePath);
-
-        responseJson[attrId] = {
-          data: JSON.parse(attrFileContent.toString()),
-          displayName: configJsonContent[attrId].displayName,
-          entryPoint: configJsonContent[attrId].entryPoint,
-          iR: JSON.parse(irFileContent.toString()),
-        };
+      if (!(await fsExists(attrFilePath))) {
+         await writeFile(attrFilePath, "{}");
       }
+      const attrFileContent = await readFile(attrFilePath);
+      const irFileContent = await readFile(irFilePath);
+      responseJson[attrId] = {
+         data: JSON.parse(attrFileContent.toString()),
+         displayName: configJsonContent[attrId].displayName,
+         entryPoint: configJsonContent[attrId].entryPoint,
+         iR: JSON.parse(irFileContent.toString()),
+      };
     }
     res.send(responseJson);
   })

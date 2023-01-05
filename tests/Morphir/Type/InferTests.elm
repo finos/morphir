@@ -22,6 +22,7 @@ import Morphir.Type.Count as Count
 import Morphir.Type.Infer as Infer exposing (TypeError(..))
 import Morphir.Type.InferTests.BooksAndRecordsTests as BooksAndRecordsTests
 import Morphir.Type.InferTests.ConstructorTests as ConstructorTests
+import Morphir.Type.InferTests.RecordFieldAccessTests as RecordFieldAccessTests
 import Morphir.Type.MetaType as MetaType exposing (MetaType(..), Variable, metaRef, metaTuple, variableByIndex)
 import Morphir.Type.Solve as Solve exposing (UnificationError(..), UnificationErrorType(..))
 import Test exposing (Test, describe, test)
@@ -69,6 +70,9 @@ testReferences =
           )
         , ( Path.fromString "BooksAndRecords"
           , BooksAndRecordsTests.packageSpec
+          )
+        , ( Path.fromString "RecordAccess"
+          , RecordFieldAccessTests.packageSpec
           )
         ]
         |> IR.fromPackageSpecifications
@@ -137,12 +141,12 @@ positiveOutcomes =
             [ ( [ "foo" ], Value.Literal (boolType ()) (BoolLiteral False) )
             , ( [ "bar" ], Value.Literal (floatType ()) (FloatLiteral 2) )
             ]
-    , Value.Lambda (Type.Function () (barRecordType "t0") (floatType ()))
-        (Value.AsPattern (barRecordType "t0") (Value.WildcardPattern (barRecordType "t0")) [ "rec" ])
+    , Value.Lambda (Type.Function () (barRecordType "t4") (floatType ()))
+        (Value.AsPattern (barRecordType "t4") (Value.WildcardPattern (barRecordType "t4")) [ "rec" ])
         (Value.IfThenElse (floatType ())
             (Value.Literal (boolType ()) (BoolLiteral False))
             (Value.Field (floatType ())
-                (Value.Variable (barRecordType "t0") [ "rec" ])
+                (Value.Variable (barRecordType "t4") [ "rec" ])
                 [ "bar" ]
             )
             (Value.Literal (floatType ()) (FloatLiteral 2))
@@ -479,6 +483,7 @@ inferDefPositiveTests : Test
 inferDefPositiveTests =
     describe "Inference of definition should succeed"
         (positiveDefOutcomes
+            ++ RecordFieldAccessTests.positiveDefOutcomes
             |> List.indexedMap
                 (\index expectedOutcome ->
                     let

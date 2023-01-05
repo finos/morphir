@@ -20,7 +20,7 @@ module Morphir.IR.Type exposing
     , variable, reference, tuple, record, extensibleRecord, function, unit
     , Field, mapFieldName, mapFieldType
     , Specification(..), typeAliasSpecification, opaqueTypeSpecification, customTypeSpecification
-    , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification
+    , Definition(..), typeAliasDefinition, customTypeDefinition, definitionToSpecification, definitionToSpecificationWithPrivate
     , Constructors, Constructor, ConstructorArgs
     , mapTypeAttributes, mapSpecificationAttributes, mapDefinitionAttributes, mapDefinition, typeAttributes
     , eraseAttributes, collectVariables, collectReferences, collectReferencesFromDefintion, substituteTypeVariables, toString
@@ -114,7 +114,7 @@ Here is the full definition for reference:
 
 # Definition
 
-@docs Definition, typeAliasDefinition, customTypeDefinition, definitionToSpecification
+@docs Definition, typeAliasDefinition, customTypeDefinition, definitionToSpecification, definitionToSpecificationWithPrivate
 
 
 # Constructors
@@ -131,7 +131,7 @@ Here is the full definition for reference:
 -}
 
 import Dict exposing (Dict)
-import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, withPublicAccess)
+import Morphir.IR.AccessControlled as AccessControlled exposing (AccessControlled, withPrivateAccess, withPublicAccess)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Path as Path
@@ -269,6 +269,19 @@ definitionToSpecification def =
 
                 Nothing ->
                     OpaqueTypeSpecification params
+
+
+{-| -}
+definitionToSpecificationWithPrivate : Definition a -> Specification a
+definitionToSpecificationWithPrivate def =
+    case def of
+        TypeAliasDefinition params exp ->
+            TypeAliasSpecification params exp
+
+        CustomTypeDefinition params accessControlledCtors ->
+            accessControlledCtors
+                |> withPrivateAccess
+                |> CustomTypeSpecification params
 
 
 {-| -}

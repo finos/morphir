@@ -115,10 +115,11 @@ A module contains types and values which is represented by two field in this typ
   - values: a dictionary of local name to access controlled value specification.
 
 Type variables ta and va refer to type annotation and value annotation
+
 -}
 type alias Definition ta va =
     { types : Dict Name (AccessControlled (Documented (Type.Definition ta)))
-    , values : Dict Name (AccessControlled (Documented  (Value.Definition ta va)))
+    , values : Dict Name (AccessControlled (Documented (Value.Definition ta va)))
     }
 
 
@@ -205,7 +206,7 @@ definitionToSpecificationWithPrivate def =
                     ( path
                     , accessControlledType
                         |> withPrivateAccess
-                        |> Documented.map Type.definitionToSpecification
+                        |> Documented.map Type.definitionToSpecificationWithPrivate
                     )
                 )
             |> Dict.fromList
@@ -273,7 +274,7 @@ mapDefinitionAttributes tf vf def =
             |> Dict.map
                 (\_ valueDef ->
                     AccessControlled valueDef.access
-                        ( valueDef.value |> Documented.map (Value.mapDefinitionAttributes tf vf))
+                        (valueDef.value |> Documented.map (Value.mapDefinitionAttributes tf vf))
                 )
         )
 
