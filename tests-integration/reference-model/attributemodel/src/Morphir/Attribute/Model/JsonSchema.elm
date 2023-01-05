@@ -1,5 +1,5 @@
 module Morphir.Attribute.Model.JsonSchema exposing (..)
 
-type SchemaEnabled =
-      Yes
-    | No
+
+type alias SchemaEnabled =
+    Bool

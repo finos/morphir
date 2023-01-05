@@ -2168,7 +2168,7 @@ viewDefinitionDetails model =
                                 , activeTab = model.activeTabIndex
                                 , tabs =
                                     Array.fromList
-                                        [ { name = "Insight View"
+                                        [ { name = "Type Details"
                                           , content =
                                                 column []
                                                     [ typeDetails
