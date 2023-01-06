@@ -6,14 +6,14 @@ Given that Apache Spark's data model is an extended relational data model and mo
 
 ## Decision Drivers
 
-* Future potential/limitations
-* Implementation effort
+- Future potential/limitations
+- Implementation effort
 
 ## Considered Options
 
-* Map to Relational IR first, then to Spark IR
-* Map directly to Spark IR
-* Map directly to Spark IR, but implement flatten and joins as reusable functions
+- Map to Relational IR first, then to Spark IR
+- Map directly to Spark IR
+- Map directly to Spark IR, but implement flatten and joins as reusable functions
 
 ## Decision Outcome
 
@@ -21,13 +21,13 @@ Chosen option: "{option 1}", because {justification. e.g., only option, which me
 
 ### Positive Consequences <!-- optional -->
 
-* {e.g., improvement of quality attribute satisfaction, follow-up decisions required, …}
-* …
+- {e.g., improvement of quality attribute satisfaction, follow-up decisions required, …}
+- …
 
 ### Negative Consequences <!-- optional -->
 
-* {e.g., compromising quality attribute, follow-up decisions required, …}
-* …
+- {e.g., compromising quality attribute, follow-up decisions required, …}
+- …
 
 ## Pros and Cons of the Options <!-- optional -->
 
@@ -39,8 +39,8 @@ graph LR
     B --> B2C(Spark Backend) --> C[Spark IR]
 ```
 
-* Good, because it makes the relational mapping reusable
-* Bad, because the Relational IR limits the scope of Spark operations we can map to
+- Good, because it makes the relational mapping reusable
+- Bad, because the Relational IR limits the scope of Spark operations we can map to
 
 ### Map directly to Spark IR
 
@@ -50,8 +50,8 @@ graph LR
     B2C(Spark Backend) --> C[Spark IR]
 ```
 
-* Good, because we can fully utilize Spark's capabilities to implement all possible Morphir features
-* Bad, because we cannot reuse the solutions we come up with for flattening and joins
+- Good, because we can fully utilize Spark's capabilities to implement all possible Morphir features
+- Bad, because we cannot reuse the solutions we come up with for flattening and joins
 
 ### Map directly to Spark IR, but implement flatten and joins as reusable functions
 
@@ -63,12 +63,10 @@ graph LR
     B2C -.-> J[join]
 ```
 
-* Good, because we can fully utilize Spark's capabilities to implement all possible Morphir features
-* Good, because we can reuse the solutions we come up with for flattening and joins
-
+- Good, because we can fully utilize Spark's capabilities to implement all possible Morphir features
+- Good, because we can reuse the solutions we come up with for flattening and joins
 
 ## Links <!-- optional -->
 
-* {Link type} {Link to ADR} <!-- example: Refined by [ADR-0005](0005-example.md) -->
-* … <!-- numbers of links can vary -->
-
+- {Link type} {Link to ADR} <!-- example: Refined by ADR-0005 in 0005-example.md -->
+- … <!-- numbers of links can vary -->
