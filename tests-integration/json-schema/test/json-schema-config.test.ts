@@ -17,7 +17,8 @@ describe('Test for Json Schema Config Processing',  () => {
             limitToModules: "",
             groupSchemaBy: "package",
             target: "JsonSchema",
-            include: ""
+            include: "",
+            useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
@@ -27,7 +28,8 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: "",
             groupSchemaBy: 'package',
-            include: ""
+            include: "",
+            useDecorators: false
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -41,8 +43,8 @@ describe('Test for Json Schema Config Processing',  () => {
             limitToModules: "",
             groupSchemaBy: "package",
             target: "JsonSchema",
-            include: ""
-
+            include: "",
+            useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
@@ -52,7 +54,8 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: 'Foo',
             limitToModules: "",
             groupSchemaBy: 'package',
-            include: ""
+            include: "",
+            useDecorators: false
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -66,7 +69,8 @@ describe('Test for Json Schema Config Processing',  () => {
             limitToModules: "",
             groupSchemaBy: "module",
             target: "JsonSchema",
-            include: ""
+            include: "",
+            useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
@@ -76,7 +80,8 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: 'Bar',
             limitToModules: "",
             groupSchemaBy: 'module',
-            include: ""
+            include: "",
+            useDecorators: false
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -90,7 +95,8 @@ describe('Test for Json Schema Config Processing',  () => {
             limitToModules: "",
             groupSchemaBy: "package",
             target: "JsonSchema",
-            include: ""
+            include: "",
+            useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
@@ -100,7 +106,8 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: "",
             groupSchemaBy: 'package',
-            include: ""
+            include: "",
+            useDecorators: false
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -114,7 +121,8 @@ describe('Test for Json Schema Config Processing',  () => {
             limitToModules: "",
             groupSchemaBy: "package",
             target: "JsonSchema",
-            include: ""
+            include: "",
+            useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
@@ -124,8 +132,8 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: "",
             groupSchemaBy: 'package',
-            include: ""
-
+            include: "",
+            useDecorators: false
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -139,7 +147,8 @@ describe('Test for Json Schema Config Processing',  () => {
             limitToModules: "",
             groupSchemaBy: "package",
             target: "JsonSchema",
-            include: ""
+            include: "",
+            useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
@@ -149,7 +158,8 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: "",
             groupSchemaBy: 'package',
-            include: ""
+            include: "",
+            useDecorators: false
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })
@@ -163,8 +173,8 @@ describe('Test for Json Schema Config Processing',  () => {
             limitToModules: "BasicTypes",
             groupSchemaBy: "package",
             target: "JsonSchema",
-            include: ""
-
+            include: "",
+            useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
@@ -174,7 +184,8 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: '',
             limitToModules: ["BasicTypes"],
             groupSchemaBy: 'package',
-            include: ""
+            include: "",
+            useDecorators: false
         }
         expect(configProcessing.inferBackendConfig(inputOptions)).resolves.toEqual(expectedOutputOptions)
     })

@@ -2,12 +2,13 @@
 This file serves as the entrypoint for Json Schema Backend configuration processing
 */
 import * as fs from "fs";
-import path from 'path';
+import * as path from 'path';
 import * as util from 'util'
 import cli from "./cli";
 
 const fsReadFile = util.promisify(fs.readFile);
 const configFilePath: string = "JsonSchema.config.json";
+const attributesFilePath:string = "attributes/json-schema-enabled.json"
 
 // Interface for JsonSchema backend opitons
 export interface JsonBackendOptions {
@@ -18,7 +19,8 @@ export interface JsonBackendOptions {
       filename: string,
       limitToModules : any,
       groupSchemaBy: string,
-      include: any
+      include: any,
+      useDecorators: boolean
 }
 
 /*
@@ -43,10 +45,24 @@ def inferBackenConfig:
     else:
         set workerOptions = cliOptions
     return workerOptions
-
 */
+
+// Function to read the list of types from the custom attributes file
+async function getTypesFromCustomAttributes(){
+    const attributesBuffer:Buffer =  await fsReadFile(path.resolve(attributesFilePath));
+    const attributesJson = JSON.parse(attributesBuffer.toString());
+
+    Object.keys(attributesJson).forEach((key:any) => {
+      if (!attributesJson[key]) delete attributesJson[key];
+    });
+
+    const attributesFiltered = Object.keys(attributesJson)
+    const typeNames = attributesFiltered.map(attrib => attrib.split(":").slice(-2).join(".") )
+    return typeNames
+}
+
 async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
-   
+    getTypesFromCustomAttributes();
     let selectedOptions: JsonBackendOptions = {
         input: "",
         output: "",
@@ -55,10 +71,11 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
         limitToModules: null,
         groupSchemaBy: "",
         target: "JsonSchema",
-        include: null
+        include: null,
+        useDecorators: false
     }
 
-    if (cliOptions.useConfig){ //then use the config file parameters
+    if (cliOptions.useConfig) { //then use the config file parameters
         const configFileBuffer:Buffer =  await fsReadFile(path.resolve(configFilePath));
         const configFileJson = JSON.parse(configFileBuffer.toString());
 
@@ -73,15 +90,24 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
             } else {
                 selectedOptions.include = configFileJson.include != ""? configFileJson.include.split(",") : ""
             }
+            if (cliOptions.useDecorators){
+                cliOptions.include = getTypesFromCustomAttributes()
+            }
         }
         else {
             selectedOptions = configFileJson
+            if (cliOptions.useDecorators){
+                cliOptions.include = getTypesFromCustomAttributes()
+            }
         }
     }
     else { // Process and use the cli defaults except where a parameter was specified in a flag
         selectedOptions = cliOptions
         selectedOptions.limitToModules = cliOptions.limitToModules? cliOptions.limitToModules.split(" "): ""
         selectedOptions.include = cliOptions.include? cliOptions.include.split(" "): ""
+        if (cliOptions.useDecorators){
+            cliOptions.include = await getTypesFromCustomAttributes()
+        }
     }
     return selectedOptions
 }
