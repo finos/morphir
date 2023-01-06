@@ -1,4 +1,13 @@
 {
+    "Value:Morphir.Reference.Model:Issues.PatternModel.BasicEnum:enumToString": [
+        "mNPI"
+    ],
+    "Value:Morphir.Reference.Model:Issues.Issue227:fun": [
+        "nPI"
+    ],
+    "Value:Morphir.Reference.Model:Issues.DecisionTables:nestedPatternMatch": [
+        "nPI"
+    ],
     "Value:Morphir.Reference.Model:Issues.Issue401:foo": [
         "rBCHighRiskData"
     ],

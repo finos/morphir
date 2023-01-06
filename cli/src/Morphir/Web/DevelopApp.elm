@@ -1096,7 +1096,9 @@ viewHome model packageName packageDef =
                                             |> Dict.get typeName
                                             |> Maybe.map
                                                 (\typeDef ->
-                                                    ViewType.viewType model.theme typeName typeDef.value.value typeDef.value.doc
+                                                    column []
+                                                        [ ViewType.viewType model.theme typeName typeDef.value.value typeDef.value.doc
+                                                        ]
                                                 )
                                     )
                                 |> Maybe.withDefault none
@@ -1423,6 +1425,124 @@ viewValue theme moduleName valueName valueDef docs =
         backgroundColor
         (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
         none
+
+
+viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
+viewType theme typeName typeDef docs =
+    let
+        cardTitle =
+            text ""
+    in
+    case typeDef of
+        Type.TypeAliasDefinition _ (Type.Record _ fields) ->
+            let
+                fieldNames : { a | name : Name } -> Element msg
+                fieldNames =
+                    \field ->
+                        el
+                            (Theme.boldLabelStyles theme)
+                            (text (nameToText field.name))
+
+                fieldTypes : { a | tpe : Type () } -> Element msg
+                fieldTypes =
+                    \field ->
+                        el
+                            (Theme.labelStyles theme)
+                            (XRayView.viewType pathToUrl field.tpe)
+
+                viewFields : Element msg
+                viewFields =
+                    Theme.twoColumnTableView
+                        fields
+                        fieldNames
+                        fieldTypes
+            in
+            Card.viewAsCard theme
+                cardTitle
+                "record"
+                theme.colors.backgroundColor
+                docs
+                viewFields
+
+        Type.TypeAliasDefinition _ body ->
+            Card.viewAsCard theme
+                cardTitle
+                "is a"
+                theme.colors.backgroundColor
+                docs
+                (el
+                    [ paddingXY 10 5
+                    ]
+                    (XRayView.viewType pathToUrl body)
+                )
+
+        Type.CustomTypeDefinition _ accessControlledConstructors ->
+            let
+                isNewType : Maybe (Type ())
+                isNewType =
+                    case accessControlledConstructors.value |> Dict.toList of
+                        [ ( ctorName, [ ( _, baseType ) ] ) ] ->
+                            if ctorName == typeName then
+                                Just baseType
+
+                            else
+                                Nothing
+
+                        _ ->
+                            Nothing
+
+                isEnum : Bool
+                isEnum =
+                    accessControlledConstructors.value
+                        |> Dict.values
+                        |> List.all List.isEmpty
+
+                viewConstructors : Element msg
+                viewConstructors =
+                    if isEnum then
+                        accessControlledConstructors.value
+                            |> Dict.toList
+                            |> List.map
+                                (\( ctorName, _ ) ->
+                                    el
+                                        (Theme.boldLabelStyles theme)
+                                        (text (nameToTitleText ctorName))
+                                )
+                            |> column [ width fill ]
+
+                    else
+                        case isNewType of
+                            Just baseType ->
+                                el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType pathToUrl baseType)
+
+                            Nothing ->
+                                let
+                                    constructorNames =
+                                        \( ctorName, _ ) ->
+                                            el
+                                                (Theme.boldLabelStyles theme)
+                                                (text (nameToTitleText ctorName))
+
+                                    constructorArgs =
+                                        \( _, ctorArgs ) ->
+                                            el
+                                                (Theme.labelStyles theme)
+                                                (ctorArgs
+                                                    |> List.map (Tuple.second >> XRayView.viewType pathToUrl)
+                                                    |> row [ spacing 5 ]
+                                                )
+                                in
+                                Theme.twoColumnTableView
+                                    (Dict.toList accessControlledConstructors.value)
+                                    constructorNames
+                                    constructorArgs
+            in
+            Card.viewAsCard theme
+                cardTitle
+                ""
+                theme.colors.backgroundColor
+                docs
+                viewConstructors
 
 
 
@@ -1888,6 +2008,52 @@ viewDefinitionDetails model =
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
             case model.homeState.selectedDefinition of
                 Just selectedDefinition ->
+                    let
+                        ir : IR
+                        ir =
+                            IR.fromDistribution distribution
+
+                        viewAttributeValues : NodeID -> Element Msg
+                        viewAttributeValues node =
+                            let
+                                attributeToEditors : Element Msg
+                                attributeToEditors =
+                                    model.customAttributes
+                                        |> Dict.toList
+                                        |> List.map
+                                            (\( attrId, attrDetail ) ->
+                                                let
+                                                    irValue : Maybe (Value () ())
+                                                    irValue =
+                                                        attrDetail.data
+                                                            |> SDKDict.get node
+                                                            |> Maybe.map
+                                                                (\iRvalue -> iRvalue)
+
+                                                    nodeDetail : AttrValueDetail
+                                                    nodeDetail =
+                                                        { attrId = attrId, nodeId = node }
+                                                in
+                                                ( Name.fromString attrDetail.displayName
+                                                , ValueEditor.view model.theme
+                                                    (IR.fromDistribution attrDetail.iR)
+                                                    (Type.Reference () attrDetail.entryPoint [])
+                                                    (Attribute << ValueUpdated nodeDetail)
+                                                    (model.attributeStates
+                                                        |> SDKDict.get nodeDetail
+                                                        |> Maybe.withDefault
+                                                            (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
+                                                                (Type.Reference () attrDetail.entryPoint [])
+                                                                irValue
+                                                            )
+                                                    )
+                                                )
+                                            )
+                                        |> FieldList.view
+                            in
+                            column [ spacing (model.theme |> Theme.scaled 5) ]
+                                [ attributeToEditors ]
+                    in
                     case selectedDefinition of
                         Value ( moduleName, valueName ) ->
                             case packageDef.modules |> Dict.get moduleName of
@@ -1906,51 +2072,6 @@ viewDefinitionDetails model =
                                                     inputs : List (Maybe RawValue)
                                                     inputs =
                                                         valueDef.inputTypes |> List.map (\( argName, _, _ ) -> Dict.get argName model.insightViewState.variables)
-
-                                                    ir : IR
-                                                    ir =
-                                                        IR.fromDistribution distribution
-
-                                                    viewAttributeValues : NodeID -> Element Msg
-                                                    viewAttributeValues node =
-                                                        let
-                                                            attributeToEditors : Element Msg
-                                                            attributeToEditors =
-                                                                model.customAttributes
-                                                                    |> Dict.toList
-                                                                    |> List.map
-                                                                        (\( attrId, attrDetail ) ->
-                                                                            let
-                                                                                irValue : Maybe (Value () ())
-                                                                                irValue =
-                                                                                    attrDetail.data
-                                                                                        |> SDKDict.get node
-                                                                                        |> Maybe.map
-                                                                                            (\iRvalue -> iRvalue)
-
-                                                                                nodeDetail : AttrValueDetail
-                                                                                nodeDetail =
-                                                                                    { attrId = attrId, nodeId = node }
-                                                                            in
-                                                                            ( Name.fromString attrDetail.displayName
-                                                                            , ValueEditor.view model.theme
-                                                                                (IR.fromDistribution attrDetail.iR)
-                                                                                (Type.Reference () attrDetail.entryPoint [])
-                                                                                (Attribute << ValueUpdated nodeDetail)
-                                                                                (model.attributeStates
-                                                                                    |> SDKDict.get nodeDetail
-                                                                                    |> Maybe.withDefault
-                                                                                        (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
-                                                                                            (Type.Reference () attrDetail.entryPoint [])
-                                                                                            irValue
-                                                                                        )
-                                                                                )
-                                                                            )
-                                                                        )
-                                                                    |> FieldList.view
-                                                        in
-                                                        column [ spacing (model.theme |> Theme.scaled 5) ]
-                                                            [ attributeToEditors ]
                                                 in
                                                 Just <|
                                                     TabsComponent.view model.theme
@@ -1979,11 +2100,14 @@ viewDefinitionDetails model =
                                                                                             )
                                                                                         ]
                                                                                         [ el [ borderBottom 2, paddingXY 0 5 ] (viewArgumentEditors ir model.argStates valueDef.inputTypes)
-                                                                                        , row [] [el [Font.bold] (text "Outputs: "), viewActualOutput
-                                                                                            model.theme
-                                                                                            ir
-                                                                                            { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                                            fullyQualifiedName]
+                                                                                        , row []
+                                                                                            [ el [ Font.bold ] (text "Outputs: ")
+                                                                                            , viewActualOutput
+                                                                                                model.theme
+                                                                                                ir
+                                                                                                { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                                fullyQualifiedName
+                                                                                            ]
                                                                                         ]
                                                                                 }
                                                                             , SectionComponent.view model.theme
@@ -1994,7 +2118,9 @@ viewDefinitionDetails model =
                                                                                 }
                                                                             ]
                                                                   }
-                                                                , { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef }
+                                                                , { name = "XRay View"
+                                                                  , content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef
+                                                                  }
                                                                 , { name = "Custom Attributes"
                                                                   , content =
                                                                         row
@@ -2016,8 +2142,53 @@ viewDefinitionDetails model =
                                 Nothing ->
                                     none
 
-                        Type _ ->
-                            none
+                        Type ( moduleName, typeName ) ->
+                            let
+                                fullyQualifiedName =
+                                    ( packageName, moduleName, typeName )
+
+                                typeDetails =
+                                    packageDef.modules
+                                        |> Dict.get moduleName
+                                        |> Maybe.andThen
+                                            (\accessControlledModuleDef ->
+                                                accessControlledModuleDef.value.types
+                                                    |> Dict.get typeName
+                                                    |> Maybe.map
+                                                        (\typeDef ->
+                                                            column []
+                                                                [ viewType model.theme typeName typeDef.value.value typeDef.value.doc
+                                                                ]
+                                                        )
+                                            )
+                                        |> Maybe.withDefault none
+                            in
+                            TabsComponent.view model.theme
+                                { onSwitchTab = UI << SwitchTab
+                                , activeTab = model.activeTabIndex
+                                , tabs =
+                                    Array.fromList
+                                        [ { name = "Type Details"
+                                          , content =
+                                                column []
+                                                    [ typeDetails
+                                                    ]
+                                          }
+                                        , { name = "Custom Attributes"
+                                          , content =
+                                                row
+                                                    [ width fill
+                                                    , height fill
+                                                    , spacing
+                                                        (model.theme
+                                                            |> Theme.scaled 8
+                                                        )
+                                                    , paddingXY 10 10
+                                                    ]
+                                                    [ viewAttributeValues (ValueID fullyQualifiedName) ]
+                                          }
+                                        ]
+                                }
 
                 Nothing ->
                     none
