@@ -5,6 +5,8 @@ import Morphir.SDK.LocalDate exposing (LocalDate)
 import Morphir.SDK.LocalTime exposing (LocalTime)
 import Morphir.SDK.Month exposing (Month)
 
+import TestModel.BasicTypes exposing (..)
+
 
 type alias Score =
     Decimal
@@ -20,3 +22,6 @@ type alias EntryTime =
 
 type alias StartMonth =
     Month
+
+type alias Exam =
+    Grade
