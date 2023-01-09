@@ -126,6 +126,7 @@ moduleSpec =
                 ]
                 (tVar "result")
             ]
+    , doc = Just "Contains Dict (representing a collection of key-value pairs, where the key is a comparable value), and associated functions. "
     }
 
 

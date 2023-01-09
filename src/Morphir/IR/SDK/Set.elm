@@ -103,6 +103,7 @@ moduleSpec =
                 ]
                 (setType () (tVar "comparable"))
             ]
+    , doc = Just "Contains the Set type, and related functions."
     }
 
 

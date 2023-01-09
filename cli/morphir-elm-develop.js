@@ -74,8 +74,6 @@ app.use(express.static(webDir, {index: false}));
 app.use(express.json());
 
 app.get("/", wrap (async (req, res, next) => {
-  console.log(await indexHtmlWithVersion());
-  console.log("get /");
   res.setHeader('Content-type', 'text/html')
   res.send(await indexHtmlWithVersion());
 }));
@@ -151,8 +149,6 @@ app.post(
 );
 
 app.get("*", wrap (async (req, res, next) => {
-  console.log(await indexHtmlWithVersion());
-  console.log("get wildcard");
   res.setHeader('Content-type', 'text/html')
   res.send(await indexHtmlWithVersion());
 }));

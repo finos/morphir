@@ -13,6 +13,7 @@ import Element
         , centerX
         , centerY
         , clipX
+        , clipY
         , column
         , el
         , fill
@@ -28,6 +29,7 @@ import Element
         , padding
         , paddingEach
         , paddingXY
+        , paragraph
         , pointer
         , px
         , rgb
@@ -91,7 +93,6 @@ import Task
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
-import Element exposing (paragraph)
 
 
 
@@ -137,6 +138,7 @@ type alias Model =
     , isAboutOpen : Bool
     , version : String
     }
+
 
 type alias Flags =
     { version : String
@@ -1097,11 +1099,11 @@ listStyles theme =
 
 
 viewAbout : Theme -> String -> Element Msg
-viewAbout theme version=
+viewAbout theme version =
     let
         about : Element msg
         about =
-            row [ width fill, padding (largePadding theme) ] [ paragraph [] [text "On this page you can browse through the types and definitions of a MorphIR package, and see how they behave and interact.", text "Select a definition on the left to begin. "] ]
+            row [ width fill, padding (largePadding theme) ] [ paragraph [] [ text "On this page you can browse through the types and definitions of a MorphIR package, and see how they behave and interact.", text "Select a definition on the left to begin. " ] ]
 
         feedback : Element msg
         feedback =
@@ -1179,19 +1181,23 @@ viewHome model packageName packageDef =
                         numberOfModules =
                             packageDef.modules |> Dict.keys |> List.length
 
-                        displayNumberofValuesAndTypes : { a | value : { b | values : Dict c v, types : Dict d e } } -> List Name -> Element msg
-                        displayNumberofValuesAndTypes acmoduledef moduleName =
-                            row [ width fill ] [ text <| (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ " : " ++ String.fromInt (acmoduledef.value.values |> Dict.keys |> List.length) ++ " definition(s) and " ++ String.fromInt (acmoduledef.value.types |> Dict.keys |> List.length) ++ " type(s)." ]
+                        displayNumberofValuesAndTypes : Module.Definition ta va -> List Name -> Element msg
+                        displayNumberofValuesAndTypes moduledef moduleName =
+                            row [ width fill ] [ text <| (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ " : " ++ String.fromInt (moduledef.values |> Dict.keys |> List.length) ++ " definition(s) and " ++ String.fromInt (moduledef.types |> Dict.keys |> List.length) ++ " type(s)." ]
+
+                        displayDocumentation : Module.Definition ta va -> Element msg
+                        displayDocumentation moduleWithDoc =
+                            row [ width fill ] [ text (moduleWithDoc.doc |> Maybe.withDefault "") ]
                     in
                     case model.homeState.selectedModule of
                         Just ( _, moduleName ) ->
-                            column [ spacing (Theme.smallSpacing model.theme) ]
+                            column [ spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme), height fill, scrollbars ]
                                 (leafModules moduleName
                                     |> List.map
                                         (\mn ->
                                             case Dict.get mn packageDef.modules of
                                                 Just acmd ->
-                                                    displayNumberofValuesAndTypes acmd mn
+                                                    column [ height fill ] [ displayDocumentation acmd.value, el [ height fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] <| displayNumberofValuesAndTypes acmd.value mn ]
 
                                                 Nothing ->
                                                     Element.none
@@ -1199,7 +1205,7 @@ viewHome model packageName packageDef =
                                 )
 
                         Nothing ->
-                            row [ width fill ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
+                            row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
             in
             TabsComponent.view model.theme
                 { onSwitchTab = UI << SwitchTab
@@ -1207,7 +1213,7 @@ viewHome model packageName packageDef =
                 , tabs =
                     Array.fromList
                         [ { name = "Summary"
-                          , content = el [ padding <| Theme.smallPadding model.theme ] summary
+                          , content = col [ summary ]
                           }
                         , { name = "Dependency Graph"
                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]

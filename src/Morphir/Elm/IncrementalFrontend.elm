@@ -577,9 +577,16 @@ processModule moduleName parsedModule opts exposedModules repo =
 
                     else
                         Private
+
+                documentedModule : Module.Definition () (Type ())
+                documentedModule =
+                    { types = Dict.empty
+                    , values = Dict.empty
+                    , doc = ParsedModule.documentation parsedModule
+                    }
             in
             repo
-                |> Repo.insertModule moduleName Module.emptyDefinition moduleAccess
+                |> Repo.insertModule moduleName documentedModule moduleAccess
                 |> Result.withDefault repo
 
         typeNames : List Name
