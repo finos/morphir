@@ -82,7 +82,7 @@ decodeSpecification decodeTypeAttributes =
                 )
             )
         )
-        (Decode.field "doc" (Decode.maybe Decode.string))
+        (Decode.succeed Nothing)
 
 
 encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value) -> Definition ta va -> Encode.Value
@@ -136,4 +136,4 @@ decodeDefinition decodeTypeAttributes decodeValueAttributes =
                 )
             )
         )
-        (Decode.field "doc" (Decode.maybe  Decode.string))
+        (Decode.succeed Nothing)
