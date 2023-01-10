@@ -11,7 +11,6 @@ type alias FieldName =
     String
 
 
-
 type alias Schema =
     { id : String
     , schemaVersion : String

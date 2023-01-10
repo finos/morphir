@@ -8,7 +8,7 @@ import Set
 
 decodeOptions : Decoder Options
 decodeOptions =
-    Decode.map2 Options
+    Decode.map3 Options
         (Decode.field "filename" Decode.string)
         (Decode.field "limitToModules"
             (Decode.maybe
@@ -16,6 +16,14 @@ decodeOptions =
                     (Decode.string
                         |> Decode.map Path.fromString
                     )
+                    |> Decode.map Set.fromList
+                )
+            )
+        )
+        (Decode.field "include"
+            (Decode.maybe
+                (Decode.list
+                    Decode.string
                     |> Decode.map Set.fromList
                 )
             )

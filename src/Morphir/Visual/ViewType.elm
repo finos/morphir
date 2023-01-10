@@ -5,7 +5,8 @@ module Morphir.Visual.ViewType exposing (..)
 
 import Dict
 import Element exposing (..)
-import Morphir.IR.Name exposing (Name)
+import Element.Font as Font
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToUrl)
 import Morphir.Visual.Components.Card as Card
@@ -15,48 +16,31 @@ import Morphir.Visual.XRayView as XRayView
 
 viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
 viewType theme typeName typeDef docs =
+    let
+        cardTitle =
+            link [ pointer ]
+                { url =
+                    "/module/" ++ ([] |> List.map Name.toTitleCase |> String.join ".") ++ "?filter=" ++ nameToText typeName
+                , label =
+                    el [ Font.extraBold, Font.size 30 ] (text (nameToText typeName))
+                }
+    in
     case typeDef of
-        Type.TypeAliasDefinition _ (Type.Record _ fields) ->
-            let
-                fieldNames : { a | name : Name } -> Element msg
-                fieldNames =
-                    \field ->
-                        el
-                            (Theme.boldLabelStyles theme)
-                            (text (nameToText field.name))
-
-                fieldTypes : { a | tpe : Type () } -> Element msg
-                fieldTypes =
-                    \field ->
-                        el
-                            (Theme.labelStyles theme)
-                            (XRayView.viewType pathToUrl field.tpe)
-
-                viewFields : Element msg
-                viewFields =
-                    Theme.twoColumnTableView
-                        fields
-                        fieldNames
-                        fieldTypes
-            in
+        Type.TypeAliasDefinition _ (Type.Record _ _) ->
             Card.viewAsCard theme
-                (typeName |> nameToTitleText |> text)
+                cardTitle
                 "record"
                 theme.colors.backgroundColor
                 docs
-                viewFields
+                none
 
         Type.TypeAliasDefinition _ body ->
             Card.viewAsCard theme
-                (typeName |> nameToTitleText |> text)
+                cardTitle
                 "is a"
                 theme.colors.backgroundColor
                 docs
-                (el
-                    [ paddingXY 10 5
-                    ]
-                    (XRayView.viewType pathToUrl body)
-                )
+                none
 
         Type.CustomTypeDefinition _ accessControlledConstructors ->
             let
@@ -78,49 +62,9 @@ viewType theme typeName typeDef docs =
                     accessControlledConstructors.value
                         |> Dict.values
                         |> List.all List.isEmpty
-
-                viewConstructors : Element msg
-                viewConstructors =
-                    if isEnum then
-                        accessControlledConstructors.value
-                            |> Dict.toList
-                            |> List.map
-                                (\( ctorName, _ ) ->
-                                    el
-                                        (Theme.boldLabelStyles theme)
-                                        (text (nameToTitleText ctorName))
-                                )
-                            |> column [ width fill ]
-
-                    else
-                        case isNewType of
-                            Just baseType ->
-                                el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType pathToUrl baseType)
-
-                            Nothing ->
-                                let
-                                    constructorNames =
-                                        \( ctorName, _ ) ->
-                                            el
-                                                (Theme.boldLabelStyles theme)
-                                                (text (nameToTitleText ctorName))
-
-                                    constructorArgs =
-                                        \( _, ctorArgs ) ->
-                                            el
-                                                (Theme.labelStyles theme)
-                                                (ctorArgs
-                                                    |> List.map (Tuple.second >> XRayView.viewType pathToUrl)
-                                                    |> row [ spacing 5 ]
-                                                )
-                                in
-                                Theme.twoColumnTableView
-                                    (Dict.toList accessControlledConstructors.value)
-                                    constructorNames
-                                    constructorArgs
             in
             Card.viewAsCard theme
-                (typeName |> nameToTitleText |> text)
+                cardTitle
                 (case isNewType of
                     Just _ ->
                         "wrapper"
@@ -133,5 +77,10 @@ viewType theme typeName typeDef docs =
                             "one of"
                 )
                 theme.colors.backgroundColor
-                docs
-                viewConstructors
+                (if docs /= "" then
+                    docs
+
+                 else
+                    "This type has no associated documentation"
+                )
+                none

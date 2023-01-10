@@ -1,4 +1,5 @@
 module TestModel.RecordTypes exposing (..)
+import TestModel.BasicTypes exposing (..)
 
 
 type alias Resource =
@@ -12,3 +13,6 @@ type alias Address =
     , domainName : String
     , path : String
     }
+
+type alias MyNumber =
+    Age
