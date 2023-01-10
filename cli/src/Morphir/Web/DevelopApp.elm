@@ -2027,8 +2027,6 @@ viewDefinitionDetails model =
                                                     irValue =
                                                         attrDetail.data
                                                             |> SDKDict.get node
-                                                            |> Maybe.map
-                                                                (\iRvalue -> iRvalue)
 
                                                     nodeDetail : AttrValueDetail
                                                     nodeDetail =
