@@ -39,7 +39,7 @@ moduleSpec : Module.Specification ()
 moduleSpec =
     { types =
         Dict.fromList
-            [ ( Name.fromString "Rule", TypeAliasSpecification [ [ "a" ], [ "b" ] ] (tFun [ tVar "a" ] (maybeType () (tVar "b"))) |> Documented "Type that represents an rule." )
+            [ ( Name.fromString "Rule", TypeAliasSpecification [ [ "a" ], [ "b" ] ] (tFun [ tVar "a" ] (maybeType () (tVar "b"))) |> Documented "Type that represents a rule." )
             ]
     , values =
         Dict.fromList
@@ -67,6 +67,7 @@ moduleSpec =
                 ]
                 (boolType ())
             ]
+    , doc = Just "Contains the rule type, and related functions."
     }
 
 

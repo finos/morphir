@@ -22,6 +22,7 @@ reference points to the file that holds the output for elm-make-->
       try {
         var app = Elm.Morphir.Web.DevelopApp.init({
           node: document.getElementById("elm"),
+          flags: {version : "__VERSION_NUMBER__"}
         });
       } catch (e) {
         // display initialization errors (e.g. bad flags, infinite recursion)

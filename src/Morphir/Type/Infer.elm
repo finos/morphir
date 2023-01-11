@@ -88,6 +88,7 @@ inferModuleDefinition refs moduleName moduleDef =
             (\mappedValues ->
                 { types = moduleDef.types
                 , values = Dict.fromList mappedValues
+                , doc = moduleDef.doc
                 }
             )
         |> Result.mapError (Compiler.ErrorsInSourceFile (moduleName |> Path.toString Name.toTitleCase "."))
