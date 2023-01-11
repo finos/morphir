@@ -16,10 +16,7 @@ useMap str =
     map identity str
 
 
-
--- a more complex case below
---
---apply : List (Maybe Float) -> List Float
---apply strings =
---    strings
---        |> List.filterMap identity
+apply : List (Maybe Float) -> List Float
+apply strings =
+    strings
+        |> List.filterMap identity
