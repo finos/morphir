@@ -63,6 +63,7 @@ moduleSpec =
             , vSpec "one" [] (decimalType ())
             , vSpec "minusOne" [] (decimalType ())
             ]
+    , doc = Just "Contains the Decimal type representing a real number with some decimal precision, and it's associated functions."
     }
 
 
