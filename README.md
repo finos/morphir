@@ -40,27 +40,15 @@ Defines a standard format for storing and sharing business logic. A clear set of
 
 > _Morphir’s automated processing helps disseminate information which otherwise may not be understood or shared at all, a useful tool when brining elements of business logic to conversation outside of its immediate audience (i.e developers)._
 
-## FINOS Morphir Resources
 
-[Morphir Resource Centre](https://resources.finos.org/morphir/)
+## Documentation
+If you want to start using Morphir, start with the [Documentation](docs/).
 
-| Episode                                                                                                                                                                                                  | Description                                                                                                                                      |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTYx"><img width="250" src="https://resources.finos.org/wp-content/uploads/2022/03/introduction-to-the-morphir-show.jpg"></a>   | <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTYx">Introduction to the Morphir Showcase</a>                          |
-| <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTYz"><img width="250" src="https://resources.finos.org/wp-content/uploads/2022/03/what-morphir-is-with-stephen-gol.jpg"></a>   | <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTYz">What Morphir is with Stephen Goldbaum</a>                         |
-| <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTY2"><img width="250" src="https://resources.finos.org/wp-content/uploads/2022/03/how-morphir-works-with-attila-mi-1.jpg"></a> | <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTY2">How Morphir works with Attila Mihaly</a>                          |
-| <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTY4"><img width="250" src="https://resources.finos.org/wp-content/uploads/2022/03/why-morphir-is-important-with-co.jpg"></a>   | <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTY4">Why Morphir is Important – with Colin, James & Stephen</a>        |
-| <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTcw"><img width="250" src="https://resources.finos.org/wp-content/uploads/2022/03/Screenshot-2022-03-02-at-14.35.18.png"></a>  | <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTcw">The Benefits & Use Case of Morphir with Jane, Chris & Stephen</a> |
-| <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTcy"><img width="250" src="https://resources.finos.org/wp-content/uploads/2022/03/how-to-get-involved-closing-pane.jpg"></a>   | <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTcy">How to get involved – Closing Panel Q&A</a>                       |
-| <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTU5"><img width="250" src="https://resources.finos.org/wp-content/uploads/2022/03/morphir-showcase-full-show.jpg"></a>         | <a href="https://resources.finos.org/znglist/morphir-showcase/?c=cG9zdDoxNTU5">Morphir Showcase – Full Show</a>                                  |
+## Other Resources
+[List of media](docs/media.md)
 
-# An ecosystem of innovative features
 
-Supporting the development of your business' needs in an ever-developing ecosystem based on firm standards and the integration of new languages.
-
-Check out [Stephen Goldbaum's Morphir Examples on GitHub](https://github.com/stephengoldbaum/morphir-examples/tree/master/tutorial)
-
-# Further reading
+### Further reading
 
 | Introduction & Background                                                  | Using Morphir                                                                                              | Applicability                                                                           |
 | :------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
@@ -69,18 +57,6 @@ Check out [Stephen Goldbaum's Morphir Examples on GitHub](https://github.com/ste
 | [Community](./docs/morphir_community.md)                                   | [Modeling an Application](./docs/application_modeling.md)                                                  |                                                                                         |
 | [What's it all about?](./docs/whats_it_about.md)                           | [Modeling Decision Tables](https://github.com/finos/morphir-examples/tree/master/src/Morphir/Sample/Rules) |                                                                                         |
 | [Why we use Functional Programming?](./docs/why_functional_programming.md) | [Modeling for database developers](./docs/modeling/modeling-for-database-developers.md)                    |
-
-# Development setup
-
-Morphir is a collection of tools. Each tool is in its own repo with its own installation instructions. The main development tools, and the best place to get started, are currently in [Morphir Elm](https://github.com/finos/morphir-elm).
-
-## Usage example
-
-Morphir tools can be used to optimize a wide range of development tasks. For example, Morphir can be used to define and automated development of an entire service. The [Morphir Dapr](https://github.com/finos/morphir-dapr) project is example of this.
-
-Another good use of Morphir is to define shared rules than can be used across heterogeneous systems. This can be useful for initiatives like open-source Reg Tech models that are shared across firms. [Morphir LCR](https://github.com/finos/morphir-examples/tree/main/tests/Morphir/Sample/Reg/LCR) presents a good example of this.
-
-More Morphir examples can be found at [Morphir Examples](https://github.com/finos/morphir-examples/).
 
 ## Roadmap
 
