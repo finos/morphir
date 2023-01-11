@@ -137,6 +137,7 @@ type alias Model =
     , openSections : Set Int
     , isAboutOpen : Bool
     , version : String
+    , showSaveTestError : Bool
     }
 
 
@@ -223,6 +224,7 @@ init flags url key =
             , openSections = Set.fromList [ 1 ]
             , isAboutOpen = False
             , version = flags.version |> Debug.log "v_"
+            , showSaveTestError = False
             }
     in
     ( toRoute url initModel
@@ -278,6 +280,7 @@ type TestingMsg
     | LoadTestCase (List ( Name, Type () )) (List (Maybe RawValue)) String Int
     | UpdateTestCase FQName TestCase
     | UpdateDescription String
+    | ShowSaveTestError
 
 
 type NavigationMsg
@@ -551,7 +554,7 @@ update msg model =
                                 (Array.Extra.update model.selectedTestcaseIndex (always newTestCase) (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
                     in
-                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
+                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState, showSaveTestError = False }
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
@@ -600,6 +603,7 @@ update msg model =
                         , insightViewState = { insightViewState | variables = newVariables }
                         , selectedTestcaseIndex = index
                         , testDescription = description
+                        , showSaveTestError = False
                       }
                     , Cmd.none
                     )
@@ -615,9 +619,12 @@ update msg model =
                                 (Array.push newTestCase (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
                     in
-                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
+                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState, showSaveTestError = False }
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
+
+                ShowSaveTestError ->
+                    ({model | showSaveTestError = True}, Cmd.none)
 
         ServerGetAttributeResponse attributes ->
             ( { model | customAttributes = attributes }
@@ -1946,18 +1953,23 @@ viewDefinitionDetails model =
             , Font.size model.theme.fontSize
             ]
 
-        saveTestcaseButton : FQName -> TestCase -> Element Msg
+        saveTestcaseButton : FQName -> Maybe TestCase -> Element Msg
         saveTestcaseButton fqName testCase =
             let
-                saveMsg : Msg
-                saveMsg =
-                    Testing (SaveTestSuite fqName testCase)
+                message : Msg
+                message =
+                    Testing (case testCase of
+                        Just tc ->
+                             (SaveTestSuite fqName tc)
+                        Nothing ->
+                            ShowSaveTestError)
             in
             Element.Input.button
                 buttonStyles
-                { onPress = Just saveMsg
+                { onPress = Just message
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save as new testcase" ]
                 }
+
 
         updateTestCaseButton : FQName -> TestCase -> Element Msg
         updateTestCaseButton fqName testCase =
@@ -1996,16 +2008,23 @@ viewDefinitionDetails model =
                                     [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
 
                                 expectedOutput ->
-                                    [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value ="), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
-                                    , row [ width fill, spacing (theme |> Theme.scaled 1) ]
+                                    [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "Output value: "), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
+                                    , column [ width fill, spacing (theme |> Theme.scaled 1) ]
                                         [ descriptionInput
-                                        , ifThenElse (Dict.isEmpty model.argStates) none (saveTestcaseButton fQName { testCase | expectedOutput = expectedOutput })
+                                        , (saveTestcaseButton fQName (Just { testCase | expectedOutput = expectedOutput }))
+                                        , ifThenElse (Dict.isEmpty model.argStates && model.showSaveTestError) (el [Font.color model.theme.colors.negative] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
                                         , ifThenElse (model.selectedTestcaseIndex < 0) none (updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         ]
                                     ]
 
                         Err _ ->
-                            [ text "Invalid or missing inputs" ]
+                            [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "Output value: "), text " Unable to compute " ]
+                            , column [ width fill, spacing (theme |> Theme.scaled 1) ]
+                                [   descriptionInput
+                                    , (saveTestcaseButton fQName Nothing)
+                                    , ifThenElse (model.showSaveTestError) (el [Font.color model.theme.colors.negative] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
+                                ]
+                            ]
                     )
                 )
 
@@ -2251,15 +2270,12 @@ viewDefinitionDetails model =
                                                                                                 |> Theme.scaled 4
                                                                                             )
                                                                                         ]
-                                                                                        [ el [ borderBottom 2, paddingXY 0 5 ] (viewArgumentEditors ir model.argStates valueDef.inputTypes)
-                                                                                        , row []
-                                                                                            [ el [ Font.bold ] (text "Outputs: ")
-                                                                                            , viewActualOutput
-                                                                                                model.theme
-                                                                                                ir
-                                                                                                { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                                                fullyQualifiedName
-                                                                                            ]
+                                                                                        [ el [ borderBottom 2, paddingXY 0 5, Border.color model.theme.colors.gray ] (viewArgumentEditors ir model.argStates valueDef.inputTypes)
+                                                                                        , viewActualOutput
+                                                                                            model.theme
+                                                                                            ir
+                                                                                            { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                            fullyQualifiedName
                                                                                         ]
                                                                                 }
                                                                             , SectionComponent.view model.theme
