@@ -624,7 +624,7 @@ update msg model =
                     )
 
                 ShowSaveTestError ->
-                    ({model | showSaveTestError = True}, Cmd.none)
+                    ( { model | showSaveTestError = True }, Cmd.none )
 
         ServerGetAttributeResponse attributes ->
             ( { model | customAttributes = attributes }
@@ -1224,6 +1224,9 @@ viewHome model packageName packageDef =
                           }
                         , { name = "Dependency Graph"
                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
+                          }
+                        , { name = "Decorators"
+                          , content = col [ text "Decorators" ]
                           }
                         ]
                 }
@@ -1958,18 +1961,20 @@ viewDefinitionDetails model =
             let
                 message : Msg
                 message =
-                    Testing (case testCase of
-                        Just tc ->
-                             (SaveTestSuite fqName tc)
-                        Nothing ->
-                            ShowSaveTestError)
+                    Testing
+                        (case testCase of
+                            Just tc ->
+                                SaveTestSuite fqName tc
+
+                            Nothing ->
+                                ShowSaveTestError
+                        )
             in
             Element.Input.button
                 buttonStyles
                 { onPress = Just message
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save as new testcase" ]
                 }
-
 
         updateTestCaseButton : FQName -> TestCase -> Element Msg
         updateTestCaseButton fqName testCase =
@@ -2011,8 +2016,8 @@ viewDefinitionDetails model =
                                     [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "Output value: "), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
                                     , column [ width fill, spacing (theme |> Theme.scaled 1) ]
                                         [ descriptionInput
-                                        , (saveTestcaseButton fQName (Just { testCase | expectedOutput = expectedOutput }))
-                                        , ifThenElse (Dict.isEmpty model.argStates && model.showSaveTestError) (el [Font.color model.theme.colors.negative] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
+                                        , saveTestcaseButton fQName (Just { testCase | expectedOutput = expectedOutput })
+                                        , ifThenElse (Dict.isEmpty model.argStates && model.showSaveTestError) (el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
                                         , ifThenElse (model.selectedTestcaseIndex < 0) none (updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         ]
                                     ]
@@ -2020,9 +2025,9 @@ viewDefinitionDetails model =
                         Err _ ->
                             [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "Output value: "), text " Unable to compute " ]
                             , column [ width fill, spacing (theme |> Theme.scaled 1) ]
-                                [   descriptionInput
-                                    , (saveTestcaseButton fQName Nothing)
-                                    , ifThenElse (model.showSaveTestError) (el [Font.color model.theme.colors.negative] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
+                                [ descriptionInput
+                                , saveTestcaseButton fQName Nothing
+                                , ifThenElse model.showSaveTestError (el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
                                 ]
                             ]
                     )
