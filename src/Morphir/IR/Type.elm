@@ -210,17 +210,19 @@ type alias Field a =
     }
 
 
+type alias DerivedTypeSpecificationDetails a =
+    { baseType : Type a
+    , fromBaseType : FQName
+    , toBaseType : FQName
+    }
+
+
 {-| -}
 type Specification a
     = TypeAliasSpecification (List Name) (Type a)
     | OpaqueTypeSpecification (List Name)
     | CustomTypeSpecification (List Name) (Constructors a)
-    | DerivedTypeSpecification
-        (List Name)
-        { baseType : Type a
-        , fromBaseType : FQName
-        , toBaseType : FQName
-        }
+    | DerivedTypeSpecification (List Name) (DerivedTypeSpecificationDetails a)
 
 
 {-| This syntax represents a type definition. For example:
