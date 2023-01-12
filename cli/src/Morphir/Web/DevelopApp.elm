@@ -13,14 +13,12 @@ import Element
         , centerX
         , centerY
         , clipX
-        , clipY
         , column
         , el
         , fill
         , fillPortion
         , height
         , image
-        , inFront
         , layout
         , link
         , maximum
@@ -624,7 +622,7 @@ update msg model =
                     )
 
                 ShowSaveTestError ->
-                    ({model | showSaveTestError = True}, Cmd.none)
+                    ( { model | showSaveTestError = True }, Cmd.none )
 
         ServerGetAttributeResponse attributes ->
             ( { model | customAttributes = attributes }
@@ -1581,127 +1579,10 @@ viewValue theme moduleName valueName valueDef docs =
          else
             "calculation"
         )
-        backgroundColor
         (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
         none
 
 
-viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
-viewType theme typeName typeDef docs =
-    let
-        cardTitle =
-            text ""
-    in
-    case typeDef of
-        Type.TypeAliasDefinition _ (Type.Record _ fields) ->
-            let
-                fieldNames : { a | name : Name } -> Element msg
-                fieldNames =
-                    \field ->
-                        el
-                            (Theme.boldLabelStyles theme)
-                            (text (nameToText field.name))
-
-                fieldTypes : { a | tpe : Type () } -> Element msg
-                fieldTypes =
-                    \field ->
-                        el
-                            (Theme.labelStyles theme)
-                            (XRayView.viewType pathToUrl field.tpe)
-
-                viewFields : Element msg
-                viewFields =
-                    Theme.twoColumnTableView
-                        fields
-                        fieldNames
-                        fieldTypes
-            in
-            Card.viewAsCard theme
-                cardTitle
-                "record"
-                theme.colors.backgroundColor
-                docs
-                viewFields
-
-        Type.TypeAliasDefinition _ body ->
-            Card.viewAsCard theme
-                cardTitle
-                "is a"
-                theme.colors.backgroundColor
-                docs
-                (el
-                    [ paddingXY 10 5
-                    ]
-                    (XRayView.viewType pathToUrl body)
-                )
-
-        Type.CustomTypeDefinition _ accessControlledConstructors ->
-            let
-                isNewType : Maybe (Type ())
-                isNewType =
-                    case accessControlledConstructors.value |> Dict.toList of
-                        [ ( ctorName, [ ( _, baseType ) ] ) ] ->
-                            if ctorName == typeName then
-                                Just baseType
-
-                            else
-                                Nothing
-
-                        _ ->
-                            Nothing
-
-                isEnum : Bool
-                isEnum =
-                    accessControlledConstructors.value
-                        |> Dict.values
-                        |> List.all List.isEmpty
-
-                viewConstructors : Element msg
-                viewConstructors =
-                    if isEnum then
-                        accessControlledConstructors.value
-                            |> Dict.toList
-                            |> List.map
-                                (\( ctorName, _ ) ->
-                                    el
-                                        (Theme.boldLabelStyles theme)
-                                        (text (nameToTitleText ctorName))
-                                )
-                            |> column [ width fill ]
-
-                    else
-                        case isNewType of
-                            Just baseType ->
-                                el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType pathToUrl baseType)
-
-                            Nothing ->
-                                let
-                                    constructorNames =
-                                        \( ctorName, _ ) ->
-                                            el
-                                                (Theme.boldLabelStyles theme)
-                                                (text (nameToTitleText ctorName))
-
-                                    constructorArgs =
-                                        \( _, ctorArgs ) ->
-                                            el
-                                                (Theme.labelStyles theme)
-                                                (ctorArgs
-                                                    |> List.map (Tuple.second >> XRayView.viewType pathToUrl)
-                                                    |> row [ spacing 5 ]
-                                                )
-                                in
-                                Theme.twoColumnTableView
-                                    (Dict.toList accessControlledConstructors.value)
-                                    constructorNames
-                                    constructorArgs
-            in
-            Card.viewAsCard theme
-                cardTitle
-                ""
-                theme.colors.backgroundColor
-                docs
-                viewConstructors
 
 
 
@@ -1953,23 +1834,25 @@ viewDefinitionDetails model =
             , Font.size model.theme.fontSize
             ]
 
-        saveTestcaseButton : FQName -> Maybe TestCase -> Element Msg
-        saveTestcaseButton fqName testCase =
+        saveTestCaseButton : FQName -> Maybe TestCase -> Element Msg
+        saveTestCaseButton fqName testCase =
             let
                 message : Msg
                 message =
-                    Testing (case testCase of
-                        Just tc ->
-                             (SaveTestSuite fqName tc)
-                        Nothing ->
-                            ShowSaveTestError)
+                    Testing
+                        (case testCase of
+                            Just tc ->
+                                SaveTestSuite fqName tc
+
+                            Nothing ->
+                                ShowSaveTestError
+                        )
             in
             Element.Input.button
                 buttonStyles
                 { onPress = Just message
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save as new testcase" ]
                 }
-
 
         updateTestCaseButton : FQName -> TestCase -> Element Msg
         updateTestCaseButton fqName testCase =
@@ -2011,8 +1894,8 @@ viewDefinitionDetails model =
                                     [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "Output value: "), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
                                     , column [ width fill, spacing (theme |> Theme.scaled 1) ]
                                         [ descriptionInput
-                                        , (saveTestcaseButton fQName (Just { testCase | expectedOutput = expectedOutput }))
-                                        , ifThenElse (Dict.isEmpty model.argStates && model.showSaveTestError) (el [Font.color model.theme.colors.negative] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
+                                        , saveTestCaseButton fQName (Just { testCase | expectedOutput = expectedOutput })
+                                        , ifThenElse (Dict.isEmpty model.argStates && model.showSaveTestError) (el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
                                         , ifThenElse (model.selectedTestcaseIndex < 0) none (updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         ]
                                     ]
@@ -2020,9 +1903,9 @@ viewDefinitionDetails model =
                         Err _ ->
                             [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "Output value: "), text " Unable to compute " ]
                             , column [ width fill, spacing (theme |> Theme.scaled 1) ]
-                                [   descriptionInput
-                                    , (saveTestcaseButton fQName Nothing)
-                                    , ifThenElse (model.showSaveTestError) (el [Font.color model.theme.colors.negative] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
+                                [ descriptionInput
+                                , saveTestCaseButton fQName Nothing
+                                , ifThenElse model.showSaveTestError (el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
                                 ]
                             ]
                     )
@@ -2324,9 +2207,7 @@ viewDefinitionDetails model =
                                                     |> Dict.get typeName
                                                     |> Maybe.map
                                                         (\typeDef ->
-                                                            column []
-                                                                [ viewType model.theme typeName typeDef.value.value typeDef.value.doc
-                                                                ]
+                                                            ViewType.viewTypeDetails model.theme typeName typeDef.value.value
                                                         )
                                             )
                                         |> Maybe.withDefault none
@@ -2338,9 +2219,7 @@ viewDefinitionDetails model =
                                     Array.fromList
                                         [ { name = "Type Details"
                                           , content =
-                                                column []
-                                                    [ typeDetails
-                                                    ]
+                                                typeDetails
                                           }
                                         , { name = "Custom Attributes"
                                           , content =
