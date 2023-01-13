@@ -1,19 +1,41 @@
-# [Morphir Type](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) Mappings To [CADL Type System](https://microsoft.github.io/cadl/docs/language-basics/type-relations/)
-### SDK Types to CADL
+# [Morphir](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-IR-Type) to [Cadl Type](https://microsoft.github.io/cadl/docs/language-basics/type-relations/) Mappings
+## Overview
+This is a documentation of the mapping strategy from Morphir types to Cadl types. This document describes how types in Morphir Models are represented in Cadl. 
+Below is a quick overview of the mapping in the table:
 
-#### Basic Types
+|                                       | Type                            | Cadl Type                                | Comment                         |
+|---------------------------------------|---------------------------------|------------------------------------------|---------------------------------|
+| [Basic Types](#basic-types)           |                                 |                                          |                                 |
+|                                       | `Bool`                          | `boolean`                                |                                 |
+|                                       | `Int`                           | `int64`                                  |                                 |
+|                                       | `Float`                         | `float64`                                |                                 |
+|                                       | `String`                        | `string`                                 |                                 |
+|                                       | `Char`                          | `string`                                 | Not supported. Mapped to string |
+| [Advance Types](#advance-types)       |                                 |                                          |                                 |
+|                                       | `Decimal`                       | `string`                                 | Not supported. Mapped to string |
+|                                       | `LocalDate`                     | `plainDate`                              |                                 |
+|                                       | `LocalTime`                     | `plainTime`                              |                                 |
+|                                       | `Month`                         | `string`                                 |                                 |
+|                                       | `Maybe a`                       | `a` &#124; `null`                        |                                 |
+| [Collection Types](#collection-types) |                                 |                                          |                                 |
+|                                       | `List A`                        | `Array<A>`                               |                                 |
+|                                       | `Set B`                         | `Array<B>`                               | Not Supported. Mapped to Array  |
+|                                       | `Dict A B`                      | `Array<[A,B]>`                           | Not Supported. Mapped to Array  |
+| [Composite Types](#composite-types)   |                                 |                                          |                                 |
+| - [Tuple](#tuples)                    | `(Int, String)`                 | `[int64, string]`                        |                                 |
+| - [Result](#result)                   | `Result e v`                    | `["Err", e]` &#124; `["Ok", v]`          | Expressed as tagged unions      |
+| - [Record](#record-types)             | `{ foo: Int, bar: String }`     | `{ foo: int64, bar: string }`            |                                 |
+| - [Union Types](#custom-types)        | `Foo Int` &#124; `Bar String`   | `["Foo", int64]` &#124; `["Bar, string]` |                                 |
+|                                       | `Foo` &#124; `Bar` &#124; `Baz` | `Foo` &#124; `Bar` &#124; `Baz`          | Represented as Enum             |
+
+
+### Basic Types
 ##### [Bool](https://package.elm-lang.org/packages/elm/core/latest/Basics#Bool)
-Bool, a `true` or `false` value in morphir, maps directly to the `boolean` type in CADL.
+Boolean, a `true` or `false` value in morphir, maps directly to the `boolean` type in CADL.
+```
+alias isValid = boolean
+```
 
-Elm:
-```elm
-type alias isValid = 
-    Bool
-```
-Cadl:
-```cadl
-alias isValid = boolean;
-```
 
 ##### [Int](https://package.elm-lang.org/packages/elm/core/latest/Basics#Int)
 The `Int` type in morphir is a set of natural numbers(positive and negative) without a fraction component, maps directly to the `integer` type in cadl.
@@ -25,14 +47,11 @@ type alias Foo =
 ```
 Cadl:
 ```cadl
-alias Foo = integer;
+alias Foo = int64;
 ```
 <span style="color: red; font-style:italic;"> Note: </span>
 
-The `integer` type assignment is valid CADL, but when dealing with emitters such as OpenApiSpec(OAS) it defaults to an object. To obtain an actual int value, specify the subtype `int64`.
-```cadl
-alias Foo = int64;
-```
+The `integer` type assignment is valid in Cadl but would default to **object** when dealing with the **OAS emitters**.
 
 ##### [Float](https://package.elm-lang.org/packages/elm/core/latest/Basics#Float)
 The `Float` type; floating point number, in morphir maps directly to the `float` type in CADL.
@@ -44,14 +63,11 @@ type alias Pi =
 ```
 Cadl:
 ```cadl
-alias Pi = float;
+alias Pi = float64;
 ```
 <span style="color: red; font-style:italic;">Note: </span>
 
-The `float` type assignment is valid CADL, but when dealing with emitters such as OpenApiSpec(OAS) it defaults to an object. To obtain an actual float value, specify the subtype `float64`.
-```cadl
-alias Pi = int64;              
-```
+The `float` type assignment is valid in Cadl but would default to **object** when dealing with the **OAS emitters**.
 
 ##### [String](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-String)
 The `String` type; a sequence of characters, in morphir maps directly to `string` type in CADL.
@@ -67,7 +83,7 @@ alias Address = string ;
 ```
 
 ##### [Char](https://package.elm-lang.org/packages/elm/core/latest/Char)
-The `char` type is a single character type in morphir and doesn't exist in CADL. An alternative mapping is the `string` type.
+The `char` type is a single character type in morphir and doesn't exist in Cadl. An alternative mapping is the `string` type.
 
 Elm:
 ``` elm
@@ -79,7 +95,7 @@ Cadl:
 alias AccountGroup = string;
 ```
 
-### Advanced Types
+### Advance Types
 ##### [Decimal](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-Decimal)
 The `decimal` type in morphir defines a floating point number with accurate precision. This type is not supported directly in CADL and an alternative mapping is the `string` type.
 
@@ -146,10 +162,10 @@ The `maybe` type in morphir represents values that may or may not exist. This is
 
    Elm:
     ```elm
-    type alias FooBarBaz = { 
-        foo: Int
-        , bar: Float
-        , baz: Maybe String
+    type alias FooBarBaz = 
+    { foo: Int
+      , bar: Float
+      , baz: Maybe String
     }
     ```
    Cadl:
@@ -166,7 +182,7 @@ The `maybe` type in morphir represents values that may or may not exist. This is
    Elm:
     ```elm
     type alias Foo = 
-        May Int
+        Maybe Int
    ```
    Cadl:
     ```cadl
@@ -187,12 +203,12 @@ type alias Bar a =
 ```
 Cadl:
 ```cadl
-alias Foo = Array<integer>;
+alias Foo = Array<int64>;
 
 alias Bar<A> = Array<A>;
 ```
 
-##### [Set]()
+##### [Set](https://package.elm-lang.org/packages/elm/core/latest/Set)
 The `set` type is a collection of items where every item or value is unique. This is not supported directly in CADL hence its alternative mapping is to use the `array` type.
 
 Elm:
@@ -205,7 +221,7 @@ type  alias Bar a =
 ```
 Cadl:
 ```cadl
-alias Foo = Array<integer>;
+alias Foo = Array<int64>;
 
 alias Bar<A> = Array<A>; 
 ```
@@ -224,7 +240,7 @@ type alias Bar a b =
 ```
 Cadl
 ```cadl
-alias Foo = Array<[string,integer]>;
+alias Foo = Array<[string,int64]>;
 
 alias Bar<A,B> = Array<[A,B]> ;
 ```
@@ -257,7 +273,7 @@ type alias Bar a b =
 ```
 Cadl:
 ```cadl
-alias Foo = [string, integer];
+alias Foo = [string, int64];
 
 alias Bar<A,B> = [A, B];
 ```
@@ -267,10 +283,10 @@ Models are structures with fields called properties and used to represent data s
 
 Elm:
 ```elm
-type  alias FooBarBaz = {
-    foo: Int
-    , bar: String
-    , baz: Float
+type  alias FooBarBaz = 
+{ foo: Int
+  , bar: String
+  , baz: Float
 }
 ```
 Cadl:
@@ -297,8 +313,8 @@ type FooBarBaz =
 
 Cadl:
 ```cadl
-alias FooBarBaz 
-    = ["Foo", int]
+alias FooBarBaz = 
+    ["Foo", int64]
     | ["Bar", string]
     | "Baz"   
 ``` 
