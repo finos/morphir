@@ -84,6 +84,7 @@ moduleSpec =
                 ]
                 (Type.Tuple () [ listType () (tVar "e"), listType () (tVar "a") ])
             ]
+    , doc = Just "Contains the ResultList type, and related functions."
     }
 
 

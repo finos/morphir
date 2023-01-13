@@ -3,5 +3,10 @@
 		"displayName" : "Sensitivity"
 		, "entryPoint" : "Morphir.Attribute.Model:Sensitivity:Sensitivity"
 		, "ir" : "attributemodel/morphir-ir.json"
+	},
+	"json-schema-enabled":  {
+		"displayName" : "SchemaEnabled"
+		, "entryPoint" : "Morphir.Attribute.Model:JsonSchema:SchemaEnabled"
+		, "ir" : "attributemodel/morphir-ir.json"
 	}
 }

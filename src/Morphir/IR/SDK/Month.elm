@@ -24,7 +24,6 @@ import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
 import Morphir.IR.SDK.Common exposing (toFQName)
 import Morphir.IR.Type as Type exposing (Specification(..), Type(..))
-import Morphir.IR.Value as Value
 
 
 moduleName : ModuleName
@@ -53,11 +52,12 @@ moduleSpec =
                         , ( Name.fromString "December", [] )
                         ]
                     )
-                    |> Documented "Type that represents an month concept."
+                    |> Documented "Type that represents months of the year."
               )
             ]
     , values =
         Dict.empty
+    , doc = Just "Contains a type representing the months of the year."
     }
 
 

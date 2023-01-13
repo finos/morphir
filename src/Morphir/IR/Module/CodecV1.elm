@@ -61,7 +61,7 @@ encodeSpecification encodeTypeAttributes spec =
 
 decodeSpecification : Decode.Decoder ta -> Decode.Decoder (Specification ta)
 decodeSpecification decodeTypeAttributes =
-    Decode.map2 Specification
+    Decode.map3 Specification
         (Decode.field "types"
             (Decode.map Dict.fromList
                 (Decode.list
@@ -82,6 +82,7 @@ decodeSpecification decodeTypeAttributes =
                 )
             )
         )
+        (Decode.succeed Nothing)
 
 
 encodeDefinition : (ta -> Encode.Value) -> (va -> Encode.Value) -> Definition ta va -> Encode.Value
@@ -114,7 +115,7 @@ encodeDefinition encodeTypeAttributes encodeValueAttributes def =
 
 decodeDefinition : Decode.Decoder ta -> Decode.Decoder va -> Decode.Decoder (Definition ta va)
 decodeDefinition decodeTypeAttributes decodeValueAttributes =
-    Decode.map2 Definition
+    Decode.map3 Definition
         (Decode.field "types"
             (Decode.map Dict.fromList
                 (Decode.list
@@ -135,3 +136,4 @@ decodeDefinition decodeTypeAttributes decodeValueAttributes =
                 )
             )
         )
+        (Decode.succeed Nothing)
