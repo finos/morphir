@@ -17,3 +17,6 @@ type alias Grade =
 
 type alias Fullname =
     String
+
+type alias NickName =
+    Fullname

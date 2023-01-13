@@ -4,6 +4,10 @@
         "../../src",
         "src"
     ],
+    "exposed-modules": [
+        "Morphir.Reference.Model.Types",
+        "Morphir.Reference.Model.Formulas"
+    ],
     "elm-version": "0.19.1",
     "dependencies": {
         "direct": {

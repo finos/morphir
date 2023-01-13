@@ -1,4 +1,5 @@
 module TestModel.RecordTypes exposing (..)
+import TestModel.BasicTypes exposing (..)
 
 
 type alias Resource =
@@ -8,7 +9,10 @@ type alias Resource =
 
 
 type alias Address =
-    { protocol : String
+    { protocol : Maybe String
     , domainName : String
     , path : String
     }
+
+type alias MyNumber =
+    Age

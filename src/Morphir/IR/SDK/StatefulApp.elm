@@ -65,4 +65,5 @@ moduleSpec =
             ]
     , values =
         Dict.empty
+    , doc = Just "Contains the StatefulApp type representing a stateful app."
     }

@@ -170,12 +170,13 @@ update msg model =
                                 Library packageName dependencies packageDef ->
                                     Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
+                        fileMap : Result (List String) FileMap
                         fileMap =
                             mapDistribution options enrichedDistro
 
-                        encodedResult : Result String FileMap -> Encode.Value
+                        encodedResult : Result (List String) FileMap -> Encode.Value
                         encodedResult =
-                            encodeResult Encode.string encodeFileMap
+                            encodeResult (Encode.list Encode.string) encodeFileMap
                     in
                     ( model
                     , fileMap

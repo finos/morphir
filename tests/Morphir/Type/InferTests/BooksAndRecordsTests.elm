@@ -56,6 +56,7 @@ packageSpec =
                         ]
                 , values =
                     Dict.empty
+                , doc = Nothing
                 }
               )
             ]

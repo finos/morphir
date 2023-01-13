@@ -54,6 +54,7 @@ moduleSpec =
             , vSpec "addMinutes" [ ( "minutes", intType () ), ( "time", localTimeType () ) ] (localTimeType ())
             , vSpec "addHours" [ ( "hours", intType () ), ( "time", localTimeType () ) ] (localTimeType ())
             ]
+    , doc = Just "Contains the LocalTime type (representing a time concept), and it's associated functions."
     }
 
 

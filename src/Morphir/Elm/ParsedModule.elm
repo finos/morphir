@@ -78,3 +78,16 @@ importedModules (ParsedModule file) =
 declarations : ParsedModule -> List (Node Declaration)
 declarations (ParsedModule file) =
     file.declarations
+
+
+documentation : ParsedModule -> Maybe String
+documentation (ParsedModule file) =
+    if List.isEmpty file.comments then
+        Nothing
+
+    else
+        file.comments
+            |> List.map Node.value
+            |> List.filter (String.startsWith "{-|")
+            |> List.head
+            |> Maybe.map (String.dropLeft 3 >> String.dropRight 3)

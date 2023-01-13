@@ -21,13 +21,23 @@ type LookupError
 
 lookupConstructor : IR -> FQName -> Result LookupError (Count MetaType)
 lookupConstructor ir ctorFQN =
-    ir
-        |> IR.lookupTypeConstructor ctorFQN
-        |> Maybe.map
-            (\( typeFQN, paramNames, ctorArgs ) ->
-                ctorToMetaType ir typeFQN paramNames (ctorArgs |> List.map Tuple.second)
-            )
-        |> Result.fromMaybe (CouldNotFindConstructor ctorFQN)
+    case ir |> IR.lookupTypeConstructor ctorFQN of
+        Just ( typeFQN, paramNames, ctorArgs ) ->
+            Ok (ctorToMetaType ir typeFQN paramNames (ctorArgs |> List.map Tuple.second) Nothing)
+
+        Nothing ->
+            -- a constructor may refer to a record type alias
+            case ir |> IR.lookupTypeSpecification ctorFQN of
+                Just (Type.TypeAliasSpecification paramNames ((Type.Record _ fields) as recordType)) ->
+                    concreteTypeToMetaType ir Dict.empty recordType
+                        |> Count.andThen
+                            (\recordMetaType ->
+                                ctorToMetaType ir ctorFQN paramNames (fields |> List.map .tpe) (Just recordMetaType)
+                            )
+                        |> Ok
+
+                _ ->
+                    Err (CouldNotFindConstructor ctorFQN)
 
 
 lookupValue : IR -> FQName -> Result LookupError (Count MetaType)
@@ -186,8 +196,8 @@ concreteTypeToMetaType ir varToMeta tpe =
             Count.none metaUnit
 
 
-ctorToMetaType : IR -> FQName -> List Name -> List (Type ()) -> Count MetaType
-ctorToMetaType ir ctorFQName paramNames ctorArgs =
+ctorToMetaType : IR -> FQName -> List Name -> List (Type ()) -> Maybe MetaType -> Count MetaType
+ctorToMetaType ir ctorFQName paramNames ctorArgs maybeActualType =
     let
         argVariables : Set Name
         argVariables =
@@ -212,17 +222,25 @@ ctorToMetaType ir ctorFQName paramNames ctorArgs =
                             [] ->
                                 Count.one
                                     (\counter ->
-                                        metaRef ctorFQName
-                                            (paramNames
-                                                |> List.map
-                                                    (\paramName ->
-                                                        varToMeta
-                                                            |> Dict.get paramName
-                                                            -- this should never happen
-                                                            |> Maybe.withDefault (MetaType.variableByIndex counter)
-                                                            |> metaVar
-                                                    )
-                                            )
+                                        let
+                                            params : List MetaType
+                                            params =
+                                                paramNames
+                                                    |> List.map
+                                                        (\paramName ->
+                                                            varToMeta
+                                                                |> Dict.get paramName
+                                                                -- this should never happen
+                                                                |> Maybe.withDefault (MetaType.variableByIndex counter)
+                                                                |> metaVar
+                                                        )
+                                        in
+                                        case maybeActualType of
+                                            Just actualType ->
+                                                metaAlias ctorFQName params actualType
+
+                                            Nothing ->
+                                                metaRef ctorFQName params
                                     )
 
                             firstCtorArg :: restOfCtorArgs ->

@@ -21,7 +21,8 @@ var jsonObject
 
 const options = {
     target : 'JsonSchema',
-    filename: ''
+    filename: '',
+    include: ""
 }
 
 
@@ -111,7 +112,9 @@ describe('Test Suite for Collection Types', () => {
         expect(validator(setSchema, ["Foo", "Bam"])).toBe(true)
     })
 
-    test.skip('Test for Dict type', () => {
+    test('Test for Dict type', () => {
+        const dictSchema = jsonObject["$defs"]["CollectionTypes.Antonyms"]
+        expect(validator(dictSchema, [["Bitter", "Sweet"], ["Fresh", "Stale"]]))
     })
 })
 
@@ -131,7 +134,7 @@ describe('Test Suite for Composite Types - Records/Tuples', () => {
             path : "Bar",
             protocol : "http"
         }
-        expect(validator(recordSchema, recordInstance)).toBe(true)
+         expect(validator(recordSchema, recordInstance)).toBe(true)
     })
 
     test('Test for Tuple type', () => {

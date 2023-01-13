@@ -36,7 +36,7 @@ Finally, it provides a step by step walk-throughs on how various Morphir compone
     2. [Spark Backend](files/spark-backend.md)
     3. [Relational IR Backends](files/relational-backend.md)
     4. [Scala Json Codecs Backend](files/scala-backend.md)
-    5. [Json Schema Backend](files/json-schema-backend.md)
+    5. [Json Schema Backend](files/json-schema-mappings.md)
 11. [Working with CODECS](#) <br>
     1. [Introduction to Encoding/Decoding](#) <br>
     2. [JSON Decoder Building Blocks](#) <br>

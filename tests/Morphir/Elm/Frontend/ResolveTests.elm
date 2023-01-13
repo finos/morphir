@@ -55,6 +55,7 @@ moduleResolverTests =
                             Dict.fromList
                                 [ ( [ "one" ], Documented "" (Value.Specification [] (Basics.intType ())) )
                                 ]
+                        , doc = Just "module1"
                         }
                       )
                     , ( [ [ "module", "2" ] ]
@@ -67,6 +68,7 @@ moduleResolverTests =
                             Dict.fromList
                                 [ ( [ "two" ], Documented "" (Value.Specification [] (Basics.intType ())) )
                                 ]
+                        , doc = Just "module2"
                         }
                       )
                     , ( [ [ "module", "3" ] ]
@@ -79,6 +81,7 @@ moduleResolverTests =
                             Dict.fromList
                                 [ ( [ "three" ], Documented ""( Value.Specification [] (Basics.intType ())) )
                                 ]
+                        , doc = Just "module3"
                         }
                       )
                     ]
@@ -129,6 +132,7 @@ moduleResolverTests =
                             [ ( [ "zero" ], AccessControlled Private ( Documented "" (Value.Definition [] (Basics.intType ()) (Value.Literal () (WholeNumberLiteral 42)))) )
                             ]
                         )
+                        Nothing
                 }
 
         assert : String -> (List String -> String -> Result Error FQName) -> List String -> String -> FQName -> Test

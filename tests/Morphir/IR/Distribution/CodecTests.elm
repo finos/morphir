@@ -90,6 +90,7 @@ sampleIR =
                                     ]
                             , values =
                                 Dict.empty
+                            , doc = Nothing
                             }
                       )
                     , ( [ [ "module", "b" ] ]
@@ -107,6 +108,7 @@ sampleIR =
                                     ]
                             , values =
                                 Dict.empty
+                            , doc = Nothing
                             }
                       )
                     ]

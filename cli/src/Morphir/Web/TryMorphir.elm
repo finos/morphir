@@ -470,9 +470,12 @@ viewValueAsIR valueState ir fullyQualifiedName irView valueDef =
             valueDef
                 |> Value.mapDefinitionAttributes identity (always ())
 
-        ( index, ( defVar, annotatedValueDef, valueDefConstraints ) ) =
+        ( index, ( defVar, annotatedValueDef, ( valueDefConstraints, typeVariablesByIndex ) ) ) =
             Infer.constrainDefinition ir Dict.empty untypedValueDef
                 |> Count.apply 0
+
+        _ =
+            Debug.log "type variables" typeVariablesByIndex
 
         solveSteps : List (Element msg)
         solveSteps =

@@ -28,13 +28,14 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.File.FileSnapshot as FileSnapshot exposing (FileSnapshot)
 import Morphir.File.FileSnapshot.Codec as FileSnapshotCodec
-import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
+import Morphir.IR.Distribution as Distribution exposing (Distribution(..), lookupPackageName, lookupPackageSpecification)
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.Name as Name
-import Morphir.IR.Package exposing (PackageName)
+import Morphir.IR.Package exposing (PackageName, Specification)
 import Morphir.IR.Path as Path
 import Morphir.IR.Repo as Repo exposing (Error(..), Repo)
 import Morphir.IR.SDK as SDK
+import Morphir.JsonSchema.Backend
 import Morphir.Stats.Backend as Stats
 import Process
 import Task
@@ -86,6 +87,7 @@ subscriptions _ =
 type alias BuildFromScratchInput =
     { options : Frontend.Options
     , packageInfo : PackageInfo
+    , dependencies : List Distribution
     , fileSnapshot : FileSnapshot
     }
 
@@ -94,6 +96,7 @@ type alias BuildIncrementallyInput =
     { options : Frontend.Options
     , packageInfo : PackageInfo
     , fileChanges : FileChanges
+    , dependencies : List Distribution
     , distribution : Distribution
     }
 
@@ -128,15 +131,40 @@ process msg =
             let
                 decodeInput : Decode.Decoder BuildFromScratchInput
                 decodeInput =
-                    Decode.map3 BuildFromScratchInput
+                    Decode.map4 BuildFromScratchInput
                         (Decode.field "options" FrontendCodec.decodeOptions)
                         (Decode.field "packageInfo" FrontendCodec.decodePackageInfo)
+                        (Decode.field "dependencies" decodeDependenciesInput)
                         (Decode.field "fileSnapshot" FileSnapshotCodec.decodeFileSnapshot)
+
+                decodeDependenciesInput : Decode.Decoder (List Distribution)
+                decodeDependenciesInput =
+                    Decode.list DistroCodec.decodeVersionedDistribution
+
+                insertDependenciesIntoRepo : List Distribution -> Repo -> Result Repo.Errors Repo
+                insertDependenciesIntoRepo dependencyList repo =
+                    dependencyList
+                        |> List.foldl
+                            (\distro repoResult ->
+                                let
+                                    dependencySpec : Specification ()
+                                    dependencySpec =
+                                        lookupPackageSpecification distro
+
+                                    dependencyName : PackageName
+                                    dependencyName =
+                                        lookupPackageName distro
+                                in
+                                repoResult
+                                    |> Result.andThen (Repo.insertDependencySpecification dependencyName dependencySpec)
+                            )
+                            (Ok repo)
             in
             case jsonInput |> Decode.decodeValue decodeInput of
                 Ok input ->
                     Repo.empty input.packageInfo.name
-                        |> Repo.insertDependencySpecification SDK.packageName SDK.packageSpec
+                        |> insertDependenciesIntoRepo input.dependencies
+                        |> Result.andThen (Repo.insertDependencySpecification SDK.packageName SDK.packageSpec)
                         |> Result.mapError (IncrementalFrontend.RepoError "Error while building repo." >> List.singleton)
                         |> Result.map
                             (OrderFileChanges input.packageInfo.name
@@ -155,16 +183,45 @@ process msg =
             let
                 decodeInput : Decode.Decoder BuildIncrementallyInput
                 decodeInput =
-                    Decode.map4 BuildIncrementallyInput
+                    Decode.map5 BuildIncrementallyInput
                         (Decode.field "options" FrontendCodec.decodeOptions)
                         (Decode.field "packageInfo" FrontendCodec.decodePackageInfo)
                         (Decode.field "fileChanges" FileChangesCodec.decodeFileChanges)
+                        (Decode.field "dependencies" decodeDependenciesInput)
                         (Decode.field "distribution" DistroCodec.decodeVersionedDistribution)
+
+                decodeDependenciesInput : Decode.Decoder (List Distribution)
+                decodeDependenciesInput =
+                    Decode.list DistroCodec.decodeVersionedDistribution
+
+                depInsert : PackageName -> Specification () -> Distribution -> Distribution
+                depInsert name spec distro =
+                    Distribution.insertDependency name spec distro
+
+                insertDependenciesIntoDistro : List Distribution -> Distribution -> Distribution
+                insertDependenciesIntoDistro dependencyList distribution =
+                    dependencyList
+                        |> List.foldl
+                            (\distro distroResult ->
+                                let
+                                    dependencySpec : Specification ()
+                                    dependencySpec =
+                                        lookupPackageSpecification distro
+
+                                    dependencyName : PackageName
+                                    dependencyName =
+                                        lookupPackageName distro
+                                in
+                                distroResult
+                                    |> depInsert dependencyName dependencySpec
+                            )
+                            distribution
             in
             case jsonInput |> Decode.decodeValue decodeInput of
                 Ok input ->
                     input.distribution
-                        |> Distribution.insertDependency SDK.packageName SDK.packageSpec
+                        |> insertDependenciesIntoDistro input.dependencies
+                        |> depInsert SDK.packageName SDK.packageSpec
                         |> Repo.fromDistribution
                         |> Result.mapError (IncrementalFrontend.RepoError "Error while building repo." >> List.singleton)
                         |> Result.map
@@ -208,11 +265,13 @@ process msg =
                                 Library packageName dependencies packageDef ->
                                     Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
-                        fileMap : FileMap
+                        fileMap : Result Morphir.JsonSchema.Backend.Errors FileMap
                         fileMap =
                             mapDistribution options enrichedDistro
                     in
-                    fileMap |> Ok |> encodeResult Encode.string encodeFileMap |> generateResult
+                    fileMap
+                        |> encodeResult encodeErrors encodeFileMap
+                        |> generateResult
 
                 Err errorMessage ->
                     errorMessage |> Decode.errorToString |> jsonDecodeError
@@ -293,12 +352,12 @@ keepElmFilesOnly fileChanges =
 returnDistribution : Result IncrementalFrontend.Errors Repo -> Cmd Msg
 returnDistribution repoResult =
     let
-        removePackageDependencies (Library packageName _ packageDefinition) =
+        removeDependencies (Library packageName _ packageDefinition) =
             Library packageName Dict.empty packageDefinition
     in
     repoResult
         |> Result.map Repo.toDistribution
-        |> Result.map removePackageDependencies
+        |> Result.map removeDependencies
         |> encodeResult (Encode.list IncrementalFrontendCodec.encodeError) DistroCodec.encodeVersionedDistribution
         |> buildCompleted
 
@@ -327,3 +386,8 @@ encodeResult encodeErr encodeValue result =
                 [ encodeErr e
                 , Encode.null
                 ]
+
+
+encodeErrors : Morphir.JsonSchema.Backend.Errors -> Encode.Value
+encodeErrors errors =
+    Encode.list Encode.string errors
