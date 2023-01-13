@@ -327,19 +327,6 @@ mapConstructorsToEncoders tpePath (( _, _, ctorName ) as fqName) ctorArgs typePa
 -}
 mapTypeToEncoderReference : Name -> Scala.Path -> List Name -> Type ta -> Result Error Scala.Value
 mapTypeToEncoderReference tpeName tpePath typeParams tpe =
-    let
-        _ =
-            Debug.log "tpeName :" tpeName
-
-        _ =
-            Debug.log "tpePath :" tpePath
-
-        _ =
-            Debug.log "typeParams :" typeParams
-
-        _ =
-            Debug.log "tpe :" tpe
-    in
     case tpe of
         Type.Variable _ varName ->
             Scala.Variable ("encode" :: varName |> Name.toCamelCase)
