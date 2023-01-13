@@ -3,30 +3,31 @@
 This is a documentation of the mapping strategy from Morphir types to Cadl types. This document describes how types in Morphir Models are represented in Cadl. 
 Below is a quick overview of the mapping in the table:
 
-|                                       | Type                            | Cadl Type                                | Comment                         |
-|---------------------------------------|---------------------------------|------------------------------------------|---------------------------------|
-| [Basic Types](#basic-types)           |                                 |                                          |                                 |
-|                                       | `Bool`                          | `boolean`                                |                                 |
-|                                       | `Int`                           | `int64`                                  |                                 |
-|                                       | `Float`                         | `float64`                                |                                 |
-|                                       | `String`                        | `string`                                 |                                 |
-|                                       | `Char`                          | `string`                                 | Not supported. Mapped to string |
-| [Advance Types](#advance-types)       |                                 |                                          |                                 |
-|                                       | `Decimal`                       | `string`                                 | Not supported. Mapped to string |
-|                                       | `LocalDate`                     | `plainDate`                              |                                 |
-|                                       | `LocalTime`                     | `plainTime`                              |                                 |
-|                                       | `Month`                         | `string`                                 |                                 |
-|                                       | `Maybe a`                       | `a` &#124; `null`                        |                                 |
-| [Collection Types](#collection-types) |                                 |                                          |                                 |
-|                                       | `List A`                        | `Array<A>`                               |                                 |
-|                                       | `Set B`                         | `Array<B>`                               | Not Supported. Mapped to Array  |
-|                                       | `Dict A B`                      | `Array<[A,B]>`                           | Not Supported. Mapped to Array  |
-| [Composite Types](#composite-types)   |                                 |                                          |                                 |
-| - [Tuple](#tuples)                    | `(Int, String)`                 | `[int64, string]`                        |                                 |
-| - [Result](#result)                   | `Result e v`                    | `["Err", e]` &#124; `["Ok", v]`          | Expressed as tagged unions      |
-| - [Record](#record-types)             | `{ foo: Int, bar: String }`     | `{ foo: int64, bar: string }`            |                                 |
-| - [Union Types](#custom-types)        | `Foo Int` &#124; `Bar String`   | `["Foo", int64]` &#124; `["Bar, string]` |                                 |
-|                                       | `Foo` &#124; `Bar` &#124; `Baz` | `Foo` &#124; `Bar` &#124; `Baz`          | Represented as Enum             |
+|                                                 | Type                                | Cadl Type                                | Comment                                               |
+|-------------------------------------------------|-------------------------------------|------------------------------------------|-------------------------------------------------------|
+| [Basic Types](#basic-types)                     |                                     |                                          |                                                       |
+|                                                 | `Bool`                              | `boolean`                                |                                                       |
+|                                                 | `Int`                               | `int64`                                  |                                                       |
+|                                                 | `Float`                             | `float64`                                |                                                       |
+|                                                 | `String`                            | `string`                                 |                                                       |
+|                                                 | `Char`                              | `string`                                 | Not supported. Mapped to string                       |
+| [Advance Types](#advance-types)                 |                                     |                                          |                                                       |
+|                                                 | `Decimal`                           | `string`                                 | Not supported. Mapped to string                       |
+|                                                 | `LocalDate`                         | `plainDate`                              |                                                       |
+|                                                 | `LocalTime`                         | `plainTime`                              |                                                       |
+|                                                 | `Month`                             | `string`                                 |                                                       |
+|                                                 | `Maybe a`                           | `a` &#124; `null`                        |                                                       |
+| [Collection Types](#collection-types)           |                                     |                                          |                                                       |
+|                                                 | `List A`                            | `Array<A>`                               |                                                       |
+|                                                 | `Set B`                             | `Array<B>`                               | Not Supported. Mapped to Array                        |
+|                                                 | `Dict A B`                          | `Array<[A,B]>`                           | Not Supported. Mapped to Array                        |
+| [Composite Types](#composite-types)             |                                     |                                          |                                                       |
+| - [Tuple](#tuples)                              | `(Int, String)`                     | `[int64, string]`                        |                                                       |
+| - [Result](#result)                             | `Result e v`                        | `["Err", e]` &#124; `["Ok", v]`          | Expressed as tagged unions                            |
+| - [Record](#record-types)                       | `{ foo: Int, bar: String }`         | `{ foo: int64, bar: string }`            |                                                       |
+| - [Record type with Maybe Field](#record-types) | `{ foo: Maybe Float, bar: String }` | `{ foo ?: float64, bar: string }`        | Optional Fields are represented using the `?:` syntax |
+| - [Union Types](#custom-types)                  | `Foo Int` &#124; `Bar String`       | `["Foo", int64]` &#124; `["Bar, string]` |                                                       |
+|                                                 | `Foo` &#124; `Bar` &#124; `Baz`     | `Foo` &#124; `Bar` &#124; `Baz`          | Represented as Enum                                   |
 
 
 ### Basic Types
