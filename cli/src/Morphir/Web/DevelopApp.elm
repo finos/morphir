@@ -62,6 +62,7 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.NodeId exposing (NodeID(..))
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
+import Morphir.IR.QName as QName
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
 import Morphir.IR.Type as Type exposing (Type)
@@ -177,6 +178,7 @@ type alias ModelUpdate =
 type Definition
     = Value ( ModuleName, Name )
     | Type ( ModuleName, Name )
+    | Module ModuleName
 
 
 type IRState
@@ -1164,7 +1166,7 @@ viewHome model packageName packageDef =
                     )
                 )
 
-        -- Creates two tabs showing a summmary and a dep. graph, which are shown when no definition is selected
+        -- Creates three tabs showing a summary, a dep. graph and decorators which are shown when no definition is selected
         homeTabs : Element Msg
         homeTabs =
             let
@@ -1213,6 +1215,53 @@ viewHome model packageName packageDef =
 
                         Nothing ->
                             row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
+
+                viewAttributeValues : NodeID -> Element Msg
+                viewAttributeValues node =
+                    let
+                        attributeToEditors : Element Msg
+                        attributeToEditors =
+                            model.customAttributes
+                                |> Dict.toList
+                                |> List.map
+                                    (\( attrId, attrDetail ) ->
+                                        let
+                                            irValue : Maybe (Value () ())
+                                            irValue =
+                                                attrDetail.data
+                                                    |> SDKDict.get node
+
+                                            nodeDetail : AttrValueDetail
+                                            nodeDetail =
+                                                { attrId = attrId, nodeId = node }
+                                        in
+                                        ( Name.fromString attrDetail.displayName
+                                        , ValueEditor.view model.theme
+                                            (IR.fromDistribution attrDetail.iR)
+                                            (Type.Reference () attrDetail.entryPoint [])
+                                            (Attribute << ValueUpdated nodeDetail)
+                                            (model.attributeStates
+                                                |> SDKDict.get nodeDetail
+                                                |> Maybe.withDefault
+                                                    (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
+                                                        (Type.Reference () attrDetail.entryPoint [])
+                                                        irValue
+                                                    )
+                                            )
+                                        )
+                                    )
+                                |> FieldList.view
+                    in
+                    column [ spacing (model.theme |> Theme.scaled 5) ]
+                        [ attributeToEditors ]
+
+                modName =
+                    case model.homeState.selectedModule |> Maybe.map Tuple.second of
+                        Just modName1 ->
+                            modName1
+
+                        Nothing ->
+                            []
             in
             TabsComponent.view model.theme
                 { onSwitchTab = UI << SwitchTab
@@ -1226,7 +1275,7 @@ viewHome model packageName packageDef =
                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
                           }
                         , { name = "Decorators"
-                          , content = col [ text "Decorators" ]
+                          , content = col [ viewAttributeValues (ModuleID modName) ]
                           }
                         ]
                 }
@@ -1546,6 +1595,9 @@ viewDefinition packageDef theme maybeSelectedDefinition =
                             )
                         |> Maybe.withDefault none
 
+                Module moduleName ->
+                    viewModule theme moduleName "Module Selected"
+
         Nothing ->
             text "Please select a definition on the left!"
 
@@ -1705,6 +1757,20 @@ viewType theme typeName typeDef docs =
                 theme.colors.backgroundColor
                 docs
                 viewConstructors
+
+
+viewModule : Theme -> ModuleName -> String -> Element msg
+viewModule theme moduleName docs =
+    let
+        cardTitle =
+            el [ Font.extraBold, Font.size 30 ] (text (Path.toString Name.toTitleCase "." moduleName))
+    in
+    Card.viewAsCard theme
+        cardTitle
+        "record"
+        theme.colors.backgroundColor
+        docs
+        none
 
 
 
@@ -1896,6 +1962,14 @@ definitionName definition =
 
         Type ( _, typeName ) ->
             typeName
+
+        Module moduleName ->
+            case moduleName |> Path.toList |> List.head of
+                Just mName ->
+                    mName
+
+                Nothing ->
+                    []
 
 
 {-| Displays the inner workings of the selected Definition
@@ -2345,7 +2419,7 @@ viewDefinitionDetails model =
                                                     [ typeDetails
                                                     ]
                                           }
-                                        , { name = "Custom Attributes"
+                                        , { name = "Decorators"
                                           , content =
                                                 row
                                                     [ width fill
@@ -2357,6 +2431,29 @@ viewDefinitionDetails model =
                                                     , paddingXY 10 10
                                                     ]
                                                     [ viewAttributeValues (ValueID fullyQualifiedName) ]
+                                          }
+                                        ]
+                                }
+
+                        Module moduleName ->
+                            TabsComponent.view model.theme
+                                { onSwitchTab = UI << SwitchTab
+                                , activeTab = model.activeTabIndex
+                                , tabs =
+                                    Array.fromList
+                                        [ { name = "Module Details", content = column [] [] }
+                                        , { name = "Decorators"
+                                          , content =
+                                                row
+                                                    [ width fill
+                                                    , height fill
+                                                    , spacing
+                                                        (model.theme
+                                                            |> Theme.scaled 8
+                                                        )
+                                                    , paddingXY 10 10
+                                                    ]
+                                                    [ viewAttributeValues (ModuleID moduleName) ]
                                           }
                                         ]
                                 }
@@ -2406,6 +2503,9 @@ initArgumentStates irState maybeSelectedDefinition =
                                     Dict.empty
 
                         Type _ ->
+                            Dict.empty
+
+                        Module _ ->
                             Dict.empty
 
                 Nothing ->
