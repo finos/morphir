@@ -1216,6 +1216,7 @@ viewHome model packageName packageDef =
                         Nothing ->
                             row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
 
+                -- View to display the ValueEditors for Custom Attributes when a node is selected
                 viewAttributeValues : NodeID -> Element Msg
                 viewAttributeValues node =
                     let
@@ -1256,12 +1257,7 @@ viewHome model packageName packageDef =
                         [ attributeToEditors ]
 
                 modName =
-                    case model.homeState.selectedModule |> Maybe.map Tuple.second of
-                        Just modName1 ->
-                            modName1
-
-                        Nothing ->
-                            []
+                    model.homeState.selectedModule |> Maybe.map Tuple.second |> Maybe.withDefault []
             in
             TabsComponent.view model.theme
                 { onSwitchTab = UI << SwitchTab
@@ -1274,7 +1270,7 @@ viewHome model packageName packageDef =
                         , { name = "Dependency Graph"
                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
                           }
-                        , { name = "Decorators"
+                        , { name = "Custom Attributes"
                           , content = col [ viewAttributeValues (ModuleID modName) ]
                           }
                         ]
@@ -2419,7 +2415,7 @@ viewDefinitionDetails model =
                                                     [ typeDetails
                                                     ]
                                           }
-                                        , { name = "Decorators"
+                                        , { name = "Custom Attributes"
                                           , content =
                                                 row
                                                     [ width fill
@@ -2442,7 +2438,7 @@ viewDefinitionDetails model =
                                 , tabs =
                                     Array.fromList
                                         [ { name = "Module Details", content = column [] [] }
-                                        , { name = "Decorators"
+                                        , { name = "Custom Attributes"
                                           , content =
                                                 row
                                                     [ width fill

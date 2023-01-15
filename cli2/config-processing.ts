@@ -14,7 +14,6 @@ const attributesFilePath:string = "attributes/json-schema-enabled.json"
 export interface JsonBackendOptions {
       input: string,
       output: string,
-      target: string,
       targetVersion : string,
       filename: string,
       limitToModules : any,
@@ -23,44 +22,30 @@ export interface JsonBackendOptions {
       useDecorators: boolean
 }
 
-/*
-This function determines the Json Schema code generation parameters based on
-- cli defaults
-- cli user options
-- config if if it exists
-The algorithm is given below:
-
-def inferBackenConfig:
-    initialize workerOptions/selectedOptions with empty fields
-    if use-Config exists then:
-    read content of config file
-    if configFile != cliOptions
-            for each config parameter
-                Check if user explicitly specified a paramter
-                    set the workerOptions field with the parameter
-                else:
-                    set the workerOptions field with config file  field
-        else:
-            set workerOptions = configFile
-    else:
-        set workerOptions = cliOptions
-    return workerOptions
-*/
 
 // Function to read the list of types from the custom attributes file
 async function getTypesFromCustomAttributes(){
     const attributesBuffer:Buffer =  await fsReadFile(attributesFilePath);
     const attributesJson = JSON.parse(attributesBuffer.toString());
 
+    //Remove attributes where the value is false
     Object.keys(attributesJson).forEach((key:any) => {
       if (!attributesJson[key]) delete attributesJson[key];
     });
 
+    //Get all the Fully Type Names ie Value:TestModel:OptionalTypes:assignment -> OptionalType.Assignments
     const attributesFiltered = Object.keys(attributesJson)
     const typeNames = attributesFiltered.map(attrib => attrib.split(":").slice(-2).join(".") )
     return typeNames
 }
 
+/*
+    Function to determine what configuration flags to use based on the following:
+    - if useConfig flag is set, then read configuration from the JsonSchema.config.json file
+    - if useDecorator is set, then set the value of the include using types from useDecorators
+    - if a specific flag is manually set in the cli, then that specific flag is used
+    - if no flag is set, then use the commander defaults
+*/
 async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
     let selectedOptions: JsonBackendOptions = {
         input: "",
@@ -69,7 +54,6 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
         filename: "",
         limitToModules: null,
         groupSchemaBy: "",
-        target: "JsonSchema",
         include: null,
         useDecorators: false
     }
@@ -78,7 +62,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
         const configFileBuffer:Buffer =  await fsReadFile(path.resolve(configFilePath));
         const configFileJson = JSON.parse(configFileBuffer.toString());
 
-        // Check if content of config file have changed,
+        // Check if content of config file have changed ie. it's values are not the defaults
         if (configFileJson != cliOptions) {
             selectedOptions.targetVersion = cliOptions.targetVersion != "2020-12"? cliOptions.targetVersion : configFileJson.targetVersion
             selectedOptions.limitToModules = cliOptions.limitToModules != ""? cliOptions.limitToModules : configFileJson.limitToModules.split(",")
@@ -93,6 +77,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
                 cliOptions.include = getTypesFromCustomAttributes()
             }
         }
+        //Else, config file has not changed, it still contains the defaults
         else {
             selectedOptions = configFileJson
             if (cliOptions.useDecorators){
@@ -104,6 +89,8 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
         selectedOptions = cliOptions
         selectedOptions.limitToModules = cliOptions.limitToModules? cliOptions.limitToModules.split(" "): ""
         selectedOptions.include = cliOptions.include? cliOptions.include.split(" "): ""
+
+        // Get types to include from Decorators if useDecorators is set
         if (cliOptions.useDecorators){
             cliOptions.include = await getTypesFromCustomAttributes()
         }

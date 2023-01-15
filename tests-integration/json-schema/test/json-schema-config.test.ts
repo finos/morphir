@@ -16,14 +16,12 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: "",
             limitToModules: "",
             groupSchemaBy: "package",
-            target: "JsonSchema",
             include: "",
             useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
             output: './dist',
-            target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
             limitToModules: "",
@@ -42,14 +40,12 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: "Foo",
             limitToModules: "",
             groupSchemaBy: "package",
-            target: "JsonSchema",
             include: "",
             useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
             output: './dist',
-            target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: 'Foo',
             limitToModules: "",
@@ -68,14 +64,12 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: "Bar",
             limitToModules: "",
             groupSchemaBy: "module",
-            target: "JsonSchema",
             include: "",
             useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
             output: './dist',
-            target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: 'Bar',
             limitToModules: "",
@@ -94,14 +88,12 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: "",
             limitToModules: "",
             groupSchemaBy: "package",
-            target: "JsonSchema",
             include: "",
             useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
             output: './output',
-            target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
             limitToModules: "",
@@ -120,14 +112,12 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: "",
             limitToModules: "",
             groupSchemaBy: "package",
-            target: "JsonSchema",
             include: "",
             useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
             output: './dist',
-            target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
             limitToModules: "",
@@ -146,14 +136,12 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: "",
             limitToModules: "",
             groupSchemaBy: "package",
-            target: "JsonSchema",
             include: "",
             useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
             output: './dist',
-            target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
             limitToModules: "",
@@ -172,14 +160,12 @@ describe('Test for Json Schema Config Processing',  () => {
             filename: "",
             limitToModules: "BasicTypes",
             groupSchemaBy: "package",
-            target: "JsonSchema",
             include: "",
             useDecorators: false
         }
         const expectedOutputOptions: JsonBackendOptions = {
             input: 'morphir-ir.json',
             output: './dist',
-            target: 'JsonSchema',
             targetVersion: '2020-12',
             filename: '',
             limitToModules: ["BasicTypes"],

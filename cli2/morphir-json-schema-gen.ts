@@ -14,7 +14,6 @@ program
     .description('Generate Json Schema from Morphir IR')
     .option('-i, --input <path>', 'Source location where the Morphir IR will be loaded from.', 'morphir-ir.json')
     .option('-o, --output <path>', 'Target location where the generated code will be saved.', './dist')
-    .option('-t, --target <type>', 'Language to Generate.', 'JsonSchema')
     .option('-e, --target-version <version>', 'Language version to Generate.', '2020-12')
     .option('-f, --filename <filename>', 'Filename of the generated JSON Schema.', '')
     .option('-m, --limit-to-modules <comma.separated,list.of,module.names>', 'Limit the set of modules that will be included.', '')
