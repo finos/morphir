@@ -49,7 +49,7 @@ def inferBackenConfig:
 
 // Function to read the list of types from the custom attributes file
 async function getTypesFromCustomAttributes(){
-    const attributesBuffer:Buffer =  await fsReadFile(path.resolve(attributesFilePath));
+    const attributesBuffer:Buffer =  await fsReadFile(attributesFilePath);
     const attributesJson = JSON.parse(attributesBuffer.toString());
 
     Object.keys(attributesJson).forEach((key:any) => {
@@ -62,7 +62,6 @@ async function getTypesFromCustomAttributes(){
 }
 
 async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
-    getTypesFromCustomAttributes();
     let selectedOptions: JsonBackendOptions = {
         input: "",
         output: "",
