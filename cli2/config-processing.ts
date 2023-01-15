@@ -14,6 +14,7 @@ const attributesFilePath:string = "attributes/json-schema-enabled.json"
 export interface JsonBackendOptions {
       input: string,
       output: string,
+      target: string,  //Required by the Target elm module
       targetVersion : string,
       filename: string,
       limitToModules : any,
@@ -22,9 +23,8 @@ export interface JsonBackendOptions {
       useDecorators: boolean
 }
 
-
-// Function to read the list of types from the custom attributes file
-async function getTypesFromCustomAttributes(){
+// Function to read the list of module or types from the custom attributes file
+async function getNamesFromCustomAttributes(){
     const attributesBuffer:Buffer =  await fsReadFile(attributesFilePath);
     const attributesJson = JSON.parse(attributesBuffer.toString());
 
@@ -35,8 +35,9 @@ async function getTypesFromCustomAttributes(){
 
     //Get all the Fully Type Names ie Value:TestModel:OptionalTypes:assignment -> OptionalType.Assignments
     const attributesFiltered = Object.keys(attributesJson)
-    const typeNames = attributesFiltered.map(attrib => attrib.split(":").slice(-2).join(".") )
-    return typeNames
+    const moduleOrTypeNames = attributesFiltered.map(attrib =>
+        (attrib.substring(0,6) == "Module" ) ?  attrib.split(":").slice(-1).join("").trim()  : attrib.split(":").slice(-2).join(".") )
+    return moduleOrTypeNames
 }
 
 /*
@@ -50,6 +51,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
     let selectedOptions: JsonBackendOptions = {
         input: "",
         output: "",
+        target: "JsonSchema",  //Required by the Target elm module
         targetVersion: "",
         filename: "",
         limitToModules: null,
@@ -74,14 +76,14 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
                 selectedOptions.include = configFileJson.include != ""? configFileJson.include.split(",") : ""
             }
             if (cliOptions.useDecorators){
-                cliOptions.include = getTypesFromCustomAttributes()
+                cliOptions.include = getNamesFromCustomAttributes()
             }
         }
         //Else, config file has not changed, it still contains the defaults
         else {
             selectedOptions = configFileJson
             if (cliOptions.useDecorators){
-                cliOptions.include = getTypesFromCustomAttributes()
+                cliOptions.include = getNamesFromCustomAttributes()
             }
         }
     }
@@ -92,7 +94,7 @@ async function inferBackendConfig(cliOptions: any):Promise<JsonBackendOptions>{
 
         // Get types to include from Decorators if useDecorators is set
         if (cliOptions.useDecorators){
-            cliOptions.include = await getTypesFromCustomAttributes()
+            cliOptions.include = await getNamesFromCustomAttributes()
         }
     }
     return selectedOptions
