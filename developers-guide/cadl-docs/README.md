@@ -124,28 +124,28 @@ The `localDate` type in morphir defines as a gregorian date with no timezone inf
 
 Elm:
 ```elm
-import Morphir.SDK.LocalDate
+import Morphir.SDK.LocalDate exposing (LocalDate)
 
 type alias DateOfBirth = 
-    Date
+    LocalDate
 ```
 Cadl:
 ```cadl
-alias localDate = plainDate;
+alias dateOfBirth = plainDate;
 ```
 ##### [LocalTime](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-LocalTime)
 The `localTime` type in morphir defines as basic time without a timezone and its equivalent mapping in CADL is `plainTime` type.
 
 Elm:
 ```elm
-import Morphir.SDK.LocalTime
+import Morphir.SDK.LocalTime exposing (LocalTime)
 
-type alias LocalTime =
-    Posix
+type alias CurrentTime =
+    LocalTime
 ```
 Cadl:
 ```cadl
-alias LocaTime = plainDate;
+alias currentTime = plainTime;
 ```
 
 ##### [Month](https://package.elm-lang.org/packages/finos/morphir-elm/18.1.0/Morphir-SDK-Month)
@@ -154,7 +154,7 @@ exist in CADL and the alternative mapping is the `string` type.
 
 Elm:
 ```elm
-import Morphir.SDK.Month
+import Morphir.SDK.Month exposing (Month)
 
 type alias CurrentMonth =
     Month
@@ -172,10 +172,10 @@ The `maybe` type in morphir represents values that may or may not exist. This is
    Elm:
     ```elm
     type alias FooBarBaz = 
-    { foo: Int
-      , bar: Float
-      , baz: Maybe String
-    }
+        { foo: Int
+        , bar: Float
+        , baz: Maybe String
+        }
     ```
    Cadl:
     ```cadl
