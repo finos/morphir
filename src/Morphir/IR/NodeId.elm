@@ -3,13 +3,7 @@ module Morphir.IR.NodeId exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name
-import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
-import Morphir.IR.QName as QName exposing (QName)
-
-
-type alias QualifiedName =
-    ( PackageName, ModuleName )
 
 
 type NodeID
@@ -51,4 +45,4 @@ nodeIdToString nodeId =
             String.concat [ "Value:", FQName.toString fQName ]
 
         ModuleID moduleName ->
-            String.concat [ "Module: ", Path.toString Name.toTitleCase "." moduleName ]
+            String.concat [ "Module:", Path.toString Name.toTitleCase "." moduleName ]

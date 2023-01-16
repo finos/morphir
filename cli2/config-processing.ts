@@ -36,7 +36,7 @@ async function getNamesFromCustomAttributes(){
     //Get all the Fully Type Names ie Value:TestModel:OptionalTypes:assignment -> OptionalType.Assignments
     const attributesFiltered = Object.keys(attributesJson)
     const moduleOrTypeNames = attributesFiltered.map(attrib =>
-        (attrib.substring(0,6) == "Module" ) ?  attrib.split(":").slice(-1).join("").trim()  : attrib.split(":").slice(-2).join(".") )
+        (attrib.substring(0,6) == "Module" ) ?  attrib.split(":").slice(-1).join("") : attrib.split(":").slice(-2).join(".") )
     return moduleOrTypeNames
 }
 
