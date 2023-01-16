@@ -147,7 +147,7 @@ mapTypeDefinitionToEncoderTests =
                 |> AccessControlled Public
 
         accModDef =
-            AccessControlled Public { values = Dict.empty, types = Dict.singleton [ "foo" ] accTypeDef }
+            AccessControlled Public { values = Dict.empty, types = Dict.singleton [ "foo" ] accTypeDef, doc = Nothing }
     in
     describe "Tests for Generate Encoders for Custom Types"
         [ positiveTest "Empty Type Definition"

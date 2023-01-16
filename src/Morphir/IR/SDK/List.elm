@@ -124,6 +124,7 @@ moduleSpec =
                 ]
                 (listType () (Type.Tuple () [ tVar "a", maybeType () (tVar "b") ]))
             ]
+    , doc = Just "Contains the List type (representing a list of values), and it's associated functions."
     }
 
 

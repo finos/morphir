@@ -97,6 +97,7 @@ moduleSpec =
                 ]
                 (tVar "a")
             ]
+        , doc = Just "Contains the Maybe type (representing optional values), and related functions."
     }
 
 

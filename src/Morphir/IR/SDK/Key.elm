@@ -405,6 +405,7 @@ moduleSpec =
                     (tVar "b16")
                 )
             ]
+    , doc = Nothing
     }
 
 

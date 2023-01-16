@@ -111,6 +111,7 @@ moduleSpec =
                 ]
                 (resultType () (tVar "y") (tVar "a"))
             ]
+    , doc = Just "Contains the Result type (representing the result of an application that can fail), and related functions."
     }
 
 

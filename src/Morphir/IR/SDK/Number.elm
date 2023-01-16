@@ -49,6 +49,7 @@ moduleSpec =
             , vSpec "zero" [] (numberType ())
             , vSpec "one" [] (numberType ())
             ]
+    , doc = Just "The Decimal number type and associated functions."
     }
 
 

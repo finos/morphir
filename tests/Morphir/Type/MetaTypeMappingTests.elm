@@ -75,6 +75,7 @@ testIR =
                                 ]
                         , values =
                             Dict.empty
+                        , doc = Nothing
                         }
                       )
                     ]
