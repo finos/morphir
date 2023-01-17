@@ -4,6 +4,7 @@ import Array exposing (Array)
 import Array.Extra
 import Browser
 import Browser.Navigation as Nav
+import Debug exposing (log)
 import Dict exposing (Dict)
 import Element
     exposing
@@ -62,7 +63,6 @@ import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.NodeId exposing (NodeID(..))
 import Morphir.IR.Package as Package exposing (PackageName)
 import Morphir.IR.Path as Path exposing (Path)
-import Morphir.IR.QName as QName
 import Morphir.IR.Repo as Repo exposing (Repo)
 import Morphir.IR.SDK as SDK exposing (packageName)
 import Morphir.IR.Type as Type exposing (Type)
@@ -82,7 +82,7 @@ import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing)
-import Morphir.Visual.ValueEditor as ValueEditor
+import Morphir.Visual.ValueEditor as ValueEditor exposing (initEditorState)
 import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
@@ -178,7 +178,6 @@ type alias ModelUpdate =
 type Definition
     = Value ( ModuleName, Name )
     | Type ( ModuleName, Name )
-    | Module ModuleName
 
 
 type IRState
@@ -629,7 +628,48 @@ update msg model =
                     ( { model | showSaveTestError = True }, Cmd.none )
 
         ServerGetAttributeResponse attributes ->
-            ( { model | customAttributes = attributes }
+            let
+                -- We also want set the attributeStates once the attributes are fetched
+                attributeEditorState : SDKDict.Dict AttrValueDetail ValueEditor.EditorState
+                attributeEditorState =
+                    attributes
+                        |> Dict.toList
+                        |> List.map
+                            (\( customAttributeId, customAttributeDetail ) ->
+                                let
+                                    selectedModuleName =
+                                        model.homeState.selectedModule
+                                            |> Maybe.map Tuple.second
+                                            |> Maybe.withDefault []
+
+                                    nodeId =
+                                        ModuleID selectedModuleName
+
+                                    attributeValueDetails =
+                                        AttrValueDetail customAttributeId nodeId
+
+                                    irValue =
+                                        customAttributeDetail.data
+                                            |> SDKDict.get nodeId
+
+                                    nodeDetail =
+                                        { attrId = customAttributeId, nodeId = nodeId }
+
+                                    editorState =
+                                        model.attributeStates
+                                            |> SDKDict.get nodeDetail
+                                            |> Maybe.withDefault
+                                                (ValueEditor.initEditorState
+                                                    (IR.fromDistribution customAttributeDetail.iR)
+                                                    (Type.Reference () customAttributeDetail.entryPoint [])
+                                                    irValue
+                                                )
+                                in
+                                ( attributeValueDetails, editorState )
+                            )
+                        |> SDKDict.fromList
+            in
+            ( { model | customAttributes = attributes, attributeStates = attributeEditorState }
             , Cmd.none
             )
 
@@ -1235,20 +1275,25 @@ viewHome model packageName packageDef =
                                             nodeDetail : AttrValueDetail
                                             nodeDetail =
                                                 { attrId = attrId, nodeId = node }
+
+                                            editorState : ValueEditor.EditorState
+                                            editorState =
+                                                model.attributeStates
+                                                    |> SDKDict.get nodeDetail
+                                                    |> Maybe.withDefault
+                                                        (ValueEditor.initEditorState
+                                                            (IR.fromDistribution attrDetail.iR)
+                                                            (Type.Reference () attrDetail.entryPoint [])
+                                                            irValue
+                                                        )
                                         in
                                         ( Name.fromString attrDetail.displayName
-                                        , ValueEditor.view model.theme
+                                        , ValueEditor.view
+                                            model.theme
                                             (IR.fromDistribution attrDetail.iR)
                                             (Type.Reference () attrDetail.entryPoint [])
                                             (Attribute << ValueUpdated nodeDetail)
-                                            (model.attributeStates
-                                                |> SDKDict.get nodeDetail
-                                                |> Maybe.withDefault
-                                                    (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
-                                                        (Type.Reference () attrDetail.entryPoint [])
-                                                        irValue
-                                                    )
-                                            )
+                                            editorState
                                         )
                                     )
                                 |> FieldList.view
@@ -1591,9 +1636,6 @@ viewDefinition packageDef theme maybeSelectedDefinition =
                             )
                         |> Maybe.withDefault none
 
-                Module moduleName ->
-                    viewModule theme moduleName "Module Selected"
-
         Nothing ->
             text "Please select a definition on the left!"
 
@@ -1755,20 +1797,6 @@ viewType theme typeName typeDef docs =
                 viewConstructors
 
 
-viewModule : Theme -> ModuleName -> String -> Element msg
-viewModule theme moduleName docs =
-    let
-        cardTitle =
-            el [ Font.extraBold, Font.size 30 ] (text (Path.toString Name.toTitleCase "." moduleName))
-    in
-    Card.viewAsCard theme
-        cardTitle
-        "record"
-        theme.colors.backgroundColor
-        docs
-        none
-
-
 
 -- HTTP
 
@@ -1833,6 +1861,7 @@ httpSaveAttrValue attrId customAttributes =
         updatedCustomAttrDetail : Maybe CustomAttributeDetail
         updatedCustomAttrDetail =
             customAttributes
+                |> log "Attribute"
                 |> Dict.get attrId
     in
     case updatedCustomAttrDetail of
@@ -1958,14 +1987,6 @@ definitionName definition =
 
         Type ( _, typeName ) ->
             typeName
-
-        Module moduleName ->
-            case moduleName |> Path.toList |> List.head of
-                Just mName ->
-                    mName
-
-                Nothing ->
-                    []
 
 
 {-| Displays the inner workings of the selected Definition
@@ -2426,30 +2447,7 @@ viewDefinitionDetails model =
                                                         )
                                                     , paddingXY 10 10
                                                     ]
-                                                    [ viewAttributeValues (ValueID fullyQualifiedName) ]
-                                          }
-                                        ]
-                                }
-
-                        Module moduleName ->
-                            TabsComponent.view model.theme
-                                { onSwitchTab = UI << SwitchTab
-                                , activeTab = model.activeTabIndex
-                                , tabs =
-                                    Array.fromList
-                                        [ { name = "Module Details", content = column [] [] }
-                                        , { name = "Custom Attributes"
-                                          , content =
-                                                row
-                                                    [ width fill
-                                                    , height fill
-                                                    , spacing
-                                                        (model.theme
-                                                            |> Theme.scaled 8
-                                                        )
-                                                    , paddingXY 10 10
-                                                    ]
-                                                    [ viewAttributeValues (ModuleID moduleName) ]
+                                                    [ viewAttributeValues (TypeID fullyQualifiedName) ]
                                           }
                                         ]
                                 }
@@ -2499,9 +2497,6 @@ initArgumentStates irState maybeSelectedDefinition =
                                     Dict.empty
 
                         Type _ ->
-                            Dict.empty
-
-                        Module _ ->
                             Dict.empty
 
                 Nothing ->

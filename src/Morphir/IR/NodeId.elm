@@ -3,7 +3,7 @@ module Morphir.IR.NodeId exposing (..)
 import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name
-import Morphir.IR.Path as Path
+import Morphir.IR.Path as Path exposing (Path)
 
 
 type NodeID
@@ -14,25 +14,47 @@ type NodeID
 
 nodeIdFromString : String -> Result String NodeID
 nodeIdFromString str =
-    case String.split ":" str of
-        nodeType :: packageName :: moduleName :: localName :: [] ->
-            let
-                fqn : FQName
-                fqn =
-                    FQName.fqn packageName moduleName localName
-            in
-            case nodeType of
-                "Type" ->
-                    Ok <| TypeID fqn
-
+    case String.split ":" str |> List.head of
+        Just prefix ->
+            case prefix of
                 "Value" ->
-                    Ok <| ValueID fqn
+                    let
+                        splitNodeString =
+                            String.split ":" str |> List.drop 1
+                    in
+                    case splitNodeString of
+                        packageName :: moduleName :: localName :: [] ->
+                            Ok (ValueID (FQName.fqn packageName moduleName localName))
+
+                        _ ->
+                            Err <| "Value Not Valid"
+
+                "Type" ->
+                    let
+                        splitNodeString =
+                            String.split ":" str |> List.drop 1
+                    in
+                    case splitNodeString of
+                        packageName :: moduleName :: localName :: [] ->
+                            Ok (TypeID (FQName.fqn packageName moduleName localName))
+
+                        _ ->
+                            Err <| "Type Not Valid"
+
+                "Module" ->
+                    let
+                        splitNodeString =
+                            String.split ":" str |> List.drop 1 |> List.map Name.fromString
+                    in
+                    case splitNodeString of
+                        moduleName ->
+                            Ok (ModuleID (Path.fromList moduleName))
 
                 _ ->
-                    Err <| "Unknown Node type: " ++ nodeType
+                    Err <| "Invalid NodeId: " ++ str
 
-        _ ->
-            Err <| "Invalid NodeId: " ++ str
+        Nothing ->
+            Err <| "Empty prefix"
 
 
 nodeIdToString : NodeID -> String
