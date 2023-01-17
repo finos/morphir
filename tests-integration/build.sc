@@ -1,5 +1,6 @@
 // build.sc
-import mill._, scalalib._
+import mill._
+import scalalib._
 
 object generated extends Module {
   object sparkModel extends Module {
@@ -26,7 +27,7 @@ object spark extends ScalaModule {
   def moduleDeps = Seq(generated.sparkModel.spark)
   def ivyDeps = Agg(
     ivy"org.apache.spark::spark-core:3.2.1",
-    ivy"org.apache.spark::spark-sql:3.2.1",
+    ivy"org.apache.spark::spark-sql:3.2.1"
   )
 
   object test extends Tests {
@@ -37,4 +38,14 @@ object spark extends ScalaModule {
     )
     def testFrameworks = Seq("org.scalatest.tools.Framework")
   }
+}
+
+
+object codecs extends ScalaModule{
+  def scalaVersion = "2.12.12"
+
+  def ivyDeps = Agg(
+    ivy"io.circe::circe-core:0.14.1",
+    ivy"org.scala-lang.modules::scala-collection-compat:2.3.1"
+  )
 }

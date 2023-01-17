@@ -68,8 +68,8 @@ typeRef name path typeParams =
                     (Scala.TypeRef path (name |> Name.toTitleCase))
 
 
-scalaDeclaration2 : String -> String -> Scala.Type -> Name -> List Name -> Scala.Value -> Scala.Annotated Scala.MemberDecl
-scalaDeclaration2 codecPrefix codecType scalaTpe typeName typeParams scalaValue =
+scalaDeclaration : String -> String -> Scala.Type -> Name -> List Name -> Scala.Value -> Scala.Annotated Scala.MemberDecl
+scalaDeclaration codecPrefix codecType scalaTpe typeName typeParams scalaValue =
     case typeParams of
         [] ->
             Scala.withoutAnnotation
@@ -128,6 +128,21 @@ scalaDeclaration2 codecPrefix codecType scalaTpe typeName typeParams scalaValue 
                         Just scalaValue
                     }
                 )
+
+
+encoderLambda : List ( Name, Maybe Scala.Type ) -> Scala.Value -> Scala.Value
+encoderLambda types body =
+    Scala.Lambda
+        (types
+            |> List.map
+                (\( argName, tpe ) ->
+                    ( argName
+                        |> Name.toCamelCase
+                    , tpe
+                    )
+                )
+        )
+        body
 
 
 
@@ -230,7 +245,7 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath ( typeName, acce
     case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition typeParams typeExp ->
             mapTypeToEncoderReference scalaTypeName scalaTypePath typeParams typeExp
-                |> Result.map (scalaDeclaration2 "encode" "Encoder" (scalaType typeParams scalaTypeName scalaTypePath) scalaTypeName typeParams)
+                |> Result.map (scalaDeclaration "encode" "Encoder" (scalaType typeParams scalaTypeName scalaTypePath) scalaTypeName typeParams)
 
         Type.CustomTypeDefinition typeParams accessControlledCtors ->
             let
@@ -248,7 +263,7 @@ mapTypeDefinitionToEncoder currentPackagePath currentModulePath ( typeName, acce
                 |> Result.map Scala.MatchCases
                 |> Result.map (Scala.Match (Scala.Variable (scalaTypeName |> Name.toCamelCase)))
                 |> Result.map (encoderLambda [ ( scalaTypeName, typeRef scalaTypeName scalaTypePath typeParams |> Just ) ])
-                |> Result.map (scalaDeclaration2 "encode" "Encoder" (scalaType typeParams scalaTypeName scalaTypePath) scalaTypeName typeParams)
+                |> Result.map (scalaDeclaration "encode" "Encoder" (scalaType typeParams scalaTypeName scalaTypePath) scalaTypeName typeParams)
 
 
 
@@ -468,18 +483,10 @@ mapTypeToEncoderReference tpeName tpePath typeParams tpe =
                 |> Ok
 
 
-encoderLambda : List ( Name, Maybe Scala.Type ) -> Scala.Value -> Scala.Value
-encoderLambda types body =
+decoderLambda : List ( Name, Maybe Scala.Type ) -> Scala.Value -> Scala.Value
+decoderLambda args body =
     Scala.Lambda
-        (types
-            |> List.map
-                (\( argName, tpe ) ->
-                    ( argName
-                        |> Name.toCamelCase
-                    , tpe
-                    )
-                )
-        )
+        (args |> List.map (Tuple.mapFirst Name.toCamelCase))
         body
 
 
@@ -500,7 +507,7 @@ mapTypeDefinitionToDecoder currentPackagePath currentModulePath ( typeName, acce
     case accessControlledDocumentedTypeDef.value.value of
         Type.TypeAliasDefinition typeParams typeExp ->
             mapTypeToDecoderReference (Just ( scalaTypeName, scalaTypePath )) typeExp
-                |> Result.map (scalaDeclaration2 "decode" "Decoder" (scalaType typeParams scalaTypeName scalaTypePath) scalaTypeName typeParams)
+                |> Result.map (scalaDeclaration "decode" "Decoder" (scalaType typeParams scalaTypeName scalaTypePath) scalaTypeName typeParams)
 
         Type.CustomTypeDefinition typeParams accessControlledCtors ->
             let
@@ -533,7 +540,7 @@ mapTypeDefinitionToDecoder currentPackagePath currentModulePath ( typeName, acce
                                     )
                             )
             in
-            Result.map (scalaDeclaration2 "decode" "Decoder" (scalaType typeParams scalaTypeName scalaTypePath) scalaTypeName typeParams) scalaValueResult
+            Result.map (scalaDeclaration "decode" "Decoder" (scalaType typeParams scalaTypeName scalaTypePath) scalaTypeName typeParams) scalaValueResult
 
 
 mapConstructorsToDecoder : FQName -> List ( Name, Type ta ) -> Name -> Result Error ( Scala.Pattern, Scala.Value )
@@ -812,10 +819,3 @@ mapTypeToDecoderReference maybeTypeNameAndPath tpe =
                         Scala.ForComp generators yieldValue
                             |> decoderLambda [ ( Name.fromString "c", typeRef (Name.fromString "HCursor") circePackagePath [] |> Just ) ]
                     )
-
-
-decoderLambda : List ( Name, Maybe Scala.Type ) -> Scala.Value -> Scala.Value
-decoderLambda args body =
-    Scala.Lambda
-        (args |> List.map (Tuple.mapFirst Name.toCamelCase))
-        body
