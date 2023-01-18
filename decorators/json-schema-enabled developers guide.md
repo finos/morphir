@@ -1,20 +1,20 @@
-# The json-schema-enabled Decorator
-This document explains how the json-schema-enabled decorator works and how it is applied to:
-* values
+# The json-schema-enabled Decorator Developer's Guide
+This is a developer's guide on how the json-schema-enabled decorator works and how it is applied to:
 * types
 * modules
-It also explains how a Json Schema is generated based on the annotation
+It also details how configuration file is processed and how these configuration used for code generation 
 
 ## Overview of json-schema-enabled Decorator
 The json-schema-enabled decorator is modeled as a boolean type in the JsonSchema module in the
 Attribute model.
 When a json-schema-enabled decorator value of true is applied to a type or module, then json-schema
-backend code generation would be based on these. 
-When applied to a type or value, the fully qualified name is used as the key in the attributed dictionary.
-But when applied to a module, the module name is used as the key
+backend code generation would be based on these. All annotated types, as well as all their transitive dependencies
+are included in the generated schema
+When applied to a type, the fully qualified name is used as the key in the attributed dictionary.
+But when applied to a module, a tuple of (packgeName, moduleName) is used as the key
 All decorator configurations for a project are place in the attributes-conf.json file placed next to the main IR.
 
-## Custom Configuration Modeling
+## Decoration Configuration Modeling
 The Custom Attribute configuration model is found in the [CustomAttributes](../../../src/Morphir/CustomAttribute) directory.
 The main types of for the decorator configuration model are the CustomAttributeId,
 the CustomAttributeConfig, the CustomAttributesConfigs, the CustomAttributesInfo
