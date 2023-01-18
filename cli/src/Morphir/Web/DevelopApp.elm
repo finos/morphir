@@ -4,7 +4,6 @@ import Array exposing (Array)
 import Array.Extra
 import Browser
 import Browser.Navigation as Nav
-import Debug exposing (log)
 import Dict exposing (Dict)
 import Element
     exposing
@@ -224,7 +223,7 @@ init flags url key =
             , activeTabIndex = 0
             , openSections = Set.fromList [ 1 ]
             , isAboutOpen = False
-            , version = flags.version |> Debug.log "v_"
+            , version = flags.version
             , showSaveTestError = False
             }
     in
@@ -628,48 +627,7 @@ update msg model =
                     ( { model | showSaveTestError = True }, Cmd.none )
 
         ServerGetAttributeResponse attributes ->
-            let
-                -- We also want set the attributeStates once the attributes are fetched
-                attributeEditorState : SDKDict.Dict AttrValueDetail ValueEditor.EditorState
-                attributeEditorState =
-                    attributes
-                        |> Dict.toList
-                        |> List.map
-                            (\( customAttributeId, customAttributeDetail ) ->
-                                let
-                                    selectedModuleName =
-                                        model.homeState.selectedModule
-                                            |> Maybe.map Tuple.second
-                                            |> Maybe.withDefault []
-
-                                    nodeId =
-                                        ModuleID selectedModuleName
-
-                                    attributeValueDetails =
-                                        AttrValueDetail customAttributeId nodeId
-
-                                    irValue =
-                                        customAttributeDetail.data
-                                            |> SDKDict.get nodeId
-
-                                    nodeDetail =
-                                        { attrId = customAttributeId, nodeId = nodeId }
-
-                                    editorState =
-                                        model.attributeStates
-                                            |> SDKDict.get nodeDetail
-                                            |> Maybe.withDefault
-                                                (ValueEditor.initEditorState
-                                                    (IR.fromDistribution customAttributeDetail.iR)
-                                                    (Type.Reference () customAttributeDetail.entryPoint [])
-                                                    irValue
-                                                )
-                                in
-                                ( attributeValueDetails, editorState )
-                            )
-                        |> SDKDict.fromList
-            in
-            ( { model | customAttributes = attributes, attributeStates = attributeEditorState }
+            ( { model | customAttributes = attributes }
             , Cmd.none
             )
 
@@ -1180,6 +1138,55 @@ viewAbout theme version =
         ]
 
 
+
+-- View to display the ValueEditors for Custom Attributes when a node is selected
+
+
+viewAttributeValues : Model -> NodeID -> Element Msg
+viewAttributeValues model node =
+    let
+        attributeToEditors : Element Msg
+        attributeToEditors =
+            model.customAttributes
+                |> Dict.toList
+                |> List.map
+                    (\( attrId, attrDetail ) ->
+                        let
+                            irValue : Maybe (Value () ())
+                            irValue =
+                                attrDetail.data
+                                    |> SDKDict.get node
+
+                            nodeDetail : AttrValueDetail
+                            nodeDetail =
+                                { attrId = attrId, nodeId = node }
+
+                            editorState : ValueEditor.EditorState
+                            editorState =
+                                model.attributeStates
+                                    |> SDKDict.get nodeDetail
+                                    |> Maybe.withDefault
+                                        (ValueEditor.initEditorState
+                                            (IR.fromDistribution attrDetail.iR)
+                                            (Type.Reference () attrDetail.entryPoint [])
+                                            irValue
+                                        )
+                        in
+                        ( Name.fromString attrDetail.displayName
+                        , ValueEditor.view
+                            model.theme
+                            (IR.fromDistribution attrDetail.iR)
+                            (Type.Reference () attrDetail.entryPoint [])
+                            (Attribute << ValueUpdated nodeDetail)
+                            editorState
+                        )
+                    )
+                |> FieldList.view
+    in
+    column [ spacing (model.theme |> Theme.scaled 5) ]
+        [ attributeToEditors ]
+
+
 {-| Display the home UI
 -}
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
@@ -1256,51 +1263,6 @@ viewHome model packageName packageDef =
                         Nothing ->
                             row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
 
-                -- View to display the ValueEditors for Custom Attributes when a node is selected
-                viewAttributeValues : NodeID -> Element Msg
-                viewAttributeValues node =
-                    let
-                        attributeToEditors : Element Msg
-                        attributeToEditors =
-                            model.customAttributes
-                                |> Dict.toList
-                                |> List.map
-                                    (\( attrId, attrDetail ) ->
-                                        let
-                                            irValue : Maybe (Value () ())
-                                            irValue =
-                                                attrDetail.data
-                                                    |> SDKDict.get node
-
-                                            nodeDetail : AttrValueDetail
-                                            nodeDetail =
-                                                { attrId = attrId, nodeId = node }
-
-                                            editorState : ValueEditor.EditorState
-                                            editorState =
-                                                model.attributeStates
-                                                    |> SDKDict.get nodeDetail
-                                                    |> Maybe.withDefault
-                                                        (ValueEditor.initEditorState
-                                                            (IR.fromDistribution attrDetail.iR)
-                                                            (Type.Reference () attrDetail.entryPoint [])
-                                                            irValue
-                                                        )
-                                        in
-                                        ( Name.fromString attrDetail.displayName
-                                        , ValueEditor.view
-                                            model.theme
-                                            (IR.fromDistribution attrDetail.iR)
-                                            (Type.Reference () attrDetail.entryPoint [])
-                                            (Attribute << ValueUpdated nodeDetail)
-                                            editorState
-                                        )
-                                    )
-                                |> FieldList.view
-                    in
-                    column [ spacing (model.theme |> Theme.scaled 5) ]
-                        [ attributeToEditors ]
-
                 maybeModuleName =
                     model.homeState.selectedModule |> Maybe.map Tuple.second
             in
@@ -1321,7 +1283,7 @@ viewHome model packageName packageDef =
                                     attributeTabContent =
                                         case maybeModuleName of
                                             Just moduleName ->
-                                                [ viewAttributeValues (ModuleID moduleName) ]
+                                                [ viewAttributeValues model (ModuleID ( packageName, moduleName )) ]
 
                                             Nothing ->
                                                 -- Since we don't annotate package for now, we don't show the Value Editors
@@ -1872,7 +1834,6 @@ httpSaveAttrValue attrId customAttributes =
         updatedCustomAttrDetail : Maybe CustomAttributeDetail
         updatedCustomAttrDetail =
             customAttributes
-                |> log "Attribute"
                 |> Dict.get attrId
     in
     case updatedCustomAttrDetail of
@@ -2290,45 +2251,6 @@ viewDefinitionDetails model =
                         ir : IR
                         ir =
                             IR.fromDistribution distribution
-
-                        viewAttributeValues : NodeID -> Element Msg
-                        viewAttributeValues node =
-                            let
-                                attributeToEditors : Element Msg
-                                attributeToEditors =
-                                    model.customAttributes
-                                        |> Dict.toList
-                                        |> List.map
-                                            (\( attrId, attrDetail ) ->
-                                                let
-                                                    irValue : Maybe (Value () ())
-                                                    irValue =
-                                                        attrDetail.data
-                                                            |> SDKDict.get node
-
-                                                    nodeDetail : AttrValueDetail
-                                                    nodeDetail =
-                                                        { attrId = attrId, nodeId = node }
-                                                in
-                                                ( Name.fromString attrDetail.displayName
-                                                , ValueEditor.view model.theme
-                                                    (IR.fromDistribution attrDetail.iR)
-                                                    (Type.Reference () attrDetail.entryPoint [])
-                                                    (Attribute << ValueUpdated nodeDetail)
-                                                    (model.attributeStates
-                                                        |> SDKDict.get nodeDetail
-                                                        |> Maybe.withDefault
-                                                            (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
-                                                                (Type.Reference () attrDetail.entryPoint [])
-                                                                irValue
-                                                            )
-                                                    )
-                                                )
-                                            )
-                                        |> FieldList.view
-                            in
-                            column [ spacing (model.theme |> Theme.scaled 5) ]
-                                [ attributeToEditors ]
                     in
                     case selectedDefinition of
                         Value ( moduleName, valueName ) ->
@@ -2405,7 +2327,7 @@ viewDefinitionDetails model =
                                                                                 )
                                                                             , paddingXY 10 10
                                                                             ]
-                                                                            [ viewAttributeValues (ValueID fullyQualifiedName) ]
+                                                                            [ viewAttributeValues model (ValueID fullyQualifiedName) ]
                                                                   }
                                                                 ]
                                                         }
@@ -2458,7 +2380,7 @@ viewDefinitionDetails model =
                                                         )
                                                     , paddingXY 10 10
                                                     ]
-                                                    [ viewAttributeValues (TypeID fullyQualifiedName) ]
+                                                    [ viewAttributeValues model (TypeID fullyQualifiedName) ]
                                           }
                                         ]
                                 }

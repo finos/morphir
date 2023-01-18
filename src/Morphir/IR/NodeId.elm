@@ -1,60 +1,34 @@
 module Morphir.IR.NodeId exposing (..)
 
 import Morphir.IR.FQName as FQName exposing (FQName)
-import Morphir.IR.Module exposing (ModuleName)
 import Morphir.IR.Name as Name
 import Morphir.IR.Path as Path exposing (Path)
+
+
+type alias QualifiedName =
+    ( Path, Path )
 
 
 type NodeID
     = TypeID FQName
     | ValueID FQName
-    | ModuleID ModuleName
+    | ModuleID QualifiedName
 
 
 nodeIdFromString : String -> Result String NodeID
 nodeIdFromString str =
-    case String.split ":" str |> List.head of
-        Just prefix ->
-            case prefix of
-                "Value" ->
-                    let
-                        splitNodeString =
-                            String.split ":" str |> List.drop 1
-                    in
-                    case splitNodeString of
-                        packageName :: moduleName :: localName :: [] ->
-                            Ok (ValueID (FQName.fqn packageName moduleName localName))
+    case String.split ":" str of
+        [ "Value", packageName, moduleName, localName ] ->
+            Ok (ValueID (FQName.fqn packageName moduleName localName))
 
-                        _ ->
-                            Err <| "Value Not Valid"
+        [ "Type", packageName, moduleName, localName ] ->
+            Ok (TypeID (FQName.fqn packageName moduleName localName))
 
-                "Type" ->
-                    let
-                        splitNodeString =
-                            String.split ":" str |> List.drop 1
-                    in
-                    case splitNodeString of
-                        packageName :: moduleName :: localName :: [] ->
-                            Ok (TypeID (FQName.fqn packageName moduleName localName))
+        [ "Module", packageName, moduleName ] ->
+            Ok (ModuleID ( [ packageName |> Name.fromString ], [ moduleName |> Name.fromString ] ))
 
-                        _ ->
-                            Err <| "Type Not Valid"
-
-                "Module" ->
-                    let
-                        splitNodeString =
-                            String.split ":" str |> List.drop 1 |> List.map Name.fromString
-                    in
-                    case splitNodeString of
-                        moduleName ->
-                            Ok (ModuleID (Path.fromList moduleName))
-
-                _ ->
-                    Err <| "Invalid NodeId: " ++ str
-
-        Nothing ->
-            Err <| "Empty prefix"
+        _ ->
+            Err <| "Invalid NodeId" ++ str
 
 
 nodeIdToString : NodeID -> String
@@ -66,5 +40,9 @@ nodeIdToString nodeId =
         ValueID fQName ->
             String.concat [ "Value:", FQName.toString fQName ]
 
-        ModuleID moduleName ->
-            String.concat [ "Module:", Path.toString Name.toTitleCase "." moduleName ]
+        ModuleID ( packageName, moduleName ) ->
+            String.join ":"
+                [ "Module"
+                , Path.toString Name.toTitleCase "." packageName
+                , Path.toString Name.toTitleCase "." moduleName
+                ]

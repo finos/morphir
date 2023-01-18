@@ -21,7 +21,7 @@ program
     .option('-g, --group-schema-by <string>', 'Group generate schema by package, module or type.', 'package')
     .option('-c, --use-config', 'Use configuration specified in the config file.', false)
     .option('-ls, --include <comma.separated,list.of,strings>', 'Limit what will be included.', '')
-    .option('-d, --use-decorators', 'Use configuration specified in the config file.', false)
+    .option('-d, --use-decorators', 'Read configuration based on decorators in decorator dictionary.', false)
     .parse(process.argv)
 
 configProcessing.inferBackendConfig(program.opts()).then((options) => {
