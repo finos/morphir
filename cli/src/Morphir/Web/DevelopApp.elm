@@ -1301,8 +1301,8 @@ viewHome model packageName packageDef =
                     column [ spacing (model.theme |> Theme.scaled 5) ]
                         [ attributeToEditors ]
 
-                modName =
-                    model.homeState.selectedModule |> Maybe.map Tuple.second |> Maybe.withDefault []
+                maybeModuleName =
+                    model.homeState.selectedModule |> Maybe.map Tuple.second
             in
             TabsComponent.view model.theme
                 { onSwitchTab = UI << SwitchTab
@@ -1316,7 +1316,18 @@ viewHome model packageName packageDef =
                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
                           }
                         , { name = "Custom Attributes"
-                          , content = col [ viewAttributeValues (ModuleID modName) ]
+                          , content =
+                                let
+                                    attributeTabContent =
+                                        case maybeModuleName of
+                                            Just moduleName ->
+                                                [ viewAttributeValues (ModuleID moduleName) ]
+
+                                            Nothing ->
+                                                -- Since we don't annotate package for now, we don't show the Value Editors
+                                                []
+                                in
+                                col attributeTabContent
                           }
                         ]
                 }
