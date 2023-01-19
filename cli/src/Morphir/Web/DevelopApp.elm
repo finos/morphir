@@ -79,7 +79,7 @@ import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing)
-import Morphir.Visual.ValueEditor as ValueEditor
+import Morphir.Visual.ValueEditor as ValueEditor exposing (initEditorState)
 import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
@@ -221,7 +221,7 @@ init flags url key =
             , activeTabIndex = 0
             , openSections = Set.fromList [ 1 ]
             , isAboutOpen = False
-            , version = flags.version |> Debug.log "v_"
+            , version = flags.version
             , showSaveTestError = False
             }
     in
@@ -1136,6 +1136,55 @@ viewAbout theme version =
         ]
 
 
+
+-- View to display the ValueEditors for Custom Attributes when a node is selected
+
+
+viewAttributeValues : Model -> NodeID -> Element Msg
+viewAttributeValues model node =
+    let
+        attributeToEditors : Element Msg
+        attributeToEditors =
+            model.customAttributes
+                |> Dict.toList
+                |> List.map
+                    (\( attrId, attrDetail ) ->
+                        let
+                            irValue : Maybe (Value () ())
+                            irValue =
+                                attrDetail.data
+                                    |> SDKDict.get node
+
+                            nodeDetail : AttrValueDetail
+                            nodeDetail =
+                                { attrId = attrId, nodeId = node }
+
+                            editorState : ValueEditor.EditorState
+                            editorState =
+                                model.attributeStates
+                                    |> SDKDict.get nodeDetail
+                                    |> Maybe.withDefault
+                                        (ValueEditor.initEditorState
+                                            (IR.fromDistribution attrDetail.iR)
+                                            (Type.Reference () attrDetail.entryPoint [])
+                                            irValue
+                                        )
+                        in
+                        ( Name.fromString attrDetail.displayName
+                        , ValueEditor.view
+                            model.theme
+                            (IR.fromDistribution attrDetail.iR)
+                            (Type.Reference () attrDetail.entryPoint [])
+                            (Attribute << ValueUpdated nodeDetail)
+                            editorState
+                        )
+                    )
+                |> FieldList.view
+    in
+    column [ spacing (model.theme |> Theme.scaled 5) ]
+        [ attributeToEditors ]
+
+
 {-| Display the home UI
 -}
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
@@ -1162,7 +1211,7 @@ viewHome model packageName packageDef =
                     )
                 )
 
-        -- Creates two tabs showing a summmary and a dep. graph, which are shown when no definition is selected
+        -- Creates three tabs showing a summary, a dep. graph and decorators which are shown when no definition is selected
         homeTabs : Element Msg
         homeTabs =
             let
@@ -1211,6 +1260,9 @@ viewHome model packageName packageDef =
 
                         Nothing ->
                             row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
+
+                maybeModuleName =
+                    model.homeState.selectedModule |> Maybe.map Tuple.second
             in
             TabsComponent.view model.theme
                 { onSwitchTab = UI << SwitchTab
@@ -1222,6 +1274,20 @@ viewHome model packageName packageDef =
                           }
                         , { name = "Dependency Graph"
                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
+                          }
+                        , { name = "Custom Attributes"
+                          , content =
+                                let
+                                    attributeTabContent =
+                                        case maybeModuleName of
+                                            Just moduleName ->
+                                                [ viewAttributeValues model (ModuleID ( packageName, moduleName )) ]
+
+                                            Nothing ->
+                                                -- Since we don't annotate package for now, we don't show the Value Editors
+                                                []
+                                in
+                                col attributeTabContent
                           }
                         ]
                 }
@@ -2066,47 +2132,6 @@ viewDefinitionDetails model =
                         ir : IR
                         ir =
                             IR.fromDistribution distribution
-
-                        viewAttributeValues : NodeID -> Element Msg
-                        viewAttributeValues node =
-                            let
-                                attributeToEditors : Element Msg
-                                attributeToEditors =
-                                    model.customAttributes
-                                        |> Dict.toList
-                                        |> List.map
-                                            (\( attrId, attrDetail ) ->
-                                                let
-                                                    irValue : Maybe (Value () ())
-                                                    irValue =
-                                                        attrDetail.data
-                                                            |> SDKDict.get node
-                                                            |> Maybe.map
-                                                                (\iRvalue -> iRvalue)
-
-                                                    nodeDetail : AttrValueDetail
-                                                    nodeDetail =
-                                                        { attrId = attrId, nodeId = node }
-                                                in
-                                                ( Name.fromString attrDetail.displayName
-                                                , ValueEditor.view model.theme
-                                                    (IR.fromDistribution attrDetail.iR)
-                                                    (Type.Reference () attrDetail.entryPoint [])
-                                                    (Attribute << ValueUpdated nodeDetail)
-                                                    (model.attributeStates
-                                                        |> SDKDict.get nodeDetail
-                                                        |> Maybe.withDefault
-                                                            (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
-                                                                (Type.Reference () attrDetail.entryPoint [])
-                                                                irValue
-                                                            )
-                                                    )
-                                                )
-                                            )
-                                        |> FieldList.view
-                            in
-                            column [ spacing (model.theme |> Theme.scaled 5) ]
-                                [ attributeToEditors ]
                     in
                     case selectedDefinition of
                         Value ( moduleName, valueName ) ->
@@ -2183,7 +2208,7 @@ viewDefinitionDetails model =
                                                                                 )
                                                                             , paddingXY 10 10
                                                                             ]
-                                                                            [ viewAttributeValues (ValueID fullyQualifiedName) ]
+                                                                            [ viewAttributeValues model (ValueID fullyQualifiedName) ]
                                                                   }
                                                                 ]
                                                         }
@@ -2232,7 +2257,7 @@ viewDefinitionDetails model =
                                                         )
                                                     , paddingXY 10 10
                                                     ]
-                                                    [ viewAttributeValues (ValueID fullyQualifiedName) ]
+                                                    [ viewAttributeValues model (TypeID fullyQualifiedName) ]
                                           }
                                         ]
                                 }
