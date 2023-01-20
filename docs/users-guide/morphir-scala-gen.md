@@ -40,7 +40,7 @@ testInput =
     }
 */
 
-object MorphirTests {
+object GenericTest {
     case class TestCase(input: Any, expectedOutput: Any, description: String)
 
     val testCases : List[TestCase] = List(
@@ -96,7 +96,7 @@ testInput =
     }
 */
 
-class MorphirTests extends AnyFunSuite {
+class ScalaTest extends AnyFunSuite {
     test("testInput test1 - foo description") {
         assertResult("Foo")("Foo")
     }
