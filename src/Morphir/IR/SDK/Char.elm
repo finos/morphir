@@ -54,6 +54,7 @@ moduleSpec =
             , vSpec "toCode" [ ( "c", charType () ) ] (intType ())
             , vSpec "fromCode" [ ( "c", intType () ) ] (charType ())
             ]
+    , doc = Just "Contains the Char type representing a single character, and it's associated functions."
     }
 
 

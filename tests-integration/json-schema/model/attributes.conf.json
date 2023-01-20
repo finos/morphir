@@ -1,0 +1,7 @@
+{
+	"json-schema-enabled":  {
+		"displayName" : "SchemaEnabled"
+		, "entryPoint" : "Morphir.Attribute.Model:JsonSchema:SchemaEnabled"
+		, "ir" : "attributemodel/morphir-ir.json"
+	}
+}

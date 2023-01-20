@@ -35,8 +35,14 @@ const wrap =
   (...args) =>
     fn(...args).catch(args[2]);
 
+
+async function indexHtmlWithVersion () {
+  const packageJson = require(path.join(__dirname, '../package.json'))
+  const _indexHtml = await readFile (path.join(webDir, "index.html"), 'utf8');
+  return _indexHtml.replace('__VERSION_NUMBER__', packageJson.version.toString());
+
+}
 const webDir = path.join(__dirname, "web");
-const indexHtml = path.join(webDir, "index.html");
 
 const createSimpleGetJsonApi = (filePath) => {
   app.get(
@@ -44,10 +50,15 @@ const createSimpleGetJsonApi = (filePath) => {
     wrap(async (req, res, next) => {
       const jsonPath = path.join(program.opts().projectDir, filePath);
       const jsonContent = await readFile(jsonPath);
-      res.send(JSON.parse(jsonContent.toString()));
+      if (filePath == "morphir-tests.json" && jsonContent == ""){
+        res.send("{}")
+      }
+      else
+        res.send(JSON.parse(jsonContent.toString()));
     })
   );
 };
+
 
 async function getAttributeConfigJson() {
   const configPath = path.join(
@@ -63,12 +74,13 @@ async function getAttributeConfigJson() {
   }
 }
 
-app.use(express.static(webDir));
+app.use(express.static(webDir, {index: false}));
 app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.sendFile(indexHtml);
-});
+app.get("/", wrap (async (req, res, next) => {
+  res.setHeader('Content-type', 'text/html')
+  res.send(await indexHtmlWithVersion());
+}));
 
 createSimpleGetJsonApi("morphir.json");
 createSimpleGetJsonApi("morphir-ir.json");
@@ -140,9 +152,10 @@ app.post(
   })
 );
 
-app.get("*", (req, res) => {
-  res.sendFile(indexHtml);
-});
+app.get("*", wrap (async (req, res, next) => {
+  res.setHeader('Content-type', 'text/html')
+  res.send(await indexHtmlWithVersion());
+}));
 
 app.listen(port, program.opts().host, () => {
   console.log(

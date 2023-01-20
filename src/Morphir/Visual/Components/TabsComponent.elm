@@ -124,4 +124,4 @@ view theme config =
                     none
     in
     column [ width fill, height fill, spacing (Theme.largeSpacing theme) ]
-        [ row [ width fill, spacing (Theme.smallSpacing theme), Theme.borderBottom 1, Border.color theme.colors.gray ] tabHeaders, el [ width fill ] activeTab ]
+        [ row [ width fill, spacing (Theme.smallSpacing theme), Theme.borderBottom 1, Border.color theme.colors.gray ] tabHeaders, el [ width fill, height fill ] activeTab ]

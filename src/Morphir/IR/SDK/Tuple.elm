@@ -69,6 +69,7 @@ moduleSpec =
                 ]
                 (Type.Tuple () [ tVar "x", tVar "y" ])
             ]
+    , doc = Just "Functions related to Tuples"
     }
 
 

@@ -346,7 +346,6 @@ viewModuleDefinition model ir packageName moduleName _ moduleDef =
                         Card.viewAsCard theme
                             (text (nameToText valueName))
                             "value"
-                            theme.colors.backgroundColor
                             valueDef.value.doc
                             (column
                                 []

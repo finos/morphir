@@ -63,6 +63,7 @@ testReferences =
                                 ]
                         , values =
                             Dict.empty
+                        , doc = Nothing
                         }
                       )
                     ]

@@ -63,8 +63,8 @@ import Morphir.IR.Documented as Documented exposing (Documented)
 import Morphir.IR.FQName exposing (FQName)
 import Morphir.IR.Name exposing (Name)
 import Morphir.IR.Path exposing (Path)
-import Morphir.IR.Type as Type exposing (Type)
-import Morphir.IR.Value as Value exposing (Value)
+import Morphir.IR.Type as Type
+import Morphir.IR.Value as Value
 import Set exposing (Set)
 
 
@@ -94,6 +94,7 @@ A module contains types and values which is represented by two field in this typ
 type alias Specification ta =
     { types : Dict Name (Documented (Type.Specification ta))
     , values : Dict Name (Documented (Value.Specification ta))
+    , doc : Maybe String
     }
 
 
@@ -103,6 +104,7 @@ emptySpecification : Specification ta
 emptySpecification =
     { types = Dict.empty
     , values = Dict.empty
+    , doc = Nothing
     }
 
 
@@ -120,6 +122,7 @@ Type variables ta and va refer to type annotation and value annotation
 type alias Definition ta va =
     { types : Dict Name (AccessControlled (Documented (Type.Definition ta)))
     , values : Dict Name (AccessControlled (Documented (Value.Definition ta va)))
+    , doc : Maybe String
     }
 
 
@@ -129,6 +132,7 @@ emptyDefinition : Definition ta va
 emptyDefinition =
     { types = Dict.empty
     , values = Dict.empty
+    , doc = Nothing
     }
 
 
@@ -190,6 +194,7 @@ definitionToSpecification def =
                             )
                 )
             |> Dict.fromList
+    , doc = def.doc
     }
 
 
@@ -222,6 +227,7 @@ definitionToSpecificationWithPrivate def =
                     )
                 )
             |> Dict.fromList
+    , doc = def.doc
     }
 
 
@@ -257,6 +263,7 @@ mapSpecificationAttributes tf spec =
                     valueSpec |> Documented.map (Value.mapSpecificationAttributes tf)
                 )
         )
+        spec.doc
 
 
 {-| -}
@@ -277,6 +284,7 @@ mapDefinitionAttributes tf vf def =
                         (valueDef.value |> Documented.map (Value.mapDefinitionAttributes tf vf))
                 )
         )
+        def.doc
 
 
 {-| Collect all type references from the module.

@@ -237,6 +237,7 @@ frontendTest =
                                     ]
                             , values =
                                 Dict.empty
+                            , doc = Nothing
                             }
                       )
                     , ( moduleB
@@ -254,6 +255,7 @@ frontendTest =
                                     ]
                             , values =
                                 Dict.empty
+                            , doc = Nothing
                             }
                       )
                     ]
@@ -284,6 +286,7 @@ valueTests =
                             Dict.empty
                         , values =
                             Dict.empty
+                        , doc = Nothing
                         }
                       )
                     ]

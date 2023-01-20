@@ -36,6 +36,7 @@ moduleSpec =
             , vSpec "fromInt64" [ ( "n", int64Type () ) ] (intType ())
             , vSpec "toInt64" [ ( "n", intType () ) ] (maybeType () (int64Type ()))
             ]
+    , doc = Just "Contains types that represent 8, 16, 32, or 64 bit integers, and functions tha convert between these and the general Int type."
     }
 
 
