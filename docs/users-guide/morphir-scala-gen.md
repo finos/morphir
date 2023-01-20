@@ -1,3 +1,5 @@
+This document explains how to generate test cases in scala from saved morphir tests. 
+
 # Generating Scala Test Cases
 
 Morphir offers a way to generate scala test cases from test cases created using the morphir develop UI.
@@ -62,7 +64,7 @@ You will need to manually write out the tests in scala and import the generated 
 
 ```scala
 test("morphir tests should not fail") {
-    val suite = MorphirTests.testCases
+    val suite = GenericTest.testCases
 
     suite.foreach((testcase) => {
       assertResult(testcase.expectedOutput)(testcase.input)
@@ -78,6 +80,7 @@ Usage:
 ```
 
 This generates a complete runnable test suite that just can be run.
+Using this also introduces dependency on `org.scalatest::scalatest-funsuite` that you can manually add as a project dependency.
 To create a test description, it uses
 
 -   the fully qualified function name
