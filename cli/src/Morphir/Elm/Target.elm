@@ -1,5 +1,6 @@
 module Morphir.Elm.Target exposing (..)
 
+import Dict
 import Json.Decode as Decode exposing (Error, Value)
 import Morphir.Cadl.Backend
 import Morphir.File.FileMap exposing (FileMap)
@@ -74,7 +75,7 @@ mapDistribution back dist =
             Ok <| Cypher.mapDistribution options dist
 
         ScalaOptions options ->
-            Ok <| Morphir.Scala.Backend.mapDistribution options dist
+            Ok <| Morphir.Scala.Backend.mapDistribution options Dict.empty dist
 
         TypeScriptOptions options ->
             Ok <| Morphir.TypeScript.Backend.mapDistribution options dist

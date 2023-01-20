@@ -137,6 +137,7 @@ type TypeDecl
         , ctorArgs : List (List ArgDecl)
         , extends : List Type
         , members : List (Annotated MemberDecl)
+        , body : List Value
         }
     | Object
         { modifiers : List Mod

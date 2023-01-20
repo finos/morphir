@@ -21,11 +21,14 @@ interface CommandOptions {
   targetVersion: string;
   includeCodecs: boolean;
   limitToModules: string;
+  generateTestGeneric: boolean;
+  generateTestScalatest: boolean;
 }
 
 const generate = async (
     options: CommandOptions,
-    ir: string
+    ir: string,
+    testSuite: object
   ): Promise<string[]> => {
     return new Promise((resolve, reject) => {
       worker.ports.jsonDecodeError.subscribe((err: any) => {
@@ -39,9 +42,11 @@ const generate = async (
         }
       });
   
-      worker.ports.generate.send([options, ir]);
+      worker.ports.generate.send([options, ir, testSuite]);
     });
   };
+
+
 
 const gen = async (
     input: string,
@@ -52,10 +57,18 @@ const gen = async (
       recursive: true,
     });
     const morphirIrJson: Buffer = await fsReadFile(path.resolve(input));
-  
+
+    const readMorphirTestJSONPromise: Promise<object> = new Promise((resolve) => {
+        return fsReadFile(path.resolve('./morphir-tests.json'))
+            .then(bufferContent => resolve(JSON.parse(bufferContent.toString())))
+            .catch(() => resolve([]))
+    })
+    const morphirTestsJSONContent = await Promise.resolve(readMorphirTestJSONPromise)
+
     const generatedFiles: string[] = await generate(
       options,
-      JSON.parse(morphirIrJson.toString())
+      JSON.parse(morphirIrJson.toString()),
+      morphirTestsJSONContent
     );
   
     const writePromises = generatedFiles.map(
@@ -102,6 +115,8 @@ program
     .option('-c, --copy-deps', 'Copy the dependencies used by the generated code to the output path.', false)
     .option('-m, --limitToModules <comma.separated,list.of,module.names>', 'Limit the set of modules that will be included.', '')
     .option('-s, --include-codecs <boolean>', 'Generate the scala codecs as well', false)
+    .option('--generate-test-generic', 'Generate generic test cases from morphir tests that can be used for testing', false)
+    .option('--generate-test-scalatest', 'Generate runnable scalatest test cases', false)
     .parse(process.argv)
 
 gen(program.opts().input, path.resolve(program.opts().output), program.opts())

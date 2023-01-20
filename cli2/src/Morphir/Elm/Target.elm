@@ -1,6 +1,7 @@
 module Morphir.Elm.Target exposing (..)
 
 import Json.Decode as Decode exposing (Error, Value)
+import Morphir.Correctness.Test exposing (TestSuite)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.Graph.Backend.Codec
 import Morphir.Graph.CypherBackend as Cypher
@@ -55,8 +56,8 @@ decodeOptions gen =
             Decode.map (\options -> ScalaOptions options) Morphir.Scala.Backend.Codec.decodeOptions
 
 
-mapDistribution : BackendOptions -> Distribution -> Result Errors FileMap
-mapDistribution backendOptions dist =
+mapDistribution : BackendOptions -> TestSuite -> Distribution -> Result Errors FileMap
+mapDistribution backendOptions morphirTestSuite dist =
     case backendOptions of
         SpringBootOptions options ->
             Ok <| SpringBoot.mapDistribution options dist
@@ -68,7 +69,7 @@ mapDistribution backendOptions dist =
             Ok <| Cypher.mapDistribution options dist
 
         ScalaOptions options ->
-            Ok <| Morphir.Scala.Backend.mapDistribution options dist
+            Ok <| Morphir.Scala.Backend.mapDistribution options morphirTestSuite dist
 
         TypeScriptOptions options ->
             Ok <| Morphir.TypeScript.Backend.mapDistribution options dist

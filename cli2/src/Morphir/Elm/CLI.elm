@@ -17,6 +17,7 @@ port module Morphir.Elm.CLI exposing (..)
 import Dict
 import Json.Decode as Decode exposing (field, string)
 import Json.Encode as Encode
+import Morphir.Correctness.Codec as TestCodec
 import Morphir.Elm.Frontend as Frontend exposing (PackageInfo, SourceFile, SourceLocation)
 import Morphir.Elm.Frontend.Codec as FrontendCodec
 import Morphir.Elm.IncrementalFrontend as IncrementalFrontend exposing (Errors, ModuleChange(..), OrderedFileChanges)
@@ -28,6 +29,7 @@ import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.FileMap.Codec exposing (encodeFileMap)
 import Morphir.File.FileSnapshot as FileSnapshot exposing (FileSnapshot)
 import Morphir.File.FileSnapshot.Codec as FileSnapshotCodec
+import Morphir.IR as IR
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..), lookupPackageName, lookupPackageSpecification)
 import Morphir.IR.Distribution.Codec as DistroCodec
 import Morphir.IR.Name as Name
@@ -62,7 +64,7 @@ port reportProgress : String -> Cmd msg
 port jsonDecodeError : String -> Cmd msg
 
 
-port generate : (( Decode.Value, Decode.Value ) -> msg) -> Sub msg
+port generate : (( Decode.Value, Decode.Value, Decode.Value ) -> msg) -> Sub msg
 
 
 port generateResult : Encode.Value -> Cmd msg
@@ -106,7 +108,7 @@ type Msg
     | BuildIncrementally Decode.Value
     | OrderFileChanges PackageName PackageInfo Frontend.Options FileChanges Repo
     | ApplyFileChanges PackageInfo Frontend.Options (List ModuleChange) Repo
-    | Generate ( Decode.Value, Decode.Value )
+    | Generate ( Decode.Value, Decode.Value, Decode.Value )
     | Stats Decode.Value
 
 
@@ -246,7 +248,7 @@ process msg =
             IncrementalFrontend.applyFileChanges packageInfo.name orderedModuleChanges opts packageInfo.exposedModules repo
                 |> returnDistribution
 
-        Generate ( optionsJson, packageDistJson ) ->
+        Generate ( optionsJson, packageDistJson, testSuiteJson ) ->
             let
                 targetOption =
                     Decode.decodeValue (field "target" string) optionsJson
@@ -256,9 +258,22 @@ process msg =
 
                 packageDistroResult =
                     Decode.decodeValue DistroCodec.decodeVersionedDistribution packageDistJson
+
+                testSuiteResult =
+                    packageDistroResult
+                        |> Result.andThen
+                            (\packageDist ->
+                                let
+                                    ir =
+                                        IR.fromDistribution packageDist
+                                in
+                                Decode.decodeValue
+                                    (TestCodec.decodeTestSuite ir)
+                                    testSuiteJson
+                            )
             in
-            case Result.map2 Tuple.pair optionsResult packageDistroResult of
-                Ok ( options, packageDist ) ->
+            case Result.map3 (\o p t -> ( o, p, t )) optionsResult packageDistroResult testSuiteResult of
+                Ok ( options, packageDist, maybeTestSuite ) ->
                     let
                         enrichedDistro =
                             case packageDist of
@@ -267,7 +282,7 @@ process msg =
 
                         fileMap : Result Morphir.JsonSchema.Backend.Errors FileMap
                         fileMap =
-                            mapDistribution options enrichedDistro
+                            mapDistribution options maybeTestSuite enrichedDistro
                     in
                     fileMap
                         |> encodeResult encodeErrors encodeFileMap
@@ -333,7 +348,7 @@ report msg =
                     ]
                 )
 
-        Generate ( optionJson, packageDistJson ) ->
+        Generate ( optionJson, packageDistJson, _ ) ->
             reportProgress " Generating target code from IR ..."
 
         Stats _ ->

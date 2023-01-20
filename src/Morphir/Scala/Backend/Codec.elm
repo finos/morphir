@@ -29,6 +29,7 @@ module Morphir.Scala.Backend.Codec exposing (decodeOptions)
 import Json.Decode as Decode
 import Morphir.IR.Path as Path
 import Morphir.Scala.Backend exposing (Options)
+import Morphir.Scala.Feature.TestBackend as TestBE
 import Set
 
 
@@ -36,7 +37,7 @@ import Set
 -}
 decodeOptions : Decode.Decoder Options
 decodeOptions =
-    Decode.map2 Options
+    Decode.map3 Options
         (Decode.field "limitToModules"
             (Decode.maybe
                 (Decode.list
@@ -50,3 +51,11 @@ decodeOptions =
         (Decode.field "includeCodecs"
             Decode.bool
         )
+        decodeTestOptions
+
+
+decodeTestOptions : Decode.Decoder TestBE.Options
+decodeTestOptions =
+    Decode.map2 TestBE.Options
+        (Decode.field "generateTestGeneric" Decode.bool)
+        (Decode.field "generateTestScalatest" Decode.bool)

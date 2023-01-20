@@ -35,14 +35,17 @@ to the file-system.
 
 import Dict
 import List
+import Morphir.Correctness.Test exposing (TestSuite)
 import Morphir.File.FileMap exposing (FileMap)
 import Morphir.File.SourceCode exposing (Doc)
+import Morphir.IR as IR
 import Morphir.IR.Distribution as Distribution exposing (Distribution(..))
 import Morphir.IR.Module as Module exposing (ModuleName)
 import Morphir.IR.Package as Package
 import Morphir.IR.Type exposing (Type)
 import Morphir.Scala.Feature.Codec exposing (mapModuleDefinitionToCodecs)
 import Morphir.Scala.Feature.Core exposing (mapModuleDefinition)
+import Morphir.Scala.Feature.TestBackend as TestBackend
 import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
 
@@ -52,26 +55,27 @@ import Set exposing (Set)
 type alias Options =
     { limitToModules : Maybe (Set ModuleName)
     , includeCodecs : Bool
+    , testOptions : TestBackend.Options
     }
 
 
 {-| Entry point for the Scala backend. It takes the Morphir IR as the input and returns an in-memory
 representation of files generated.
 -}
-mapDistribution : Options -> Distribution -> FileMap
-mapDistribution opt distro =
+mapDistribution : Options -> TestSuite -> Distribution -> FileMap
+mapDistribution opt testSuite distro =
     case distro of
         Distribution.Library packageName dependencies packageDef ->
             case opt.limitToModules of
                 Just modulesToInclude ->
-                    mapPackageDefinition opt distro packageName (Package.selectModules modulesToInclude packageName packageDef)
+                    mapPackageDefinition opt testSuite distro packageName (Package.selectModules modulesToInclude packageName packageDef)
 
                 Nothing ->
-                    mapPackageDefinition opt distro packageName packageDef
+                    mapPackageDefinition opt testSuite distro packageName packageDef
 
 
-mapPackageDefinition : Options -> Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> FileMap
-mapPackageDefinition opt distribution packagePath packageDef =
+mapPackageDefinition : Options -> TestSuite -> Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> FileMap
+mapPackageDefinition opt testSuite distribution packagePath packageDef =
     packageDef.modules
         |> Dict.toList
         |> List.concatMap
@@ -83,6 +87,8 @@ mapPackageDefinition opt distribution packagePath packageDef =
 
                       else
                         []
+                    , testSuite
+                        |> TestBackend.genTestSuite opt.testOptions packagePath (IR.fromDistribution distribution)
                     ]
             )
         |> List.map
