@@ -56,6 +56,11 @@ decodeOptions =
 
 decodeTestOptions : Decode.Decoder TestBE.Options
 decodeTestOptions =
-    Decode.map2 TestBE.Options
-        (Decode.field "generateTestGeneric" Decode.bool)
-        (Decode.field "generateTestScalatest" Decode.bool)
+    Decode.map2
+        (\maybeGenericTest maybeScalaTest ->
+            TestBE.Options
+                (Maybe.withDefault False maybeGenericTest)
+                (Maybe.withDefault False maybeScalaTest)
+        )
+        (Decode.maybe (Decode.field "generateTestGeneric" Decode.bool))
+        (Decode.maybe (Decode.field "generateTestScalatest" Decode.bool))
