@@ -23,13 +23,13 @@ module Morphir.Scala.Feature.TestBackend exposing (..)
 import Dict
 import Morphir.Correctness.Test as T
 import Morphir.IR as IR exposing (IR)
-import Morphir.IR.FQName exposing (FQName)
-import Morphir.IR.Literal as ValueLiteral
+import Morphir.IR.FQName as FQName exposing (FQName)
 import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Package exposing (PackageName)
 import Morphir.IR.Path as Path
 import Morphir.IR.Type as Type
 import Morphir.IR.Value as Value exposing (RawValue, Value)
+import Morphir.SDK.ResultList as ResultList
 import Morphir.Scala.AST as Scala exposing (CompilationUnit)
 import Morphir.Scala.Feature.Core as Scala
 import Morphir.Type.Infer as Infer
@@ -42,6 +42,8 @@ type alias Options =
     }
 
 
+{-| Representative of the different kinds of test suite that can be generated.
+-}
 type TestKind
     = ScalaTest
     | GenericTest
@@ -51,19 +53,37 @@ type alias MorphirTestSuite =
     T.TestSuite
 
 
-type alias PartiallySpecifiedTestCase =
-    T.TestCase
-
-
-type alias FullySpecifiedMorphirTestCase =
-    { inputs : List RawValue
+{-| A morphir test case containing a list of args for a yet-to-be-specified function,
+the expected output value of the function, and the test description.
+The `input` type parameter allows for variations of the args because Morphir supports test cases with
+partially specified args
+-}
+type alias MorphirTestCase input =
+    { inputs : List input
     , expectedOutput : RawValue
     , description : String
     }
 
 
+type alias PartiallySpecified =
+    MorphirTestCase (Maybe RawValue)
+
+
+type alias FullySpecified =
+    MorphirTestCase RawValue
+
+
+{-| A representation of a test case in scala. The reason for this structure is to provide a way of
+processing scala values just once, but maintaining the different parts of the test case.
+The fields are:
+
+  - subjectWithInputsApplied: an invocation that will produce the actual output
+  - expectedOutput: the expected output
+  - description: a test description
+
+-}
 type alias ScalaTestCase =
-    { input : Scala.Value
+    { subjectWithInputsApplied : Scala.Value
     , expectedOutput : Scala.Value
     , description : Scala.Value
     }
@@ -73,6 +93,15 @@ type alias TestCaseFieldDecl =
     { name : String
     , tpe : Scala.Type
     }
+
+
+type Error
+    = TestError String
+    | InferenceError Infer.TypeError
+
+
+type alias Errors =
+    List Error
 
 
 sdkPath : List String
@@ -111,7 +140,7 @@ and the params are: packageName, ir, includeScalaTest (generate the test cases f
 The TestCases are generated at the root of the scala package as `MorphirTests.scala` and may contain runnable test cases
 if `includeScalaTest = True`.
 -}
-genTestSuite : Options -> PackageName -> IR -> MorphirTestSuite -> List CompilationUnit
+genTestSuite : Options -> PackageName -> IR -> MorphirTestSuite -> Result Errors (List CompilationUnit)
 genTestSuite opts packageName ir morphirTestSuite =
     let
         testsToGenerate : List ( TestKind, Bool )
@@ -123,35 +152,40 @@ genTestSuite opts packageName ir morphirTestSuite =
         ( fullySpecifiedTestCases, _ ) =
             splitTestSuite morphirTestSuite
 
-        scalaTestCases : List ScalaTestCase
-        scalaTestCases =
+        scalaTestCasesResult : Result Error (List ScalaTestCase)
+        scalaTestCasesResult =
             morphirTestCaseToScalaTestCase ir fullySpecifiedTestCases
     in
     testsToGenerate
         |> List.filterMap
             (\( kind, shouldGenerateForKind ) ->
                 if shouldGenerateForKind then
-                    Just
-                        { dirPath =
-                            List.concat
-                                [ packageName |> List.map (Name.toCamelCase >> String.toLower)
-                                , [ "_morphirtests" ]
-                                ]
-                        , fileName = kindToString kind ++ ".scala"
-                        , packageDecl =
-                            [ Path.toString (Name.toTitleCase >> String.toLower) "." packageName
-                            , "_morphirtests"
-                            ]
-                        , imports = []
-                        , typeDecls =
-                            [ Scala.Documented (Just "Generated based on morphir-tests.json")
-                                (createTestDecl kind scalaTestCases)
-                            ]
-                        }
+                    scalaTestCasesResult
+                        |> Result.map
+                            (\scalaTestCases ->
+                                { dirPath =
+                                    List.concat
+                                        [ packageName |> List.map (Name.toCamelCase >> String.toLower)
+                                        , [ "_morphirtests" ]
+                                        ]
+                                , fileName = kindToString kind ++ ".scala"
+                                , packageDecl =
+                                    [ Path.toString (Name.toTitleCase >> String.toLower) "." packageName
+                                    , "_morphirtests"
+                                    ]
+                                , imports = []
+                                , typeDecls =
+                                    [ Scala.Documented (Just "Generated based on morphir-tests.json")
+                                        (createTestDecl kind scalaTestCases)
+                                    ]
+                                }
+                            )
+                        |> Just
 
                 else
                     Nothing
             )
+        |> ResultList.keepAllErrors
 
 
 kindToString : TestKind -> String
@@ -164,6 +198,8 @@ kindToString testKind =
             "GenericTest"
 
 
+{-| Create a case class for a ScalaTestCase.
+-}
 createTestDecl : TestKind -> List ScalaTestCase -> Scala.Annotated Scala.TypeDecl
 createTestDecl testKind scalaTestCases =
     let
@@ -234,22 +270,16 @@ createTestDecl testKind scalaTestCases =
 maintaining the record structure. This allows creation of different kinds of test without having to do
 the value mappings again.
 -}
-morphirTestCaseToScalaTestCase : IR -> List ( FQName, FullySpecifiedMorphirTestCase ) -> List ScalaTestCase
+morphirTestCaseToScalaTestCase : IR -> List ( FQName, FullySpecified ) -> Result Error (List ScalaTestCase)
 morphirTestCaseToScalaTestCase ir fullySpecifiedMorphirTestCases =
     let
-        mapper : Int -> ( FQName, FullySpecifiedMorphirTestCase ) -> ScalaTestCase
+        mapper : Int -> ( FQName, FullySpecified ) -> Result Error ScalaTestCase
         mapper count ( fqn, testCase ) =
             let
-                valueSpec : Value.Specification ()
-                valueSpec =
+                valueSpecResult : Result Error (Value.Specification ())
+                valueSpecResult =
                     IR.lookupValueSpecification fqn ir
-                        |> Maybe.withDefault
-                            (let
-                                _ =
-                                    Debug.log "Could not find FQN" fqn
-                             in
-                             Debug.todo "FQN should always exist in IR"
-                            )
+                        |> Result.fromMaybe (TestError ("Could not find a function with FQN: " ++ FQName.toString fqn))
 
                 applyArgsOnRef : List RawValue -> RawValue -> RawValue
                 applyArgsOnRef args appliedSoFar =
@@ -261,12 +291,11 @@ morphirTestCaseToScalaTestCase ir fullySpecifiedMorphirTestCases =
                             Value.Apply () appliedSoFar nextArg
                                 |> applyArgsOnRef otherArgs
 
-                toScalaVal : Maybe (Type.Type ()) -> RawValue -> Scala.Value
+                toScalaVal : Maybe (Type.Type ()) -> RawValue -> Result Error Scala.Value
                 toScalaVal maybeTpe val =
                     val
                         |> rawValueToTypedValue ir maybeTpe
-                        |> Maybe.map (Scala.mapValue Set.empty)
-                        |> Maybe.withDefault (mapRawValue Set.empty val)
+                        |> Result.map (Scala.mapValue Set.empty)
 
                 descriptionScalaValue : Scala.Value
                 descriptionScalaValue =
@@ -288,26 +317,37 @@ morphirTestCaseToScalaTestCase ir fullySpecifiedMorphirTestCases =
                         |> Scala.StringLit
                         |> Scala.Literal
             in
-            { input =
-                applyArgsOnRef testCase.inputs (valueRef fqn)
+            Result.map2
+                (\input output ->
+                    { subjectWithInputsApplied = input
+                    , expectedOutput =
+                        output
+                    , description = descriptionScalaValue
+                    }
+                )
+                (applyArgsOnRef testCase.inputs (valueRef fqn)
                     |> toScalaVal Nothing
-            , expectedOutput =
-                testCase.expectedOutput
-                    |> toScalaVal (Just valueSpec.output)
-            , description = descriptionScalaValue
-            }
+                )
+                (valueSpecResult
+                    |> Result.andThen
+                        (\valSpec ->
+                            testCase.expectedOutput
+                                |> toScalaVal (Just valSpec.output)
+                        )
+                )
     in
     fullySpecifiedMorphirTestCases
         |> List.indexedMap mapper
+        |> ResultList.keepFirstError
 
 
 {-| Take a Morphir test suite and split it into two groups where the first group has all inputs specified,
 and the second group contains some unspecified arguments.
 -}
-splitTestSuite : MorphirTestSuite -> ( List ( FQName, FullySpecifiedMorphirTestCase ), List ( FQName, PartiallySpecifiedTestCase ) )
+splitTestSuite : MorphirTestSuite -> ( List ( FQName, FullySpecified ), List ( FQName, PartiallySpecified ) )
 splitTestSuite morphirTestSuite =
     let
-        allInputsSpecified : PartiallySpecifiedTestCase -> Bool
+        allInputsSpecified : PartiallySpecified -> Bool
         allInputsSpecified =
             List.all (\i -> i /= Nothing) << .inputs
     in
@@ -355,14 +395,14 @@ mapScalaTestCaseToScalaValue testKind scalaTestCase =
                     Scala.Block []
                         (applyOneArg
                             (applyOneArg (scalaVar "assertResult") scalaTestCase.expectedOutput)
-                            scalaTestCase.input
+                            scalaTestCase.subjectWithInputsApplied
                         )
                 ]
 
         GenericTest ->
             Scala.Apply
                 (Scala.Variable "TestCase")
-                [ scalaTestCase.input
+                [ scalaTestCase.subjectWithInputsApplied
                     |> Scala.ArgValue Nothing
                 , scalaTestCase.expectedOutput
                     |> Scala.ArgValue (Just outputField.name)
@@ -376,23 +416,14 @@ If a type is supplied to this function, it creates a value definition and then p
 If no type information is supplied, then it attempts to infer the type.
 In case of an error while inferring the type, this returns a `Nothing`
 -}
-rawValueToTypedValue : IR -> Maybe (Type.Type ()) -> RawValue -> Maybe Value.TypedValue
+rawValueToTypedValue : IR -> Maybe (Type.Type ()) -> RawValue -> Result Error Value.TypedValue
 rawValueToTypedValue ir valueType rawValue =
     let
-        resultToValue : Result e (Value ta ( b, va )) -> Maybe (Value ta va)
-        resultToValue res =
-            case res of
-                Ok v ->
-                    v
-                        |> Value.mapValueAttributes identity Tuple.second
-                        |> Just
-
-                Err err ->
-                    let
-                        _ =
-                            Debug.log "Failed to infer type" err
-                    in
-                    Nothing
+        mapInferResult : Result Infer.TypeError (Value () ( b, Type.Type () )) -> Result Error (Value () (Type.Type ()))
+        mapInferResult res =
+            res
+                |> Result.map (Value.mapValueAttributes identity Tuple.second)
+                |> Result.mapError InferenceError
     in
     case valueType of
         Just tpe ->
@@ -405,102 +436,11 @@ rawValueToTypedValue ir valueType rawValue =
             in
             Infer.inferValueDefinition ir valDef
                 |> Result.map .body
-                |> resultToValue
+                |> mapInferResult
 
         Nothing ->
             Infer.inferValue ir rawValue
-                |> resultToValue
-
-
-{-| map an untyped value to Scala.
-Ignores certain values like lambdas because they can't exist as inputs or outputs.
--}
-mapRawValue : Set Name -> Value () () -> Scala.Value
-mapRawValue inScopeVars value =
-    case value of
-        Value.Literal _ literal ->
-            let
-                wrap : List String -> String -> Scala.Lit -> Scala.Value
-                wrap modulePath moduleName lit =
-                    Scala.Apply
-                        (Scala.Ref modulePath moduleName)
-                        [ Scala.ArgValue Nothing (Scala.Literal lit) ]
-            in
-            case literal of
-                ValueLiteral.BoolLiteral v ->
-                    Scala.Literal (Scala.BooleanLit v)
-
-                ValueLiteral.CharLiteral v ->
-                    wrap [ "morphir", "sdk", "Char" ] "from" (Scala.CharacterLit v)
-
-                ValueLiteral.StringLiteral v ->
-                    Scala.Literal (Scala.StringLit v)
-
-                ValueLiteral.WholeNumberLiteral v ->
-                    wrap [ "morphir", "sdk", "Basics" ] "Int" (Scala.IntegerLit v)
-
-                ValueLiteral.FloatLiteral v ->
-                    wrap [ "morphir", "sdk", "Basics" ] "Float" (Scala.FloatLit v)
-
-                ValueLiteral.DecimalLiteral decLit ->
-                    Scala.Literal (Scala.DecimalLit decLit)
-
-        Value.Constructor _ fQName ->
-            let
-                ( path, name ) =
-                    Scala.mapFQNameToPathAndName fQName
-            in
-            Scala.Ref path (Name.toTitleCase name)
-
-        Value.Tuple _ elemValues ->
-            Scala.Tuple
-                (elemValues |> List.map (mapRawValue inScopeVars))
-
-        Value.List _ itemValues ->
-            Scala.Apply
-                (Scala.Ref [ "morphir", "sdk" ] "List")
-                (itemValues
-                    |> List.map (mapRawValue inScopeVars)
-                    |> List.map (Scala.ArgValue Nothing)
-                )
-
-        Value.Record _ fieldValues ->
-            Scala.StructuralValue
-                (fieldValues
-                    |> Dict.toList
-                    |> List.map
-                        (\( fieldName, fieldValue ) ->
-                            ( Scala.mapValueName fieldName, mapRawValue inScopeVars fieldValue )
-                        )
-                )
-
-        Value.Variable _ name ->
-            Scala.Variable (Scala.mapValueName name)
-
-        Value.Reference _ fQName ->
-            let
-                ( path, name ) =
-                    Scala.mapFQNameToPathAndName fQName
-            in
-            Scala.Ref path (Scala.mapValueName name)
-
-        Value.Field _ subjectValue fieldName ->
-            Scala.Select (mapRawValue inScopeVars subjectValue) (Scala.mapValueName fieldName)
-
-        Value.FieldFunction _ fieldName ->
-            Scala.Select Scala.Wildcard (Scala.mapValueName fieldName)
-
-        Value.Apply _ applyFun applyArg ->
-            Scala.Apply
-                (mapRawValue inScopeVars applyFun)
-                [ Scala.ArgValue Nothing (mapRawValue inScopeVars applyArg)
-                ]
-
-        Value.Unit _ ->
-            Scala.Unit
-
-        _ ->
-            Debug.todo "Not supported"
+                |> mapInferResult
 
 
 valueRef : FQName -> RawValue

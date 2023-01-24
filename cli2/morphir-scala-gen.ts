@@ -28,7 +28,7 @@ interface CommandOptions {
 const generate = async (
     options: CommandOptions,
     ir: string,
-    testSuite: object
+    testSuite: Array<object>
   ): Promise<string[]> => {
     return new Promise((resolve, reject) => {
       worker.ports.jsonDecodeError.subscribe((err: any) => {
@@ -58,12 +58,14 @@ const gen = async (
     });
     const morphirIrJson: Buffer = await fsReadFile(path.resolve(input));
 
-    const readMorphirTestJSONPromise: Promise<object> = new Promise((resolve) => {
-        return fsReadFile(path.resolve('./morphir-tests.json'))
-            .then(bufferContent => resolve(JSON.parse(bufferContent.toString())))
-            .catch(() => resolve([]))
-    })
-    const morphirTestsJSONContent = await Promise.resolve(readMorphirTestJSONPromise)
+    let morphirTestsJSONContent: Array<object> = [];
+
+    try {
+        const bufferContent = await fsReadFile(path.resolve('./morphir-tests.json'))
+        morphirTestsJSONContent = JSON.parse(bufferContent.toString())
+    } catch (_) {
+        console.log("could not read morphir-tests.json, defaulting to an empty test!")
+    }
 
     const generatedFiles: string[] = await generate(
       options,

@@ -18,6 +18,7 @@
 module Morphir.Scala.Backend exposing
     ( mapDistribution
     , Options
+    , Error(..)
     )
 
 {-| This module encapsulates the Scala backend. It takes the Morphir IR as the input and returns an in-memory
@@ -30,6 +31,7 @@ to the file-system.
 # Options
 
 @docs Options
+@docs Error
 
 -}
 
@@ -50,7 +52,7 @@ import Morphir.Scala.PrettyPrinter as PrettyPrinter
 import Set exposing (Set)
 
 
-{-| Placeholder for code generator options. Currently empty.
+{-| Placeholder for code generator options.
 -}
 type alias Options =
     { limitToModules : Maybe (Set ModuleName)
@@ -59,10 +61,16 @@ type alias Options =
     }
 
 
+{-| Possible errors during code generation.
+-}
+type Error
+    = TestError TestBackend.Errors
+
+
 {-| Entry point for the Scala backend. It takes the Morphir IR as the input and returns an in-memory
 representation of files generated.
 -}
-mapDistribution : Options -> TestSuite -> Distribution -> FileMap
+mapDistribution : Options -> TestSuite -> Distribution -> Result Error FileMap
 mapDistribution opt testSuite distro =
     case distro of
         Distribution.Library packageName dependencies packageDef ->
@@ -74,31 +82,52 @@ mapDistribution opt testSuite distro =
                     mapPackageDefinition opt testSuite distro packageName packageDef
 
 
-mapPackageDefinition : Options -> TestSuite -> Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> FileMap
+mapPackageDefinition : Options -> TestSuite -> Distribution -> Package.PackageName -> Package.Definition ta (Type ()) -> Result Error FileMap
 mapPackageDefinition opt testSuite distribution packagePath packageDef =
-    packageDef.modules
-        |> Dict.toList
-        |> List.concatMap
-            (\( modulePath, moduleImpl ) ->
-                List.concat
-                    [ mapModuleDefinition packagePath modulePath moduleImpl
-                    , if opt.includeCodecs then
-                        mapModuleDefinitionToCodecs packagePath modulePath moduleImpl
+    let
+        generatedTestsResult =
+            testSuite
+                |> TestBackend.genTestSuite opt.testOptions packagePath (IR.fromDistribution distribution)
+                |> Result.mapError TestError
 
-                      else
-                        []
-                    , testSuite
-                        |> TestBackend.genTestSuite opt.testOptions packagePath (IR.fromDistribution distribution)
-                    ]
+        generatedScala =
+            packageDef.modules
+                |> Dict.toList
+                |> List.concatMap
+                    (\( modulePath, moduleImpl ) ->
+                        List.concat
+                            [ mapModuleDefinition packagePath modulePath moduleImpl
+                            ]
+                    )
+
+        generatedCodecs =
+            if opt.includeCodecs then
+                packageDef.modules
+                    |> Dict.toList
+                    |> List.concatMap
+                        (\( modulePath, moduleImpl ) ->
+                            List.concat
+                                [ mapModuleDefinitionToCodecs packagePath modulePath moduleImpl
+                                ]
+                        )
+
+            else
+                []
+    in
+    generatedTestsResult
+        |> Result.map
+            (\generatedTests ->
+                [ generatedScala, generatedCodecs, generatedTests ]
+                    |> List.concat
+                    |> List.map
+                        (\compilationUnit ->
+                            let
+                                fileContent : Doc
+                                fileContent =
+                                    compilationUnit
+                                        |> PrettyPrinter.mapCompilationUnit (PrettyPrinter.Options 2 80)
+                            in
+                            ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
+                        )
+                    |> Dict.fromList
             )
-        |> List.map
-            (\compilationUnit ->
-                let
-                    fileContent : Doc
-                    fileContent =
-                        compilationUnit
-                            |> PrettyPrinter.mapCompilationUnit (PrettyPrinter.Options 2 80)
-                in
-                ( ( compilationUnit.dirPath, compilationUnit.fileName ), fileContent )
-            )
-        |> Dict.fromList

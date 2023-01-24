@@ -272,20 +272,28 @@ process msg =
                                     testSuiteJson
                             )
             in
-            case Result.map3 (\o p t -> ( o, p, t )) optionsResult packageDistroResult testSuiteResult of
-                Ok ( options, packageDist, maybeTestSuite ) ->
-                    let
-                        enrichedDistro =
-                            case packageDist of
-                                Library packageName dependencies packageDef ->
-                                    Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
+            case
+                Result.map3
+                    (\options packageDist maybeTestSuite ->
+                        let
+                            enrichedDistro =
+                                case packageDist of
+                                    Library packageName dependencies packageDef ->
+                                        Library packageName (Dict.union Frontend.defaultDependencies dependencies) packageDef
 
-                        fileMap : Result Morphir.JsonSchema.Backend.Errors FileMap
-                        fileMap =
-                            mapDistribution options maybeTestSuite enrichedDistro
-                    in
+                            fileMap : Result Encode.Value FileMap
+                            fileMap =
+                                mapDistribution options maybeTestSuite enrichedDistro
+                        in
+                        fileMap
+                    )
+                    optionsResult
+                    packageDistroResult
+                    testSuiteResult
+            of
+                Ok fileMap ->
                     fileMap
-                        |> encodeResult encodeErrors encodeFileMap
+                        |> encodeResult identity encodeFileMap
                         |> generateResult
 
                 Err errorMessage ->
