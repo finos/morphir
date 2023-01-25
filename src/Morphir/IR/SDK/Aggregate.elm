@@ -106,6 +106,15 @@ moduleSpec =
                 , ( "list", listType () (tVar "a") )
                 ]
                 (listType () (tVar "b"))
+            , vSpec "aggregateMap4"
+                [ ( "agg1", aggregationType () (tVar "a") (tVar "key1") )
+                , ( "agg2", aggregationType () (tVar "a") (tVar "key2") )
+                , ( "agg3", aggregationType () (tVar "a") (tVar "key3") )
+                , ( "agg4", aggregationType () (tVar "a") (tVar "key4") )
+                , ( "f", tFun [ floatType (), floatType (), floatType (), floatType (), tVar "a" ] (tVar "b") )
+                , ( "list", listType () (tVar "a") )
+                ]
+                (listType () (tVar "b"))
             , vSpec "groupBy"
                 [ ( "getKey", tFun [ tVar "a" ] (tVar "key") )
                 , ( "list", listType () (tVar "a") )
@@ -117,6 +126,7 @@ moduleSpec =
                 ]
                 (listType () (tVar "b"))
             ]
+    , doc = Just "Aggregation type and associated functions."
     }
 
 

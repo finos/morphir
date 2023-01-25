@@ -2,10 +2,9 @@ module Morphir.Visual.Components.SectionComponent exposing (..)
 
 import Element exposing (Element, column, el, fill, height, none, pointer, row, spacing, text, width)
 import Element.Background as Background
-import Element.Border as Border
 import Element.Events exposing (onClick)
 import Element.Font as Font
-import Morphir.Visual.Theme exposing (Theme, mediumSpacing, scaled, smallSpacing)
+import Morphir.Visual.Theme exposing (Theme, mediumSpacing, smallSpacing)
 
 
 type alias Config msg =

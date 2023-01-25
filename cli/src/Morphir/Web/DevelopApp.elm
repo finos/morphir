@@ -9,7 +9,6 @@ import Element
     exposing
         ( Element
         , above
-        , alignLeft
         , alignRight
         , centerX
         , centerY
@@ -19,7 +18,6 @@ import Element
         , fill
         , fillPortion
         , height
-        , html
         , image
         , layout
         , link
@@ -51,7 +49,7 @@ import FontAwesome.Styles as Icon
 import Http exposing (emptyBody, jsonBody)
 import Morphir.Correctness.Codec exposing (decodeTestSuite, encodeTestSuite)
 import Morphir.Correctness.Test exposing (TestCase, TestSuite)
-import Morphir.CustomAttribute.Codec exposing (decodeAttributes, decodeCustomAttributeData, encodeAttributeData)
+import Morphir.CustomAttribute.Codec exposing (decodeAttributes, encodeAttributeData)
 import Morphir.CustomAttribute.CustomAttribute exposing (CustomAttributeDetail, CustomAttributeId, CustomAttributeInfo)
 import Morphir.IR as IR exposing (IR)
 import Morphir.IR.Distribution exposing (Distribution(..))
@@ -73,20 +71,23 @@ import Morphir.Value.Interpreter exposing (evaluateFunctionValue)
 import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToDisplayString, pathToFullUrl, pathToUrl, tooltip)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Components.FieldList as FieldList
+import Morphir.Visual.Components.ModalComponent exposing (attachModal)
 import Morphir.Visual.Components.SectionComponent as SectionComponent
 import Morphir.Visual.Components.SelectableElement as SelectableElement
 import Morphir.Visual.Components.TabsComponent as TabsComponent
-import Morphir.Visual.Components.TreeLayout as TreeLayout
+import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
-import Morphir.Visual.Theme as Theme exposing (Theme)
-import Morphir.Visual.ValueEditor as ValueEditor
+import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing)
+import Morphir.Visual.ValueEditor as ValueEditor exposing (initEditorState)
 import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
 import Morphir.Web.Graph.DependencyGraph exposing (dependencyGraph)
 import Ordering
+import Process
 import Set exposing (Set)
+import Task
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing (..)
 import Url.Parser.Query as Query
@@ -96,7 +97,7 @@ import Url.Parser.Query as Query
 -- MAIN
 
 
-main : Program () Model Msg
+main : Program Flags Model Msg
 main =
     Browser.application
         { init = init
@@ -118,7 +119,7 @@ type alias Model =
     , irState : IRState
     , serverState : ServerState
     , testSuite : Dict FQName (Array TestCase)
-    , collapsedModules : Set (TreeLayout.NodePath ModuleName)
+    , collapsedModules : Set (TreeViewComponent.NodePath ModuleName)
     , showModules : Bool
     , showDefinitions : Bool
     , homeState : HomeState
@@ -132,6 +133,14 @@ type alias Model =
     , testDescription : String
     , activeTabIndex : Int
     , openSections : Set Int
+    , isAboutOpen : Bool
+    , version : String
+    , showSaveTestError : Bool
+    }
+
+
+type alias Flags =
+    { version : String
     }
 
 
@@ -145,7 +154,7 @@ type alias AttributeEditorState =
 
 type alias HomeState =
     { selectedPackage : Maybe PackageName
-    , selectedModule : Maybe ( TreeLayout.NodePath ModuleName, ModuleName )
+    , selectedModule : Maybe ( TreeViewComponent.NodePath ModuleName, ModuleName )
     , selectedDefinition : Maybe Definition
     , filterState : FilterState
     }
@@ -178,8 +187,8 @@ type ServerState
     | ServerHttpError Http.Error
 
 
-init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init _ url key =
+init : Flags -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
     let
         initModel =
             { key = key
@@ -210,7 +219,10 @@ init _ url key =
             , selectedTestcaseIndex = -1
             , testDescription = ""
             , activeTabIndex = 0
-            , openSections = Set.empty
+            , openSections = Set.fromList [ 1 ]
+            , isAboutOpen = False
+            , version = flags.version
+            , showSaveTestError = False
             }
     in
     ( toRoute url initModel
@@ -239,6 +251,7 @@ emptyVisualState =
 type Msg
     = Navigate NavigationMsg
     | HttpError Http.Error
+    | DismissHttpError
     | ServerGetIRResponse Distribution
     | ServerGetTestsResponse TestSuite
     | ServerGetAttributeResponse CustomAttributeInfo
@@ -265,6 +278,7 @@ type TestingMsg
     | LoadTestCase (List ( Name, Type () )) (List (Maybe RawValue)) String Int
     | UpdateTestCase FQName TestCase
     | UpdateDescription String
+    | ShowSaveTestError
 
 
 type NavigationMsg
@@ -276,10 +290,11 @@ type NavigationMsg
 type UIMsg
     = ToggleModulesMenu
     | ToggleDefinitionsMenu
-    | ExpandModule (TreeLayout.NodePath ModuleName)
-    | CollapseModule (TreeLayout.NodePath ModuleName)
+    | ExpandModule (TreeViewComponent.NodePath ModuleName)
+    | CollapseModule (TreeViewComponent.NodePath ModuleName)
     | SwitchTab Int
     | ToggleSection Int
+    | ToggleAboutModal Bool
 
 
 type FilterMsg
@@ -313,6 +328,10 @@ update msg model =
         fromStoredTestSuite testSuite =
             Dict.fromList (List.map (\( k, v ) -> ( k, Array.fromList v )) (Dict.toList testSuite))
 
+        resetTabs : Model -> Model
+        resetTabs m =
+            { m | activeTabIndex = 0 }
+
         toStoredTestSuite : Dict FQName (Array TestCase) -> Dict FQName (List TestCase)
         toStoredTestSuite testSuite =
             Dict.fromList
@@ -333,16 +352,16 @@ update msg model =
                 LinkClicked urlRequest ->
                     case urlRequest of
                         Browser.Internal url ->
-                            ( model, Nav.pushUrl model.key (Url.toString url) )
+                            ( resetTabs model, Nav.pushUrl model.key (Url.toString url) )
 
                         Browser.External href ->
-                            ( model, Nav.load href )
+                            ( resetTabs model, Nav.load href )
 
                 UrlChanged url ->
-                    ( toRoute url model, Cmd.none )
+                    ( model |> resetTabs |> toRoute url, Cmd.none )
 
                 DefinitionSelected url ->
-                    ( model, Nav.pushUrl model.key url )
+                    ( resetTabs model, Nav.pushUrl model.key url )
 
         HttpError httpError ->
             case model.irState of
@@ -351,7 +370,8 @@ update msg model =
 
                 _ ->
                     ( { model | serverState = ServerHttpError httpError }
-                    , Cmd.none
+                    , Process.sleep (10 * 1000)
+                        |> Task.perform (\_ -> DismissHttpError)
                     )
 
         ServerGetIRResponse distribution ->
@@ -412,6 +432,9 @@ update msg model =
 
                     else
                         ( { model | openSections = Set.insert sectionId model.openSections }, Cmd.none )
+
+                ToggleAboutModal isOpen ->
+                    ( { model | isAboutOpen = isOpen }, Cmd.none )
 
         ServerGetTestsResponse testSuite ->
             ( { model | testSuite = fromStoredTestSuite testSuite }, Cmd.none )
@@ -504,8 +527,8 @@ update msg model =
                     )
 
                 ModuleClicked path ->
-                    ( model
-                    , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | moduleClicked = path })
+                    ( resetTabs model
+                    , Nav.replaceUrl model.key (filterStateToQueryParams { filterState | moduleClicked = path, searchText = "" })
                     )
 
         Testing testingMsg ->
@@ -529,7 +552,7 @@ update msg model =
                                 (Array.Extra.update model.selectedTestcaseIndex (always newTestCase) (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
                     in
-                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
+                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState, showSaveTestError = False }
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
@@ -578,6 +601,7 @@ update msg model =
                         , insightViewState = { insightViewState | variables = newVariables }
                         , selectedTestcaseIndex = index
                         , testDescription = description
+                        , showSaveTestError = False
                       }
                     , Cmd.none
                     )
@@ -593,16 +617,14 @@ update msg model =
                                 (Array.push newTestCase (Dict.get fQName model.testSuite |> Maybe.withDefault Array.empty))
                                 model.testSuite
                     in
-                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState }
+                    ( { model | testSuite = newTestSuite, selectedTestcaseIndex = -1, testDescription = "", argStates = initalArgState, insightViewState = initInsightViewState initalArgState, showSaveTestError = False }
                     , httpSaveTestSuite (IR.fromDistribution getDistribution) (toStoredTestSuite newTestSuite) (toStoredTestSuite model.testSuite)
                     )
 
+                ShowSaveTestError ->
+                    ( { model | showSaveTestError = True }, Cmd.none )
+
         ServerGetAttributeResponse attributes ->
-            --let
-            --    newCustomAttributeStructure : CustomAttributeValuesByNodeID
-            --    newCustomAttributeStructure =
-            --        toAttributeValueByNodeId attributes
-            --in
             ( { model | customAttributes = attributes }
             , Cmd.none
             )
@@ -623,13 +645,20 @@ update msg model =
                                         (\attrDetail ->
                                             let
                                                 irValueUpdate : SDKDict.Dict NodeID (Value () ()) -> SDKDict.Dict NodeID (Value () ())
-                                                irValueUpdate =
-                                                    SDKDict.update valueDetail.nodeId
-                                                        (Maybe.andThen
-                                                            (\_ ->
-                                                                attrState.lastValidValue
+                                                irValueUpdate data =
+                                                    if SDKDict.member valueDetail.nodeId data then
+                                                        SDKDict.update valueDetail.nodeId
+                                                            (Maybe.andThen
+                                                                (\_ ->
+                                                                    attrState.lastValidValue
+                                                                )
                                                             )
-                                                        )
+                                                            data
+
+                                                    else
+                                                        SDKDict.insert valueDetail.nodeId
+                                                            (attrState.lastValidValue |> Maybe.withDefault (Value.Unit ()))
+                                                            data
                                             in
                                             { attrDetail
                                                 | data =
@@ -647,6 +676,13 @@ update msg model =
                             ( { model | customAttributes = newCustomAttribute, attributeStates = newEditState }
                             , httpSaveAttrValue valueDetail.attrId newCustomAttribute
                             )
+
+        DismissHttpError ->
+            let
+                newModel =
+                    { model | serverState = ServerReady }
+            in
+            ( newModel, Cmd.none )
 
 
 
@@ -710,7 +746,7 @@ updateHomeState pack mod def filterState =
                 initialArgState =
                     initArgumentStates model.irState maybeSelectedDefinition
             in
-            { model | homeState = newState, insightViewState = initInsightViewState initialArgState, argStates = initialArgState, selectedTestcaseIndex = -1, testDescription = "" }
+            { model | homeState = newState, insightViewState = initInsightViewState initialArgState, argStates = initialArgState, selectedTestcaseIndex = -1, testDescription = "", openSections = Set.fromList [ 1 ] }
 
         -- When selecting a definition, we should not change the selected module, once the user explicitly selected one
         keepOrChangeSelectedModule : ( List Path, List Name )
@@ -933,23 +969,24 @@ view model =
             , Font.size model.theme.fontSize
             , width fill
             , height fill
+            , attachModal model.theme { content = viewAbout model.theme model.version, isOpen = model.isAboutOpen, onClose = UI (ToggleAboutModal False) }
             ]
             (column
                 [ width fill
                 , height fill
                 ]
                 [ viewHeader model
+                , el
+                    [ width fill
+                    , height fill
+                    ]
+                    (viewBody model)
                 , case model.serverState of
                     ServerReady ->
                         none
 
                     ServerHttpError error ->
                         viewServerError error
-                , el
-                    [ width fill
-                    , height fill
-                    ]
-                    (viewBody model)
                 ]
             )
         ]
@@ -965,24 +1002,40 @@ viewHeader model =
         , Background.color model.theme.colors.brandPrimary
         ]
         [ row
-            [ width fill ]
-            [ row
-                [ width fill
-                ]
-                [ el [ padding 6 ]
-                    (image
-                        [ height (px 40)
+            [ width fill, paddingEach { top = 0, left = 0, bottom = 0, right = largeSpacing model.theme } ]
+            [ link []
+                { url = "/home" ++ filterStateToQueryParams model.homeState.filterState
+                , label =
+                    row
+                        [ width fill
                         ]
-                        { src = "/assets/2020_Morphir_Logo_Icon_WHT.svg"
-                        , description = "Morphir Logo"
-                        }
-                    )
-                , el
-                    [ paddingXY 10 0
-                    , Font.size (model.theme |> Theme.scaled 5)
-                    ]
-                    (text "Morphir Web")
+                        [ el [ padding 6 ]
+                            (image
+                                [ height (px 40)
+                                ]
+                                { src = "/assets/2020_Morphir_Logo_Icon_WHT.svg"
+                                , description = "Morphir Logo"
+                                }
+                            )
+                        , el
+                            [ paddingXY 10 0
+                            , Font.size (model.theme |> Theme.scaled 5)
+                            ]
+                            (text "Morphir Web")
+                        ]
+                }
+            , el
+                [ alignRight
+                , pointer
+                , Theme.borderBottom 1
+                , Border.color model.theme.colors.brandPrimary
+                , mouseOver [ Border.color model.theme.colors.lightest ]
+                , onClick (UI (ToggleAboutModal True))
+                , Font.color model.theme.colors.lightest
+                , Font.size (Theme.scaled 5 model.theme)
                 ]
+              <|
+                text " ⓘ "
             ]
         ]
 
@@ -1041,59 +1094,237 @@ viewBody model =
             viewHome model packageName packageDef
 
 
+listStyles : Theme -> List (Element.Attribute msg)
+listStyles theme =
+    [ width fill
+    , Background.color theme.colors.lightest
+    , theme |> Theme.borderRounded
+    , paddingXY (theme |> Theme.scaled 3) (theme |> Theme.scaled -1)
+    ]
+
+
+viewAbout : Theme -> String -> Element Msg
+viewAbout theme version =
+    let
+        about : Element msg
+        about =
+            row [ width fill, padding (largePadding theme) ] [ paragraph [] [ text "On this page you can browse through the types and definitions of a MorphIR package, and see how they behave and interact.", text "Select a definition on the left to begin. " ] ]
+
+        feedback : Element msg
+        feedback =
+            let
+                gitHubLink =
+                    link [] { url = "https://github.com/finos/morphir-elm/issues", label = el [ Font.color theme.colors.brandPrimary ] (text "GitHub issues page.") }
+            in
+            row [ width fill, padding (largePadding theme) ] [ text "If you would like to report a bug, or to provide feedback, please visit our ", gitHubLink ]
+
+        close : Element Msg
+        close =
+            el [ alignRight, onClick (UI (ToggleAboutModal False)), pointer ] (text " x ")
+
+        sectionTitleStyles : List (Element.Attribute msg)
+        sectionTitleStyles =
+            [ width fill, Font.size (Theme.scaled 5 theme), Font.bold ]
+    in
+    column [ width fill, height fill, padding (largePadding theme), spacing (largeSpacing theme), Background.color theme.colors.lightest, Border.color theme.colors.lightest, borderRounded theme ]
+        [ row sectionTitleStyles [ text "About", close ]
+        , about
+        , row sectionTitleStyles [ text "Feedback" ]
+        , feedback
+        , row sectionTitleStyles [ text "Version" ]
+        , row [ width fill, padding (largePadding theme) ] [ text <| "This page is currently running version " ++ version ]
+        ]
+
+
+
+-- View to display the ValueEditors for Custom Attributes when a node is selected
+
+
+viewAttributeValues : Model -> NodeID -> Element Msg
+viewAttributeValues model node =
+    let
+        attributeToEditors : Element Msg
+        attributeToEditors =
+            model.customAttributes
+                |> Dict.toList
+                |> List.map
+                    (\( attrId, attrDetail ) ->
+                        let
+                            irValue : Maybe (Value () ())
+                            irValue =
+                                attrDetail.data
+                                    |> SDKDict.get node
+
+                            nodeDetail : AttrValueDetail
+                            nodeDetail =
+                                { attrId = attrId, nodeId = node }
+
+                            editorState : ValueEditor.EditorState
+                            editorState =
+                                model.attributeStates
+                                    |> SDKDict.get nodeDetail
+                                    |> Maybe.withDefault
+                                        (ValueEditor.initEditorState
+                                            (IR.fromDistribution attrDetail.iR)
+                                            (Type.Reference () attrDetail.entryPoint [])
+                                            irValue
+                                        )
+                        in
+                        ( Name.fromString attrDetail.displayName
+                        , ValueEditor.view
+                            model.theme
+                            (IR.fromDistribution attrDetail.iR)
+                            (Type.Reference () attrDetail.entryPoint [])
+                            (Attribute << ValueUpdated nodeDetail)
+                            editorState
+                        )
+                    )
+                |> FieldList.view
+    in
+    column [ spacing (model.theme |> Theme.scaled 5) ]
+        [ attributeToEditors ]
+
+
 {-| Display the home UI
 -}
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
 viewHome model packageName packageDef =
     let
-        -- Styles to make the module tree and the definition list
-        listStyles : List (Element.Attribute msg)
-        listStyles =
-            [ width fill
-            , Background.color model.theme.colors.lightest
-            , model.theme |> Theme.borderRounded
-            , paddingXY (model.theme |> Theme.scaled 3) (model.theme |> Theme.scaled -1)
+        -- A document tree like view of the modules in the current package
+        moduleTree : Element Msg
+        moduleTree =
+            el
+                (listStyles model.theme ++ [ height fill, scrollbars ])
+                (TreeViewComponent.view model.theme
+                    { onCollapse = UI << CollapseModule
+                    , onExpand = UI << ExpandModule
+                    , collapsedPaths = model.collapsedModules
+                    , selectedPaths =
+                        model.homeState.selectedModule
+                            |> Maybe.map (Tuple.first >> Set.singleton)
+                            |> Maybe.withDefault Set.empty
+                    }
+                    (viewModuleNames model
+                        packageName
+                        []
+                        (packageDef.modules |> Dict.keys)
+                    )
+                )
+
+        -- Creates three tabs showing a summary, a dep. graph and decorators which are shown when no definition is selected
+        homeTabs : Element Msg
+        homeTabs =
+            let
+                col : List (Element msg) -> Element msg
+                col elements =
+                    column
+                        [ height fill
+                        , width fill
+                        , scrollbars
+                        ]
+                        elements
+
+                leafModules : ModuleName -> List ModuleName
+                leafModules moduleName =
+                    packageDef.modules |> Dict.keys |> List.filter (\l -> List.concat l |> String.join "." |> String.startsWith (List.concat moduleName |> String.join "."))
+
+                summary : Element msg
+                summary =
+                    let
+                        numberOfModules : Int
+                        numberOfModules =
+                            packageDef.modules |> Dict.keys |> List.length
+
+                        displayNumberofValuesAndTypes : Module.Definition ta va -> List Name -> Element msg
+                        displayNumberofValuesAndTypes moduledef moduleName =
+                            row [ width fill ] [ text <| (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ " : " ++ String.fromInt (moduledef.values |> Dict.keys |> List.length) ++ " definition(s) and " ++ String.fromInt (moduledef.types |> Dict.keys |> List.length) ++ " type(s)." ]
+
+                        displayDocumentation : Module.Definition ta va -> Element msg
+                        displayDocumentation moduleWithDoc =
+                            row [ width fill ] [ text (moduleWithDoc.doc |> Maybe.withDefault "") ]
+                    in
+                    case model.homeState.selectedModule of
+                        Just ( _, moduleName ) ->
+                            column [ spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme), height fill, scrollbars ]
+                                (leafModules moduleName
+                                    |> List.map
+                                        (\mn ->
+                                            case Dict.get mn packageDef.modules of
+                                                Just acmd ->
+                                                    column [ height fill ] [ displayDocumentation acmd.value, el [ height fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] <| displayNumberofValuesAndTypes acmd.value mn ]
+
+                                                Nothing ->
+                                                    Element.none
+                                        )
+                                )
+
+                        Nothing ->
+                            row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
+
+                maybeModuleName =
+                    model.homeState.selectedModule |> Maybe.map Tuple.second
+            in
+            TabsComponent.view model.theme
+                { onSwitchTab = UI << SwitchTab
+                , activeTab = model.activeTabIndex
+                , tabs =
+                    Array.fromList
+                        [ { name = "Summary"
+                          , content = col [ summary ]
+                          }
+                        , { name = "Dependency Graph"
+                          , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
+                          }
+                        , { name = "Custom Attributes"
+                          , content =
+                                let
+                                    attributeTabContent =
+                                        case maybeModuleName of
+                                            Just moduleName ->
+                                                [ viewAttributeValues model (ModuleID ( packageName, moduleName )) ]
+
+                                            Nothing ->
+                                                -- Since we don't annotate package for now, we don't show the Value Editors
+                                                []
+                                in
+                                col attributeTabContent
+                          }
+                        ]
+                }
+    in
+    row [ width fill, height fill, Background.color model.theme.colors.gray, spacing (Theme.smallSpacing model.theme) ]
+        [ column
+            [ width (fillPortion 1)
+            , height fill
+            , scrollbars
             ]
+            [ column [ width fill, height fill, scrollbars, spacing (Theme.smallSpacing model.theme) ]
+                [ ifThenElse model.showModules moduleTree none
+                , ifThenElse model.showDefinitions (definitionList packageDef model) none
+                ]
+            ]
+        , column
+            [ height fill
+            , width (fillPortion 4)
+            , Background.color model.theme.colors.lightest
+            , scrollbars
+            ]
+            [ ifThenElse (model.homeState.selectedDefinition == Nothing)
+                homeTabs
+                (column
+                    [ scrollbars, height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, width fill, spacing (model.theme |> Theme.scaled 1) ]
+                    [ viewDefinition packageDef model.theme model.homeState.selectedDefinition
+                    , el [ height fill, width fill, scrollbars ]
+                        (viewDefinitionDetails model)
+                    ]
+                )
+            ]
+        ]
 
-        -- Display a single selected definition on the ui
-        viewDefinition : Maybe Definition -> Element Msg
-        viewDefinition maybeSelectedDefinition =
-            case maybeSelectedDefinition of
-                Just selectedDefinition ->
-                    case selectedDefinition of
-                        Value ( moduleName, valueName ) ->
-                            packageDef.modules
-                                |> Dict.get moduleName
-                                |> Maybe.andThen
-                                    (\accessControlledModuleDef ->
-                                        accessControlledModuleDef.value.values
-                                            |> Dict.get valueName
-                                            |> Maybe.map
-                                                (\valueDef ->
-                                                    column []
-                                                        [ viewValue model.theme moduleName valueName valueDef.value.value valueDef.value.doc
-                                                        ]
-                                                )
-                                    )
-                                |> Maybe.withDefault none
 
-                        Type ( moduleName, typeName ) ->
-                            packageDef.modules
-                                |> Dict.get moduleName
-                                |> Maybe.andThen
-                                    (\accessControlledModuleDef ->
-                                        accessControlledModuleDef.value.types
-                                            |> Dict.get typeName
-                                            |> Maybe.map
-                                                (\typeDef ->
-                                                    ViewType.viewType model.theme typeName typeDef.value.value typeDef.value.doc
-                                                )
-                                    )
-                                |> Maybe.withDefault none
-
-                Nothing ->
-                    text "Please select a definition on the left!"
-
+definitionList : Package.Definition () (Type ()) -> Model -> Element Msg
+definitionList packageDef model =
+    let
         -- Given a module name and a module definition, returns a list of tuples with the module's definitions, and their human readable form
         moduleDefinitionsAsUiElements : ModuleName -> Module.Definition () (Type ()) -> List ( Definition, Element Msg )
         moduleDefinitionsAsUiElements moduleName moduleDef =
@@ -1231,63 +1462,6 @@ viewHome model packageName packageDef =
                 |> getElements
                 |> column [ height fill, width fill ]
 
-        -- Creates a text input to search defintions by name
-        definitionFilter : Element Msg
-        definitionFilter =
-            Element.Input.search
-                [ Font.size model.theme.fontSize
-                , padding (model.theme |> Theme.scaled -2)
-                , width (fillPortion 7)
-                ]
-                { onChange = Filter << SearchDefinition
-                , text = model.homeState.filterState.searchText
-                , placeholder = Just (Element.Input.placeholder [] (text "Search for a definition"))
-                , label = Element.Input.labelHidden "Search"
-                }
-
-        -- Creates a checkbox to filter out values from the definition list
-        valueCheckbox : Element Msg
-        valueCheckbox =
-            Element.Input.checkbox
-                [ width (fillPortion 2) ]
-                { onChange = Filter << ToggleValues
-                , checked = model.homeState.filterState.showValues
-                , icon = Element.Input.defaultCheckbox
-                , label = Element.Input.labelLeft [] (text "values:")
-                }
-
-        -- Creates a checkbox to filter out types from the definition list
-        typeCheckbox : Element Msg
-        typeCheckbox =
-            Element.Input.checkbox
-                [ width (fillPortion 2) ]
-                { onChange = Filter << ToggleTypes
-                , checked = model.homeState.filterState.showTypes
-                , icon = Element.Input.defaultCheckbox
-                , label = Element.Input.labelLeft [] (text "types:")
-                }
-
-        -- A document tree like view of the modules in the current package
-        moduleTree : Element Msg
-        moduleTree =
-            el
-                (listStyles ++ [ height fill, scrollbars ])
-                (TreeLayout.view TreeLayout.defaultTheme
-                    { onCollapse = UI << CollapseModule
-                    , onExpand = UI << ExpandModule
-                    , collapsedPaths = model.collapsedModules
-                    , selectedPaths =
-                        model.homeState.selectedModule
-                            |> Maybe.map (Tuple.first >> Set.singleton)
-                            |> Maybe.withDefault Set.empty
-                    }
-                    (viewModuleNames model
-                        packageName
-                        []
-                        (packageDef.modules |> Dict.keys)
-                    )
-                )
-
         -- A path to the currently selected module in an easily readable format
         pathToSelectedModule =
             let
@@ -1324,56 +1498,117 @@ viewHome model packageName packageDef =
 
                 _ ->
                     [ text ">" ]
-
-        -- Second column on the UI, the list of definitions in a module
-        definitionList : Element Msg
-        definitionList =
-            column
-                [ Background.color model.theme.colors.gray
-                , height fill
-                , width (ifThenElse model.showModules (fillPortion 3) fill)
-                , spacing (model.theme |> Theme.scaled -2)
-                , clipX
-                ]
-                [ row
-                    [ width fill
-                    , spacing (model.theme |> Theme.scaled 1)
-                    , height <| fillPortion 2
-                    ]
-                    [ definitionFilter, row [ alignRight, spacing (model.theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
-                , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ]
-                    pathToSelectedModule
-                , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
-                ]
     in
-    row [ width fill, height fill, Background.color model.theme.colors.gray, spacing (Theme.smallSpacing model.theme) ]
-        [ column
-            [ width (fillPortion 1)
-            , height fill
-            , scrollbars
-            ]
-            [ column [ width fill, height fill, scrollbars, spacing (Theme.smallSpacing model.theme) ]
-                [ ifThenElse model.showModules moduleTree none
-                , ifThenElse model.showDefinitions definitionList none
-                ]
-            ]
-        , column
-            [ height fill
-            , width (fillPortion 4)
-            , Background.color model.theme.colors.lightest
-            , scrollbars
-            ]
-            [ ifThenElse (model.homeState.selectedDefinition == Nothing)
-                (dependencyGraph model.homeState.selectedModule model.repo)
-                (column
-                    [ scrollbars, height (fillPortion 2), paddingEach { bottom = 3, top = model.theme |> Theme.scaled 1, left = model.theme |> Theme.scaled 1, right = 0 }, width fill, spacing (model.theme |> Theme.scaled 1) ]
-                    [ viewDefinition model.homeState.selectedDefinition
-                    , el [ height fill, width fill, scrollbars ]
-                        (viewDefinitionDetails model)
-                    ]
-                )
-            ]
+    column
+        [ Background.color model.theme.colors.gray
+        , height fill
+        , width (ifThenElse model.showModules (fillPortion 3) fill)
+        , spacing (model.theme |> Theme.scaled -2)
+        , clipX
         ]
+        [ definitionFilters model.theme model.homeState
+        , row [ width fill, height <| fillPortion 1, Font.bold, paddingXY 5 0 ]
+            pathToSelectedModule
+        , Element.Keyed.row ([ width fill, height <| fillPortion 23, scrollbars ] ++ listStyles model.theme) [ ( "definitions", viewDefinitionLabels (model.homeState.selectedModule |> Maybe.map Tuple.second) ) ]
+        ]
+
+
+
+{-
+   Creates UI elements to filter definitions by name, and type/value
+-}
+
+
+definitionFilters : Theme -> HomeState -> Element Msg
+definitionFilters theme homeState =
+    let
+        -- Creates a text input to search defintions by name
+        definitionFilter : Element Msg
+        definitionFilter =
+            Element.Input.search
+                [ Font.size theme.fontSize
+                , padding (theme |> Theme.scaled -2)
+                , width (fillPortion 7)
+                ]
+                { onChange = Filter << SearchDefinition
+                , text = homeState.filterState.searchText
+                , placeholder = Just (Element.Input.placeholder [] (text "Search for a definition"))
+                , label = Element.Input.labelHidden "Search"
+                }
+
+        -- Creates a checkbox to filter out values from the definition list
+        valueCheckbox : Element Msg
+        valueCheckbox =
+            Element.Input.checkbox
+                [ width (fillPortion 2) ]
+                { onChange = Filter << ToggleValues
+                , checked = homeState.filterState.showValues
+                , icon = Element.Input.defaultCheckbox
+                , label = Element.Input.labelLeft [] (text "values:")
+                }
+
+        -- Creates a checkbox to filter out types from the definition list
+        typeCheckbox : Element Msg
+        typeCheckbox =
+            Element.Input.checkbox
+                [ width (fillPortion 2) ]
+                { onChange = Filter << ToggleTypes
+                , checked = homeState.filterState.showTypes
+                , icon = Element.Input.defaultCheckbox
+                , label = Element.Input.labelLeft [] (text "types:")
+                }
+    in
+    row
+        [ width fill
+        , spacing (theme |> Theme.scaled 1)
+        , height <| fillPortion 2
+        ]
+        [ definitionFilter, row [ alignRight, spacing (theme |> Theme.scaled 1) ] [ valueCheckbox, typeCheckbox ] ]
+
+
+
+{-
+   Display a single selected definition on the ui
+-}
+
+
+viewDefinition : Package.Definition () (Type ()) -> Theme -> Maybe Definition -> Element Msg
+viewDefinition packageDef theme maybeSelectedDefinition =
+    case maybeSelectedDefinition of
+        Just selectedDefinition ->
+            case selectedDefinition of
+                Value ( moduleName, valueName ) ->
+                    packageDef.modules
+                        |> Dict.get moduleName
+                        |> Maybe.andThen
+                            (\accessControlledModuleDef ->
+                                accessControlledModuleDef.value.values
+                                    |> Dict.get valueName
+                                    |> Maybe.map
+                                        (\valueDef ->
+                                            column []
+                                                [ viewValue theme moduleName valueName valueDef.value.value valueDef.value.doc
+                                                ]
+                                        )
+                            )
+                        |> Maybe.withDefault none
+
+                Type ( moduleName, typeName ) ->
+                    packageDef.modules
+                        |> Dict.get moduleName
+                        |> Maybe.andThen
+                            (\accessControlledModuleDef ->
+                                accessControlledModuleDef.value.types
+                                    |> Dict.get typeName
+                                    |> Maybe.map
+                                        (\typeDef ->
+                                            ViewType.viewType theme typeName typeDef.value.value typeDef.value.doc
+                                        )
+                            )
+                        |> Maybe.withDefault none
+
+        Nothing ->
+            text "Please select a definition on the left!"
 
 
 {-| Display detailed information of a Value on the UI
@@ -1387,7 +1622,7 @@ viewValue theme moduleName valueName valueDef docs =
                 { url =
                     "/module/" ++ (moduleName |> List.map Name.toTitleCase |> String.join ".") ++ "?filter=" ++ nameToText valueName
                 , label =
-                    text (nameToText valueName)
+                    el [ Font.extraBold, Font.size 30 ] (text (nameToText valueName))
                 }
 
         isData : Bool
@@ -1410,9 +1645,10 @@ viewValue theme moduleName valueName valueDef docs =
          else
             "calculation"
         )
-        backgroundColor
         (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
         none
+
+
 
 
 
@@ -1536,9 +1772,9 @@ httpSaveTestSuite ir newTestSuite oldTestSuite =
         }
 
 
-{-| Display a TreeLayout of clickable module names in the given package, with urls pointing to the give module
+{-| Display a Tree View of clickable module names in the given package, with urls pointing to the give module
 -}
-viewModuleNames : Model -> PackageName -> ModuleName -> List ModuleName -> TreeLayout.Node ModuleName Msg
+viewModuleNames : Model -> PackageName -> ModuleName -> List ModuleName -> TreeViewComponent.Node ModuleName Msg
 viewModuleNames model packageName parentModule allModuleNames =
     let
         currentModuleName : Maybe Name
@@ -1561,7 +1797,7 @@ viewModuleNames model packageName parentModule allModuleNames =
                 |> Set.fromList
                 |> Set.toList
     in
-    TreeLayout.Node
+    TreeViewComponent.Node
         (\_ ->
             case currentModuleName of
                 Just name ->
@@ -1664,16 +1900,23 @@ viewDefinitionDetails model =
             , Font.size model.theme.fontSize
             ]
 
-        saveTestcaseButton : FQName -> TestCase -> Element Msg
-        saveTestcaseButton fqName testCase =
+        saveTestCaseButton : FQName -> Maybe TestCase -> Element Msg
+        saveTestCaseButton fqName testCase =
             let
-                saveMsg : Msg
-                saveMsg =
-                    Testing (SaveTestSuite fqName testCase)
+                message : Msg
+                message =
+                    Testing
+                        (case testCase of
+                            Just tc ->
+                                SaveTestSuite fqName tc
+
+                            Nothing ->
+                                ShowSaveTestError
+                        )
             in
             Element.Input.button
                 buttonStyles
-                { onPress = Just saveMsg
+                { onPress = Just message
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save as new testcase" ]
                 }
 
@@ -1714,16 +1957,23 @@ viewDefinitionDetails model =
                                     [ text "Not enough information. Maybe the output depends on an input you have not set yet?" ]
 
                                 expectedOutput ->
-                                    [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "value ="), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
-                                    , row [ width fill, spacing (theme |> Theme.scaled 1) ]
+                                    [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "Output value: "), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
+                                    , column [ width fill, spacing (theme |> Theme.scaled 1) ]
                                         [ descriptionInput
-                                        , ifThenElse (Dict.isEmpty model.argStates) none (saveTestcaseButton fQName { testCase | expectedOutput = expectedOutput })
+                                        , saveTestCaseButton fQName (Just { testCase | expectedOutput = expectedOutput })
+                                        , ifThenElse (Dict.isEmpty model.argStates && model.showSaveTestError) (el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
                                         , ifThenElse (model.selectedTestcaseIndex < 0) none (updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         ]
                                     ]
 
                         Err _ ->
-                            [ text "Invalid or missing inputs" ]
+                            [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "Output value: "), text " Unable to compute " ]
+                            , column [ width fill, spacing (theme |> Theme.scaled 1) ]
+                                [ descriptionInput
+                                , saveTestCaseButton fQName Nothing
+                                , ifThenElse model.showSaveTestError (el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
+                                ]
+                            ]
                     )
                 )
 
@@ -1878,6 +2128,11 @@ viewDefinitionDetails model =
         IRLoaded ((Library packageName _ packageDef) as distribution) ->
             case model.homeState.selectedDefinition of
                 Just selectedDefinition ->
+                    let
+                        ir : IR
+                        ir =
+                            IR.fromDistribution distribution
+                    in
                     case selectedDefinition of
                         Value ( moduleName, valueName ) ->
                             case packageDef.modules |> Dict.get moduleName of
@@ -1896,51 +2151,6 @@ viewDefinitionDetails model =
                                                     inputs : List (Maybe RawValue)
                                                     inputs =
                                                         valueDef.inputTypes |> List.map (\( argName, _, _ ) -> Dict.get argName model.insightViewState.variables)
-
-                                                    ir : IR
-                                                    ir =
-                                                        IR.fromDistribution distribution
-
-                                                    viewAttributeValues : NodeID -> Element Msg
-                                                    viewAttributeValues node =
-                                                        let
-                                                            attributeToEditors : Element Msg
-                                                            attributeToEditors =
-                                                                model.customAttributes
-                                                                    |> Dict.toList
-                                                                    |> List.map
-                                                                        (\( attrId, attrDetail ) ->
-                                                                            let
-                                                                                irValue : Maybe (Value () ())
-                                                                                irValue =
-                                                                                    attrDetail.data
-                                                                                        |> SDKDict.get node
-                                                                                        |> Maybe.map
-                                                                                            (\iRvalue -> iRvalue)
-
-                                                                                nodeDetail : AttrValueDetail
-                                                                                nodeDetail =
-                                                                                    { attrId = attrId, nodeId = node }
-                                                                            in
-                                                                            ( Name.fromString attrDetail.displayName
-                                                                            , ValueEditor.view model.theme
-                                                                                (IR.fromDistribution attrDetail.iR)
-                                                                                (Type.Reference () attrDetail.entryPoint [])
-                                                                                (Attribute << ValueUpdated nodeDetail)
-                                                                                (model.attributeStates
-                                                                                    |> SDKDict.get nodeDetail
-                                                                                    |> Maybe.withDefault
-                                                                                        (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
-                                                                                            (Type.Reference () attrDetail.entryPoint [])
-                                                                                            irValue
-                                                                                        )
-                                                                                )
-                                                                            )
-                                                                        )
-                                                                    |> FieldList.view
-                                                        in
-                                                        column [ spacing (model.theme |> Theme.scaled 5) ]
-                                                            [ attributeToEditors ]
                                                 in
                                                 Just <|
                                                     TabsComponent.view model.theme
@@ -1952,37 +2162,41 @@ viewDefinitionDetails model =
                                                                   , content =
                                                                         column [ spacing (model.theme |> Theme.scaled 5), paddingXY (model.theme |> Theme.scaled 1) 0 ]
                                                                             [ SectionComponent.view model.theme
-                                                                                { title = "Inputs"
+                                                                                { title = "Insight view"
                                                                                 , onToggle = UI (ToggleSection 1)
                                                                                 , isOpen = Set.member 1 model.openSections
-                                                                                , content = viewArgumentEditors ir model.argStates valueDef.inputTypes
-                                                                                }
-                                                                            , SectionComponent.view model.theme
-                                                                                { title = "Insight view"
-                                                                                , onToggle = UI (ToggleSection 2)
-                                                                                , isOpen = Set.member 2 model.openSections
                                                                                 , content = el [ Theme.borderRounded model.theme, Border.width 1, Border.color model.theme.colors.gray ] <| ViewValue.viewDefinition (insightViewConfig ir) fullyQualifiedName valueDef
                                                                                 }
                                                                             , SectionComponent.view model.theme
-                                                                                { title = "Outputs"
-                                                                                , onToggle = UI (ToggleSection 3)
-                                                                                , isOpen = Set.member 3 model.openSections
+                                                                                { title = "Inputs & Output"
+                                                                                , onToggle = UI (ToggleSection 2)
+                                                                                , isOpen = Set.member 2 model.openSections
                                                                                 , content =
-                                                                                    viewActualOutput
-                                                                                        model.theme
-                                                                                        ir
-                                                                                        { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
-                                                                                        fullyQualifiedName
+                                                                                    column
+                                                                                        [ spacing
+                                                                                            (model.theme
+                                                                                                |> Theme.scaled 4
+                                                                                            )
+                                                                                        ]
+                                                                                        [ el [ borderBottom 2, paddingXY 0 5, Border.color model.theme.colors.gray ] (viewArgumentEditors ir model.argStates valueDef.inputTypes)
+                                                                                        , viewActualOutput
+                                                                                            model.theme
+                                                                                            ir
+                                                                                            { description = "", expectedOutput = Value.toRawValue <| Value.Tuple () [], inputs = inputs }
+                                                                                            fullyQualifiedName
+                                                                                        ]
                                                                                 }
                                                                             , SectionComponent.view model.theme
                                                                                 { title = "Test Cases"
-                                                                                , onToggle = UI (ToggleSection 4)
-                                                                                , isOpen = Set.member 4 model.openSections
+                                                                                , onToggle = UI (ToggleSection 3)
+                                                                                , isOpen = Set.member 3 model.openSections
                                                                                 , content = scenarios fullyQualifiedName ir valueDef.inputTypes
                                                                                 }
                                                                             ]
                                                                   }
-                                                                , { name = "XRay View", content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef }
+                                                                , { name = "XRay View"
+                                                                  , content = XRayView.viewValueDefinition (XRayView.viewType <| pathToUrl) valueDef
+                                                                  }
                                                                 , { name = "Custom Attributes"
                                                                   , content =
                                                                         row
@@ -1994,7 +2208,7 @@ viewDefinitionDetails model =
                                                                                 )
                                                                             , paddingXY 10 10
                                                                             ]
-                                                                            [ viewAttributeValues (ValueID fullyQualifiedName) ]
+                                                                            [ viewAttributeValues model (ValueID fullyQualifiedName) ]
                                                                   }
                                                                 ]
                                                         }
@@ -2004,8 +2218,49 @@ viewDefinitionDetails model =
                                 Nothing ->
                                     none
 
-                        Type _ ->
-                            none
+                        Type ( moduleName, typeName ) ->
+                            let
+                                fullyQualifiedName =
+                                    ( packageName, moduleName, typeName )
+
+                                typeDetails =
+                                    packageDef.modules
+                                        |> Dict.get moduleName
+                                        |> Maybe.andThen
+                                            (\accessControlledModuleDef ->
+                                                accessControlledModuleDef.value.types
+                                                    |> Dict.get typeName
+                                                    |> Maybe.map
+                                                        (\typeDef ->
+                                                            ViewType.viewTypeDetails model.theme typeName typeDef.value.value
+                                                        )
+                                            )
+                                        |> Maybe.withDefault none
+                            in
+                            TabsComponent.view model.theme
+                                { onSwitchTab = UI << SwitchTab
+                                , activeTab = model.activeTabIndex
+                                , tabs =
+                                    Array.fromList
+                                        [ { name = "Type Details"
+                                          , content =
+                                                typeDetails
+                                          }
+                                        , { name = "Custom Attributes"
+                                          , content =
+                                                row
+                                                    [ width fill
+                                                    , height fill
+                                                    , spacing
+                                                        (model.theme
+                                                            |> Theme.scaled 8
+                                                        )
+                                                    , paddingXY 10 10
+                                                    ]
+                                                    [ viewAttributeValues model (TypeID fullyQualifiedName) ]
+                                          }
+                                        ]
+                                }
 
                 Nothing ->
                     none

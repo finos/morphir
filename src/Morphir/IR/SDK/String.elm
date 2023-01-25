@@ -92,6 +92,7 @@ moduleSpec =
             , vSpec "any" [ ( "f", tFun [ charType () ] (boolType ()) ), ( "s", stringType () ) ] (boolType ())
             , vSpec "all" [ ( "f", tFun [ charType () ] (boolType ()) ), ( "s", stringType () ) ] (boolType ())
             ]
+    , doc = Just "Contains the Sring type, and related functions."
     }
 
 

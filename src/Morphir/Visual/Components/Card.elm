@@ -9,8 +9,8 @@ import Markdown.Renderer
 import Morphir.Visual.Theme as Theme exposing (Theme)
 
 
-viewAsCard : Theme -> Element msg -> String -> Element.Color -> String -> Element msg -> Element msg
-viewAsCard theme header class backgroundColor docs content =
+viewAsCard : Theme -> Element msg -> String -> String -> Element msg -> Element msg
+viewAsCard theme header class docs content =
     let
         white =
             rgb 1 1 1
@@ -24,8 +24,7 @@ viewAsCard theme header class backgroundColor docs content =
                 content
     in
     column
-        [ padding (theme |> Theme.scaled 3)
-        , spacing (theme |> Theme.scaled 3)
+        [ paddingXY 0 (theme |> Theme.scaled 1)
         ]
         [ row
             [ width fill
@@ -42,15 +41,9 @@ viewAsCard theme header class backgroundColor docs content =
             , width fill
             , height fill
             ]
-            (if docs == "" then
-                cont
-
-             else
-                column [ height fill, width fill ]
+            (column [ height fill, width fill ]
                     [ el
                         [ padding (theme |> Theme.scaled -2)
-                        , Border.widthEach { bottom = 3, top = 0, left = 0, right = 0 }
-                        , Border.color backgroundColor
                         , height fill
                         , width fill
                         ]

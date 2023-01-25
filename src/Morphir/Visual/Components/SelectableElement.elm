@@ -23,12 +23,15 @@ view theme config =
             , pointer
             , Border.widthEach { left = 2, right = 0, bottom = 0, top = 0 }
             , Border.color theme.colors.lightest
-            , mouseOver [ Background.color theme.colors.brandPrimaryLight, Border.color theme.colors.primaryHighlight ]
+            , mouseOver [ Background.color theme.colors.gray, Border.color theme.colors.primaryHighlight ]
             ]
 
         activeStyles =
             if config.isSelected then
-                [ Font.bold, Background.color theme.colors.brandPrimaryLight, Border.color theme.colors.primaryHighlight ]
+                [ Font.bold
+                , Background.color theme.colors.brandPrimaryLight
+                , Border.color theme.colors.primaryHighlight
+                ]
 
             else
                 []

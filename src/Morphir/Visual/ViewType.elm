@@ -5,16 +5,89 @@ module Morphir.Visual.ViewType exposing (..)
 
 import Dict
 import Element exposing (..)
-import Morphir.IR.Name exposing (Name)
+import Element.Font as Font
+import Morphir.IR.Name as Name exposing (Name)
 import Morphir.IR.Type as Type exposing (Type)
-import Morphir.Visual.Common exposing (nameToText, nameToTitleText, pathToUrl)
+import Morphir.Visual.Common exposing (nameToText)
 import Morphir.Visual.Components.Card as Card
 import Morphir.Visual.Theme as Theme exposing (Theme)
 import Morphir.Visual.XRayView as XRayView
+import Morphir.Visual.Common exposing (nameToTitleText, pathToUrl)
 
 
 viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
 viewType theme typeName typeDef docs =
+    let
+        cardTitle =
+            link [ pointer ]
+                { url =
+                    "/module/" ++ ([] |> List.map Name.toTitleCase |> String.join ".") ++ "?filter=" ++ nameToText typeName
+                , label =
+                    el [ Font.extraBold, Font.size 30 ] (text (nameToText typeName))
+                }
+
+        documentation =
+            if String.length docs == 0 then
+                "[This type has no associated documentation.]"
+
+            else
+                docs
+    in
+    case typeDef of
+        Type.TypeAliasDefinition _ (Type.Record _ _) ->
+            Card.viewAsCard theme
+                cardTitle
+                "is a record"
+                documentation
+                none
+
+        Type.TypeAliasDefinition _ body ->
+            Card.viewAsCard theme
+                cardTitle
+                "is an alias"
+                documentation
+                none
+
+        Type.CustomTypeDefinition _ accessControlledConstructors ->
+            let
+                isNewType : Maybe (Type ())
+                isNewType =
+                    case accessControlledConstructors.value |> Dict.toList of
+                        [ ( ctorName, [ ( _, baseType ) ] ) ] ->
+                            if ctorName == typeName then
+                                Just baseType
+
+                            else
+                                Nothing
+
+                        _ ->
+                            Nothing
+
+                isEnum : Bool
+                isEnum =
+                    accessControlledConstructors.value
+                        |> Dict.values
+                        |> List.all List.isEmpty
+            in
+            Card.viewAsCard theme
+                cardTitle
+                (case isNewType of
+                    Just _ ->
+                        "is a wrapper"
+
+                    Nothing ->
+                        if isEnum then
+                            "is an enum"
+
+                        else
+                            "is a custom type"
+                )
+                documentation
+                none
+
+
+viewTypeDetails : Theme -> Name -> Type.Definition () -> Element msg
+viewTypeDetails theme typeName typeDef =
     case typeDef of
         Type.TypeAliasDefinition _ (Type.Record _ fields) ->
             let
@@ -39,24 +112,18 @@ viewType theme typeName typeDef docs =
                         fieldNames
                         fieldTypes
             in
-            Card.viewAsCard theme
-                (typeName |> nameToTitleText |> text)
-                "record"
-                theme.colors.backgroundColor
-                docs
+            el
+                [ alignTop
+                , paddingXY (theme |> Theme.scaled -2) (theme |> Theme.scaled -6)
+                , spacing (theme |> Theme.scaled 2)
+                ]
                 viewFields
 
         Type.TypeAliasDefinition _ body ->
-            Card.viewAsCard theme
-                (typeName |> nameToTitleText |> text)
-                "is a"
-                theme.colors.backgroundColor
-                docs
-                (el
-                    [ paddingXY 10 5
-                    ]
-                    (XRayView.viewType pathToUrl body)
-                )
+            el
+                [ paddingXY 10 5
+                ]
+                (XRayView.viewType pathToUrl body)
 
         Type.CustomTypeDefinition _ accessControlledConstructors ->
             let
@@ -119,19 +186,9 @@ viewType theme typeName typeDef docs =
                                     constructorNames
                                     constructorArgs
             in
-            Card.viewAsCard theme
-                (typeName |> nameToTitleText |> text)
-                (case isNewType of
-                    Just _ ->
-                        "wrapper"
-
-                    Nothing ->
-                        if isEnum then
-                            "enum"
-
-                        else
-                            "one of"
-                )
-                theme.colors.backgroundColor
-                docs
+            el
+                [ alignTop
+                , paddingXY (theme |> Theme.scaled -2) (theme |> Theme.scaled -6)
+                , spacing (theme |> Theme.scaled 2)
+                ]
                 viewConstructors

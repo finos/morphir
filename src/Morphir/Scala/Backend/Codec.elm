@@ -15,7 +15,10 @@
 -}
 
 
-module Morphir.Scala.Backend.Codec exposing (decodeOptions)
+module Morphir.Scala.Backend.Codec exposing
+    ( decodeOptions
+    , encodeError
+    )
 
 {-| Codecs for types in the `Morphir.Scala.Backend` module.
 
@@ -23,12 +26,16 @@ module Morphir.Scala.Backend.Codec exposing (decodeOptions)
 # Options
 
 @docs decodeOptions
+@docs encodeError
 
 -}
 
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Morphir.IR.Path as Path
-import Morphir.Scala.Backend exposing (Options)
+import Morphir.Scala.Backend exposing (Error(..), Options)
+import Morphir.Scala.Feature.TestBackend as TestBE
+import Morphir.Scala.Feature.TestBackend.Codec as TestBECodec
 import Set
 
 
@@ -36,7 +43,7 @@ import Set
 -}
 decodeOptions : Decode.Decoder Options
 decodeOptions =
-    Decode.map2 Options
+    Decode.map3 Options
         (Decode.field "limitToModules"
             (Decode.maybe
                 (Decode.list
@@ -50,3 +57,25 @@ decodeOptions =
         (Decode.field "includeCodecs"
             Decode.bool
         )
+        decodeTestOptions
+
+
+decodeTestOptions : Decode.Decoder TestBE.Options
+decodeTestOptions =
+    Decode.map2
+        (\maybeGenericTest maybeScalaTest ->
+            TestBE.Options
+                (Maybe.withDefault False maybeGenericTest)
+                (Maybe.withDefault False maybeScalaTest)
+        )
+        (Decode.maybe (Decode.field "generateTestGeneric" Decode.bool))
+        (Decode.maybe (Decode.field "generateTestScalatest" Decode.bool))
+
+
+{-| Encode Error
+-}
+encodeError : Error -> Encode.Value
+encodeError error =
+    case error of
+        TestError errs ->
+            TestBECodec.encodeErrors errs

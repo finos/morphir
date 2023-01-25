@@ -127,8 +127,18 @@ mapTypeDecl opt typeDecl =
                                    )
                                 ++ newLine
                                 ++ newLine
+
+                bodyDoc =
+                    decl.body
+                        |> List.foldl
+                            (\value valDocsSoFar ->
+                                valDocsSoFar
+                                    ++ newLine
+                                    ++ indent opt.indentDepth (mapValue opt value)
+                            )
+                            empty
             in
-            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ "{" ++ members ++ "}"
+            mapModifiers decl.modifiers ++ "class " ++ decl.name ++ mapTypeArgs opt decl.typeArgs ++ ctorArgsDoc ++ mapExtends opt decl.extends ++ "{" ++ members ++ bodyDoc ++ "}"
 
         Object decl ->
             let

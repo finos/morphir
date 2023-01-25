@@ -64,4 +64,5 @@ moduleSpec =
                     ( Name.fromString valueName, Documented "" dummyValueSpec )
                 )
             |> Dict.fromList
+    , doc = Just "Regular Expressions and related functions."
     }

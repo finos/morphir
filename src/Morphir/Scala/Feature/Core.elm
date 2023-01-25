@@ -83,6 +83,7 @@ mapTypeMember currentPackagePath currentModulePath accessControlledModuleDef ( t
                                 |> List.singleton
                         , extends = []
                         , members = []
+                        , body = []
                         }
                     )
                 )
@@ -255,6 +256,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                             |> List.singleton
                     , extends = extends
                     , members = []
+                    , body = []
                     }
 
         parentTraitRef : Scala.Type
@@ -528,7 +530,7 @@ mapValue inScopeVars value =
                 _ ->
                     Scala.Select Scala.Wildcard (mapValueName fieldName)
 
-        Apply _ applyFun applyArg ->
+        Apply applyType applyFun applyArg ->
             let
                 ( bottomFun, args ) =
                     Value.uncurryApply applyFun applyArg
@@ -538,11 +540,12 @@ mapValue inScopeVars value =
                     curryConstructorArgs inScopeVars constructorType fQName args
 
                 _ ->
-                    Scala.Apply (mapValue inScopeVars applyFun)
+                    Scala.Apply
+                        (mapValue inScopeVars applyFun)
                         [ Scala.ArgValue Nothing (mapValue inScopeVars applyArg)
                         ]
 
-        Lambda _ argPattern bodyValue ->
+        Lambda lambdaType argPattern bodyValue ->
             let
                 newInScopeVars : Set Name
                 newInScopeVars =
@@ -557,7 +560,7 @@ mapValue inScopeVars value =
                         (mapValue newInScopeVars bodyValue)
 
                 _ ->
-                    Scala.MatchCases [ ( mapPattern argPattern, mapValue newInScopeVars bodyValue ) ]
+                    Scala.TypeAscripted (Scala.MatchCases [ ( mapPattern argPattern, mapValue newInScopeVars bodyValue ) ]) (mapType lambdaType)
 
         LetDefinition _ _ _ _ ->
             let

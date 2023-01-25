@@ -81,10 +81,10 @@ async function gen(input, outputPath, options) {
     })
     const morphirIrJson = await readFile(path.resolve(input))  
     const opts = options
-    opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(',') : null
+    opts.limitToModules = options.modulesToInclude ? options.modulesToInclude.split(",") : null
     opts.includeCodecs = options.includeCodecs ? true : false
+    opts.filename = options.filename == '' ? '' : options.filename
     const fileMap = await generate(opts, JSON.parse(morphirIrJson.toString()))
-
 
     const writePromises =
         fileMap.map(async ([

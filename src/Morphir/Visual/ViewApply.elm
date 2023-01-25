@@ -44,7 +44,7 @@ view config viewDefinitionBody viewValue functionValue argValues =
 
         viewFunctionValue : FQName -> Element msg
         viewFunctionValue fqName =
-            el [ config.state.theme |> borderRounded, Background.color <| config.state.theme.colors.selectionColor, padding 2, tooltip above (functionOutput fqName) ] <| viewValue functionValue
+            el [ tooltip above (functionOutput fqName) ] <| viewValue functionValue
 
         functionOutput : FQName -> Element msg
         functionOutput fqName =
@@ -89,10 +89,10 @@ view config viewDefinitionBody viewValue functionValue argValues =
                                     el popupstyles (viewRawValue value)
 
                                 Err err ->
-                                    el ((Font.color <| rgb 0.8 0 0) :: popupstyles) (text <| Error.toString err)
+                                    Element.none
 
                         _ ->
-                            el popupstyles (text <| "Could not evaluate. (" ++ Error.toString firstError ++ ")")
+                            Element.none
     in
     case ( functionValue, argValues ) of
         ( (Value.Constructor _ fQName) as constr, _ ) ->
@@ -200,9 +200,12 @@ view config viewDefinitionBody viewValue functionValue argValues =
                     else
                         Nothing
 
+                ( _, _, valueName ) =
+                    fqName
+
                 closedElement =
-                    row ([ Border.color config.state.theme.colors.gray, Border.width 1, smallPadding config.state.theme |> padding, config.state.theme |> borderRounded ] ++ styles)
-                        [ viewFunctionValue fqName
+                    row [ smallSpacing config.state.theme |> spacing ]
+                        [ el [ Background.color <| config.state.theme.colors.selectionColor, smallPadding config.state.theme |> padding ] (text (nameToText valueName))
                         , argList
                         ]
 
@@ -217,20 +220,17 @@ view config viewDefinitionBody viewValue functionValue argValues =
                                 visualState =
                                     config.state
                             in
-                            viewDefinitionBody { config | state = { visualState | variables = variables }, nodePath = config.nodePath ++ [ getId functionValue ] } valueDef
+                            viewDefinitionBody { config | state = { visualState | variables = variables }, nodePath = config.nodePath ++ [ getId functionValue ] } { valueDef | body = Value.rewriteMaybeToPatternMatch valueDef.body }
 
                         Nothing ->
                             Element.none
 
                 openHeader =
-                    let
-                        ( _, _, valueName ) =
-                            fqName
-                    in
-                    row []
+                    row [ smallSpacing config.state.theme |> spacing ]
                         [ el [ Background.color <| config.state.theme.colors.selectionColor, smallPadding config.state.theme |> padding ] (text (nameToText valueName))
                         , argList
-                        , text " = "
+
+                        --, text "="
                         ]
             in
             drillDownPanel fqName (List.length config.nodePath) closedElement openHeader openElement (drillDownContains config.state.drillDownFunctions (getId functionValue) config.nodePath)
