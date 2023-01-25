@@ -23,6 +23,10 @@ type alias Error =
     String
 
 
+type alias Errors =
+    List String
+
+
 circePackagePath : List String
 circePackagePath =
     [ "io", "circe" ]
@@ -153,7 +157,7 @@ encoderLambda types body =
 -}
 
 
-mapModuleDefinitionToCodecs : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> List Scala.CompilationUnit
+mapModuleDefinitionToCodecs : Package.PackageName -> Path -> AccessControlled (Module.Definition ta (Type ())) -> Result Error (List Scala.CompilationUnit)
 mapModuleDefinitionToCodecs currentPackagePath currentModulePath accessControlledModuleDef =
     let
         scalaPackagePath : List String
@@ -162,72 +166,67 @@ mapModuleDefinitionToCodecs currentPackagePath currentModulePath accessControlle
                 ++ currentModulePath
                 |> List.map (Name.toCamelCase >> String.toLower)
 
-        encoderTypeMembers : List (Scala.Annotated Scala.MemberDecl)
-        encoderTypeMembers =
+        encoderTypeMembersResult : Result Error (List (Scala.Annotated Scala.MemberDecl))
+        encoderTypeMembersResult =
             accessControlledModuleDef.value.types
                 |> Dict.toList
-                |> List.filterMap
+                |> List.map
                     (\types ->
-                        case mapTypeDefinitionToEncoder currentPackagePath currentModulePath types of
-                            Ok memberDecl ->
-                                Just memberDecl
-
-                            Err error ->
-                                -- TODO Do something with this error
-                                Nothing
+                        mapTypeDefinitionToEncoder currentPackagePath currentModulePath types
                     )
+                |> ResultList.keepFirstError
 
-        decoderTypeMembers : List (Scala.Annotated Scala.MemberDecl)
-        decoderTypeMembers =
+        decoderTypeMembersResult : Result Error (List (Scala.Annotated Scala.MemberDecl))
+        decoderTypeMembersResult =
             accessControlledModuleDef.value.types
                 |> Dict.toList
-                |> List.filterMap
+                |> List.map
                     (\types ->
-                        case mapTypeDefinitionToDecoder currentPackagePath currentModulePath types of
-                            Ok memberDecl ->
-                                Just memberDecl
-
-                            Err error ->
-                                -- TODO Do something with this error
-                                Nothing
+                        mapTypeDefinitionToDecoder currentPackagePath currentModulePath types
                     )
+                |> ResultList.keepFirstError
 
-        moduleUnit : Scala.CompilationUnit
+        moduleUnit : Result Error Scala.CompilationUnit
         moduleUnit =
-            { dirPath = prefixKeywords scalaPackagePath
-            , fileName = "Codec.scala"
-            , packageDecl = scalaPackagePath
-            , imports = []
-            , typeDecls =
-                [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
-                    (Scala.Annotated []
-                        (Scala.Object
-                            { modifiers =
-                                case accessControlledModuleDef.access of
-                                    Public ->
-                                        []
+            Result.map2
+                (\encoderTypeMembers decoderTypeMembers ->
+                    { dirPath = prefixKeywords scalaPackagePath
+                    , fileName = "Codec.scala"
+                    , packageDecl = scalaPackagePath
+                    , imports = []
+                    , typeDecls =
+                        [ Scala.Documented (Just (String.join "" [ "Generated based on ", currentModulePath |> Path.toString Name.toTitleCase "." ]))
+                            (Scala.Annotated []
+                                (Scala.Object
+                                    { modifiers =
+                                        case accessControlledModuleDef.access of
+                                            Public ->
+                                                []
 
-                                    Private ->
-                                        [ Scala.Private
-                                            (currentPackagePath
-                                                |> ListExtra.last
-                                                |> Maybe.map (Name.toCamelCase >> String.toLower)
-                                            )
-                                        ]
-                            , name =
-                                "Codec"
-                            , members =
-                                List.concat [ encoderTypeMembers, decoderTypeMembers ]
-                            , extends =
-                                []
-                            , body = Nothing
-                            }
-                        )
-                    )
-                ]
-            }
+                                            Private ->
+                                                [ Scala.Private
+                                                    (currentPackagePath
+                                                        |> ListExtra.last
+                                                        |> Maybe.map (Name.toCamelCase >> String.toLower)
+                                                    )
+                                                ]
+                                    , name =
+                                        "Codec"
+                                    , members =
+                                        List.concat [ encoderTypeMembers, decoderTypeMembers ]
+                                    , extends =
+                                        []
+                                    , body = Nothing
+                                    }
+                                )
+                            )
+                        ]
+                    }
+                )
+                encoderTypeMembersResult
+                decoderTypeMembersResult
     in
-    [ moduleUnit ]
+    Result.map List.singleton moduleUnit
 
 
 {-|
