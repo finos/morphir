@@ -210,7 +210,6 @@ async function findFilesToDelete(outputPath, fileMap) {
             const fileDir = dirPath.reduce((accum, next) => path.join(accum, next), outputPath)  
             return path.resolve(fileDir, fileName)  
         })
-        console.log(files);
     return Promise.all(await readDir(outputPath, files))
 }
 
