@@ -93,8 +93,9 @@ Options include:
 ```
 
 ```shell
-morphir scala-gen
+morphir scala-gen 
 ```
+
 
 Options include:
 
@@ -105,8 +106,8 @@ Options include:
   -c, --copy-deps                                                  Copy the dependencies used by the generated code to the output path. (default: false)
   -m, --limitToModules <comma.separated,list.of,module.names>      Limit the set of modules that will be included. (default: '')
   -s, --include-codecs <boolean>                                   Generate the scala codecs as well (default: false)
-  --generate-test-generic                                          Generate generic test cases from morphir tests that can be used for testing. (default: false)
-  --generate-test-scalatest                                        Generate runnable scalatest test cases (default: false)
+  --generate-test-generic                                          Generate generic test cases from morphir tests that can be used for testing. Since 2.74.0 (default: false)
+  --generate-test-scalatest                                        Generate runnable scalatest test cases Since 2.74.0 (default: false)
 ```
 
 ### Generate Json Schema

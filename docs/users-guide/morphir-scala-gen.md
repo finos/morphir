@@ -1,3 +1,5 @@
+> **Since: 2.74.0**  
+
 This document explains how to generate test cases in scala from saved morphir tests. 
 
 # Generating Scala Test Cases
