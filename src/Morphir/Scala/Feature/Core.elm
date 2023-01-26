@@ -82,6 +82,7 @@ mapTypeMember currentPackagePath currentModulePath accessControlledModuleDef ( t
                                 |> List.singleton
                         , extends = []
                         , members = []
+                        , body = []
                         }
                     )
                 )
@@ -254,6 +255,7 @@ mapCustomTypeDefinition currentPackagePath currentModulePath moduleDef typeName 
                             |> List.singleton
                     , extends = extends
                     , members = []
+                    , body = []
                     }
 
         parentTraitRef : Scala.Type

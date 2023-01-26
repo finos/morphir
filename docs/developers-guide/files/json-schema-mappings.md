@@ -23,6 +23,7 @@ Type | Elm sample | JSON sample | Comment
 `tuples` | `( 13, False )` | `[13, false]` | Tuples map to arrays
 `record types` | `{ foo = 13, bar = False }`  | `{ "foo": 13, "bar": false }` | Records map to objects
 `custom types` | `FooBar "hello`, `MyEnum` | `["FooBar", "hello"]`, `"MyEnum"` | see details below
+`unit` | `()` | `{}` | 
 
 ## How to Generate a Json Schema
 Follow the two step s below to generate a Json Schema

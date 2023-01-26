@@ -50,7 +50,11 @@ const createSimpleGetJsonApi = (filePath) => {
     wrap(async (req, res, next) => {
       const jsonPath = path.join(program.opts().projectDir, filePath);
       const jsonContent = await readFile(jsonPath);
-      res.send(JSON.parse(jsonContent.toString()));
+      if (filePath == "morphir-tests.json" && jsonContent == ""){
+        res.send("{}")
+      }
+      else
+        res.send(JSON.parse(jsonContent.toString()));
     })
   );
 };

@@ -13,14 +13,12 @@ import Element
         , centerX
         , centerY
         , clipX
-        , clipY
         , column
         , el
         , fill
         , fillPortion
         , height
         , image
-        , inFront
         , layout
         , link
         , maximum
@@ -81,7 +79,7 @@ import Morphir.Visual.Components.TreeViewComponent as TreeViewComponent
 import Morphir.Visual.Config exposing (DrillDownFunctions(..), ExpressionTreePath, PopupScreenRecord, addToDrillDown, removeFromDrillDown)
 import Morphir.Visual.EnrichedValue exposing (fromRawValue)
 import Morphir.Visual.Theme as Theme exposing (Theme, borderBottom, borderRounded, largePadding, largeSpacing)
-import Morphir.Visual.ValueEditor as ValueEditor
+import Morphir.Visual.ValueEditor as ValueEditor exposing (initEditorState)
 import Morphir.Visual.ViewType as ViewType
 import Morphir.Visual.ViewValue as ViewValue
 import Morphir.Visual.XRayView as XRayView
@@ -223,7 +221,7 @@ init flags url key =
             , activeTabIndex = 0
             , openSections = Set.fromList [ 1 ]
             , isAboutOpen = False
-            , version = flags.version |> Debug.log "v_"
+            , version = flags.version
             , showSaveTestError = False
             }
     in
@@ -624,7 +622,7 @@ update msg model =
                     )
 
                 ShowSaveTestError ->
-                    ({model | showSaveTestError = True}, Cmd.none)
+                    ( { model | showSaveTestError = True }, Cmd.none )
 
         ServerGetAttributeResponse attributes ->
             ( { model | customAttributes = attributes }
@@ -1138,6 +1136,55 @@ viewAbout theme version =
         ]
 
 
+
+-- View to display the ValueEditors for Custom Attributes when a node is selected
+
+
+viewAttributeValues : Model -> NodeID -> Element Msg
+viewAttributeValues model node =
+    let
+        attributeToEditors : Element Msg
+        attributeToEditors =
+            model.customAttributes
+                |> Dict.toList
+                |> List.map
+                    (\( attrId, attrDetail ) ->
+                        let
+                            irValue : Maybe (Value () ())
+                            irValue =
+                                attrDetail.data
+                                    |> SDKDict.get node
+
+                            nodeDetail : AttrValueDetail
+                            nodeDetail =
+                                { attrId = attrId, nodeId = node }
+
+                            editorState : ValueEditor.EditorState
+                            editorState =
+                                model.attributeStates
+                                    |> SDKDict.get nodeDetail
+                                    |> Maybe.withDefault
+                                        (ValueEditor.initEditorState
+                                            (IR.fromDistribution attrDetail.iR)
+                                            (Type.Reference () attrDetail.entryPoint [])
+                                            irValue
+                                        )
+                        in
+                        ( Name.fromString attrDetail.displayName
+                        , ValueEditor.view
+                            model.theme
+                            (IR.fromDistribution attrDetail.iR)
+                            (Type.Reference () attrDetail.entryPoint [])
+                            (Attribute << ValueUpdated nodeDetail)
+                            editorState
+                        )
+                    )
+                |> FieldList.view
+    in
+    column [ spacing (model.theme |> Theme.scaled 5) ]
+        [ attributeToEditors ]
+
+
 {-| Display the home UI
 -}
 viewHome : Model -> PackageName -> Package.Definition () (Type ()) -> Element Msg
@@ -1164,7 +1211,7 @@ viewHome model packageName packageDef =
                     )
                 )
 
-        -- Creates two tabs showing a summmary and a dep. graph, which are shown when no definition is selected
+        -- Creates three tabs showing a summary, a dep. graph and decorators which are shown when no definition is selected
         homeTabs : Element Msg
         homeTabs =
             let
@@ -1213,6 +1260,9 @@ viewHome model packageName packageDef =
 
                         Nothing ->
                             row [ width fill, spacing (Theme.smallSpacing model.theme), padding (Theme.smallPadding model.theme) ] [ text <| "This package contains " ++ String.fromInt numberOfModules ++ " modules." ]
+
+                maybeModuleName =
+                    model.homeState.selectedModule |> Maybe.map Tuple.second
             in
             TabsComponent.view model.theme
                 { onSwitchTab = UI << SwitchTab
@@ -1224,6 +1274,20 @@ viewHome model packageName packageDef =
                           }
                         , { name = "Dependency Graph"
                           , content = col [ dependencyGraph model.homeState.selectedModule model.repo ]
+                          }
+                        , { name = "Custom Attributes"
+                          , content =
+                                let
+                                    attributeTabContent =
+                                        case maybeModuleName of
+                                            Just moduleName ->
+                                                [ viewAttributeValues model (ModuleID ( packageName, moduleName )) ]
+
+                                            Nothing ->
+                                                -- Since we don't annotate package for now, we don't show the Value Editors
+                                                []
+                                in
+                                col attributeTabContent
                           }
                         ]
                 }
@@ -1581,127 +1645,10 @@ viewValue theme moduleName valueName valueDef docs =
          else
             "calculation"
         )
-        backgroundColor
         (ifThenElse (docs == "") "[ This definition has no associated documentation. ]" docs)
         none
 
 
-viewType : Theme -> Name -> Type.Definition () -> String -> Element msg
-viewType theme typeName typeDef docs =
-    let
-        cardTitle =
-            text ""
-    in
-    case typeDef of
-        Type.TypeAliasDefinition _ (Type.Record _ fields) ->
-            let
-                fieldNames : { a | name : Name } -> Element msg
-                fieldNames =
-                    \field ->
-                        el
-                            (Theme.boldLabelStyles theme)
-                            (text (nameToText field.name))
-
-                fieldTypes : { a | tpe : Type () } -> Element msg
-                fieldTypes =
-                    \field ->
-                        el
-                            (Theme.labelStyles theme)
-                            (XRayView.viewType pathToUrl field.tpe)
-
-                viewFields : Element msg
-                viewFields =
-                    Theme.twoColumnTableView
-                        fields
-                        fieldNames
-                        fieldTypes
-            in
-            Card.viewAsCard theme
-                cardTitle
-                "record"
-                theme.colors.backgroundColor
-                docs
-                viewFields
-
-        Type.TypeAliasDefinition _ body ->
-            Card.viewAsCard theme
-                cardTitle
-                "is a"
-                theme.colors.backgroundColor
-                docs
-                (el
-                    [ paddingXY 10 5
-                    ]
-                    (XRayView.viewType pathToUrl body)
-                )
-
-        Type.CustomTypeDefinition _ accessControlledConstructors ->
-            let
-                isNewType : Maybe (Type ())
-                isNewType =
-                    case accessControlledConstructors.value |> Dict.toList of
-                        [ ( ctorName, [ ( _, baseType ) ] ) ] ->
-                            if ctorName == typeName then
-                                Just baseType
-
-                            else
-                                Nothing
-
-                        _ ->
-                            Nothing
-
-                isEnum : Bool
-                isEnum =
-                    accessControlledConstructors.value
-                        |> Dict.values
-                        |> List.all List.isEmpty
-
-                viewConstructors : Element msg
-                viewConstructors =
-                    if isEnum then
-                        accessControlledConstructors.value
-                            |> Dict.toList
-                            |> List.map
-                                (\( ctorName, _ ) ->
-                                    el
-                                        (Theme.boldLabelStyles theme)
-                                        (text (nameToTitleText ctorName))
-                                )
-                            |> column [ width fill ]
-
-                    else
-                        case isNewType of
-                            Just baseType ->
-                                el [ padding (theme |> Theme.scaled -2) ] (XRayView.viewType pathToUrl baseType)
-
-                            Nothing ->
-                                let
-                                    constructorNames =
-                                        \( ctorName, _ ) ->
-                                            el
-                                                (Theme.boldLabelStyles theme)
-                                                (text (nameToTitleText ctorName))
-
-                                    constructorArgs =
-                                        \( _, ctorArgs ) ->
-                                            el
-                                                (Theme.labelStyles theme)
-                                                (ctorArgs
-                                                    |> List.map (Tuple.second >> XRayView.viewType pathToUrl)
-                                                    |> row [ spacing 5 ]
-                                                )
-                                in
-                                Theme.twoColumnTableView
-                                    (Dict.toList accessControlledConstructors.value)
-                                    constructorNames
-                                    constructorArgs
-            in
-            Card.viewAsCard theme
-                cardTitle
-                ""
-                theme.colors.backgroundColor
-                docs
-                viewConstructors
 
 
 
@@ -1953,23 +1900,25 @@ viewDefinitionDetails model =
             , Font.size model.theme.fontSize
             ]
 
-        saveTestcaseButton : FQName -> Maybe TestCase -> Element Msg
-        saveTestcaseButton fqName testCase =
+        saveTestCaseButton : FQName -> Maybe TestCase -> Element Msg
+        saveTestCaseButton fqName testCase =
             let
                 message : Msg
                 message =
-                    Testing (case testCase of
-                        Just tc ->
-                             (SaveTestSuite fqName tc)
-                        Nothing ->
-                            ShowSaveTestError)
+                    Testing
+                        (case testCase of
+                            Just tc ->
+                                SaveTestSuite fqName tc
+
+                            Nothing ->
+                                ShowSaveTestError
+                        )
             in
             Element.Input.button
                 buttonStyles
                 { onPress = Just message
                 , label = row [ spacing (model.theme |> Theme.scaled -6) ] [ text "Save as new testcase" ]
                 }
-
 
         updateTestCaseButton : FQName -> TestCase -> Element Msg
         updateTestCaseButton fqName testCase =
@@ -2011,8 +1960,8 @@ viewDefinitionDetails model =
                                     [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "Output value: "), el [ Font.heavy, Font.color theme.colors.darkest ] (viewRawValue (insightViewConfig ir) ir rawValue) ]
                                     , column [ width fill, spacing (theme |> Theme.scaled 1) ]
                                         [ descriptionInput
-                                        , (saveTestcaseButton fQName (Just { testCase | expectedOutput = expectedOutput }))
-                                        , ifThenElse (Dict.isEmpty model.argStates && model.showSaveTestError) (el [Font.color model.theme.colors.negative] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
+                                        , saveTestCaseButton fQName (Just { testCase | expectedOutput = expectedOutput })
+                                        , ifThenElse (Dict.isEmpty model.argStates && model.showSaveTestError) (el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
                                         , ifThenElse (model.selectedTestcaseIndex < 0) none (updateTestCaseButton fQName { testCase | expectedOutput = expectedOutput })
                                         ]
                                     ]
@@ -2020,9 +1969,9 @@ viewDefinitionDetails model =
                         Err _ ->
                             [ row [ width fill ] [ el [ Font.bold, Font.size (theme |> Theme.scaled 2) ] (text "Output value: "), text " Unable to compute " ]
                             , column [ width fill, spacing (theme |> Theme.scaled 1) ]
-                                [   descriptionInput
-                                    , (saveTestcaseButton fQName Nothing)
-                                    , ifThenElse (model.showSaveTestError) (el [Font.color model.theme.colors.negative] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
+                                [ descriptionInput
+                                , saveTestCaseButton fQName Nothing
+                                , ifThenElse model.showSaveTestError (el [ Font.color model.theme.colors.negative ] <| text " Invalid or missing inputs. Please make sure that every non-optional input is set.") none
                                 ]
                             ]
                     )
@@ -2183,47 +2132,6 @@ viewDefinitionDetails model =
                         ir : IR
                         ir =
                             IR.fromDistribution distribution
-
-                        viewAttributeValues : NodeID -> Element Msg
-                        viewAttributeValues node =
-                            let
-                                attributeToEditors : Element Msg
-                                attributeToEditors =
-                                    model.customAttributes
-                                        |> Dict.toList
-                                        |> List.map
-                                            (\( attrId, attrDetail ) ->
-                                                let
-                                                    irValue : Maybe (Value () ())
-                                                    irValue =
-                                                        attrDetail.data
-                                                            |> SDKDict.get node
-                                                            |> Maybe.map
-                                                                (\iRvalue -> iRvalue)
-
-                                                    nodeDetail : AttrValueDetail
-                                                    nodeDetail =
-                                                        { attrId = attrId, nodeId = node }
-                                                in
-                                                ( Name.fromString attrDetail.displayName
-                                                , ValueEditor.view model.theme
-                                                    (IR.fromDistribution attrDetail.iR)
-                                                    (Type.Reference () attrDetail.entryPoint [])
-                                                    (Attribute << ValueUpdated nodeDetail)
-                                                    (model.attributeStates
-                                                        |> SDKDict.get nodeDetail
-                                                        |> Maybe.withDefault
-                                                            (ValueEditor.initEditorState (IR.fromDistribution attrDetail.iR)
-                                                                (Type.Reference () attrDetail.entryPoint [])
-                                                                irValue
-                                                            )
-                                                    )
-                                                )
-                                            )
-                                        |> FieldList.view
-                            in
-                            column [ spacing (model.theme |> Theme.scaled 5) ]
-                                [ attributeToEditors ]
                     in
                     case selectedDefinition of
                         Value ( moduleName, valueName ) ->
@@ -2300,7 +2208,7 @@ viewDefinitionDetails model =
                                                                                 )
                                                                             , paddingXY 10 10
                                                                             ]
-                                                                            [ viewAttributeValues (ValueID fullyQualifiedName) ]
+                                                                            [ viewAttributeValues model (ValueID fullyQualifiedName) ]
                                                                   }
                                                                 ]
                                                         }
@@ -2324,9 +2232,7 @@ viewDefinitionDetails model =
                                                     |> Dict.get typeName
                                                     |> Maybe.map
                                                         (\typeDef ->
-                                                            column []
-                                                                [ viewType model.theme typeName typeDef.value.value typeDef.value.doc
-                                                                ]
+                                                            ViewType.viewTypeDetails model.theme typeName typeDef.value.value
                                                         )
                                             )
                                         |> Maybe.withDefault none
@@ -2338,9 +2244,7 @@ viewDefinitionDetails model =
                                     Array.fromList
                                         [ { name = "Type Details"
                                           , content =
-                                                column []
-                                                    [ typeDetails
-                                                    ]
+                                                typeDetails
                                           }
                                         , { name = "Custom Attributes"
                                           , content =
@@ -2353,7 +2257,7 @@ viewDefinitionDetails model =
                                                         )
                                                     , paddingXY 10 10
                                                     ]
-                                                    [ viewAttributeValues (ValueID fullyQualifiedName) ]
+                                                    [ viewAttributeValues model (TypeID fullyQualifiedName) ]
                                           }
                                         ]
                                 }
